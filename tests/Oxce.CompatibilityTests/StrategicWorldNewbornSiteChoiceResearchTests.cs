@@ -12,15 +12,13 @@ public sealed class StrategicWorldNewbornSiteChoiceResearchTests
     private static readonly string[] Topics = ["CORE", "BONUS"];
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void EqualImmediateGrantAlternativesPreserveSelectedBirthsCountersAndRandomState(bool cache, bool generated)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EqualImmediateGrantAlternativesPreserveSelectedBirthsCountersAndRandomState(bool generated)
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
-        var content = Content(cache, generated);
+        var content = Content(generated);
         var seenA = false;
         var seenB = false;
         for (ulong seed = 1; seed <= 16; seed++)
@@ -56,33 +54,31 @@ public sealed class StrategicWorldNewbornSiteChoiceResearchTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void EveryReachableDeploymentRetainsResearchDurationAndEventBoundaries(bool cache, bool generated)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EveryReachableDeploymentRetainsResearchDurationAndEventBoundaries(bool generated)
     {
-        var content = Content(cache, generated, differentGrant: true);
+        var content = Content(generated, differentGrant: true);
         var choices = CampaignState.Restore(Snapshot(content, generated), content, new SplitMix64RandomSource(17));
         AdvanceUnblocked(choices, 1);
         var selected = choices.Capture();
         Assert.Equal(selected.NextIds.GetValueOrDefault("CHOICE_A_MARKER", 1) != 1, selected.CompletedResearch.Contains("BONUS"));
         Assert.Empty(selected.World.MissionSites);
         Assert.Equivalent(selected, Reload(content, choices, 17, "choice-different-grants.sav").Capture(), strict: true);
-        content = Content(cache, generated, mixedDuration: true);
+        content = Content(generated, mixedDuration: true);
         var campaign = CampaignState.Restore(Snapshot(content, generated), content, new SplitMix64RandomSource(17));
         AdvanceUnblocked(campaign, 1);
         var after = campaign.Capture();
         Assert.All(after.World.MissionSites, site => Assert.Equal(1800, site.SecondsRemaining));
         Assert.Equal(after.World.MissionSites.Count != 2, after.CompletedResearch.Contains("BONUS"));
         Assert.Equivalent(after, Reload(content, campaign, 17, "choice-mixed-duration.sav").Capture(), strict: true);
-        content = Content(cache, generated, eventPayload: true);
+        content = Content(generated, eventPayload: true);
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, generated), content, new SplitMix64RandomSource(17)),
             "Mission site despawn requires research or event payloads.");
     }
 
-    internal static RuntimeContent Content(bool cache, bool generated, bool differentGrant = false, bool mixedDuration = false,
-        bool eventPayload = false, bool ownEvents = false, bool nullChoice = false) => StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+    internal static RuntimeContent Content(bool generated, bool differentGrant = false, bool mixedDuration = false,
+        bool eventPayload = false, bool ownEvents = false, bool nullChoice = false) => StrategicReadinessTestContent.Load(["strategic-world.rul"], $$$"""
         research:
           - {name: UNLOCK, cost: 1}
           - {name: CORE, cost: 1}

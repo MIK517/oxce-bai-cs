@@ -8,13 +8,11 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicProductionCounterForecastTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void PrepaidFirstUnitAndPossibleFollowupsBoundCraftIdsWithoutMutation(bool cache)
+    [Fact]
+    public void PrepaidFirstUnitAndPossibleFollowupsBoundCraftIdsWithoutMutation()
     {
         TestFixtures.LoadVerifiedManifest("strategic-research-production");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             facilities:
               - {type: FORECAST_WORKSHOP, mapName: LOGISTICS, size: 1, workshops: 10}
             manufacture:
@@ -43,16 +41,13 @@ public sealed class StrategicProductionCounterForecastTests
         }
     }
     [Theory]
-    [InlineData(false, false, false)]
-    [InlineData(true, false, false)]
-    [InlineData(false, true, false)]
-    [InlineData(true, true, false)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, true)]
-    public void FallbackStaffingBoundsRetainTheNoCompletionAlternative(bool cache, bool arrivingEngineers, bool completingWorkshop)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public void FallbackStaffingBoundsRetainTheNoCompletionAlternative(bool arrivingEngineers, bool completingWorkshop)
     {
         TestFixtures.LoadVerifiedManifest("strategic-research-production");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             facilities:
               - {type: FORECAST_WORKSHOP, mapName: LOGISTICS, size: 1, workshops: 10}
             manufacture:
@@ -88,15 +83,13 @@ public sealed class StrategicProductionCounterForecastTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    public void CraftConsumptionKeepsThePersistedCounterAsTheGuaranteedLowerBound(bool cache, int quantity)
+    [InlineData(0)]
+    [InlineData(1)]
+    public void CraftConsumptionKeepsThePersistedCounterAsTheGuaranteedLowerBound(int quantity)
     {
         TestFixtures.LoadVerifiedManifest("strategic-research-production");
         TestFixtures.LoadVerifiedManifest("equipment-production-rules");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             facilities:
               - {type: FORECAST_WORKSHOP, mapName: LOGISTICS, size: 1, workshops: 10}
             manufacture:

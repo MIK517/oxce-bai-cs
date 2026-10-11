@@ -9,11 +9,9 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldDetectionCountryTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void OrderedCountryLoopsReadCurrentHistoriesAcrossCacheAndReload(bool fromCache, bool craftOnly)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void OrderedCountryLoopsReadCurrentHistoriesAcrossCacheAndReload(bool craftOnly)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var rows = TestFixtures.Rows(oracle.RootElement, "countryList");
@@ -29,7 +27,7 @@ public sealed class StrategicWorldDetectionCountryTests
             code += $"country.getPact value; if neq value {rows[index][5].GetInt32()}; return DETECTION_NONE 0; end; end; ";
         }
         code += "add count 1; continue; end; if eq count 2; return DETECTION_RADAR 100; end; return DETECTION_NONE 0;";
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             countries:
               - type: ENUM_A
               - type: ENUM_B
@@ -110,17 +108,15 @@ public sealed class StrategicWorldDetectionCountryTests
         Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CountryAndRuleTagsRetainOwnerAndFundingUnitsAcrossReload(bool fromCache)
+    [Fact]
+    public void CountryAndRuleTagsRetainOwnerAndFundingUnitsAcrossReload()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "countryRules"))
         {
             var cap = row[0].GetInt32();
             Assert.Equal(1, row[1].GetInt32());
-            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
                 extended:
                   tags:
                     Country: {DETECT_COUNTRY: int}
@@ -176,12 +172,10 @@ public sealed class StrategicWorldDetectionCountryTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CountryLoopVisitsShareWorkAcrossDetectionCallers(bool fromCache)
+    [Fact]
+    public void CountryLoopVisitsShareWorkAcrossDetectionCallers()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             countries:
               - type: ENUM_A
               - type: ENUM_B
@@ -207,12 +201,10 @@ public sealed class StrategicWorldDetectionCountryTests
         AssertTimeBlocked(campaign, "Detection script work exceeds the supported half-hour limit.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ExplicitCountryIteratorCallsStopBeforeMutation(bool fromCache)
+    [Fact]
+    public void ExplicitCountryIteratorCallsStopBeforeMutation()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             ufos:
               - type: UFO_COUNTRY_MANUAL
                 speedMax: 2200

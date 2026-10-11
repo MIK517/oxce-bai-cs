@@ -11,22 +11,18 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldOptionalBaseSpeedCraftTests
 {
     [Theory]
-    [InlineData(false, false, 0)]
-    [InlineData(true, false, 0)]
-    [InlineData(false, false, 5)]
-    [InlineData(true, false, 5)]
-    [InlineData(false, true, 0)]
-    [InlineData(true, true, 0)]
-    [InlineData(false, true, 5)]
-    [InlineData(true, true, 5)]
-    public void IdenticalBurnOptionalReturnsKeepHuntingAndBothFlightSpeeds(bool cache, bool itemFuel, int takeoff)
+    [InlineData(false, 0)]
+    [InlineData(false, 5)]
+    [InlineData(true, 0)]
+    [InlineData(true, 5)]
+    public void IdenticalBurnOptionalReturnsKeepHuntingAndBothFlightSpeeds(bool itemFuel, int takeoff)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world");
         Assert.NotEmpty(TestFixtures.Rows(oracle.RootElement, "craft"));
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = StrategicWorldOptionalBaseCraftTests.Content(cache, itemFuel: itemFuel);
-        var deletedContent = StrategicWorldOptionalBaseCraftTests.Content(cache, "CORE", itemFuel);
-        var survivedContent = StrategicWorldOptionalBaseCraftTests.Content(cache, "", itemFuel);
+        var content = StrategicWorldOptionalBaseCraftTests.Content(itemFuel: itemFuel);
+        var deletedContent = StrategicWorldOptionalBaseCraftTests.Content("CORE", itemFuel);
+        var survivedContent = StrategicWorldOptionalBaseCraftTests.Content("", itemFuel);
         HashSet<bool> outcomes = [];
         for (ulong seed = 1; seed <= 32; seed++)
         {
@@ -61,19 +57,17 @@ public sealed class StrategicWorldOptionalBaseSpeedCraftTests
         Assert.Equal(2, outcomes.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ConsumedBurnAndInvalidSavedSpeedRemainAtomic(bool cache)
+    [Fact]
+    public void ConsumedBurnAndInvalidSavedSpeedRemainAtomic()
     {
-        var content = StrategicWorldOptionalBaseCraftTests.Content(cache);
+        var content = StrategicWorldOptionalBaseCraftTests.Content();
         var initial = Snapshot(content, 17, false, 0);
         var threshold = WorldFlight.FuelLimit(false, 6000, WorldGeometry.Distance(new(1, 0.6),
             new(initial.Bases[0].Longitude, initial.Bases[0].Latitude)));
         initial = initial.WithCraft("SHIP", craft => craft with { Logistics = craft.Logistics! with { Speed = 3000, Fuel = threshold + 60 } });
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "Alien base self-destruction requires craft speed alternatives for uncertain research.");
-        content = StrategicWorldOptionalBaseCraftTests.Content(cache, itemFuel: true);
+        content = StrategicWorldOptionalBaseCraftTests.Content(itemFuel: true);
         initial = Snapshot(content, 17, true, 0).WithCraft("SHIP", craft => craft with { Logistics = craft.Logistics! with { Speed = -1 } });
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "Alien base self-destruction requires craft speed alternatives for uncertain research.");

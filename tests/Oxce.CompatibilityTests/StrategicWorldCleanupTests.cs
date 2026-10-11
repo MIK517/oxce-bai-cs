@@ -12,12 +12,10 @@ namespace Oxce.CompatibilityTests;
 /// <summary>GeoscapeState::time5Seconds/time30Minutes, Ufo::~Ufo and AlienMission::isOver.</summary>
 public sealed class StrategicWorldCleanupTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CleanupReleasesEachMissionOnceAndKeepsSurvivors(bool fromCache)
+    [Fact]
+    public void CleanupReleasesEachMissionOnceAndKeepsSurvivors()
     {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul", fromCache);
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var snapshot = CreateLifecycleSnapshot(content);
         var mission = snapshot.World.Missions[0];
         var ufo = snapshot.World.Ufos[0];

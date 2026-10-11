@@ -10,15 +10,12 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldSiteResearchDailyTests
 {
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    public void DailyPrefixForecastMatchesExecutionWithoutMutation(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void DailyPrefixForecastMatchesExecutionWithoutMutation(int mode)
     {
-        var content = Content(cache, mode);
+        var content = Content(mode);
         var initial = Snapshot(content, mode);
         initial = initial with { World = initial.World with { MissionSites = [] } };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
@@ -40,19 +37,15 @@ public sealed class StrategicWorldSiteResearchDailyTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    public void DailyProjectsPrecedeSiteResearchAndPersistTheirCombinedState(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void DailyProjectsPrecedeSiteResearchAndPersistTheirCombinedState(int mode)
     {
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = Content(cache, mode);
+        var content = Content(mode);
         var initial = Snapshot(content, mode);
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         var result = campaign.Execute(new AdvanceCampaignTime(1));
@@ -80,40 +73,34 @@ public sealed class StrategicWorldSiteResearchDailyTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CombinedDailyAndSiteDiaryCapacityStopsBeforeMutation(bool cache)
+    [Fact]
+    public void CombinedDailyAndSiteDiaryCapacityStopsBeforeMutation()
     {
-        var content = Content(cache, 1);
+        var content = Content(1);
         var initial = Snapshot(content, 1) with { ResearchDiarySequence = ulong.MaxValue - 2 };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "Mission research diary exceeds its supported population or identity range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CombinedDailyAndSiteScoreStopsBeforeMutation(bool cache)
+    [Fact]
+    public void CombinedDailyAndSiteScoreStopsBeforeMutation()
     {
-        var content = Content(cache, 1);
+        var content = Content(1);
         var initial = Snapshot(content, 1) with { ResearchScores = [int.MaxValue - 7] };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "Mission research score exceeds the supported range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void AmbiguousDailyRewardCannotSuppressUnavailableSitePayload(bool cache)
+    [Fact]
+    public void AmbiguousDailyRewardCannotSuppressUnavailableSitePayload()
     {
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = Content(cache, 4, siteEvent: true);
+        var content = Content(4, siteEvent: true);
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, 4), content, new SplitMix64RandomSource(17)),
             "Mission site despawn requires research or event payloads.");
     }
 
-    internal static RuntimeContent Content(bool cache, int mode, bool siteEvent = false) => StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$"""
+    internal static RuntimeContent Content(int mode, bool siteEvent = false) => StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
         research:
           - {name: UNLOCK, cost: 1}
           - {name: DAY, cost: 1, points: 3{{(mode == 2 ? ", disables: [CORE]" : mode == 3 ? ", reenables: [CORE]" : mode == 4 ? ", getOneFree: [BONUS, OTHER]" : "")}}}

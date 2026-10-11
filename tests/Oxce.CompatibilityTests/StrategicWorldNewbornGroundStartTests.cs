@@ -10,18 +10,15 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldNewbornGroundStartTests
 {
     [Theory]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    [InlineData(false, 10)]
-    [InlineData(true, 10)]
-    public void OverlappingGroundStartsNeverMoveOrRechargeOnTheirBirthTick(bool cache, int timer)
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(10)]
+    public void OverlappingGroundStartsNeverMoveOrRechargeOnTheirBirthTick(int timer)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
         var lift = Assert.Single(TestFixtures.Rows(oracle.RootElement, "normalLiftRows"), row =>
             row[0].GetInt32() == 0 && row[1].GetInt32() == 0);
-        var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false,
+        var content = StrategicWorldNewbornFirstArrivalTests.Content(false,
             firstAltitude: 0, groundTimer: timer, points: 7);
         for (ulong seed = 1; seed <= 8; seed++)
         {
@@ -56,12 +53,10 @@ public sealed class StrategicWorldNewbornGroundStartTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GroundBirthDetectionAllocatesMarkersBeforeTakeoffAndPreservesThem(bool cache)
+    [Fact]
+    public void GroundBirthDetectionAllocatesMarkersBeforeTakeoffAndPreservesThem()
     {
-        var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false,
+        var content = StrategicWorldNewbornFirstArrivalTests.Content(false,
             firstAltitude: 0, groundTimer: 1, points: 7, alerts: true);
         var initial = StrategicWorldNewbornFirstArrivalTests.Snapshot(content, 17).WithFacility("RADAR_HYPER_TEST");
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
@@ -86,12 +81,10 @@ public sealed class StrategicWorldNewbornGroundStartTests
             "UFO landing marker IDs are exhausted or collide with a saved UFO.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GroundBirthScoreAndFirstTickLiftReserveOneCombinedEnvelope(bool cache)
+    [Fact]
+    public void GroundBirthScoreAndFirstTickLiftReserveOneCombinedEnvelope()
     {
-        var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false, firstAltitude: 0, groundTimer: 1, points: 7);
+        var content = StrategicWorldNewbornFirstArrivalTests.Content(false, firstAltitude: 0, groundTimer: 1, points: 7);
         var initial = StrategicWorldNewbornFirstArrivalTests.Snapshot(content, 17);
         initial = initial with { Regions = [initial.Regions[0] with { ActivityAlien = [int.MaxValue - 38] }] };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
@@ -103,17 +96,14 @@ public sealed class StrategicWorldNewbornGroundStartTests
     }
 
     [Theory]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    public void RegionalGroundStartsComposeWithBothGenerationCallers(bool cache, int generation)
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void RegionalGroundStartsComposeWithBothGenerationCallers(int generation)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
-        var content = StrategicWorldNewbornRegionalArrivalTests.Content(cache, false, generation, 0, 1);
+        var content = StrategicWorldNewbornRegionalArrivalTests.Content(false, generation, 0, 1);
         var initial = StrategicWorldNewbornRegionalArrivalTests.Snapshot(content, 17, generation);
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         AdvanceUnblocked(campaign, 1);

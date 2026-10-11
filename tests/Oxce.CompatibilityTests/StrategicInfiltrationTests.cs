@@ -15,10 +15,8 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicInfiltrationTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CountryEligibilityAndOptionDefaultsMatchPinnedReference(bool cache)
+    [Fact]
+    public void CountryEligibilityAndOptionDefaultsMatchPinnedReference()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-infiltration");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "countries"))
@@ -32,20 +30,17 @@ public sealed class StrategicInfiltrationTests
                 pact ? 1 : 0, 1, 0 });
             Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
         }
-        var defaults = StrategicReadinessTestContent.Load("strategic-world.rul", cache).RuntimeRules.Campaign;
+        var defaults = StrategicReadinessTestContent.Load("strategic-world.rul").RuntimeRules.Campaign;
         Assert.False(defaults.BuildInfiltrationBaseCloseToTheCountry);
         Assert.False(defaults.InfiltrateRandomCountryInTheRegion);
-        var enabled = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache,
-            "buildInfiltrationBaseCloseToTheCountry: true\ninfiltrateRandomCountryInTheRegion: true\n").RuntimeRules.Campaign;
+        var enabled = StrategicReadinessTestContent.Load(["strategic-world.rul"], "buildInfiltrationBaseCloseToTheCountry: true\ninfiltrateRandomCountryInTheRegion: true\n").RuntimeRules.Campaign;
         Assert.True(enabled.BuildInfiltrationBaseCloseToTheCountry);
         Assert.True(enabled.InfiltrateRandomCountryInTheRegion);
     }
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void InfiltrationRegionalSearchMatchesPinnedReference(bool cache)
+    [Fact]
+    public void InfiltrationRegionalSearchMatchesPinnedReference()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-objective-base.rul"], cache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-objective-base.rul"]);
         var rules = content.RuntimeRules;
         var template = rules.AlienMissions[rules.AlienMissions.GetRequired("BASE_OBJECTIVE")].Value;
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-infiltration-region");
@@ -84,12 +79,10 @@ public sealed class StrategicInfiltrationTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void RegionalCompletionCreatesOnlyPendingPactAndPersistsItsBase(bool cache)
+    [Fact]
+    public void RegionalCompletionCreatesOnlyPendingPactAndPersistsItsBase()
     {
-        var content = Load(cache);
+        var content = Load();
         var initial = Initial(content);
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         campaign = Reload(content, campaign, 17, "before-infiltration.sav");
@@ -112,12 +105,10 @@ public sealed class StrategicInfiltrationTests
         Assert.Single(campaign.Capture().World.AlienBases);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void PactEligibilityIsLiveAcrossComposedCompletionsAndRecapture(bool cache)
+    [Fact]
+    public void PactEligibilityIsLiveAcrossComposedCompletionsAndRecapture()
     {
-        var content = Load(cache);
+        var content = Load();
         var initial = Initial(content);
         initial = initial with
         {
@@ -147,12 +138,10 @@ public sealed class StrategicInfiltrationTests
         Reload(content, campaign, 17, "recaptured-pact.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SuppressedSearchAndIneligibleCountriesDoNotCreatePacts(bool cache)
+    [Fact]
+    public void SuppressedSearchAndIneligibleCountriesDoNotCreatePacts()
     {
-        var content = Load(cache, "allowAlienBasesOnWrongTextures: false\nalienDeployments:\n  - {type: INF_BASE, fakeUnderwaterSpawnChance: 100}\n");
+        var content = Load("allowAlienBasesOnWrongTextures: false\nalienDeployments:\n  - {type: INF_BASE, fakeUnderwaterSpawnChance: 100}\n");
         var campaign = CampaignState.Restore(Initial(content), content, new SplitMix64RandomSource(17));
         AdvanceUnblocked(campaign, 1);
         Assert.Empty(campaign.Capture().World.AlienBases);
@@ -172,7 +161,7 @@ public sealed class StrategicInfiltrationTests
     [Fact]
     public void InfiltrationBirthOverflowStopsBeforeAnyCountryMutation()
     {
-        var content = Load(false);
+        var content = Load();
         var initial = Initial(content).WithNextId("INF_BASE", int.MaxValue);
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "Base objective IDs are exhausted or collide.");
@@ -183,17 +172,15 @@ public sealed class StrategicInfiltrationTests
     {
         var countryRules = string.Join("\n", Enumerable.Range(0, 4000).Select(index =>
             $"  - {{type: INF_C{index}, labelLon: 8, labelLat: 2, areas: [[0, 20, -10, 10]]}}"));
-        var content = Load(false, "allowAlienBasesOnWrongTextures: false\nalienDeployments:\n  - {type: INF_BASE, fakeUnderwaterSpawnChance: 100}\ncountries:\n" + countryRules);
+        var content = Load("allowAlienBasesOnWrongTextures: false\nalienDeployments:\n  - {type: INF_BASE, fakeUnderwaterSpawnChance: 100}\ncountries:\n" + countryRules);
         AssertTimeBlocked(CampaignState.Restore(Initial(content), content, new SplitMix64RandomSource(17)),
             "Infiltration country search exceeds the supported work limit.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CountryBorderBirthIgnoresRegionSpawnZoneAndUsesDummyTexture(bool cache)
+    [Fact]
+    public void CountryBorderBirthIgnoresRegionSpawnZoneAndUsesDummyTexture()
     {
-        var content = Load(cache, """
+        var content = Load("""
             buildInfiltrationBaseCloseToTheCountry: true
             countries:
               - {type: INF_NEAR, labelLon: 8, labelLat: 2, areas: [[12, 12, 2, 2]]}
@@ -223,12 +210,10 @@ public sealed class StrategicInfiltrationTests
         Reload(content, campaign, 17, "country-border-pact.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CloseCountrySearchRejectsEmptyAreasBeforePendingPact(bool cache)
+    [Fact]
+    public void CloseCountrySearchRejectsEmptyAreasBeforePendingPact()
     {
-        var content = Load(cache, """
+        var content = Load("""
             buildInfiltrationBaseCloseToTheCountry: true
             countries:
               - {type: INF_EMPTY, labelLon: 8, labelLat: 2}
@@ -256,12 +241,10 @@ public sealed class StrategicInfiltrationTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ShuffledInfiltrationConsumesCountryDrawsBeforeSearchAndAlsoWithoutEligibleCountries(bool cache)
+    [Fact]
+    public void ShuffledInfiltrationConsumesCountryDrawsBeforeSearchAndAlsoWithoutEligibleCountries()
     {
-        var content = Load(cache, "infiltrateRandomCountryInTheRegion: true\n");
+        var content = Load("infiltrateRandomCountryInTheRegion: true\n");
         var initial = Initial(content);
         var expected = new SplitMix64RandomSource(17);
         var order = WorldInfiltration.CountryOrder(initial.Countries, true, expected);
@@ -286,8 +269,8 @@ public sealed class StrategicInfiltrationTests
         Reload(content, campaign, 17, "shuffled-no-candidates.sav");
     }
 
-    private static RuntimeContent Load(bool cache, string extra = "") =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-infiltration.rul"], cache, extra);
+    private static RuntimeContent Load(string extra = "") =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-infiltration.rul"], extra);
 
     private static CampaignSnapshot Initial(RuntimeContent content)
     {
@@ -300,12 +283,10 @@ public sealed class StrategicInfiltrationTests
             World = initial.World with { Missions = [new(4, "INFILTRATE", "INF_REGION", "RACE_B", 0, 0, 0, 0, -1)] },
         };
     }
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void InfiltrationCountryBorderSearchMatchesPinnedReference(bool cache)
+    [Fact]
+    public void InfiltrationCountryBorderSearchMatchesPinnedReference()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-objective-base.rul"], cache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-objective-base.rul"]);
         var rules = content.RuntimeRules;
         var template = rules.AlienMissions[rules.AlienMissions.GetRequired("BASE_OBJECTIVE")].Value;
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-infiltration-country");

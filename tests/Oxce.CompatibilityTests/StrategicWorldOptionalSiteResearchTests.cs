@@ -11,16 +11,14 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldOptionalSiteResearchTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void RandomDurationBirthsKeepActualGrantsInterruptionAndConditionalEventState(bool cache, bool generated)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RandomDurationBirthsKeepActualGrantsInterruptionAndConditionalEventState(bool generated)
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-site-timer");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
-        var content = Content(cache, generated, eventInterrupt: "BONUS");
+        var content = Content(generated, eventInterrupt: "BONUS");
         var seenExpired = false;
         var seenSurvived = false;
         for (ulong seed = 1; seed <= 32; seed++)
@@ -54,27 +52,23 @@ public sealed class StrategicWorldOptionalSiteResearchTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void PossibleGrantCannotBypassDueEventAndOutcomeLimitsRemainAtomic(bool cache, bool generated)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PossibleGrantCannotBypassDueEventAndOutcomeLimitsRemainAtomic(bool generated)
     {
-        var content = Content(cache, generated, eventInterrupt: "BONUS");
+        var content = Content(generated, eventInterrupt: "BONUS");
         var initial = Snapshot(content, generated);
         AssertTimeBlocked(CampaignState.Restore(initial with { World = initial.World with { Events = [new GeoscapeEventSnapshot("NEWBORN_EVENT", 30)] } }, content, new SplitMix64RandomSource(17)),
             "Strategic event consequences require campaign event execution (Phase 6 branch 6).");
-        content = Content(cache, generated, count: 9);
+        content = Content(generated, count: 9);
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, generated), content, new SplitMix64RandomSource(17)),
             "Mission research exceeds the supported outcome limit.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OptionalForecastPreservesCampaignAndSeparatesConditionalFromGuaranteedResearch(bool cache)
+    [Fact]
+    public void OptionalForecastPreservesCampaignAndSeparatesConditionalFromGuaranteedResearch()
     {
-        var content = Content(cache, generated: false);
+        var content = Content(generated: false);
         var campaign = CampaignState.Restore(Snapshot(content, generated: false), content, new SplitMix64RandomSource(17));
         var before = campaign.Capture();
         var forecast = campaign.MissionResearch.CreateForecast();
@@ -88,8 +82,8 @@ public sealed class StrategicWorldOptionalSiteResearchTests
         Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
-    internal static RuntimeContent Content(bool cache, bool generated, string eventInterrupt = "", int count = 2) =>
-        StrategicWorldSiteResearchDirectBirthTests.Content(cache, duration: 0, maximumDuration: 1, generated: generated,
+    internal static RuntimeContent Content(bool generated, string eventInterrupt = "", int count = 2) =>
+        StrategicWorldSiteResearchDirectBirthTests.Content(duration: 0, maximumDuration: 1, generated: generated,
             interrupt: "BONUS", eventInterrupt: eventInterrupt, count: count);
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content, bool generated) => generated

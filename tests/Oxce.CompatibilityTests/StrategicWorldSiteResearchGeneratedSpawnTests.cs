@@ -11,32 +11,26 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldSiteResearchGeneratedSpawnTests
 {
     [Theory]
-    [InlineData(false, false, false)]
-    [InlineData(true, false, false)]
-    [InlineData(false, true, false)]
-    [InlineData(true, true, false)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, true)]
-    [InlineData(false, true, true)]
-    [InlineData(true, true, true)]
-    public void GeneratedAirborneHuntersRetargetAfterSiteGrantAtBothCallers(bool cache, bool hunting, bool final) =>
-        AssertGeneratedHunt(cache, hunting, final, escort: false);
-
-    [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public void GeneratedAirborneEscortsRetargetAfterSiteGrantAtBothCallers(bool cache, bool hunting) =>
-        AssertGeneratedHunt(cache, hunting, final: false, escort: true);
+    public void GeneratedAirborneHuntersRetargetAfterSiteGrantAtBothCallers(bool hunting, bool final) =>
+        AssertGeneratedHunt(hunting, final, escort: false);
 
-    private static void AssertGeneratedHunt(bool cache, bool hunting, bool final, bool escort)
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedAirborneEscortsRetargetAfterSiteGrantAtBothCallers(bool hunting) =>
+        AssertGeneratedHunt(hunting, final: false, escort: true);
+
+    private static void AssertGeneratedHunt(bool hunting, bool final, bool escort)
     {
         TestFixtures.LoadVerifiedManifest(hunting ? "strategic-alien-base-hunt-generation" : "strategic-alien-base-generation");
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "constructorRows"), row =>
             row[0].GetInt32() == 100 && row[1].GetInt32() == 1 && row[4].GetBoolean());
-        var content = Content(cache, hunting, final, ufo: "UFO_HUNTER", escort: escort);
+        var content = Content(hunting, final, ufo: "UFO_HUNTER", escort: escort);
         var initial = Snapshot(content, hunting);
         var source = Assert.Single(initial.World.AlienBases);
         initial = initial.WithCraft("SHIP", craft => craft with
@@ -82,37 +76,29 @@ public sealed class StrategicWorldSiteResearchGeneratedSpawnTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void DailyGeneratedBirthPrecedesSiteGrantAndRemainsLinked(bool cache, bool final) =>
-        AssertBirth(cache, final, hunting: false);
-
-    [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void HuntingGeneratedBirthFollowsSiteGrantAndMissesEarlierInterruption(bool cache, bool final) =>
-        AssertBirth(cache, final, hunting: true);
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DailyGeneratedBirthPrecedesSiteGrantAndRemainsLinked(bool final) =>
+        AssertBirth(final, hunting: false);
 
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void FinalDailyGeneratedUfoKeepsItsInvalidInterruptionLinkReachable(bool cache)
+    public void HuntingGeneratedBirthFollowsSiteGrantAndMissesEarlierInterruption(bool final) =>
+        AssertBirth(final, hunting: true);
+
+    [Fact]
+    public void FinalDailyGeneratedUfoKeepsItsInvalidInterruptionLinkReachable()
     {
-        var content = Content(cache, hunting: false, final: true, interrupt: "MISSING_RESEARCH");
+        var content = Content(hunting: false, final: true, interrupt: "MISSING_RESEARCH");
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, hunting: false), content, new SplitMix64RandomSource(17)),
             "Alien mission interruption references undefined research.");
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void GeneratedGroundTimersAndImmediateLiftsPreserveTheirCallerOrder(bool cache, bool hunting)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedGroundTimersAndImmediateLiftsPreserveTheirCallerOrder(bool hunting)
     {
         using var generation = TestFixtures.ReadVerifiedExpected(hunting ? "strategic-alien-base-hunt-generation" : "strategic-alien-base-generation");
         using var lifecycle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
@@ -123,7 +109,7 @@ public sealed class StrategicWorldSiteResearchGeneratedSpawnTests
         foreach (var path in new[] { "PATH_1_0", "PATH_SHORT" })
         {
             var shortTimer = path == "PATH_SHORT";
-            var content = Content(cache, hunting, trajectory: path);
+            var content = Content(hunting, trajectory: path);
             var initial = Snapshot(content, hunting);
             var random = new SplitMix64RandomSource(initial.RandomState);
             var calls = generationRow[hunting ? 2 : 4].EnumerateArray().ToArray();
@@ -162,14 +148,12 @@ public sealed class StrategicWorldSiteResearchGeneratedSpawnTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SameSourceBirthsStraddleSiteResearchAndRemainDistinctAfterReload(bool cache)
+    [Fact]
+    public void SameSourceBirthsStraddleSiteResearchAndRemainDistinctAfterReload()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
-        var content = Content(cache, hunting: true, bothCallers: true);
+        var content = Content(hunting: true, bothCallers: true);
         var initial = Snapshot(content, hunting: true) with { Time = new(1, 1, 1, 1999, 23, 59, 55) };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         AdvanceUnblocked(campaign, 1);
@@ -189,14 +173,12 @@ public sealed class StrategicWorldSiteResearchGeneratedSpawnTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SeventyTwoHoursPreserveGeneratedUfosThroughDailyInterruptionAndReloads(bool cache)
+    [Fact]
+    public void SeventyTwoHoursPreserveGeneratedUfosThroughDailyInterruptionAndReloads()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
-        var content = Content(cache, hunting: true);
+        var content = Content(hunting: true);
         var initial = Snapshot(content, hunting: true);
         var batched = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         var reloaded = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
@@ -220,11 +202,9 @@ public sealed class StrategicWorldSiteResearchGeneratedSpawnTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void GeneratedSafeHuntersPreserveTheirCreationCallerAndRetargetPhase(bool cache, bool hunting)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedSafeHuntersPreserveTheirCreationCallerAndRetargetPhase(bool hunting)
     {
         using var native = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.Contains(TestFixtures.Rows(native.RootElement, "constructorRows"), row =>
@@ -233,7 +213,7 @@ public sealed class StrategicWorldSiteResearchGeneratedSpawnTests
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         foreach (var path in hunting ? new[] { "PATH_1_0", "PATH_SHORT" } : new[] { "PATH_0_0", "PATH_1_0", "PATH_SHORT" })
         {
-            var content = Content(cache, hunting, trajectory: path, ufo: "UFO_HUNTER");
+            var content = Content(hunting, trajectory: path, ufo: "UFO_HUNTER");
             var initial = Snapshot(content, hunting);
             var control = CampaignState.Restore(initial with { World = initial.World with { MissionSites = [] } }, content, new SplitMix64RandomSource(17));
             var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
@@ -264,7 +244,7 @@ public sealed class StrategicWorldSiteResearchGeneratedSpawnTests
         }
     }
 
-    private static void AssertBirth(bool cache, bool final, bool hunting)
+    private static void AssertBirth(bool final, bool hunting)
     {
         using var generation = TestFixtures.ReadVerifiedExpected(hunting ? "strategic-alien-base-hunt-generation" : "strategic-alien-base-generation");
         using var lifecycle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
@@ -272,7 +252,7 @@ public sealed class StrategicWorldSiteResearchGeneratedSpawnTests
         var generationRow = TestFixtures.Rows(generation.RootElement, "rows").Single(row => row[0].GetString() == (hunting ? "delayed" : "local"));
         var spawnRow = Assert.Single(TestFixtures.Rows(lifecycle.RootElement, "spawnPathRows"), row =>
             row[0].GetInt32() == 0 && row[1].GetInt32() == 0 && row[2].GetInt32() == 0);
-        var content = Content(cache, hunting, final);
+        var content = Content(hunting, final);
         var initial = Snapshot(content, hunting);
         var random = new SplitMix64RandomSource(initial.RandomState);
         var calls = generationRow[hunting ? 2 : 4].EnumerateArray().ToArray();
@@ -305,8 +285,8 @@ public sealed class StrategicWorldSiteResearchGeneratedSpawnTests
         }
     }
 
-    internal static RuntimeContent Content(bool cache, bool hunting, bool final = false, string interrupt = "CORE", string trajectory = "PATH_0_0", bool bothCallers = false, string ufo = "UFO_SCOUT", bool escort = false) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-spawn-paths.rul"], cache, $$$"""
+    internal static RuntimeContent Content(bool hunting, bool final = false, string interrupt = "CORE", string trajectory = "PATH_0_0", bool bothCallers = false, string ufo = "UFO_SCOUT", bool escort = false) =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-spawn-paths.rul"], $$$"""
         research:
           - {name: UNLOCK, cost: 1}
           - {name: CORE, cost: 1}

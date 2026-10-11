@@ -14,28 +14,20 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldEscortSpawnTests
 {
     [Theory]
-    [InlineData(false, "patrol")]
-    [InlineData(true, "patrol")]
-    [InlineData(false, "direct")]
-    [InlineData(true, "direct")]
-    [InlineData(false, "chain")]
-    [InlineData(true, "chain")]
-    [InlineData(false, "cycle")]
-    [InlineData(true, "cycle")]
-    [InlineData(false, "direct-far")]
-    [InlineData(true, "direct-far")]
-    [InlineData(false, "chain-far")]
-    [InlineData(true, "chain-far")]
-    [InlineData(false, "direct-stationary")]
-    [InlineData(true, "direct-stationary")]
-    [InlineData(false, "chain-stationary")]
-    [InlineData(true, "chain-stationary")]
-    public void NewLeaderAttachmentChecksActualCraftPursuitDependencies(bool cache, string kind)
+    [InlineData("patrol")]
+    [InlineData("direct")]
+    [InlineData("chain")]
+    [InlineData("cycle")]
+    [InlineData("direct-far")]
+    [InlineData("chain-far")]
+    [InlineData("direct-stationary")]
+    [InlineData("chain-stationary")]
+    public void NewLeaderAttachmentChecksActualCraftPursuitDependencies(string kind)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "spawnEscortSequenceRows"), row =>
             !row[0].GetBoolean() && row[1].GetBoolean() && row[2].GetBoolean());
-        var content = Load(cache, """
+        var content = Load("""
             crafts:
               - type: SHIP
                 radarRange: 20000
@@ -157,13 +149,11 @@ public sealed class StrategicWorldEscortSpawnTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void NewEscortsAttachToImportedHuntingAndEscortChains(bool cache, bool grounded)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NewEscortsAttachToImportedHuntingAndEscortChains(bool grounded)
     {
-        var content = Load(cache);
+        var content = Load();
         foreach (var flags in new[] { 0, 1, 2, 3 })
         {
             var initial = SpawnSnapshot(content, UfoStatus.Flying);
@@ -244,15 +234,14 @@ public sealed class StrategicWorldEscortSpawnTests
     }
 
     [Theory]
-    [InlineData(false, UfoStatus.Flying)]
-    [InlineData(true, UfoStatus.Flying)]
-    [InlineData(false, UfoStatus.Landed)]
-    [InlineData(true, UfoStatus.IgnoreMe)]
-    [InlineData(false, UfoStatus.Crashed)]
-    [InlineData(true, UfoStatus.Destroyed)]
-    public void WaveEscortAttachesInSavedOrderAndRepairsDeletedLeader(bool cache, UfoStatus status)
+    [InlineData(UfoStatus.Flying)]
+    [InlineData(UfoStatus.Landed)]
+    [InlineData(UfoStatus.IgnoreMe)]
+    [InlineData(UfoStatus.Crashed)]
+    [InlineData(UfoStatus.Destroyed)]
+    public void WaveEscortAttachesInSavedOrderAndRepairsDeletedLeader(UfoStatus status)
     {
-        var content = Load(cache);
+        var content = Load();
         var initial = SpawnSnapshot(content, status);
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
         AdvanceOne(campaign);
@@ -282,12 +271,10 @@ public sealed class StrategicWorldEscortSpawnTests
         Reload(content, campaign, 81, "new-escort-next-tick.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void WaveEscortWithoutLeaderKeepsFlagAndTrajectorySpeed(bool cache)
+    [Fact]
+    public void WaveEscortWithoutLeaderKeepsFlagAndTrajectorySpeed()
     {
-        var content = Load(cache);
+        var content = Load();
         var initial = SpawnSnapshot(content, UfoStatus.Flying);
         initial = initial with
         {
@@ -410,13 +397,11 @@ public sealed class StrategicWorldEscortSpawnTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public void ImmediateWavesKeepLeaderOrderOriginsAndUnmarkedIdentity(bool cache, bool earlyLeader)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ImmediateWavesKeepLeaderOrderOriginsAndUnmarkedIdentity(bool earlyLeader)
     {
-        var content = Load(cache);
+        var content = Load();
         var initial = SpawnSnapshot(content, UfoStatus.Flying);
         initial = initial with
         {
@@ -457,13 +442,11 @@ public sealed class StrategicWorldEscortSpawnTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public void LoadedIdleEscortAttachesToNewbornLeaderWithoutCreationTeleport(bool cache, bool earlyLeader)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LoadedIdleEscortAttachesToNewbornLeaderWithoutCreationTeleport(bool earlyLeader)
     {
-        var content = Load(cache);
+        var content = Load();
         var initial = IdleEscortSnapshot(content, earlyLeader
             ? "MISSION_ESCORT_CHAIN_EARLY_LEADER" : "MISSION_ESCORT_CHAIN_LATE_LEADER");
         var source = initial.World.Ufos[0];
@@ -523,12 +506,10 @@ public sealed class StrategicWorldEscortSpawnTests
         Reload(content, campaign, 81, "independent-hidden-craft-following.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void NewbornLeaderAttachmentPreservesNativeCraftContactLoss(bool cache)
+    [Fact]
+    public void NewbornLeaderAttachmentPreservesNativeCraftContactLoss()
     {
-        var content = Load(cache, "crafts: [{type: SHIP, radarRange: 0, radarChance: 0}]\n");
+        var content = Load("crafts: [{type: SHIP, radarRange: 0, radarChance: 0}]\n");
         var initial = IdleEscortSnapshot(content);
         initial = initial with { World = initial.World with { Ufos = [initial.World.Ufos[0] with { Detected = true }] } };
         initial = initial.WithCraft("SHIP", craft => craft with
@@ -563,12 +544,10 @@ public sealed class StrategicWorldEscortSpawnTests
         Reload(content, campaign, 81, "leader-loss-following.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ClosePursuitStillRequiresForecastForAProbabilisticLeader(bool cache)
+    [Fact]
+    public void ClosePursuitStillRequiresForecastForAProbabilisticLeader()
     {
-        var content = Load(cache, """
+        var content = Load("""
             alienMissions:
               - type: UNCERTAIN_CLOSE_LEADER
                 objective: 0
@@ -593,20 +572,17 @@ public sealed class StrategicWorldEscortSpawnTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
+    [InlineData(false)]
+    [InlineData(true)]
     [InlineData(true, true)]
-    [InlineData(false, true, true)]
-    [InlineData(true, true, true)]
-    public void StochasticEarlierLeadersAllowPursuitOnlyWhenTheirPointOriginsAgree(bool cache, bool same, bool fast = false)
+    public void StochasticEarlierLeadersAllowPursuitOnlyWhenTheirPointOriginsAgree(bool same, bool fast = false)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         var evidence = TestFixtures.Rows(oracle.RootElement, "correlatedLeaderOrderRows").Where(row => row[1].GetBoolean() == same).ToArray();
         Assert.Equal(2, evidence.Length);
         Assert.Equal(same, evidence[0][3].GetDouble() == evidence[1][3].GetDouble());
         var trajectory = same ? "TRAJ_SPAWN_FIXED" : "TRAJ_ESCORT_DISTINCT";
-        var content = Load(cache, $"crafts: [{{type: SHIP, undetectable: true, radarRange: 20000, radarChance: 100}}]\nalienMissions: [{{type: CORRELATED_IDLE_LEADERS, objective: 0, waves: [{{ufo: ESCORT_HUNTER, count: 1, trajectory: {trajectory}, timer: 0, hunterKillerPercentage: 50}}, {{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 0, hunterKillerPercentage: 0}}]}}]\n");
+        var content = Load($"crafts: [{{type: SHIP, undetectable: true, radarRange: 20000, radarChance: 100}}]\nalienMissions: [{{type: CORRELATED_IDLE_LEADERS, objective: 0, waves: [{{ufo: ESCORT_HUNTER, count: 1, trajectory: {trajectory}, timer: 0, hunterKillerPercentage: 50}}, {{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 0, hunterKillerPercentage: 0}}]}}]\n");
         var initial = IdleEscortSnapshot(content, "CORRELATED_IDLE_LEADERS").WithCraft("SHIP", craft => craft with
         {
             Logistics = craft.Logistics! with
@@ -652,17 +628,15 @@ public sealed class StrategicWorldEscortSpawnTests
     }
 
     [Theory]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 4)]
-    [InlineData(true, 4)]
-    public void BaseOriginLeaderAttachmentUsesNativeOverrideAndRaceSpeed(bool cache, int operation)
+    [InlineData(1)]
+    [InlineData(4)]
+    public void BaseOriginLeaderAttachmentUsesNativeOverrideAndRaceSpeed(int operation)
     {
         using var originOracle = TestFixtures.ReadVerifiedExpected("strategic-mission-origin");
         var originRow = TestFixtures.Rows(originOracle.RootElement, "rows").Single(row =>
             row[0].GetInt32() == 0 && row[1].GetInt32() == 1 && row[2].GetInt32() == 1);
         var origin = new WorldPosition(originRow[3].GetDouble(), originRow[4].GetDouble());
-        var content = Load(cache, $$$"""
+        var content = Load($$$"""
             crafts: [{type: SHIP, radarRange: 20000, radarChance: 100}]
             ufos:
               - type: ESCORT_HUNTER
@@ -731,19 +705,15 @@ public sealed class StrategicWorldEscortSpawnTests
     }
 
     [Theory]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    [InlineData(false, 5)]
-    [InlineData(true, 5)]
-    public void NonRetaliationObjectivesForecastTheirFirstOrdinaryLeader(bool cache, int objective)
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(5)]
+    public void NonRetaliationObjectivesForecastTheirFirstOrdinaryLeader(int objective)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-mission-origin");
         Assert.NotEmpty(TestFixtures.Rows(oracle.RootElement, "supplyRows"));
-        var content = Load(cache, $$"""
+        var content = Load($$"""
             alienMissions:
               - type: IDLE_OBJECTIVE_LEADER
                 objective: {{objective}}
@@ -779,16 +749,14 @@ public sealed class StrategicWorldEscortSpawnTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void SuppressedSupplyBirthCannotBecomeAPhantomLeader(bool cache, bool immediateFollower)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SuppressedSupplyBirthCannotBecomeAPhantomLeader(bool immediateFollower)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-mission-origin");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "supplyRows"), row =>
             row[0].GetInt32() == 1 && row[1].GetInt32() == 1 && row[2].GetInt32() == 0 && row[4].GetInt32() == 0);
-        var content = Load(cache, $$"""
+        var content = Load($$"""
             alienMissions:
               - type: SUPPRESSED_IDLE_LEADER
                 objective: 5
@@ -827,13 +795,11 @@ public sealed class StrategicWorldEscortSpawnTests
         Reload(content, campaign, 81, "suppressed-leader-following.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void FutureLeaderFlightProofDoesNotLeakIntoEarlierDetectionScripts(bool cache)
+    [Fact]
+    public void FutureLeaderFlightProofDoesNotLeakIntoEarlierDetectionScripts()
     {
         TestFixtures.LoadVerifiedManifest("strategic-detection-scripts");
-        var content = Load(cache, """
+        var content = Load("""
             ufos:
               - type: ESCORT_HUNTER
                 scripts:
@@ -863,19 +829,16 @@ public sealed class StrategicWorldEscortSpawnTests
     }
 
     [Theory]
-    [InlineData(false, false, 1)]
-    [InlineData(true, false, 1)]
-    [InlineData(false, true, 2)]
-    [InlineData(true, true, 2)]
-    [InlineData(false, true, 1)]
-    [InlineData(true, true, 1)]
-    public void LoadedIdleEscortConsidersIncomingPursuersOnlyAtHourlyArrival(bool cache, bool hourly, int hours)
+    [InlineData(false, 1)]
+    [InlineData(true, 2)]
+    [InlineData(true, 1)]
+    public void LoadedIdleEscortConsidersIncomingPursuersOnlyAtHourlyArrival(bool hourly, int hours)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "incomingCraftRows"), row => row[0].GetInt32() == hours);
         foreach (var earlyLeader in new[] { false, true })
         {
-            var content = Load(cache, "crafts: [{type: TIMED_PURSUER, speedMax: 6000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
+            var content = Load("crafts: [{type: TIMED_PURSUER, speedMax: 6000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
             var initial = IdleEscortSnapshot(content, earlyLeader
                 ? "MISSION_ESCORT_CHAIN_EARLY_LEADER" : "MISSION_ESCORT_CHAIN_LATE_LEADER");
             var owner = initial.Bases[0];
@@ -924,18 +887,15 @@ public sealed class StrategicWorldEscortSpawnTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    public void LoadedIdleEscortCancelsOrdinaryArrivalWhenPointLeaderIsCertain(bool cache, int arrival)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void LoadedIdleEscortCancelsOrdinaryArrivalWhenPointLeaderIsCertain(int arrival)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "spawnEscortSequenceRows"), row =>
             !row[0].GetBoolean() && row[1].GetBoolean() && row[2].GetBoolean());
-        var content = Load(cache);
+        var content = Load();
         var initial = IdleEscortSnapshot(content);
         initial = initial with
         {
@@ -967,13 +927,11 @@ public sealed class StrategicWorldEscortSpawnTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void LoadedIdleEscortRequiresGuaranteedFirstLeader(bool cache, bool regional)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LoadedIdleEscortRequiresGuaranteedFirstLeader(bool regional)
     {
-        var content = Load(cache, $$"""
+        var content = Load($$"""
             regions:
               - type: IDLE_LEADER_AREA
                 missionZones:
@@ -1016,12 +974,10 @@ public sealed class StrategicWorldEscortSpawnTests
         AdvanceUnblocked(campaign, 1);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CancelledTerminalEscortArrivalCannotHideFollowingCraftInterception(bool cache)
+    [Fact]
+    public void CancelledTerminalEscortArrivalCannotHideFollowingCraftInterception()
     {
-        var content = Load(cache, "crafts: [{type: SHIP, radarRange: 20000, radarChance: 100}]\n");
+        var content = Load("crafts: [{type: SHIP, radarRange: 20000, radarChance: 100}]\n");
         var initial = IdleEscortSnapshot(content);
         initial = initial with
         {
@@ -1049,12 +1005,10 @@ public sealed class StrategicWorldEscortSpawnTests
             "Craft interception requires strategic combat (Phase 6 branch 5).");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CancelledArrivalForecastDoesNotOverflowAnUnvalidatedPriorBirth(bool cache)
+    [Fact]
+    public void CancelledArrivalForecastDoesNotOverflowAnUnvalidatedPriorBirth()
     {
-        var content = Load(cache, """
+        var content = Load("""
             alienMissions:
               - type: EXHAUSTED_IDLE_LEADER
                 objective: 0
@@ -1075,13 +1029,11 @@ public sealed class StrategicWorldEscortSpawnTests
             "Mission counter forecasts exceed the supported range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void LoadedIdleEscortAllowsAutoPatrolCraftThatRemainGrounded(bool cache)
+    [Fact]
+    public void LoadedIdleEscortAllowsAutoPatrolCraftThatRemainGrounded()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Load(cache, "crafts: [{type: IDLE_REFUEL, speedMax: 6000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
+        var content = Load("crafts: [{type: IDLE_REFUEL, speedMax: 6000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "maintenanceRows").Where(row => !row[0].GetBoolean() && !row[3].GetBoolean() && !row[4].GetBoolean()))
         {
             var initial = IdleEscortSnapshot(content).WithCraft("SHIP", craft => craft with
@@ -1119,21 +1071,17 @@ public sealed class StrategicWorldEscortSpawnTests
     }
 
     [Theory]
-    [InlineData(false, false, false)]
-    [InlineData(true, false, false)]
-    [InlineData(false, true, false)]
-    [InlineData(true, true, false)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, true)]
-    [InlineData(false, true, true)]
-    [InlineData(true, true, true)]
-    public void LoadedIdleEscortWithFollowersMatchesNativeNewLeaderMovement(bool cache, bool reverse, bool cancelsArrival)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void LoadedIdleEscortWithFollowersMatchesNativeNewLeaderMovement(bool reverse, bool cancelsArrival)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world");
         using var attachment = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.Contains(TestFixtures.Rows(attachment.RootElement, "spawnEscortSequenceRows"), row =>
             !row[0].GetBoolean() && row[1].GetBoolean() && row[2].GetBoolean());
-        var content = Load(cache);
+        var content = Load();
         var initial = IdleEscortSnapshot(content);
         var source = cancelsArrival ? initial.World.Ufos[0] with
         { TrajectoryPoint = 2, Destination = WorldTargetReference.ForWaypoint(0, new(0.400001, 0.2)) } : initial.World.Ufos[0];
@@ -1371,13 +1319,11 @@ public sealed class StrategicWorldEscortSpawnTests
 
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void GroundedEscortSpawnsWithActiveCraftAndRetainsBackupThroughTakeoff(bool cache, bool leader)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GroundedEscortSpawnsWithActiveCraftAndRetainsBackupThroughTakeoff(bool leader)
     {
-        var content = Load(cache);
+        var content = Load();
         var initial = SpawnSnapshot(content, UfoStatus.Flying).WithCraft("SHIP", craft => craft with
         {
             Logistics = craft.Logistics! with
@@ -1432,12 +1378,10 @@ public sealed class StrategicWorldEscortSpawnTests
     }
 
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CreationTickGroundEscortLiftsBeforeItsNextCraftHunt(bool cache)
+    [Fact]
+    public void CreationTickGroundEscortLiftsBeforeItsNextCraftHunt()
     {
-        var content = Load(cache);
+        var content = Load();
         var initial = SpawnSnapshot(content, UfoStatus.Flying).WithCraft("SHIP", craft => craft with
         {
             Logistics = craft.Logistics! with
@@ -1555,8 +1499,8 @@ public sealed class StrategicWorldEscortSpawnTests
         };
     }
 
-    private static RuntimeContent Load(bool cache = false, string? overlay = null) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, extraRules: overlay,
+    private static RuntimeContent Load(string? overlay = null) =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], extraRules: overlay,
             finalRules: "crafts: [{type: SHIP, fuelMax: 1000}]\n");
 
     private static CampaignSnapshot SpawnSnapshot(RuntimeContent content, UfoStatus status)

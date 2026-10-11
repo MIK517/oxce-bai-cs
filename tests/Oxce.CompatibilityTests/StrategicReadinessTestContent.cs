@@ -7,10 +7,10 @@ namespace Oxce.CompatibilityTests;
 
 internal static class StrategicReadinessTestContent
 {
-    public static RuntimeContent Load(string overlay = "strategic-bases.rul", bool fromCache = false)
-        => Load([overlay], fromCache);
+    public static RuntimeContent Load(string overlay = "strategic-bases.rul")
+        => Load([overlay]);
 
-    public static RuntimeContent Load(IReadOnlyList<string> overlays, bool fromCache = false, string? extraRules = null,
+    public static RuntimeContent Load(IReadOnlyList<string> overlays, string? extraRules = null,
         bool extraRulesAfterOverlays = false, string? finalRules = null)
     {
         var repository = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
@@ -32,13 +32,27 @@ internal static class StrategicReadinessTestContent
             if (finalRules is not null)
                 File.WriteAllText(Path.Combine(root, "standard/logistics/Ruleset", "a--final-test.rul"), finalRules);
             var request = InstallationLoadRequest.ForMasterAndAddOn(root, "logistics", "-", TestFixtures.Engine);
+            // Every load is built fresh, then restored from the compiled cache it wrote. The restored content
+            // must be indistinguishable from the fresh build; tests then run against the restored content.
+            var fresh = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
+            Assert.True(fresh.IsSuccess, fresh.DescribeFailure());
             var loaded = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
-            if (fromCache)
-                loaded = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
             Assert.True(loaded.IsSuccess, loaded.DescribeFailure());
-            if (fromCache) Assert.Equal(CompiledContentCacheStatus.Hit, loaded.CacheStatus);
+            Assert.Equal(CompiledContentCacheStatus.Hit, loaded.CacheStatus);
+            AssertSameContent(fresh.Content!, loaded.Content!);
             return loaded.Content!;
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); }
+    }
+
+    private static void AssertSameContent(RuntimeContent fresh, RuntimeContent restored)
+    {
+        var expected = ContentStateDump.Of(fresh);
+        var actual = ContentStateDump.Of(restored);
+        if (expected == actual) return;
+        var index = 0;
+        while (index < Math.Min(expected.Length, actual.Length) && expected[index] == actual[index]) index++;
+        var start = Math.Max(0, index - 300);
+        Assert.Fail($"Cached content differs from the fresh build at {index}:\nfresh:  {expected[start..Math.Min(expected.Length, index + 200)]}\ncached: {actual[start..Math.Min(actual.Length, index + 200)]}");
     }
 }

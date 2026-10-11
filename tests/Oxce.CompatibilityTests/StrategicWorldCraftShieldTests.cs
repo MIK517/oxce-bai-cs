@@ -9,17 +9,13 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldCraftShieldTests
 {
     [Theory]
-    [InlineData(false, "grounded")]
-    [InlineData(true, "grounded")]
-    [InlineData(false, "hourly")]
-    [InlineData(true, "hourly")]
-    [InlineData(false, "takeoff")]
-    [InlineData(true, "takeoff")]
-    [InlineData(false, "return")]
-    [InlineData(true, "return")]
-    public void GeoscapeRechargeIncludesWeaponBonusesAndSurvivesReload(bool fromCache, string phase)
+    [InlineData("grounded")]
+    [InlineData("hourly")]
+    [InlineData("takeoff")]
+    [InlineData("return")]
+    public void GeoscapeRechargeIncludesWeaponBonusesAndSurvivesReload(string phase)
     {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul", fromCache);
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var rules = content.RuntimeRules;
         var rule = rules.Crafts[rules.Crafts.GetRequired("SHIELD_CRAFT")].Value;
         Assert.Equal(125, rule.ShieldRechargeInGeoscape);

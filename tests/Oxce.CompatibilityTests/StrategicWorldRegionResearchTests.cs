@@ -11,15 +11,13 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldRegionResearchTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void GeneratedRegionAndAreaChoicesKeepTheirOwnGrantSequence(bool cache, bool areas)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedRegionAndAreaChoicesKeepTheirOwnGrantSequence(bool areas)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
-        var content = Content(cache, areas);
+        var content = Content(areas);
         var firstSeen = false;
         var secondSeen = false;
         for (ulong seed = 1; seed <= 32; seed++)
@@ -50,12 +48,10 @@ public sealed class StrategicWorldRegionResearchTests
         Assert.True(secondSeen);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void UnchosenPathCannotSuppressAnEarlierDueEvent(bool cache)
+    [Fact]
+    public void UnchosenPathCannotSuppressAnEarlierDueEvent()
     {
-        var content = Content(cache, false);
+        var content = Content(false);
         var initial = Snapshot(content);
         AssertTimeBlocked(CampaignState.Restore(initial with
         {
@@ -73,8 +69,8 @@ public sealed class StrategicWorldRegionResearchTests
         };
     }
 
-    internal static RuntimeContent Content(bool cache, bool areas, int secondDuration = 0, bool suppressed = false, bool common = false) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+    internal static RuntimeContent Content(bool areas, int secondDuration = 0, bool suppressed = false, bool common = false) =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul"], $$$"""
         research:
           - {name: UNLOCK, cost: 1}
           - {name: CORE, cost: 1}

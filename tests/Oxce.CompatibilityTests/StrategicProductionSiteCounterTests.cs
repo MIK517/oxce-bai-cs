@@ -10,15 +10,13 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicProductionSiteCounterTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ProductionIdentityCounterAndSiteExpiryOverflowRefuseTogether(bool cache, bool soldier)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ProductionIdentityCounterAndSiteExpiryOverflowRefuseTogether(bool soldier)
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-timer");
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $"crafts: [{{type: STR_SOLDIER, fuelMax: 0, damageMax: 100}}]\nmanufacture: [{{name: EXPIRY_PRODUCT, time: 1, {(soldier ? "spawnedPersonType: RECRUIT, producedItems: {SUPPLY: 0}" : "category: STR_CRAFT, producedItems: {STR_SOLDIER: 1}")}}}]\nfacilities: [{{type: EXPIRY_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\nalienDeployments: [{{type: EXPIRY_COUNTER, markerName: EXPIRY_COUNTER, counterDespawn: STR_SOLDIER}}]\n");
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $"crafts: [{{type: STR_SOLDIER, fuelMax: 0, damageMax: 100}}]\nmanufacture: [{{name: EXPIRY_PRODUCT, time: 1, {(soldier ? "spawnedPersonType: RECRUIT, producedItems: {SUPPLY: 0}" : "category: STR_CRAFT, producedItems: {STR_SOLDIER: 1}")}}}]\nfacilities: [{{type: EXPIRY_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\nalienDeployments: [{{type: EXPIRY_COUNTER, markerName: EXPIRY_COUNTER, counterDespawn: STR_SOLDIER}}]\n");
         var initial = CreateSnapshot(content, "Produced actor and expiry counter") with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
         initial = initial.WithNextId("STR_SOLDIER", int.MaxValue - 1) with
         {
@@ -34,15 +32,11 @@ public sealed class StrategicProductionSiteCounterTests
     }
 
     [Theory]
-    [InlineData(false, false, false)]
-    [InlineData(true, false, false)]
-    [InlineData(false, true, false)]
-    [InlineData(true, true, false)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, true)]
-    [InlineData(false, true, true)]
-    [InlineData(true, true, true)]
-    public void ProductionPrecedesDirectSitesAndUfoConversionsSharingActorMarkers(bool cache, bool conversion, bool soldier)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ProductionPrecedesDirectSitesAndUfoConversionsSharingActorMarkers(bool conversion, bool soldier)
     {
         TestFixtures.LoadVerifiedManifest("strategic-research-production");
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
@@ -76,7 +70,7 @@ public sealed class StrategicProductionSiteCounterTests
         if (soldier) rules = rules.Replace("category: STR_CRAFT", "spawnedPersonType: RECRUIT", StringComparison.Ordinal)
             .Replace("producedItems: {SHIP: 1}", "producedItems: {SUPPLY: 0}", StringComparison.Ordinal)
             .Replace("markerName: SHIP", "markerName: STR_SOLDIER", StringComparison.Ordinal);
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, rules);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], rules);
         var initial = CreateSnapshot(content, "Shared craft site markers") with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
         var owner = initial.Bases[0];
         var next = soldier ? owner.Soldiers.Max(value => value.Id) + 1 : owner.Crafts.Where(craft => craft.RuleId == "SHIP").Max(craft => craft.Id) + 1;

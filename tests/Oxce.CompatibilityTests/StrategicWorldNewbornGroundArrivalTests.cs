@@ -10,20 +10,17 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldNewbornGroundArrivalTests
 {
     [Theory]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    [InlineData(false, 10)]
-    [InlineData(true, 10)]
-    public void FirstGroundArrivalStartsItsTimerAfterTheFlyingPass(bool cache, int timer)
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(10)]
+    public void FirstGroundArrivalStartsItsTimerAfterTheFlyingPass(int timer)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
         var landed = Assert.Single(TestFixtures.Rows(oracle.RootElement, "transitionRows"), row =>
             row[0].GetInt32() == 0 && row[1].GetInt32() == 0 && row[2].GetInt32() == 0 && row[3].GetInt32() == 1);
         var lift = Assert.Single(TestFixtures.Rows(oracle.RootElement, "normalLiftRows"), row =>
             row[0].GetInt32() == 0 && row[1].GetInt32() == 0);
-        var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false, groundTimer: timer,
+        var content = StrategicWorldNewbornFirstArrivalTests.Content(false, groundTimer: timer,
             points: 7, arrivalAltitude: 0);
         for (ulong seed = 1; seed <= 8; seed++)
         {
@@ -72,13 +69,11 @@ public sealed class StrategicWorldNewbornGroundArrivalTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void SilentDetectedBirthsStillAllocateLandingIdentity(bool cache, bool alerts)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SilentDetectedBirthsStillAllocateLandingIdentity(bool alerts)
     {
-        var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false, groundTimer: 2,
+        var content = StrategicWorldNewbornFirstArrivalTests.Content(false, groundTimer: 2,
             arrivalAltitude: 0, alerts: alerts);
         var initial = StrategicWorldNewbornFirstArrivalTests.Snapshot(content, 17).WithFacility("RADAR_HYPER_TEST");
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
@@ -107,15 +102,12 @@ public sealed class StrategicWorldNewbornGroundArrivalTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, -1)]
-    [InlineData(true, -1)]
-    [InlineData(false, 429496730)]
-    [InlineData(true, 429496730)]
-    public void InvalidNewbornLandingTimerRefusesBeforeWaveAndDetectionMutation(bool cache, int timer)
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(429496730)]
+    public void InvalidNewbornLandingTimerRefusesBeforeWaveAndDetectionMutation(int timer)
     {
-        var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false, groundTimer: timer, arrivalAltitude: 0);
+        var content = StrategicWorldNewbornFirstArrivalTests.Content(false, groundTimer: timer, arrivalAltitude: 0);
         AssertTimeBlocked(CampaignState.Restore(StrategicWorldNewbornFirstArrivalTests.Snapshot(content, 17), content,
             new SplitMix64RandomSource(17)), "Alien mission wave spawning requires world simulation.");
     }

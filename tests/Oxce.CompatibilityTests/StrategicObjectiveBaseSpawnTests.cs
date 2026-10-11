@@ -14,12 +14,10 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicObjectiveBaseSpawnTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ObjectiveBaseSearchAndDeploymentSelectionMatchPinnedReference(bool cache)
+    [Fact]
+    public void ObjectiveBaseSearchAndDeploymentSelectionMatchPinnedReference()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-objective-base.rul"], cache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-objective-base.rul"]);
         var rules = content.RuntimeRules;
         var template = rules.AlienMissions[rules.AlienMissions.GetRequired("BASE_OBJECTIVE")].Value;
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-objective-base-spawn");
@@ -56,15 +54,13 @@ public sealed class StrategicObjectiveBaseSpawnTests
             Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
         }
     }
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void FinalWavesCreateFixedDynamicAndFallbackBasesAndReloadWithoutDuplicateEffects(bool cache)
+    [Fact]
+    public void FinalWavesCreateFixedDynamicAndFallbackBasesAndReloadWithoutDuplicateEffects()
     {
         foreach (var kind in new[] { "EXPLICIT", "single", "weighted", "fallback" })
             foreach (var ufo in new[] { false, true })
             {
-                var content = LoadWorld(cache, kind, ufo: ufo);
+                var content = LoadWorld(kind, ufo: ufo);
                 var initial = Initial(content);
                 var expected = new SplitMix64RandomSource(17);
                 var rules = content.RuntimeRules;
@@ -110,14 +106,12 @@ public sealed class StrategicObjectiveBaseSpawnTests
             }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SuppressedFallbackFinishesMissionWithoutInterruptingOrAllocatingBase(bool cache)
+    [Fact]
+    public void SuppressedFallbackFinishesMissionWithoutInterruptingOrAllocatingBase()
     {
         foreach (var allow in new[] { false, true })
         {
-            var content = LoadWorld(cache, "weighted", chance: 100, allow: allow);
+            var content = LoadWorld("weighted", chance: 100, allow: allow);
             var initial = Initial(content);
             var random = new SplitMix64RandomSource(17);
             var region = content.RuntimeRules.Regions[content.RuntimeRules.Regions.GetRequired("OBJECTIVE_REGION")].Value;
@@ -137,12 +131,10 @@ public sealed class StrategicObjectiveBaseSpawnTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ImmediateChainsCompleteOnceAndComposedMissionsReserveIdsAndScores(bool cache)
+    [Fact]
+    public void ImmediateChainsCompleteOnceAndComposedMissionsReserveIdsAndScores()
     {
-        var content = LoadWorld(cache, chain: true);
+        var content = LoadWorld(chain: true);
         var initial = Initial(content);
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         AdvanceUnblocked(campaign, 1);
@@ -167,42 +159,39 @@ public sealed class StrategicObjectiveBaseSpawnTests
     [Fact]
     public void ObjectivePreflightRejectsMarkerCollisionBirthExhaustionAndInvalidInputsAtomically()
     {
-        var content = LoadWorld(false);
+        var content = LoadWorld();
         var initial = Initial(content);
         var collision = initial with { World = initial.World with { AlienBases = [new(1, "EXPLICIT", "RACE_A", 0.2, 0.1)] } };
         AssertTimeBlocked(CampaignState.Restore(collision, content, new SplitMix64RandomSource(17)), "Base objective IDs are exhausted or collide.");
         var exhausted = initial with { World = initial.World with { AlienBaseBirthSequence = ulong.MaxValue } };
         AssertTimeBlocked(CampaignState.Restore(exhausted, content, new SplitMix64RandomSource(17)), "Base objective birth sequence is exhausted.");
-        content = LoadWorld(false, marker: "SHIP");
+        content = LoadWorld(marker: "SHIP");
         var craftInitial = Initial(content);
         var craftId = craftInitial.Bases.SelectMany(owner => owner.Crafts).First(craft => craft.RuleId == "SHIP").Id;
         Assert.Equal("SHIP", content.RuntimeRules.AlienDeployments[content.RuntimeRules.AlienDeployments.GetRequired("COLLISION_BASE")].Value.MarkerName);
         AssertTimeBlocked(CampaignState.Restore(craftInitial.WithNextId("SHIP", craftId), content,
             new SplitMix64RandomSource(17)), "Base objective IDs are exhausted or collide.");
-        content = LoadWorld(false, zone: 99);
+        content = LoadWorld(zone: 99);
         AssertTimeBlocked(CampaignState.Restore(Initial(content), content, new SplitMix64RandomSource(17)),
             "A mission tried to use zone 99, but the region only defines 2 zones.");
-        content = LoadWorld(false, "zero");
+        content = LoadWorld("zero");
         AssertTimeBlocked(CampaignState.Restore(Initial(content), content, new SplitMix64RandomSource(17)),
             "Base objective texture weights select an unavailable deployment.");
-        content = LoadWorld(false, marker: "\"\"");
+        content = LoadWorld(marker: "\"\"");
         AssertTimeBlocked(CampaignState.Restore(Initial(content), content, new SplitMix64RandomSource(17)),
             "Base objective uses an unsupported marker namespace.");
         // SavedGame::getId keys are external names: a whitespace marker is its own namespace.
-        content = LoadWorld(false, marker: "\" \"");
+        content = LoadWorld(marker: "\" \"");
         var whitespace = CampaignState.Restore(Initial(content), content, new SplitMix64RandomSource(17));
         AdvanceUnblocked(whitespace, 1);
         Assert.Contains(whitespace.Capture().World.AlienBases, value => value.DeploymentId == "COLLISION_BASE");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void LandingObjectiveConditionAndDefaultTextureMatchPinnedReference(bool cache)
+    [Fact]
+    public void LandingObjectiveConditionAndDefaultTextureMatchPinnedReference()
     {
         var contents = Enumerable.Range(0, 3).Select(kind => StrategicReadinessTestContent.Load(
-            ["strategic-world.rul", "strategic-objective-base.rul"], cache,
-            kind == 1 ? "globe:\n  textures:\n    - {id: 0, deployments: {TEXTURE: 2, Z_UNUSED: 3}}" : null)).ToArray();
+            ["strategic-world.rul", "strategic-objective-base.rul"], kind == 1 ? "globe:\n  textures:\n    - {id: 0, deployments: {TEXTURE: 2, Z_UNUSED: 3}}" : null)).ToArray();
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-objective-base-spawn");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "landingRows"))
         {
@@ -234,16 +223,14 @@ public sealed class StrategicObjectiveBaseSpawnTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void LandingCreatesAtActualPositionRegardlessOfObjectiveFlagAndPersistsThroughTakeoff(bool cache)
+    [Fact]
+    public void LandingCreatesAtActualPositionRegardlessOfObjectiveFlagAndPersistsThroughTakeoff()
     {
         foreach (var objective in new[] { false, true })
         {
             // A 100% fake-water base rule does not prevent a normal-land birth here:
             // this path makes no preference roll or search.
-            var content = LoadWorld(cache, chance: 100, landing: true, zone: 0, objectiveFlag: objective);
+            var content = LoadWorld(chance: 100, landing: true, zone: 0, objectiveFlag: objective);
             var initial = LandingInitial(content);
             var rules = content.RuntimeRules;
             var region = rules.Regions[rules.Regions.GetRequired("OBJECTIVE_REGION")].Value;
@@ -276,14 +263,12 @@ public sealed class StrategicObjectiveBaseSpawnTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void LandingBirthIsSkippedForInvalidTerrainWrongCurrentZoneAndAbsentFlag(bool cache)
+    [Fact]
+    public void LandingBirthIsSkippedForInvalidTerrainWrongCurrentZoneAndAbsentFlag()
     {
         foreach (var scenario in new[] { "water", "zone", "flag", "conversion" })
         {
-            var content = LoadWorld(cache, landing: true, zone: scenario == "zone" ? 1 : 0,
+            var content = LoadWorld(landing: true, zone: scenario == "zone" ? 1 : 0,
                 landingFlag: scenario != "flag", objectiveFlag: scenario == "conversion");
             var initial = LandingInitial(content);
             if (scenario == "water") initial = initial with
@@ -318,7 +303,7 @@ public sealed class StrategicObjectiveBaseSpawnTests
     [Fact]
     public void LandingAndFinalWaveBirthsShareScoreIdentityAndCounterReservations()
     {
-        var content = LoadWorld(false, landing: true, zone: 0);
+        var content = LoadWorld(landing: true, zone: 0);
         var initial = LandingInitial(content) with { Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55) };
         initial = initial with
         {
@@ -344,7 +329,7 @@ public sealed class StrategicObjectiveBaseSpawnTests
     [Fact]
     public void LandingCounterForecastWorkIsBoundedAcrossExpiringSitesAndManyBirths()
     {
-        var content = LoadWorld(false, landing: true, zone: 0);
+        var content = LoadWorld(landing: true, zone: 0);
         var initial = LandingInitial(content) with { Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55) };
         initial = initial with
         {
@@ -364,7 +349,7 @@ public sealed class StrategicObjectiveBaseSpawnTests
     [Fact]
     public void ObjectiveBirthsReserveCombinedExistingAndNewBasePatrolDiscoveryWork()
     {
-        var content = LoadWorld(false);
+        var content = LoadWorld();
         var initial = Initial(content);
         var owner = initial.Bases[0];
         var prototype = owner.Crafts.First(craft => craft.RuleId == "SHIP");
@@ -393,14 +378,12 @@ public sealed class StrategicObjectiveBaseSpawnTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public void NewFinalWaveBaseReservesHuntingMissionsAndStartsDelayedWaves(bool cache, bool regional)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NewFinalWaveBaseReservesHuntingMissionsAndStartsDelayedWaves(bool regional)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
-        var content = LoadWorld(cache, hunting: true, regional: regional);
+        var content = LoadWorld(hunting: true, regional: regional);
         var initial = Initial(content).WithNextId("ALIEN_MISSIONS", int.MaxValue);
         initial = initial.WithCraft("SHIP", craft => craft with
         {
@@ -435,37 +418,29 @@ public sealed class StrategicObjectiveBaseSpawnTests
         AdvanceUnblocked(campaign, 1);
         Assert.Equal(100, Assert.Single(campaign.Capture().World.AlienBases).MinutesSinceLastHuntMissionGeneration);
         Reload(content, campaign, 17, "new-base-hunting-timer.sav");
-        content = LoadWorld(cache, hunting: true, huntTimer: int.MaxValue);
+        content = LoadWorld(hunting: true, huntTimer: int.MaxValue);
         AssertTimeBlocked(CampaignState.Restore(Initial(content), content, new SplitMix64RandomSource(17)),
             "New base objective hunting timer exceeds the supported range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void NegativeLandingBaseTimerIsRejectedBeforeCreatingUnreloadableState(bool cache)
+    [Fact]
+    public void NegativeLandingBaseTimerIsRejectedBeforeCreatingUnreloadableState()
     {
-        var content = LoadWorld(cache, landing: true, zone: 0, hunting: true, huntTimer: -1);
+        var content = LoadWorld(landing: true, zone: 0, hunting: true, huntTimer: -1);
         AssertTimeBlocked(CampaignState.Restore(LandingInitial(content), content, new SplitMix64RandomSource(17)),
             "Base objective hunting timer cannot be negative.");
     }
 
     [Theory]
-    [InlineData(false, false, false, false)]
-    [InlineData(false, false, true, false)]
-    [InlineData(true, false, false, false)]
-    [InlineData(true, false, true, false)]
-    [InlineData(false, true, false, false)]
-    [InlineData(false, true, true, false)]
-    [InlineData(true, true, false, false)]
-    [InlineData(true, true, true, false)]
-    [InlineData(false, false, true, true)]
-    [InlineData(true, false, true, true)]
-    [InlineData(false, true, true, true)]
-    [InlineData(true, true, true, true)]
-    public void SharedCraftProductionMarkersReserveThePostProductionBaseId(bool cache, bool landing, bool fallback, bool arrivingEngineers)
+    [InlineData(false, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(true, false, false)]
+    [InlineData(true, true, false)]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, true)]
+    public void SharedCraftProductionMarkersReserveThePostProductionBaseId(bool landing, bool fallback, bool arrivingEngineers)
     {
-        var content = LoadWorld(cache, marker: "SHIP", landing: landing, zone: landing ? 0 : 1);
+        var content = LoadWorld(marker: "SHIP", landing: landing, zone: landing ? 0 : 1);
         var initial = landing ? LandingInitial(content) : Initial(content);
         var owner = initial.Bases[0];
         var nextCraft = owner.Crafts.Where(craft => craft.RuleId == "SHIP").Max(craft => craft.Id) + 1;
@@ -495,14 +470,12 @@ public sealed class StrategicObjectiveBaseSpawnTests
         Assert.Single(campaign.Capture().World.AlienBases);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void NewbornHuntingExecutesFiniteNoObjectChainsButKeepsSupplySourceGuard(bool cache)
+    [Fact]
+    public void NewbornHuntingExecutesFiniteNoObjectChainsButKeepsSupplySourceGuard()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
         TestFixtures.LoadVerifiedManifest("strategic-wave-chain");
-        var content = LoadWorld(cache, hunting: true, regional: true, huntingMission: "NEW_BASE_NO_OBJECT");
+        var content = LoadWorld(hunting: true, regional: true, huntingMission: "NEW_BASE_NO_OBJECT");
         var initial = Initial(content).WithCraft("SHIP", craft => craft with
         {
             Logistics = craft.Logistics! with
@@ -529,18 +502,16 @@ public sealed class StrategicObjectiveBaseSpawnTests
         campaign = Reload(content, campaign, 17, "new-base-immediate-hunting.sav");
         AdvanceUnblocked(campaign, 1);
         Assert.Equal(hunt, Assert.Single(campaign.Capture().World.Missions));
-        content = LoadWorld(cache, hunting: true, regional: true, huntingMission: "NEW_BASE_SUPPLY");
+        content = LoadWorld(hunting: true, regional: true, huntingMission: "NEW_BASE_SUPPLY");
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "New base hunting supply waves require a live source forecast.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void NewBaseHuntingUsesGroundedAndIncomingServicingForecasts(bool cache)
+    [Fact]
+    public void NewBaseHuntingUsesGroundedAndIncomingServicingForecasts()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = LoadWorld(cache, hunting: true, huntingMission: "NEW_BASE_SUPPLY",
+        var content = LoadWorld(hunting: true, huntingMission: "NEW_BASE_SUPPLY",
             extra: "crafts: [{type: OBJECTIVE_REFUEL, speedMax: 6000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
         foreach (var incoming in new[] { false, true })
             foreach (var row in TestFixtures.Rows(oracle.RootElement, "maintenanceRows").Where(row => !row[0].GetBoolean() && !row[3].GetBoolean() && !row[4].GetBoolean()))
@@ -585,19 +556,15 @@ public sealed class StrategicObjectiveBaseSpawnTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
+    [InlineData(false)]
+    [InlineData(true)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, true)]
-    [InlineData(false, true, true)]
-    [InlineData(true, true, true)]
-    public void NewBaseHuntingUsesRelaunchedHiddenLeaderSpeedForItsEscort(bool cache, bool consumed, bool independent = false)
+    public void NewBaseHuntingUsesRelaunchedHiddenLeaderSpeedForItsEscort(bool consumed, bool independent = false)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "escortFuelRows"), row => row[0].GetBoolean() && row[2].GetInt32() == 20 && !row[3].GetBoolean());
-        var content = LoadWorld(cache, hunting: true, huntingMission: "NEW_BASE_SUPPLY", extra:
+        var content = LoadWorld(hunting: true, huntingMission: "NEW_BASE_SUPPLY", extra:
             "crafts: [{type: OBJECTIVE_ESCORT, speedMax: 6000, damageMax: 100, fuelMax: 100}, {type: OBJECTIVE_HIDDEN_LEADER, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, undetectable: true}]\n",
             extraManufacture: consumed ? "- {name: CONSUME_OBJECTIVE_ESCORT, time: 1, requiredItems: {OBJECTIVE_ESCORT: 0}, producedItems: {SUPPLY: 0}}" : "");
         var initial = Initial(content) with { Time = new(1, 1, 1, 1999, 1, consumed ? 59 : 29, 55) };
@@ -665,16 +632,14 @@ public sealed class StrategicObjectiveBaseSpawnTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void NewZeroChanceBaseComposesWithStochasticProductionAndServicing(bool cache)
+    [Fact]
+    public void NewZeroChanceBaseComposesWithStochasticProductionAndServicing()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-hunt-timer");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "rows"), row => row[0].GetString() == "zeroChance" && row[1].GetInt32() == 60);
         foreach (var chance in new[] { 0, 100 })
         {
-            var content = LoadWorld(cache, hunting: true, huntingMission: "NEW_BASE_SUPPLY", huntingChance: chance, extra:
+            var content = LoadWorld(hunting: true, huntingMission: "NEW_BASE_SUPPLY", huntingChance: chance, extra:
                 "crafts: [{type: ZERO_OBJECTIVE_CRAFT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\n",
                 extraManufacture: "- {name: ZERO_OBJECTIVE_PRODUCT, time: 1, producedItems: {SUPPLY: 1}, randomProducedItems: [[1, {SUPPLY: 1}], [1, {BULKY: 1}]]}");
             Assert.Equal(chance, content.RuntimeRules.AlienDeployments[content.RuntimeRules.AlienDeployments.GetRequired("HUNT_BASE")].Value.BaseDetectionChance);
@@ -749,7 +714,7 @@ public sealed class StrategicObjectiveBaseSpawnTests
         };
     }
 
-    private static RuntimeContent LoadWorld(bool cache, string kind = "EXPLICIT", int chance = 0,
+    private static RuntimeContent LoadWorld(string kind = "EXPLICIT", int chance = 0,
         bool allow = true, bool ufo = false, bool chain = false, string marker = "OBJECTIVE_BASE", int zone = 1, bool landing = false,
         bool objectiveFlag = false, bool landingFlag = true, bool hunting = false, int huntTimer = 90, bool regional = false, string huntingMission = "MISSION_SCOUT", string extra = "", int huntingChance = 100, string extraManufacture = "")
     {
@@ -832,7 +797,7 @@ public sealed class StrategicObjectiveBaseSpawnTests
                 points: 13
                 waves: [{count: 1, trajectory: OBJECTIVE_AIR, timer: 0}]
             """;
-        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-objective-base.rul"], cache, rules + "\n" + extra);
+        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-objective-base.rul"], rules + "\n" + extra);
     }
 
 }

@@ -13,15 +13,13 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldSiteResearchReactivationTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void SiteGrantPrecedesReactivationAndLaterInterruptedArrival(bool cache, bool arrival)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SiteGrantPrecedesReactivationAndLaterInterruptedArrival(bool arrival)
     {
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = Content(cache, 0, Deployment);
+        var content = Content(0, Deployment);
         var snapshot = Linked(content, arrival);
         var original = snapshot.World.Ufos[0];
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
@@ -61,7 +59,7 @@ public sealed class StrategicWorldSiteResearchReactivationTests
     [Fact]
     public void CombinedSiteAndLiftScoreOverflowStopsBeforeResearchAndReactivation()
     {
-        var content = Content(false, 0, Deployment);
+        var content = Content(0, Deployment);
         var snapshot = Linked(content, false);
         snapshot = snapshot with { Regions = [snapshot.Regions[0] with { ActivityAlien = [int.MaxValue - 8] }] };
         AssertTimeBlocked(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17)),
@@ -71,7 +69,7 @@ public sealed class StrategicWorldSiteResearchReactivationTests
     [Fact]
     public void UnconditionalPayloadStillBlocksDormantSiteBeforeItsResearchOrLift()
     {
-        var content = Content(false, 0, Deployment.Replace("despawnPenalty: 7", "despawnPenalty: 7\n    despawnEvents: {PAYLOAD: 1}", StringComparison.Ordinal) +
+        var content = Content(0, Deployment.Replace("despawnPenalty: 7", "despawnPenalty: 7\n    despawnEvents: {PAYLOAD: 1}", StringComparison.Ordinal) +
             "\nevents:\n  - {name: PAYLOAD}\n");
         AssertTimeBlocked(CampaignState.Restore(Linked(content, false), content, new SplitMix64RandomSource(17)),
             "Mission site despawn requires research or event payloads.");

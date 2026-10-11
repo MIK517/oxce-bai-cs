@@ -12,21 +12,17 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldDailyBaseResearchTests
 {
     [Theory]
-    [InlineData(false, false, 0)]
-    [InlineData(true, false, 0)]
-    [InlineData(false, true, 0)]
-    [InlineData(true, true, 0)]
-    [InlineData(false, false, 1)]
-    [InlineData(true, false, 1)]
-    [InlineData(false, false, 2)]
-    [InlineData(true, false, 2)]
-    public void DailyResearchSelectsQuietBaseDeletionBeforeActivityAndPreservesOnlySurvivingSidecars(bool cache, bool visible, int noEffect)
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 1)]
+    [InlineData(false, 2)]
+    public void DailyResearchSelectsQuietBaseDeletionBeforeActivityAndPreservesOnlySurvivingSidecars(bool visible, int noEffect)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-activity");
-        var content = Content(cache, activity: noEffect == 1 ? 1 : 0, pacts: noEffect == 2, emptyChoices: noEffect == 1);
-        var deletedContent = Content(cache, "CORE", noEffect == 1 ? 1 : 0, noEffect == 2, noEffect == 1);
-        var survivedContent = Content(cache, "", noEffect == 1 ? 1 : 0, noEffect == 2, noEffect == 1);
+        var content = Content(activity: noEffect == 1 ? 1 : 0, pacts: noEffect == 2, emptyChoices: noEffect == 1);
+        var deletedContent = Content("CORE", noEffect == 1 ? 1 : 0, noEffect == 2, noEffect == 1);
+        var survivedContent = Content("", noEffect == 1 ? 1 : 0, noEffect == 2, noEffect == 1);
         var deletedSeen = false;
         var survivedSeen = false;
         for (ulong seed = 1; seed <= 32; seed++)
@@ -73,12 +69,10 @@ public sealed class StrategicWorldDailyBaseResearchTests
         Assert.True(survivedSeen);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void PossibleDeletionStillRejectsAmbiguousMarkerIdentities(bool cache)
+    [Fact]
+    public void PossibleDeletionStillRejectsAmbiguousMarkerIdentities()
     {
-        var content = Content(cache);
+        var content = Content();
         var initial = Snapshot(content, 17, false);
         initial = initial with
         {
@@ -110,12 +104,10 @@ public sealed class StrategicWorldDailyBaseResearchTests
         };
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void TransferredDeletionFollowersKeepTheirPreciseAtomicBoundary(bool cache)
+    [Fact]
+    public void TransferredDeletionFollowersKeepTheirPreciseAtomicBoundary()
     {
-        var content = Content(cache);
+        var content = Content();
         var initial = Snapshot(content, 17, false);
         var target = new WorldTargetReference(WorldTargetKind.AlienBase, "QUIET_RESEARCH_MARKER", 6, 0.2, 0.1);
         initial = initial with
@@ -131,15 +123,13 @@ public sealed class StrategicWorldDailyBaseResearchTests
             "Alien base self-destruction requires linked-target alternatives for uncertain research.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OwnedGroundedDeletionFollowersComposeWithBothResearchOutcomes(bool cache)
+    [Fact]
+    public void OwnedGroundedDeletionFollowersComposeWithBothResearchOutcomes()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
-        var content = Content(cache);
-        var deletedContent = Content(cache, "CORE");
-        var survivedContent = Content(cache, "");
+        var content = Content();
+        var deletedContent = Content("CORE");
+        var survivedContent = Content("");
         HashSet<bool> outcomes = [];
         for (ulong seed = 1; seed <= 32; seed++)
         {
@@ -174,12 +164,10 @@ public sealed class StrategicWorldDailyBaseResearchTests
         Assert.Equal(2, outcomes.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OrdinaryUfoCoordinatesDoNotCreateAnAlienBaseFollower(bool cache)
+    [Fact]
+    public void OrdinaryUfoCoordinatesDoNotCreateAnAlienBaseFollower()
     {
-        var content = Content(cache);
+        var content = Content();
         var initial = Snapshot(content, 17, false);
         initial = initial with
         {
@@ -194,7 +182,7 @@ public sealed class StrategicWorldDailyBaseResearchTests
         Assert.Equal(WorldTargetKind.Waypoint, Assert.Single(campaign.Capture().World.Ufos).Destination!.Kind);
         AdvanceUnblocked(campaign, 1);
         var after = campaign.Capture();
-        var controlContent = Content(cache, after.CompletedResearch.Contains("BONUS") ? "CORE" : "");
+        var controlContent = Content(after.CompletedResearch.Contains("BONUS") ? "CORE" : "");
         var control = CampaignState.Restore(initial, controlContent, new SplitMix64RandomSource(17));
         AdvanceUnblocked(control, 1);
         Assert.Equivalent(control.Capture(), after, strict: true);
@@ -202,14 +190,12 @@ public sealed class StrategicWorldDailyBaseResearchTests
     }
 
     [Theory]
-    [InlineData(false, -5)]
-    [InlineData(true, -5)]
-    [InlineData(false, 5)]
-    [InlineData(true, 5)]
-    public void OptionalBaseActivityCannotMaskLaterScoreOverflow(bool cache, int score)
+    [InlineData(-5)]
+    [InlineData(5)]
+    public void OptionalBaseActivityCannotMaskLaterScoreOverflow(int score)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-activity");
-        var content = Content(cache, points: score < 0 ? 7 : -7, followingScore: score);
+        var content = Content(points: score < 0 ? 7 : -7, followingScore: score);
         var initial = ActivitySnapshot(content, score < 0 ? int.MinValue + 3 : int.MaxValue - 3);
         for (ulong seed = 1; seed <= 32; seed++)
             AssertTimeBlocked(CampaignState.Restore(initial with { RandomState = seed }, content, new SplitMix64RandomSource(seed)),
@@ -217,16 +203,14 @@ public sealed class StrategicWorldDailyBaseResearchTests
     }
 
     [Theory]
-    [InlineData(false, -5)]
-    [InlineData(true, -5)]
-    [InlineData(false, 5)]
-    [InlineData(true, 5)]
-    public void SafeOptionalBaseActivityMatchesSelectedControlsAtBothScoreLimits(bool cache, int score)
+    [InlineData(-5)]
+    [InlineData(5)]
+    public void SafeOptionalBaseActivityMatchesSelectedControlsAtBothScoreLimits(int score)
     {
         var points = score < 0 ? 7 : -7;
-        var content = Content(cache, points: points, followingScore: score);
-        var deletedContent = Content(cache, "CORE", points: points, followingScore: score);
-        var survivedContent = Content(cache, "", points: points, followingScore: score);
+        var content = Content(points: points, followingScore: score);
+        var deletedContent = Content("CORE", points: points, followingScore: score);
+        var survivedContent = Content("", points: points, followingScore: score);
         var initial = ActivitySnapshot(content, score < 0 ? int.MinValue + 5 : int.MaxValue - 5);
         var deletedSeen = false;
         var survivedSeen = false;
@@ -270,9 +254,9 @@ public sealed class StrategicWorldDailyBaseResearchTests
         return initial;
     }
 
-    internal static RuntimeContent Content(bool cache, string code = "BONUS", int activity = 0, bool pacts = false, bool emptyChoices = false,
+    internal static RuntimeContent Content(string code = "BONUS", int activity = 0, bool pacts = false, bool emptyChoices = false,
         int points = 7, int? followingScore = null) =>
-        StrategicReadinessTestContent.Load(pacts ? ["strategic-world.rul", "strategic-alien-base-cleanup-pacts.rul"] : ["strategic-world.rul"], cache, $$$"""
+        StrategicReadinessTestContent.Load(pacts ? ["strategic-world.rul", "strategic-alien-base-cleanup-pacts.rul"] : ["strategic-world.rul"], $$$"""
         research:
           - {name: UNLOCK, cost: 1}
           - {name: CORE, cost: 1, getOneFree: [BONUS, OTHER]}

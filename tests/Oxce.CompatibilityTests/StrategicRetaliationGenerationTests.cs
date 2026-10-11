@@ -9,10 +9,8 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicRetaliationGenerationTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GeneratedNoObjectRetaliationUsesMappedRegionsAndCallerCleanupOrder(bool cache)
+    [Fact]
+    public void GeneratedNoObjectRetaliationUsesMappedRegionsAndCallerCleanupOrder()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
@@ -22,7 +20,7 @@ public sealed class StrategicRetaliationGenerationTests
                 foreach (var targeted in new[] { false, true })
                 {
                     Assert.Contains(TestFixtures.Rows(oracle.RootElement, "rows"), row => row[0].GetInt32() == objective && row[4].GetInt32() == 1 && row[8].GetInt32() == 0);
-                    var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+                    var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$$"""
                         regions:
                           - type: REGION
                             missionRegion: {{{(targeted ? "RETAL_GEN_TARGET" : "RETAL_GEN_EMPTY")}}}
@@ -109,12 +107,10 @@ public sealed class StrategicRetaliationGenerationTests
                     Reload(content, campaign, 17, "generated-retaliation-cleanup.sav");
                 }
     }
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void HuntingRetaliationCannotAcquireADiscoveredBaseAfterPreflight(bool cache)
+    [Fact]
+    public void HuntingRetaliationCannotAcquireADiscoveredBaseAfterPreflight()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             crafts:
               - type: SHIP
                 sightRange: 0

@@ -13,27 +13,19 @@ public sealed class StrategicWorldNewbornEscortArrivalTests
     private static readonly string[] ResearchDiaryRules = ["CORE", "UNLOCK"];
 
     [Theory]
-    [InlineData(false, 50, false, false)]
-    [InlineData(true, 50, false, false)]
-    [InlineData(false, 100, false, false)]
-    [InlineData(true, 100, false, false)]
-    [InlineData(false, 50, true, false)]
-    [InlineData(true, 50, true, false)]
-    [InlineData(false, 100, true, false)]
-    [InlineData(true, 100, true, false)]
-    [InlineData(false, 50, false, true)]
-    [InlineData(true, 50, false, true)]
-    [InlineData(false, 100, false, true)]
-    [InlineData(true, 100, false, true)]
-    [InlineData(false, 50, true, true)]
-    [InlineData(true, 50, true, true)]
-    [InlineData(false, 100, true, true)]
-    [InlineData(true, 100, true, true)]
-    public void EscortsChooseTheFirstOrdinaryLeaderOrAdvanceWithoutOne(bool cache, int percentage, bool savedLeader, bool ground)
+    [InlineData(50, false, false)]
+    [InlineData(100, false, false)]
+    [InlineData(50, true, false)]
+    [InlineData(100, true, false)]
+    [InlineData(50, false, true)]
+    [InlineData(100, false, true)]
+    [InlineData(50, true, true)]
+    [InlineData(100, true, true)]
+    public void EscortsChooseTheFirstOrdinaryLeaderOrAdvanceWithoutOne(int percentage, bool savedLeader, bool ground)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
-        var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false, hunterPercentage: percentage, escort: true,
+        var content = StrategicWorldNewbornFirstArrivalTests.Content(false, hunterPercentage: percentage, escort: true,
             arrivalAltitude: ground ? 0 : 2, groundTimer: ground ? 2 : 0);
         HashSet<int> patterns = [];
         for (ulong seed = 1; seed <= 64; seed++)
@@ -114,27 +106,19 @@ public sealed class StrategicWorldNewbornEscortArrivalTests
     }
 
     [Theory]
-    [InlineData(false, false, false, false)]
-    [InlineData(true, false, false, false)]
-    [InlineData(false, true, false, false)]
-    [InlineData(true, true, false, false)]
-    [InlineData(false, false, true, false)]
-    [InlineData(true, false, true, false)]
-    [InlineData(false, true, true, false)]
-    [InlineData(true, true, true, false)]
-    [InlineData(false, false, false, true)]
-    [InlineData(true, false, false, true)]
-    [InlineData(false, true, false, true)]
-    [InlineData(true, true, false, true)]
-    [InlineData(false, false, true, true)]
-    [InlineData(true, false, true, true)]
-    [InlineData(false, true, true, true)]
-    [InlineData(true, true, true, true)]
-    public void SiteResearchComposesWithNoTargetAndSafeEscortHuntOutcomes(bool cache, bool hunt, bool escort, bool ground)
+    [InlineData(false, false, false)]
+    [InlineData(true, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(true, true, false)]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, true)]
+    public void SiteResearchComposesWithNoTargetAndSafeEscortHuntOutcomes(bool hunt, bool escort, bool ground)
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-timer");
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = ResearchContent(cache, escort, "OTHER", ground: ground);
+        var content = ResearchContent(escort, "OTHER", ground: ground);
         for (ulong seed = 1; seed <= 16; seed++)
         {
             var initial = ResearchSnapshot(content, seed, hunt);
@@ -173,20 +157,18 @@ public sealed class StrategicWorldNewbornEscortArrivalTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void DeferredHuntingProofCannotHideInterruptionOrAttractionFailure(bool cache, bool malformed)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DeferredHuntingProofCannotHideInterruptionOrAttractionFailure(bool malformed)
     {
-        var content = ResearchContent(cache, true, malformed ? "OTHER" : "CORE",
+        var content = ResearchContent(true, malformed ? "OTHER" : "CORE",
             malformed ? "  - {type: SHIP, soldiers: 2147483647}\n" : "");
         AssertTimeBlocked(CampaignState.Restore(ResearchSnapshot(content, 17, false), content, new SplitMix64RandomSource(17)),
             malformed ? "Craft hunter attraction exceeds the supported range." : "Alien mission wave spawning requires world simulation.");
     }
 
-    private static RuntimeContent ResearchContent(bool cache, bool escort, string interrupt, string crafts = "", bool ground = false) =>
-        StrategicWorldNewbornFirstArrivalTests.Content(cache, false, interrupt, hunterPercentage: 50, escort: escort,
+    private static RuntimeContent ResearchContent(bool escort, string interrupt, string crafts = "", bool ground = false) =>
+        StrategicWorldNewbornFirstArrivalTests.Content(false, interrupt, hunterPercentage: 50, escort: escort,
             radarRange: 300, arrivalAltitude: ground ? 0 : 2, groundTimer: ground ? 2 : 0, extraRules: $$$"""
             research:
               - {name: CORE, cost: 1}

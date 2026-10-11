@@ -11,21 +11,17 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldConditionalLeaderLandSelectionTests
 {
     [Theory]
-    [InlineData(false, false, false)]
-    [InlineData(true, false, false)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, true)]
-    [InlineData(false, true, false)]
-    [InlineData(true, true, false)]
-    [InlineData(false, true, true)]
-    [InlineData(true, true, true)]
-    public void ConditionalAirborneArrivalPreservesBothNativeLandSelections(bool cache, bool selected, bool permitted)
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void ConditionalAirborneArrivalPreservesBothNativeLandSelections(bool selected, bool permitted)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "landRectangleOriginRows"), row =>
             row[0].GetInt32() == 1 && row[6].GetInt32() == 304);
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = Content(cache, selected, permitted);
+        var content = Content(selected, permitted);
         var region = content.RuntimeRules.Regions[content.RuntimeRules.Regions.GetRequired("CONDITIONAL_LAND")].Value;
         var globe = content.RuntimeRules.Campaign.Globe;
         HashSet<int> patterns = [];
@@ -99,13 +95,11 @@ public sealed class StrategicWorldConditionalLeaderLandSelectionTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void LoadedLandRetryWorkIsBoundedBeforeAnyBirthOrArrival(bool cache, bool conditional)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LoadedLandRetryWorkIsBoundedBeforeAnyBirthOrArrival(bool conditional)
     {
-        var content = Content(cache, false, false, polygons: 5000);
+        var content = Content(false, false, polygons: 5000);
         var initial = Snapshot(content, 17, false);
         var source = initial.World.Ufos[0];
         initial = initial with
@@ -120,12 +114,10 @@ public sealed class StrategicWorldConditionalLeaderLandSelectionTests
             "UFO waypoint land selection exceeds the supported work limit.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void LoadedAndNewbornRetriesShareOneBudget(bool cache)
+    [Fact]
+    public void LoadedAndNewbornRetriesShareOneBudget()
     {
-        var content = Content(cache, false, false, polygons: 280);
+        var content = Content(false, false, polygons: 280);
         var initial = Snapshot(content, 17, false);
         var control = initial with
         { World = initial.World with { Ufos = [], Missions = [initial.World.Missions[0] with { LiveUfos = 0 }] } };
@@ -134,13 +126,11 @@ public sealed class StrategicWorldConditionalLeaderLandSelectionTests
             "Alien mission land selection exceeds the supported work limit.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ConditionalCityLookaheadPreservesTheNativeRetryBypass(bool cache)
+    [Fact]
+    public void ConditionalCityLookaheadPreservesTheNativeRetryBypass()
     {
         var polygons = string.Join("\n", Enumerable.Repeat("    - [10, 0, -10, 20, -10, 20, 10, 0, 10]", 5000));
-        var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false, hunterPercentage: 50,
+        var content = StrategicWorldNewbornFirstArrivalTests.Content(false, hunterPercentage: 50,
             nextAltitude: 0, groundTimer: 2, extraRulesAfterOverlays: true,
             extraRules: "globe:\n  polygons:\n" + polygons);
         var initial = StrategicWorldConditionalLeaderArrivalTests.Snapshot(content, 17);
@@ -152,8 +142,8 @@ public sealed class StrategicWorldConditionalLeaderLandSelectionTests
         Assert.Equivalent(after, campaign.Capture(), strict: true);
     }
 
-    internal static RuntimeContent Content(bool cache, bool selected, bool permitted, int polygons = 0) =>
-        StrategicWorldNewbornFirstArrivalTests.Content(cache, false, hunterPercentage: 50, nextAltitude: 0,
+    internal static RuntimeContent Content(bool selected, bool permitted, int polygons = 0) =>
+        StrategicWorldNewbornFirstArrivalTests.Content(false, hunterPercentage: 50, nextAltitude: 0,
             groundTimer: 2, waveObjective: selected, objectiveOnLandingSite: selected, spawnZone: 5,
             fakeWaterLandingChance: permitted ? 100 : 0, extraRulesAfterOverlays: polygons != 0,
             extraRules: (polygons == 0 ? "" : "globe:\n  polygons:\n" +

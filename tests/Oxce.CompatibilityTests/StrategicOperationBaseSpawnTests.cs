@@ -57,15 +57,13 @@ public sealed class StrategicOperationBaseSpawnTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CreationModesReuseOrCreateBasesInReferenceOrderAndPersistLinks(bool cache)
+    [Fact]
+    public void CreationModesReuseOrCreateBasesInReferenceOrderAndPersistLinks()
     {
         foreach (var operation in new[] { 2, 3, 5, 6 })
             foreach (var existing in new[] { false, true })
             {
-                var content = LoadCreation(cache, operation);
+                var content = LoadCreation(operation);
                 var initial = CreateSnapshot(content, "Mission operation base creation").WithNextId("STR_ALIEN_BASE", 11) with
                 {
                     RandomState = 17,
@@ -122,13 +120,11 @@ public sealed class StrategicOperationBaseSpawnTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public void InvalidTextureSearchSuppressesOrForcesCreationAfterOneHundredAttempts(bool cache, bool allow)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void InvalidTextureSearchSuppressesOrForcesCreationAfterOneHundredAttempts(bool allow)
     {
-        var content = LoadCreation(cache, 2, invalidTexture: true, allow: allow);
+        var content = LoadCreation(2, invalidTexture: true, allow: allow);
         var initial = CreateSnapshot(content, "Operation base texture fallback") with { RandomState = 17 };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         Assert.Empty(campaign.Execute(new ScheduleMonthlyWorldMissions(0, 0)).Events);
@@ -155,12 +151,10 @@ public sealed class StrategicOperationBaseSpawnTests
         Reload(content, campaign, 17, "operation-base-fallback.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ComposedCreationReservesSharedMarkerIdsAndCombinedScoreBeforeMutation(bool cache)
+    [Fact]
+    public void ComposedCreationReservesSharedMarkerIdsAndCombinedScoreBeforeMutation()
     {
-        var content = LoadCreation(cache, 2, additional: true);
+        var content = LoadCreation(2, additional: true);
         var initial = CreateSnapshot(content, "Composed operation base creation") with { RandomState = 17 };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         Assert.Empty(campaign.Execute(new ScheduleMonthlyWorldMissions(0, 0)).Events);
@@ -179,12 +173,10 @@ public sealed class StrategicOperationBaseSpawnTests
         AssertCommandBlocked(campaign, "Mission operation base activity exceeds the supported range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CreationIdsAndMarkerCollisionsAreCheckedBeforeRng(bool cache)
+    [Fact]
+    public void CreationIdsAndMarkerCollisionsAreCheckedBeforeRng()
     {
-        var content = LoadCreation(cache, 2);
+        var content = LoadCreation(2);
         var initial = CreateSnapshot(content, "Operation base identity limits") with { RandomState = 17 };
         var campaign = CampaignState.Restore(initial.WithNextId("STR_ALIEN_BASE", int.MaxValue),
             content, new SplitMix64RandomSource(17));
@@ -194,12 +186,10 @@ public sealed class StrategicOperationBaseSpawnTests
         AssertCommandBlocked(campaign, "Mission operation base IDs are exhausted or collide.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void InfiltrationOperationCreatesLinkedBaseWithoutActivityAward(bool cache)
+    [Fact]
+    public void InfiltrationOperationCreatesLinkedBaseWithoutActivityAward()
     {
-        var content = LoadCreation(cache, 2, objective: 1);
+        var content = LoadCreation(2, objective: 1);
         var initial = CreateSnapshot(content, "Infiltration operation base") with { RandomState = 17 };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         Assert.Empty(campaign.Execute(new ScheduleMonthlyWorldMissions(0, 0)).Events);
@@ -209,21 +199,19 @@ public sealed class StrategicOperationBaseSpawnTests
         Reload(content, campaign, 17, "infiltration-operation-base.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void EmptyAndMissingSpawnZonesFailBeforeMutationWhileExistingBaseReuseSkipsThem(bool cache)
+    [Fact]
+    public void EmptyAndMissingSpawnZonesFailBeforeMutationWhileExistingBaseReuseSkipsThem()
     {
         foreach (var zone in new[] { 0, 99 })
         {
-            var content = LoadCreation(cache, 2, zone: zone);
+            var content = LoadCreation(2, zone: zone);
             var initial = CreateSnapshot(content, "Invalid operation base zone") with { RandomState = 17 };
             var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
             var before = campaign.Capture();
             Assert.Throws<InvalidDataException>(() => campaign.Execute(new ScheduleMonthlyWorldMissions(0, 0)));
             Assert.Equivalent(before, campaign.Capture(), strict: true);
         }
-        var reusable = LoadCreation(cache, 3, zone: 99);
+        var reusable = LoadCreation(3, zone: 99);
         var saved = CreateSnapshot(reusable, "Unused invalid operation base zone") with { RandomState = 17 };
         saved = saved with { World = saved.World with { AlienBases = [new(10, "OPERATION_BASE", "RACE_A", 0.2, 0.1)] } };
         var reused = CampaignState.Restore(saved, reusable, new SplitMix64RandomSource(17));
@@ -234,18 +222,16 @@ public sealed class StrategicOperationBaseSpawnTests
     [Fact]
     public void CombinedLocationSearchWorkStopsTheWholeBatchBeforeRng()
     {
-        var content = LoadCreation(false, 2, extraScripts: 450);
+        var content = LoadCreation(2, extraScripts: 450);
         var initial = CreateSnapshot(content, "Operation base work bound") with { RandomState = 17 };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         AssertCommandBlocked(campaign, "Mission operation base creation exceeds the supported work limit.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void TaggedAdhocCreationUsesTheSameOperationAndLeavesDueEventPayloadGuarded(bool cache)
+    [Fact]
+    public void TaggedAdhocCreationUsesTheSameOperationAndLeavesDueEventPayloadGuarded()
     {
-        var content = LoadCreation(cache, 2, adhoc: true);
+        var content = LoadCreation(2, adhoc: true);
         var initial = CreateSnapshot(content, "Tagged operation base creation") with
         {
             RandomState = 17,
@@ -263,12 +249,10 @@ public sealed class StrategicOperationBaseSpawnTests
         AssertTimeBlocked(campaign, "Strategic event consequences require campaign event execution (Phase 6 branch 6).");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DeletedBaseSidecarCannotAttachToACreatedBaseReusingItsMarkerId(bool cache)
+    [Fact]
+    public void DeletedBaseSidecarCannotAttachToACreatedBaseReusingItsMarkerId()
     {
-        var content = LoadCreation(cache, 2);
+        var content = LoadCreation(2);
         var initial = CreateSnapshot(content, "Deleted operation base sidecar") with { RandomState = 17 };
         initial = initial with { World = initial.World with { AlienBases = [new(1, "OPERATION_BASE", "RACE_A", 0.2, 0.1)] } };
         var yaml = Oxce.Savegames.Oxce.OxceSaveAdapter.EmitNewCampaign(initial);
@@ -305,7 +289,7 @@ public sealed class StrategicOperationBaseSpawnTests
     [Fact]
     public void ExhaustedBirthSequenceBlocksBeforeRngAndInconsistentBirthIdentityIsRejected()
     {
-        var content = LoadCreation(false, 2);
+        var content = LoadCreation(2);
         var initial = CreateSnapshot(content, "Operation base birth capacity") with { RandomState = 17 };
         initial = initial with { World = initial.World with { AlienBaseBirthSequence = ulong.MaxValue } };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
@@ -327,7 +311,7 @@ public sealed class StrategicOperationBaseSpawnTests
     [InlineData("STR_ALIEN_TERROR", false)]
     public void CreationCannotReuseACraftMarkerIdentityOrTheLegacyTerrorNamespace(string marker, bool collision)
     {
-        var content = LoadCreation(false, 2, marker: marker);
+        var content = LoadCreation(2, marker: marker);
         var initial = CreateSnapshot(content, "Operation base target identity") with { RandomState = 17 };
         if (collision)
         {
@@ -342,7 +326,7 @@ public sealed class StrategicOperationBaseSpawnTests
     [Fact]
     public void IncomingCraftMarkerIdentityAlsoPreventsAmbiguousBaseCreation()
     {
-        var content = LoadCreation(false, 2, marker: "SHIP");
+        var content = LoadCreation(2, marker: "SHIP");
         var initial = CreateSnapshot(content, "Incoming craft operation base identity") with { RandomState = 17 };
         var owner = initial.Bases[0];
         var craft = owner.Crafts.First(candidate => candidate.RuleId == "SHIP") with { Id = 11, PreservationKey = "" };
@@ -360,7 +344,7 @@ public sealed class StrategicOperationBaseSpawnTests
     [Fact]
     public void RegionalBaseCandidateGeometryIsIncludedInTheWholeBatchWorkBound()
     {
-        var content = LoadCreation(false, 3, regionAreaCopies: 1000);
+        var content = LoadCreation(3, regionAreaCopies: 1000);
         var initial = CreateSnapshot(content, "Regional operation candidate work").WithNextId("STR_ALIEN_BASE", 501) with
         {
             RandomState = 17,
@@ -377,19 +361,17 @@ public sealed class StrategicOperationBaseSpawnTests
         AssertCommandBlocked(campaign, "Mission script base targeting exceeds the supported work limit.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void NegativeOperationBaseTimerIsRejectedBeforeCreatingUnreloadableState(bool cache)
+    [Fact]
+    public void NegativeOperationBaseTimerIsRejectedBeforeCreatingUnreloadableState()
     {
-        var content = LoadCreation(cache, 2, huntTimer: -1);
+        var content = LoadCreation(2, huntTimer: -1);
         var campaign = CampaignState.Restore(CreateSnapshot(content, "Invalid operation birth timer"),
             content, new SplitMix64RandomSource(17));
         AssertCommandBlocked(campaign, "Mission operation base hunting timer cannot be negative.");
     }
 
     private static Oxce.Mods.Rulesets.Content.RuntimeContent LoadCreation(
-        bool cache, int operation, int zone = 1, int objective = 0, bool additional = false, bool invalidTexture = false, bool? allow = null, int extraScripts = 0, bool adhoc = false, string marker = "STR_ALIEN_BASE", int regionAreaCopies = 1, int huntTimer = 90)
+        int operation, int zone = 1, int objective = 0, bool additional = false, bool invalidTexture = false, bool? allow = null, int extraScripts = 0, bool adhoc = false, string marker = "STR_ALIEN_BASE", int regionAreaCopies = 1, int huntTimer = 90)
     {
         TestFixtures.LoadVerifiedManifest("strategic-operation-base-spawn");
         var regionAreas = string.Join(", ", Enumerable.Repeat("[0, 90, -20, 20]", regionAreaCopies));
@@ -416,7 +398,7 @@ public sealed class StrategicOperationBaseSpawnTests
                 regionWeights: {0: {OPERATION_REGION: 1}}
                 raceWeights: {0: {RACE_A: 1}}
             """ : "";
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$$"""
             {{{option}}}
             regions:
               - type: OPERATION_REGION
@@ -465,16 +447,13 @@ public sealed class StrategicOperationBaseSpawnTests
         Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void WrongTextureFallbackDefaultsTrueAndExplicitFalseSurvivesCache(bool cache)
+    [Fact]
+    public void WrongTextureFallbackDefaultsTrueAndExplicitFalseSurvivesCache()
     {
         TestFixtures.LoadVerifiedManifest("strategic-operation-base-spawn");
-        var defaults = StrategicReadinessTestContent.Load("strategic-world.rul", cache);
+        var defaults = StrategicReadinessTestContent.Load("strategic-world.rul");
         Assert.True(defaults.RuntimeRules.Campaign.AllowAlienBasesOnWrongTextures);
-        var configured = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache,
-            "allowAlienBasesOnWrongTextures: false\n");
+        var configured = StrategicReadinessTestContent.Load(["strategic-world.rul"], "allowAlienBasesOnWrongTextures: false\n");
         Assert.False(configured.RuntimeRules.Campaign.AllowAlienBasesOnWrongTextures);
     }
 }

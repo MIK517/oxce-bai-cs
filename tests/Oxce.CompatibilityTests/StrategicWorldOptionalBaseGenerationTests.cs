@@ -11,13 +11,10 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldOptionalBaseGenerationTests
 {
     [Theory]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    public void OptionalSourceDeletionComposesDailyAndHuntingGenerationInCallerOrder(bool cache, int generation)
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void OptionalSourceDeletionComposesDailyAndHuntingGenerationInCallerOrder(int generation)
     {
         using var daily = TestFixtures.ReadVerifiedExpected("strategic-alien-base-generation");
         using var hunting = TestFixtures.ReadVerifiedExpected("strategic-alien-base-hunt-generation");
@@ -30,9 +27,9 @@ public sealed class StrategicWorldOptionalBaseGenerationTests
         TestFixtures.LoadVerifiedManifest("strategic-infiltration-region");
         for (var kind = 0; kind < 6; kind++)
         {
-            var content = Content(cache, kind, generation);
-            var deletedContent = Content(cache, kind, generation, "CORE");
-            var survivedContent = Content(cache, kind, generation, "");
+            var content = Content(kind, generation);
+            var deletedContent = Content(kind, generation, "CORE");
+            var survivedContent = Content(kind, generation, "");
             var deletedSeen = false;
             var survivedSeen = false;
             for (ulong seed = 1; seed <= 32; seed++)
@@ -82,45 +79,40 @@ public sealed class StrategicWorldOptionalBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    public void PossibleGenerationKeepsMissionAndTargetCapacityChecksBeforeDailyMutation(bool cache, int generation)
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void PossibleGenerationKeepsMissionAndTargetCapacityChecksBeforeDailyMutation(int generation)
     {
-        var content = Content(cache, 0, generation);
+        var content = Content(0, generation);
         var initial = Snapshot(content, 17, 0, generation).WithNextId("ALIEN_MISSIONS", int.MaxValue);
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "Alien mission IDs or population exceed the supported limit.");
-        content = Content(cache, 3, generation);
+        content = Content(3, generation);
         initial = Snapshot(content, 17, 3, generation).WithNextId("DAILY_BASE", int.MaxValue);
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "Base objective IDs are exhausted or collide.");
-        content = Content(cache, 5, generation);
+        content = Content(5, generation);
         initial = Snapshot(content, 17, 5, generation).WithNextId("DAILY_SITE", int.MaxValue);
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "Mission site marker IDs are exhausted or collide with a saved target.");
     }
 
     [Theory]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    public void ImmediateGeneratedResearchComposesOrderedDailyAlternatives(bool cache, int generation)
+    [InlineData(1)]
+    [InlineData(3)]
+    public void ImmediateGeneratedResearchComposesOrderedDailyAlternatives(int generation)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = StrategicWorldDailyWaveResearchTests.Content(cache, 5, interrupt: "", operation: 1,
+        var content = StrategicWorldDailyWaveResearchTests.Content(5, interrupt: "", operation: 1,
             generation: generation, immediateResearch: true);
-        var deletedContent = StrategicWorldDailyWaveResearchTests.Content(cache, 5, interrupt: "", operation: 1,
+        var deletedContent = StrategicWorldDailyWaveResearchTests.Content(5, interrupt: "", operation: 1,
             sourceCode: "CORE", generation: generation, immediateResearch: true);
-        var survivedContent = StrategicWorldDailyWaveResearchTests.Content(cache, 5, interrupt: "", operation: 1,
+        var survivedContent = StrategicWorldDailyWaveResearchTests.Content(5, interrupt: "", operation: 1,
             sourceCode: "", generation: generation, immediateResearch: true);
         var deletedSeen = false;
         var survivedSeen = false;
@@ -152,18 +144,16 @@ public sealed class StrategicWorldOptionalBaseGenerationTests
         Assert.True(survivedSeen);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void HuntingZeroDurationResearchWaitsForTheFollowingSiteCaller(bool cache)
+    [Fact]
+    public void HuntingZeroDurationResearchWaitsForTheFollowingSiteCaller()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
         TestFixtures.LoadVerifiedManifest("strategic-site-timer");
-        var content = StrategicWorldDailyWaveResearchTests.Content(cache, 5, interrupt: "", operation: 1,
+        var content = StrategicWorldDailyWaveResearchTests.Content(5, interrupt: "", operation: 1,
             generation: 2, immediateResearch: true);
-        var deletedContent = StrategicWorldDailyWaveResearchTests.Content(cache, 5, interrupt: "", operation: 1,
+        var deletedContent = StrategicWorldDailyWaveResearchTests.Content(5, interrupt: "", operation: 1,
             sourceCode: "CORE", generation: 2, immediateResearch: true);
-        var survivedContent = StrategicWorldDailyWaveResearchTests.Content(cache, 5, interrupt: "", operation: 1,
+        var survivedContent = StrategicWorldDailyWaveResearchTests.Content(5, interrupt: "", operation: 1,
             sourceCode: "", generation: 2, immediateResearch: true);
         var generatedSeen = false;
         var deletedSeen = false;
@@ -200,15 +190,13 @@ public sealed class StrategicWorldOptionalBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    public void DelayedGenerationAndHuntingWithoutEligibleCraftKeepOnlySurvivingSourceState(bool cache, int activity)
+    [InlineData(1)]
+    [InlineData(2)]
+    public void DelayedGenerationAndHuntingWithoutEligibleCraftKeepOnlySurvivingSourceState(int activity)
     {
-        var content = StrategicWorldDailyBaseResearchTests.Content(cache, activity: activity);
-        var deletedContent = StrategicWorldDailyBaseResearchTests.Content(cache, "CORE", activity: activity);
-        var survivedContent = StrategicWorldDailyBaseResearchTests.Content(cache, "", activity: activity);
+        var content = StrategicWorldDailyBaseResearchTests.Content(activity: activity);
+        var deletedContent = StrategicWorldDailyBaseResearchTests.Content("CORE", activity: activity);
+        var survivedContent = StrategicWorldDailyBaseResearchTests.Content("", activity: activity);
         var deletedSeen = false;
         var survivedSeen = false;
         for (ulong seed = 1; seed <= 32; seed++)
@@ -240,8 +228,8 @@ public sealed class StrategicWorldOptionalBaseGenerationTests
         Assert.True(survivedSeen);
     }
 
-    private static RuntimeContent Content(bool cache, int kind, int generation, string code = "BONUS") =>
-        StrategicWorldDailyWaveResearchTests.Content(cache, kind, interrupt: "", operation: 1, sourceCode: code, generation: generation);
+    private static RuntimeContent Content(int kind, int generation, string code = "BONUS") =>
+        StrategicWorldDailyWaveResearchTests.Content(kind, interrupt: "", operation: 1, sourceCode: code, generation: generation);
 
     private static CampaignSnapshot Snapshot(RuntimeContent content, ulong seed, int kind, int generation)
     {

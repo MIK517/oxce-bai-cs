@@ -25,7 +25,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 5 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 291 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 292 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 92 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -1056,10 +1056,11 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 291 files.
+`tests/Oxce.CompatibilityTests` - 292 files.
 
 ### `Oxce.CompatibilityTests`
 
+- `ContentStateDump` (internal class) [ContentStateDump.cs](../tests/Oxce.CompatibilityTests/ContentStateDump.cs) - Deterministic dump of every instance field reachable from an object graph.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
@@ -1503,6 +1504,12 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 Shared sources compiled into several projects, and non-test types that tests reuse.
 Prefer these over local copies (see AGENTS.md, *Test conventions*).
+
+### [tests/Oxce.CompatibilityTests/ContentStateDump.cs](../tests/Oxce.CompatibilityTests/ContentStateDump.cs)
+
+- `ContentStateDump` (class) - Deterministic dump of every instance field reachable from an object graph.
+- `ContentStateDump.Writer` (class)
+- members: `Of`, `ToString`, `Write`
 
 ### [tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 

@@ -13,15 +13,13 @@ public sealed class StrategicWorldSiteChoiceGrantTests
     private static readonly string[] MissingChoiceTopics = ["BONUS", "MISSING"];
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void SelectedResearchAndOwnEventsFollowTheirDeploymentAndPersist(bool cache, bool generated)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SelectedResearchAndOwnEventsFollowTheirDeploymentAndPersist(bool generated)
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = StrategicWorldNewbornSiteChoiceResearchTests.Content(cache, generated, differentGrant: true, ownEvents: true);
+        var content = StrategicWorldNewbornSiteChoiceResearchTests.Content(generated, differentGrant: true, ownEvents: true);
         var seenA = false;
         var seenOnlyB = false;
         for (ulong seed = 1; seed <= 32; seed++)
@@ -56,13 +54,11 @@ public sealed class StrategicWorldSiteChoiceGrantTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void SuppressedDeploymentChoiceDoesNotInventAResearchGrant(bool cache, bool generated)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SuppressedDeploymentChoiceDoesNotInventAResearchGrant(bool generated)
     {
-        var content = StrategicWorldNewbornSiteChoiceResearchTests.Content(cache, generated, ownEvents: true, nullChoice: true);
+        var content = StrategicWorldNewbornSiteChoiceResearchTests.Content(generated, ownEvents: true, nullChoice: true);
         var seenBirth = false;
         var seenNone = false;
         for (ulong seed = 1; seed <= 32; seed++)
@@ -87,13 +83,11 @@ public sealed class StrategicWorldSiteChoiceGrantTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void UnchosenResearchCannotSuppressDueEventsAndKernelRestoresNoOpBranches(bool cache, bool generated)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void UnchosenResearchCannotSuppressDueEventsAndKernelRestoresNoOpBranches(bool generated)
     {
-        var content = StrategicWorldNewbornSiteChoiceResearchTests.Content(cache, generated, differentGrant: true, ownEvents: true);
+        var content = StrategicWorldNewbornSiteChoiceResearchTests.Content(generated, differentGrant: true, ownEvents: true);
         var initial = StrategicWorldNewbornSiteChoiceResearchTests.Snapshot(content, generated);
         AssertTimeBlocked(CampaignState.Restore(initial with { World = initial.World with { Events = [new GeoscapeEventSnapshot("OWN_A", 30)] } }, content, new SplitMix64RandomSource(17)),
             "Strategic event consequences require campaign event execution (Phase 6 branch 6).");

@@ -14,12 +14,11 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicEventSchedulingTests
 {
     [Theory]
-    [InlineData(false, "STOP_EVENT")]
-    [InlineData(true, "STOP_EVENT")]
-    [InlineData(false, "EVENT_LOOKUP")]
-    public void SameDayInterruptionResearchCompletesBeforeDueEventCleanup(bool fromCache, string research)
+    [InlineData("STOP_EVENT")]
+    [InlineData("EVENT_LOOKUP")]
+    public void SameDayInterruptionResearchCompletesBeforeDueEventCleanup(string research)
     {
-        var content = StrategicReadinessTestContent.Load("strategic-events.rul", fromCache);
+        var content = StrategicReadinessTestContent.Load("strategic-events.rul");
         var snapshot = CreateSnapshot(content, "Same-day interruption");
         var campaign = CampaignState.Restore(snapshot with
         {
@@ -102,13 +101,11 @@ public sealed class StrategicEventSchedulingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ResearchSchedulesRepeatedEventsAndPersistsHistoryInsideTheTick(bool fromCache)
+    [Fact]
+    public void ResearchSchedulesRepeatedEventsAndPersistsHistoryInsideTheTick()
     {
         TestFixtures.LoadVerifiedManifest("strategic-event");
-        var content = StrategicReadinessTestContent.Load("strategic-events.rul", fromCache);
+        var content = StrategicReadinessTestContent.Load("strategic-events.rul");
         var rule = content.RuntimeRules.Events[content.RuntimeRules.Events.GetRequired("EVENT_DEFAULT")].Value;
         Assert.Equal(30, rule.Timer);
         Assert.Equal(0, rule.TimerRandom);
@@ -135,12 +132,10 @@ public sealed class StrategicEventSchedulingTests
         AssertTimeBlocked(campaign, "Strategic event consequences require campaign event execution (Phase 6 branch 6).");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ProductionSchedulesPerUnitAndInterruptedEventsExpireWithoutPayload(bool fromCache)
+    [Fact]
+    public void ProductionSchedulesPerUnitAndInterruptedEventsExpireWithoutPayload()
     {
-        var content = StrategicReadinessTestContent.Load("strategic-events.rul", fromCache);
+        var content = StrategicReadinessTestContent.Load("strategic-events.rul");
         var snapshot = CreateSnapshot(content, "Event production");
         var owner = snapshot.Bases[0];
         var campaign = CampaignState.Restore(snapshot with

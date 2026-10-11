@@ -52,14 +52,12 @@ public sealed class StrategicWorldSiteTimerTests
         Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void LiveSiteScoresCountsDownAndExpiresAcrossReload(bool fromCache)
+    [Fact]
+    public void LiveSiteScoresCountsDownAndExpiresAcrossReload()
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-timer");
         var content = StrategicReadinessTestContent.Load(
-            ["strategic-world.rul", "strategic-site-timer.rul"], fromCache);
+            ["strategic-world.rul", "strategic-site-timer.rul"]);
         var snapshot = CreateSnapshot(content, "Site timer") with
         {
             Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
@@ -126,15 +124,13 @@ public sealed class StrategicWorldSiteTimerTests
     }
 
     [Theory]
-    [InlineData(false, "")]
-    [InlineData(false, "Site")]
-    [InlineData(true, "")]
-    [InlineData(true, "Site")]
-    public void ForcedExpiryReturnsFollowerBeforeLandingAndPersists(bool fromCache, string customName)
+    [InlineData("")]
+    [InlineData("Site")]
+    public void ForcedExpiryReturnsFollowerBeforeLandingAndPersists(string customName)
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-timer");
         var content = StrategicReadinessTestContent.Load(
-            ["strategic-world.rul", "strategic-site-timer.rul"], fromCache);
+            ["strategic-world.rul", "strategic-site-timer.rul"]);
         var snapshot = WithSite(CreateSnapshot(content, "Forced site") with
         {
             Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
@@ -182,14 +178,12 @@ public sealed class StrategicWorldSiteTimerTests
         Assert.Equal(WorldTargetKind.Base, reloaded.Bases[0].Crafts[0].Logistics!.Destination!.Kind);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DespawnCountersApplyInReferenceOrderAndPersist(bool fromCache)
+    [Fact]
+    public void DespawnCountersApplyInReferenceOrderAndPersist()
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-timer");
         var content = StrategicReadinessTestContent.Load(
-            ["strategic-world.rul", "strategic-site-timer.rul"], fromCache);
+            ["strategic-world.rul", "strategic-site-timer.rul"]);
         var snapshot = WithSite(CreateSnapshot(content, "Site counters") with
         {
             Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
@@ -271,14 +265,12 @@ public sealed class StrategicWorldSiteTimerTests
         Assert.Equal(int.MaxValue - 1, after.NextIds["shared"]);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DailyResearchDecrementMakesSiteExpirySafe(bool fromCache)
+    [Fact]
+    public void DailyResearchDecrementMakesSiteExpirySafe()
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-timer");
         var content = StrategicReadinessTestContent.Load(
-            ["strategic-world.rul", "strategic-site-timer.rul"], fromCache);
+            ["strategic-world.rul", "strategic-site-timer.rul"]);
         var snapshot = WithSite(CreateSnapshot(content, "Research before site counters") with
         {
             Time = new CampaignTime(1, 1, 1, 1999, 23, 59, 55),
@@ -351,13 +343,11 @@ public sealed class StrategicWorldSiteTimerTests
         Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void HourlyDiscoveryMatchesCapturedQueueAndContinuesCurrentTick(bool cache)
+    [Fact]
+    public void HourlyDiscoveryMatchesCapturedQueueAndContinuesCurrentTick()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-site-timer");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-timer.rul"], cache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-timer.rul"]);
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "discoveryRows"))
         {
             var snapshot = CreateSnapshot(content, "Site discovery") with

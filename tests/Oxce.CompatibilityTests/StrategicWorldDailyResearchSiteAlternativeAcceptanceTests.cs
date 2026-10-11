@@ -12,20 +12,16 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldDailyResearchSiteAlternativeAcceptanceTests
 {
     [Theory]
-    [InlineData(false, 0, false)]
-    [InlineData(true, 0, false)]
-    [InlineData(false, 1, false)]
-    [InlineData(true, 1, false)]
-    [InlineData(false, 0, true)]
-    [InlineData(true, 0, true)]
-    [InlineData(false, 1, true)]
-    [InlineData(true, 1, true)]
-    public void SiteEventsRequireInterruptionOnEveryDailyResearchPath(bool cache, int mode, bool guaranteed)
+    [InlineData(0, false)]
+    [InlineData(1, false)]
+    [InlineData(0, true)]
+    [InlineData(1, true)]
+    public void SiteEventsRequireInterruptionOnEveryDailyResearchPath(int mode, bool guaranteed)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         var rows = TestFixtures.Rows(oracle.RootElement, "researchDailySiteAlternativeRows").Where(row => row[0].GetInt32() == mode).ToArray();
         Assert.Equal(2, rows.Select(row => row[5].GetInt32()).Distinct().Count());
-        var content = SiteContent(cache, mode, "    despawnEvents: {SITE_EVENT: 1}\nevents:\n  - {name: SITE_EVENT, interruptResearch: " + (guaranteed ? "SITE" : "SITE_AUTO") + "}");
+        var content = SiteContent(mode, "    despawnEvents: {SITE_EVENT: 1}\nevents:\n  - {name: SITE_EVENT, interruptResearch: " + (guaranteed ? "SITE" : "SITE_AUTO") + "}");
         if (!guaranteed)
         {
             var campaign = Reload(content, CampaignState.Restore(SiteSnapshot(content, 17), content, new SplitMix64RandomSource(17)), 17, "daily-site-event-guard.sav");
@@ -51,13 +47,11 @@ public sealed class StrategicWorldDailyResearchSiteAlternativeAcceptanceTests
         Assert.Equal(2, outcomes.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SiteGrantKeepsEachDailyPathsActiveProjects(bool cache)
+    [Fact]
+    public void SiteGrantKeepsEachDailyPathsActiveProjects()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = SiteContent(cache, 0, research: "  - {name: EQUIV_A, disables: [ACTIVE]}\n  - {name: SITE, reenables: [ACTIVE]}\n  - {name: ACTIVE, cost: 0, points: 2, dependencies: [SITE]}");
+        var content = SiteContent(0, research: "  - {name: EQUIV_A, disables: [ACTIVE]}\n  - {name: SITE, reenables: [ACTIVE]}\n  - {name: ACTIVE, cost: 0, points: 2, dependencies: [SITE]}");
         HashSet<int> choices = [];
         for (ulong seed = 1; seed <= 12; seed++)
         {
@@ -90,13 +84,11 @@ public sealed class StrategicWorldDailyResearchSiteAlternativeAcceptanceTests
         Assert.Equal(2, choices.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DailySiteResearchScoreCapacityChecksEveryPathBeforeMutation(bool cache)
+    [Fact]
+    public void DailySiteResearchScoreCapacityChecksEveryPathBeforeMutation()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = SiteContent(cache, 0);
+        var content = SiteContent(0);
         var initial = SiteSnapshot(content, 17) with { ResearchScores = [int.MaxValue - 5] };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         AssertTimeBlocked(campaign, "Mission research score exceeds the supported range.");
@@ -111,7 +103,7 @@ public sealed class StrategicWorldDailyResearchSiteAlternativeAcceptanceTests
     public void DailySiteResearchAlternativesRetainDiaryAndSharedWorkGuards()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = SiteContent(false, 1);
+        var content = SiteContent(1);
         var initial = SiteSnapshot(content, 17) with { ResearchDiarySequence = ulong.MaxValue - 4 };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         var before = campaign.Capture();

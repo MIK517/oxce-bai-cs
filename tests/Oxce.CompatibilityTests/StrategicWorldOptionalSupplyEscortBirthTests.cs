@@ -10,23 +10,15 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldOptionalSupplyEscortBirthTests
 {
     [Theory]
-    [InlineData(false, false, 50, false)]
-    [InlineData(false, false, 50, true)]
-    [InlineData(true, false, 50, false)]
-    [InlineData(true, false, 50, true)]
-    [InlineData(false, true, 50, false)]
-    [InlineData(false, true, 50, true)]
-    [InlineData(true, true, 50, false)]
-    [InlineData(true, true, 50, true)]
-    [InlineData(false, false, 100, false)]
-    [InlineData(false, false, 100, true)]
-    [InlineData(true, false, 100, false)]
-    [InlineData(true, false, 100, true)]
-    [InlineData(false, true, 100, false)]
-    [InlineData(false, true, 100, true)]
-    [InlineData(true, true, 100, false)]
-    [InlineData(true, true, 100, true)]
-    public void EscortBirthsRetainOptionalLeaderAndIdleAlternativesAfterSourceSuppression(bool cache, bool target, int percentage, bool onlyEscort)
+    [InlineData(false, 50, false)]
+    [InlineData(false, 50, true)]
+    [InlineData(true, 50, false)]
+    [InlineData(true, 50, true)]
+    [InlineData(false, 100, false)]
+    [InlineData(false, 100, true)]
+    [InlineData(true, 100, false)]
+    [InlineData(true, 100, true)]
+    public void EscortBirthsRetainOptionalLeaderAndIdleAlternativesAfterSourceSuppression(bool target, int percentage, bool onlyEscort)
     {
         TestFixtures.LoadVerifiedManifest("strategic-mission-origin");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
@@ -34,9 +26,9 @@ public sealed class StrategicWorldOptionalSupplyEscortBirthTests
         TestFixtures.LoadVerifiedManifest("strategic-world");
         TestFixtures.LoadVerifiedManifest("strategic-wave-chain");
         var kind = onlyEscort ? 7 : 6;
-        var content = StrategicWorldOptionalSupplySourceTests.Content(cache, kind, radarRange: 20000, nonObjectiveHunterPercentage: percentage, nonObjectiveEscort: true);
-        var deletedContent = StrategicWorldOptionalSupplySourceTests.Content(cache, kind, "CORE", radarRange: 20000, nonObjectiveHunterPercentage: percentage, nonObjectiveEscort: true);
-        var survivedContent = StrategicWorldOptionalSupplySourceTests.Content(cache, kind, "", radarRange: 20000, nonObjectiveHunterPercentage: percentage, nonObjectiveEscort: true);
+        var content = StrategicWorldOptionalSupplySourceTests.Content(kind, radarRange: 20000, nonObjectiveHunterPercentage: percentage, nonObjectiveEscort: true);
+        var deletedContent = StrategicWorldOptionalSupplySourceTests.Content(kind, "CORE", radarRange: 20000, nonObjectiveHunterPercentage: percentage, nonObjectiveEscort: true);
+        var survivedContent = StrategicWorldOptionalSupplySourceTests.Content(kind, "", radarRange: 20000, nonObjectiveHunterPercentage: percentage, nonObjectiveEscort: true);
         HashSet<(bool Deleted, bool Hunter)> outcomes = [];
         for (ulong seed = 1; seed <= 64; seed++)
         {
@@ -75,12 +67,10 @@ public sealed class StrategicWorldOptionalSupplyEscortBirthTests
         Assert.Equal(percentage == 100 ? 2 : 4, outcomes.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void PossibleHunterBirthCannotCrossCombatOrMarkerBoundaries(bool cache)
+    [Fact]
+    public void PossibleHunterBirthCannotCrossCombatOrMarkerBoundaries()
     {
-        var content = StrategicWorldOptionalSupplySourceTests.Content(cache, 6, radarRange: 20000, nonObjectiveEscort: true);
+        var content = StrategicWorldOptionalSupplySourceTests.Content(6, radarRange: 20000, nonObjectiveEscort: true);
         var initial = StrategicWorldOptionalSupplyHunterBirthTests.Target(StrategicWorldOptionalSupplySourceTests.Snapshot(content, 17, 6), true);
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "UFO hunting interception requires strategic combat (Phase 6 branch 5).");

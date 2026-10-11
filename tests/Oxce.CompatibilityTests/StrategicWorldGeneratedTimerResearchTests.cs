@@ -9,16 +9,14 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldGeneratedTimerResearchTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void NativeInitialTimerSelectsTheWholeBirthSequenceWithoutInventingResearch(bool cache)
+    [Fact]
+    public void NativeInitialTimerSelectsTheWholeBirthSequenceWithoutInventingResearch()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
         for (var timer = 59; timer <= 120; timer = timer == 59 ? 60 : timer + 30)
         {
-            var content = StrategicWorldSiteResearchDirectBirthTests.Content(cache, duration: 0, generated: true,
+            var content = StrategicWorldSiteResearchDirectBirthTests.Content(duration: 0, generated: true,
                 interrupt: "BONUS", eventInterrupt: "BONUS", count: 1, firstTimer: timer);
             var immediateSeen = false;
             var delayedSeen = false;
@@ -51,14 +49,12 @@ public sealed class StrategicWorldGeneratedTimerResearchTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OnlyAlwaysDueInitialTimersCanGuaranteeResearchForDueEventSuppression(bool cache)
+    [Fact]
+    public void OnlyAlwaysDueInitialTimersCanGuaranteeResearchForDueEventSuppression()
     {
         for (var timer = 59; timer <= 120; timer = timer == 59 ? 60 : timer + 30)
         {
-            var content = StrategicWorldSiteResearchDirectBirthTests.Content(cache, duration: 0, generated: true,
+            var content = StrategicWorldSiteResearchDirectBirthTests.Content(duration: 0, generated: true,
                 interrupt: "BONUS", eventInterrupt: "BONUS", count: 1, firstTimer: timer);
             var initial = StrategicWorldSiteResearchDirectBirthTests.GeneratedSnapshot(content);
             var campaign = CampaignState.Restore(initial with

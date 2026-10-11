@@ -13,12 +13,10 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldRetaliationCleanupTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void RetaliationCleanupMatchesReferenceAndRetainsUnrelatedLinks(bool cache)
+    [Fact]
+    public void RetaliationCleanupMatchesReferenceAndRetainsUnrelatedLinks()
     {
-        var content = Load(cache);
+        var content = Load();
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-retaliation-cleanup");
         var rows = new List<int[]>();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows"))
@@ -46,12 +44,10 @@ public sealed class StrategicWorldRetaliationCleanupTests
         Equal(oracle.RootElement.GetProperty("rows"), rows);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SavedLinksResolveOnlyToExistingMissionsAsInBaseLoad(bool cache)
+    [Fact]
+    public void SavedLinksResolveOnlyToExistingMissionsAsInBaseLoad()
     {
-        var content = Load(cache);
+        var content = Load();
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-retaliation-cleanup");
         var rows = new List<int[]>();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "loadRows"))
@@ -66,12 +62,10 @@ public sealed class StrategicWorldRetaliationCleanupTests
         Equal(oracle.RootElement.GetProperty("loadRows"), rows);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DailyResearchInterruptionCleansLinkedRetaliationAndRepeatedSaveOverlays(bool cache)
+    [Fact]
+    public void DailyResearchInterruptionCleansLinkedRetaliationAndRepeatedSaveOverlays()
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Snapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), CompletedResearch = ["UNLOCK"] };
         snapshot = snapshot with
         {
@@ -107,10 +101,10 @@ public sealed class StrategicWorldRetaliationCleanupTests
         AssertTimeBlocked(Restore(content, snapshot), "Alien mission cannot expire while UFOs still reference it.");
     }
 
-    private static RuntimeContent Load(bool cache = false)
+    private static RuntimeContent Load()
     {
         TestFixtures.LoadVerifiedManifest("strategic-retaliation-cleanup");
-        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-retaliation-cleanup.rul"], cache);
+        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-retaliation-cleanup.rul"]);
     }
     private static CampaignSnapshot Snapshot(RuntimeContent content, int objective = 4, bool over = false)
     {

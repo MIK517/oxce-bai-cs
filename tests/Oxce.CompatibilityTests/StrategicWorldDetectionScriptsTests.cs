@@ -9,12 +9,10 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldDetectionScriptsTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void BaseScriptDetectsOutsideRadarCoverageAndPersists(bool fromCache)
+    [Fact]
+    public void BaseScriptDetectsOutsideRadarCoverageAndPersists()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-detection-scripts.rul"], fromCache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-detection-scripts.rul"]);
         var campaign = CreateUfoTransitCampaign(content, HalfHour, "UFO_SCRIPT_BASE", 2200);
 
         var result = campaign.Execute(new AdvanceCampaignTime(1));
@@ -26,12 +24,10 @@ public sealed class StrategicWorldDetectionScriptsTests
         Reload(content, campaign, 90, "detection-script.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CraftScriptRunsOutsideRadarRangeAfterLaunch(bool fromCache)
+    [Fact]
+    public void CraftScriptRunsOutsideRadarRangeAfterLaunch()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-detection-scripts.rul"], fromCache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-detection-scripts.rul"]);
         var snapshot = CreateUfoTransitCampaign(content, HalfHour, "UFO_SCRIPT_CRAFT", 2200).Capture()
             .WithCraft("SHIP", craft => craft with
             {
@@ -89,12 +85,10 @@ public sealed class StrategicWorldDetectionScriptsTests
         AssertTimeBlocked(campaign, reason);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GlobalScriptsRunInOrderWithoutRuleScript(bool fromCache)
+    [Fact]
+    public void GlobalScriptsRunInOrderWithoutRuleScript()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             extended:
               scripts:
                 detectUfoFromBase:
@@ -113,13 +107,11 @@ public sealed class StrategicWorldDetectionScriptsTests
         Assert.Contains(result.Events, item => item is UfoContactDetected { Hyperwave: true });
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CombinedContactScriptWorkBlocksBeforeMutation(bool fromCache)
+    [Fact]
+    public void CombinedContactScriptWorkBlocksBeforeMutation()
     {
         var code = string.Concat(Enumerable.Repeat("add detection_chance 0; ", 5000)) + "return;";
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             ufos:
               - type: UFO_SCRIPT_WORK
                 speedMax: 2200
@@ -145,13 +137,11 @@ public sealed class StrategicWorldDetectionScriptsTests
         AssertTimeBlocked(campaign, "Detection script work exceeds the supported half-hour limit.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GlobalEventProgramsShareContactWorkLimit(bool fromCache)
+    [Fact]
+    public void GlobalEventProgramsShareContactWorkLimit()
     {
         var code = string.Concat(Enumerable.Repeat("add detection_chance 0; ", 4000)) + "return;";
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             extended:
               scripts:
                 detectUfoFromBase:
@@ -176,10 +166,8 @@ public sealed class StrategicWorldDetectionScriptsTests
         AssertTimeBlocked(campaign, "Detection script work exceeds the supported half-hour limit.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void LiteralLoopsAndControlFlowMatchThePinnedVmOracle(bool fromCache)
+    [Fact]
+    public void LiteralLoopsAndControlFlowMatchThePinnedVmOracle()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("script-core");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "cases").Where(row =>
@@ -188,7 +176,7 @@ public sealed class StrategicWorldDetectionScriptsTests
             var expected = row.GetProperty("result").GetInt32();
             var code = row.GetProperty("source").GetString()!.Replace("result", "detection_chance", StringComparison.Ordinal)
                 .Replace("return detection_chance;", $"if eq detection_chance {expected}; return DETECTION_RADAR 100; end; return DETECTION_NONE 0;", StringComparison.Ordinal);
-            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
                 ufos:
                   - type: UFO_LITERAL_LOOP
                     speedMax: 2200

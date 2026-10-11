@@ -7,11 +7,9 @@ namespace Oxce.CompatibilityTests;
 public sealed partial class StrategicProductionPriceMetadataTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void InventoryLookupRolesAndMetadataMatchNativePriceQueries(bool cache, bool global)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void InventoryLookupRolesAndMetadataMatchNativePriceQueries(bool global)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var code = "var ptr RuleInventory inventory; var ptr RuleInventory same; var ptr RuleMod absent null; " +
@@ -38,15 +36,13 @@ public sealed partial class StrategicProductionPriceMetadataTests
         code += "inventory.getType value; if neq value 0; div cost_current 0; end; " +
             "inventory.isRightHand value; if neq value 0; div cost_current 0; end; " +
             "inventory.isLeftHand value; if neq value 0; div cost_current 0; end; return 7;";
-        AssertPrice(Load(cache, global, code, extraRules: definitions));
+        AssertPrice(Load(global, code, extraRules: definitions));
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void InventoryMovementPreservesNativeIdentityNullAndSignedCosts(bool cache, bool global)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void InventoryMovementPreservesNativeIdentityNullAndSignedCosts(bool global)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-inventory-cost");
         var rows = TestFixtures.Rows(oracle.RootElement, "costs");
@@ -57,16 +53,14 @@ public sealed partial class StrategicProductionPriceMetadataTests
         for (var index = 0; index < rows.Length; index++)
             code += $"rules.getRuleInventory source \"{pairs[index].Item1}\"; rules.getRuleInventory target \"{pairs[index].Item2}\"; " +
                 $"source.getMoveToCost value target; if neq value {rows[index][0].GetInt32()}; div cost_current 0; end; ";
-        AssertPrice(Load(cache, global, code + "return 7;", extraRules:
+        AssertPrice(Load(global, code + "return 7;", extraRules:
             "invs: [{id: RIGHT, costs: {LEFT: -7, GROUND: 2147483647, RIGHT: 99}}, {id: LEFT, costs: {RIGHT: -2147483648}}, {id: GROUND}]"));
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void OnlyConsumedUnsafeInventoryCallsStopBeforeTickMutation(bool cache, bool global)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void OnlyConsumedUnsafeInventoryCallsStopBeforeTickMutation(bool global)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         Assert.True(oracle.RootElement.GetProperty("missingInventoryThrows").GetBoolean());
@@ -80,7 +74,7 @@ public sealed partial class StrategicProductionPriceMetadataTests
             {
                 var code = "var ptr RuleInventory source; var ptr RuleInventory target null; var int value; rules.getRuleInventory source \"RIGHT\"; " +
                     $"if eq 1 {(consumed ? 1 : 0)}; {call} end; return 7;";
-                var content = Load(cache, global, code, extraRules: "invs: [{delete: STR_GROUND}, {id: RIGHT}, {id: LEFT}]");
+                var content = Load(global, code, extraRules: "invs: [{delete: STR_GROUND}, {id: RIGHT}, {id: LEFT}]");
                 if (!consumed) AssertPrice(content);
                 else
                 {

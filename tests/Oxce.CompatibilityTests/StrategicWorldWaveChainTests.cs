@@ -12,12 +12,10 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldWaveChainTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CountersAndRandomDrawsMatchExtractedRecursionAcrossReloads(bool fromCache)
+    [Fact]
+    public void CountersAndRandomDrawsMatchExtractedRecursionAcrossReloads()
     {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul", fromCache);
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-wave-chain");
         foreach (var example in TestFixtures.Rows(oracle.RootElement, "cases"))
         {

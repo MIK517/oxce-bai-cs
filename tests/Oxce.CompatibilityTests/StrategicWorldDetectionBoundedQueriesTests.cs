@@ -9,11 +9,9 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldDetectionBoundedQueriesTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void BooleanAndCalendarResultsComposeThroughBothCallersAndReload(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void BooleanAndCalendarResultsComposeThroughBothCallersAndReload(bool fromCraft)
     {
         TestFixtures.LoadVerifiedManifest("strategic-detection-scripts");
         var code = "var ptr RuleItem item; var ptr RuleDamageType damage; var ptr Time time; var ptr Time absent null; " +
@@ -27,16 +25,14 @@ public sealed class StrategicWorldDetectionBoundedQueriesTests
         code += "item.hasCategory power \"BOUND\"; damage.getDamageToHealth value power; " +
             "if neq value power; return DETECTION_NONE 0; end; if eq power 1; set quotient 39; div quotient power; " +
             "if neq quotient 39; return DETECTION_NONE 0; end; else; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;";
-        AssertDetectionReadScript(code, fromCache, fromCraft,
+        AssertDetectionReadScript(code, fromCraft,
             "items: [{type: BOUNDED_READ, categories: [BOUND], damageAlter: {ToHealth: 1}}]");
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void NativeSmokeResultsFeedDamageQueriesWithSignedWrap(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NativeSmokeResultsFeedDamageQueriesWithSignedWrap(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "smokeReduction"))
@@ -47,21 +43,19 @@ public sealed class StrategicWorldDetectionBoundedQueriesTests
                 "rules.getRuleItem item \"SMOKE_QUERY\"; item.getDamageType damage; alias.getSmokeReduction power; " +
                 "damage.getDamageToHealth value power; " +
                 $"if neq value {(int)(0.5f * expected)}; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
-                fromCache, fromCraft,
+                fromCraft,
                 $"maxViewDistance: {row[0].GetInt32()}\nitems: [{{type: SMOKE_QUERY, damageAlter: {{ToHealth: 0.5}}}}]");
         }
         AssertDetectionReadScript("var ptr RuleItem item; var ptr RuleDamageType damage; var int power distance; var int value; " +
             "rules.getRuleItem item \"SMOKE_QUERY\"; item.getDamageType damage; rules.getSmokeReduction power; " +
-            "damage.getDamageToHealth value power; return DETECTION_RADAR 100;", fromCache, fromCraft,
+            "damage.getDamageToHealth value power; return DETECTION_RADAR 100;", fromCraft,
             "maxViewDistance: 2147483647\nitems: [{type: SMOKE_QUERY, damageAlter: {ToHealth: 0.5}}]");
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void NullDynamicScalarReadersOverwriteUnboundedPowerBeforeConversions(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NullDynamicScalarReadersOverwriteUnboundedPowerBeforeConversions(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "nullMemberOutputs"))
@@ -85,20 +79,18 @@ public sealed class StrategicWorldDetectionBoundedQueriesTests
                 Read("absentCraft", method);
             foreach (var field in oracle.RootElement.GetProperty("craftStats").EnumerateObject()) Read("absentCraft", field.Name);
         }
-        AssertDetectionReadScript(code + "return DETECTION_RADAR 100;", fromCache, fromCraft,
+        AssertDetectionReadScript(code + "return DETECTION_RADAR 100;", fromCraft,
             "items: [{type: NULL_SCALAR_QUERY, damageAlter: {ToHealth: 1}}]");
 
         void Read(string receiver, string method) => code += $"set power detection_chance; {receiver}.{method} power; " +
             "damage.getDamageToHealth value power; if neq value 0; return DETECTION_NONE 0; end; ";
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void NullableDynamicReceiversRetainUnknownRangesAndResourceLimits(bool fromCache)
+    [Fact]
+    public void NullableDynamicReceiversRetainUnknownRangesAndResourceLimits()
     {
         TestFixtures.LoadVerifiedManifest("strategic-detection-scripts");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"]);
         foreach (var nullable in new[] { false, true })
         {
             var code = "var ptr Ufo source null; var int power; " +
@@ -119,11 +111,9 @@ public sealed class StrategicWorldDetectionBoundedQueriesTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void CallerAndValidatedUfoDomainsComposeWithNativeDamageConversions(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CallerAndValidatedUfoDomainsComposeWithNativeDamageConversions(bool fromCraft)
     {
         TestFixtures.LoadVerifiedManifest("strategic-detection-scripts");
         TestFixtures.LoadVerifiedManifest("strategic-world");
@@ -133,7 +123,7 @@ public sealed class StrategicWorldDetectionBoundedQueriesTests
             "damage.getDamageToHealth value already_tracked; if neq value already_tracked; return DETECTION_NONE 0; end; " +
             "ufo.getAltitude power; damage.getDamageToHealth value power; if neq value power; return DETECTION_NONE 0; end; " +
             "ufo.getStatus power; damage.getDamageToHealth value power; if neq value power; return DETECTION_NONE 0; end; " +
-            "return DETECTION_RADAR 100;", fromCache, fromCraft,
+            "return DETECTION_RADAR 100;", fromCraft,
             "items: [{type: CALLER_RANGE_QUERY, damageAlter: {ToHealth: 1}}]");
     }
 

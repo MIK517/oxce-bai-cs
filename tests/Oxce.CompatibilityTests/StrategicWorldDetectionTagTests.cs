@@ -11,16 +11,14 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldDetectionTagTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SoldierAndSkillRuleTagsRetainDistinctIdentityAndReload(bool fromCache)
+    [Fact]
+    public void SoldierAndSkillRuleTagsRetainDistinctIdentityAndReload()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var rows = TestFixtures.Rows(oracle.RootElement, "tagValues");
         var soldierValue = rows[2][1].GetInt32();
         var skillValue = rows[3][1].GetInt32();
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             extended:
               tags:
                 RuleSoldier: {DETECT_SOLDIER: int, DETECT_SOLDIER_ABSENT: int}
@@ -73,16 +71,14 @@ public sealed class StrategicWorldDetectionTagTests
         Reload(content, campaign, 198, "soldier-skill-tags-after.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ItemAndArmorRuleTagsRetainTypedOwnersAndReload(bool fromCache)
+    [Fact]
+    public void ItemAndArmorRuleTagsRetainTypedOwnersAndReload()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var rows = TestFixtures.Rows(oracle.RootElement, "tagValues");
         var itemValue = rows[2][1].GetInt32();
         var armorValue = rows[3][1].GetInt32();
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             extended:
               tags:
                 RuleItem: {DETECT_ITEM: int, DETECT_ITEM_ABSENT: int}
@@ -132,14 +128,12 @@ public sealed class StrategicWorldDetectionTagTests
         Reload(content, campaign, 197, "item-armor-tags-after.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void UfoInstanceTagAndAbsentTagExecuteAcrossReloads(bool fromCache)
+    [Fact]
+    public void UfoInstanceTagAndAbsentTagExecuteAcrossReloads()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var value = TestFixtures.Rows(oracle.RootElement, "tagValues")[2][1].GetInt32();
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-detection-tags.rul"], fromCache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-detection-tags.rul"]);
         var snapshot = CreateUfoTransitCampaign(content, HalfHour, "UFO_SCRIPT_TAGS", 2200).Capture();
         snapshot = snapshot with
         {
@@ -157,12 +151,10 @@ public sealed class StrategicWorldDetectionTagTests
         Reload(content, campaign, 101, "ufo-detection-tags-after.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CraftInstanceTagsExecuteAndPersist(bool fromCache)
+    [Fact]
+    public void CraftInstanceTagsExecuteAndPersist()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-detection-tags.rul"], fromCache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-detection-tags.rul"]);
         var snapshot = CreateUfoTransitCampaign(content, HalfHour, "UFO_CRAFT_TAGS", 2200).Capture()
             .WithCraft("SHIP", craft => craft with
             {
@@ -191,11 +183,9 @@ public sealed class StrategicWorldDetectionTagTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void RuleAndGlobalTagsKeepOwnerIdentityAcrossCacheAndReload(bool fromCache, bool craftOnly)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RuleAndGlobalTagsKeepOwnerIdentityAcrossCacheAndReload(bool craftOnly)
     {
         var extraRules = """
             extended:
@@ -249,7 +239,7 @@ public sealed class StrategicWorldDetectionTagTests
                     return DETECTION_RADAR 100;
             """;
         if (craftOnly) extraRules = extraRules.Replace("return DETECTION_HYPERWAVE 100;", "return DETECTION_NONE 0;", StringComparison.Ordinal);
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-detection-tags.rul"], fromCache, extraRules);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-detection-tags.rul"], extraRules);
         var snapshot = CreateUfoTransitCampaign(content, HalfHour, "UFO_RULE_GLOBAL_TAGS", 2200).Capture()
             .WithCraft("SHIP", craft => craft with
             {
@@ -275,16 +265,14 @@ public sealed class StrategicWorldDetectionTagTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void UfoTagReadsShareTheHalfHourWorkLimit(bool fromCache, bool loop)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void UfoTagReadsShareTheHalfHourWorkLimit(bool loop)
     {
         var tags = string.Join(", ", Enumerable.Range(0, 2048).Select(index => $"DETECT_{index}: int"));
         var code = loop ? "loop var i 512; ufo.getTag detection_chance Tag.DETECT_2047; end; return;"
             : string.Concat(Enumerable.Repeat("ufo.getTag detection_chance Tag.DETECT_2047; ", 512)) + "return;";
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             extended:
               tags:
                 Ufo: { {{tags}} }
@@ -311,12 +299,10 @@ public sealed class StrategicWorldDetectionTagTests
         AssertTimeBlocked(campaign, "Detection script work exceeds the supported half-hour limit.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CraftTagsSurviveOrderedTransferAndHourlyArrival(bool fromCache)
+    [Fact]
+    public void CraftTagsSurviveOrderedTransferAndHourlyArrival()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-detection-tags.rul"], fromCache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-detection-tags.rul"]);
         var snapshot = CreateSnapshot(content, "Craft tag transfer").WithCraft("SHIP", craft => craft with
         {
             ScriptValues = [new("DETECT_CRAFT", "int", 37)],

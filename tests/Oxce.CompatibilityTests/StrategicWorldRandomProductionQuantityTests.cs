@@ -13,16 +13,13 @@ namespace Oxce.CompatibilityTests;
 public sealed partial class StrategicWorldHuntingTests
 {
     [Theory]
-    [InlineData(false, 1, 0)]
-    [InlineData(true, 1, 0)]
-    [InlineData(false, 0, 1)]
-    [InlineData(true, 0, 1)]
-    [InlineData(false, 1, 1)]
-    [InlineData(true, 1, 1)]
-    public void RandomFuelQuantitiesPermitCommonLaunchAndPreserveActualHistory(bool cache, int minimum, int stock)
+    [InlineData(1, 0)]
+    [InlineData(0, 1)]
+    [InlineData(1, 1)]
+    public void RandomFuelQuantitiesPermitCommonLaunchAndPreserveActualHistory(int minimum, int stock)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Load(cache, FuelQuantityRules(minimum));
+        var content = Load(FuelQuantityRules(minimum));
         HashSet<int> choices = [];
         for (ulong seed = 1; seed <= 12; seed++)
         {
@@ -53,15 +50,13 @@ public sealed partial class StrategicWorldHuntingTests
         Assert.Equal(2, choices.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void RandomFuelQuantitiesCrossingLaunchEligibilityRemainAtomic(bool cache)
+    [Fact]
+    public void RandomFuelQuantitiesCrossingLaunchEligibilityRemainAtomic()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         var rows = TestFixtures.Rows(oracle.RootElement, "productionFuelQuantityRows").Where(row => row[0].GetInt32() == 0 && row[1].GetInt32() == 0).ToArray();
         Assert.Equal(2, rows.Select(row => row[7].GetString()).Distinct().Count());
-        var content = Load(cache, FuelQuantityRules(0));
+        var content = Load(FuelQuantityRules(0));
         var campaign = Reload(content, CampaignState.Restore(FuelQuantitySnapshot(content, 0), content, new SplitMix64RandomSource(81)), 81, "random-fuel-quantity-guard.sav");
         AssertTimeBlocked(campaign, "UFO retargeting requires stochastic craft ammunition stock forecasts.");
     }
@@ -70,7 +65,7 @@ public sealed partial class StrategicWorldHuntingTests
     public void RandomFuelQuantityProjectionAddsSparseBoundsWithoutCampaignMutation()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = Load(false, FuelQuantityRules(1));
+        var content = Load(FuelQuantityRules(1));
         var campaign = CampaignState.Restore(FuelQuantitySnapshot(content, 0), content, new SplitMix64RandomSource(81));
         var before = campaign.Capture();
         var crafts = campaign.BaseStates.ToDictionary(owner => owner.Id, owner => owner.Crafts.ToList());
@@ -89,18 +84,14 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, 0, 1)]
-    [InlineData(true, 0, 1)]
-    [InlineData(false, 0, 2)]
-    [InlineData(true, 0, 2)]
-    [InlineData(false, 1, 1)]
-    [InlineData(true, 1, 1)]
-    [InlineData(false, 1, 2)]
-    [InlineData(true, 1, 2)]
-    public void DelayedFuelQuantitiesPreserveActualTransfersThroughArrival(bool cache, int minimum, int stock)
+    [InlineData(0, 1)]
+    [InlineData(0, 2)]
+    [InlineData(1, 1)]
+    [InlineData(1, 2)]
+    public void DelayedFuelQuantitiesPreserveActualTransfersThroughArrival(int minimum, int stock)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Load(cache, FuelQuantityRules(minimum, 2));
+        var content = Load(FuelQuantityRules(minimum, 2));
         HashSet<int> choices = [];
         for (ulong seed = 1; seed <= 12; seed++)
         {
@@ -163,13 +154,11 @@ public sealed partial class StrategicWorldHuntingTests
         Assert.Equal(2, choices.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DelayedFuelQuantityRangesReserveActualTransferCountAndUpperCapacity(bool cache)
+    [Fact]
+    public void DelayedFuelQuantityRangesReserveActualTransferCountAndUpperCapacity()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = Load(cache, FuelQuantityRules(0, 2));
+        var content = Load(FuelQuantityRules(0, 2));
         var initial = FuelQuantitySnapshot(content, 1);
         initial = initial with { NextIds = new Dictionary<string, int>(initial.NextIds) { ["oxcePortTransfer"] = int.MaxValue - 2 } };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
@@ -192,7 +181,7 @@ public sealed partial class StrategicWorldHuntingTests
     public void DelayedFuelQuantityProjectionLeavesCurrentStockAndUncertaintyUntouched()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = Load(false, FuelQuantityRules(0, 2));
+        var content = Load(FuelQuantityRules(0, 2));
         var campaign = CampaignState.Restore(FuelQuantitySnapshot(content, 1), content, new SplitMix64RandomSource(81));
         var before = campaign.Capture();
         var crafts = campaign.BaseStates.ToDictionary(owner => owner.Id, owner => owner.Crafts.ToList());
@@ -206,14 +195,12 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void SharedFuelQuantityRangesPreserveSavedCraftOrder(bool cache, bool reverse)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SharedFuelQuantityRangesPreserveSavedCraftOrder(bool reverse)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Load(cache, FuelQuantityRules(1));
+        var content = Load(FuelQuantityRules(1));
         HashSet<int> choices = [];
         for (ulong seed = 1; seed <= 12; seed++)
         {
@@ -247,31 +234,26 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void SharedFuelQuantityThresholdsStopBeforeSecondCraftChanges(bool cache, bool reverse)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SharedFuelQuantityThresholdsStopBeforeSecondCraftChanges(bool reverse)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         var rows = TestFixtures.Rows(oracle.RootElement, "productionSharedFuelQuantityRows").Where(row => row[0].GetInt32() == (reverse ? 1 : 0) && row[1].GetInt32() == 0).ToArray();
         Assert.Equal(2, rows.Select(row => row[11].GetString()).Distinct().Count());
-        var content = Load(cache, FuelQuantityRules(1));
+        var content = Load(FuelQuantityRules(1));
         var campaign = Reload(content, CampaignState.Restore(SharedFuelQuantitySnapshot(content, 0, reverse), content, new SplitMix64RandomSource(81)), 81, "shared-fuel-guard.sav");
         AssertTimeBlocked(campaign, "UFO retargeting requires stochastic craft ammunition stock forecasts.");
     }
 
     [Theory]
-    [InlineData(false, 1, 1)]
-    [InlineData(true, 1, 1)]
-    [InlineData(false, 1, 2)]
-    [InlineData(true, 1, 2)]
-    [InlineData(false, 2, 2)]
-    [InlineData(true, 2, 2)]
-    public void SharedMaterialQuantityRangesPreserveReachedStartsAndFuel(bool cache, int required, int stock)
+    [InlineData(1, 1)]
+    [InlineData(1, 2)]
+    [InlineData(2, 2)]
+    public void SharedMaterialQuantityRangesPreserveReachedStartsAndFuel(int required, int stock)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Load(cache, SharedMaterialQuantityRules(required));
+        var content = Load(SharedMaterialQuantityRules(required));
         HashSet<int> choices = [];
         for (ulong seed = 1; seed <= 12; seed++)
         {
@@ -305,19 +287,16 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, 1, 0)]
-    [InlineData(true, 1, 0)]
-    [InlineData(false, 2, 0)]
-    [InlineData(true, 2, 0)]
-    [InlineData(false, 2, 1)]
-    [InlineData(true, 2, 1)]
-    public void SharedMaterialQuantityThresholdsRemainAtomic(bool cache, int required, int stock)
+    [InlineData(1, 0)]
+    [InlineData(2, 0)]
+    [InlineData(2, 1)]
+    public void SharedMaterialQuantityThresholdsRemainAtomic(int required, int stock)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         var rows = TestFixtures.Rows(oracle.RootElement, "productionSharedMaterialQuantityRows").Where(row => row[0].GetInt32() == required && row[1].GetInt32() == stock).ToArray();
         Assert.Equal(2, rows.Select(row => row[10].GetString()).Distinct().Count());
         if (required == 2 && stock == 0) Assert.Equal(2, rows.Select(row => row[6].GetInt32()).Distinct().Count());
-        var content = Load(cache, SharedMaterialQuantityRules(required));
+        var content = Load(SharedMaterialQuantityRules(required));
         var campaign = Reload(content, CampaignState.Restore(SharedMaterialQuantitySnapshot(content, stock), content, new SplitMix64RandomSource(81)), 81, "shared-material-guard.sav");
         AssertTimeBlocked(campaign, required == 2 && stock == 0 ? "UFO retargeting requires stochastic production material forecasts."
             : "UFO retargeting requires stochastic craft ammunition stock forecasts.");

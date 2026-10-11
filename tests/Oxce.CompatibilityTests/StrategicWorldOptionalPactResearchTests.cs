@@ -13,15 +13,11 @@ public sealed class StrategicWorldOptionalPactResearchTests
     private static readonly int[] IneligibleFlags = [1, 2];
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    public void OptionalPactCancellationPreservesAllFlagsAndLaterInfiltrationCallers(bool cache, int caller)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void OptionalPactCancellationPreservesAllFlagsAndLaterInfiltrationCallers(int caller)
     {
         using var cleanup = TestFixtures.ReadVerifiedExpected("strategic-alien-base-cleanup");
         using var infiltration = TestFixtures.ReadVerifiedExpected("strategic-infiltration");
@@ -30,9 +26,9 @@ public sealed class StrategicWorldOptionalPactResearchTests
         TestFixtures.LoadVerifiedManifest("strategic-infiltration-region");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
-        var content = Content(cache, caller);
-        var deletedContent = Content(cache, caller, "CORE");
-        var survivedContent = Content(cache, caller, "");
+        var content = Content(caller);
+        var deletedContent = Content(caller, "CORE");
+        var survivedContent = Content(caller, "");
         for (var flags = 0; flags < 8; flags++)
         {
             var deletedSeen = false;
@@ -86,15 +82,12 @@ public sealed class StrategicWorldOptionalPactResearchTests
     }
 
     [Theory]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    public void PossibleNewEligibilityReservesBirthCapacityBeforeDailyPactMutation(bool cache, int caller)
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void PossibleNewEligibilityReservesBirthCapacityBeforeDailyPactMutation(int caller)
     {
-        var content = Content(cache, caller);
+        var content = Content(caller);
         // Both initial pact states are ineligible, but source deletion makes them eligible.
         foreach (var flags in IneligibleFlags)
         {
@@ -108,14 +101,12 @@ public sealed class StrategicWorldOptionalPactResearchTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DisabledPactCancellationKeepsOriginalEligibilityAndUnusedMarkerCapacity(bool cache)
+    [Fact]
+    public void DisabledPactCancellationKeepsOriginalEligibilityAndUnusedMarkerCapacity()
     {
-        var content = Content(cache, 1, cancelPacts: false);
-        var deletedContent = Content(cache, 1, "CORE", cancelPacts: false);
-        var survivedContent = Content(cache, 1, "", cancelPacts: false);
+        var content = Content(1, cancelPacts: false);
+        var deletedContent = Content(1, "CORE", cancelPacts: false);
+        var survivedContent = Content(1, "", cancelPacts: false);
         for (var flags = 0; flags < 8; flags++)
         {
             var deletedSeen = false;
@@ -152,13 +143,11 @@ public sealed class StrategicWorldOptionalPactResearchTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SeventyTwoHoursPreserveSelectedPactsAcrossBatchesReloadsAndHuntingCleanup(bool cache)
+    [Fact]
+    public void SeventyTwoHoursPreserveSelectedPactsAcrossBatchesReloadsAndHuntingCleanup()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
-        var content = Content(cache, 3);
+        var content = Content(3);
         var deletedSeen = false;
         var survivedSeen = false;
         for (ulong seed = 1; seed <= 8; seed++)
@@ -193,8 +182,8 @@ public sealed class StrategicWorldOptionalPactResearchTests
         Assert.True(survivedSeen);
     }
 
-    internal static RuntimeContent Content(bool cache, int caller, string code = "BONUS", bool cancelPacts = true) =>
-        StrategicReadinessTestContent.Load(cancelPacts ? ["strategic-world.rul", "strategic-alien-base-cleanup-pacts.rul"] : ["strategic-world.rul"], cache, $$$"""
+    internal static RuntimeContent Content(int caller, string code = "BONUS", bool cancelPacts = true) =>
+        StrategicReadinessTestContent.Load(cancelPacts ? ["strategic-world.rul", "strategic-alien-base-cleanup-pacts.rul"] : ["strategic-world.rul"], $$$"""
         research:
           - {name: UNLOCK, cost: 1}
           - {name: CORE, cost: 1, getOneFree: [BONUS, OTHER]}

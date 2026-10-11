@@ -10,12 +10,10 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldStockResearchTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void StockPresenceAlternativesStayConsistentAcrossRepeatedGrants(bool cache)
+    [Fact]
+    public void StockPresenceAlternativesStayConsistentAcrossRepeatedGrants()
     {
-        var content = StrategicWorldSiteResearchItemTests.Content(cache, 2);
+        var content = StrategicWorldSiteResearchItemTests.Content(2);
         var campaign = CampaignState.Restore(StrategicWorldSiteResearchItemTests.Snapshot(content, "refuel", 2), content, new SplitMix64RandomSource(17));
         var before = campaign.Capture();
         var item = content.RuntimeRules.Items.GetRequired("SUPPLY");
@@ -32,12 +30,10 @@ public sealed class StrategicWorldStockResearchTests
         Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ExcessiveStockAlternativesAndWorkFailWithoutCampaignMutation(bool cache)
+    [Fact]
+    public void ExcessiveStockAlternativesAndWorkFailWithoutCampaignMutation()
     {
-        var content = StrategicWorldSiteResearchItemTests.Content(cache, 2, "items:\n" +
+        var content = StrategicWorldSiteResearchItemTests.Content(2, "items:\n" +
             string.Join('\n', Enumerable.Range(0, 8).Select(index => "  - {type: STOCK_" + index + "}")));
         var campaign = CampaignState.Restore(StrategicWorldSiteResearchItemTests.Snapshot(content, "refuel", 2), content, new SplitMix64RandomSource(17));
         var before = campaign.Capture();
@@ -53,10 +49,8 @@ public sealed class StrategicWorldStockResearchTests
         Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void PossiblyEmptyStocksCannotSuppressUnavailableDespawnOrDueEventEffects(bool cache)
+    [Fact]
+    public void PossiblyEmptyStocksCannotSuppressUnavailableDespawnOrDueEventEffects()
     {
         const string maintenance = """
             items:
@@ -64,12 +58,12 @@ public sealed class StrategicWorldStockResearchTests
             craftWeapons:
               - {type: UNCERTAIN_GUN, ammoMax: 4, rearmRate: 6, bulletSaving: true, launcher: SUPPLY, clip: SUPPLY}
             """;
-        var content = StrategicWorldSiteResearchItemTests.Content(cache, 2, maintenance, eventInterrupt: "AUTO");
+        var content = StrategicWorldSiteResearchItemTests.Content(2, maintenance, eventInterrupt: "AUTO");
         var initial = StrategicWorldSiteResearchItemTests.Snapshot(content, "refuel", 2) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
         initial = initial.WithCraft("SHIP_FUEL_ITEM", craft => craft with
         { RuleId = "SHIP", Logistics = craft.Logistics! with { Status = "STR_REARMING", Weapons = [new("UNCERTAIN_GUN", 0, Rearming: true)] } });
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), "Mission site despawn requires research or event payloads.");
-        content = StrategicWorldSiteResearchItemTests.Content(cache, 2, maintenance, eventInterrupt: "CORE");
+        content = StrategicWorldSiteResearchItemTests.Content(2, maintenance, eventInterrupt: "CORE");
         AssertTimeBlocked(CampaignState.Restore(initial with
         { World = initial.World with { Events = [new GeoscapeEventSnapshot("STOCK_AUTO_EVENT", 30)] } }, content, new SplitMix64RandomSource(17)),
             "Strategic event consequences require campaign event execution (Phase 6 branch 6).");

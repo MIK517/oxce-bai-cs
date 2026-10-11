@@ -11,13 +11,11 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicMissionBaseTargetTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void BaseTargetsMatchExtractedReferenceAndReload(bool cache)
+    [Fact]
+    public void BaseTargetsMatchExtractedReferenceAndReload()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-mission-base-target");
-        var content = Load(cache);
+        var content = Load();
         var rows = new List<object[]>();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows").Where(row => !row[0].GetString()!.StartsWith("implicit", StringComparison.Ordinal)))
         {
@@ -43,12 +41,10 @@ public sealed class StrategicMissionBaseTargetTests
             CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ExhaustedBaseTargetsSetFalseLabelAndAllowLaterNegativeConditional(bool cache)
+    [Fact]
+    public void ExhaustedBaseTargetsSetFalseLabelAndAllowLaterNegativeConditional()
     {
-        var content = Load(cache);
+        var content = Load();
         var initial = Snapshot(content, "busy") with { MonthsPassed = 19 };
         var campaign = CampaignState.Restore(initial, content, new MinimumChoices());
         Assert.Empty(campaign.Execute(new ScheduleMonthlyWorldMissions(0, 0)).Events);
@@ -58,12 +54,10 @@ public sealed class StrategicMissionBaseTargetTests
         Reload(content, campaign, 17, "mission-base-target-failure.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void BaseTargetPreflightBoundsCombinedCandidateChecks(bool cache)
+    [Fact]
+    public void BaseTargetPreflightBoundsCombinedCandidateChecks()
     {
-        var content = Load(cache);
+        var content = Load();
         var initial = Snapshot(content, "duplicates");
         var owner = initial.Bases[0];
         initial = initial with
@@ -82,12 +76,10 @@ public sealed class StrategicMissionBaseTargetTests
         Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void MixedBaseOddsSupportBothOrdinaryAndTargetedSelection(bool cache)
+    [Fact]
+    public void MixedBaseOddsSupportBothOrdinaryAndTargetedSelection()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-mission-scripts.rul"], cache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-mission-scripts.rul"]);
         var initial = CreateSnapshot(content, "Mixed targeting") with { MonthsPassed = 3, RandomState = 17 };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         Assert.Empty(campaign.Execute(new ScheduleMonthlyWorldMissions(0, 0)).Events);
@@ -117,10 +109,10 @@ public sealed class StrategicMissionBaseTargetTests
         }).WithNextId("ALIEN_MISSIONS", 20);
     }
 
-    private static Oxce.Mods.Rulesets.Content.RuntimeContent Load(bool cache)
+    private static Oxce.Mods.Rulesets.Content.RuntimeContent Load()
     {
         TestFixtures.LoadVerifiedManifest("strategic-mission-base-target");
-        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-mission-base-target.rul"], cache);
+        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-mission-base-target.rul"]);
     }
 
     private sealed class MinimumChoices : IStatefulRandomSource

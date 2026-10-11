@@ -12,16 +12,14 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldFlightFuelCapTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void FlightFuelCapsRefundsAndFreePatrolMatchNativeAndPersist(bool cache)
+    [Fact]
+    public void FlightFuelCapsRefundsAndFreePatrolMatchNativeAndPersist()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var itemFuel in new[] { false, true })
             foreach (var freePatrol in new[] { false, true })
             {
-                var content = Content(cache, itemFuel, freePatrol);
+                var content = Content(itemFuel, freePatrol);
                 foreach (var row in TestFixtures.Rows(oracle.RootElement, "flightFuelCapRows")
                     .Where(row => row[0].GetBoolean() == itemFuel && row[2].GetBoolean() == freePatrol))
                 {
@@ -49,12 +47,10 @@ public sealed class StrategicWorldFlightFuelCapTests
             }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void RefundStockBoundsAreAggregatedAndAtomic(bool cache)
+    [Fact]
+    public void RefundStockBoundsAreAggregatedAndAtomic()
     {
-        var content = Content(cache, true, false);
+        var content = Content(true, false);
         var initial = Snapshot(content, true, 500, 245, 0);
         initial = initial with { Bases = [initial.Bases[0] with { Items = new Dictionary<string, int> { ["SUPPLY"] = int.MaxValue - 3 } }] };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
@@ -67,18 +63,16 @@ public sealed class StrategicWorldFlightFuelCapTests
         overflow = initial.WithCraft("SHIP", craft => craft with { Logistics = craft.Logistics! with { ExcessFuel = int.MaxValue } });
         AssertTimeBlocked(CampaignState.Restore(overflow, content, new SplitMix64RandomSource(17)),
             "Craft flight fuel values exceed the supported range.");
-        content = Content(cache, true, false, 0);
+        content = Content(true, false, 0);
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, true, 500, 245, 0), content, new SplitMix64RandomSource(17)),
             "Item flight fuel refunds require a positive refuel rate.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void HourlyArrivalAndFlightRefundShareOneStockCapacity(bool cache)
+    [Fact]
+    public void HourlyArrivalAndFlightRefundShareOneStockCapacity()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = Content(cache, true, false);
+        var content = Content(true, false);
         var initial = Snapshot(content, true, 500, 245, 0) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
         initial = initial with
         {
@@ -100,25 +94,21 @@ public sealed class StrategicWorldFlightFuelCapTests
             "Craft flight fuel refunds exceed the supported stock range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void UnsafeFlightArithmeticIsRefusedBeforeForecastsOrTickMutation(bool cache)
+    [Fact]
+    public void UnsafeFlightArithmeticIsRefusedBeforeForecastsOrTickMutation()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = Content(cache, false, false);
+        var content = Content(false, false);
         var initial = Snapshot(content, true, -100, int.MaxValue, 0);
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "Craft flight fuel values exceed the supported range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void RelaunchedFlightRefundIsValidatedBeforeHuntingForecast(bool cache)
+    [Fact]
+    public void RelaunchedFlightRefundIsValidatedBeforeHuntingForecast()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = Content(cache, true, false, 0);
+        var content = Content(true, false, 0);
         var initial = Snapshot(content, true, 500, 245, 0) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
         initial = initial.WithCraft("SHIP", craft => craft with
         {
@@ -136,13 +126,11 @@ public sealed class StrategicWorldFlightFuelCapTests
             "Item flight fuel refunds require a positive refuel rate.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void InstalledDisabledWeaponsContributeToFlightFuelCapacityAndReload(bool cache)
+    [Fact]
+    public void InstalledDisabledWeaponsContributeToFlightFuelCapacityAndReload()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             craftWeapons:
               - {type: FLIGHT_FUEL_BONUS, ammoMax: 0, launcher: SUPPLY, stats: {fuelMax: 50, soldiers: 2147483647}}
             """, finalRules: "crafts: [{type: SHIP, fuelMax: 0, refuelItem: SUPPLY, refuelRate: 40, patrolWithoutFuel: false}]\n");
@@ -162,14 +150,11 @@ public sealed class StrategicWorldFlightFuelCapTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OrdinaryRelaunchSubtractionIsValidatedWithoutAnyHunter(bool cache)
+    [Fact]
+    public void OrdinaryRelaunchSubtractionIsValidatedWithoutAnyHunter()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache,
-            finalRules: "crafts: [{type: SHIP, speedMax: -100, fuelMax: 100, refuelRate: 0}]\n");
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], finalRules: "crafts: [{type: SHIP, speedMax: -100, fuelMax: 100, refuelRate: 0}]\n");
         var initial = Snapshot(content, true, 0, int.MaxValue, 0) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
         initial = initial.WithCraft("SHIP", craft => craft with
         {
@@ -185,8 +170,8 @@ public sealed class StrategicWorldFlightFuelCapTests
             "Craft flight fuel values exceed the supported range.");
     }
 
-    internal static RuntimeContent Content(bool cache, bool itemFuel, bool freePatrol, int rate = 40) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, $$$"""
+    internal static RuntimeContent Content(bool itemFuel, bool freePatrol, int rate = 40) =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], $$$"""
             crafts:
               - {type: SHIP, speedMax: 6000, fuelMax: 100, refuelRate: {{{rate}}}, patrolWithoutFuel: {{{freePatrol.ToString().ToLowerInvariant()}}}{{{(itemFuel ? ", refuelItem: SUPPLY" : "")}}}}
             """, extraRulesAfterOverlays: true);

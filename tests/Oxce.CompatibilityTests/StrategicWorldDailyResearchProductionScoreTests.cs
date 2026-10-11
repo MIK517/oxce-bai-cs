@@ -12,18 +12,14 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldDailyResearchProductionScoreTests
 {
     [Theory]
-    [InlineData(false, 0, false)]
-    [InlineData(true, 0, false)]
-    [InlineData(false, 1, false)]
-    [InlineData(true, 1, false)]
-    [InlineData(false, 0, true)]
-    [InlineData(true, 0, true)]
-    [InlineData(false, 1, true)]
-    [InlineData(true, 1, true)]
-    public void GuaranteedDailyScoreRangeComposesWithActualProductionAndReloads(bool cache, int mode, bool stopped)
+    [InlineData(0, false)]
+    [InlineData(1, false)]
+    [InlineData(0, true)]
+    [InlineData(1, true)]
+    public void GuaranteedDailyScoreRangeComposesWithActualProductionAndReloads(int mode, bool stopped)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Content(cache, mode, stopped);
+        var content = Content(mode, stopped);
         HashSet<int> seen = [];
         for (ulong seed = 1; seed <= 12; seed++)
         {
@@ -55,19 +51,17 @@ public sealed class StrategicWorldDailyResearchProductionScoreTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    public void UnsafeProductionOrUnguaranteedOffsetStillRefusesTheWholeTick(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(1)]
+    public void UnsafeProductionOrUnguaranteedOffsetStillRefusesTheWholeTick(int mode)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = Content(cache, mode, false);
+        var content = Content(mode, false);
         var initial = Snapshot(content, 17, mode);
         AssertTimeBlocked(CampaignState.Restore(initial with
         { Bases = [initial.Bases[0] with { Productions = [initial.Bases[0].Productions[0] with { Assigned = 5, Amount = 5 }] }] }, content, new SplitMix64RandomSource(17)),
             "Research and production scores exceed the supported range.");
-        content = Content(cache, mode, false, uncertainOffset: true);
+        content = Content(mode, false, uncertainOffset: true);
         initial = Snapshot(content, 17, mode);
         initial = initial with
         {
@@ -78,8 +72,8 @@ public sealed class StrategicWorldDailyResearchProductionScoreTests
             "Research and production scores exceed the supported range.");
     }
 
-    internal static RuntimeContent Content(bool cache, int mode, bool stopped, bool uncertainOffset = false, bool withSite = false) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+    internal static RuntimeContent Content(int mode, bool stopped, bool uncertainOffset = false, bool withSite = false) =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul"], $$$"""
             crafts: [{type: SHIP, fuelMax: 1000, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]
             ufos: [{type: UFO_HUNTER, radarRange: 20000}]
             facilities:

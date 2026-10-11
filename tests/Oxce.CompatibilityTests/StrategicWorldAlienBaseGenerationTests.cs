@@ -14,13 +14,11 @@ namespace Oxce.CompatibilityTests;
 
 public sealed partial class StrategicWorldAlienBaseGenerationTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GenerationAndRandomRangesMatchExtractedReference(bool cache)
+    [Fact]
+    public void GenerationAndRandomRangesMatchExtractedReference()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-generation");
-        var content = Load(cache);
+        var content = Load();
         var rows = new List<object[]>();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows"))
         {
@@ -73,12 +71,10 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void MissionLinksAndCountersSurviveRepeatedRewritesWithoutResurrectingDeletedState(bool cache)
+    [Fact]
+    public void MissionLinksAndCountersSurviveRepeatedRewritesWithoutResurrectingDeletedState()
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Snapshot(content, "local");
         var campaign = CampaignState.Restore(snapshot, content, new MinimumChoices());
         AdvanceOne(campaign);
@@ -104,12 +100,10 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         Assert.Equal(1, reloaded.Capture().World.AlienBases[0].GenMissionCount);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SeventyTwoHoursComposeGenerationCountdownCleanupAndPersistentLimits(bool cache)
+    [Fact]
+    public void SeventyTwoHoursComposeGenerationCountdownCleanupAndPersistentLimits()
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Snapshot(content, "short");
         var campaign = CampaignState.Restore(snapshot, content, new MinimumChoices());
         AdvanceOne(campaign);
@@ -149,12 +143,10 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         Assert.Equal(generates ? 1 : 0, campaign.Capture().World.Missions.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GeneratedSupplyWavesCompleteWithoutObjectsOrSpawnTowardRegionalDestinations(bool cache)
+    [Fact]
+    public void GeneratedSupplyWavesCompleteWithoutObjectsOrSpawnTowardRegionalDestinations()
     {
-        var content = Load(cache);
+        var content = Load();
         var campaign = CampaignState.Restore(Snapshot(content, "local"), content, new MinimumChoices());
         AdvanceOne(campaign);
         var after = campaign.Capture();
@@ -203,13 +195,11 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, mission), content, new MinimumChoices()), reason);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ImmediatePatrolGenerationSupportsBothRoundedCountdownOutcomes(bool cache)
+    [Fact]
+    public void ImmediatePatrolGenerationSupportsBothRoundedCountdownOutcomes()
     {
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
-        var content = Load(cache);
+        var content = Load();
         var bornSeen = false;
         var delayedSeen = false;
         for (ulong seed = 1; seed <= 32; seed++)
@@ -282,12 +272,10 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         AdvanceOne(CampaignState.Restore(snapshot, content, new MinimumChoices()));
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ImmediateGeneratedNoObjectWavesCompleteInTheirCreationTick(bool cache)
+    [Fact]
+    public void ImmediateGeneratedNoObjectWavesCompleteInTheirCreationTick()
     {
-        var content = Load(cache);
+        var content = Load();
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-generation");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "immediateRows"))
         {
@@ -309,10 +297,10 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             "Immediate mission waves exceed the supported work limit.");
     }
 
-    private static RuntimeContent Load(bool cache = false)
+    private static RuntimeContent Load()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
-        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-generation.rul"], cache);
+        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-generation.rul"]);
     }
 
     private static CampaignSnapshot Snapshot(RuntimeContent content, string name) =>

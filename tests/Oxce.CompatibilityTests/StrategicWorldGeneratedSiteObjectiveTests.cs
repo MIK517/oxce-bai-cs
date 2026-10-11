@@ -12,18 +12,16 @@ namespace Oxce.CompatibilityTests;
 public sealed partial class StrategicWorldAlienBaseGenerationTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void GeneratedSiteObjectivePersistsSelectedAreaAndConvertsAfterTravel(bool cache, bool hunting)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedSiteObjectivePersistsSelectedAreaAndConvertsAfterTravel(bool hunting)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
         foreach (var landing in new[] { false, true })
         {
-            var content = GeneratedSiteObjectiveContent(cache, hunting: hunting, landing: landing);
+            var content = GeneratedSiteObjectiveContent(hunting: hunting, landing: landing);
             HashSet<int> selected = [];
             for (ulong seed = 1; seed <= 12; seed++)
             {
@@ -68,15 +66,13 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 257)]
-    [InlineData(true, 257)]
-    public void GeneratedSiteObjectiveRefusesEmptyOrExcessiveAreaChoicesAtomically(bool cache, int areas)
+    [InlineData(0)]
+    [InlineData(257)]
+    public void GeneratedSiteObjectiveRefusesEmptyOrExcessiveAreaChoicesAtomically(int areas)
     {
         foreach (var hunting in new[] { false, true })
         {
-            var content = GeneratedSiteObjectiveContent(cache, hunting: hunting, areaCount: areas);
+            var content = GeneratedSiteObjectiveContent(hunting: hunting, areaCount: areas);
             var initial = GeneratedSiteObjectiveSnapshot(content, hunting: hunting, seed: 41);
             AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(41)), areas == 0
                 ? "Mission zone 1 has no areas."
@@ -84,17 +80,15 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GeneratedSiteObjectiveOpeningsComposeForSeventyTwoHours(bool cache)
+    [Fact]
+    public void GeneratedSiteObjectiveOpeningsComposeForSeventyTwoHours()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         foreach (var hunting in new[] { false, true })
         {
-            var content = GeneratedSiteObjectiveContent(cache, hunting);
+            var content = GeneratedSiteObjectiveContent(hunting);
             var initial = GeneratedSiteObjectiveSnapshot(content, hunting, 41) with
             { Time = new(1, 1, 1, 1999, 23, 59, 55) };
             var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(41));
@@ -116,16 +110,14 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    public void GeneratedSiteAreasReserveOnePossibleMissionContactChain(bool cache, int count)
+    [InlineData(1)]
+    [InlineData(2)]
+    public void GeneratedSiteAreasReserveOnePossibleMissionContactChain(int count)
     {
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         foreach (var areas in new[] { 2, 256 })
         {
-            var content = GeneratedSiteObjectiveContent(cache, hunting: false, areaCount: areas, ufoCount: count);
+            var content = GeneratedSiteObjectiveContent(hunting: false, areaCount: areas, ufoCount: count);
             var initial = GeneratedSiteObjectiveSnapshot(content, hunting: false, seed: 41)
                 .WithFacility("RADAR_TEST").WithNextId("STR_UFO", int.MaxValue - count);
             var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(41));
@@ -142,16 +134,14 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GeneratedSiteHunterProofCannotLeakBetweenSelectedAreaOrigins(bool cache)
+    [Fact]
+    public void GeneratedSiteHunterProofCannotLeakBetweenSelectedAreaOrigins()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         foreach (var hunting in new[] { false, true })
         {
-            var content = GeneratedSiteObjectiveContent(cache, hunting, selectedOrigin: true);
+            var content = GeneratedSiteObjectiveContent(hunting, selectedOrigin: true);
             var initial = GeneratedSiteObjectiveSnapshot(content, hunting, 41);
             var owner = initial.Bases[0];
             initial = initial with
@@ -178,17 +168,15 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void GeneratedSiteAreaChoicesDoNotDuplicateAreaNeutralBirthAndTakeoffAwards(bool cache, bool hunting)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedSiteAreaChoicesDoNotDuplicateAreaNeutralBirthAndTakeoffAwards(bool hunting)
     {
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         foreach (var ground in new[] { false, true })
             foreach (var areas in new[] { 2, 256 })
             {
-                var content = GeneratedSiteObjectiveContent(cache, hunting, areaCount: areas, groundBirth: ground);
+                var content = GeneratedSiteObjectiveContent(hunting, areaCount: areas, groundBirth: ground);
                 var score = (hunting ? 0 : ground ? 6 : 3) + (ground ? 7 : 0);
                 var initial = GeneratedSiteObjectiveSnapshot(content, hunting, 41);
                 initial = initial with
@@ -207,15 +195,13 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GeneratedSiteObjectiveValidatesSpawnZoneBeforeProjectingAreas(bool cache)
+    [Fact]
+    public void GeneratedSiteObjectiveValidatesSpawnZoneBeforeProjectingAreas()
     {
         foreach (var hunting in new[] { false, true })
             foreach (var zone in new[] { -1, 7 })
             {
-                var content = GeneratedSiteObjectiveContent(cache, hunting, spawnZone: zone);
+                var content = GeneratedSiteObjectiveContent(hunting, spawnZone: zone);
                 var initial = GeneratedSiteObjectiveSnapshot(content, hunting, 41);
                 AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(41)), hunting
                     ? "Alien base hunting site mission has an invalid spawn zone."
@@ -223,12 +209,10 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GeneratedSiteActivityReservationsKeepDistinctSourcesAndBirthCounters(bool cache)
+    [Fact]
+    public void GeneratedSiteActivityReservationsKeepDistinctSourcesAndBirthCounters()
     {
-        var content = GeneratedSiteObjectiveContent(cache, hunting: false, ufoCount: 2);
+        var content = GeneratedSiteObjectiveContent(hunting: false, ufoCount: 2);
         var initial = GeneratedSiteObjectiveSnapshot(content, hunting: false, seed: 41);
         initial = initial with
         {
@@ -249,15 +233,13 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             "UFO alien activity exceeds the supported range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GeneratedActivityProjectionWorkIncludesCandidateCopiesAndMerges(bool cache)
+    [Fact]
+    public void GeneratedActivityProjectionWorkIncludesCandidateCopiesAndMerges()
     {
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         foreach (var count in new[] { 500, 600 })
         {
-            var content = GeneratedSiteObjectiveContent(cache, hunting: false, areaCount: 256, extraRegions: count);
+            var content = GeneratedSiteObjectiveContent(hunting: false, areaCount: 256, extraRegions: count);
             var initial = GeneratedSiteObjectiveSnapshot(content, hunting: false, seed: 41);
             initial = initial with
             { Regions = [.. initial.Regions, .. Enumerable.Range(0, count).Select(index => new RegionSnapshot($"GENERATED_ACTIVITY_REGION_{index}", [0], [0]))] };
@@ -274,10 +256,10 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         }
     }
 
-    private static RuntimeContent GeneratedSiteObjectiveContent(bool cache, bool hunting, bool landing = false,
+    private static RuntimeContent GeneratedSiteObjectiveContent(bool hunting, bool landing = false,
         int? areaCount = null, int ufoCount = 1, bool selectedOrigin = false, bool groundBirth = false, int spawnZone = 1,
         int extraRegions = 0) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-selected-site-waypoints.rul"], cache, $$$"""
+        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-selected-site-waypoints.rul"], $$$"""
             {{{(areaCount is null ? "" : GeneratedSiteAreas(areaCount.Value) + string.Concat(Enumerable.Range(0, extraRegions)
                 .Select(index => $"\n  - type: GENERATED_ACTIVITY_REGION_{index}\n    cost: 0\n")))}}}
             crafts:

@@ -11,15 +11,13 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldSiteResearchHuntReturnTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void GroundedFollowersKeepTheirStatusWhenTheirTargetDisappears(bool cache, bool alienBase)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GroundedFollowersKeepTheirStatusWhenTheirTargetDisappears(bool alienBase)
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-timer");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
-        var content = Content(cache, extraRules: "  - {type: QUIET_BASE, markerName: QUIET, baseSelfDestructCode: UNLOCK}",
+        var content = Content(extraRules: "  - {type: QUIET_BASE, markerName: QUIET, baseSelfDestructCode: UNLOCK}",
             ruleFiles: ["strategic-world.rul", "strategic-hunting.rul", "strategic-site-timer.rul"],
             finalRules: "crafts: [{type: SHIP, fuelMax: 300}]\n");
         var initial = Snapshot(content);
@@ -60,15 +58,13 @@ public sealed class StrategicWorldSiteResearchHuntReturnTests
     }
 
     [Theory]
-    [InlineData(false, 100)]
-    [InlineData(true, 100)]
-    [InlineData(false, 300)]
-    [InlineData(true, 300)]
-    public void DailyBaseDeletionReturnsFollowersBeforeSiteResearchAndHunting(bool cache, int fuel)
+    [InlineData(100)]
+    [InlineData(300)]
+    public void DailyBaseDeletionReturnsFollowersBeforeSiteResearchAndHunting(int fuel)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = Content(cache, extraRules: "  - {type: QUIET_BASE, markerName: QUIET, baseSelfDestructCode: UNLOCK}",
+        var content = Content(extraRules: "  - {type: QUIET_BASE, markerName: QUIET, baseSelfDestructCode: UNLOCK}",
             finalRules: "crafts: [{type: SHIP, fuelMax: 300}]\n");
         var initial = Snapshot(content);
         initial = initial with
@@ -98,18 +94,15 @@ public sealed class StrategicWorldSiteResearchHuntReturnTests
     }
 
     [Theory]
-    [InlineData(false, 100, true)]
-    [InlineData(true, 100, true)]
-    [InlineData(false, 300, true)]
-    [InlineData(true, 300, true)]
-    [InlineData(false, 100, false)]
-    [InlineData(true, 100, false)]
-    public void ForcedSiteReturnBurnsFuelBeforeActiveHunterEligibility(bool cache, int fuel, bool expiry)
+    [InlineData(100, true)]
+    [InlineData(300, true)]
+    [InlineData(100, false)]
+    public void ForcedSiteReturnBurnsFuelBeforeActiveHunterEligibility(int fuel, bool expiry)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
         TestFixtures.LoadVerifiedManifest("strategic-site-timer");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = Content(cache, ruleFiles: ["strategic-world.rul", "strategic-hunting.rul", "strategic-site-timer.rul"],
+        var content = Content(ruleFiles: ["strategic-world.rul", "strategic-hunting.rul", "strategic-site-timer.rul"],
             finalRules: "crafts: [{type: SHIP, fuelMax: 300}]\n");
         var initial = Snapshot(content);
         if (!expiry) initial = initial with { Time = new(1, 1, 1, 1999, 1, 19, 55) };

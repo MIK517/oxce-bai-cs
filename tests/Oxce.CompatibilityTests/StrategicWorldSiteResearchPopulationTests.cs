@@ -14,7 +14,7 @@ public sealed class StrategicWorldSiteResearchPopulationTests
     [Fact]
     public void HeldExpiryProofIsClearedBeforeTheSameTriggerAfterPatrolRemovesFollower()
     {
-        var content = Content(false, 0, Deployment);
+        var content = Content(0, Deployment);
         var snapshot = StrategicWorldSiteResearchReactivationTests.Linked(content, false);
         var site = snapshot.World.MissionSites[0];
         snapshot = snapshot.WithCraft("SHIP", craft => craft with
@@ -43,7 +43,7 @@ public sealed class StrategicWorldSiteResearchPopulationTests
     [Fact]
     public void BlockedExpiryProofIsClearedWhenDispatchAddsFollowerBeforeRetry()
     {
-        var content = Content(false, 0, Deployment);
+        var content = Content(0, Deployment);
         var snapshot = StrategicWorldSiteResearchReactivationTests.Linked(content, false);
         snapshot = snapshot.WithCraft("SHIP", craft => craft with
         {
@@ -73,7 +73,7 @@ public sealed class StrategicWorldSiteResearchPopulationTests
     [Fact]
     public void PopulatedDormantSiteProofsDoNotAllocateCubicallyAcrossEightThirtyTwoAndOneHundredTwentyEightUfos()
     {
-        var content = Content(false, 0, Deployment);
+        var content = Content(0, Deployment);
         _ = Sample(content, 8); // Warm the shared paths before measuring population growth.
         var eight = Sample(content, 8);
         var thirtyTwo = Sample(content, 32);

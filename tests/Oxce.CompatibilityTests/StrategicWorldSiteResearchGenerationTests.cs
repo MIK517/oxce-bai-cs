@@ -10,15 +10,13 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldSiteResearchGenerationTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DailyDelayedMissionExistsBeforeSiteResearchAndReceivesItsInterruption(bool cache)
+    [Fact]
+    public void DailyDelayedMissionExistsBeforeSiteResearchAndReceivesItsInterruption()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
         var row = TestFixtures.Rows(oracle.RootElement, "rows").Single(row => row[0].GetString() == "local");
-        var content = Content(cache);
+        var content = Content();
         var initial = Snapshot(content);
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         AdvanceUnblocked(campaign, 1);
@@ -45,23 +43,19 @@ public sealed class StrategicWorldSiteResearchGenerationTests
         Assert.Empty(campaign.Capture().World.Missions);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void InvalidGeneratedInterruptionStopsBeforeDailyCreation(bool cache)
+    [Fact]
+    public void InvalidGeneratedInterruptionStopsBeforeDailyCreation()
     {
-        var content = Content(cache, "MISSING_RESEARCH");
+        var content = Content("MISSING_RESEARCH");
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content), content, new SplitMix64RandomSource(17)),
             "Alien mission interruption references undefined research.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void RemovedImmediateMissionDoesNotResolveAnUnusedInterruptionRule(bool cache)
+    [Fact]
+    public void RemovedImmediateMissionDoesNotResolveAnUnusedInterruptionRule()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
-        var content = Content(cache, "MISSING_RESEARCH");
+        var content = Content("MISSING_RESEARCH");
         var initial = Snapshot(content);
         initial = initial with
         {
@@ -78,13 +72,11 @@ public sealed class StrategicWorldSiteResearchGenerationTests
     }
 
     [Theory]
-    [InlineData(false, 29, 2)]
-    [InlineData(true, 29, 2)]
-    [InlineData(false, 90, 1)]
-    [InlineData(true, 90, 1)]
-    public void PotentiallySurvivingImmediateMissionStillValidatesItsInterruption(bool cache, int timer, int count)
+    [InlineData(29, 2)]
+    [InlineData(90, 1)]
+    public void PotentiallySurvivingImmediateMissionStillValidatesItsInterruption(int timer, int count)
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             research:
               - {name: UNLOCK, cost: 1}
               - {name: CORE, cost: 1}
@@ -117,7 +109,7 @@ public sealed class StrategicWorldSiteResearchGenerationTests
     [Fact]
     public void DailyMissionBirthsConsumeResearchValidationWorkBeforeMutation()
     {
-        var content = Content(false);
+        var content = Content();
         var campaign = CampaignState.Restore(Snapshot(content), content, new SplitMix64RandomSource(17));
         var before = campaign.Capture();
         var forecast = campaign.MissionResearch.CreateForecast(precedingWork: 800_000, precedingMissionBirths: 100_000);
@@ -125,16 +117,14 @@ public sealed class StrategicWorldSiteResearchGenerationTests
         Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DailyCounterOnlyCreationRunsBeforeSiteResearchWithoutActorBirths(bool cache)
+    [Fact]
+    public void DailyCounterOnlyCreationRunsBeforeSiteResearchWithoutActorBirths()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-generation");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "immediateRows"))
         {
             var name = row[0].GetString()!;
-            var content = Content(cache);
+            var content = Content();
             var initial = Snapshot(content);
             initial = initial with
             {
@@ -169,16 +159,13 @@ public sealed class StrategicWorldSiteResearchGenerationTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void GeneratedZeroTimerChainsComposeWithinTheirExistingWorkLimit(bool cache, bool excessive)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedZeroTimerChainsComposeWithinTheirExistingWorkLimit(bool excessive)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-wave-chain");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache,
-            "research:\n  - {name: UNLOCK, cost: 1}\n  - {name: CORE, cost: 1}\n" +
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], "research:\n  - {name: UNLOCK, cost: 1}\n  - {name: CORE, cost: 1}\n" +
             StrategicWorldSiteResearchTests.Deployment + $$"""
 
               - type: GENERATED_CHAIN_BASE
@@ -217,8 +204,8 @@ public sealed class StrategicWorldSiteResearchGenerationTests
         }
     }
 
-    internal static RuntimeContent Content(bool cache, string interrupt = "CORE") => StrategicReadinessTestContent.Load(
-        ["strategic-world.rul", "strategic-alien-base-generation.rul"], cache, $$"""
+    internal static RuntimeContent Content(string interrupt = "CORE") => StrategicReadinessTestContent.Load(
+        ["strategic-world.rul", "strategic-alien-base-generation.rul"], $$"""
         research:
           - {name: UNLOCK, cost: 1}
           - {name: CORE, cost: 1}

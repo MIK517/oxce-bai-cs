@@ -12,13 +12,11 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldAlienBaseHuntingTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void HuntingTimersAndSafeChoicesMatchExtractedReference(bool cache)
+    [Fact]
+    public void HuntingTimersAndSafeChoicesMatchExtractedReference()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-hunt-timer");
-        var content = Load(cache);
+        var content = Load();
         Assert.False(content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("SHIP")].Value.Undetectable);
         Assert.True(content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("SHIELD_CRAFT")].Value.Undetectable);
         Assert.Equal(0, content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("SHIELD_CRAFT")].Value.SightRange);
@@ -39,15 +37,13 @@ public sealed class StrategicWorldAlienBaseHuntingTests
             CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DestroyedCraftIsIgnoredByHuntingButWholeTickKeepsItsRemovalGuard(bool cache)
+    [Fact]
+    public void DestroyedCraftIsIgnoredByHuntingButWholeTickKeepsItsRemovalGuard()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-hunt-timer");
         var row = TestFixtures.Rows(oracle.RootElement, "rows").Single(row => row[0].GetString() == "destroyed");
         Assert.Equal(0, row[2].GetArrayLength());
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Snapshot(content).WithCraft("SHIP", craft => craft with
         { Logistics = craft.Logistics! with { Damage = 100 } });
         var state = snapshot.Bases[0].Crafts.Single(c => c.RuleId == "SHIP").Logistics!;
@@ -56,12 +52,10 @@ public sealed class StrategicWorldAlienBaseHuntingTests
             "Destroyed craft removal requires world simulation.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void FuelReturnPrecedesHuntingEligibilityAndNotificationsKeepTickFallthrough(bool cache)
+    [Fact]
+    public void FuelReturnPrecedesHuntingEligibilityAndNotificationsKeepTickFallthrough()
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Snapshot(content, deployment: "HUNT_LIVE").WithCraft("SHIP", craft => craft with
         { Logistics = craft.Logistics! with { Fuel = 0 } });
         var campaign = CampaignState.Restore(snapshot, content, new MinimumChoices());
@@ -75,15 +69,12 @@ public sealed class StrategicWorldAlienBaseHuntingTests
     }
 
     [Theory]
-    [InlineData("live", false)]
-    [InlineData("live", true)]
-    [InlineData("overflow", false)]
-    [InlineData("overflow", true)]
-    [InlineData("future", false)]
-    [InlineData("future", true)]
-    public void UnsafeHuntingBlocksBeforeTickMutation(string kind, bool cache)
+    [InlineData("live")]
+    [InlineData("overflow")]
+    [InlineData("future")]
+    public void UnsafeHuntingBlocksBeforeTickMutation(string kind)
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Snapshot(content, deployment: kind == "future" ? "HUNT_FUTURE" : "HUNT_UNSAFE");
         if (kind == "overflow") snapshot = snapshot with
         {
@@ -99,12 +90,10 @@ public sealed class StrategicWorldAlienBaseHuntingTests
         AssertTimeBlocked(CampaignState.Restore(snapshot, content, new MinimumChoices()), reason);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void AutoPatrolRelaunchCannotEnterHuntingAfterMutatingEarlierHandlers(bool cache)
+    [Fact]
+    public void AutoPatrolRelaunchCannotEnterHuntingAfterMutatingEarlierHandlers()
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Snapshot(content, "grounded", "HUNT_UNSAFE") with { Time = new(1, 1, 1, 1999, 0, 29, 55) };
         snapshot = snapshot.WithCraft("SHIP", craft => craft with
         {
@@ -115,12 +104,10 @@ public sealed class StrategicWorldAlienBaseHuntingTests
             "Immediate generated mission waves require creation-tick lifecycle forecasts.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void InactiveFutureTimelineAndDailyDeletedBaseDoNotBlockOwnedTicks(bool cache)
+    [Fact]
+    public void InactiveFutureTimelineAndDailyDeletedBaseDoNotBlockOwnedTicks()
     {
-        var content = Load(cache);
+        var content = Load();
         var campaign = CampaignState.Restore(Snapshot(content, "grounded", "HUNT_FUTURE"), content, new MinimumChoices());
         AdvanceOne(campaign);
         Assert.Equal(60, Assert.Single(campaign.Capture().World.AlienBases).MinutesSinceLastHuntMissionGeneration);
@@ -132,12 +119,10 @@ public sealed class StrategicWorldAlienBaseHuntingTests
         Reload(content, campaign, 17, "deleted-hunting-base.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void UndetectableCraftAllowsSeventyTwoHoursOfPersistentHuntingTimers(bool cache)
+    [Fact]
+    public void UndetectableCraftAllowsSeventyTwoHoursOfPersistentHuntingTimers()
     {
-        var content = Load(cache);
+        var content = Load();
         var campaign = CampaignState.Restore(Snapshot(content, "undetectable", "HUNT_LIVE"), content, new MinimumChoices());
         AdvanceUnblocked(campaign, 25_920);
         campaign = Reload(content, campaign, 17, "hunting-36-hours.sav");
@@ -152,7 +137,7 @@ public sealed class StrategicWorldAlienBaseHuntingTests
     [InlineData("HUNT_ZERO_CHANCE")]
     public void HuntingCraftChecksAreBoundedBeforeMutation(string deployment)
     {
-        var content = Load(false);
+        var content = Load();
         var snapshot = Snapshot(content, "grounded");
         var owner = snapshot.Bases[0];
         var craft = owner.Crafts.Single(c => c.RuleId == "SHIP");
@@ -171,13 +156,11 @@ public sealed class StrategicWorldAlienBaseHuntingTests
             "Alien base activity and sight checks exceed the supported work limit.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DelayedHuntingCreationMatchesReferenceAndPersists(bool cache)
+    [Fact]
+    public void DelayedHuntingCreationMatchesReferenceAndPersists()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-hunt-generation");
-        var content = Load(cache);
+        var content = Load();
         var rows = new List<object[]>();
         var selected = TestFixtures.Rows(oracle.RootElement, "rows").Where(row => row[3].GetInt32() != 0).ToArray();
         Assert.NotEmpty(selected);
@@ -211,12 +194,10 @@ public sealed class StrategicWorldAlienBaseHuntingTests
             CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void HuntingAfterHalfHourGetsOneImmediateCountdownAndReservesMissionIds(bool cache)
+    [Fact]
+    public void HuntingAfterHalfHourGetsOneImmediateCountdownAndReservesMissionIds()
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Snapshot(content, deployment: "HUNT_GENERATE_SHORT") with { Time = new(1, 1, 1, 1999, 0, 29, 55) };
         var campaign = CampaignState.Restore(snapshot, content, new MinimumChoices());
         AdvanceOne(campaign);
@@ -233,12 +214,10 @@ public sealed class StrategicWorldAlienBaseHuntingTests
             "Alien mission IDs or population exceed the supported limit.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ImmediateNoObjectHuntingPreservesOneThinkAndDefersCleanupUntilHalfHour(bool cache)
+    [Fact]
+    public void ImmediateNoObjectHuntingPreservesOneThinkAndDefersCleanupUntilHalfHour()
     {
-        var content = Load(cache);
+        var content = Load();
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-hunt-generation");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "immediateRows"))
         {
@@ -266,14 +245,11 @@ public sealed class StrategicWorldAlienBaseHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GroundedAutoPatrolUsesActualServicingBeforeBaseHunting(bool cache)
+    [Fact]
+    public void GroundedAutoPatrolUsesActualServicingBeforeBaseHunting()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Load(cache,
-            "crafts: [{type: BASE_REFUEL, speedMax: 6000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
+        var content = Load("crafts: [{type: BASE_REFUEL, speedMax: 6000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "maintenanceRows").Where(row => !row[0].GetBoolean() && !row[3].GetBoolean() && !row[4].GetBoolean()))
         {
             var initial = Snapshot(content, "grounded", "HUNT_UNSAFE") with { Time = new(1, 1, 1, 1999, 0, 29, 55) };
@@ -316,15 +292,12 @@ public sealed class StrategicWorldAlienBaseHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void IncomingAutoPatrolHuntingFollowsArrivalCheckupAndRefuel(bool cache)
+    [Fact]
+    public void IncomingAutoPatrolHuntingFollowsArrivalCheckupAndRefuel()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.NotEmpty(TestFixtures.Rows(oracle.RootElement, "incomingCraftRows"));
-        var content = Load(cache,
-            "crafts: [{type: BASE_INCOMING, speedMax: 6000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
+        var content = Load("crafts: [{type: BASE_INCOMING, speedMax: 6000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
         foreach (var fuel in new[] { 0, 60, 100 })
             foreach (var hours in new[] { 1, 2 })
             {
@@ -375,20 +348,15 @@ public sealed class StrategicWorldAlienBaseHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
+    [InlineData(false)]
+    [InlineData(true)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, true)]
-    [InlineData(false, true, true)]
-    [InlineData(true, true, true)]
-    public void HiddenRelaunchLeaderSpeedCannotBypassBaseHuntingPreflight(bool cache, bool consumed, bool independent = false)
+    public void HiddenRelaunchLeaderSpeedCannotBypassBaseHuntingPreflight(bool consumed, bool independent = false)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "escortFuelRows"), row => row[0].GetBoolean() && row[2].GetInt32() == 20 && !row[3].GetBoolean());
-        var content = Load(cache,
-            "crafts: [{type: BASE_ESCORT, speedMax: 6000, damageMax: 100, fuelMax: 100}, {type: BASE_HIDDEN_LEADER, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, undetectable: true}]\n" + (consumed ? "manufacture: [{name: CONSUME_BASE_ESCORT, time: 1, requiredItems: {BASE_ESCORT: 0}, producedItems: {SUPPLY: 0}}]\nfacilities: [{type: CONSUME_ESCORT_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n" : ""));
+        var content = Load("crafts: [{type: BASE_ESCORT, speedMax: 6000, damageMax: 100, fuelMax: 100}, {type: BASE_HIDDEN_LEADER, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, undetectable: true}]\n" + (consumed ? "manufacture: [{name: CONSUME_BASE_ESCORT, time: 1, requiredItems: {BASE_ESCORT: 0}, producedItems: {SUPPLY: 0}}]\nfacilities: [{type: CONSUME_ESCORT_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n" : ""));
         var initial = Snapshot(content, "grounded", "HUNT_UNSAFE") with { Time = new(1, 1, 1, 1999, 0, consumed ? 59 : 29, 55) };
         var owner = initial.Bases[0];
         var template = owner.Crafts.Single(craft => craft.RuleId == "SHIP");
@@ -448,16 +416,13 @@ public sealed class StrategicWorldAlienBaseHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ZeroChanceHuntingDoesNotRequireStochasticServicingForecasts(bool cache)
+    [Fact]
+    public void ZeroChanceHuntingDoesNotRequireStochasticServicingForecasts()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-hunt-timer");
         var row = TestFixtures.Rows(oracle.RootElement, "rows").Single(row => row[0].GetString() == "zeroChance");
         Assert.Equal(1, row[2].GetArrayLength());
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-hunt-timer.rul", "strategic-alien-base-hunt-generation.rul"], cache,
-            "crafts: [{type: ZERO_CHANCE_CRAFT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\nmanufacture: [{name: ZERO_CHANCE_PRODUCT, time: 1, producedItems: {SUPPLY: 1}, randomProducedItems: [[1, {SUPPLY: 1}], [1, {BULKY: 1}]]}]\nfacilities: [{type: ZERO_CHANCE_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n");
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-hunt-timer.rul", "strategic-alien-base-hunt-generation.rul"], "crafts: [{type: ZERO_CHANCE_CRAFT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\nmanufacture: [{name: ZERO_CHANCE_PRODUCT, time: 1, producedItems: {SUPPLY: 1}, randomProducedItems: [[1, {SUPPLY: 1}], [1, {BULKY: 1}]]}]\nfacilities: [{type: ZERO_CHANCE_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n");
         var initial = Snapshot(content, "grounded", "HUNT_ZERO_CHANCE") with { Time = new(1, 1, 1, 1999, 0, 59, 55) };
         initial = initial.WithCraft("SHIP", craft => craft with
         {
@@ -494,13 +459,12 @@ public sealed class StrategicWorldAlienBaseHuntingTests
         Reload(content, campaign, 17, "zero-chance-after.sav");
     }
 
-    private static RuntimeContent Load(bool cache, string extraRules = "")
+    private static RuntimeContent Load(string extraRules = "")
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-timer");
         // These eligibility guards require a genuine first-arrival conversion:
         // current zone equals spawnZone. Ordinary first landings are supported.
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-hunt-timer.rul", "strategic-alien-base-hunt-generation.rul"], cache,
-            """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-hunt-timer.rul", "strategic-alien-base-hunt-generation.rul"], """
             ufoTrajectories:
               - {id: HUNT_UNAVAILABLE_CONVERSION, groundTimer: 6, waypoints: [[1, 3, 100], [1, 0, 60], [0, 4, 100]]}
             alienMissions:

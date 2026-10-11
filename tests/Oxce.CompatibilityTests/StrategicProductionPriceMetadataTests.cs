@@ -10,11 +10,9 @@ namespace Oxce.CompatibilityTests;
 public sealed partial class StrategicProductionPriceMetadataTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ItemReadersMatchNativeDefaultsSignedValuesAndNulls(bool cache, bool global)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ItemReadersMatchNativeDefaultsSignedValuesAndNulls(bool global)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var rows = TestFixtures.Rows(oracle.RootElement, "itemReaders");
@@ -24,7 +22,7 @@ public sealed partial class StrategicProductionPriceMetadataTests
             foreach (var property in rows[stage].EnumerateObject())
                 code += $"item_rule.{property.Name} value; if neq value {property.Value.GetInt32()}; div cost_current 0; end; " +
                     $"absent.{property.Name} value; if neq value 0; div cost_current 0; end; ";
-            AssertPrice(Load(cache, global, code + "return 7;", stage == 0 ? "" : """
+            AssertPrice(Load(global, code + "return 7;", stage == 0 ? "" : """
                 accuracyAimed: -7
                 accuracyAuto: 2147483647
                 accuracyMelee: 41
@@ -45,11 +43,9 @@ public sealed partial class StrategicProductionPriceMetadataTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ItemCategoriesUseNativeOrderedReplacement(bool cache, bool global)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ItemCategoriesUseNativeOrderedReplacement(bool global)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var rows = TestFixtures.Rows(oracle.RootElement, "itemCategoryReplacement");
@@ -66,16 +62,14 @@ public sealed partial class StrategicProductionPriceMetadataTests
                 1 => "itemCategories: [{type: C, replaceBy: B}, {type: B, replaceBy: A}, {type: A}, {type: FREE}]",
                 _ => "itemCategories: [{type: 𐀀, replaceBy: }, {type: , replaceBy: A}, {type: A}]",
             };
-            AssertPrice(Load(cache, global, code + "return 7;", $"categories: {categories}", definitions));
+            AssertPrice(Load(global, code + "return 7;", $"categories: {categories}", definitions));
         }
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void TypedRuleGlobalAndSavedCampaignTagsRetainNativeValues(bool cache, bool global)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TypedRuleGlobalAndSavedCampaignTagsRetainNativeValues(bool global)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         using var copyOracle = TestFixtures.ReadVerifiedExpected("strategic-detection-value-copy");
@@ -92,18 +86,16 @@ public sealed partial class StrategicProductionPriceMetadataTests
             "absentMod.getTag value Tag.PRICE_MOD; if neq value 0; div cost_current 0; end; " +
             $"geoscape_game.getTag value Tag.PRICE_GAME; if neq value {value}; div cost_current 0; end; " +
             "absentGame.getTag value Tag.PRICE_GAME; if neq value 0; div cost_current 0; end; return 7;";
-        var content = Load(cache, global, code, $"tags: {{PRICE_ITEM: {value}}}",
+        var content = Load(global, code, $"tags: {{PRICE_ITEM: {value}}}",
             $"research: [{{name: PRICE_TAG_RESEARCH, cost: 1, tags: {{PRICE_RESEARCH: {value}}}}}]",
             $"tags:\n  RuleItem: {{PRICE_ITEM: int, PRICE_MISSING: int}}\n  RuleResearch: {{PRICE_RESEARCH: int}}\n  RuleMod: {{PRICE_MOD: int}}\n  GeoscapeGame: {{PRICE_GAME: int}}\nglobals: {{PRICE_MOD: {value}}}");
         AssertPrice(content, snapshot: initial => initial with { ScriptValues = [new("PRICE_GAME", "int", value)] });
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ModSettingsAndSmokePreserveNativeSignedArithmetic(bool cache, bool global)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ModSettingsAndSmokePreserveNativeSignedArithmetic(bool global)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "modSettings"))
@@ -113,28 +105,24 @@ public sealed partial class StrategicProductionPriceMetadataTests
                 $"if neq value {row[1].GetInt32()}; div cost_current 0; end; " +
                 "absent.getMaxViewDistance value; if neq value 0; div cost_current 0; end; " +
                 "absent.getMaxDarknessToSeeUnits value; if neq value 0; div cost_current 0; end; return 7;";
-            AssertPrice(Load(cache, global, code, extraRules: $"maxViewDistance: {row[0].GetInt32()}\nmaxDarknessToSeeUnits: {row[1].GetInt32()}"));
+            AssertPrice(Load(global, code, extraRules: $"maxViewDistance: {row[0].GetInt32()}\nmaxDarknessToSeeUnits: {row[1].GetInt32()}"));
         }
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "smokeReduction"))
-            AssertPrice(Load(cache, global, $"var ptr RuleMod alias rules; var int value {row[1].GetInt32()}; " +
+            AssertPrice(Load(global, $"var ptr RuleMod alias rules; var int value {row[1].GetInt32()}; " +
                 "alias.getSmokeReduction value; return value;", extraRules: $"maxViewDistance: {row[0].GetInt32()}"), row[2].GetInt32());
     }
 
     [Theory]
-    [InlineData(false, false, false)]
-    [InlineData(true, false, false)]
-    [InlineData(false, true, false)]
-    [InlineData(true, true, false)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, true)]
-    [InlineData(false, true, true)]
-    [InlineData(true, true, true)]
-    public void OnlyConsumedNullModSmokeCallsStopBeforeMutation(bool cache, bool global, bool consumed)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void OnlyConsumedNullModSmokeCallsStopBeforeMutation(bool global, bool consumed)
     {
         TestFixtures.LoadVerifiedManifest("strategic-detection-scripts");
         var code = "var ptr RuleMod absent null; var int value 15; " +
             $"if eq 1 {(consumed ? 1 : 0)}; absent.getSmokeReduction value; end; return 7;";
-        var content = Load(cache, global, code);
+        var content = Load(global, code);
         if (!consumed) AssertPrice(content);
         else
         {
@@ -143,7 +131,7 @@ public sealed partial class StrategicProductionPriceMetadataTests
         }
     }
 
-    private static RuntimeContent Load(bool cache, bool global, string code, string itemFields = "",
+    private static RuntimeContent Load(bool global, string code, string itemFields = "",
         string extraRules = "", string extraExtended = "", string extraItems = "", bool buying = false,
         string extraFacilities = "")
     {
@@ -152,8 +140,7 @@ public sealed partial class StrategicProductionPriceMetadataTests
             (global ? "" : $"    scripts:\n      {parser}: |\n" + Indent(code, 8)) + Indent(extraItems, 2);
         var extended = extraExtended.Length == 0 && !global ? "" : "extended:\n" + Indent(extraExtended, 2) +
             (global ? $"  scripts:\n    {parser}:\n      - new: price-metadata\n        offset: 1\n        code: |\n" + Indent(code, 10) : "");
-        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache,
-            item + extended + "manufacture: [{name: PRICE_META_PRODUCT, time: 1, producedItems: {PRICE_META_ITEM: 1}}]\n" +
+        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], item + extended + "manufacture: [{name: PRICE_META_PRODUCT, time: 1, producedItems: {PRICE_META_ITEM: 1}}]\n" +
             "facilities:\n  - {type: PRICE_META_WORKSHOP, mapName: LOGISTICS, workshops: 1}\n" +
             Indent(extraFacilities, 2) + extraRules + "\n");
     }

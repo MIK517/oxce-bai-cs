@@ -11,17 +11,15 @@ namespace Oxce.CompatibilityTests;
 
 public sealed partial class StrategicWorldAlienBaseGenerationTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GeneratedFutureRaceTimelineUsesNativeEmptyRaceAndReloadRepair(bool cache)
+    [Fact]
+    public void GeneratedFutureRaceTimelineUsesNativeEmptyRaceAndReloadRepair()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-generation");
         var race = TestFixtures.Rows(oracle.RootElement, "rows").Single(row => row[0].GetString() == "futureRace")[3][2].GetString();
         Assert.Equal(string.Empty, race);
         foreach (var hunting in new[] { false, true })
         {
-            var content = GeneratedVariantContent(cache, "{2: {RACE_B: 1}}", hunting: hunting);
+            var content = GeneratedVariantContent("{2: {RACE_B: 1}}", hunting: hunting);
             var initial = VariantSnapshot(content, hunting);
             var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(19));
             AdvanceUnblocked(campaign, 1);
@@ -44,13 +42,11 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DuplicateTargetBaseRegionsReserveOneBirthWithoutChangingNativeChoice(bool cache)
+    [Fact]
+    public void DuplicateTargetBaseRegionsReserveOneBirthWithoutChangingNativeChoice()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
-        var content = GeneratedVariantContent(cache, "{0: {RACE_A: 1}}", targetOdds: 100);
+        var content = GeneratedVariantContent("{0: {RACE_A: 1}}", targetOdds: 100);
         var initial = VariantSnapshot(content, hunting: false);
         var owner = initial.Bases[0];
         initial = initial with
@@ -68,13 +64,11 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         Reload(content, campaign, 19, "duplicate-region-birth.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void AlternativeRulesAndRacesReserveTheirLargestSingleBirth(bool cache)
+    [Fact]
+    public void AlternativeRulesAndRacesReserveTheirLargestSingleBirth()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
-        var content = GeneratedVariantContent(cache, "{0: {RACE_A: 1, RACE_B: 1}}", alternatives: true);
+        var content = GeneratedVariantContent("{0: {RACE_A: 1, RACE_B: 1}}", alternatives: true);
         var counts = new HashSet<int>();
         for (ulong seed = 1; seed <= 8; seed++)
         {
@@ -104,14 +98,12 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void GeneratedMissionsReserveFollowingSavedHunterMissionLookupsBeforeMutation(bool cache, bool born)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedMissionsReserveFollowingSavedHunterMissionLookupsBeforeMutation(bool born)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = GeneratedVariantContent(cache, "{0: {RACE_A: 1}}");
+        var content = GeneratedVariantContent("{0: {RACE_A: 1}}");
         var initial = VariantSnapshot(content, hunting: false);
         var owner = initial.Bases[0];
         initial = initial with
@@ -135,16 +127,14 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void GeneratedGroundTakeoffChoicesReserveOneCompleteChainPerCaller(bool cache, bool hunting)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedGroundTakeoffChoicesReserveOneCompleteChainPerCaller(bool hunting)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
-        var content = GeneratedVariantContent(cache, "{0: {RACE_A: 1, RACE_B: 1}}", hunting: hunting,
+        var content = GeneratedVariantContent("{0: {RACE_A: 1, RACE_B: 1}}", hunting: hunting,
             alternatives: !hunting, groundTimer: 1, missionPoints: 7);
         var maximum = hunting ? 7 : 26;
         HashSet<int> counts = [];
@@ -173,10 +163,9 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             "UFO alien activity exceeds the supported range.");
     }
 
-    private static RuntimeContent GeneratedVariantContent(bool cache, string races, int targetOdds = 0, bool hunting = false,
+    private static RuntimeContent GeneratedVariantContent(string races, int targetOdds = 0, bool hunting = false,
         bool alternatives = false, int groundTimer = 0, int missionPoints = 0) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul"], cache,
-            $$$"""
+        StrategicReadinessTestContent.Load(["strategic-world.rul"], $$$"""
             alienDeployments:
               - type: VARIANT_BASE
                 alienBase: true

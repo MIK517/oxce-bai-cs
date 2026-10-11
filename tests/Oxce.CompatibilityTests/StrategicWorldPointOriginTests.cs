@@ -11,13 +11,11 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldPointOriginTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OriginsChooseOrderedPointsAndScoreOnlyTheFirstContainingCountry(bool cache)
+    [Fact]
+    public void OriginsChooseOrderedPointsAndScoreOnlyTheFirstContainingCountry()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
-        var content = Load(cache);
+        var content = Load();
         var seen = new HashSet<int>();
         foreach (var seed in new ulong[] { 1, 17, 42, 84 })
         {
@@ -53,7 +51,7 @@ public sealed class StrategicWorldPointOriginTests
     [InlineData(1)]
     public void EveryPossibleCountryAwardIsReservedBeforeSelectingAnOrigin(int country)
     {
-        var content = Load(false);
+        var content = Load();
         var snapshot = Snapshot(content);
         var countries = snapshot.Countries.ToArray();
         countries[country] = countries[country] with { ActivityAlien = [int.MaxValue - 2] };
@@ -61,8 +59,8 @@ public sealed class StrategicWorldPointOriginTests
         AssertTimeBlocked(campaign, "UFO alien activity exceeds the supported range.");
     }
 
-    private static RuntimeContent Load(bool cache) => StrategicReadinessTestContent.Load(
-        ["strategic-world.rul", "strategic-point-origins.rul"], cache);
+    private static RuntimeContent Load() => StrategicReadinessTestContent.Load(
+        ["strategic-world.rul", "strategic-point-origins.rul"]);
 
     private static CampaignSnapshot Snapshot(RuntimeContent content)
     {

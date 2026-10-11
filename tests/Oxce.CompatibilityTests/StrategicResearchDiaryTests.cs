@@ -13,13 +13,11 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicResearchDiaryTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DiarySaveFieldsMatchNativeSourcesDatesAndMissingLinks(bool cache)
+    [Fact]
+    public void DiarySaveFieldsMatchNativeSourcesDatesAndMissingLinks()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-research-diary");
-        var content = Content(cache);
+        var content = Content();
         var snapshot = CreateSnapshot(content, "Research diary");
         var rows = TestFixtures.Rows(oracle.RootElement, "rows").ToArray();
         var yaml = OxceSaveAdapter.EmitNewCampaign(snapshot) + "researchDiary:\n" +
@@ -41,13 +39,11 @@ public sealed class StrategicResearchDiaryTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void RepeatedDiaryOccurrencesRetainOnlyTheirOwnSurvivingSidecars(bool cache)
+    [Fact]
+    public void RepeatedDiaryOccurrencesRetainOnlyTheirOwnSurvivingSidecars()
     {
         TestFixtures.LoadVerifiedManifest("strategic-research-diary");
-        var content = Content(cache);
+        var content = Content();
         var yaml = OxceSaveAdapter.EmitNewCampaign(CreateSnapshot(content, "Research diary sidecars")) + """
             researchDiary:
               - {name: DIARY_TOPIC, date: [1999, 1, 2], sourceType: 3, sourceName: SOURCE, futureDiary: deleted}
@@ -89,7 +85,7 @@ public sealed class StrategicResearchDiaryTests
     public void MalformedDiaryWidthsAndMissingFieldsFailIntentionally(string entry, bool yamlError)
     {
         TestFixtures.LoadVerifiedManifest("strategic-research-diary");
-        var content = Content(false);
+        var content = Content();
         var yaml = OxceSaveAdapter.EmitNewCampaign(CreateSnapshot(content, "Invalid diary")) + $"researchDiary:\n  - {entry}\n";
         if (yamlError)
             Assert.Throws<YamlFormatException>(() => TestFixtures.LoadLogisticsSave(yaml, content, 17, "research-diary.sav"));
@@ -101,7 +97,7 @@ public sealed class StrategicResearchDiaryTests
     public void DiarySnapshotRejectsDuplicateKeysAndExhaustedIdentityWithoutChangingRandomState()
     {
         TestFixtures.LoadVerifiedManifest("strategic-research-diary");
-        var content = Content(false);
+        var content = Content();
         var snapshot = CreateSnapshot(content, "Invalid diary identity");
         var random = new SplitMix64RandomSource(17);
         var entry = new ResearchDiaryEntrySnapshot("DIARY_TOPIC", 1999, 1, 2, 3, "SOURCE") { PreservationKey = "duplicate" };
@@ -118,6 +114,5 @@ public sealed class StrategicResearchDiaryTests
         Assert.Equal(17UL, random.State);
     }
 
-    private static RuntimeContent Content(bool cache) => StrategicReadinessTestContent.Load(["strategic-world.rul"], cache,
-        "research: [{name: DIARY_TOPIC, cost: 1}, {name: SOURCE, cost: 1}]");
+    private static RuntimeContent Content() => StrategicReadinessTestContent.Load(["strategic-world.rul"], "research: [{name: DIARY_TOPIC, cost: 1}, {name: SOURCE, cost: 1}]");
 }

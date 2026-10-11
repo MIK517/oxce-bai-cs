@@ -12,38 +12,30 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldRandomProductionSiteResearchTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void VariableInertProductionCannotSuppressUnavailableSitePayload(bool cache, bool presence)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void VariableInertProductionCannotSuppressUnavailableSitePayload(bool presence)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         var rows = TestFixtures.Rows(oracle.RootElement, "productionInertSiteResearchRows").Where(row => row[0].GetInt32() == (presence ? 1 : 0) && row[1].GetInt32() == 0).ToArray();
         Assert.Equal(2, rows.Select(row => row[7].GetInt32()).Distinct().Count());
-        var content = Content(cache, presence);
+        var content = Content(presence);
         var initial = Snapshot(content, 0);
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), 17, "inert-site-event-before.sav");
         AssertTimeBlocked(campaign, "Mission site despawn requires research or event payloads.");
     }
 
     [Theory]
-    [InlineData(false, false, 0, false)]
-    [InlineData(true, false, 0, false)]
-    [InlineData(false, true, 0, false)]
-    [InlineData(true, true, 0, false)]
-    [InlineData(false, false, 1, false)]
-    [InlineData(true, false, 1, false)]
-    [InlineData(false, true, 1, false)]
-    [InlineData(true, true, 1, false)]
-    [InlineData(false, false, 1, true)]
-    [InlineData(true, false, 1, true)]
-    [InlineData(false, true, 1, true)]
-    [InlineData(true, true, 1, true)]
-    public void InertProductionSiteResearchUsesActualItemOutcome(bool cache, bool presence, int stock, bool eventPayload)
+    [InlineData(false, 0, false)]
+    [InlineData(true, 0, false)]
+    [InlineData(false, 1, false)]
+    [InlineData(true, 1, false)]
+    [InlineData(false, 1, true)]
+    [InlineData(true, 1, true)]
+    public void InertProductionSiteResearchUsesActualItemOutcome(bool presence, int stock, bool eventPayload)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Content(cache, presence, eventPayload);
+        var content = Content(presence, eventPayload);
         HashSet<int> choices = [];
         for (ulong seed = 1; seed <= 12; seed++)
         {
@@ -77,7 +69,7 @@ public sealed class StrategicWorldRandomProductionSiteResearchTests
         Assert.Equal(2, choices.Count);
     }
 
-    private static RuntimeContent Content(bool cache, bool presence, bool eventPayload = true) => StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, Rules(presence).Replace("    despawnEvents: {STOCK_EVENT: 1}", eventPayload ? "    despawnEvents: {STOCK_EVENT: 1}" : "", StringComparison.Ordinal));
+    private static RuntimeContent Content(bool presence, bool eventPayload = true) => StrategicReadinessTestContent.Load(["strategic-world.rul"], Rules(presence).Replace("    despawnEvents: {STOCK_EVENT: 1}", eventPayload ? "    despawnEvents: {STOCK_EVENT: 1}" : "", StringComparison.Ordinal));
 
     private static string Rules(bool presence) => $$"""
         items:

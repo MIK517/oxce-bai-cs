@@ -89,6 +89,9 @@ mechanical translations with no executable acceptance test.
   so failures print the difference.
 - Iterate oracle arrays through `TestFixtures.Rows(...)`, which fails on an
   empty array.
+- `StrategicReadinessTestContent.Load` builds every ruleset fresh, restores it from the compiled
+  cache and asserts both are identical (`ContentStateDump`); tests run on the restored content.
+  Do not add fresh/cache theory parameters.
 - Private-asset tests must `Assert.SkipUnless` when `fixtures/private/` is absent.
 - Order file-system enumerations (`StringComparer.Ordinal`) before selecting
   entries.

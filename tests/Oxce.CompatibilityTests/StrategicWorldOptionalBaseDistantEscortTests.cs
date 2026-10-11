@@ -10,27 +10,21 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldOptionalBaseDistantEscortTests
 {
     [Theory]
-    [InlineData(false, false, 0, false)]
-    [InlineData(true, false, 0, false)]
-    [InlineData(false, true, 0, false)]
-    [InlineData(true, true, 0, false)]
-    [InlineData(false, false, 5, false)]
-    [InlineData(true, false, 5, false)]
-    [InlineData(false, true, 5, false)]
-    [InlineData(true, true, 5, false)]
-    [InlineData(false, false, 0, true)]
-    [InlineData(true, false, 0, true)]
-    [InlineData(false, true, 0, true)]
-    [InlineData(true, true, 0, true)]
-    public void OutOfRangeEscortsIgnoreOptionalLeaderSpeedAndKeepOrderedPursuit(bool cache, bool reverse, int takeoff, bool zeroRange)
+    [InlineData(false, 0, false)]
+    [InlineData(true, 0, false)]
+    [InlineData(false, 5, false)]
+    [InlineData(true, 5, false)]
+    [InlineData(false, 0, true)]
+    [InlineData(true, 0, true)]
+    public void OutOfRangeEscortsIgnoreOptionalLeaderSpeedAndKeepOrderedPursuit(bool reverse, int takeoff, bool zeroRange)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.NotEmpty(TestFixtures.Rows(oracle.RootElement, "escortFuelRows"));
         TestFixtures.LoadVerifiedManifest("strategic-world");
         var range = zeroRange ? 0 : 20;
-        var content = StrategicWorldOptionalBaseCraftTests.Content(cache, itemFuel: true, escortRange: range);
-        var deletedContent = StrategicWorldOptionalBaseCraftTests.Content(cache, "CORE", true, range);
-        var survivedContent = StrategicWorldOptionalBaseCraftTests.Content(cache, "", true, range);
+        var content = StrategicWorldOptionalBaseCraftTests.Content(itemFuel: true, escortRange: range);
+        var deletedContent = StrategicWorldOptionalBaseCraftTests.Content("CORE", true, range);
+        var survivedContent = StrategicWorldOptionalBaseCraftTests.Content("", true, range);
         var followerBefore = zeroRange ? new WorldPosition(1, 0.6) : new(2, 0.9);
         HashSet<bool> outcomes = [];
         for (ulong seed = 1; seed <= 32; seed++)
@@ -75,12 +69,10 @@ public sealed class StrategicWorldOptionalBaseDistantEscortTests
         Assert.Equal(2, outcomes.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void NearbyAndTransferredPositionAlternativesKeepTheirAtomicBoundary(bool cache)
+    [Fact]
+    public void NearbyAndTransferredPositionAlternativesKeepTheirAtomicBoundary()
     {
-        var content = StrategicWorldOptionalBaseCraftTests.Content(cache, itemFuel: true);
+        var content = StrategicWorldOptionalBaseCraftTests.Content(itemFuel: true);
         var initial = StrategicWorldOptionalBaseSpeedEscortTests.NormalEscort(
             StrategicWorldOptionalBaseSpeedEscortTests.Snapshot(content, 17, false, 0))
             .WithCraft("SHIP", craft => craft with { Logistics = craft.Logistics! with { Speed = 500 } });

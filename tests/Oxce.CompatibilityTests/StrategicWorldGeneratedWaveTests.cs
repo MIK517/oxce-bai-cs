@@ -12,16 +12,14 @@ namespace Oxce.CompatibilityTests;
 
 public sealed partial class StrategicWorldAlienBaseGenerationTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DailyGeneratedAirborneWavesJoinCreationTickScoringAndSurviveReload(bool cache)
+    [Fact]
+    public void DailyGeneratedAirborneWavesJoinCreationTickScoringAndSurviveReload()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-world");
         foreach (var timer in new[] { 0, 90 })
         {
-            var content = GeneratedWaveContent(cache, timer);
+            var content = GeneratedWaveContent(timer);
             var born = 0;
             var delayed = 0;
             for (ulong seed = 1; seed <= 12; seed++)
@@ -62,25 +60,21 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GeneratedWaveIdentityExhaustionStopsBeforeCreationAndDailyMutation(bool cache)
+    [Fact]
+    public void GeneratedWaveIdentityExhaustionStopsBeforeCreationAndDailyMutation()
     {
-        var content = GeneratedWaveContent(cache, 0);
+        var content = GeneratedWaveContent(0);
         var initial = GeneratedWaveSnapshot(content, 71).WithNextId("STR_UFO_UNIQUE", int.MaxValue);
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(71)),
             "UFO unique IDs are exhausted or collide with a saved UFO.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void HuntingGeneratedAirborneWavesReceiveOneThinkAfterHalfHourScoring(bool cache)
+    [Fact]
+    public void HuntingGeneratedAirborneWavesReceiveOneThinkAfterHalfHourScoring()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
         TestFixtures.LoadVerifiedManifest("strategic-world");
-        var content = GeneratedWaveContent(cache, 0, hunting: true);
+        var content = GeneratedWaveContent(0, hunting: true);
         foreach (var time in new[] { new CampaignTime(1, 1, 1, 1999, 0, 9, 55), new(1, 1, 1, 1999, 0, 29, 55) })
         {
             var initial = HuntingGeneratedWaveSnapshot(content, time);
@@ -130,15 +124,13 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             },
         };
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DailyAndHuntingZeroTimerChainsPreserveCallerOrderAndNewbornInterruptionSemantics(bool cache)
+    [Fact]
+    public void DailyAndHuntingZeroTimerChainsPreserveCallerOrderAndNewbornInterruptionSemantics()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-wave-chain");
         var expected = TestFixtures.Rows(oracle.RootElement, "cases").Single(row => row.GetProperty("name").GetString() == "zero")
             .GetProperty("rows")[0].EnumerateArray().Take(4).Select(value => value.GetInt32()).ToArray();
-        var content = GeneratedWaveContent(cache, 0, hunting: true, combined: true, chain: true);
+        var content = GeneratedWaveContent(0, hunting: true, combined: true, chain: true);
         var races = new HashSet<string>(StringComparer.Ordinal);
         for (ulong seed = 1; seed <= 8; seed++)
         {
@@ -181,12 +173,10 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         Assert.True(races.SetEquals(["RACE_A", "RACE_B"]));
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ComposedGeneratedWavesReserveAllIdentitiesAndActivityBeforeMutation(bool cache)
+    [Fact]
+    public void ComposedGeneratedWavesReserveAllIdentitiesAndActivityBeforeMutation()
     {
-        var content = GeneratedWaveContent(cache, 0, hunting: true, combined: true, chain: true);
+        var content = GeneratedWaveContent(0, hunting: true, combined: true, chain: true);
         var initial = HuntingGeneratedWaveSnapshot(content, new(1, 1, 1, 1999, 23, 59, 55));
         AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("STR_UFO_UNIQUE", int.MaxValue - 9), content,
             new SplitMix64RandomSource(19)), "UFO unique IDs are exhausted or collide with a saved UFO.");
@@ -196,14 +186,11 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             "UFO alien activity exceeds the supported range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void HuntingBirthWaveClassificationChargesTheSharedWorkLimit(bool cache)
+    [Fact]
+    public void HuntingBirthWaveClassificationChargesTheSharedWorkLimit()
     {
         TestFixtures.LoadVerifiedManifest("strategic-wave-chain");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache,
-            """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             alienDeployments:
               - type: GUARDED_BASE
                 markerName: STR_ALIEN_BASE
@@ -228,12 +215,10 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             "Alien base activity and sight checks exceed the supported work limit.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DailyGeneratedWaveCannotResolveASharedSourceMarkerIdentity(bool cache)
+    [Fact]
+    public void DailyGeneratedWaveCannotResolveASharedSourceMarkerIdentity()
     {
-        var content = GeneratedWaveContent(cache, 0);
+        var content = GeneratedWaveContent(0);
         var initial = GeneratedWaveSnapshot(content, 19);
         initial = initial with
         {
@@ -247,15 +232,13 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             "Immediate generated mission source identity is ambiguous.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DailyGeneratedGroundUfoUsesNativeTimerScoringAndLaterTakeoff(bool cache)
+    [Fact]
+    public void DailyGeneratedGroundUfoUsesNativeTimerScoringAndLaterTakeoff()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
         var row = TestFixtures.Rows(oracle.RootElement, "spawnPathRows").Single(value =>
             value[0].GetInt32() == 0 && value[1].GetInt32() == 1 && value[2].GetInt32() == 0);
-        var content = GeneratedWaveContent(cache, 0, groundTimer: 2);
+        var content = GeneratedWaveContent(0, groundTimer: 2);
         var initial = GeneratedWaveSnapshot(content, 19);
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(19)),
             19, "daily-ground-before.sav");
@@ -275,17 +258,15 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 100)]
-    [InlineData(true, 100)]
-    public void GroundHuntingBirthsStayInactiveUntilTheirLaterTakeoff(bool cache, int percentage)
+    [InlineData(0)]
+    [InlineData(100)]
+    public void GroundHuntingBirthsStayInactiveUntilTheirLaterTakeoff(int percentage)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         foreach (var hunting in new[] { false, true })
         {
-            var content = GeneratedWaveContent(cache, 0, hunting, groundTimer: 2, hunterPercentage: percentage);
+            var content = GeneratedWaveContent(0, hunting, groundTimer: 2, hunterPercentage: percentage);
             var initial = hunting ? HuntingGeneratedWaveSnapshot(content, new(1, 1, 1, 1999, 0, 29, 55))
                 : GeneratedWaveSnapshot(content, 19);
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(19)),
@@ -307,17 +288,15 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GeneratedNonObjectiveSiteWavesComposeForSeventyTwoHoursWithReloads(bool cache)
+    [Fact]
+    public void GeneratedNonObjectiveSiteWavesComposeForSeventyTwoHoursWithReloads()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         foreach (var ground in new[] { 0, 2 })
         {
-            var content = GeneratedWaveContent(cache, 0, hunting: true, combined: true, groundTimer: ground, site: true);
+            var content = GeneratedWaveContent(0, hunting: true, combined: true, groundTimer: ground, site: true);
             var initial = HuntingGeneratedWaveSnapshot(content, new(1, 1, 1, 1999, 23, 59, 55));
             initial = initial with
             {
@@ -356,14 +335,12 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GeneratedSiteObjectiveFollowUpRetainsAnAtomicCreationBoundary(bool cache)
+    [Fact]
+    public void GeneratedSiteObjectiveFollowUpRetainsAnAtomicCreationBoundary()
     {
         foreach (var hunting in new[] { false, true })
         {
-            var content = GeneratedWaveContent(cache, 0, hunting, site: true, siteObjectiveTimer: 0, siteConversion: true);
+            var content = GeneratedWaveContent(0, hunting, site: true, siteObjectiveTimer: 0, siteConversion: true);
             var initial = hunting ? HuntingGeneratedWaveSnapshot(content, new(1, 1, 1, 1999, 0, 29, 55))
                 : GeneratedWaveSnapshot(content, 19);
             if (hunting) initial = initial with
@@ -375,9 +352,8 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         }
     }
 
-    private static RuntimeContent GeneratedWaveContent(bool cache, int timer, bool hunting = false, bool combined = false, bool chain = false, int groundTimer = 0, int hunterPercentage = 0, bool site = false, int siteObjectiveTimer = 9000, int missionPoints = 0, bool siteConversion = false) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-generation.rul"], cache,
-            $$$"""
+    private static RuntimeContent GeneratedWaveContent(int timer, bool hunting = false, bool combined = false, bool chain = false, int groundTimer = 0, int hunterPercentage = 0, bool site = false, int siteObjectiveTimer = 9000, int missionPoints = 0, bool siteConversion = false) =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-generation.rul"], $$$"""
             alienDeployments:
               - type: GENERATED_WAVE_BASE
                 alienBase: true

@@ -9,28 +9,24 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldProductionSiteScoreTests
 {
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    public void SiteScoreIncludesPrecedingDailyResearchAndHourlyProductionBeforeAnyMutation(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(1)]
+    public void SiteScoreIncludesPrecedingDailyResearchAndHourlyProductionBeforeAnyMutation(int mode)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = StrategicWorldDailyResearchProductionScoreTests.Content(cache, mode, false, withSite: true);
+        var content = StrategicWorldDailyResearchProductionScoreTests.Content(mode, false, withSite: true);
         var initial = StrategicWorldDailyResearchProductionScoreTests.Snapshot(content, 17, mode);
         initial = initial with { World = initial.World with { MissionSites = StrategicWorldSiteResearchTests.Snapshot(content).World.MissionSites } };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), "Mission research score exceeds the supported range.");
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    public void SafeCombinedDailyProductionAndSiteScoreSurvivesRewrites(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(1)]
+    public void SafeCombinedDailyProductionAndSiteScoreSurvivesRewrites(int mode)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = StrategicWorldDailyResearchProductionScoreTests.Content(cache, mode, false, withSite: true);
+        var content = StrategicWorldDailyResearchProductionScoreTests.Content(mode, false, withSite: true);
         HashSet<int> seen = [];
         for (ulong seed = 1; seed <= 12; seed++)
         {
@@ -58,13 +54,11 @@ public sealed class StrategicWorldProductionSiteScoreTests
         Assert.Equal(2, seen.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ProductionScoreIntervalsIncludeStoppedProjectsAndShareTheWorkBudget(bool cache)
+    [Fact]
+    public void ProductionScoreIntervalsIncludeStoppedProjectsAndShareTheWorkBudget()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = StrategicWorldDailyResearchProductionScoreTests.Content(cache, 0, false, uncertainOffset: true);
+        var content = StrategicWorldDailyResearchProductionScoreTests.Content(0, false, uncertainOffset: true);
         var initial = StrategicWorldDailyResearchProductionScoreTests.Snapshot(content, 17, 0);
         initial = initial with
         {
@@ -84,13 +78,11 @@ public sealed class StrategicWorldProductionSiteScoreTests
         Assert.Equivalent(initial, campaign.Capture(), strict: true);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void HourlyProductionBeforeSiteScoresUsesTheSameAtomicBoundary(bool cache)
+    [Fact]
+    public void HourlyProductionBeforeSiteScoresUsesTheSameAtomicBoundary()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = StrategicWorldDailyResearchProductionScoreTests.Content(cache, 0, false, withSite: true);
+        var content = StrategicWorldDailyResearchProductionScoreTests.Content(0, false, withSite: true);
         var initial = StrategicWorldDailyResearchProductionScoreTests.Snapshot(content, 17, 0);
         var owner = initial.Bases[0];
         initial = initial with

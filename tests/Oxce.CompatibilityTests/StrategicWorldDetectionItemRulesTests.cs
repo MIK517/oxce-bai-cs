@@ -10,35 +10,27 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldDetectionItemRulesTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ItemAccuracyReadersMatchNativeDefaultsAndSignedValues(bool fromCache, bool fromCraft) =>
-        RunItemReaderFixture("getAccuracy", fromCache, fromCraft);
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ItemAccuracyReadersMatchNativeDefaultsAndSignedValues(bool fromCraft) =>
+        RunItemReaderFixture("getAccuracy", fromCraft);
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ItemRawPowerArmorAndWaypointsMatchNative(bool fromCache, bool fromCraft) =>
-        RunItemReaderFixture("get", fromCache, fromCraft);
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ItemRawPowerArmorAndWaypointsMatchNative(bool fromCraft) =>
+        RunItemReaderFixture("get", fromCraft);
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ItemHandlingFlagsMatchNative(bool fromCache, bool fromCraft) =>
-        RunItemReaderFixture("is", fromCache, fromCraft);
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ItemHandlingFlagsMatchNative(bool fromCraft) =>
+        RunItemReaderFixture("is", fromCraft);
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void CategoriesMatchOrderedNativeReplacementIncludingCyclesAndUnicode(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CategoriesMatchOrderedNativeReplacementIncludingCyclesAndUnicode(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var rows = TestFixtures.Rows(oracle.RootElement, "itemCategoryReplacement");
@@ -84,16 +76,14 @@ public sealed class StrategicWorldDetectionItemRulesTests
                 code += $"{source}.hasCategory found \"{category}\"; if neq found {row[1].GetInt32()}; return DETECTION_NONE 0; end; ";
             }
             code += "return DETECTION_RADAR 100;";
-            RunItemScript(code, $"categories: {categories}", fromCache, fromCraft, definitions);
+            RunItemScript(code, $"categories: {categories}", fromCraft, definitions);
         }
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void DamageClassificationAndPointerIdentityMatchNative(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DamageClassificationAndPointerIdentityMatchNative(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-damage");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows"))
@@ -118,16 +108,14 @@ public sealed class StrategicWorldDetectionItemRulesTests
             }
             code += $"item.isSingleTarget value; if neq value {row[8].GetInt32()}; return DETECTION_NONE 0; end; " +
                 "absent.isSingleTarget value; if neq value 0; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;";
-            RunItemScript(code, fields, fromCache, fromCraft);
+            RunItemScript(code, fields, fromCraft);
         }
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void DamageConversionsMatchNativeFloatTruncation(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DamageConversionsMatchNativeFloatTruncation(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-damage");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "conversionRows"))
@@ -146,16 +134,14 @@ public sealed class StrategicWorldDetectionItemRulesTests
                     $"if neq value {row[2][index].GetInt32()}; return DETECTION_NONE 0; end; " +
                     $"absent.{DamageReaders[index]} value 2147483647; if neq value 0; return DETECTION_NONE 0; end; ";
             code += "return DETECTION_RADAR 100;";
-            RunItemScript(code, fields, fromCache, fromCraft);
+            RunItemScript(code, fields, fromCraft);
         }
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void DamageArmorPercentAndFloatBoundariesMatchNative(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DamageArmorPercentAndFloatBoundariesMatchNative(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-damage");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "armorPercent"))
@@ -163,24 +149,23 @@ public sealed class StrategicWorldDetectionItemRulesTests
                 $"var ptr RuleItem item; var ptr RuleDamageType damage; var int value; " +
                 $"rules.getRuleItem item \"ITEM_READ\"; item.getDamageType damage; damage.getArmorEffectiveness value; " +
                 $"if neq value {row[1].GetInt32()}; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
-                $"damageAlter: {{ArmorEffectiveness: {row[0].GetRawText()}}}", fromCache, fromCraft);
+                $"damageAlter: {{ArmorEffectiveness: {row[0].GetRawText()}}}", fromCraft);
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "floatBoundaries"))
             RunItemScript(
                 $"var ptr RuleItem item; var ptr RuleDamageType damage; var int value; " +
                 $"rules.getRuleItem item \"ITEM_READ\"; item.getDamageType damage; damage.getDamageToHealth value {row[0].GetInt32()}; " +
                 $"if neq value {row[2].GetInt32()}; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
-                $"damageAlter: {{ToHealth: {row[1].GetRawText()}}}", fromCache, fromCraft);
+                $"damageAlter: {{ToHealth: {row[1].GetRawText()}}}", fromCraft);
     }
 
     [Theory]
-    [InlineData(false, "getDamageToHealth", "ToHealth: 1", "2147483647", "integer range")]
-    [InlineData(true, "getDamageToHealth", "ToHealth: 1", "2147483647", "integer range")]
-    [InlineData(false, "getDamageToHealth", "ToHealth: 1e100", "1", "integer range")]
-    [InlineData(true, "getArmorEffectiveness", "ArmorEffectiveness: 1e100", "", "integer range")]
-    [InlineData(false, "getDamageToHealth", "ToHealth: 1", "detection_chance", "bounded power forecast")]
-    public void UnsafeDamageQueriesStopBeforeTickMutation(bool fromCache, string reader, string fields, string power, string reason)
+    [InlineData("getDamageToHealth", "ToHealth: 1", "2147483647", "integer range")]
+    [InlineData("getDamageToHealth", "ToHealth: 1e100", "1", "integer range")]
+    [InlineData("getArmorEffectiveness", "ArmorEffectiveness: 1e100", "", "integer range")]
+    [InlineData("getDamageToHealth", "ToHealth: 1", "detection_chance", "bounded power forecast")]
+    public void UnsafeDamageQueriesStopBeforeTickMutation(string reader, string fields, string power, string reason)
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             items:
               - type: ITEM_DAMAGE_GUARD
                 damageAlter: { {{fields}} }
@@ -198,11 +183,9 @@ public sealed class StrategicWorldDetectionItemRulesTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void DamageAliasesAndBoundedScalarLocalsPreserveNativeResults(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DamageAliasesAndBoundedScalarLocalsPreserveNativeResults(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-damage");
         var row = TestFixtures.Rows(oracle.RootElement, "conversionRows")
@@ -214,44 +197,40 @@ public sealed class StrategicWorldDetectionItemRulesTests
         for (var index = 0; index < DamageReaders.Length; index++)
             code += $"copy.{DamageReaders[index]} value bounded; if neq value {row[2][index].GetInt32()}; return DETECTION_NONE 0; end; ";
         code += "return DETECTION_RADAR 100;";
-        RunItemScript(code, CustomDamageFields, fromCache, fromCraft, additionalItems: UnsafeUnrelatedItem);
+        RunItemScript(code, CustomDamageFields, fromCraft, additionalItems: UnsafeUnrelatedItem);
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void NullProfileAliasesBypassUnconsumedPowerAndUnsafeItemData(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NullProfileAliasesBypassUnconsumedPowerAndUnsafeItemData(bool fromCraft)
     {
         RunItemScript("var ptr RuleDamageType absent null; var ptr RuleDamageType copy; var int value; " +
             "set copy absent; set absent copy; copy.getDamageToHealth value detection_chance; " +
             "if neq value 0; return DETECTION_NONE 0; end; " +
             "copy.getArmorEffectiveness value; if neq value 0; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
-            "damageAlter: {ToHealth: 1e100, ArmorEffectiveness: 1e100}", fromCache, fromCraft);
+            "damageAlter: {ToHealth: 1e100, ArmorEffectiveness: 1e100}", fromCraft);
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void FullRangeScalarInputsAreAllowedForSafeDamageMultipliers(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FullRangeScalarInputsAreAllowedForSafeDamageMultipliers(bool fromCraft)
     {
         RunItemScript("var ptr RuleItem item; var ptr RuleDamageType damage; " +
             "rules.getRuleItem item \"ITEM_READ\"; item.getDamageType damage; " +
             "damage.getDamageToHealth detection_chance radar_total_strength; return DETECTION_RADAR 100;",
-            "damageAlter: {ToHealth: 0.5}", fromCache, fromCraft, additionalItems: UnsafeUnrelatedItem);
+            "damageAlter: {ToHealth: 0.5}", fromCraft, additionalItems: UnsafeUnrelatedItem);
     }
 
     [Theory]
-    [InlineData(false, "var int power 39; set power 2147483647;")]
-    [InlineData(true, "var int power 39; var int source 2147483647; swap power source;")]
-    [InlineData(false, "var int power 39; var int source; set source 2147483647; set power source;")]
-    [InlineData(true, "var int power 39; add power detection_chance;")]
-    public void ScalarReassignmentAndUnknownArithmeticCannotEscapeDamageBounds(bool fromCache, string assignments)
+    [InlineData("var int power 39; set power 2147483647;")]
+    [InlineData("var int power 39; var int source 2147483647; swap power source;")]
+    [InlineData("var int power 39; var int source; set source 2147483647; set power source;")]
+    [InlineData("var int power 39; add power detection_chance;")]
+    public void ScalarReassignmentAndUnknownArithmeticCannotEscapeDamageBounds(string assignments)
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             items:
               - type: ITEM_DAMAGE_GUARD
             ufos:
@@ -267,12 +246,10 @@ public sealed class StrategicWorldDetectionItemRulesTests
             : "Detection damage query exceeds the supported integer range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ProfileReassignmentThroughAliasesIncludesEveryPossibleWrite(bool fromCache)
+    [Fact]
+    public void ProfileReassignmentThroughAliasesIncludesEveryPossibleWrite()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             items:
               {{UnsafeUnrelatedItem.ReplaceLineEndings("\n  ")}}
               - type: ITEM_DAMAGE_GUARD
@@ -288,48 +265,40 @@ public sealed class StrategicWorldDetectionItemRulesTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void DamageForecastUsesProfileAtTheCallRatherThanEarlierAssignments(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DamageForecastUsesProfileAtTheCallRatherThanEarlierAssignments(bool fromCraft)
     {
         RunItemScript("var ptr RuleItem item; var ptr RuleDamageType damage; var int value; " +
             "rules.getRuleItem item \"ITEM_UNSAFE\"; item.getDamageType damage; " +
             "rules.getRuleItem item \"ITEM_READ\"; item.getDamageType damage; damage.getDamageToHealth value 39; " +
             "if neq value 19; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
-            "damageAlter: {ToHealth: 0.5}", fromCache, fromCraft, additionalItems: UnsafeUnrelatedItem);
+            "damageAlter: {ToHealth: 0.5}", fromCraft, additionalItems: UnsafeUnrelatedItem);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void NullModLookupDoesNotConsumeUnsafeDamageProfiles(bool fromCache)
+    [Fact]
+    public void NullModLookupDoesNotConsumeUnsafeDamageProfiles()
     {
         RunItemScript("var ptr RuleMod absent null; var ptr RuleItem item; var ptr RuleDamageType damage; " +
             "var int value; absent.getRuleItem item \"ITEM_READ\"; item.getDamageType damage; " +
             "damage.getDamageToHealth value detection_chance; if neq value 0; return DETECTION_NONE 0; end; " +
-            "return DETECTION_RADAR 100;", "damageAlter: {ToHealth: 1e100}", fromCache, false);
+            "return DETECTION_RADAR 100;", "damageAlter: {ToHealth: 1e100}", false);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SentinelItemLookupRemainsNullEvenWhenItsRuleExists(bool fromCache)
+    [Fact]
+    public void SentinelItemLookupRemainsNullEvenWhenItsRuleExists()
     {
         RunItemScript("var ptr RuleItem item; var ptr RuleDamageType damage; var int value; " +
             "rules.getRuleItem item \"STR_NONE\"; item.getDamageType damage; " +
             "damage.getDamageToHealth value detection_chance; if neq value 0; return DETECTION_NONE 0; end; " +
-            "return DETECTION_RADAR 100;", "", fromCache, false,
+            "return DETECTION_RADAR 100;", "", false,
             additionalItems: "- type: STR_NONE\n  damageAlter: {ToHealth: 1e100}");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DamageForecastWorkBudgetStopsBeforeCandidateExpansion(bool fromCache)
+    [Fact]
+    public void DamageForecastWorkBudgetStopsBeforeCandidateExpansion()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"]);
         var parser = Oxce.Scripting.Compilation.ScriptParserDefinition.FromCatalog("detectUfoFromBase");
         var compiled = Oxce.Scripting.Compilation.ScriptCompiler.Compile(
             "var ptr RuleItem item; var ptr RuleDamageType damage; rules.getRuleItem item \"SUPPLY\"; " +
@@ -348,11 +317,9 @@ public sealed class StrategicWorldDetectionItemRulesTests
         """;
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void TextAndTypedTagCopiesMatchNativeBindSet(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TextAndTypedTagCopiesMatchNativeBindSet(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-value-copy");
         var texts = TestFixtures.Rows(oracle.RootElement, "text");
@@ -363,7 +330,7 @@ public sealed class StrategicWorldDetectionItemRulesTests
             $"set copy \"{texts[1].GetString()}\"; if neq copy \"{texts[1].GetString()}\"; return DETECTION_NONE 0; end; " +
             "set selected Tag.COPY; set alias selected; rules.getRuleItem item \"ITEM_READ\"; item.getTag value alias; " +
             $"if neq value {tag}; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;";
-        RunItemScript(code, $"tags: {{COPY: {tag}}}", fromCache, fromCraft, """
+        RunItemScript(code, $"tags: {{COPY: {tag}}}", fromCraft, """
             extended:
               tags:
                 RuleItem: {COPY: int}
@@ -371,11 +338,9 @@ public sealed class StrategicWorldDetectionItemRulesTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void SoldierTypeBindingRetainsNativeSkillReceiver(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SoldierTypeBindingRetainsNativeSkillReceiver(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-value-copy");
         var types = TestFixtures.Rows(oracle.RootElement, "soldierType");
@@ -383,15 +348,13 @@ public sealed class StrategicWorldDetectionItemRulesTests
             $"rules.getRuleSkill skill \"{types[0].GetString()}\"; RuleSoldier.getType skill id; " +
             $"if neq id \"{types[0].GetString()}\"; return DETECTION_NONE 0; end; " +
             $"RuleSoldier.getType absent id; if neq id \"{types[1].GetString()}\"; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
-            "", fromCache, fromCraft, $"skills: [{{type: {types[0].GetString()}}}]");
+            "", fromCraft, $"skills: [{{type: {types[0].GetString()}}}]");
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void RandomDamageNullStateAndProfilePreserveNativeShortCircuit(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RandomDamageNullStateAndProfilePreserveNativeShortCircuit(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-damage");
         var rows = TestFixtures.Rows(oracle.RootElement, "nullRandomDamage");
@@ -403,15 +366,13 @@ public sealed class StrategicWorldDetectionItemRulesTests
             $"absent.getRandomDamage value -2147483648 random; if neq value {rows[1].GetInt32()}; return DETECTION_NONE 0; end; " +
             $"absent.getRandomDamage value detection_chance copy; if neq value {rows[2].GetInt32()}; return DETECTION_NONE 0; end; " +
             "return DETECTION_RADAR 100;";
-        RunItemScript(code, "damageAlter: {ToHealth: 1e100}", fromCache, fromCraft);
+        RunItemScript(code, "damageAlter: {ToHealth: 1e100}", fromCraft);
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ItemPowerReadersFeedBoundedNativeDamageConversions(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ItemPowerReadersFeedBoundedNativeDamageConversions(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-damage");
         var row = TestFixtures.Rows(oracle.RootElement, "conversionRows")
@@ -423,29 +384,25 @@ public sealed class StrategicWorldDetectionItemRulesTests
                 $"damage.{DamageReaders[index]} value melee; if neq value {row[2][index].GetInt32()}; return DETECTION_NONE 0; end; ";
         code += "set power 2147483647; return DETECTION_RADAR 100;";
         RunItemScript(code, CustomDamageFields + "\npower: -39\nmeleePower: -39",
-            fromCache, fromCraft, additionalItems: UnsafeUnrelatedItem);
-    }
-
-    [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void RulePowerOverwriteBoundsCallerOutputsBeforeConversion(bool fromCache, bool fromCraft)
-    {
-        RunItemScript("var ptr RuleItem item; var ptr RuleDamageType damage; " +
-            "rules.getRuleItem item \"ITEM_READ\"; item.getDamageType damage; item.getPower detection_chance; " +
-            "damage.getDamageToHealth detection_chance detection_chance; " +
-            "if neq detection_chance 19; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
-            "power: 39\ndamageAlter: {ToHealth: 0.5}", fromCache, fromCraft);
+        fromCraft, additionalItems: UnsafeUnrelatedItem);
     }
 
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void LoopCarriedPowerOverflowStopsBeforeTickMutation(bool fromCache)
+    public void RulePowerOverwriteBoundsCallerOutputsBeforeConversion(bool fromCraft)
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+        RunItemScript("var ptr RuleItem item; var ptr RuleDamageType damage; " +
+            "rules.getRuleItem item \"ITEM_READ\"; item.getDamageType damage; item.getPower detection_chance; " +
+            "damage.getDamageToHealth detection_chance detection_chance; " +
+            "if neq detection_chance 19; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
+            "power: 39\ndamageAlter: {ToHealth: 0.5}", fromCraft);
+    }
+
+    [Fact]
+    public void LoopCarriedPowerOverflowStopsBeforeTickMutation()
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             items:
               - type: SAFE_POWER
                 power: 39
@@ -463,25 +420,21 @@ public sealed class StrategicWorldDetectionItemRulesTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void NullRandomDamageFeedsAZeroIntervalToLaterConversions(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NullRandomDamageFeedsAZeroIntervalToLaterConversions(bool fromCraft)
     {
         RunItemScript("var ptr RuleItem item; var ptr RuleDamageType damage; var ptre RandomState state null; " +
             "var int power; var int value; rules.getRuleItem item \"ITEM_READ\"; item.getDamageType damage; " +
             "damage.getRandomDamage power 2147483647 state; damage.getDamageToHealth value power; " +
             "if neq value 0; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
-            "", fromCache, fromCraft);
+            "", fromCraft);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ScalarForecastReservesWorkAndReadsItemPowerAtTheCall(bool fromCache)
+    [Fact]
+    public void ScalarForecastReservesWorkAndReadsItemPowerAtTheCall()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, "items: [{type: POWER_QUERY, power: 39}]");
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], "items: [{type: POWER_QUERY, power: 39}]");
         var parser = Oxce.Scripting.Compilation.ScriptParserDefinition.FromCatalog("detectUfoFromBase");
         var program = Oxce.Scripting.Compilation.ScriptCompiler.Compile(
             "var ptr RuleItem item; var ptr RuleDamageType damage; var int power; var int value; " +
@@ -503,39 +456,33 @@ public sealed class StrategicWorldDetectionItemRulesTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void DefaultTextCopiesNativeEmptyValue(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DefaultTextCopiesNativeEmptyValue(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-value-copy");
         var empty = TestFixtures.Rows(oracle.RootElement, "text")[1].GetString();
         RunItemScript("var text original; var text copy; set copy original; " +
             $"if neq copy \"{empty}\"; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
-            "", fromCache, fromCraft);
+            "", fromCraft);
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ExplicitTextClearCopiesNativeEmptyValue(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ExplicitTextClearCopiesNativeEmptyValue(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-value-copy");
         var empty = oracle.RootElement.GetProperty("clearedText").GetString();
         RunItemScript("var text original \"copied\"; var text copy; clear original; set copy original; " +
             $"if neq copy \"{empty}\"; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
-            "", fromCache, fromCraft);
+            "", fromCraft);
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ReusedBlockRegistersRemainValidForReferenceAndScalarForecasts(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ReusedBlockRegistersRemainValidForReferenceAndScalarForecasts(bool fromCraft)
     {
         RunItemScript("var ptr RuleItem item; var ptr RuleDamageType damage; var int value; " +
             "rules.getRuleItem item \"ITEM_READ\"; " +
@@ -543,7 +490,7 @@ public sealed class StrategicWorldDetectionItemRulesTests
             "damage.getDamageToHealth value power; if neq value 39; return DETECTION_NONE 0; end; end; " +
             "begin; var ptr RuleItem local item; var int power 19; local.getDamageType damage; " +
             "damage.getDamageToHealth value power; if neq value 19; return DETECTION_NONE 0; end; end; " +
-            "return DETECTION_RADAR 100;", "", fromCache, fromCraft);
+            "return DETECTION_RADAR 100;", "", fromCraft);
     }
 
     private static readonly string[] DamageReaders =
@@ -552,11 +499,9 @@ public sealed class StrategicWorldDetectionItemRulesTests
          "getDamageToTile", "getDamageToTime", "getDamageToWound"];
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void NativeItemScalarReadersComposeWithDivisorsAndDamageQueries(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NativeItemScalarReadersComposeWithDivisorsAndDamageQueries(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var rows = TestFixtures.Rows(oracle.RootElement, "itemReaders");
@@ -574,17 +519,15 @@ public sealed class StrategicWorldDetectionItemRulesTests
                     code += $"set quotient {expected}; div quotient power; if neq quotient 1; return DETECTION_NONE 0; end; ";
             }
             code += "return DETECTION_RADAR 100;";
-            RunItemScript(code, stage == 0 ? "" : CustomFields, fromCache, fromCraft,
+            RunItemScript(code, stage == 0 ? "" : CustomFields, fromCraft,
                 additionalItems: "- type: HALF_DAMAGE\n  damageAlter: {ToHealth: 0.5}");
         }
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void NativeDamageOutputsComposeWithDivisorsAndFurtherConversions(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NativeDamageOutputsComposeWithDivisorsAndFurtherConversions(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-damage");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "conversionRows"))
@@ -605,7 +548,7 @@ public sealed class StrategicWorldDetectionItemRulesTests
                     code += $"set quotient {expected}; div quotient value; if neq quotient 1; return DETECTION_NONE 0; end; ";
             }
             code += "return DETECTION_RADAR 100;";
-            RunItemScript(code, fields, fromCache, fromCraft,
+            RunItemScript(code, fields, fromCraft,
                 additionalItems: "- type: HALF_DAMAGE\n  damageAlter: {ToHealth: 0.5}");
         }
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows"))
@@ -621,7 +564,7 @@ public sealed class StrategicWorldDetectionItemRulesTests
                     "if neq quotient 1; return DETECTION_NONE 0; end; ";
             }
             code += "return DETECTION_RADAR 100;";
-            RunItemScript(code, type == -1 ? "" : $"damageType: {type}", fromCache, fromCraft);
+            RunItemScript(code, type == -1 ? "" : $"damageType: {type}", fromCraft);
         }
     }
 
@@ -640,7 +583,7 @@ public sealed class StrategicWorldDetectionItemRulesTests
           ToWound: 0.33333333
         """;
 
-    private static void RunItemReaderFixture(string prefix, bool fromCache, bool fromCraft)
+    private static void RunItemReaderFixture(string prefix, bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var rows = TestFixtures.Rows(oracle.RootElement, "itemReaders");
@@ -655,16 +598,14 @@ public sealed class StrategicWorldDetectionItemRulesTests
                 code += $"absent.{field.Name} value; if neq value 0; return DETECTION_NONE 0; end; ";
             }
             code += "return DETECTION_RADAR 100;";
-            RunItemScript(code, stage == 0 ? "" : CustomFields, fromCache, fromCraft);
+            RunItemScript(code, stage == 0 ? "" : CustomFields, fromCraft);
         }
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void TypedDeclarationCopiesFeedDetectionQueriesAcrossReload(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TypedDeclarationCopiesFeedDetectionQueriesAcrossReload(bool fromCraft)
     {
         RunItemScript("var ptr Ufo contact ufo; var ptr RuleMod mod rules; " +
             "var ptre RandomState state null; var ptr RandomState readonlyState state; " +
@@ -674,13 +615,13 @@ public sealed class StrategicWorldDetectionItemRulesTests
             "mod.getRuleItem item itemId; item.getDamageType damage; damage.getDamageToHealth value power; " +
             "if eq contact null; return DETECTION_NONE 0; end; " +
             "if neq value 19; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
-            "damageAlter: {ToHealth: 0.5}", fromCache, fromCraft);
+            "damageAlter: {ToHealth: 0.5}", fromCraft);
     }
 
-    private static void RunItemScript(string code, string fields, bool fromCache, bool fromCraft, string extra = "", string additionalItems = "")
+    private static void RunItemScript(string code, string fields, bool fromCraft, string extra = "", string additionalItems = "")
     {
         var parser = fromCraft ? "detectUfoFromCraft" : "detectUfoFromBase";
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             {{extra}}
             items:
               {{additionalItems.ReplaceLineEndings("\n  ")}}

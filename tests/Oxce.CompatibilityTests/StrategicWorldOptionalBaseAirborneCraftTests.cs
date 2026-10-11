@@ -11,30 +11,22 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldOptionalBaseAirborneCraftTests
 {
     [Theory]
-    [InlineData(false, 0, false, false)]
-    [InlineData(true, 0, false, false)]
-    [InlineData(false, 5, false, false)]
-    [InlineData(true, 5, false, false)]
-    [InlineData(false, 0, true, false)]
-    [InlineData(true, 0, true, false)]
-    [InlineData(false, 5, true, false)]
-    [InlineData(true, 5, true, false)]
-    [InlineData(false, 0, false, true)]
-    [InlineData(true, 0, false, true)]
-    [InlineData(false, 5, false, true)]
-    [InlineData(true, 5, false, true)]
-    [InlineData(false, 0, true, true)]
-    [InlineData(true, 0, true, true)]
-    [InlineData(false, 5, true, true)]
-    [InlineData(true, 5, true, true)]
-    public void EqualSpeedOptionalReturnsPreserveFuelHuntingAndOrderedCraftEscort(bool cache, int takeoff, bool escort, bool hunter)
+    [InlineData(0, false, false)]
+    [InlineData(5, false, false)]
+    [InlineData(0, true, false)]
+    [InlineData(5, true, false)]
+    [InlineData(0, false, true)]
+    [InlineData(5, false, true)]
+    [InlineData(0, true, true)]
+    [InlineData(5, true, true)]
+    public void EqualSpeedOptionalReturnsPreserveFuelHuntingAndOrderedCraftEscort(int takeoff, bool escort, bool hunter)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
         TestFixtures.LoadVerifiedManifest("strategic-world");
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = StrategicWorldOptionalBaseCraftTests.Content(cache);
-        var deletedContent = StrategicWorldOptionalBaseCraftTests.Content(cache, "CORE");
-        var survivedContent = StrategicWorldOptionalBaseCraftTests.Content(cache, "");
+        var content = StrategicWorldOptionalBaseCraftTests.Content();
+        var deletedContent = StrategicWorldOptionalBaseCraftTests.Content("CORE");
+        var survivedContent = StrategicWorldOptionalBaseCraftTests.Content("");
         HashSet<bool> outcomes = [];
         for (ulong seed = 1; seed <= 32; seed++)
         {
@@ -82,12 +74,10 @@ public sealed class StrategicWorldOptionalBaseAirborneCraftTests
         Assert.Equal(2, outcomes.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ChangedSpeedArrivalAndMalformedTakeoffKeepPreciseAtomicBoundaries(bool cache)
+    [Fact]
+    public void ChangedSpeedArrivalAndMalformedTakeoffKeepPreciseAtomicBoundaries()
     {
-        var content = StrategicWorldOptionalBaseCraftTests.Content(cache);
+        var content = StrategicWorldOptionalBaseCraftTests.Content();
         var initial = Snapshot(content, 17, 0, false, false);
         var threshold = WorldFlight.FuelLimit(false, 6000, WorldGeometry.Distance(new(1, 0.6),
             new(initial.Bases[0].Longitude, initial.Bases[0].Latitude)));
@@ -110,13 +100,11 @@ public sealed class StrategicWorldOptionalBaseAirborneCraftTests
             "Airborne craft fuel or takeoff state is out of range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void NearHomeOptionalReturnUsesNativeEquality(bool cache)
+    [Fact]
+    public void NearHomeOptionalReturnUsesNativeEquality()
     {
         TestFixtures.LoadVerifiedManifest("strategic-world");
-        var content = StrategicWorldOptionalBaseCraftTests.Content(cache);
+        var content = StrategicWorldOptionalBaseCraftTests.Content();
         var initial = Snapshot(content, 17, 5, false, false);
         initial = initial.WithCraft("SHIP", craft => craft with
         {

@@ -11,16 +11,14 @@ namespace Oxce.CompatibilityTests;
 public sealed partial class StrategicWorldAlienBaseGenerationTests
 {
     [Theory]
-    [InlineData(false, 50)]
-    [InlineData(true, 50)]
-    [InlineData(false, 100)]
-    [InlineData(true, 100)]
-    public void DailyGeneratedAirborneHuntersWithNoPossibleCraftKeepTheirNativeWaypoint(bool cache, int percentage)
+    [InlineData(50)]
+    [InlineData(100)]
+    public void DailyGeneratedAirborneHuntersWithNoPossibleCraftKeepTheirNativeWaypoint(int percentage)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         var constructor = TestFixtures.Rows(oracle.RootElement, "constructorRows").Where(row => row[0].GetInt32() == percentage).ToArray();
         Assert.NotEmpty(constructor);
-        var content = GeneratedWaveContent(cache, 0, hunterPercentage: percentage);
+        var content = GeneratedWaveContent(0, hunterPercentage: percentage);
         HashSet<bool> flags = [];
         for (ulong seed = 1; seed <= 12; seed++)
         {
@@ -54,16 +52,13 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    public void DailyGeneratedHuntersSelectNativeCraftAndPersistTheirPursuit(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void DailyGeneratedHuntersSelectNativeCraftAndPersistTheirPursuit(int mode)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = GeneratedHunterContent(cache, mode);
+        var content = GeneratedHunterContent(mode);
         var initial = GeneratedHunterSnapshot(content);
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
             81, "generated-pursuit-before.sav");
@@ -98,13 +93,11 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GeneratedHunterProofsCannotLeakBetweenSourcesWithTheSameCandidateId(bool cache)
+    [Fact]
+    public void GeneratedHunterProofsCannotLeakBetweenSourcesWithTheSameCandidateId()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = GeneratedHunterContent(cache, 0);
+        var content = GeneratedHunterContent(0);
         var initial = GeneratedHunterSnapshot(content);
         var target = initial.Bases[0].Crafts[0].Logistics!;
         initial = initial with
@@ -121,18 +114,15 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    public void HuntingGeneratedHuntersJoinLaterRetargetWithoutEarlierHalfHourActivity(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void HuntingGeneratedHuntersJoinLaterRetargetWithoutEarlierHalfHourActivity(int mode)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var minute in new[] { 9, 29 })
         {
-            var content = GeneratedHunterContent(cache, mode, hunting: true);
+            var content = GeneratedHunterContent(mode, hunting: true);
             var initial = GeneratedHunterSnapshot(content, hunting: true) with { Time = new(1, 1, 1, 1999, 0, minute, 55) };
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
                 81, "hunting-generated-target-before.sav");
@@ -158,13 +148,11 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DailyAndHuntingHunterBirthsReserveBothHiddenContactMarkers(bool cache)
+    [Fact]
+    public void DailyAndHuntingHunterBirthsReserveBothHiddenContactMarkers()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = GeneratedHunterContent(cache, 2, hunting: true, combined: true);
+        var content = GeneratedHunterContent(2, hunting: true, combined: true);
         var initial = GeneratedHunterSnapshot(content, hunting: true) with { Time = new(1, 1, 1, 1999, 23, 59, 55) };
         AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("STR_UFO", int.MaxValue - 1), content,
             new SplitMix64RandomSource(81)), "UFO contact marker IDs are exhausted or collide with a saved UFO.");
@@ -182,35 +170,31 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void GeneratedHunterRaceStatsOverflowRefusesBeforeEitherCreationCaller(bool cache, bool hunting)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedHunterRaceStatsOverflowRefusesBeforeEitherCreationCaller(bool hunting)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = GeneratedHunterContent(cache, 0, hunting, radarBonus: int.MaxValue);
+        var content = GeneratedHunterContent(0, hunting, radarBonus: int.MaxValue);
         AssertTimeBlocked(CampaignState.Restore(GeneratedHunterSnapshot(content, hunting), content, new SplitMix64RandomSource(81)),
             hunting ? "Alien base hunting mission fields exceed the supported range." :
                 "Immediate generated mission fields exceed the supported range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GeneratedIdleHunterValidatesConsumedMaximumSpeedBeforeBirth(bool cache)
+    [Fact]
+    public void GeneratedIdleHunterValidatesConsumedMaximumSpeedBeforeBirth()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = GeneratedHunterContent(cache, 0, speedMaximum: -1, spawnPercentage: 0);
+        var content = GeneratedHunterContent(0, speedMaximum: -1, spawnPercentage: 0);
         var initial = GeneratedHunterSnapshot(content);
         initial = initial with { Bases = [initial.Bases[0] with { Crafts = [], Soldiers = [] }] };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
             "UFO hunting stats exceed the supported range.");
     }
 
-    private static RuntimeContent GeneratedHunterContent(bool cache, int mode, bool hunting = false, bool combined = false,
+    private static RuntimeContent GeneratedHunterContent(int mode, bool hunting = false, bool combined = false,
         int radarBonus = 0, int speedMaximum = 2200, int spawnPercentage = 100) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+        StrategicReadinessTestContent.Load(["strategic-world.rul"], $$$"""
             crafts:
               - {type: GENERATED_SLOW, speedMax: 2000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
               - {type: GENERATED_FAST, speedMax: 6000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}

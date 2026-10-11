@@ -11,15 +11,13 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldRegionalNewLeaderTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void IdleEscortUsesTheActualFirstRegionalLeaderWithoutGuessingItsIdentity(bool cache, bool multiple)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void IdleEscortUsesTheActualFirstRegionalLeaderWithoutGuessingItsIdentity(bool multiple)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
-        var content = Content(cache, multiple);
+        var content = Content(multiple);
         var region = content.RuntimeRules.Regions[content.RuntimeRules.Regions.GetRequired("LEADER_REGION")].Value;
         for (ulong seed = 1; seed <= 16; seed++)
         {
@@ -72,16 +70,13 @@ public sealed class StrategicWorldRegionalNewLeaderTests
     }
 
     [Theory]
-    [InlineData(false, false, false)]
-    [InlineData(true, false, false)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, true)]
-    [InlineData(false, true, false)]
-    [InlineData(true, true, false)]
-    public void RegionalAttachmentPreservesFarCraftPursuitAndGuardsCloseCombat(bool cache, bool close, bool takeoff)
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public void RegionalAttachmentPreservesFarCraftPursuitAndGuardsCloseCombat(bool close, bool takeoff)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = Content(cache, true, "crafts: [{type: SHIP, radarRange: 20000, radarChance: 100}]\n");
+        var content = Content(true, "crafts: [{type: SHIP, radarRange: 20000, radarChance: 100}]\n");
         for (ulong seed = 1; seed <= 8; seed++)
         {
             var initial = Snapshot(content, seed);
@@ -136,13 +131,11 @@ public sealed class StrategicWorldRegionalNewLeaderTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OptionalDailyInterruptionCannotProveGuaranteedPointLeaderAttachment(bool cache)
+    [Fact]
+    public void OptionalDailyInterruptionCannotProveGuaranteedPointLeaderAttachment()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
-        var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false, interrupt: "BONUS", extraRules: """
+        var content = StrategicWorldNewbornFirstArrivalTests.Content(false, interrupt: "BONUS", extraRules: """
             research:
               - {name: UNLOCK, cost: 1}
               - {name: CORE, cost: 1, getOneFree: [BONUS, OTHER]}
@@ -163,8 +156,8 @@ public sealed class StrategicWorldRegionalNewLeaderTests
             "Loaded idle escorts require same-tick newborn waypoint forecasts.");
     }
 
-    internal static RuntimeContent Content(bool cache, bool multiple = false, string extraRules = "") =>
-        StrategicWorldNewbornFirstArrivalTests.Content(cache, false, extraRules: $$$"""
+    internal static RuntimeContent Content(bool multiple = false, string extraRules = "") =>
+        StrategicWorldNewbornFirstArrivalTests.Content(false, extraRules: $$$"""
             {{{extraRules}}}
             regions:
               - type: LEADER_REGION

@@ -13,11 +13,9 @@ namespace Oxce.CompatibilityTests;
 public sealed partial class StrategicWorldAlienBaseGenerationTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void GeneratedGroundEscortsInitializeBeforeScoringAndStayInactiveUntilTakeoff(bool cache, bool hunting)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedGroundEscortsInitializeBeforeScoringAndStayInactiveUntilTakeoff(bool hunting)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var leader in new[] { false, true })
@@ -25,7 +23,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             var expected = TestFixtures.Rows(oracle.RootElement, "spawnEscortRows").Single(row =>
                 row[0].GetBoolean() && row[1].GetBoolean() && row[2].GetInt32() == (leader ? 3 : 0) &&
                 row[3].GetInt32() == 0 && row[12].GetInt32() == 1);
-            var content = GeneratedEscortContent(cache, hunting, ground: true, leader: leader);
+            var content = GeneratedEscortContent(hunting, ground: true, leader: leader);
             var initial = GeneratedEscortSnapshot(content, hunting);
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
                 81, "generated-ground-escort-before.sav");
@@ -61,11 +59,9 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void GeneratedZeroRadarAirborneEscortsPreserveLeaderOrderAndReload(bool cache, bool hunting)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedZeroRadarAirborneEscortsPreserveLeaderOrderAndReload(bool hunting)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var leader in new[] { false, true })
@@ -73,7 +69,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             var expected = TestFixtures.Rows(oracle.RootElement, "spawnEscortRows").Single(row =>
                 row[0].GetBoolean() && row[1].GetBoolean() && row[2].GetInt32() == (leader ? 3 : 0) &&
                 row[3].GetInt32() == 0 && row[12].GetInt32() == 0);
-            var content = GeneratedEscortContent(cache, hunting, ground: false, leader: leader);
+            var content = GeneratedEscortContent(hunting, ground: false, leader: leader);
             var initial = GeneratedEscortSnapshot(content, hunting);
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
                 81, "generated-air-escort-before.sav");
@@ -109,18 +105,15 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    public void GeneratedEscortHuntersUseEarlierBirthOriginsForSelectionAndCombatProofs(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void GeneratedEscortHuntersUseEarlierBirthOriginsForSelectionAndCombatProofs(int mode)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var hunting in new[] { false, true })
         {
-            var content = GeneratedEscortContent(cache, hunting, ground: false, leader: true, radar: 300, mode: mode);
+            var content = GeneratedEscortContent(hunting, ground: false, leader: true, radar: 300, mode: mode);
             var origin = new WorldPosition(Degrees(8), Degrees(2));
             var initial = TargetedGeneratedEscortSnapshot(content, hunting, origin);
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
@@ -159,14 +152,12 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void GeneratedStochasticSameWaveEscortsKeepEveryConstructorOutcomeSafe(bool cache, bool hunting)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedStochasticSameWaveEscortsKeepEveryConstructorOutcomeSafe(bool hunting)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = GeneratedEscortContent(cache, hunting, ground: false, leader: false, radar: 300,
+        var content = GeneratedEscortContent(hunting, ground: false, leader: false, radar: 300,
             mode: 2, percentage: 50, count: 2);
         var initial = TargetedGeneratedEscortSnapshot(content, hunting, new(Degrees(10), Degrees(8)));
         AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("STR_UFO", int.MaxValue - 1), content,
@@ -195,17 +186,15 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         Assert.Equal(4, outcomes.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GeneratedEscortCombatProofRetainsInitializedSpeedWhenHuntDoesNotOverride(bool cache)
+    [Fact]
+    public void GeneratedEscortCombatProofRetainsInitializedSpeedWhenHuntDoesNotOverride()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var hunting in new[] { false, true })
             foreach (var speed in new[] { 0, -1 })
             {
                 Assert.Contains(TestFixtures.Rows(oracle.RootElement, "retargetRows"), row => row[0].GetInt32() == speed && row[1].GetInt32() == 900);
-                var content = GeneratedEscortContent(cache, hunting, ground: false, leader: true, radar: 300, huntSpeed: speed);
+                var content = GeneratedEscortContent(hunting, ground: false, leader: true, radar: 300, huntSpeed: speed);
                 var origin = new WorldPosition(Degrees(8), Degrees(2));
                 var initial = TargetedGeneratedEscortSnapshot(content, hunting, origin);
                 var owner = initial.Bases[0];
@@ -247,10 +236,10 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         return initial with { Bases = [owner with { Crafts = [Craft(1, "GENERATED_ESCORT_SLOW"), Craft(2, "GENERATED_ESCORT_FAST")], Soldiers = [] }] };
     }
 
-    private static RuntimeContent GeneratedEscortContent(bool cache, bool hunting, bool ground, bool leader,
+    private static RuntimeContent GeneratedEscortContent(bool hunting, bool ground, bool leader,
         int radar = 0, int mode = 0, int percentage = 100, int count = 1, int huntSpeed = 150,
         int groundTimer = 2, int missionPoints = 0) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+        StrategicReadinessTestContent.Load(["strategic-world.rul"], $$$"""
             crafts:
               - {type: GENERATED_ESCORT_SLOW, speedMax: 2000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
               - {type: GENERATED_ESCORT_FAST, speedMax: 6000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}

@@ -9,13 +9,11 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicMissionInitializationTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SpaceObjectivesInitializeWithoutExecutingTheirFutureEffects(bool cache)
+    [Fact]
+    public void SpaceObjectivesInitializeWithoutExecutingTheirFutureEffects()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-generation");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-mission-initialization.rul"], cache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-mission-initialization.rul"]);
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows").Where(row =>
                      row[0].GetString()!.StartsWith("objective", StringComparison.Ordinal) && row[0].GetString() != "objective3"))
         {
@@ -36,13 +34,11 @@ public sealed class StrategicMissionInitializationTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ExistingBaseSelectionAndAbortMatchReference(bool cache)
+    [Fact]
+    public void ExistingBaseSelectionAndAbortMatchReference()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-mission-operation");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-mission-initialization.rul"], cache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-mission-initialization.rul"]);
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows"))
         {
             var op = row[0].GetInt32();

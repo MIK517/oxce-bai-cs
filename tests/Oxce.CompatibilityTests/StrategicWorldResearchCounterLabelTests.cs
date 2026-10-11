@@ -10,10 +10,8 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldResearchCounterLabelTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void WhitespaceCounterLabelsKeepNativeIdentityThroughDailyWorldTicksAndRewrites(bool cache)
+    [Fact]
+    public void WhitespaceCounterLabelsKeepNativeIdentityThroughDailyWorldTicksAndRewrites()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         string[] labels = ["", " ", "\t", "\u00a0"];
@@ -21,7 +19,7 @@ public sealed class StrategicWorldResearchCounterLabelTests
         {
             var label = labels[index];
             var quoted = JsonSerializer.Serialize(label);
-            var content = StrategicWorldDailyResearchQuantityTests.Content(cache, false, extraResearch:
+            var content = StrategicWorldDailyResearchQuantityTests.Content(false, extraResearch:
                 $"  - {{name: EQUIV_A, increaseCounter: [{quoted}, {quoted}]}}\n  - {{name: EQUIV_B, decreaseCounter: [{quoted}]}}");
             HashSet<int> choices = [];
             for (ulong seed = 1; seed <= 12; seed++)
@@ -47,13 +45,11 @@ public sealed class StrategicWorldResearchCounterLabelTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void LoadedWhitespaceCounterNamesRemainDistinct(bool cache)
+    [Fact]
+    public void LoadedWhitespaceCounterNamesRemainDistinct()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = StrategicWorldDailyResearchQuantityTests.Content(cache, false);
+        var content = StrategicWorldDailyResearchQuantityTests.Content(false);
         var initial = StrategicWorldDailyResearchQuantityTests.Snapshot(content, 17, false);
         initial = initial with { NextIds = new Dictionary<string, int>(initial.NextIds) { [" "] = 2, ["\t"] = 3, ["\u00a0"] = 4 } };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
@@ -77,7 +73,7 @@ public sealed class StrategicWorldResearchCounterLabelTests
     public void EmptyCounterNamesAndNonpositiveIdsRemainInvalid(string label, int value)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = StrategicWorldDailyResearchQuantityTests.Content(false, false);
+        var content = StrategicWorldDailyResearchQuantityTests.Content(false);
         var initial = StrategicWorldDailyResearchQuantityTests.Snapshot(content, 17, false);
         initial = initial with { NextIds = new Dictionary<string, int>(initial.NextIds) { [label] = value } };
         if (label.Length == 0)

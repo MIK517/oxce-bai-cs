@@ -12,16 +12,14 @@ namespace Oxce.CompatibilityTests;
 
 public sealed partial class StrategicWorldHuntingTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void AmmunitionUncertaintyIgnoresUnconsumedProductionMaterials(bool cache)
+    [Fact]
+    public void AmmunitionUncertaintyIgnoresUnconsumedProductionMaterials()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         var rows = TestFixtures.Rows(oracle.RootElement, "productionAmmunitionMaterialRows");
         foreach (var input in new[] { 1, 2 })
         {
-            var content = LoadSavingMaterialContent(cache, input);
+            var content = LoadSavingMaterialContent(input);
             foreach (var group in rows.Where(row => row[1].GetInt32() == input &&
                 (row[2].GetInt32() == 1 || row[3].GetInt32() == 0)).GroupBy(row =>
                 (Stock: row[0].GetInt32(), Amount: row[2].GetInt32(), Assigned: row[3].GetInt32())))
@@ -37,29 +35,25 @@ public sealed partial class StrategicWorldHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void AmmunitionUncertaintyRetainsConsumedProductionGuard(bool cache)
+    [Fact]
+    public void AmmunitionUncertaintyRetainsConsumedProductionGuard()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = LoadSavingMaterialContent(cache, 2);
+        var content = LoadSavingMaterialContent(2);
         var initial = SavingMaterialSnapshot(content, stock: 1, amount: 3, assigned: 1);
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
             81, "saving-material-uncertain.sav");
         AssertTimeBlocked(campaign, "UFO retargeting requires stochastic production material forecasts.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void AmmunitionMaterialBoundsAdmitEqualEligibilityOutcomes(bool cache)
+    [Fact]
+    public void AmmunitionMaterialBoundsAdmitEqualEligibilityOutcomes()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         var rows = TestFixtures.Rows(oracle.RootElement, "productionAmmunitionMaterialRows");
         foreach (var input in new[] { 1, 2 })
         {
-            var content = LoadSavingMaterialContent(cache, input);
+            var content = LoadSavingMaterialContent(input);
             foreach (var group in rows.Where(row => row[1].GetInt32() == input && row[2].GetInt32() == 3 && row[3].GetInt32() != 0)
                 .GroupBy(row => (Stock: row[0].GetInt32(), Amount: row[2].GetInt32(), Assigned: row[3].GetInt32())))
             {
@@ -81,17 +75,15 @@ public sealed partial class StrategicWorldHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void AmmunitionMaterialBoundsFollowSavedProductionOrder(bool cache)
+    [Fact]
+    public void AmmunitionMaterialBoundsFollowSavedProductionOrder()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         var rows = TestFixtures.Rows(oracle.RootElement, "productionAmmunitionSequenceRows");
         foreach (var input in new[] { 1, 2 })
             foreach (var nextInput in new[] { 1, 2 })
             {
-                var content = LoadSavingMaterialContent(cache, input, nextInput);
+                var content = LoadSavingMaterialContent(input, nextInput);
                 foreach (var group in rows.Where(row => row[1].GetInt32() == input && row[2].GetInt32() == nextInput)
                     .GroupBy(row => row[0].GetInt32()))
                 {
@@ -130,7 +122,7 @@ public sealed partial class StrategicWorldHuntingTests
     public void ProductionMaterialProjectionRejectsExhaustedWorkWithoutCampaignMutation()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = LoadSavingMaterialContent(false, 1);
+        var content = LoadSavingMaterialContent(1);
         var campaign = CampaignState.Restore(SavingMaterialSnapshot(content, 4, 3, 2), content, new SplitMix64RandomSource(81));
         var before = campaign.Capture();
         var crafts = campaign.BaseStates.ToDictionary(owner => owner.Id, owner => owner.Crafts.ToList());
@@ -150,7 +142,7 @@ public sealed partial class StrategicWorldHuntingTests
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
         var ids = Enumerable.Range(0, 128).Select(index => $"WIDE_MATERIAL_{index}").ToArray();
-        var content = Load(false, "items: [" + string.Join(", ", ids.Select(id => $"{{type: {id}}}")) + "]\n" +
+        var content = Load("items: [" + string.Join(", ", ids.Select(id => $"{{type: {id}}}")) + "]\n" +
             "manufacture: [{name: WIDE_MATERIAL_PRODUCT, time: 1, requiredItems: {" +
             string.Join(", ", ids.Select(id => $"{id}: 0")) + "}, producedItems: {SUPPLY: 1}}]\n");
         var initial = HuntingSnapshot(content);
@@ -173,8 +165,7 @@ public sealed partial class StrategicWorldHuntingTests
         Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
-    private static RuntimeContent LoadSavingMaterialContent(bool cache, int input, int? nextInput = null) => Load(cache,
-        "items: [{type: SUPPLY, clipSize: 4}]\n" +
+    private static RuntimeContent LoadSavingMaterialContent(int input, int? nextInput = null) => Load("items: [{type: SUPPLY, clipSize: 4}]\n" +
         "craftWeapons: [{type: SAVING_MATERIAL_GUN, ammoMax: 10, rearmRate: 4, bulletSaving: true, launcher: SUPPLY, clip: SUPPLY}]\n" +
         "crafts: [{type: SAVING_MATERIAL_CRAFT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, weapons: 1}]\n" +
         $"manufacture:\n  - {{name: SAVING_MATERIAL_PRODUCT, time: 1, requiredItems: {{SUPPLY: {input}}}, producedItems: {{SUPPLY: 1}}}}\n" +

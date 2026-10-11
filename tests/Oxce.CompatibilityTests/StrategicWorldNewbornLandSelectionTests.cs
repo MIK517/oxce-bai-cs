@@ -9,14 +9,12 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldNewbornLandSelectionTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CityDestinationBypassDoesNotChargePolygonRetries(bool cache)
+    [Fact]
+    public void CityDestinationBypassDoesNotChargePolygonRetries()
     {
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         var polygons = string.Join("\n", Enumerable.Repeat("    - [10, 0, -10, 20, -10, 20, 10, 0, 10]", 5000));
-        var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false, groundTimer: 2, nextAltitude: 0,
+        var content = StrategicWorldNewbornFirstArrivalTests.Content(false, groundTimer: 2, nextAltitude: 0,
             extraRulesAfterOverlays: true, extraRules: "globe:\n  polygons:\n" + polygons);
         Assert.Equal(5000, content.RuntimeRules.Campaign.Globe.Polygons.Count);
         var campaign = CampaignState.Restore(StrategicWorldNewbornFirstArrivalTests.Snapshot(content, 17), content,
@@ -34,15 +32,13 @@ public sealed class StrategicWorldNewbornLandSelectionTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void InitialDestinationLandWorkIsReservedEvenWithoutFirstArrival(bool cache, bool supply)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void InitialDestinationLandWorkIsReservedEvenWithoutFirstArrival(bool supply)
     {
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         var polygons = string.Join("\n", Enumerable.Repeat("    - [10, 0, -10, 20, -10, 20, 10, 0, 10]", 5000));
-        var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, true, groundTimer: 2,
+        var content = StrategicWorldNewbornFirstArrivalTests.Content(true, groundTimer: 2,
             nextAltitude: supply ? 3 : 0, arrivalAltitude: supply ? 0 : 2, objective: supply ? 5 : 0,
             extraRulesAfterOverlays: true, extraRules: "globe:\n  polygons:\n" + polygons + "\n" + """
             regions:
@@ -65,16 +61,14 @@ public sealed class StrategicWorldNewbornLandSelectionTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void FirstAirborneArrivalPreservesBothLandRetriesForTheNextWaypoint(bool cache, bool permitted)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FirstAirborneArrivalPreservesBothLandRetriesForTheNextWaypoint(bool permitted)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "landRectangleOriginRows"), row =>
             row[0].GetInt32() == 1 && row[6].GetInt32() == 304);
-        var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, true, groundTimer: 2, nextAltitude: 0,
+        var content = StrategicWorldNewbornFirstArrivalTests.Content(true, groundTimer: 2, nextAltitude: 0,
             fakeWaterLandingChance: permitted ? 100 : 0, extraRules: """
             regions:
               - type: RETRY_REGION

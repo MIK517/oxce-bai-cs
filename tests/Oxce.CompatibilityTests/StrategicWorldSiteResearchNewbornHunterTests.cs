@@ -11,18 +11,15 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldSiteResearchNewbornHunterTests
 {
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    public void SavedHuntersSelectCraftAfterSiteResearchAndPersistPursuit(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void SavedHuntersSelectCraftAfterSiteResearchAndPersistPursuit(int mode)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = Content(cache, mode);
+        var content = Content(mode);
         var initial = TargetSnapshot(StrategicWorldSiteResearchSpawnTests.Snapshot(content));
         var control = CampaignState.Restore(initial with { World = initial.World with { MissionSites = [] } }, content, new SplitMix64RandomSource(17));
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), 17, "research-hunter-before.sav");
@@ -68,13 +65,10 @@ public sealed class StrategicWorldSiteResearchNewbornHunterTests
     });
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    public void SavedTargetlessHuntersComposeBeforeSiteInterruption(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void SavedTargetlessHuntersComposeBeforeSiteInterruption(int mode)
     {
         using var hunting = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         using var lifecycle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
@@ -82,7 +76,7 @@ public sealed class StrategicWorldSiteResearchNewbornHunterTests
             row[0].GetInt32() == 100 && row[1].GetInt32() == mode && row[2].GetInt32() == 0 && row[4].GetBoolean());
         var row = Assert.Single(TestFixtures.Rows(lifecycle.RootElement, "spawnPathRows"), row =>
             row[0].GetInt32() == 0 && row[1].GetInt32() == 0 && row[2].GetInt32() == 0);
-        var content = Content(cache, mode);
+        var content = Content(mode);
         var initial = StrategicWorldSiteResearchSpawnTests.Snapshot(content);
         var random = new SplitMix64RandomSource(initial.RandomState);
         random.NextInclusive(0, 99);
@@ -120,15 +114,13 @@ public sealed class StrategicWorldSiteResearchNewbornHunterTests
     }
 
     [Theory]
-    [InlineData(false, "PATH_1_0")]
-    [InlineData(true, "PATH_1_0")]
-    [InlineData(false, "PATH_SHORT")]
-    [InlineData(true, "PATH_SHORT")]
-    public void GroundedHunterBirthDefersRetargetingUntilAfterItsOwnedLift(bool cache, string path)
+    [InlineData("PATH_1_0")]
+    [InlineData("PATH_SHORT")]
+    public void GroundedHunterBirthDefersRetargetingUntilAfterItsOwnedLift(string path)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
-        var content = Content(cache, path: path);
+        var content = Content(path: path);
         var initial = StrategicWorldSiteResearchSpawnTests.Snapshot(content).WithCraft("SHIP", craft => craft with
         { Logistics = craft.Logistics! with { Status = "STR_OUT", Takeoff = 0, Fuel = 300, Speed = 0, Destination = null } });
         var control = CampaignState.Restore(initial with { World = initial.World with { MissionSites = [] } }, content, new SplitMix64RandomSource(17));
@@ -164,8 +156,8 @@ public sealed class StrategicWorldSiteResearchNewbornHunterTests
         }
     }
 
-    internal static RuntimeContent Content(bool cache, int mode = 0, string path = "PATH_0_0") =>
-        StrategicWorldSiteResearchSpawnTests.Content(cache, path, extra: $$"""
+    internal static RuntimeContent Content(int mode = 0, string path = "PATH_0_0") =>
+        StrategicWorldSiteResearchSpawnTests.Content(path, extra: $$"""
         ufos:
           - type: SITE_RESEARCH_HUNTER
             speedMax: 2200

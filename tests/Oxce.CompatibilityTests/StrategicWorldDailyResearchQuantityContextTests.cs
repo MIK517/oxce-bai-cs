@@ -13,14 +13,12 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldDailyResearchQuantityContextTests
 {
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    public void DailyRewardStockContextRemainsCoupledThroughLaterSiteResearch(bool cache, int dependency)
+    [InlineData(0)]
+    [InlineData(1)]
+    public void DailyRewardStockContextRemainsCoupledThroughLaterSiteResearch(int dependency)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Content(cache, dependency);
+        var content = Content(dependency);
         HashSet<int> seen = [];
         for (ulong seed = 1; seed <= 12; seed++)
         {
@@ -67,13 +65,11 @@ public sealed class StrategicWorldDailyResearchQuantityContextTests
         Assert.Equal(2, seen.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void BranchStockContextRetainsOtherUncertaintyAndRejectsInvalidRanges(bool cache)
+    [Fact]
+    public void BranchStockContextRetainsOtherUncertaintyAndRejectsInvalidRanges()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = Content(cache, 0);
+        var content = Content(0);
         var initial = StrategicWorldDailyResearchQuantityTests.Snapshot(content, 17, true) with { ResearchScores = [int.MaxValue - 6] };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         long work = 0;
@@ -98,7 +94,7 @@ public sealed class StrategicWorldDailyResearchQuantityContextTests
         Assert.Equivalent(initial, campaign.Capture(), strict: true);
     }
 
-    internal static RuntimeContent Content(bool cache, int dependency, string extra = "") =>
-        StrategicWorldDailyResearchQuantityTests.Content(cache, true, minimum: 1, maximum: 2, extra: extra,
+    internal static RuntimeContent Content(int dependency, string extra = "") =>
+        StrategicWorldDailyResearchQuantityTests.Content(true, minimum: 1, maximum: 2, extra: extra,
             extraResearch: "  - {name: CORE, spawnedItem: ''}\n  - {name: SITE_AUTO, points: 2, dependencies: [SITE, " + (dependency == 0 ? "EQUIV_A" : "EQUIV_B") + "]}");
 }

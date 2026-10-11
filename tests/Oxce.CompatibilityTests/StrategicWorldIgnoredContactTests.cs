@@ -11,17 +11,15 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldIgnoredContactTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public void IgnoredContactsRediscoverWithoutAlertsAndResetOnReload(bool cache, bool ignore)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void IgnoredContactsRediscoverWithoutAlertsAndResetOnReload(bool ignore)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-ignored-contacts");
         var expected = Assert.Single(TestFixtures.Rows(oracle.RootElement, "rows"), row =>
             row[0].GetArrayLength() == 1 && row[0][0].GetInt32() == (ignore ? 3 : 0) &&
             row[1].GetInt32() == 3 && row[2].GetInt32() == 0);
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul", cache);
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = Create(content);
         var before = campaign.Capture();
         if (ignore)
@@ -48,12 +46,10 @@ public sealed class StrategicWorldIgnoredContactTests
         Assert.Equivalent(campaign.Capture(), reloaded.Capture(), strict: true);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void IgnoredLandedRediscoveryDoesNotReserveOrAllocateAnAlertLandingMarker(bool cache)
+    [Fact]
+    public void IgnoredLandedRediscoveryDoesNotReserveOrAllocateAnAlertLandingMarker()
     {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul", cache);
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var initial = Create(content).Capture().WithNextId("STR_LANDING_SITE", int.MaxValue);
         var campaign = CampaignState.Restore(initial with
         {

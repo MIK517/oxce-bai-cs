@@ -8,11 +8,9 @@ namespace Oxce.CompatibilityTests;
 public sealed partial class StrategicProductionPriceMetadataTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void CurrentBuyPricesComposeNativeMetadataAndEventOrderWithoutMutation(bool cache, bool global)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CurrentBuyPricesComposeNativeMetadataAndEventOrderWithoutMutation(bool global)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-damage");
         var native = TestFixtures.Rows(oracle.RootElement, "conversionRows")
@@ -26,7 +24,7 @@ public sealed partial class StrategicProductionPriceMetadataTests
         var events = global ? "" : "scripts:\n  buyCostItem:\n" +
             "    - {new: price-buy-before, offset: -1, code: 'add cost_current 1; return;'}\n" +
             "    - {new: price-buy-after, offset: 1, code: 'div cost_current 3; return;'}\n";
-        var content = Load(cache, global, code, "costBuy: 7\npower: 39\ndamageAlter: {ToHealth: 0.5}\ntags: {PRICE_BUY_TAG: -7}",
+        var content = Load(global, code, "costBuy: 7\npower: 39\ndamageAlter: {ToHealth: 0.5}\ntags: {PRICE_BUY_TAG: -7}",
             extraExtended: "tags:\n  RuleItem: {PRICE_BUY_TAG: int}\n" + events, buying: true);
         var campaign = Reload(content, Create(content, snapshot => PriceStock(snapshot) with { Funds = [10_000] }), 81, "price-buy-before.sav");
         var before = campaign.Capture();
@@ -40,11 +38,9 @@ public sealed partial class StrategicProductionPriceMetadataTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void NullRandomDamagePreservesNativeShortCircuitAndCurrentPricePurity(bool cache, bool global)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NullRandomDamagePreservesNativeShortCircuitAndCurrentPricePurity(bool global)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-damage");
         var rows = TestFixtures.Rows(oracle.RootElement, "nullRandomDamage");
@@ -54,7 +50,7 @@ public sealed partial class StrategicProductionPriceMetadataTests
             $"damage.getRandomDamage value 2147483647 copy; if neq value {rows[0].GetInt32()}; div cost_current 0; end; " +
             $"absent.getRandomDamage value -2147483648 random; if neq value {rows[1].GetInt32()}; div cost_current 0; end; " +
             $"absent.getRandomDamage value cost_current copy; if neq value {rows[2].GetInt32()}; div cost_current 0; end; return 7;";
-        var content = Load(cache, global, code, "damageAlter: {ToHealth: 1e100}");
+        var content = Load(global, code, "damageAlter: {ToHealth: 1e100}");
         var campaign = Reload(content, Create(content, PriceStock), 81, "price-null-random-before.sav");
         var before = campaign.Capture();
         var quote = Assert.IsType<LogisticsQuoted>(Assert.Single(campaign.Execute(
@@ -64,7 +60,7 @@ public sealed partial class StrategicProductionPriceMetadataTests
         Assert.Null(row.UnavailableReason);
         Assert.Equivalent(before, campaign.Capture(), strict: true);
         AdvanceUnblocked(campaign, 1);
-        var constant = Create(Load(cache, global, "return 7;", "damageAlter: {ToHealth: 1e100}"), PriceStock);
+        var constant = Create(Load(global, "return 7;", "damageAlter: {ToHealth: 1e100}"), PriceStock);
         AdvanceUnblocked(constant, 1);
         Assert.Equal(constant.Capture().RandomState, campaign.Capture().RandomState);
         Assert.Equal(7, campaign.Capture().Funds[^1]);
@@ -80,11 +76,9 @@ public sealed partial class StrategicProductionPriceMetadataTests
     };
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void CurrentAndForecastPricesShareOneBoundedEventExecutionBudget(bool cache, bool aggregate)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CurrentAndForecastPricesShareOneBoundedEventExecutionBudget(bool aggregate)
     {
         TestFixtures.LoadVerifiedManifest("strategic-detection-damage");
         var code = aggregate ? "loop var i 150000; add cost_current 0; end; return;" :
@@ -93,8 +87,8 @@ public sealed partial class StrategicProductionPriceMetadataTests
         var events = !aggregate ? "" : "scripts:\n  sellCostItem:\n" +
             "    - new: price-budget-before\n      offset: -1\n      code: '" + code + "'\n" +
             "    - new: price-budget-after\n      offset: 1\n      code: '" + code + "'";
-        if (aggregate) AssertPrice(Load(cache, false, code)); // Each program fits; their combined execution does not.
-        var content = Load(cache, false, code, extraExtended: events);
+        if (aggregate) AssertPrice(Load(false, code)); // Each program fits; their combined execution does not.
+        var content = Load(false, code, extraExtended: events);
         var campaign = Reload(content, Create(content, PriceStock), 81, "price-budget-before.sav");
         var before = campaign.Capture();
         var quote = Assert.IsType<LogisticsQuoted>(Assert.Single(campaign.Execute(
@@ -130,11 +124,9 @@ public sealed partial class StrategicProductionPriceMetadataTests
         """;
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void PriceDamageConversionsPreserveNativeFloatTruncationAndNulls(bool cache, bool global)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PriceDamageConversionsPreserveNativeFloatTruncationAndNulls(bool global)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-damage");
         var nulls = TestFixtures.Rows(oracle.RootElement, "nullConversions");
@@ -149,32 +141,28 @@ public sealed partial class StrategicProductionPriceMetadataTests
             for (var index = 0; index < PriceDamageReaders.Length; index++)
                 code += $"copy.{PriceDamageReaders[index]} value power; if neq value {row[2][index].GetInt32()}; div cost_current 0; end; " +
                     $"absent.{PriceDamageReaders[index]} value 2147483647; if neq value {nulls[index].GetInt32()}; div cost_current 0; end; ";
-            AssertPrice(Load(cache, global, code + "return 7;", fields));
+            AssertPrice(Load(global, code + "return 7;", fields));
         }
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void PriceArmorPercentAndFloatBoundaryOutputsMatchNative(bool cache, bool global)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PriceArmorPercentAndFloatBoundaryOutputsMatchNative(bool global)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-damage");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "armorPercent"))
-            AssertPrice(Load(cache, global, "var ptr RuleDamageType damage; var int value; item_rule.getDamageType damage; " +
+            AssertPrice(Load(global, "var ptr RuleDamageType damage; var int value; item_rule.getDamageType damage; " +
                 "damage.getArmorEffectiveness value; return value;", $"damageAlter: {{ArmorEffectiveness: {row[0].GetRawText()}}}"), row[1].GetInt32());
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "floatBoundaries"))
-            AssertPrice(Load(cache, global, "var ptr RuleDamageType damage; var int value; item_rule.getDamageType damage; " +
+            AssertPrice(Load(global, "var ptr RuleDamageType damage; var int value; item_rule.getDamageType damage; " +
                 $"damage.getDamageToHealth value {row[0].GetInt32()}; return value;", $"damageAlter: {{ToHealth: {row[1].GetRawText()}}}"), row[2].GetInt32());
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void OnlyConsumedUnsafePriceDamageConversionsStopBeforeMutation(bool cache, bool global)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void OnlyConsumedUnsafePriceDamageConversionsStopBeforeMutation(bool global)
     {
         TestFixtures.LoadVerifiedManifest("strategic-detection-damage");
         foreach (var (method, fields, power) in new[]
@@ -189,7 +177,7 @@ public sealed partial class StrategicProductionPriceMetadataTests
                 var code = "var ptr RuleDamageType damage; var ptr RuleDamageType absent null; var int value; item_rule.getDamageType damage; " +
                     $"if eq 1 {(consumed ? 1 : 0)}; damage.{method} value {power}; end; " +
                     $"absent.{method} value {power}; if neq value 0; div cost_current 0; end; return 7;";
-                var content = Load(cache, global, code, $"damageAlter: {{{fields}}}");
+                var content = Load(global, code, $"damageAlter: {{{fields}}}");
                 if (!consumed) AssertPrice(content);
                 else
                 {
@@ -200,11 +188,9 @@ public sealed partial class StrategicProductionPriceMetadataTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void DamageProfileIdentityAndClassificationMatchNativePriceQueries(bool cache, bool global)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DamageProfileIdentityAndClassificationMatchNativePriceQueries(bool global)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-damage");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows"))
@@ -221,7 +207,7 @@ public sealed partial class StrategicProductionPriceMetadataTests
                 code += $"damage.{method} value; if neq value {row[index].GetInt32()}; div cost_current 0; end; " +
                     $"missing.{method} value; if neq value 0; div cost_current 0; end; ";
             code += $"item_rule.isSingleTarget value; if neq value {row[8].GetInt32()}; div cost_current 0; end; return 7;";
-            AssertPrice(Load(cache, global, code, type == -1 ? "" : $"damageType: {type}", extraItems: "- {type: PRICE_OTHER_DAMAGE}"));
+            AssertPrice(Load(global, code, type == -1 ? "" : $"damageType: {type}", extraItems: "- {type: PRICE_OTHER_DAMAGE}"));
         }
     }
 }

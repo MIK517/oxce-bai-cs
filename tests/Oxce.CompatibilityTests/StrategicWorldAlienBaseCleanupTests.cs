@@ -15,14 +15,12 @@ public sealed class StrategicWorldAlienBaseCleanupTests
 {
     private static readonly int[] RetainedSpaceMissionIds = [4, 6];
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DailyDeletionLinksAndPactsMatchExtractedReference(bool cache)
+    [Fact]
+    public void DailyDeletionLinksAndPactsMatchExtractedReference()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-cleanup");
-        var enabled = Load(cache);
-        var disabled = Load(cache, false);
+        var enabled = Load();
+        var disabled = Load(false);
         Assert.True(enabled.RuntimeRules.Campaign.AllowCountriesToCancelAlienPact);
         Assert.False(disabled.RuntimeRules.Campaign.AllowCountriesToCancelAlienPact);
         var rows = new List<int[]>();
@@ -60,13 +58,11 @@ public sealed class StrategicWorldAlienBaseCleanupTests
     }
 
     [Theory]
-    [InlineData(false, "UNLOCK")]
-    [InlineData(true, "UNLOCK")]
-    [InlineData(false, "CLEANUP_SOURCE")]
-    [InlineData(true, "CLEANUP_SOURCE")]
-    public void SameDayResearchDeletesBeforeGenerationScoringAndLanding(bool cache, string research)
+    [InlineData("UNLOCK")]
+    [InlineData("CLEANUP_SOURCE")]
+    public void SameDayResearchDeletesBeforeGenerationScoringAndLanding(string research)
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Snapshot(content, "CLEANUP_BAD_GENERATION").WithFacility("CLEANUP_LAB");
         snapshot = snapshot with
         {
@@ -166,12 +162,10 @@ public sealed class StrategicWorldAlienBaseCleanupTests
         Assert.NotNull(campaign.Capture().World.Missions.Single(mission => mission.Id == 5).AlienBase);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void TargetDestructorFollowerRowsMatchReference(bool cache)
+    [Fact]
+    public void TargetDestructorFollowerRowsMatchReference()
     {
-        var content = Load(cache);
+        var content = Load();
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-cleanup");
         var rows = new List<int[]>();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "followerRows"))
@@ -200,12 +194,10 @@ public sealed class StrategicWorldAlienBaseCleanupTests
             CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DeletionReturnsFollowersBeforeTerminalUfoSkipsCraftMovement(bool cache)
+    [Fact]
+    public void DeletionReturnsFollowersBeforeTerminalUfoSkipsCraftMovement()
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = CreateUfoTransitCampaign(content, new(1, 1, 1, 1999, 23, 59, 55), "UFO_SCOUT", 2200,
             missionWaveNumber: 0).Capture();
         snapshot = snapshot with
@@ -232,12 +224,10 @@ public sealed class StrategicWorldAlienBaseCleanupTests
         Reload(content, campaign, 40, "deleted-base-terminal-ufo.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DeletingSecondBaseWithSharedMarkerCannotDetachFirstBaseMissions(bool cache)
+    [Fact]
+    public void DeletingSecondBaseWithSharedMarkerCannotDetachFirstBaseMissions()
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Snapshot(content) with { CompletedResearch = ["UNLOCK"] };
         snapshot = snapshot with
         {
@@ -266,13 +256,11 @@ public sealed class StrategicWorldAlienBaseCleanupTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void LiveOperationLinksAndInterruptionMatchReferenceAcrossReload(bool cache)
+    [Fact]
+    public void LiveOperationLinksAndInterruptionMatchReferenceAcrossReload()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-cleanup");
-        var content = Load(cache);
+        var content = Load();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "liveOperationRows"))
         {
             var operation = row[0].GetInt32();
@@ -296,12 +284,12 @@ public sealed class StrategicWorldAlienBaseCleanupTests
         }
     }
 
-    private static RuntimeContent Load(bool cache = false, bool cancel = true)
+    private static RuntimeContent Load(bool cancel = true)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
         return StrategicReadinessTestContent.Load(cancel ?
             ["strategic-world.rul", "strategic-alien-base-cleanup.rul", "strategic-alien-base-cleanup-pacts.rul"] :
-            ["strategic-world.rul", "strategic-alien-base-cleanup.rul"], cache);
+            ["strategic-world.rul", "strategic-alien-base-cleanup.rul"]);
     }
 
     private static WorldTargetReference BaseTarget() => new(WorldTargetKind.AlienBase, "STR_ALIEN_BASE", 2, 0.2, 0.1);

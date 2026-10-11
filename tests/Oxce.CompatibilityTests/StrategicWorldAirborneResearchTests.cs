@@ -10,16 +10,14 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldAirborneResearchTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void UncertainAirborneArrivalPreservesSelectedMovementFallthrough(bool cache)
+    [Fact]
+    public void UncertainAirborneArrivalPreservesSelectedMovementFallthrough()
     {
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = Content(cache);
-        var interruptedContent = Content(cache, "CORE");
-        var continuedContent = Content(cache, "");
+        var content = Content();
+        var interruptedContent = Content("CORE");
+        var continuedContent = Content("");
         var interruptedSeen = false;
         var continuedSeen = false;
         for (ulong seed = 1; seed <= 32; seed++)
@@ -57,15 +55,13 @@ public sealed class StrategicWorldAirborneResearchTests
         Assert.True(continuedSeen);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void PossibleContinuationStillRequiresSafeWaypointAndInterceptionProofs(bool cache)
+    [Fact]
+    public void PossibleContinuationStillRequiresSafeWaypointAndInterceptionProofs()
     {
-        var content = Content(cache, nextSpeed: -100);
+        var content = Content(nextSpeed: -100);
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, 17), content, new SplitMix64RandomSource(17)),
             "UFO waypoint arrival requires mission simulation.");
-        content = Content(cache);
+        content = Content();
         var initial = Snapshot(content, 17);
         var ufo = initial.World.Ufos[0] with { Detected = true };
         initial = initial with { World = initial.World with { Ufos = [ufo, initial.World.Ufos[1]] } };
@@ -117,8 +113,8 @@ public sealed class StrategicWorldAirborneResearchTests
         });
     }
 
-    internal static RuntimeContent Content(bool cache, string interrupt = "BONUS", bool landing = false, int nextSpeed = 100) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+    internal static RuntimeContent Content(string interrupt = "BONUS", bool landing = false, int nextSpeed = 100) =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul"], $$$"""
         research:
           - {name: UNLOCK, cost: 1}
           - {name: CORE, cost: 1, getOneFree: [BONUS, OTHER]}

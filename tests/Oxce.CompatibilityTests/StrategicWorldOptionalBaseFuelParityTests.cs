@@ -13,36 +13,26 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldOptionalBaseFuelParityTests
 {
     [Theory]
-    [InlineData(false, 0, 100, false)]
-    [InlineData(true, 0, 100, false)]
-    [InlineData(false, 5, 100, false)]
-    [InlineData(true, 5, 100, false)]
-    [InlineData(false, 0, 149, false)]
-    [InlineData(true, 0, 149, false)]
-    [InlineData(false, 5, 149, false)]
-    [InlineData(true, 5, 149, false)]
-    [InlineData(false, 0, 200, false)]
-    [InlineData(true, 0, 200, false)]
-    [InlineData(false, 5, 200, false)]
-    [InlineData(true, 5, 200, false)]
-    [InlineData(false, 0, 1500, false)]
-    [InlineData(true, 0, 1500, false)]
-    [InlineData(false, 5, 1500, false)]
-    [InlineData(true, 5, 1500, false)]
-    [InlineData(false, 0, 150, true)]
-    [InlineData(true, 0, 150, true)]
-    [InlineData(false, 5, 150, true)]
-    [InlineData(true, 5, 150, true)]
-    public void UnequalFuelBurnsPreserveNativeEligibilityAndBothFlightOutcomes(bool cache, int takeoff, int fuel, bool low)
+    [InlineData(0, 100, false)]
+    [InlineData(5, 100, false)]
+    [InlineData(0, 149, false)]
+    [InlineData(5, 149, false)]
+    [InlineData(0, 200, false)]
+    [InlineData(5, 200, false)]
+    [InlineData(0, 1500, false)]
+    [InlineData(5, 1500, false)]
+    [InlineData(0, 150, true)]
+    [InlineData(5, 150, true)]
+    public void UnequalFuelBurnsPreserveNativeEligibilityAndBothFlightOutcomes(int takeoff, int fuel, bool low)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         using var worldOracle = TestFixtures.ReadVerifiedExpected("strategic-world");
         var limit = TestFixtures.Rows(worldOracle.RootElement, "craft").Single(row =>
             row[0].GetInt32() == 0 && row[1].GetInt32() == 2100 && row[2].GetInt32() == 1000)[5].GetInt32();
         Assert.Equal(139, limit);
-        var content = Content(cache);
-        var deletedContent = Content(cache, "CORE");
-        var survivedContent = Content(cache, "");
+        var content = Content();
+        var deletedContent = Content("CORE");
+        var survivedContent = Content("");
         HashSet<bool> outcomes = [];
         for (ulong seed = 1; seed <= 32; seed++)
         {
@@ -81,13 +71,11 @@ public sealed class StrategicWorldOptionalBaseFuelParityTests
         Assert.Equal(2, outcomes.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DifferentLowFuelEligibilityRetainsTheAtomicBoundary(bool cache)
+    [Fact]
+    public void DifferentLowFuelEligibilityRetainsTheAtomicBoundary()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Content(cache);
+        var content = Content();
         foreach (var fuel in new[] { 150, 160 })
         {
             var rows = TestFixtures.Rows(oracle.RootElement, "optionalReturnFuelRows").Where(row =>
@@ -99,8 +87,8 @@ public sealed class StrategicWorldOptionalBaseFuelParityTests
         }
     }
 
-    internal static RuntimeContent Content(bool cache, string code = "BONUS") =>
-        StrategicWorldOptionalBaseCraftTests.Content(cache, code, speedMaximum: 2100);
+    internal static RuntimeContent Content(string code = "BONUS") =>
+        StrategicWorldOptionalBaseCraftTests.Content(code, speedMaximum: 2100);
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content, ulong seed, int takeoff, int fuel, bool low)
     {

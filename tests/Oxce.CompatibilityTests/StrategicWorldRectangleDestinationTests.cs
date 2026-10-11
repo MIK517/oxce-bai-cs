@@ -10,13 +10,11 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldRectangleDestinationTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void RectangleDestinationsMatchReferenceBoundsAndDrawOrder(bool cache)
+    [Fact]
+    public void RectangleDestinationsMatchReferenceBoundsAndDrawOrder()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-rectangle-destinations.rul"], cache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-rectangle-destinations.rul"]);
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "rectangleDestinationRows"))
         {
             if (row[0].GetInt32() != 0 || row[1].GetDouble() == 1) continue;
@@ -38,12 +36,10 @@ public sealed class StrategicWorldRectangleDestinationTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DestinationRectanglesContainingTheOriginPreserveBothSelectedMovementPaths(bool cache)
+    [Fact]
+    public void DestinationRectanglesContainingTheOriginPreserveBothSelectedMovementPaths()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-rectangle-destinations.rul"], cache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-rectangle-destinations.rul"]);
         var initial = CreateSnapshot(content, "Reachable destination rectangle");
         var snapshot = initial with
         {

@@ -37,15 +37,13 @@ public sealed class StrategicWorldSiteUfoTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SiteUfoWaitsReactivatesFliesAndDepartsAcrossReload(bool fromCache)
+    [Fact]
+    public void SiteUfoWaitsReactivatesFliesAndDepartsAcrossReload()
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-timer");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         var content = StrategicReadinessTestContent.Load(
-            ["strategic-world.rul", "strategic-site-timer.rul"], fromCache);
+            ["strategic-world.rul", "strategic-site-timer.rul"]);
         var snapshot = LinkedSnapshot(content, 1800);
         var original = Assert.Single(snapshot.World.Ufos);
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
@@ -241,17 +239,14 @@ public sealed class StrategicWorldSiteUfoTests
     }
 
     [Theory]
-    [InlineData(false, "UFO_NEGATIVE_LIFT_MAXIMUM", "TRAJ_NORMAL_NEGATIVE_LIFT", "RACE_A")]
-    [InlineData(true, "UFO_NEGATIVE_LIFT_MAXIMUM", "TRAJ_NORMAL_NEGATIVE_LIFT", "RACE_A")]
-    [InlineData(false, "UFO_OVERFLOW_LIFT_MAXIMUM", "TRAJ_NORMAL_NEGATIVE_LIFT", "RACE_B")]
-    [InlineData(true, "UFO_OVERFLOW_LIFT_MAXIMUM", "TRAJ_NORMAL_NEGATIVE_LIFT", "RACE_B")]
-    [InlineData(false, "UFO_SCOUT", "TRAJ_SITE_OVERFLOW_LIFT", "RACE_A")]
-    [InlineData(true, "UFO_SCOUT", "TRAJ_SITE_OVERFLOW_LIFT", "RACE_A")]
-    public void UnsafeOrdinaryLiftStopsBeforeSiteExpiry(bool fromCache, string rule, string trajectory, string race)
+    [InlineData("UFO_NEGATIVE_LIFT_MAXIMUM", "TRAJ_NORMAL_NEGATIVE_LIFT", "RACE_A")]
+    [InlineData("UFO_OVERFLOW_LIFT_MAXIMUM", "TRAJ_NORMAL_NEGATIVE_LIFT", "RACE_B")]
+    [InlineData("UFO_SCOUT", "TRAJ_SITE_OVERFLOW_LIFT", "RACE_A")]
+    public void UnsafeOrdinaryLiftStopsBeforeSiteExpiry(string rule, string trajectory, string race)
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-timer");
         var content = StrategicReadinessTestContent.Load(
-            ["strategic-world.rul", "strategic-site-timer.rul"], fromCache);
+            ["strategic-world.rul", "strategic-site-timer.rul"]);
         var snapshot = CreateLifecycleSnapshot(content);
         var ufo = snapshot.World.Ufos[0] with
         { RuleId = rule, TrajectoryId = trajectory, TrajectoryPoint = 0, SecondsRemaining = 5 };
@@ -356,13 +351,11 @@ public sealed class StrategicWorldSiteUfoTests
         Assert.Contains("same dormant UFO", error.Message, StringComparison.Ordinal);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void HourlyDiscoveryKeepsAssociatedUfoDormantUntilTheLaterExpiry(bool cache)
+    [Fact]
+    public void HourlyDiscoveryKeepsAssociatedUfoDormantUntilTheLaterExpiry()
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-timer");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-timer.rul"], cache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-timer.rul"]);
         var snapshot = LinkedSnapshot(content, 0);
         snapshot = snapshot with
         {

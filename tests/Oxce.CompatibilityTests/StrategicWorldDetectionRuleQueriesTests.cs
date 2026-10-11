@@ -10,11 +10,9 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldDetectionRuleQueriesTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void NativeArmorVisionOutputsComposeWithDamageQueries(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NativeArmorVisionOutputsComposeWithDamageQueries(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var rows = TestFixtures.Rows(oracle.RootElement, "armorVision");
@@ -34,7 +32,7 @@ public sealed class StrategicWorldDetectionRuleQueriesTests
                     code += $"set quotient {expected}; div quotient power; if neq quotient 1; return DETECTION_NONE 0; end; ";
             }
             code += "return DETECTION_RADAR 100;";
-            AssertDetectionReadScript(code, fromCache, fromCraft, $$$"""
+            AssertDetectionReadScript(code, fromCraft, $$$"""
                 armors:
                   - type: VISION_QUERY
                     corpseBattle: [CORPSE]
@@ -47,11 +45,9 @@ public sealed class StrategicWorldDetectionRuleQueriesTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void NativeModSettingsOutputsComposeWithQueriesIncludingNullReceiver(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NativeModSettingsOutputsComposeWithQueriesIncludingNullReceiver(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "modSettings"))
@@ -70,18 +66,16 @@ public sealed class StrategicWorldDetectionRuleQueriesTests
                     "if neq value 0; return DETECTION_NONE 0; end; ";
             }
             code += "return DETECTION_RADAR 100;";
-            AssertDetectionReadScript(code, fromCache, fromCraft,
+            AssertDetectionReadScript(code, fromCraft,
                 $"maxViewDistance: {row[0].GetInt32()}\nmaxDarknessToSeeUnits: {row[1].GetInt32()}\n" +
                 "items: [{type: HALF_DAMAGE, damageAlter: {ToHealth: 0.5}}]");
         }
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void CountryRuleFundingCapsComposeWithDamageAndNullBranches(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CountryRuleFundingCapsComposeWithDamageAndNullBranches(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "countryRules"))
@@ -97,7 +91,7 @@ public sealed class StrategicWorldDetectionRuleQueriesTests
                 "if neq value 0; return DETECTION_NONE 0; end; " +
                 "if neq rule null; div detection_chance 0; end; return DETECTION_RADAR 100;";
             var parser = fromCraft ? "detectUfoFromCraft" : "detectUfoFromBase";
-            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$$"""
+            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$$"""
                 countries: [{type: CAP_COUNTRY, fundingCap: {{{cap}}}}]
                 items: [{type: CAP_QUERY, damageAlter: {ToHealth: 0.5}}]
                 ufos:

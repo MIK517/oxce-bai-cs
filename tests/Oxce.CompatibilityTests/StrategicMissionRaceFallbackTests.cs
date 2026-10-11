@@ -9,14 +9,12 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicMissionRaceFallbackTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void MissionRaceFallbackMatchesReferenceAndPersistsRunHistory(bool cache)
+    [Fact]
+    public void MissionRaceFallbackMatchesReferenceAndPersistsRunHistory()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-generation");
         var row = TestFixtures.Rows(oracle.RootElement, "rows").Single(row => row[0].GetString() == "weighted");
-        var content = Load(cache);
+        var content = Load();
         var snapshot = CreateSnapshot(content, "Mission race fallback") with { MonthsPassed = 10, RandomState = 17 };
         var expected = new SplitMix64RandomSource(17);
         expected.NextInclusive(0, 99); // execution
@@ -39,15 +37,12 @@ public sealed class StrategicMissionRaceFallbackTests
     }
 
     [Theory]
-    [InlineData(11, false)]
-    [InlineData(11, true)]
-    [InlineData(12, false)]
-    [InlineData(12, true)]
-    [InlineData(13, false)]
-    [InlineData(13, true)]
-    public void MissingFutureAndExcessiveRaceWeightsFailBeforeMutation(int month, bool cache)
+    [InlineData(11)]
+    [InlineData(12)]
+    [InlineData(13)]
+    public void MissingFutureAndExcessiveRaceWeightsFailBeforeMutation(int month)
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = CreateSnapshot(content, "Invalid mission races") with { MonthsPassed = month, RandomState = 17 };
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
         var before = campaign.Capture();
@@ -58,12 +53,10 @@ public sealed class StrategicMissionRaceFallbackTests
         Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ExplicitRaceWeightsOverrideUnavailableMissionRace(bool cache)
+    [Fact]
+    public void ExplicitRaceWeightsOverrideUnavailableMissionRace()
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = CreateSnapshot(content, "Explicit mission races") with { MonthsPassed = 14, RandomState = 17 };
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
         Assert.Empty(campaign.Execute(new ScheduleMonthlyWorldMissions(0, 0)).Events);
@@ -71,9 +64,9 @@ public sealed class StrategicMissionRaceFallbackTests
         Reload(content, campaign, 17, "explicit-mission-race.sav");
     }
 
-    private static Oxce.Mods.Rulesets.Content.RuntimeContent Load(bool cache)
+    private static Oxce.Mods.Rulesets.Content.RuntimeContent Load()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
-        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-mission-race-fallback.rul"], cache);
+        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-mission-race-fallback.rul"]);
     }
 }

@@ -14,14 +14,12 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldDailyResearchDiaryCapacityTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void BoundedDailyDiaryCountsMatchNativeOrderAtTheIdentityLimit(bool cache, bool lookup)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void BoundedDailyDiaryCountsMatchNativeOrderAtTheIdentityLimit(bool lookup)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-research-diary-execution");
-        var content = Content(cache, lookup);
+        var content = Content(lookup);
         HashSet<int> seen = [];
         for (ulong seed = 1; seed <= 12; seed++)
         {
@@ -60,13 +58,11 @@ public sealed class StrategicWorldDailyResearchDiaryCapacityTests
         Assert.Equal(2, seen.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ExactDiaryPopulationHeadroomAllowsTheBoundedDailyTransition(bool cache)
+    [Fact]
+    public void ExactDiaryPopulationHeadroomAllowsTheBoundedDailyTransition()
     {
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = Content(cache, false);
+        var content = Content(false);
         var diary = Enumerable.Range(0, CampaignState.MaximumResearchDiaryEntries - 2).Select(index =>
             new ResearchDiaryEntrySnapshot("CORE", 1998, 1, 1, 0, "Old base") { PreservationKey = "old:" + index }).ToArray();
         var initial = StrategicWorldDailyResearchQuantityTests.Snapshot(content, 17, false) with { ResearchDiary = diary };
@@ -83,28 +79,24 @@ public sealed class StrategicWorldDailyResearchDiaryCapacityTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void AnyRewardExhaustingTheDiaryStillBlocksAtomically(bool cache, bool lookup)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AnyRewardExhaustingTheDiaryStillBlocksAtomically(bool lookup)
     {
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = Content(cache, lookup);
+        var content = Content(lookup);
         var initial = StrategicWorldDailyResearchQuantityTests.Snapshot(content, 17, false) with
         { ResearchDiarySequence = ulong.MaxValue - (lookup ? 2UL : 1UL) };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "Research diary exceeds its supported population or identity range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DailyDiaryHeadroomIncludesTheLaterSiteDiscovery(bool cache)
+    [Fact]
+    public void DailyDiaryHeadroomIncludesTheLaterSiteDiscovery()
     {
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = StrategicWorldDailyResearchQuantityContextTests.Content(cache, 0);
+        var content = StrategicWorldDailyResearchQuantityContextTests.Content(0);
         var initial = StrategicWorldDailyResearchQuantityTests.Snapshot(content, 17, true) with { ResearchDiarySequence = ulong.MaxValue - 3 };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         AdvanceUnblocked(campaign, 1);
@@ -118,8 +110,8 @@ public sealed class StrategicWorldDailyResearchDiaryCapacityTests
             "Mission research diary exceeds its supported population or identity range.");
     }
 
-    internal static RuntimeContent Content(bool cache, bool lookup) =>
-        StrategicWorldDailyResearchQuantityTests.Content(cache, false, extraResearch:
+    internal static RuntimeContent Content(bool lookup) =>
+        StrategicWorldDailyResearchQuantityTests.Content(false, extraResearch:
             "  - {name: FUTURE_GATE, cost: 1}\n  - {name: UNREACHED_AUTO, cost: 0, dependencies: [FUTURE_GATE]}\n" +
             (lookup ? "  - {name: EQUIV_A, lookup: EQUIV_Z}\n  - {name: EQUIV_Z, cost: 1}" : ""));
 }

@@ -12,36 +12,30 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldObjectiveLifecycleTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ScoreOperationsFollowReferenceWaypointsAndReturnToTheirSource(bool cache)
+    [Fact]
+    public void ScoreOperationsFollowReferenceWaypointsAndReturnToTheirSource()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
-        var content = Load(cache);
+        var content = Load();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "transitionRows").Where(row => row[0].GetInt32() == 0))
             AssertTransition(content, row);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OtherObjectivesFollowOrdinaryAirborneWaypoints(bool cache)
+    [Fact]
+    public void OtherObjectivesFollowOrdinaryAirborneWaypoints()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
-        var content = Load(cache);
+        var content = Load();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "transitionRows")
                      .Where(row => row[0].GetInt32() != 0 && row[3].GetInt32() != 1))
             AssertTransition(content, row);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OrdinaryGroundArrivalsAcrossObjectivesPreserveLandingTimers(bool cache)
+    [Fact]
+    public void OrdinaryGroundArrivalsAcrossObjectivesPreserveLandingTimers()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
-        var content = Load(cache);
+        var content = Load();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "transitionRows")
                      .Where(row => row[0].GetInt32() != 0 && row[3].GetInt32() == 1))
             AssertTransition(content, row);
@@ -50,7 +44,7 @@ public sealed class StrategicWorldObjectiveLifecycleTests
     [Fact]
     public void GroundBaseObjectiveWithMissingFallbackDeploymentIsBlockedBeforeMutation()
     {
-        var content = Load(false);
+        var content = Load();
         var initial = CreateLifecycleSnapshot(content);
         var mission = initial.World.Missions[0] with { RuleId = "LIFECYCLE_BASE_EFFECT" };
         var ufo = initial.World.Ufos[0] with
@@ -65,14 +59,12 @@ public sealed class StrategicWorldObjectiveLifecycleTests
         AssertTimeBlocked(campaign, "Base objective references an unavailable deployment.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void AggressiveRetaliationArrivalsPreserveDiscardedChoicesAndSecondWaypoint(bool cache)
+    [Fact]
+    public void AggressiveRetaliationArrivalsPreserveDiscardedChoicesAndSecondWaypoint()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
         var content = StrategicReadinessTestContent.Load(
-            ["strategic-world.rul", "strategic-objective-lifecycle.rul", "strategic-aggressive-arrivals.rul"], cache);
+            ["strategic-world.rul", "strategic-objective-lifecycle.rul", "strategic-aggressive-arrivals.rul"]);
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "aggressiveRows"))
         {
             var enabled = row[0].GetInt32() != 0;
@@ -117,13 +109,11 @@ public sealed class StrategicWorldObjectiveLifecycleTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OrdinaryTakeoffsUseReferenceObjectiveScoreFiltering(bool cache)
+    [Fact]
+    public void OrdinaryTakeoffsUseReferenceObjectiveScoreFiltering()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
-        var content = Load(cache);
+        var content = Load();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "normalLiftRows"))
         {
             var initial = CreateLifecycleSnapshot(content);
@@ -235,6 +225,6 @@ public sealed class StrategicWorldObjectiveLifecycleTests
         Reload(content, campaign, 17, "objective-waypoint.sav");
     }
 
-    private static RuntimeContent Load(bool cache) => StrategicReadinessTestContent.Load(
-        ["strategic-world.rul", "strategic-objective-lifecycle.rul"], cache);
+    private static RuntimeContent Load() => StrategicReadinessTestContent.Load(
+        ["strategic-world.rul", "strategic-objective-lifecycle.rul"]);
 }

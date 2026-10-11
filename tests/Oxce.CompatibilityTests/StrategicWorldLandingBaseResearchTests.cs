@@ -10,18 +10,16 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldLandingBaseResearchTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void SelectedLandingBaseRetainsIdentityScoreAndFlightFallthrough(bool cache, bool showBase)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SelectedLandingBaseRetainsIdentityScoreAndFlightFallthrough(bool showBase)
     {
         TestFixtures.LoadVerifiedManifest("strategic-objective-base-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = StrategicWorldConversionResearchTests.Content(cache, baseLanding: true, showBase: showBase);
-        var interruptedContent = StrategicWorldConversionResearchTests.Content(cache, interrupt: "CORE", baseLanding: true, showBase: showBase);
-        var continuedContent = StrategicWorldConversionResearchTests.Content(cache, interrupt: "", baseLanding: true, showBase: showBase);
+        var content = StrategicWorldConversionResearchTests.Content(baseLanding: true, showBase: showBase);
+        var interruptedContent = StrategicWorldConversionResearchTests.Content(interrupt: "CORE", baseLanding: true, showBase: showBase);
+        var continuedContent = StrategicWorldConversionResearchTests.Content(interrupt: "", baseLanding: true, showBase: showBase);
         var interruptedSeen = false;
         var continuedSeen = false;
         for (ulong seed = 1; seed <= 32; seed++)
@@ -71,12 +69,10 @@ public sealed class StrategicWorldLandingBaseResearchTests
         Assert.True(continuedSeen);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void PossibleLandingBaseReservesMarkerScoreAndBirthSequenceBeforeSelection(bool cache)
+    [Fact]
+    public void PossibleLandingBaseReservesMarkerScoreAndBirthSequenceBeforeSelection()
     {
-        var content = StrategicWorldConversionResearchTests.Content(cache, baseLanding: true);
+        var content = StrategicWorldConversionResearchTests.Content(baseLanding: true);
         var initial = StrategicWorldConversionResearchTests.Snapshot(content, 17, baseLanding: true);
         AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("ARRIVAL_BASE", int.MaxValue), content, new SplitMix64RandomSource(17)),
             "Base objective IDs are exhausted or collide.");

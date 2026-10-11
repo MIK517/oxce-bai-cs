@@ -11,22 +11,18 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldOptionalBaseAutoPatrolTests
 {
     [Theory]
-    [InlineData(false, "STR_READY")]
-    [InlineData(true, "STR_READY")]
-    [InlineData(false, "STR_REPAIRS")]
-    [InlineData(true, "STR_REPAIRS")]
-    [InlineData(false, "STR_REARMING")]
-    [InlineData(true, "STR_REARMING")]
-    [InlineData(false, "STR_REFUELLING")]
-    [InlineData(true, "STR_REFUELLING")]
-    public void OptionalGroundedReturnComposesRelaunchBeforeActualHunterSelection(bool cache, string status)
+    [InlineData("STR_READY")]
+    [InlineData("STR_REPAIRS")]
+    [InlineData("STR_REARMING")]
+    [InlineData("STR_REFUELLING")]
+    public void OptionalGroundedReturnComposesRelaunchBeforeActualHunterSelection(string status)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
         using var hunting = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.NotEmpty(TestFixtures.Rows(hunting.RootElement, "maintenanceRows"));
-        var content = StrategicWorldOptionalBaseCraftTests.Content(cache);
-        var deletedContent = StrategicWorldOptionalBaseCraftTests.Content(cache, "CORE");
-        var survivedContent = StrategicWorldOptionalBaseCraftTests.Content(cache, "");
+        var content = StrategicWorldOptionalBaseCraftTests.Content();
+        var deletedContent = StrategicWorldOptionalBaseCraftTests.Content("CORE");
+        var survivedContent = StrategicWorldOptionalBaseCraftTests.Content("");
         HashSet<bool> outcomes = [];
         for (ulong seed = 1; seed <= 32; seed++)
         {
@@ -69,12 +65,10 @@ public sealed class StrategicWorldOptionalBaseAutoPatrolTests
         Assert.Equal(2, outcomes.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OptionalReturnKeepsRelaunchIdentityAndHuntingCombatLimitsAtomic(bool cache)
+    [Fact]
+    public void OptionalReturnKeepsRelaunchIdentityAndHuntingCombatLimitsAtomic()
     {
-        var content = StrategicWorldOptionalBaseCraftTests.Content(cache);
+        var content = StrategicWorldOptionalBaseCraftTests.Content();
         var initial = Snapshot(content, 17, "STR_REFUELLING").WithNextId(WorldTargetReference.WaypointType, int.MaxValue);
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "Waypoint IDs are exhausted or collide with a saved waypoint.");

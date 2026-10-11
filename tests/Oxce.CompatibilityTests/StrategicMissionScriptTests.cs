@@ -9,18 +9,16 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicMissionScriptTests
 {
-    private static Oxce.Mods.Rulesets.Content.RuntimeContent Load(bool fromCache)
+    private static Oxce.Mods.Rulesets.Content.RuntimeContent Load()
     {
         TestFixtures.LoadVerifiedManifest("strategic-script-rules");
-        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-mission-scripts.rul"], fromCache);
+        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-mission-scripts.rul"]);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OrderedMissionsPersistRunLimitAndStrategyTable(bool fromCache)
+    [Fact]
+    public void OrderedMissionsPersistRunLimitAndStrategyTable()
     {
-        var content = Load(fromCache);
+        var content = Load();
         var initial = CreateSnapshot(content, "Mission scripts") with { RandomState = 17 };
         var expected = new SplitMix64RandomSource(17);
         expected.NextInclusive(0, 99); // START execution odds
@@ -56,12 +54,10 @@ public sealed class StrategicMissionScriptTests
         Assert.Equal(3, second.World.Missions.Select(mission => mission.Id).Distinct().Count());
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void FailedOddsSetFalseLabelForLaterNegativeConditional(bool fromCache)
+    [Fact]
+    public void FailedOddsSetFalseLabelForLaterNegativeConditional()
     {
-        var content = Load(fromCache);
+        var content = Load();
         var initial = CreateSnapshot(content, "Mission negative condition") with { MonthsPassed = 1, RandomState = 17 };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         Assert.Empty(campaign.Execute(new ScheduleMonthlyWorldMissions(0, 0)).Events);
@@ -70,15 +66,12 @@ public sealed class StrategicMissionScriptTests
     }
 
     [Theory]
-    [InlineData(2, false)]
-    [InlineData(2, true)]
-    [InlineData(5, false)]
-    [InlineData(5, true)]
-    [InlineData(6, false)]
-    [InlineData(6, true)]
-    public void InvalidLabelsAndUnsupportedObjectivesBlockAtomically(int month, bool fromCache)
+    [InlineData(2)]
+    [InlineData(5)]
+    [InlineData(6)]
+    public void InvalidLabelsAndUnsupportedObjectivesBlockAtomically(int month)
     {
-        var content = Load(fromCache);
+        var content = Load();
         var initial = CreateSnapshot(content, "Mission script guard") with { MonthsPassed = month, RandomState = 17 };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         var before = campaign.Capture();
@@ -87,13 +80,11 @@ public sealed class StrategicMissionScriptTests
     }
 
     [Theory]
-    [InlineData(7, 1, false)]
-    [InlineData(7, 1, true)]
-    [InlineData(8, 2, false)]
-    [InlineData(8, 2, true)]
-    public void MissingConditionsPassAndAvailableListIsCapturedBeforeRunUpdates(int month, int count, bool fromCache)
+    [InlineData(7, 1)]
+    [InlineData(8, 2)]
+    public void MissingConditionsPassAndAvailableListIsCapturedBeforeRunUpdates(int month, int count)
     {
-        var content = Load(fromCache);
+        var content = Load();
         var initial = CreateSnapshot(content, "Mission availability") with { MonthsPassed = month, RandomState = 17 };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         Assert.Empty(campaign.Execute(new ScheduleMonthlyWorldMissions(0, 0)).Events);
@@ -105,7 +96,7 @@ public sealed class StrategicMissionScriptTests
     [Fact]
     public void ExhaustedMissionIdsBlockBeforeMutation()
     {
-        var content = Load(false);
+        var content = Load();
         var initial = CreateSnapshot(content, "Mission ID bound") with { RandomState = 17 };
         initial = initial.WithNextId("ALIEN_MISSIONS", int.MaxValue);
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
@@ -117,7 +108,7 @@ public sealed class StrategicMissionScriptTests
     [Fact]
     public void NoEligibleScriptsDoNotConsumeMissionCapacityOrRandomness()
     {
-        var content = Load(false);
+        var content = Load();
         var initial = CreateSnapshot(content, "No mission scripts") with { MonthsPassed = 9, RandomState = 17 };
         initial = initial.WithNextId("ALIEN_MISSIONS", int.MaxValue);
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));

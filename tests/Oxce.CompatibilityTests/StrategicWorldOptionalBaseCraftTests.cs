@@ -11,22 +11,18 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldOptionalBaseCraftTests
 {
     [Theory]
-    [InlineData(false, "STR_READY")]
-    [InlineData(true, "STR_READY")]
-    [InlineData(false, "STR_REPAIRS")]
-    [InlineData(true, "STR_REPAIRS")]
-    [InlineData(false, "STR_REARMING")]
-    [InlineData(true, "STR_REARMING")]
-    [InlineData(false, "STR_REFUELLING")]
-    [InlineData(true, "STR_REFUELLING")]
-    public void OptionalDeletionReturnsGroundedFollowersBeforeOrderedServicing(bool cache, string status)
+    [InlineData("STR_READY")]
+    [InlineData("STR_REPAIRS")]
+    [InlineData("STR_REARMING")]
+    [InlineData("STR_REFUELLING")]
+    public void OptionalDeletionReturnsGroundedFollowersBeforeOrderedServicing(string status)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-cleanup");
         Assert.NotEmpty(TestFixtures.Rows(oracle.RootElement, "followerRows"));
         TestFixtures.LoadVerifiedManifest("strategic-logistics");
-        var content = Content(cache);
-        var deletedContent = Content(cache, "CORE");
-        var survivedContent = Content(cache, "");
+        var content = Content();
+        var deletedContent = Content("CORE");
+        var survivedContent = Content("");
         HashSet<bool> outcomes = [];
         for (ulong seed = 1; seed <= 32; seed++)
         {
@@ -60,12 +56,10 @@ public sealed class StrategicWorldOptionalBaseCraftTests
         Assert.Equal(2, outcomes.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void PossibleGroundedReturnStillValidatesConsumedEffectiveSpeed(bool cache)
+    [Fact]
+    public void PossibleGroundedReturnStillValidatesConsumedEffectiveSpeed()
     {
-        var content = Content(cache);
+        var content = Content();
         var initial = Snapshot(content, 17, "STR_READY").WithCraft("SHIP", craft => craft with
         {
             Logistics = craft.Logistics! with { Weapons = [new("SPEED_EXCESS", 0), null] },
@@ -74,8 +68,8 @@ public sealed class StrategicWorldOptionalBaseCraftTests
             "Craft speed exceeds the supported range.");
     }
 
-    internal static RuntimeContent Content(bool cache, string code = "BONUS", bool itemFuel = false, int escortRange = 20, int speedMaximum = 6000, int escortSpeedMaximum = 2000) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+    internal static RuntimeContent Content(string code = "BONUS", bool itemFuel = false, int escortRange = 20, int speedMaximum = 6000, int escortSpeedMaximum = 2000) =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul"], $$$"""
             escortRange: {{{escortRange}}}
             crafts:
               - {type: SHIP, speedMax: {{{speedMaximum}}}, fuelMax: 1000, refuelRate: 100, repairRate: 2, autoPatrol: true, radarRange: 20000, radarChance: 100{{{(itemFuel ? ", refuelItem: SUPPLY" : "")}}}}

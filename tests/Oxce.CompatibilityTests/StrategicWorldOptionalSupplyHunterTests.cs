@@ -10,13 +10,10 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldOptionalSupplyHunterTests
 {
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    public void ConditionalSupplyBirthsDoNotCreateLeaderDependenciesForSavedHunters(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void ConditionalSupplyBirthsDoNotCreateLeaderDependenciesForSavedHunters(int mode)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-mission-origin");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "supplyRows"), row =>
@@ -25,9 +22,9 @@ public sealed class StrategicWorldOptionalSupplyHunterTests
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
         foreach (var kind in new[] { 0, 2 })
         {
-            var content = StrategicWorldOptionalSupplySourceTests.Content(cache, kind, radarRange: mode == 2 ? 20000 : 0);
-            var deletedContent = StrategicWorldOptionalSupplySourceTests.Content(cache, kind, "CORE", radarRange: mode == 2 ? 20000 : 0);
-            var survivedContent = StrategicWorldOptionalSupplySourceTests.Content(cache, kind, "", radarRange: mode == 2 ? 20000 : 0);
+            var content = StrategicWorldOptionalSupplySourceTests.Content(kind, radarRange: mode == 2 ? 20000 : 0);
+            var deletedContent = StrategicWorldOptionalSupplySourceTests.Content(kind, "CORE", radarRange: mode == 2 ? 20000 : 0);
+            var survivedContent = StrategicWorldOptionalSupplySourceTests.Content(kind, "", radarRange: mode == 2 ? 20000 : 0);
             var deletedSeen = false;
             var survivedSeen = false;
             for (ulong seed = 1; seed <= 32; seed++)

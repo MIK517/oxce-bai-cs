@@ -13,8 +13,8 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldUfoSiteConversionTests
 {
-    private static RuntimeContent Load(bool cache = false, string? overlay = null) => StrategicReadinessTestContent.Load(
-        ["strategic-world.rul", "strategic-site-spawn.rul", "strategic-ufo-site-conversion.rul"], cache, extraRules: overlay);
+    private static RuntimeContent Load(string? overlay = null) => StrategicReadinessTestContent.Load(
+        ["strategic-world.rul", "strategic-site-spawn.rul", "strategic-ufo-site-conversion.rul"], extraRules: overlay);
 
     private static CampaignSnapshot Snapshot(RuntimeContent content, bool landing = false, bool custom = false, bool respawn = false)
     {
@@ -38,13 +38,11 @@ public sealed class StrategicWorldUfoSiteConversionTests
         };
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SelectedObjectiveConversionMatchesCapturedSiteAndStopsFollowingTicks(bool cache)
+    [Fact]
+    public void SelectedObjectiveConversionMatchesCapturedSiteAndStopsFollowingTicks()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-site-spawn");
-        var content = Load(cache);
+        var content = Load();
         var count = 0;
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "conversionRows"))
         {
@@ -91,12 +89,10 @@ public sealed class StrategicWorldUfoSiteConversionTests
         Assert.Equal(8, count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ConvertedDormantUfoReactivatesAfterSiteExpiryAndReload(bool cache)
+    [Fact]
+    public void ConvertedDormantUfoReactivatesAfterSiteExpiryAndReload()
     {
-        var content = Load(cache);
+        var content = Load();
         var campaign = CampaignState.Restore(Snapshot(content, respawn: true), content, new QuarterChoices());
         Assert.Contains(campaign.Execute(new AdvanceCampaignTime(1)).Events, item => item is MissionSiteDetected);
         var converted = Reload(content, campaign, 17, "converted-dormant.sav").Capture();
@@ -159,10 +155,8 @@ public sealed class StrategicWorldUfoSiteConversionTests
             : "UFO alien activity exceeds the supported range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CombinedTickConversionFollowsCapturedCounterOrder(bool cache)
+    [Fact]
+    public void CombinedTickConversionFollowsCapturedCounterOrder()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-site-spawn");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "counterConversionRows"))
@@ -171,7 +165,7 @@ public sealed class StrategicWorldUfoSiteConversionTests
             var decrease = row[1].GetBoolean();
             var overlay = "alienDeployments:\n  - type: EXPIRING_COUNTER\n    markerName: OTHER_MARKER\n" +
                 "    counterDespawn: DIRECT_MARKER\n" + (decrease ? "    decreaseCounterAll: DIRECT_MARKER\n" : "");
-            var content = Load(cache, overlay);
+            var content = Load(overlay);
             var initial = Snapshot(content);
             initial = initial with
             {
@@ -336,13 +330,11 @@ public sealed class StrategicWorldUfoSiteConversionTests
         Reload(content, campaign, 17, "conversion-fallthrough.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SuppressedSiteConversionMatchesCapturedTerminalOutcome(bool cache)
+    [Fact]
+    public void SuppressedSiteConversionMatchesCapturedTerminalOutcome()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-site-spawn");
-        var content = Load(cache);
+        var content = Load();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "suppressedConversionRows"))
         {
             var respawn = row[0].GetBoolean();
@@ -400,13 +392,11 @@ public sealed class StrategicWorldUfoSiteConversionTests
         };
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void FollowerTransfersMatchCapturedUnitsAndDormancy(bool cache)
+    [Fact]
+    public void FollowerTransfersMatchCapturedUnitsAndDormancy()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-site-spawn");
-        var content = Load(cache);
+        var content = Load();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "followerConversionRows"))
         {
             var respawn = row[0].GetBoolean();
@@ -484,13 +474,11 @@ public sealed class StrategicWorldUfoSiteConversionTests
         Reload(content, campaign, 17, "nonlanding-converted-follower.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DamagedConversionsOverrideCapturedTransientCrashStatus(bool cache)
+    [Fact]
+    public void DamagedConversionsOverrideCapturedTransientCrashStatus()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-site-spawn");
-        var content = Load(cache);
+        var content = Load();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "damagedConversionRows"))
         {
             var unmanned = row[0].GetBoolean();

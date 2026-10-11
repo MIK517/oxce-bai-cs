@@ -9,13 +9,11 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldDetectionResearchTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ResearchDetectionMatchesReferenceAndIgnoresDebugMode(bool fromCache)
+    [Fact]
+    public void ResearchDetectionMatchesReferenceAndIgnoresDebugMode()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
-        var content = Load(fromCache);
+        var content = Load();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "research"))
         {
             var completed = row[0].GetInt32() != 0;
@@ -35,12 +33,10 @@ public sealed class StrategicWorldDetectionResearchTests
             .Select(item => item.GetInt32()).ToArray());
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DetectionReadsSameTickDailyResearchAndReloadsItsResult(bool fromCache)
+    [Fact]
+    public void DetectionReadsSameTickDailyResearchAndReloadsItsResult()
     {
-        var content = Load(fromCache);
+        var content = Load();
         var snapshot = CreateUfoTransitCampaign(content, new(1, 1, 1, 1999, 23, 59, 55), "UFO_RESEARCH", 2200).Capture()
             .WithFacility("FUEL_WORKSHOP");
         snapshot = snapshot with
@@ -59,10 +55,8 @@ public sealed class StrategicWorldDetectionResearchTests
         Reload(content, campaign, 106, "daily-research-detection.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ReadOnlyRuleLookupMatchesNativeNullAndMissingCases(bool fromCache)
+    [Fact]
+    public void ReadOnlyRuleLookupMatchesNativeNullAndMissingCases()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "ruleLookup"))
@@ -87,7 +81,7 @@ public sealed class StrategicWorldDetectionResearchTests
                 code += $"if neq value{index} other{index}; return DETECTION_NONE 0; end; ";
             }
             code += "rules.getRuleItem value0 \"STR_NONE\"; if neq value0 null; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;";
-            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
                 skills:
                   - type: SKILL_LOOKUP
                 items:
@@ -109,12 +103,10 @@ public sealed class StrategicWorldDetectionResearchTests
         Assert.Equal(0, oracle.RootElement.GetProperty("noneItem").GetInt32());
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ResearchTagsAndNeededItemPointersPreserveLinkedIdentity(bool fromCache)
+    [Fact]
+    public void ResearchTagsAndNeededItemPointersPreserveLinkedIdentity()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             extended:
               tags:
                 RuleResearch: {DETECT_RESEARCH: int}
@@ -176,8 +168,8 @@ public sealed class StrategicWorldDetectionResearchTests
         Reload(content, campaign, 116, "research-item-detection.sav");
     }
 
-    private static RuntimeContent Load(bool fromCache) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+    private static RuntimeContent Load() =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             research:
               - name: R_DETECT
                 cost: 1

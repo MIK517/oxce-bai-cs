@@ -11,40 +11,28 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldOptionalSupplyEscortFollowerTests
 {
     [Theory]
-    [InlineData(false, false, 0, false)]
-    [InlineData(true, false, 0, false)]
-    [InlineData(false, true, 0, false)]
-    [InlineData(true, true, 0, false)]
-    [InlineData(false, false, 5, false)]
-    [InlineData(true, false, 5, false)]
-    [InlineData(false, true, 5, false)]
-    [InlineData(true, true, 5, false)]
-    [InlineData(false, false, 10, false)]
-    [InlineData(true, false, 10, false)]
-    [InlineData(false, true, 10, false)]
-    [InlineData(true, true, 10, false)]
-    [InlineData(false, false, 0, true)]
-    [InlineData(true, false, 0, true)]
-    [InlineData(false, true, 0, true)]
-    [InlineData(true, true, 0, true)]
-    [InlineData(false, false, 5, true)]
-    [InlineData(true, false, 5, true)]
-    [InlineData(false, true, 5, true)]
-    [InlineData(true, true, 5, true)]
-    [InlineData(false, false, 10, true)]
-    [InlineData(true, false, 10, true)]
-    [InlineData(false, true, 10, true)]
-    [InlineData(true, true, 10, true)]
-    public void SourceAlternativesComposeWithOrderedFollowerPursuitAndTakeoff(bool cache, bool reverse, int timer, bool regional)
+    [InlineData(false, 0, false)]
+    [InlineData(true, 0, false)]
+    [InlineData(false, 5, false)]
+    [InlineData(true, 5, false)]
+    [InlineData(false, 10, false)]
+    [InlineData(true, 10, false)]
+    [InlineData(false, 0, true)]
+    [InlineData(true, 0, true)]
+    [InlineData(false, 5, true)]
+    [InlineData(true, 5, true)]
+    [InlineData(false, 10, true)]
+    [InlineData(true, 10, true)]
+    public void SourceAlternativesComposeWithOrderedFollowerPursuitAndTakeoff(bool reverse, int timer, bool regional)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world");
         Assert.Equal(6, TestFixtures.Rows(oracle.RootElement, "idleEscortFollowerMovement").Length);
         TestFixtures.LoadVerifiedManifest("strategic-mission-origin");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         var kind = regional ? 2 : 0;
-        var content = StrategicWorldOptionalSupplySourceTests.Content(cache, kind, nonObjectiveRegional: regional, craftRadarRange: 20000);
-        var deletedContent = StrategicWorldOptionalSupplySourceTests.Content(cache, kind, "CORE", nonObjectiveRegional: regional, craftRadarRange: 20000);
-        var survivedContent = StrategicWorldOptionalSupplySourceTests.Content(cache, kind, "", nonObjectiveRegional: regional, craftRadarRange: 20000);
+        var content = StrategicWorldOptionalSupplySourceTests.Content(kind, nonObjectiveRegional: regional, craftRadarRange: 20000);
+        var deletedContent = StrategicWorldOptionalSupplySourceTests.Content(kind, "CORE", nonObjectiveRegional: regional, craftRadarRange: 20000);
+        var survivedContent = StrategicWorldOptionalSupplySourceTests.Content(kind, "", nonObjectiveRegional: regional, craftRadarRange: 20000);
         HashSet<bool> outcomes = [];
         for (ulong seed = 1; seed <= 16; seed++)
         {
@@ -101,12 +89,10 @@ public sealed class StrategicWorldOptionalSupplyEscortFollowerTests
         Assert.Equal(2, outcomes.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CloseTransitivePursuitAndMalformedFollowerStopBeforeResearch(bool cache)
+    [Fact]
+    public void CloseTransitivePursuitAndMalformedFollowerStopBeforeResearch()
     {
-        var content = StrategicWorldOptionalSupplySourceTests.Content(cache, 0);
+        var content = StrategicWorldOptionalSupplySourceTests.Content(0);
         var initial = Pursuit(Snapshot(content, 17, false, 0), content, 17, true);
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "Loaded idle escorts require same-tick newborn craft pursuit forecasts.");
@@ -143,15 +129,13 @@ public sealed class StrategicWorldOptionalSupplyEscortFollowerTests
         return initial with { World = initial.World with { Missions = [initial.World.Missions[0] with { LiveUfos = 3 }], Ufos = reverse ? [last, follower, source] : [source, follower, last] } };
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void RadarLossRetainsPatrolResponseAcrossBothSourceOutcomes(bool cache)
+    [Fact]
+    public void RadarLossRetainsPatrolResponseAcrossBothSourceOutcomes()
     {
         TestFixtures.LoadVerifiedManifest("strategic-world");
-        var content = StrategicWorldOptionalSupplySourceTests.Content(cache, 0);
-        var deletedContent = StrategicWorldOptionalSupplySourceTests.Content(cache, 0, "CORE");
-        var survivedContent = StrategicWorldOptionalSupplySourceTests.Content(cache, 0, "");
+        var content = StrategicWorldOptionalSupplySourceTests.Content(0);
+        var deletedContent = StrategicWorldOptionalSupplySourceTests.Content(0, "CORE");
+        var survivedContent = StrategicWorldOptionalSupplySourceTests.Content(0, "");
         HashSet<bool> outcomes = [];
         for (ulong seed = 1; seed <= 16; seed++)
         {

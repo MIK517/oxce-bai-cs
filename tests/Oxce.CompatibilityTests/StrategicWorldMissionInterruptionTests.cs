@@ -13,12 +13,10 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldMissionInterruptionTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DailyInterruptionAndCleanupMatchExtractedReference(bool cache)
+    [Fact]
+    public void DailyInterruptionAndCleanupMatchExtractedReference()
     {
-        var content = Load(cache);
+        var content = Load();
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-generation");
         var rows = new List<int[]>();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "interruptionRows"))
@@ -45,12 +43,10 @@ public sealed class StrategicWorldMissionInterruptionTests
             CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GeneratedMissionWaitsUntilFollowingDailyCheckAndNeverRestartsAfterReload(bool cache)
+    [Fact]
+    public void GeneratedMissionWaitsUntilFollowingDailyCheckAndNeverRestartsAfterReload()
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Existing(content) with { CompletedResearch = ["UNLOCK"] };
         snapshot = snapshot with
         {
@@ -70,13 +66,11 @@ public sealed class StrategicWorldMissionInterruptionTests
     }
 
     [Theory]
-    [InlineData(false, "GEN_STOP")]
-    [InlineData(true, "GEN_STOP")]
-    [InlineData(false, "GEN_SOURCE")]
-    [InlineData(true, "GEN_SOURCE")]
-    public void SameDayPrimaryOrLookupResearchInterruptsBeforeUnsupportedDueWave(bool cache, string research)
+    [InlineData("GEN_STOP")]
+    [InlineData("GEN_SOURCE")]
+    public void SameDayPrimaryOrLookupResearchInterruptsBeforeUnsupportedDueWave(string research)
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Existing(content, "GEN_STOP_TOPIC");
         snapshot = snapshot with
         {
@@ -159,13 +153,11 @@ public sealed class StrategicWorldMissionInterruptionTests
         Assert.Equal(0, Assert.Single(restored.Capture().World.Missions).LiveUfos);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void LiveInterruptionMatchesReferenceAndTerminalArrivalSkipsCraftCombat(bool cache)
+    [Fact]
+    public void LiveInterruptionMatchesReferenceAndTerminalArrivalSkipsCraftCombat()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-generation");
-        var content = Load(cache);
+        var content = Load();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "liveInterruptionRows"))
         {
             var snapshot = Live(content);
@@ -252,10 +244,10 @@ public sealed class StrategicWorldMissionInterruptionTests
         Assert.Equal(8970, mission.SpawnCountdown);
     }
 
-    private static RuntimeContent Load(bool cache = false)
+    private static RuntimeContent Load()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
-        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-generation.rul"], cache);
+        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-generation.rul"]);
     }
 
     private static CampaignSnapshot Existing(RuntimeContent content, string mission = "GEN_INTERRUPT")

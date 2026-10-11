@@ -11,19 +11,15 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldSiteResearchFacilityTests
 {
     [Theory]
-    [InlineData(false, 0, true)]
-    [InlineData(true, 0, true)]
-    [InlineData(false, 1, true)]
-    [InlineData(true, 1, true)]
-    [InlineData(false, 2, true)]
-    [InlineData(true, 2, true)]
-    [InlineData(false, 1, false)]
-    [InlineData(true, 1, false)]
-    public void AutomaticResearchUsesFacilitiesCompletedBeforeItsActualCaller(bool cache, int buildTime, bool daily)
+    [InlineData(0, true)]
+    [InlineData(1, true)]
+    [InlineData(2, true)]
+    [InlineData(1, false)]
+    public void AutomaticResearchUsesFacilitiesCompletedBeforeItsActualCaller(int buildTime, bool daily)
     {
         TestFixtures.LoadVerifiedManifest("strategic-research-production");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             facilities:
               - {type: STORES, provideBaseFunc: [SCIENCE]}
             research:
@@ -67,7 +63,7 @@ public sealed class StrategicWorldSiteResearchFacilityTests
     [InlineData(2)]
     public void DueEventRequiresAutomaticResearchFromAnActuallyCompletingFacility(int buildTime)
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             facilities:
               - {type: STORES, provideBaseFunc: [SCIENCE]}
             research:
@@ -101,7 +97,7 @@ public sealed class StrategicWorldSiteResearchFacilityTests
     [InlineData(true)]
     public void CompletingFacilityCannotExposeScoreOrDiaryOverflowAfterConstructionMutates(bool diary)
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             facilities:
               - {type: STORES, provideBaseFunc: [SCIENCE]}
             research:

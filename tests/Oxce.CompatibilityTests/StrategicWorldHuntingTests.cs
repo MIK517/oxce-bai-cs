@@ -13,13 +13,11 @@ namespace Oxce.CompatibilityTests;
 public sealed partial class StrategicWorldHuntingTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void HunterCandidateScansChargeEmptyBasesBeforeMutation(bool cache, bool newborn)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HunterCandidateScansChargeEmptyBasesBeforeMutation(bool newborn)
     {
-        var content = Load(cache, newborn ? "alienMissions: [{type: EMPTY_BASE_HUNTERS, objective: 0, waves: [{ufo: SPAWN_HUNTER_DEFAULTS, count: 1001, trajectory: TRAJ_SPAWN_FIXED, timer: 0}]}]\n" : null);
+        var content = Load(newborn ? "alienMissions: [{type: EMPTY_BASE_HUNTERS, objective: 0, waves: [{ufo: SPAWN_HUNTER_DEFAULTS, count: 1001, trajectory: TRAJ_SPAWN_FIXED, timer: 0}]}]\n" : null);
         var initial = HuntingSnapshot(content);
         var owner = initial.Bases[0];
         initial = initial with
@@ -47,17 +45,14 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    public void DelayedProductionBirthsDoNotEnterTheCreationTickHunterPopulation(bool cache, int delay)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(3)]
+    public void DelayedProductionBirthsDoNotEnterTheCreationTickHunterPopulation(int delay)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "productionCraftBirthRows"), row => row[2].GetInt32() == delay && row[5].GetInt32() == (delay == 0 ? 0 : 1));
-        var content = Load(cache, $"alienMissions: [{{type: DELAYED_POPULATION_HUNTERS, objective: 0, waves: [{{ufo: SPAWN_HUNTER_DEFAULTS, count: 1001, trajectory: TRAJ_SPAWN_FIXED, timer: 0}}]}}]\nmanufacture: [{{name: DELAYED_POPULATION_PRODUCT, category: STR_CRAFT, time: 1, transferTimes: [0, 0, {delay}], producedItems: {{SHIP: 1}}}}]\nfacilities: [{{type: DELAYED_POPULATION_WORKSHOP, mapName: LOGISTICS, workshops: 1100}}]\n");
+        var content = Load($"alienMissions: [{{type: DELAYED_POPULATION_HUNTERS, objective: 0, waves: [{{ufo: SPAWN_HUNTER_DEFAULTS, count: 1001, trajectory: TRAJ_SPAWN_FIXED, timer: 0}}]}}]\nmanufacture: [{{name: DELAYED_POPULATION_PRODUCT, category: STR_CRAFT, time: 1, transferTimes: [0, 0, {delay}], producedItems: {{SHIP: 1}}}}]\nfacilities: [{{type: DELAYED_POPULATION_WORKSHOP, mapName: LOGISTICS, workshops: 1100}}]\n");
         var initial = CreateSnapshot(content, "Delayed craft population") with
         {
             Time = new(1, 1, 1, 1999, 1, 59, 55),
@@ -92,13 +87,11 @@ public sealed partial class StrategicWorldHuntingTests
         Reload(content, campaign, 81, "delayed-population-following-tick.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void NewHunterPopulationBoundsUseNativeHourlyProgressIncludingInfiniteQueues(bool cache)
+    [Fact]
+    public void NewHunterPopulationBoundsUseNativeHourlyProgressIncludingInfiniteQueues()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Load(cache, "manufacture: [{name: POPULATION_FOUR, category: STR_CRAFT, time: 4, producedItems: {SHIP: 1}}, {name: POPULATION_HUNDRED, category: STR_CRAFT, time: 100, producedItems: {SHIP: 1}}]\nfacilities: [{type: POPULATION_WORKSHOP, mapName: LOGISTICS, workshops: 10}]\n");
+        var content = Load("manufacture: [{name: POPULATION_FOUR, category: STR_CRAFT, time: 4, producedItems: {SHIP: 1}}, {name: POPULATION_HUNDRED, category: STR_CRAFT, time: 100, producedItems: {SHIP: 1}}]\nfacilities: [{type: POPULATION_WORKSHOP, mapName: LOGISTICS, workshops: 10}]\n");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "productionProgressRows").Where(row => row[0].GetInt32() > 0))
         {
             var initial = CreateSnapshot(content, "Native hourly craft population") with
@@ -127,12 +120,10 @@ public sealed partial class StrategicWorldHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void EscortPrefixesChargeMissionLookupsBeforeMutation(bool cache)
+    [Fact]
+    public void EscortPrefixesChargeMissionLookupsBeforeMutation()
     {
-        var content = Load(cache);
+        var content = Load();
         var initial = HuntingSnapshot(content);
         initial = initial with
         {
@@ -161,13 +152,11 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void TerminalArrivalDefersLaterHunterCombatWithoutMutatingTheHunter(bool cache, bool terminalFirst)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TerminalArrivalDefersLaterHunterCombatWithoutMutatingTheHunter(bool terminalFirst)
     {
-        var content = Load(cache);
+        var content = Load();
         var initial = HuntingSnapshot(content);
         var hunter = initial.World.Ufos[0] with
         {
@@ -207,12 +196,10 @@ public sealed partial class StrategicWorldHuntingTests
         AssertTimeBlocked(campaign, "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void LargeEscortGraphsRefuseBeforePositionForecasts(bool cache)
+    [Fact]
+    public void LargeEscortGraphsRefuseBeforePositionForecasts()
     {
-        var content = Load(cache);
+        var content = Load();
         var initial = HuntingSnapshot(content);
         initial = initial with
         {
@@ -234,13 +221,11 @@ public sealed partial class StrategicWorldHuntingTests
             "UFO escort movement exceeds the supported work limit.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void EscortChainsRingsAndSelfTargetsMatchNativeMovement(bool cache)
+    [Fact]
+    public void EscortChainsRingsAndSelfTargetsMatchNativeMovement()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world");
-        var content = Load(cache);
+        var content = Load();
         int[][] orders = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]];
         foreach (var group in TestFixtures.Rows(oracle.RootElement, "escortMovement").GroupBy(row => (Shape: row[0].GetInt32(), Order: row[1].GetInt32())))
         {
@@ -289,12 +274,10 @@ public sealed partial class StrategicWorldHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SoldierNameChecksIncludeTransfersQueuedByOtherProduction(bool cache)
+    [Fact]
+    public void SoldierNameChecksIncludeTransfersQueuedByOtherProduction()
     {
-        var content = Load(cache, "manufacture: [{name: PENDING_STAFF, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: STR_SCIENTIST}, {name: PENDING_SOLDIER, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: RECRUIT}]\nfacilities: [{type: PENDING_WORKSHOP, mapName: LOGISTICS, workshops: 2500, personnel: 10000}]\n");
+        var content = Load("manufacture: [{name: PENDING_STAFF, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: STR_SCIENTIST}, {name: PENDING_SOLDIER, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: RECRUIT}]\nfacilities: [{type: PENDING_WORKSHOP, mapName: LOGISTICS, workshops: 2500, personnel: 10000}]\n");
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), World = WorldSnapshot.Empty };
         initial = initial with
         {
@@ -309,26 +292,22 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void SoldierProductionBoundsGrowthOfPendingNameChecks(bool cache, bool split)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SoldierProductionBoundsGrowthOfPendingNameChecks(bool split)
     {
-        var content = Load(cache, "manufacture: [{name: NAME_WORK_A, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: RECRUIT}, {name: NAME_WORK_B, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: RECRUIT}]\nfacilities: [{type: NAME_WORK_SHOP, mapName: LOGISTICS, workshops: 1600, personnel: 10000}]\n");
+        var content = Load("manufacture: [{name: NAME_WORK_A, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: RECRUIT}, {name: NAME_WORK_B, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: RECRUIT}]\nfacilities: [{type: NAME_WORK_SHOP, mapName: LOGISTICS, workshops: 1600, personnel: 10000}]\n");
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), World = WorldSnapshot.Empty };
         ProductionSnapshot first = new("NAME_WORK_A", split ? 800 : 1600, 0, split ? 800 : 1600, false, false, false, new Dictionary<string, int>());
         initial = initial with { Bases = [initial.Bases[0] with { Soldiers = [], Crafts = [], Transfers = [], Research = [], Facilities = [new("NAME_WORK_SHOP", 1, 1, 0, 0, false, false, false)], Productions = split ? [first, first with { RuleId = "NAME_WORK_B" }] : [first] }] };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), "Soldier production exceeds the supported work limit.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SoldierAndCraftProductionShareCounterInNativeCallerOrder(bool cache)
+    [Fact]
+    public void SoldierAndCraftProductionShareCounterInNativeCallerOrder()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Load(cache, "crafts: [{type: STR_SOLDIER, speedMax: 2000, damageMax: 100, fuelMax: 0}]\nmanufacture: [{name: SHARED_PERSON, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: RECRUIT}, {name: SHARED_CRAFT, category: STR_CRAFT, time: 1, producedItems: {STR_SOLDIER: 1}}, {name: SHARED_BOTH, category: STR_CRAFT, time: 1, producedItems: {STR_SOLDIER: 1}, spawnedPersonType: RECRUIT}]\nfacilities: [{type: SHARED_WORKSHOP, mapName: LOGISTICS, workshops: 2}]\n");
+        var content = Load("crafts: [{type: STR_SOLDIER, speedMax: 2000, damageMax: 100, fuelMax: 0}]\nmanufacture: [{name: SHARED_PERSON, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: RECRUIT}, {name: SHARED_CRAFT, category: STR_CRAFT, time: 1, producedItems: {STR_SOLDIER: 1}}, {name: SHARED_BOTH, category: STR_CRAFT, time: 1, producedItems: {STR_SOLDIER: 1}, spawnedPersonType: RECRUIT}]\nfacilities: [{type: SHARED_WORKSHOP, mapName: LOGISTICS, workshops: 2}]\n");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "productionSharedSoldierCraftCounterRows"))
         {
             var order = row[0].GetInt32();
@@ -357,10 +336,8 @@ public sealed partial class StrategicWorldHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ManufacturedSoldiersMatchNativeCallerAndPendingNameRetries(bool cache)
+    [Fact]
+    public void ManufacturedSoldiersMatchNativeCallerAndPendingNameRetries()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "productionSoldierRows"))
@@ -369,7 +346,7 @@ public sealed partial class StrategicWorldHuntingTests
             var fixedName = row[1].GetBoolean();
             var overlay = row[2].GetBoolean();
             var pending = row[3].GetBoolean();
-            var content = Load(cache, $"hireByCountryOdds: 100\nsoldiers: [{{type: COUNTRY_PRODUCT_SOLDIER, armor: ARMOR, soldierNames: [SoldierName/test.nam, SoldierName/test.nam], minStats: {{health: 30}}, maxStats: {{health: 30}}}}]\nmanufacture: [{{name: SOLDIER_PRODUCT, time: 1, producedItems: {{SUPPLY: 0}}, spawnedPersonType: COUNTRY_PRODUCT_SOLDIER, transferTimes: [{(delay < 0 ? "0" : $"0, {delay}")}], spawnedPersonName: '{(fixedName ? "FORCED" : "")}', spawnedSoldier: {{{(overlay ? "name: TEMPLATE NAME, currentStats: {health: 45}" : "")}}}}}]\nfacilities: [{{type: SOLDIER_PRODUCT_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+            var content = Load($"hireByCountryOdds: 100\nsoldiers: [{{type: COUNTRY_PRODUCT_SOLDIER, armor: ARMOR, soldierNames: [SoldierName/test.nam, SoldierName/test.nam], minStats: {{health: 30}}, maxStats: {{health: 30}}}}]\nmanufacture: [{{name: SOLDIER_PRODUCT, time: 1, producedItems: {{SUPPLY: 0}}, spawnedPersonType: COUNTRY_PRODUCT_SOLDIER, transferTimes: [{(delay < 0 ? "0" : $"0, {delay}")}], spawnedPersonName: '{(fixedName ? "FORCED" : "")}', spawnedSoldier: {{{(overlay ? "name: TEMPLATE NAME, currentStats: {health: 45}" : "")}}}}}]\nfacilities: [{{type: SOLDIER_PRODUCT_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
             var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), World = WorldSnapshot.Empty };
             var owner = initial.Bases[0];
             var prior = owner.Soldiers[0] with { Personal = owner.Soldiers[0].Personal! with { CraftType = "", CraftId = 0, Name = "Alex Example" } };
@@ -414,20 +391,16 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, "counter")]
-    [InlineData(true, "counter")]
-    [InlineData(false, "soldier")]
-    [InlineData(true, "soldier")]
-    [InlineData(false, "transfer")]
-    [InlineData(true, "transfer")]
-    [InlineData(false, "daily")]
-    [InlineData(true, "daily")]
-    public void SoldierProductionIdentityBoundsRefuseBeforeMutation(bool cache, string source)
+    [InlineData("counter")]
+    [InlineData("soldier")]
+    [InlineData("transfer")]
+    [InlineData("daily")]
+    public void SoldierProductionIdentityBoundsRefuseBeforeMutation(string source)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         var native = TestFixtures.Rows(oracle.RootElement, "productionSoldierRows").First();
         Assert.Equal(1, native[6].GetInt32() - native[5].GetInt32());
-        var content = Load(cache, "manufacture: [{name: SOLDIER_LIMIT, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: RECRUIT}]\nresearch: [{name: SOLDIER_COUNTER_TOPIC, cost: 1, increaseCounter: [STR_SOLDIER]}]\nfacilities: [{type: SOLDIER_LIMIT_WORKSHOP, mapName: LOGISTICS, workshops: 1, labs: 1}]\n");
+        var content = Load("manufacture: [{name: SOLDIER_LIMIT, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: RECRUIT}]\nresearch: [{name: SOLDIER_COUNTER_TOPIC, cost: 1, increaseCounter: [STR_SOLDIER]}]\nfacilities: [{type: SOLDIER_LIMIT_WORKSHOP, mapName: LOGISTICS, workshops: 1, labs: 1}]\n");
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, source == "daily" ? 23 : 1, 59, 55), World = WorldSnapshot.Empty };
         var owner = initial.Bases[0];
         initial = initial with
@@ -447,27 +420,23 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void SoldierProductionGenerationDefectsRefuseBeforeMutation(bool cache, bool bonus)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SoldierProductionGenerationDefectsRefuseBeforeMutation(bool bonus)
     {
         var extra = bonus ? "spawnedSoldier: {transformationBonuses: {BONUS: 2147483647}, randomTransformationBonuses: {BONUS: 1}}" : "";
         var stats = bonus ? "" : "soldiers: [{type: BAD_PRODUCTION_SOLDIER, armor: ARMOR, minStats: {health: 50}, maxStats: {health: 30}}]\n";
-        var content = Load(cache, $"{stats}manufacture: [{{name: SOLDIER_DEFECT, time: 1, producedItems: {{SUPPLY: 0}}, spawnedPersonType: {(bonus ? "RECRUIT" : "BAD_PRODUCTION_SOLDIER")}, {extra}}}]\nfacilities: [{{type: SOLDIER_DEFECT_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+        var content = Load($"{stats}manufacture: [{{name: SOLDIER_DEFECT, time: 1, producedItems: {{SUPPLY: 0}}, spawnedPersonType: {(bonus ? "RECRUIT" : "BAD_PRODUCTION_SOLDIER")}, {extra}}}]\nfacilities: [{{type: SOLDIER_DEFECT_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
         if (!bonus) Assert.Equal(50, content.RuntimeRules.Soldiers[content.RuntimeRules.Soldiers.GetRequired("BAD_PRODUCTION_SOLDIER")].Value.MinimumStats["health"]);
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), World = WorldSnapshot.Empty };
         initial = initial with { Bases = [initial.Bases[0] with { Productions = [new("SOLDIER_DEFECT", 1, 0, 1, false, false, false, new Dictionary<string, int>())], Facilities = [.. initial.Bases[0].Facilities, new("SOLDIER_DEFECT_WORKSHOP", 1, 1, 0, 0, false, false, false)] }] };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), bonus ? "A possible soldier production template bonus exceeds the counter range." : "Soldier generation has inverted stat bounds.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void UnknownRewardsDoNotReserveLookupOnlyCounterEffects(bool cache)
+    [Fact]
+    public void UnknownRewardsDoNotReserveLookupOnlyCounterEffects()
     {
-        var content = Load(cache, "research: [{name: SAFE_COUNTER_SOURCE, cost: 1, lookup: LOOKUP_COUNTER_TOPIC, getOneFree: [SAFE_FREE_A, SAFE_FREE_B], increaseCounter: [SAFE_COUNTER]}, {name: SAFE_FREE_A, cost: 1}, {name: SAFE_FREE_B, cost: 1}, {name: LOOKUP_COUNTER_TOPIC, cost: 1, increaseCounter: [UNUSED_COUNTER]}]\nfacilities: [{type: SAFE_COUNTER_LAB, mapName: LOGISTICS, labs: 1}]\n");
+        var content = Load("research: [{name: SAFE_COUNTER_SOURCE, cost: 1, lookup: LOOKUP_COUNTER_TOPIC, getOneFree: [SAFE_FREE_A, SAFE_FREE_B], increaseCounter: [SAFE_COUNTER]}, {name: SAFE_FREE_A, cost: 1}, {name: SAFE_FREE_B, cost: 1}, {name: LOOKUP_COUNTER_TOPIC, cost: 1, increaseCounter: [UNUSED_COUNTER]}]\nfacilities: [{type: SAFE_COUNTER_LAB, mapName: LOGISTICS, labs: 1}]\n");
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), World = WorldSnapshot.Empty };
         initial = initial with
         {
@@ -487,13 +456,11 @@ public sealed partial class StrategicWorldHuntingTests
         Reload(content, campaign, 81, "safe-lookup-counters.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void UnknownResearchCounterWorkRefusesRepeatedlyWithoutMutation(bool cache)
+    [Fact]
+    public void UnknownResearchCounterWorkRefusesRepeatedlyWithoutMutation()
     {
         var counters = string.Join(", ", Enumerable.Repeat("WORK_COUNTER", 1001));
-        var content = Load(cache, $"research: [{{name: COUNTER_WORK_TOPIC, cost: 1, getOneFree: [COUNTER_WORK_A, COUNTER_WORK_B], increaseCounter: [{counters}]}}, {{name: COUNTER_WORK_A, cost: 1, repeatable: true}}, {{name: COUNTER_WORK_B, cost: 1, repeatable: true}}]\nfacilities: [{{type: COUNTER_WORK_LAB, mapName: LOGISTICS, labs: 1}}]\n");
+        var content = Load($"research: [{{name: COUNTER_WORK_TOPIC, cost: 1, getOneFree: [COUNTER_WORK_A, COUNTER_WORK_B], increaseCounter: [{counters}]}}, {{name: COUNTER_WORK_A, cost: 1, repeatable: true}}, {{name: COUNTER_WORK_B, cost: 1, repeatable: true}}]\nfacilities: [{{type: COUNTER_WORK_LAB, mapName: LOGISTICS, labs: 1}}]\n");
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), World = WorldSnapshot.Empty };
         var owner = initial.Bases[0] with
         {
@@ -510,14 +477,12 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ResearchOnlyCounterOverflowRefusesBeforeDailyMutation(bool cache, bool randomReward)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ResearchOnlyCounterOverflowRefusesBeforeDailyMutation(bool randomReward)
     {
         var counters = randomReward ? ", getOneFree: [OVERFLOW_REWARD, SAFE_REWARD]" : ", increaseCounter: [OTHER_COUNTER]";
-        var content = Load(cache, $"research: [{{name: COUNTER_OVERFLOW_TOPIC, cost: 1{counters}}}, {{name: OVERFLOW_REWARD, cost: 1, increaseCounter: [OTHER_COUNTER]}}, {{name: SAFE_REWARD, cost: 1}}]\nfacilities: [{{type: COUNTER_OVERFLOW_LAB, mapName: LOGISTICS, labs: 1}}]\n");
+        var content = Load($"research: [{{name: COUNTER_OVERFLOW_TOPIC, cost: 1{counters}}}, {{name: OVERFLOW_REWARD, cost: 1, increaseCounter: [OTHER_COUNTER]}}, {{name: SAFE_REWARD, cost: 1}}]\nfacilities: [{{type: COUNTER_OVERFLOW_LAB, mapName: LOGISTICS, labs: 1}}]\n");
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), World = WorldSnapshot.Empty };
         initial = initial with
         {
@@ -532,12 +497,10 @@ public sealed partial class StrategicWorldHuntingTests
             "Research custom counters exceed the supported range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DecreasedResearchCounterStillReservesSavedCraftIdentityFloor(bool cache)
+    [Fact]
+    public void DecreasedResearchCounterStillReservesSavedCraftIdentityFloor()
     {
-        var content = Load(cache, "research: [{name: FLOOR_TOPIC, cost: 1, decreaseCounter: [FLOOR_CRAFT]}]\ncrafts: [{type: FLOOR_CRAFT, fuelMax: 100, refuelRate: 40}]\nmanufacture: [{name: FLOOR_BIRTH, category: STR_CRAFT, time: 1, producedItems: {FLOOR_CRAFT: 1}}]\nfacilities: [{type: FLOOR_LAB_WORKSHOP, mapName: LOGISTICS, labs: 1, workshops: 1}]\n");
+        var content = Load("research: [{name: FLOOR_TOPIC, cost: 1, decreaseCounter: [FLOOR_CRAFT]}]\ncrafts: [{type: FLOOR_CRAFT, fuelMax: 100, refuelRate: 40}]\nmanufacture: [{name: FLOOR_BIRTH, category: STR_CRAFT, time: 1, producedItems: {FLOOR_CRAFT: 1}}]\nfacilities: [{type: FLOOR_LAB_WORKSHOP, mapName: LOGISTICS, labs: 1, workshops: 1}]\n");
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), World = WorldSnapshot.Empty };
         initial = initial with
         {
@@ -554,12 +517,10 @@ public sealed partial class StrategicWorldHuntingTests
             "Craft production exhausts the craft identity range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DifferentResearchRewardsKeepAtomicCraftIdentityForecastGuard(bool cache)
+    [Fact]
+    public void DifferentResearchRewardsKeepAtomicCraftIdentityForecastGuard()
     {
-        var content = Load(cache, "research: [{name: RANDOM_COUNTER_SOURCE, cost: 1, getOneFree: [RANDOM_COUNTER_A, RANDOM_COUNTER_B]}, {name: RANDOM_COUNTER_A, cost: 1, increaseCounter: [RANDOM_COUNTER_CRAFT]}, {name: RANDOM_COUNTER_B, cost: 1}]\ncrafts: [{type: RANDOM_COUNTER_CRAFT, fuelMax: 100, refuelRate: 40}]\nmanufacture: [{name: RANDOM_COUNTER_BIRTH, category: STR_CRAFT, time: 1, producedItems: {RANDOM_COUNTER_CRAFT: 1}}]\nfacilities: [{type: RANDOM_COUNTER_LAB_WORKSHOP, mapName: LOGISTICS, labs: 1, workshops: 1}]\n");
+        var content = Load("research: [{name: RANDOM_COUNTER_SOURCE, cost: 1, getOneFree: [RANDOM_COUNTER_A, RANDOM_COUNTER_B]}, {name: RANDOM_COUNTER_A, cost: 1, increaseCounter: [RANDOM_COUNTER_CRAFT]}, {name: RANDOM_COUNTER_B, cost: 1}]\ncrafts: [{type: RANDOM_COUNTER_CRAFT, fuelMax: 100, refuelRate: 40}]\nmanufacture: [{name: RANDOM_COUNTER_BIRTH, category: STR_CRAFT, time: 1, producedItems: {RANDOM_COUNTER_CRAFT: 1}}]\nfacilities: [{type: RANDOM_COUNTER_LAB_WORKSHOP, mapName: LOGISTICS, labs: 1, workshops: 1}]\n");
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55) };
         initial = initial with
         {
@@ -575,16 +536,13 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, "single")]
-    [InlineData(true, "single")]
-    [InlineData(false, "sequential")]
-    [InlineData(true, "sequential")]
-    [InlineData(false, "identical")]
-    [InlineData(true, "identical")]
-    public void DeterministicResearchCountersSelectNativeProducedCraftIdentity(bool cache, string choice)
+    [InlineData("single")]
+    [InlineData("sequential")]
+    [InlineData("identical")]
+    public void DeterministicResearchCountersSelectNativeProducedCraftIdentity(string choice)
     {
         var free = choice == "single" ? "B_COUNTER_REWARD" : choice == "sequential" ? "B_COUNTER_REWARD, C_COUNTER_OTHER" : "B_COUNTER_REWARD, B_COUNTER_REWARD";
-        var content = Load(cache, $"research: [{{name: A_COUNTER_SOURCE, cost: 1, sequentialGetOneFree: {(choice == "sequential" ? "true" : "false")}, getOneFree: [{free}], increaseCounter: [COUNTER_TRACE], decreaseCounter: [COUNTER_TRACE, COUNTER_TRACE]}}, {{name: B_COUNTER_REWARD, cost: 1, increaseCounter: [COUNTER_TRACE, COUNTER_TRACE], decreaseCounter: [COUNTER_TRACE]}}, {{name: C_COUNTER_OTHER, cost: 1}}]\ncrafts: [{{type: COUNTER_TRACE, fuelMax: 100, refuelRate: 40}}]\nmanufacture: [{{name: TRACE_BIRTH, category: STR_CRAFT, time: 1, producedItems: {{COUNTER_TRACE: 1}}}}]\nfacilities: [{{type: TRACE_LAB_WORKSHOP, mapName: LOGISTICS, labs: 1, workshops: 1}}]\n");
+        var content = Load($"research: [{{name: A_COUNTER_SOURCE, cost: 1, sequentialGetOneFree: {(choice == "sequential" ? "true" : "false")}, getOneFree: [{free}], increaseCounter: [COUNTER_TRACE], decreaseCounter: [COUNTER_TRACE, COUNTER_TRACE]}}, {{name: B_COUNTER_REWARD, cost: 1, increaseCounter: [COUNTER_TRACE, COUNTER_TRACE], decreaseCounter: [COUNTER_TRACE]}}, {{name: C_COUNTER_OTHER, cost: 1}}]\ncrafts: [{{type: COUNTER_TRACE, fuelMax: 100, refuelRate: 40}}]\nmanufacture: [{{name: TRACE_BIRTH, category: STR_CRAFT, time: 1, producedItems: {{COUNTER_TRACE: 1}}}}]\nfacilities: [{{type: TRACE_LAB_WORKSHOP, mapName: LOGISTICS, labs: 1, workshops: 1}}]\n");
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         var sequential = TestFixtures.Rows(oracle.RootElement, "researchCounterSequentialBaseRows").ToArray();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "researchOrderedCounterRows").Where(row => row[1].GetBoolean()))
@@ -616,15 +574,13 @@ public sealed partial class StrategicWorldHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DailyResearchCounterProjectionMatchesNativePrimaryOrdering(bool cache)
+    [Fact]
+    public void DailyResearchCounterProjectionMatchesNativePrimaryOrdering()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var bonus in new[] { false, true })
         {
-            var content = Load(cache, $"research: [{{name: A_COUNTER_SOURCE, cost: 1, increaseCounter: [COUNTER_TRACE], decreaseCounter: [COUNTER_TRACE, COUNTER_TRACE]{(bonus ? ", getOneFree: [B_COUNTER_REWARD]" : "")}}}, {{name: B_COUNTER_REWARD, cost: 1, increaseCounter: [COUNTER_TRACE, COUNTER_TRACE], decreaseCounter: [COUNTER_TRACE]}}]\nfacilities: [{{type: COUNTER_TRACE_LAB, mapName: LOGISTICS, labs: 2}}]\n");
+            var content = Load($"research: [{{name: A_COUNTER_SOURCE, cost: 1, increaseCounter: [COUNTER_TRACE], decreaseCounter: [COUNTER_TRACE, COUNTER_TRACE]{(bonus ? ", getOneFree: [B_COUNTER_REWARD]" : "")}}}, {{name: B_COUNTER_REWARD, cost: 1, increaseCounter: [COUNTER_TRACE, COUNTER_TRACE], decreaseCounter: [COUNTER_TRACE]}}]\nfacilities: [{{type: COUNTER_TRACE_LAB, mapName: LOGISTICS, labs: 2}}]\n");
             foreach (var row in TestFixtures.Rows(oracle.RootElement, "researchOrderedCounterRows").Where(row => row[1].GetBoolean() == bonus))
             {
                 var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), World = WorldSnapshot.Empty };
@@ -657,12 +613,10 @@ public sealed partial class StrategicWorldHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DailyResearchCounterCannotExhaustLaterCraftBirthIdentity(bool cache)
+    [Fact]
+    public void DailyResearchCounterCannotExhaustLaterCraftBirthIdentity()
     {
-        var content = Load(cache, "research: [{name: BIRTH_COUNTER_TOPIC, cost: 1, increaseCounter: [COUNTER_CRAFT]}]\ncrafts: [{type: COUNTER_CRAFT, fuelMax: 100, refuelRate: 40}]\nmanufacture: [{name: COUNTER_BIRTH, category: STR_CRAFT, time: 1, producedItems: {COUNTER_CRAFT: 1}}]\nfacilities: [{type: COUNTER_LAB_WORKSHOP, mapName: LOGISTICS, labs: 1, workshops: 1}]\n");
+        var content = Load("research: [{name: BIRTH_COUNTER_TOPIC, cost: 1, increaseCounter: [COUNTER_CRAFT]}]\ncrafts: [{type: COUNTER_CRAFT, fuelMax: 100, refuelRate: 40}]\nmanufacture: [{name: COUNTER_BIRTH, category: STR_CRAFT, time: 1, producedItems: {COUNTER_CRAFT: 1}}]\nfacilities: [{type: COUNTER_LAB_WORKSHOP, mapName: LOGISTICS, labs: 1, workshops: 1}]\n");
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), World = WorldSnapshot.Empty };
         initial = initial with
         {
@@ -679,14 +633,12 @@ public sealed partial class StrategicWorldHuntingTests
             "Craft production exhausts the craft identity range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CraftProductionIdentityScansChargeEmptyBasesAgainstWorkLimit(bool cache)
+    [Fact]
+    public void CraftProductionIdentityScansChargeEmptyBasesAgainstWorkLimit()
     {
         var craftRows = string.Join(", ", Enumerable.Range(0, 1001).Select(index => $"{{type: EMPTY_SCAN_{index}}}"));
         var productionRows = string.Join(", ", Enumerable.Range(0, 1001).Select(index => $"{{name: EMPTY_BIRTH_{index}, category: STR_CRAFT, time: 1, producedItems: {{EMPTY_SCAN_{index}: 1}}}}"));
-        var content = Load(cache, $"crafts: [{craftRows}]\nmanufacture: [{productionRows}]\nfacilities: [{{type: EMPTY_SCAN_WORKSHOP, mapName: LOGISTICS, workshops: 1001}}]\n");
+        var content = Load($"crafts: [{craftRows}]\nmanufacture: [{productionRows}]\nfacilities: [{{type: EMPTY_SCAN_WORKSHOP, mapName: LOGISTICS, workshops: 1001}}]\n");
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), World = WorldSnapshot.Empty };
         var owner = initial.Bases[0] with { Crafts = [], Soldiers = [], Transfers = [], Research = [], Productions = [] };
         initial = initial with
@@ -704,13 +656,11 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    public void EarlierBornCraftSuppliesLaterProductionInputBeforeHunting(bool cache, int delay)
+    [InlineData(0)]
+    [InlineData(1)]
+    public void EarlierBornCraftSuppliesLaterProductionInputBeforeHunting(int delay)
     {
-        var content = Load(cache, $"crafts: [{{type: CHAIN_HUNT, fuelMax: 100, refuelRate: 40, speedMax: 2000, damageMax: 100, autoPatrol: true, refuelItem: SUPPLY}}, {{type: CHAIN_BORN, fuelMax: 100, refuelRate: 40}}]\nmanufacture: [{{name: CHAIN_BIRTH, category: STR_CRAFT, time: 1, transferTimes: [0, 0, {delay}], producedItems: {{CHAIN_BORN: 1}}}}, {{name: CHAIN_USE, time: 1, requiredItems: {{CHAIN_BORN: 1}}, producedItems: {{SUPPLY: 1}}}}]\nfacilities: [{{type: CHAIN_WORKSHOP, mapName: LOGISTICS, workshops: 3}}]\n");
+        var content = Load($"crafts: [{{type: CHAIN_HUNT, fuelMax: 100, refuelRate: 40, speedMax: 2000, damageMax: 100, autoPatrol: true, refuelItem: SUPPLY}}, {{type: CHAIN_BORN, fuelMax: 100, refuelRate: 40}}]\nmanufacture: [{{name: CHAIN_BIRTH, category: STR_CRAFT, time: 1, transferTimes: [0, 0, {delay}], producedItems: {{CHAIN_BORN: 1}}}}, {{name: CHAIN_USE, time: 1, requiredItems: {{CHAIN_BORN: 1}}, producedItems: {{SUPPLY: 1}}}}]\nfacilities: [{{type: CHAIN_WORKSHOP, mapName: LOGISTICS, workshops: 3}}]\n");
         var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
         { RuleId = "CHAIN_HUNT", Logistics = craft.Logistics! with { Status = "STR_REFUELLING", Fuel = 60, Weapons = [], IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3 } });
         initial = initial with
@@ -738,16 +688,14 @@ public sealed partial class StrategicWorldHuntingTests
         Reload(content, campaign, 81, "birth-chain-after.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ProducedCraftContinuationAndFuelMatchNativeHuntingOrder(bool cache)
+    [Fact]
+    public void ProducedCraftContinuationAndFuelMatchNativeHuntingOrder()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var group in TestFixtures.Rows(oracle.RootElement, "productionCraftHuntingRows")
             .GroupBy(row => (Delay: row[0].GetInt32(), Fixed: row[1].GetBoolean(), Cost: row[4].GetInt32())))
         {
-            var content = Load(cache, $"craftWeapons: [{{type: BIRTH_FIXED, launcher: SUPPLY, ammoMax: 10, rearmRate: 4}}]\ncrafts: [{{type: BIRTH_HUNT, fuelMax: 100, refuelRate: 40, speedMax: 2000, damageMax: 100, autoPatrol: true, refuelItem: SUPPLY}}, {{type: PRODUCED_CRAFT, weapons: 1, fixedWeapons: [{(group.Key.Fixed ? "BIRTH_FIXED" : "''")}], fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY}}]\nmanufacture: [{{name: BIRTH_PRODUCT, category: STR_CRAFT, time: 2, cost: {group.Key.Cost}, requiredItems: {{SUPPLY: 1}}, transferTimes: [0, 0, {group.Key.Delay}], producedItems: {{PRODUCED_CRAFT: 1}}}}]\nfacilities: [{{type: BIRTH_WORKSHOP, mapName: LOGISTICS, workshops: 4}}]\n");
+            var content = Load($"craftWeapons: [{{type: BIRTH_FIXED, launcher: SUPPLY, ammoMax: 10, rearmRate: 4}}]\ncrafts: [{{type: BIRTH_HUNT, fuelMax: 100, refuelRate: 40, speedMax: 2000, damageMax: 100, autoPatrol: true, refuelItem: SUPPLY}}, {{type: PRODUCED_CRAFT, weapons: 1, fixedWeapons: [{(group.Key.Fixed ? "BIRTH_FIXED" : "''")}], fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY}}]\nmanufacture: [{{name: BIRTH_PRODUCT, category: STR_CRAFT, time: 2, cost: {group.Key.Cost}, requiredItems: {{SUPPLY: 1}}, transferTimes: [0, 0, {group.Key.Delay}], producedItems: {{PRODUCED_CRAFT: 1}}}}]\nfacilities: [{{type: BIRTH_WORKSHOP, mapName: LOGISTICS, workshops: 4}}]\n");
             foreach (var row in group)
             {
                 var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
@@ -787,23 +735,17 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, "counter")]
-    [InlineData(true, "counter")]
-    [InlineData(false, "existing")]
-    [InlineData(true, "existing")]
-    [InlineData(false, "transfer")]
-    [InlineData(true, "transfer")]
-    [InlineData(false, "arrivals")]
-    [InlineData(true, "arrivals")]
-    [InlineData(false, "population")]
-    [InlineData(true, "population")]
-    [InlineData(false, "service")]
-    [InlineData(true, "service")]
-    public void CraftProductionCapacityRefusesBeforeOrdinaryWorldMutation(bool cache, string failure)
+    [InlineData("counter")]
+    [InlineData("existing")]
+    [InlineData("transfer")]
+    [InlineData("arrivals")]
+    [InlineData("population")]
+    [InlineData("service")]
+    public void CraftProductionCapacityRefusesBeforeOrdinaryWorldMutation(string failure)
     {
         var fuel = failure == "service" ? -1 : 100;
         var units = failure == "population" ? 100_001 : 1;
-        var content = Load(cache, $"crafts: [{{type: CAPACITY_CRAFT, fuelMax: {fuel}, refuelRate: 40}}]\nmanufacture: [{{name: CAPACITY_BIRTH, category: STR_CRAFT, time: 1, transferTimes: [0, 0, 1], producedItems: {{CAPACITY_CRAFT: 1}}}}]\nfacilities: [{{type: CAPACITY_WORKSHOP, mapName: LOGISTICS, workshops: {units}}}]\n");
+        var content = Load($"crafts: [{{type: CAPACITY_CRAFT, fuelMax: {fuel}, refuelRate: 40}}]\nmanufacture: [{{name: CAPACITY_BIRTH, category: STR_CRAFT, time: 1, transferTimes: [0, 0, 1], producedItems: {{CAPACITY_CRAFT: 1}}}}]\nfacilities: [{{type: CAPACITY_WORKSHOP, mapName: LOGISTICS, workshops: {units}}}]\n");
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), World = WorldSnapshot.Empty };
         var existing = new CraftSnapshot("CAPACITY_CRAFT", int.MaxValue)
         { Logistics = CraftLogistics.LoadStarting(content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("CAPACITY_CRAFT")].Value, null) };
@@ -830,11 +772,9 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ProducedCraftInitializationMatchesNativeCallerAndReload(bool cache, bool hunting)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ProducedCraftInitializationMatchesNativeCallerAndReload(bool hunting)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "productionCraftBirthRows"))
@@ -842,7 +782,7 @@ public sealed partial class StrategicWorldHuntingTests
             var fixedWeapon = row[0].GetBoolean();
             var fuel = row[1].GetInt32();
             var delay = row[2].GetInt32();
-            var content = Load(cache, $"craftWeapons: [{{type: BIRTH_FIXED, launcher: SUPPLY, ammoMax: 10, rearmRate: 4}}]\ncrafts: [{{type: BIRTH_HUNT, fuelMax: 100, refuelRate: 40, speedMax: 2000, damageMax: 100, autoPatrol: true, refuelItem: SUPPLY}}, {{type: PRODUCED_CRAFT, weapons: 1, fixedWeapons: [{(fixedWeapon ? "BIRTH_FIXED" : "''")}], fuelMax: {fuel}, refuelRate: 40}}]\nmanufacture: [{{name: BIRTH_PRODUCT, category: STR_CRAFT, time: 1, transferTimes: [0, 0, {delay}], producedItems: {{PRODUCED_CRAFT: 1, ZZ_IGNORED_MISSING: 99}}}}]\nfacilities: [{{type: BIRTH_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+            var content = Load($"craftWeapons: [{{type: BIRTH_FIXED, launcher: SUPPLY, ammoMax: 10, rearmRate: 4}}]\ncrafts: [{{type: BIRTH_HUNT, fuelMax: 100, refuelRate: 40, speedMax: 2000, damageMax: 100, autoPatrol: true, refuelItem: SUPPLY}}, {{type: PRODUCED_CRAFT, weapons: 1, fixedWeapons: [{(fixedWeapon ? "BIRTH_FIXED" : "''")}], fuelMax: {fuel}, refuelRate: 40}}]\nmanufacture: [{{name: BIRTH_PRODUCT, category: STR_CRAFT, time: 1, transferTimes: [0, 0, {delay}], producedItems: {{PRODUCED_CRAFT: 1, ZZ_IGNORED_MISSING: 99}}}}]\nfacilities: [{{type: BIRTH_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
             Assert.Single(content.RuntimeRules.Manufacture[content.RuntimeRules.Manufacture.GetRequired("BIRTH_PRODUCT")].Value.ProducedMaterials);
             var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
             { RuleId = "BIRTH_HUNT", Logistics = craft.Logistics! with { Status = "STR_REFUELLING", Fuel = 60, Weapons = [], IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3 } });
@@ -1006,26 +946,22 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public void RetargetOptionsKeepReferenceDefaultsCacheAndReload(bool cache, bool disabled)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RetargetOptionsKeepReferenceDefaultsCacheAndReload(bool disabled)
     {
         var overlay = disabled ? "hunterKillerFastRetarget: false\nfixedUserOptions:\n  oxceGeoSuppressRedundantHKAlert: 'false'\n" : null;
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, extraRules: overlay);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], extraRules: overlay);
         Assert.Equal(!disabled, content.RuntimeRules.Campaign.HunterKillerFastRetarget);
         var campaign = CampaignState.Restore(CreateSnapshot(content, "Hunt settings"), content, new SplitMix64RandomSource(81));
         Assert.Equal(!disabled, campaign.Options.SuppressRedundantHunterAlert);
         Reload(content, campaign, 81, "hunting-settings.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GroundedHunterWavesInitializeBeforeGeometryAndReload(bool cache)
+    [Fact]
+    public void GroundedHunterWavesInitializeBeforeGeometryAndReload()
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = CreateSnapshot(content, "Ground hunter") with
         {
             Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
@@ -1051,12 +987,10 @@ public sealed partial class StrategicWorldHuntingTests
         Reload(content, campaign, 81, "ground-hunter-lift.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void AirborneHunterSpawnsWithoutCandidatesAndFindsLaterAirborneCraft(bool cache)
+    [Fact]
+    public void AirborneHunterSpawnsWithoutCandidatesAndFindsLaterAirborneCraft()
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = CreateSnapshot(content, "Air hunter") with
         {
             Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
@@ -1177,13 +1111,11 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public void AirborneHunterSpawnsWhileExistingCraftAreIgnored(bool cache, bool complete)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AirborneHunterSpawnsWhileExistingCraftAreIgnored(bool complete)
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = HuntingSnapshot(content);
         snapshot = snapshot.WithCraft("SHIP", craft => craft with
         {
@@ -1204,12 +1136,10 @@ public sealed partial class StrategicWorldHuntingTests
         Reload(content, campaign, 81, "ignored-target-hunter-spawn.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void UndetectableAirborneCraftDoNotBlockNewHunterWaves(bool cache)
+    [Fact]
+    public void UndetectableAirborneCraftDoNotBlockNewHunterWaves()
     {
-        var content = Load(cache, "crafts:\n  - type: SHIP\n    undetectable: true\n");
+        var content = Load("crafts:\n  - type: SHIP\n    undetectable: true\n");
         Assert.True(content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("SHIP")].Value.Undetectable);
         var snapshot = HuntingSnapshot(content) with
         {
@@ -1273,8 +1203,8 @@ public sealed partial class StrategicWorldHuntingTests
             "New UFO retargeting exceeds the supported work limit.");
     }
 
-    private static RuntimeContent Load(bool cache = false, string? overlay = null) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, extraRules: overlay);
+    private static RuntimeContent Load(string? overlay = null) =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], extraRules: overlay);
 
     private static CampaignSnapshot HuntingSnapshot(RuntimeContent content, bool escort = false)
     {
@@ -1299,13 +1229,11 @@ public sealed partial class StrategicWorldHuntingTests
         });
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void HalfHourRefuellingAndRelaunchPrecedeHunterSelection(bool cache)
+    [Fact]
+    public void HalfHourRefuellingAndRelaunchPrecedeHunterSelection()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Load(cache, "crafts: [{type: REFUEL_HUNT, speedMax: 6000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
+        var content = Load("crafts: [{type: REFUEL_HUNT, speedMax: 6000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "maintenanceRows").Where(row => !row[0].GetBoolean() && !row[4].GetBoolean()))
         {
             var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
@@ -1341,14 +1269,12 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void HalfHourItemRefuellingPrecedesHunterSelection(bool cache, bool hourly)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HalfHourItemRefuellingPrecedesHunterSelection(bool hourly)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Load(cache, "crafts: [{type: ITEM_REFUEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\n");
+        var content = Load("crafts: [{type: ITEM_REFUEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\n");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "maintenanceRows").Where(row => row[0].GetBoolean() && !row[4].GetBoolean()))
         {
             var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
@@ -1391,14 +1317,12 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void SharedFuelStocksPreserveCraftOrderBeforeHunting(bool cache, bool hourly)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SharedFuelStocksPreserveCraftOrderBeforeHunting(bool hourly)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Load(cache, "crafts: [{type: SHARED_REFUEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\n");
+        var content = Load("crafts: [{type: SHARED_REFUEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\n");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "sharedFuelRows"))
         {
             var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, hourly ? 59 : 29, 55) };
@@ -1446,13 +1370,11 @@ public sealed partial class StrategicWorldHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void HourlyMaintenancePreservesRepairAndRearmDelayBeforeHunting(bool cache)
+    [Fact]
+    public void HourlyMaintenancePreservesRepairAndRearmDelayBeforeHunting()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Load(cache, "crafts: [{type: HOURLY_REFUEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, repairRate: 10, autoPatrol: true}]\n");
+        var content = Load("crafts: [{type: HOURLY_REFUEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, repairRate: 10, autoPatrol: true}]\n");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "hourlyMaintenanceRows"))
         {
             var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
@@ -1487,12 +1409,10 @@ public sealed partial class StrategicWorldHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GroundedIncomingAutoPatrolRelaunchesBeforeHunting(bool cache)
+    [Fact]
+    public void GroundedIncomingAutoPatrolRelaunchesBeforeHunting()
     {
-        var content = Load(cache, "crafts: [{type: INCOMING_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
+        var content = Load("crafts: [{type: INCOMING_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
         var template = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
         var incoming = template with
@@ -1531,13 +1451,11 @@ public sealed partial class StrategicWorldHuntingTests
         Reload(content, campaign, 81, "incoming-hunt.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void IncomingCraftCheckupAndRelaunchMatchNative(bool cache)
+    [Fact]
+    public void IncomingCraftCheckupAndRelaunchMatchNative()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Load(cache, "crafts: [{type: NATIVE_INCOMING_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
+        var content = Load("crafts: [{type: NATIVE_INCOMING_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "incomingCraftRows"))
         {
             var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
@@ -1609,13 +1527,11 @@ public sealed partial class StrategicWorldHuntingTests
             "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SuppliedFuelAndAmmunitionPrecedeHalfHourHunterSelection(bool cache)
+    [Fact]
+    public void SuppliedFuelAndAmmunitionPrecedeHalfHourHunterSelection()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Load(cache, "crafts: [{type: SUPPLIED_FUEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true, weapons: 1}]\ncraftWeapons: [{type: HUNT_TRANSFER_GUN, ammoMax: 10, launcher: SUPPLY, clip: SUPPLY}]\n");
+        var content = Load("crafts: [{type: SUPPLIED_FUEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true, weapons: 1}]\ncraftWeapons: [{type: HUNT_TRANSFER_GUN, ammoMax: 10, launcher: SUPPLY, clip: SUPPLY}]\n");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "suppliedFuelRows"))
         {
             var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
@@ -1679,13 +1595,11 @@ public sealed partial class StrategicWorldHuntingTests
             "Arrival item reuse exceeds the supported work limit.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CombinedCraftAndItemTransfersReuseAfterAllArrivals(bool cache)
+    [Fact]
+    public void CombinedCraftAndItemTransfersReuseAfterAllArrivals()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Load(cache, "crafts: [{type: COMBINED_TRANSFER_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true, weapons: 1}]\ncraftWeapons: [{type: HUNT_COMBINED_GUN, ammoMax: 10, launcher: SUPPLY, clip: SUPPLY}]\n");
+        var content = Load("crafts: [{type: COMBINED_TRANSFER_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true, weapons: 1}]\ncraftWeapons: [{type: HUNT_COMBINED_GUN, ammoMax: 10, launcher: SUPPLY, clip: SUPPLY}]\n");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "combinedTransferRows"))
         {
             var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
@@ -1725,16 +1639,14 @@ public sealed partial class StrategicWorldHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CraftAmmunitionSharesFuelStocksWithoutForecastRandomDraws(bool cache)
+    [Fact]
+    public void CraftAmmunitionSharesFuelStocksWithoutForecastRandomDraws()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var group in TestFixtures.Rows(oracle.RootElement, "ammunitionFuelRows")
             .GroupBy(row => (Clip: row[0].GetInt32(), Saving: row[1].GetBoolean())))
         {
-            var content = Load(cache, $"items: [{{type: HUNT_SHARED_AMMO, clipSize: {group.Key.Clip}}}]\ncraftWeapons: [{{type: HUNT_AMMO_GUN, ammoMax: 10, rearmRate: 4, bulletSaving: {group.Key.Saving.ToString().ToLowerInvariant()}, launcher: SUPPLY, clip: HUNT_SHARED_AMMO}}]\ncrafts: [{{type: HUNT_AMMO_CONSUMER, speedMax: 2000, damageMax: 100, fuelMax: 100, weapons: 1}}, {{type: HUNT_AMMO_FUEL, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: HUNT_SHARED_AMMO, autoPatrol: true}}]\n");
+            var content = Load($"items: [{{type: HUNT_SHARED_AMMO, clipSize: {group.Key.Clip}}}]\ncraftWeapons: [{{type: HUNT_AMMO_GUN, ammoMax: 10, rearmRate: 4, bulletSaving: {group.Key.Saving.ToString().ToLowerInvariant()}, launcher: SUPPLY, clip: HUNT_SHARED_AMMO}}]\ncrafts: [{{type: HUNT_AMMO_CONSUMER, speedMax: 2000, damageMax: 100, fuelMax: 100, weapons: 1}}, {{type: HUNT_AMMO_FUEL, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: HUNT_SHARED_AMMO, autoPatrol: true}}]\n");
             foreach (var row in group)
             {
                 var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
@@ -1800,13 +1712,11 @@ public sealed partial class StrategicWorldHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void FacilityAmmunitionAndCraftFuelShareNativeStockOrder(bool cache)
+    [Fact]
+    public void FacilityAmmunitionAndCraftFuelShareNativeStockOrder()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Load(cache, "crafts: [{type: FACILITY_FUEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\nfacilities: [{type: SHARED_HUNT_FACILITY, mapName: LOGISTICS, ammoMax: 2, rearmRate: 1, ammoItem: SUPPLY}]\n");
+        var content = Load("crafts: [{type: FACILITY_FUEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\nfacilities: [{type: SHARED_HUNT_FACILITY, mapName: LOGISTICS, ammoMax: 2, rearmRate: 1, ammoItem: SUPPLY}]\n");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "facilityFuelRows"))
         {
             var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
@@ -1875,14 +1785,12 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void StockFreeDailyResearchAllowsFuelAndAmmunitionHunterTargets(bool cache, bool ammunition)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void StockFreeDailyResearchAllowsFuelAndAmmunitionHunterTargets(bool ammunition)
     {
         var fuelItem = ammunition ? "" : ", refuelItem: SUPPLY";
-        var content = Load(cache, $"crafts: [{{type: STOCK_FREE_RESEARCH_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, weapons: 1{fuelItem}}}]\ncraftWeapons: [{{type: STOCK_FREE_GUN, ammoMax: 10, rearmRate: 4, launcher: SUPPLY, clip: SUPPLY}}]\nresearch: [{{name: STOCK_FREE_TOPIC, cost: 1, getOneFree: [STOCK_FREE_BONUS]}}, {{name: STOCK_FREE_BONUS, cost: 1}}]\nfacilities: [{{type: STOCK_FREE_LAB, mapName: LOGISTICS, labs: 1}}]\n");
+        var content = Load($"crafts: [{{type: STOCK_FREE_RESEARCH_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, weapons: 1{fuelItem}}}]\ncraftWeapons: [{{type: STOCK_FREE_GUN, ammoMax: 10, rearmRate: 4, launcher: SUPPLY, clip: SUPPLY}}]\nresearch: [{{name: STOCK_FREE_TOPIC, cost: 1, getOneFree: [STOCK_FREE_BONUS]}}, {{name: STOCK_FREE_BONUS, cost: 1}}]\nfacilities: [{{type: STOCK_FREE_LAB, mapName: LOGISTICS, labs: 1}}]\n");
         var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
         {
             RuleId = "STOCK_FREE_RESEARCH_HUNT",
@@ -1918,12 +1826,10 @@ public sealed partial class StrategicWorldHuntingTests
         Reload(content, campaign, 81, "stock-free-research-after.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DailyResearchAmmunitionReusePrecedesHuntingWithoutItemFuel(bool cache)
+    [Fact]
+    public void DailyResearchAmmunitionReusePrecedesHuntingWithoutItemFuel()
     {
-        var content = Load(cache, "crafts: [{type: RESEARCH_AMMO_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, weapons: 1}]\ncraftWeapons: [{type: RESEARCH_AMMO_GUN, ammoMax: 10, rearmRate: 4, launcher: SUPPLY, clip: SUPPLY}]\nresearch: [{name: RESEARCH_AMMO_DELIVERY, cost: 1, spawnedItem: SUPPLY}]\nfacilities: [{type: RESEARCH_AMMO_LAB, mapName: LOGISTICS, labs: 1}]\n");
+        var content = Load("crafts: [{type: RESEARCH_AMMO_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, weapons: 1}]\ncraftWeapons: [{type: RESEARCH_AMMO_GUN, ammoMax: 10, rearmRate: 4, launcher: SUPPLY, clip: SUPPLY}]\nresearch: [{name: RESEARCH_AMMO_DELIVERY, cost: 1, spawnedItem: SUPPLY}]\nfacilities: [{type: RESEARCH_AMMO_LAB, mapName: LOGISTICS, labs: 1}]\n");
         var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
         {
             RuleId = "RESEARCH_AMMO_HUNT",
@@ -1959,12 +1865,10 @@ public sealed partial class StrategicWorldHuntingTests
         Reload(content, campaign, 81, "research-ammo-hunt-after.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OtherBaseResearchCompletionCanRefundFuelBeforeHunting(bool cache)
+    [Fact]
+    public void OtherBaseResearchCompletionCanRefundFuelBeforeHunting()
     {
-        var content = Load(cache, "crafts: [{type: RESEARCH_FUEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\nresearch: [{name: RESEARCH_FUEL_RETURN, cost: 100, needItem: true, destroyItem: true, neededItem: SUPPLY}]\nfacilities: [{type: RESEARCH_FUEL_LAB, mapName: LOGISTICS, labs: 1}]\n");
+        var content = Load("crafts: [{type: RESEARCH_FUEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\nresearch: [{name: RESEARCH_FUEL_RETURN, cost: 100, needItem: true, destroyItem: true, neededItem: SUPPLY}]\nfacilities: [{type: RESEARCH_FUEL_LAB, mapName: LOGISTICS, labs: 1}]\n");
         var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
         {
             RuleId = "RESEARCH_FUEL_HUNT",
@@ -2010,16 +1914,14 @@ public sealed partial class StrategicWorldHuntingTests
         Assert.Equal(99, after.Bases[0].Crafts.Single(craft => craft.RuleId == "RESEARCH_FUEL_HUNT").Logistics!.Fuel);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ResearchCancellationRefundMatchesNativeFinishedAndHeldState(bool cache)
+    [Fact]
+    public void ResearchCancellationRefundMatchesNativeFinishedAndHeldState()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var group in TestFixtures.Rows(oracle.RootElement, "researchRefundRows")
             .GroupBy(row => (Holding: row[0].GetBoolean(), Returns: row[1].GetBoolean())))
         {
-            var content = Load(cache, $"research: [{{name: NATIVE_HELD_RETURN, cost: 1, needItem: {group.Key.Holding.ToString().ToLowerInvariant()}, destroyItem: {(group.Key.Holding && !group.Key.Returns).ToString().ToLowerInvariant()}, returnsItem: {group.Key.Returns.ToString().ToLowerInvariant()}, neededItem: SUPPLY}}]\n");
+            var content = Load($"research: [{{name: NATIVE_HELD_RETURN, cost: 1, needItem: {group.Key.Holding.ToString().ToLowerInvariant()}, destroyItem: {(group.Key.Holding && !group.Key.Returns).ToString().ToLowerInvariant()}, returnsItem: {group.Key.Returns.ToString().ToLowerInvariant()}, neededItem: SUPPLY}}]\n");
             foreach (var row in group)
             {
                 var initial = HuntingSnapshot(content) with { World = new() };
@@ -2044,13 +1946,11 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, int.MaxValue)]
-    [InlineData(true, int.MaxValue)]
-    public void CompletingHeldResearchRefundFeedsHalfHourHunterSelection(bool cache, int stock)
+    [InlineData(0)]
+    [InlineData(int.MaxValue)]
+    public void CompletingHeldResearchRefundFeedsHalfHourHunterSelection(int stock)
     {
-        var content = Load(cache, "crafts: [{type: DIRECT_REFUND_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\nresearch: [{name: DIRECT_REFUND_TOPIC, cost: 1, needItem: true, returnsItem: true, neededItem: SUPPLY}]\nfacilities: [{type: DIRECT_REFUND_LAB, mapName: LOGISTICS, labs: 1}]\n");
+        var content = Load("crafts: [{type: DIRECT_REFUND_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\nresearch: [{name: DIRECT_REFUND_TOPIC, cost: 1, needItem: true, returnsItem: true, neededItem: SUPPLY}]\nfacilities: [{type: DIRECT_REFUND_LAB, mapName: LOGISTICS, labs: 1}]\n");
         var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
         {
             RuleId = "DIRECT_REFUND_HUNT",
@@ -2089,10 +1989,8 @@ public sealed partial class StrategicWorldHuntingTests
         Reload(content, campaign, 81, "direct-refund-after.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void FixedResearchDeliveriesMatchNativeStockAndReuseOrder(bool cache)
+    [Fact]
+    public void FixedResearchDeliveriesMatchNativeStockAndReuseOrder()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var group in TestFixtures.Rows(oracle.RootElement, "researchSpawnRows")
@@ -2100,7 +1998,7 @@ public sealed partial class StrategicWorldHuntingTests
         {
             var fuel = group.Key.Fuel ? ", refuelItem: SUPPLY" : "";
             var items = "MISSING" + string.Concat(Enumerable.Repeat(", SUPPLY", group.Key.Duplicates));
-            var content = Load(cache, $"crafts: [{{type: FIXED_RESEARCH_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, weapons: 1{fuel}}}]\ncraftWeapons: [{{type: FIXED_RESEARCH_GUN, ammoMax: 10, rearmRate: 4, launcher: SUPPLY, clip: SUPPLY}}]\nresearch: [{{name: FIXED_RESEARCH_DELIVERY, cost: 1, spawnedItem: {(group.Key.Main ? "SUPPLY" : "MISSING")}, spawnedItemCount: {group.Key.Count}, spawnedItemList: [{items}]}}]\nfacilities: [{{type: FIXED_RESEARCH_LAB, mapName: LOGISTICS, labs: 1}}]\n");
+            var content = Load($"crafts: [{{type: FIXED_RESEARCH_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, weapons: 1{fuel}}}]\ncraftWeapons: [{{type: FIXED_RESEARCH_GUN, ammoMax: 10, rearmRate: 4, launcher: SUPPLY, clip: SUPPLY}}]\nresearch: [{{name: FIXED_RESEARCH_DELIVERY, cost: 1, spawnedItem: {(group.Key.Main ? "SUPPLY" : "MISSING")}, spawnedItemCount: {group.Key.Count}, spawnedItemList: [{items}]}}]\nfacilities: [{{type: FIXED_RESEARCH_LAB, mapName: LOGISTICS, labs: 1}}]\n");
             foreach (var row in group)
             {
                 var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
@@ -2149,13 +2047,11 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ResearchDeliveryLimitsStopBeforeAnyTickMutation(bool cache, bool identities)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ResearchDeliveryLimitsStopBeforeAnyTickMutation(bool identities)
     {
-        var content = Load(cache, "crafts: [{type: LIMITED_RESEARCH_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\nresearch: [{name: LIMITED_RESEARCH_DELIVERY, cost: 1, spawnedItem: SUPPLY}]\nfacilities: [{type: LIMITED_RESEARCH_LAB, mapName: LOGISTICS, labs: 1}]\n");
+        var content = Load("crafts: [{type: LIMITED_RESEARCH_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\nresearch: [{name: LIMITED_RESEARCH_DELIVERY, cost: 1, spawnedItem: SUPPLY}]\nfacilities: [{type: LIMITED_RESEARCH_LAB, mapName: LOGISTICS, labs: 1}]\n");
         var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
         {
             RuleId = "LIMITED_RESEARCH_HUNT",
@@ -2190,13 +2086,11 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void DisabledHeldProjectCannotFundAnUnforecastHunterInterception(bool cache, bool close)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DisabledHeldProjectCannotFundAnUnforecastHunterInterception(bool close)
     {
-        var content = Load(cache, "crafts: [{type: DISABLED_REFUND_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\nresearch: [{name: DISABLED_REFUND_TOPIC, cost: 100, needItem: true, destroyItem: true, neededItem: SUPPLY}]\n");
+        var content = Load("crafts: [{type: DISABLED_REFUND_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\nresearch: [{name: DISABLED_REFUND_TOPIC, cost: 100, needItem: true, destroyItem: true, neededItem: SUPPLY}]\n");
         var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
         {
             RuleId = "DISABLED_REFUND_HUNT",
@@ -2237,16 +2131,14 @@ public sealed partial class StrategicWorldHuntingTests
         Reload(content, campaign, 81, "disabled-refund-hunt-after.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void LookupDiscoveryDoesNotSpawnOrCancelPrimaryStockEffects(bool cache)
+    [Fact]
+    public void LookupDiscoveryDoesNotSpawnOrCancelPrimaryStockEffects()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "researchPrimaryRows").Where(row => !row[1].GetBoolean()))
         {
             var direct = row[0].GetBoolean();
-            var content = Load(cache, $"crafts: [{{type: LOOKUP_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}}]\nresearch: [{{name: LOOKUP_SOURCE, cost: 1, lookup: LOOKUP_TOPIC, spawnedItem: {(direct ? "SUPPLY" : "")}}}, {{name: LOOKUP_TOPIC, cost: 100, spawnedItem: SUPPLY, spawnedItemCount: 100, needItem: true, returnsItem: true, neededItem: SUPPLY}}]\nfacilities: [{{type: LOOKUP_LAB, mapName: LOGISTICS, labs: 2}}]\n");
+            var content = Load($"crafts: [{{type: LOOKUP_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}}]\nresearch: [{{name: LOOKUP_SOURCE, cost: 1, lookup: LOOKUP_TOPIC, spawnedItem: {(direct ? "SUPPLY" : "")}}}, {{name: LOOKUP_TOPIC, cost: 100, spawnedItem: SUPPLY, spawnedItemCount: 100, needItem: true, returnsItem: true, neededItem: SUPPLY}}]\nfacilities: [{{type: LOOKUP_LAB, mapName: LOGISTICS, labs: 2}}]\n");
             var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
             {
                 RuleId = "LOOKUP_HUNT",
@@ -2284,17 +2176,15 @@ public sealed partial class StrategicWorldHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DailyResearchDiscoveryForecastBypassesTheStockOnlyShortcut(bool cache)
+    [Fact]
+    public void DailyResearchDiscoveryForecastBypassesTheStockOnlyShortcut()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         var row = TestFixtures.Rows(oracle.RootElement, "researchRewardRows").First(value =>
             !value[0].GetBoolean() && !value[1].GetBoolean() && value[2].GetInt32() == 0 &&
             value[3].GetInt32() == 0 && !value[4].GetBoolean());
         Assert.Equal(1, row[5].GetInt32());
-        var content = Load(cache, "research: [{name: STOCK_FREE_SOURCE, cost: 1, getOneFree: [STOCK_FREE_REWARD]}, {name: STOCK_FREE_REWARD, cost: 1}]\nfacilities: [{type: STOCK_FREE_LAB, mapName: LOGISTICS, labs: 1}]\n");
+        var content = Load("research: [{name: STOCK_FREE_SOURCE, cost: 1, getOneFree: [STOCK_FREE_REWARD]}, {name: STOCK_FREE_REWARD, cost: 1}]\nfacilities: [{type: STOCK_FREE_LAB, mapName: LOGISTICS, labs: 1}]\n");
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55) };
         initial = initial with
         {
@@ -2323,11 +2213,9 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false)]
+    [InlineData()]
     [InlineData(true)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ResearchDiscoveryAndDisabledRefundsMatchNativeBeforeHunting(bool cache, bool priced = false)
+    public void ResearchDiscoveryAndDisabledRefundsMatchNativeBeforeHunting(bool priced = false)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var group in TestFixtures.Rows(oracle.RootElement, "researchDiscoveryRows").GroupBy(row => row[0].GetInt32()))
@@ -2337,7 +2225,7 @@ public sealed partial class StrategicWorldHuntingTests
             var lookup = mode == 1 ? ", disables: [DISCOVERY_HELD]" : "";
             var automatic = mode == 2 ? ", disables: [DISCOVERY_HELD]" : mode == 3 ? ", reenables: [DISCOVERY_HELD]" : "";
             var priceOverlay = priced ? "items: [{type: DISCOVERY_PRICE_ITEM, scripts: {sellCostItem: 'var ptr RuleResearch topic; var int known; var int held; rules.getRuleResearch topic \"DISCOVERY_AUTO\"; geoscape_game.isResearched known topic; rules.getRuleResearch topic \"DISCOVERY_HELD\"; geoscape_game.isResearched held topic; mul held 10; add known held; return known;'}}]\nmanufacture: [{name: DISCOVERY_PRICE_PRODUCT, time: 1, producedItems: {DISCOVERY_PRICE_ITEM: 1}}]\n" : "";
-            var content = Load(cache, $"crafts: [{{type: DISCOVERY_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}}]\nresearch: [{{name: DISCOVERY_SOURCE, cost: 1{source}}}, {{name: DISCOVERY_LOOKUP, cost: 1{lookup}}}, {{name: DISCOVERY_AUTO, cost: 0, dependencies: [DISCOVERY_SOURCE]{automatic}}}, {{name: DISCOVERY_HELD, cost: 100, needItem: true, destroyItem: true, neededItem: SUPPLY}}]\nfacilities: [{{type: DISCOVERY_LAB, mapName: LOGISTICS, labs: 1, workshops: 1}}]\n" + priceOverlay);
+            var content = Load($"crafts: [{{type: DISCOVERY_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}}]\nresearch: [{{name: DISCOVERY_SOURCE, cost: 1{source}}}, {{name: DISCOVERY_LOOKUP, cost: 1{lookup}}}, {{name: DISCOVERY_AUTO, cost: 0, dependencies: [DISCOVERY_SOURCE]{automatic}}}, {{name: DISCOVERY_HELD, cost: 100, needItem: true, destroyItem: true, neededItem: SUPPLY}}]\nfacilities: [{{type: DISCOVERY_LAB, mapName: LOGISTICS, labs: 1, workshops: 1}}]\n" + priceOverlay);
             foreach (var row in group)
             {
                 var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
@@ -2390,16 +2278,14 @@ public sealed partial class StrategicWorldHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DeterministicFreeResearchStocksAndCancellationMatchNative(bool cache)
+    [Fact]
+    public void DeterministicFreeResearchStocksAndCancellationMatchNative()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var group in TestFixtures.Rows(oracle.RootElement, "researchRewardRows")
             .GroupBy(row => (Sequential: row[0].GetBoolean(), Duplicate: row[1].GetBoolean())))
         {
-            var content = Load(cache, $"crafts: [{{type: REWARD_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}}]\nresearch: [{{name: REWARD_SOURCE, cost: 100, needItem: true, destroyItem: true, neededItem: SUPPLY, sequentialGetOneFree: {group.Key.Sequential.ToString().ToLowerInvariant()}, getOneFree: [{(group.Key.Duplicate ? "REWARD_A, REWARD_A" : "REWARD_A")}], getOneFreeProtected: {{REWARD_GATE: [REWARD_B]}}}}, {{name: REWARD_A, cost: 1, spawnedItem: SUPPLY}}, {{name: REWARD_B, cost: 1, spawnedItem: SUPPLY, spawnedItemCount: 2}}, {{name: REWARD_GATE, cost: 1}}]\nfacilities: [{{type: REWARD_LAB, mapName: LOGISTICS, labs: 1}}]\n");
+            var content = Load($"crafts: [{{type: REWARD_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}}]\nresearch: [{{name: REWARD_SOURCE, cost: 100, needItem: true, destroyItem: true, neededItem: SUPPLY, sequentialGetOneFree: {group.Key.Sequential.ToString().ToLowerInvariant()}, getOneFree: [{(group.Key.Duplicate ? "REWARD_A, REWARD_A" : "REWARD_A")}], getOneFreeProtected: {{REWARD_GATE: [REWARD_B]}}}}, {{name: REWARD_A, cost: 1, spawnedItem: SUPPLY}}, {{name: REWARD_B, cost: 1, spawnedItem: SUPPLY, spawnedItemCount: 2}}, {{name: REWARD_GATE, cost: 1}}]\nfacilities: [{{type: REWARD_LAB, mapName: LOGISTICS, labs: 1}}]\n");
             foreach (var row in group)
             {
                 List<string> completed = [];
@@ -2487,17 +2373,15 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void QueuedAutomaticDiscoveryKeepsNativeOrderAndAtomicHuntBoundary(bool cache, bool close)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void QueuedAutomaticDiscoveryKeepsNativeOrderAndAtomicHuntBoundary(bool close)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "researchQueuedRows"))
         {
             var lateId = row[0].GetBoolean() ? "QUEUED_A_LATE" : "QUEUED_Z_LATE";
-            var content = Load(cache, $"crafts: [{{type: QUEUED_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}}]\nresearch: [{{name: QUEUED_SOURCE, cost: 1}}, {{name: QUEUED_DISABLER, cost: 0, dependencies: [QUEUED_SOURCE], disables: [{lateId}], listOrder: 901}}, {{name: {lateId}, cost: 0, dependencies: [QUEUED_SOURCE], disables: [QUEUED_HELD], listOrder: 900}}, {{name: QUEUED_HELD, cost: 100, needItem: true, destroyItem: true, neededItem: SUPPLY}}]\nfacilities: [{{type: QUEUED_LAB, mapName: LOGISTICS, labs: 1}}]\n");
+            var content = Load($"crafts: [{{type: QUEUED_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}}]\nresearch: [{{name: QUEUED_SOURCE, cost: 1}}, {{name: QUEUED_DISABLER, cost: 0, dependencies: [QUEUED_SOURCE], disables: [{lateId}], listOrder: 901}}, {{name: {lateId}, cost: 0, dependencies: [QUEUED_SOURCE], disables: [QUEUED_HELD], listOrder: 900}}, {{name: QUEUED_HELD, cost: 100, needItem: true, destroyItem: true, neededItem: SUPPLY}}]\nfacilities: [{{type: QUEUED_LAB, mapName: LOGISTICS, labs: 1}}]\n");
             var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
             {
                 RuleId = "QUEUED_HUNT",
@@ -2539,15 +2423,13 @@ public sealed partial class StrategicWorldHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void AutomaticDiscoveryUsesNativeUtf8MapOrderIndependentOfListOrder(bool cache)
+    [Fact]
+    public void AutomaticDiscoveryUsesNativeUtf8MapOrderIndependentOfListOrder()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         const string first = "\uE000";
         const string second = "\U00010000";
-        var content = Load(cache, $"research: [{{name: UNICODE_SOURCE, cost: 1}}, {{name: '{second}', cost: 0, dependencies: [UNICODE_SOURCE], listOrder: 1}}, {{name: '{first}', cost: 0, dependencies: [UNICODE_SOURCE], disables: ['{second}'], listOrder: 999}}]\nfacilities: [{{type: UNICODE_LAB, mapName: LOGISTICS, labs: 1}}]\n");
+        var content = Load($"research: [{{name: UNICODE_SOURCE, cost: 1}}, {{name: '{second}', cost: 0, dependencies: [UNICODE_SOURCE], listOrder: 1}}, {{name: '{first}', cost: 0, dependencies: [UNICODE_SOURCE], disables: ['{second}'], listOrder: 999}}]\nfacilities: [{{type: UNICODE_LAB, mapName: LOGISTICS, labs: 1}}]\n");
         var initial = HuntingSnapshot(content) with { World = new(), Time = new(1, 1, 1, 1999, 23, 59, 55) };
         initial = initial with
         {
@@ -2568,14 +2450,12 @@ public sealed partial class StrategicWorldHuntingTests
         Reload(content, campaign, 81, "unicode-research-after.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ProtectedDiscoveryWorkLimitStopsBeforeHunterTickMutation(bool cache)
+    [Fact]
+    public void ProtectedDiscoveryWorkLimitStopsBeforeHunterTickMutation()
     {
         var topics = Enumerable.Range(0, 1100).Select(index => $"BOUNDED_CHILD_{index}").ToArray();
         var automatic = string.Join(", ", topics.Select(id => $"{{name: {id}, cost: 0, requires: [BOUNDED_GATE]}}"));
-        var content = Load(cache, $"crafts: [{{type: BOUNDED_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}}]\nresearch: [{{name: BOUNDED_SOURCE, cost: 1, spawnedItem: SUPPLY, unlocks: [{string.Join(", ", topics)}]}}, {{name: BOUNDED_GATE, cost: 1}}, {automatic}]\nfacilities: [{{type: BOUNDED_LAB, mapName: LOGISTICS, labs: 1}}]\n");
+        var content = Load($"crafts: [{{type: BOUNDED_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}}]\nresearch: [{{name: BOUNDED_SOURCE, cost: 1, spawnedItem: SUPPLY, unlocks: [{string.Join(", ", topics)}]}}, {{name: BOUNDED_GATE, cost: 1}}, {automatic}]\nfacilities: [{{type: BOUNDED_LAB, mapName: LOGISTICS, labs: 1}}]\n");
         var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
         {
             RuleId = "BOUNDED_HUNT",
@@ -2603,17 +2483,15 @@ public sealed partial class StrategicWorldHuntingTests
             "UFO retargeting exceeds the supported work limit.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ZeroQuantityProductionStillReusesCraftItemsAndPersistsTransfers(bool cache)
+    [Fact]
+    public void ZeroQuantityProductionStillReusesCraftItemsAndPersistsTransfers()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var group in TestFixtures.Rows(oracle.RootElement, "productionDeliveryRows").Where(row => row[3].GetInt32() == 0)
             .GroupBy(row => (Fuel: row[0].GetBoolean(), Armed: row[1].GetBoolean(), Delay: row[2].GetInt32())))
         {
             var fuel = group.Key.Fuel ? ", refuelItem: SUPPLY" : "";
-            var content = Load(cache, $"crafts: [{{type: ZERO_PRODUCT_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, weapons: 1{fuel}}}]\ncraftWeapons: [{{type: ZERO_PRODUCT_GUN, ammoMax: 10, rearmRate: 4, launcher: SUPPLY, clip: SUPPLY}}]\nmanufacture: [{{name: ZERO_PRODUCT, time: 1, producedItems: {{SUPPLY: 0}}, transferTimes: [{group.Key.Delay}]}}]\nfacilities: [{{type: ZERO_PRODUCT_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+            var content = Load($"crafts: [{{type: ZERO_PRODUCT_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, weapons: 1{fuel}}}]\ncraftWeapons: [{{type: ZERO_PRODUCT_GUN, ammoMax: 10, rearmRate: 4, launcher: SUPPLY, clip: SUPPLY}}]\nmanufacture: [{{name: ZERO_PRODUCT, time: 1, producedItems: {{SUPPLY: 0}}, transferTimes: [{group.Key.Delay}]}}]\nfacilities: [{{type: ZERO_PRODUCT_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
             foreach (var row in group)
             {
                 var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
@@ -2654,12 +2532,10 @@ public sealed partial class StrategicWorldHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ReloadedZeroItemTransferArrivesOnceAndReusesCraftAmmunition(bool cache)
+    [Fact]
+    public void ReloadedZeroItemTransferArrivesOnceAndReusesCraftAmmunition()
     {
-        var content = Load(cache, "craftWeapons: [{type: ZERO_ARRIVAL_GUN, ammoMax: 10, rearmRate: 4, launcher: SUPPLY, clip: SUPPLY}]\n");
+        var content = Load("craftWeapons: [{type: ZERO_ARRIVAL_GUN, ammoMax: 10, rearmRate: 4, launcher: SUPPLY, clip: SUPPLY}]\n");
         var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
         {
             Logistics = craft.Logistics! with
@@ -2708,17 +2584,15 @@ public sealed partial class StrategicWorldHuntingTests
         Assert.Throws<InvalidDataException>(() => CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)));
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void FinalPrepaidProductionOutputsMatchNativeBeforeHunting(bool cache)
+    [Fact]
+    public void FinalPrepaidProductionOutputsMatchNativeBeforeHunting()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var group in TestFixtures.Rows(oracle.RootElement, "productionDeliveryRows")
             .GroupBy(row => (Fuel: row[0].GetBoolean(), Armed: row[1].GetBoolean(), Delay: row[2].GetInt32(), Quantity: row[3].GetInt32())))
         {
             var fuel = group.Key.Fuel ? ", refuelItem: SUPPLY" : "";
-            var content = Load(cache, $"crafts: [{{type: FINAL_PRODUCT_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, weapons: 1{fuel}}}]\ncraftWeapons: [{{type: FINAL_PRODUCT_GUN, ammoMax: 10, rearmRate: 4, launcher: SUPPLY, clip: SUPPLY}}]\nmanufacture: [{{name: FINAL_PRODUCT, time: 1, cost: 777, requiredItems: {{SUPPLY: 10, FINAL_PRODUCT_HUNT: 1}}, producedItems: {{SUPPLY: {group.Key.Quantity}}}, transferTimes: [{group.Key.Delay}]}}]\nfacilities: [{{type: FINAL_PRODUCT_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+            var content = Load($"crafts: [{{type: FINAL_PRODUCT_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, weapons: 1{fuel}}}]\ncraftWeapons: [{{type: FINAL_PRODUCT_GUN, ammoMax: 10, rearmRate: 4, launcher: SUPPLY, clip: SUPPLY}}]\nmanufacture: [{{name: FINAL_PRODUCT, time: 1, cost: 777, requiredItems: {{SUPPLY: 10, FINAL_PRODUCT_HUNT: 1}}, producedItems: {{SUPPLY: {group.Key.Quantity}}}, transferTimes: [{group.Key.Delay}]}}]\nfacilities: [{{type: FINAL_PRODUCT_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
             foreach (var row in group)
             {
                 var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
@@ -2762,13 +2636,11 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void FinalProductionStockAndTransferLimitsStopBeforeMutation(bool cache, bool transfers)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FinalProductionStockAndTransferLimitsStopBeforeMutation(bool transfers)
     {
-        var content = Load(cache, $"crafts: [{{type: FINAL_LIMIT_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}}]\nmanufacture: [{{name: FINAL_LIMIT_PRODUCT, time: 1, producedItems: {{SUPPLY: 1}}, transferTimes: [{(transfers ? 1 : 0)}]}}]\nfacilities: [{{type: FINAL_LIMIT_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+        var content = Load($"crafts: [{{type: FINAL_LIMIT_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}}]\nmanufacture: [{{name: FINAL_LIMIT_PRODUCT, time: 1, producedItems: {{SUPPLY: 1}}, transferTimes: [{(transfers ? 1 : 0)}]}}]\nfacilities: [{{type: FINAL_LIMIT_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
         var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
         {
             RuleId = "FINAL_LIMIT_HUNT",
@@ -2797,16 +2669,14 @@ public sealed partial class StrategicWorldHuntingTests
             "Production arrivals exhaust the transfer identity range." : "Production outputs exceed the supported stock range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void FreeRecurringProductionStocksMatchNativeUnitCapsAndReuse(bool cache)
+    [Fact]
+    public void FreeRecurringProductionStocksMatchNativeUnitCapsAndReuse()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var group in TestFixtures.Rows(oracle.RootElement, "productionFreeRows")
             .GroupBy(row => (Armed: row[0].GetBoolean(), Quantity: row[4].GetInt32(), Delay: row[5].GetInt32())))
         {
-            var content = Load(cache, $"crafts: [{{type: FREE_PRODUCT_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, weapons: 1, refuelItem: SUPPLY}}]\ncraftWeapons: [{{type: FREE_PRODUCT_GUN, ammoMax: 10, rearmRate: 4, launcher: SUPPLY, clip: SUPPLY}}]\nmanufacture: [{{name: FREE_PRODUCT, time: 2, cost: 0, producedItems: {{SUPPLY: {group.Key.Quantity}}}, transferTimes: [{group.Key.Delay}]}}]\nfacilities: [{{type: FREE_PRODUCT_WORKSHOP, mapName: LOGISTICS, workshops: 6}}]\n");
+            var content = Load($"crafts: [{{type: FREE_PRODUCT_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, weapons: 1, refuelItem: SUPPLY}}]\ncraftWeapons: [{{type: FREE_PRODUCT_GUN, ammoMax: 10, rearmRate: 4, launcher: SUPPLY, clip: SUPPLY}}]\nmanufacture: [{{name: FREE_PRODUCT, time: 2, cost: 0, producedItems: {{SUPPLY: {group.Key.Quantity}}}, transferTimes: [{group.Key.Delay}]}}]\nfacilities: [{{type: FREE_PRODUCT_WORKSHOP, mapName: LOGISTICS, workshops: 6}}]\n");
             foreach (var row in group)
             {
                 var units = row[1].GetInt32();
@@ -2854,12 +2724,10 @@ public sealed partial class StrategicWorldHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ExcessiveFreeProductionWorkStopsBeforeClockInventoryAndRandomChanges(bool cache)
+    [Fact]
+    public void ExcessiveFreeProductionWorkStopsBeforeClockInventoryAndRandomChanges()
     {
-        var content = Load(cache, "crafts: [{type: FREE_BOUND_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\nmanufacture: [{name: FREE_BOUND_PRODUCT, time: 1, producedItems: {SUPPLY: 1}}]\nfacilities: [{type: FREE_BOUND_WORKSHOP, mapName: LOGISTICS, workshops: 500001}]\n");
+        var content = Load("crafts: [{type: FREE_BOUND_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\nmanufacture: [{name: FREE_BOUND_PRODUCT, time: 1, producedItems: {SUPPLY: 1}}]\nfacilities: [{type: FREE_BOUND_WORKSHOP, mapName: LOGISTICS, workshops: 500001}]\n");
         var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
         { RuleId = "FREE_BOUND_HUNT", Logistics = craft.Logistics! with { Status = "STR_REFUELLING", Fuel = 60, Weapons = [] } })
             with
@@ -2878,13 +2746,11 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    public void FreeProductionFutureQuantitiesAreBoundedBeforeMutation(bool cache, int units)
+    [InlineData(1)]
+    [InlineData(2)]
+    public void FreeProductionFutureQuantitiesAreBoundedBeforeMutation(int units)
     {
-        var content = Load(cache, $"crafts: [{{type: FUTURE_BOUND_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}}]\nmanufacture: [{{name: FUTURE_BOUND_PRODUCT, time: 1, producedItems: {{SUPPLY: {int.MaxValue}}}, transferTimes: [1]}}]\nfacilities: [{{type: FUTURE_BOUND_WORKSHOP, mapName: LOGISTICS, workshops: 2}}]\n");
+        var content = Load($"crafts: [{{type: FUTURE_BOUND_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}}]\nmanufacture: [{{name: FUTURE_BOUND_PRODUCT, time: 1, producedItems: {{SUPPLY: {int.MaxValue}}}, transferTimes: [1]}}]\nfacilities: [{{type: FUTURE_BOUND_WORKSHOP, mapName: LOGISTICS, workshops: 2}}]\n");
         var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
         { RuleId = "FUTURE_BOUND_HUNT", Logistics = craft.Logistics! with { Status = "STR_REFUELLING", Fuel = 60, Weapons = [] } })
             with
@@ -2904,13 +2770,11 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    public void ProductionCaptivePopulationLimitsIncludeStocksAndFutureArrivals(bool cache, int delay)
+    [InlineData(0)]
+    [InlineData(1)]
+    public void ProductionCaptivePopulationLimitsIncludeStocksAndFutureArrivals(int delay)
     {
-        var content = Load(cache, $"items: [{{type: CAPTIVE_PRODUCT_A, liveAlien: true, prisonType: 0}}, {{type: CAPTIVE_PRODUCT_B, liveAlien: true, prisonType: 0}}]\ncrafts: [{{type: CAPTIVE_BOUND_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}}]\nmanufacture: [{{name: CAPTIVE_BOUND_PRODUCT, time: 1, producedItems: {{CAPTIVE_PRODUCT_B: 1}}, transferTimes: [{delay}]}}]\nfacilities: [{{type: CAPTIVE_BOUND_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+        var content = Load($"items: [{{type: CAPTIVE_PRODUCT_A, liveAlien: true, prisonType: 0}}, {{type: CAPTIVE_PRODUCT_B, liveAlien: true, prisonType: 0}}]\ncrafts: [{{type: CAPTIVE_BOUND_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}}]\nmanufacture: [{{name: CAPTIVE_BOUND_PRODUCT, time: 1, producedItems: {{CAPTIVE_PRODUCT_B: 1}}, transferTimes: [{delay}]}}]\nfacilities: [{{type: CAPTIVE_BOUND_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
         var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
         { RuleId = "CAPTIVE_BOUND_HUNT", Logistics = craft.Logistics! with { Status = "STR_REFUELLING", Fuel = 60, Weapons = [] } })
             with
@@ -2928,12 +2792,10 @@ public sealed partial class StrategicWorldHuntingTests
             "Production captive populations exceed the supported range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void MixedFutureProductionCannotUseIncompleteIdentityForecasts(bool cache)
+    [Fact]
+    public void MixedFutureProductionCannotUseIncompleteIdentityForecasts()
     {
-        var content = Load(cache, "crafts: [{type: MIXED_ID_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\nmanufacture: [{name: MIXED_UNFORECAST_PRODUCT, time: 1, producedItems: {SUPPLY: 0}, randomProducedItems: [[1, {SUPPLY: 1}], [1, {BULKY: 1}]], transferTimes: [1]}, {name: MIXED_FIXED_PRODUCT, time: 1, producedItems: {SUPPLY: 0}, transferTimes: [1]}]\nfacilities: [{type: MIXED_ID_WORKSHOP, mapName: LOGISTICS, workshops: 2}]\n");
+        var content = Load("crafts: [{type: MIXED_ID_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\nmanufacture: [{name: MIXED_UNFORECAST_PRODUCT, time: 1, producedItems: {SUPPLY: 0}, randomProducedItems: [[1, {SUPPLY: 1}], [1, {BULKY: 1}]], transferTimes: [1]}, {name: MIXED_FIXED_PRODUCT, time: 1, producedItems: {SUPPLY: 0}, transferTimes: [1]}]\nfacilities: [{type: MIXED_ID_WORKSHOP, mapName: LOGISTICS, workshops: 2}]\n");
         var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
         {
             RuleId = "MIXED_ID_HUNT",
@@ -2965,13 +2827,11 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ProductionFutureIdentitiesFollowDailyResearchAndHourlyCleanup(bool cache, bool research)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ProductionFutureIdentitiesFollowDailyResearchAndHourlyCleanup(bool research)
     {
-        var content = Load(cache, "crafts: [{type: ORDERED_ID_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\nresearch: [{name: ORDERED_ID_RESEARCH, cost: 1, spawnedItem: SUPPLY}]\nmanufacture: [{name: ORDERED_ID_PRODUCT, time: 1, producedItems: {SUPPLY: 0}, transferTimes: [1]}]\nfacilities: [{type: ORDERED_ID_WORKSHOP, mapName: LOGISTICS, workshops: 1, labs: 1}]\n");
+        var content = Load("crafts: [{type: ORDERED_ID_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\nresearch: [{name: ORDERED_ID_RESEARCH, cost: 1, spawnedItem: SUPPLY}]\nmanufacture: [{name: ORDERED_ID_PRODUCT, time: 1, producedItems: {SUPPLY: 0}, transferTimes: [1]}]\nfacilities: [{type: ORDERED_ID_WORKSHOP, mapName: LOGISTICS, workshops: 1, labs: 1}]\n");
         var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
         {
             RuleId = "ORDERED_ID_HUNT",
@@ -3012,12 +2872,10 @@ public sealed partial class StrategicWorldHuntingTests
         Reload(content, campaign, 81, "ordered-id-after.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ProductionFundedRelaunchStopsBeforeSameTickHunterInterception(bool cache)
+    [Fact]
+    public void ProductionFundedRelaunchStopsBeforeSameTickHunterInterception()
     {
-        var content = Load(cache, "crafts: [{type: PRODUCTION_COMBAT_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\nmanufacture: [{name: PRODUCTION_COMBAT_PRODUCT, time: 1, producedItems: {SUPPLY: 1}}]\nfacilities: [{type: PRODUCTION_COMBAT_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n");
+        var content = Load("crafts: [{type: PRODUCTION_COMBAT_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\nmanufacture: [{name: PRODUCTION_COMBAT_PRODUCT, time: 1, producedItems: {SUPPLY: 1}}]\nfacilities: [{type: PRODUCTION_COMBAT_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n");
         var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
         {
             RuleId = "PRODUCTION_COMBAT_HUNT",
@@ -3049,10 +2907,8 @@ public sealed partial class StrategicWorldHuntingTests
         AssertTimeBlocked(campaign, "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ManyCraftInputsRetainNativeRemovalAndFollowerNotificationOrder(bool cache)
+    [Fact]
+    public void ManyCraftInputsRetainNativeRemovalAndFollowerNotificationOrder()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         var expected = TestFixtures.Rows(oracle.RootElement, "productionCraftOrderRows").Single();
@@ -3060,7 +2916,7 @@ public sealed partial class StrategicWorldHuntingTests
         var overlay = "crafts: [" + string.Join(",", types.Select(type => $"{{type: {type}, speedMax: 2000, damageMax: 100, fuelMax: 300}}")) +
             ",{type: ORDER_FOLLOWER, speedMax: 2000, damageMax: 100, fuelMax: 300}]\nmanufacture: [{name: ORDER_CONSUME, time: 1, requiredItems: {" +
             string.Join(",", types.Select(type => $"{type}: 0")) + "}, producedItems: {SUPPLY: 0}}]\nfacilities: [{type: ORDER_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n";
-        var content = Load(cache, overlay);
+        var content = Load(overlay);
         var initial = HuntingSnapshot(content) with { World = new(), Time = new(1, 1, 1, 1999, 1, 59, 55) };
         var source = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
         var crafts = types.Select((type, index) => source with
@@ -3106,14 +2962,12 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ConsumedCraftFollowersMatchNativeImmediateReturnAndUfoRestore(bool cache, bool hourly)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ConsumedCraftFollowersMatchNativeImmediateReturnAndUfoRestore(bool hourly)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Load(cache, "crafts: [{type: DELETED_FOLLOWER, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40}]\nmanufacture: [{name: DELETE_LEADER, time: 1, requiredItems: {SHIP: 0}, producedItems: {SUPPLY: 0}}]\nfacilities: [{type: DELETE_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n");
+        var content = Load("crafts: [{type: DELETED_FOLLOWER, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40}]\nmanufacture: [{name: DELETE_LEADER, time: 1, requiredItems: {SHIP: 0}, producedItems: {SUPPLY: 0}}]\nfacilities: [{type: DELETE_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "deletedCraftFollowerRows"))
         {
             if (hourly && (!row[0].GetBoolean() || !row[1].GetBoolean())) continue;
@@ -3177,13 +3031,11 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void InvalidGroundedFollowerBaseStopsBeforePaidProductionOutput(bool cache, bool arriving)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void InvalidGroundedFollowerBaseStopsBeforePaidProductionOutput(bool arriving)
     {
-        var content = Load(cache, "crafts: [{type: UNPLACED_FOLLOWER, speedMax: 2000, damageMax: 100, fuelMax: 100}]\nmanufacture: [{name: UNPLACED_DELETE, time: 1, requiredItems: {SHIP: 0}, producedItems: {SUPPLY: 1}}]\nfacilities: [{type: UNPLACED_DELETE_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n");
+        var content = Load("crafts: [{type: UNPLACED_FOLLOWER, speedMax: 2000, damageMax: 100, fuelMax: 100}]\nmanufacture: [{name: UNPLACED_DELETE, time: 1, requiredItems: {SHIP: 0}, producedItems: {SUPPLY: 1}}]\nfacilities: [{type: UNPLACED_DELETE_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n");
         var initial = HuntingSnapshot(content) with { World = new(), Time = new(1, 1, 1, 1999, 1, 59, 55) };
         var source = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
         var leader = source with { Logistics = source.Logistics! with { Status = "STR_READY", Weapons = [], Items = new Dictionary<string, int>(), Vehicles = [], IsAutoPatrolling = false } };
@@ -3217,12 +3069,10 @@ public sealed partial class StrategicWorldHuntingTests
         AssertTimeBlocked(campaign, "Craft target removal requires placed follower bases.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CraftRemovalFollowerWorkStopsBeforeAnUnboundedHourlyScan(bool cache)
+    [Fact]
+    public void CraftRemovalFollowerWorkStopsBeforeAnUnboundedHourlyScan()
     {
-        var content = Load(cache, "manufacture: [{name: DELETE_MANY, time: 1, requiredItems: {SHIP: 0}, producedItems: {SUPPLY: 0}}]\nfacilities: [{type: DELETE_MANY_WORKSHOP, mapName: LOGISTICS, workshops: 1001}]\n");
+        var content = Load("manufacture: [{name: DELETE_MANY, time: 1, requiredItems: {SHIP: 0}, producedItems: {SUPPLY: 0}}]\nfacilities: [{type: DELETE_MANY_WORKSHOP, mapName: LOGISTICS, workshops: 1001}]\n");
         var initial = HuntingSnapshot(content) with { World = new(), Time = new(1, 1, 1, 1999, 1, 59, 55) };
         var source = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
         initial = initial with
@@ -3239,12 +3089,10 @@ public sealed partial class StrategicWorldHuntingTests
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), "Craft target removal exceeds the supported work limit.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ProductionCraftUnloadStockOverflowStopsBeforeConsumption(bool cache)
+    [Fact]
+    public void ProductionCraftUnloadStockOverflowStopsBeforeConsumption()
     {
-        var content = Load(cache, "manufacture: [{name: UNLOAD_LIMIT, time: 1, requiredItems: {SHIP: 1}, producedItems: {SUPPLY: 0}}]\nfacilities: [{type: UNLOAD_LIMIT_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n");
+        var content = Load("manufacture: [{name: UNLOAD_LIMIT, time: 1, requiredItems: {SHIP: 1}, producedItems: {SUPPLY: 0}}]\nfacilities: [{type: UNLOAD_LIMIT_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n");
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
         initial = initial.WithCraft("SHIP", craft => craft with
         {
@@ -3264,15 +3112,13 @@ public sealed partial class StrategicWorldHuntingTests
         AssertTimeBlocked(campaign, "Production craft unload stocks exceed the supported range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ProductionCraftUnloadFeedsNativeRefuellingAndHunterSelection(bool cache)
+    [Fact]
+    public void ProductionCraftUnloadFeedsNativeRefuellingAndHunterSelection()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var group in TestFixtures.Rows(oracle.RootElement, "productionCraftUnloadRows").GroupBy(row => row[1].GetInt32()))
         {
-            var content = Load(cache, $"crafts: [{{type: UNLOAD_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: UNLOAD_PRODUCT, time: 1, requiredItems: {{SHIP: 1, SUPPLY: {group.Key}}}, producedItems: {{SUPPLY: 0}}}}]\nfacilities: [{{type: UNLOAD_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+            var content = Load($"crafts: [{{type: UNLOAD_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: UNLOAD_PRODUCT, time: 1, requiredItems: {{SHIP: 1, SUPPLY: {group.Key}}}, producedItems: {{SUPPLY: 0}}}}]\nfacilities: [{{type: UNLOAD_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
             foreach (var row in group)
             {
                 var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
@@ -3328,15 +3174,13 @@ public sealed partial class StrategicWorldHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ProductionCraftInputSelectionMatchesNativeQuantityAndFirstCraft(bool cache)
+    [Fact]
+    public void ProductionCraftInputSelectionMatchesNativeQuantityAndFirstCraft()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var group in TestFixtures.Rows(oracle.RootElement, "productionCraftInputRows").GroupBy(row => row[0].GetInt32()))
         {
-            var content = Load(cache, $"manufacture: [{{name: CRAFT_INPUT, time: 1, requiredItems: {{SHIP: {group.Key}}}, producedItems: {{SUPPLY: 0}}}}]\nfacilities: [{{type: CRAFT_INPUT_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+            var content = Load($"manufacture: [{{name: CRAFT_INPUT, time: 1, requiredItems: {{SHIP: {group.Key}}}, producedItems: {{SUPPLY: 0}}}}]\nfacilities: [{{type: CRAFT_INPUT_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
             foreach (var row in group)
             {
                 var initial = HuntingSnapshot(content) with { World = new(), Time = new(1, 1, 1, 1999, 1, 59, 55) };
@@ -3367,12 +3211,10 @@ public sealed partial class StrategicWorldHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void FallbackProgressOverflowBlocksWithoutAnyHunter(bool cache)
+    [Fact]
+    public void FallbackProgressOverflowBlocksWithoutAnyHunter()
     {
-        var content = Load(cache, "manufacture: [{name: FALLBACK_OVERFLOW, time: 100, producedItems: {SUPPLY: 1}}]\nfacilities: [{type: FALLBACK_OVERFLOW_WORKSHOP, mapName: LOGISTICS, workshops: 2}]\n");
+        var content = Load("manufacture: [{name: FALLBACK_OVERFLOW, time: 100, producedItems: {SUPPLY: 1}}]\nfacilities: [{type: FALLBACK_OVERFLOW_WORKSHOP, mapName: LOGISTICS, workshops: 2}]\n");
         var initial = HuntingSnapshot(content) with { World = new(), Time = new(1, 1, 1, 1999, 1, 59, 55) };
         initial = initial with
         {
@@ -3387,16 +3229,14 @@ public sealed partial class StrategicWorldHuntingTests
         AssertTimeBlocked(campaign, "Production progress exceeds the supported range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ProductionStaffReleaseWaitsForTheWholeNativeBasePass(bool cache)
+    [Fact]
+    public void ProductionStaffReleaseWaitsForTheWholeNativeBasePass()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "productionStaffReleaseRows"))
         {
             var fails = row[0].GetBoolean();
-            var content = Load(cache, $"crafts: [{{type: RELEASE_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: RELEASE_FIRST, time: 1, cost: {(fails ? 1000 : 0)}, producedItems: {{SUPPLY: 0}}}}, {{name: RELEASE_FALLBACK, time: 1, producedItems: {{SUPPLY: 1}}}}]\nfacilities: [{{type: RELEASE_WORKSHOP, mapName: LOGISTICS, workshops: 3}}]\n");
+            var content = Load($"crafts: [{{type: RELEASE_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: RELEASE_FIRST, time: 1, cost: {(fails ? 1000 : 0)}, producedItems: {{SUPPLY: 0}}}}, {{name: RELEASE_FALLBACK, time: 1, producedItems: {{SUPPLY: 1}}}}]\nfacilities: [{{type: RELEASE_WORKSHOP, mapName: LOGISTICS, workshops: 3}}]\n");
             var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
             {
                 RuleId = "RELEASE_HUNT",
@@ -3427,12 +3267,10 @@ public sealed partial class StrategicWorldHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void FallbackUsesWorkshopConstructionCompletedEarlierInTheDailyTick(bool cache)
+    [Fact]
+    public void FallbackUsesWorkshopConstructionCompletedEarlierInTheDailyTick()
     {
-        var content = Load(cache, "crafts: [{type: BUILD_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}]\nmanufacture: [{name: BUILD_PRODUCT, time: 2, space: 2, producedItems: {SUPPLY: 1}}]\nfacilities: [{type: BUILD_WORKSHOP, mapName: LOGISTICS, workshops: 4}]\n");
+        var content = Load("crafts: [{type: BUILD_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}]\nmanufacture: [{name: BUILD_PRODUCT, time: 2, space: 2, producedItems: {SUPPLY: 1}}]\nfacilities: [{type: BUILD_WORKSHOP, mapName: LOGISTICS, workshops: 4}]\n");
         var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
         {
             RuleId = "BUILD_HUNT",
@@ -3459,11 +3297,9 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void FallbackProductionStaffingMatchesNativeBeforeHunting(bool cache, bool arrivingEngineers)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FallbackProductionStaffingMatchesNativeBeforeHunting(bool arrivingEngineers)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var group in TestFixtures.Rows(oracle.RootElement, "productionFallbackRows").GroupBy(row => row[2].GetInt32()))
@@ -3471,7 +3307,7 @@ public sealed partial class StrategicWorldHuntingTests
             foreach (var row in group)
             {
                 var capacity = row[1].GetInt32() + row[4].GetInt32() + (row[3].GetInt32() != 0 || row[4].GetInt32() != 0 ? group.Key : 0);
-                var rowContent = Load(cache, $"crafts: [{{type: MONEY_PRODUCT_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: MONEY_PRODUCT, time: 2, space: {group.Key}, producedItems: {{SUPPLY: 1}}}}]\nfacilities: [{{type: MONEY_PRODUCT_WORKSHOP, mapName: LOGISTICS, workshops: {capacity}}}]\n");
+                var rowContent = Load($"crafts: [{{type: MONEY_PRODUCT_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: MONEY_PRODUCT, time: 2, space: {group.Key}, producedItems: {{SUPPLY: 1}}}}]\nfacilities: [{{type: MONEY_PRODUCT_WORKSHOP, mapName: LOGISTICS, workshops: {capacity}}}]\n");
                 var initial = HuntingSnapshot(rowContent).WithCraft("SHIP", craft => craft with
                 {
                     RuleId = "MONEY_PRODUCT_HUNT",
@@ -3515,15 +3351,13 @@ public sealed partial class StrategicWorldHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ProductionMaterialContinuationMatchesNativeOutputThenInputOrder(bool cache)
+    [Fact]
+    public void ProductionMaterialContinuationMatchesNativeOutputThenInputOrder()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var group in TestFixtures.Rows(oracle.RootElement, "productionMaterialRows").GroupBy(row => (Input: row[0].GetInt32(), Output: row[1].GetInt32(), Delay: row[3].GetInt32())))
         {
-            var content = Load(cache, $"crafts: [{{type: MONEY_PRODUCT_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: MONEY_PRODUCT, time: 2, cost: 3, requiredItems: {{SUPPLY: {group.Key.Input}}}, producedItems: {{SUPPLY: {group.Key.Output}}}, transferTimes: [{group.Key.Delay}]}}]\nfacilities: [{{type: MONEY_PRODUCT_WORKSHOP, mapName: LOGISTICS, workshops: 6}}]\n");
+            var content = Load($"crafts: [{{type: MONEY_PRODUCT_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: MONEY_PRODUCT, time: 2, cost: 3, requiredItems: {{SUPPLY: {group.Key.Input}}}, producedItems: {{SUPPLY: {group.Key.Output}}}, transferTimes: [{group.Key.Delay}]}}]\nfacilities: [{{type: MONEY_PRODUCT_WORKSHOP, mapName: LOGISTICS, workshops: 6}}]\n");
             foreach (var row in group)
             {
                 var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
@@ -3567,15 +3401,13 @@ public sealed partial class StrategicWorldHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ProductionCostContinuationMatchesNativePaidUnitAndStopOrder(bool cache)
+    [Fact]
+    public void ProductionCostContinuationMatchesNativePaidUnitAndStopOrder()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var group in TestFixtures.Rows(oracle.RootElement, "productionMoneyRows").GroupBy(row => row[0].GetInt32()))
         {
-            var content = Load(cache, $"crafts: [{{type: MONEY_PRODUCT_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: MONEY_PRODUCT, time: 2, cost: {group.Key}, producedItems: {{SUPPLY: 1}}}}]\nfacilities: [{{type: MONEY_PRODUCT_WORKSHOP, mapName: LOGISTICS, workshops: 6}}]\n");
+            var content = Load($"crafts: [{{type: MONEY_PRODUCT_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: MONEY_PRODUCT, time: 2, cost: {group.Key}, producedItems: {{SUPPLY: 1}}}}]\nfacilities: [{{type: MONEY_PRODUCT_WORKSHOP, mapName: LOGISTICS, workshops: 6}}]\n");
             foreach (var row in group)
             {
                 var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
@@ -3619,12 +3451,10 @@ public sealed partial class StrategicWorldHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void EarlierFixedSaleFundsLaterProductionBeforeHunting(bool cache)
+    [Fact]
+    public void EarlierFixedSaleFundsLaterProductionBeforeHunting()
     {
-        var content = Load(cache, "sellPriceCoefficient: [100, 100, 100, 100, 100]\nitems: [{type: SHARED_SALE_ITEM, costSell: 10}]\ncrafts: [{type: SHARED_MONEY_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}]\nmanufacture: [{name: EARLIER_SALE, time: 1, producedItems: {SHARED_SALE_ITEM: 1}}, {name: LATER_MONEY_PRODUCT, time: 1, cost: 3, producedItems: {SUPPLY: 1}}]\nfacilities: [{type: SHARED_MONEY_WORKSHOP, mapName: LOGISTICS, workshops: 2}]\n");
+        var content = Load("sellPriceCoefficient: [100, 100, 100, 100, 100]\nitems: [{type: SHARED_SALE_ITEM, costSell: 10}]\ncrafts: [{type: SHARED_MONEY_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}]\nmanufacture: [{name: EARLIER_SALE, time: 1, producedItems: {SHARED_SALE_ITEM: 1}}, {name: LATER_MONEY_PRODUCT, time: 1, cost: 3, producedItems: {SUPPLY: 1}}]\nfacilities: [{type: SHARED_MONEY_WORKSHOP, mapName: LOGISTICS, workshops: 2}]\n");
         var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
         { RuleId = "SHARED_MONEY_HUNT", Logistics = craft.Logistics! with { Status = "STR_REFUELLING", Fuel = 60, Weapons = [] } })
             with
@@ -3650,15 +3480,13 @@ public sealed partial class StrategicWorldHuntingTests
         Reload(content, campaign, 81, "shared-sale-after.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ScoredProductionMatchesNativeContinuationBeforeHunting(bool cache)
+    [Fact]
+    public void ScoredProductionMatchesNativeContinuationBeforeHunting()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var group in TestFixtures.Rows(oracle.RootElement, "productionScoreRows").GroupBy(row => row[0].GetInt32()))
         {
-            var content = Load(cache, $"crafts: [{{type: SCORE_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: SCORE_PRODUCT, time: 2, points: {group.Key}, requiredItems: {{SUPPLY: 2}}, producedItems: {{SUPPLY: 1}}}}]\nfacilities: [{{type: SCORE_WORKSHOP, mapName: LOGISTICS, workshops: 6}}]\n");
+            var content = Load($"crafts: [{{type: SCORE_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: SCORE_PRODUCT, time: 2, points: {group.Key}, requiredItems: {{SUPPLY: 2}}, producedItems: {{SUPPLY: 1}}}}]\nfacilities: [{{type: SCORE_WORKSHOP, mapName: LOGISTICS, workshops: 6}}]\n");
             foreach (var row in group)
             {
                 var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
@@ -3692,13 +3520,11 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, -1)]
-    [InlineData(true, -1)]
-    public void CombinedDailyResearchAndProductionScoreCapacityStopsBeforeMutation(bool cache, int sign)
+    [InlineData(1)]
+    [InlineData(-1)]
+    public void CombinedDailyResearchAndProductionScoreCapacityStopsBeforeMutation(int sign)
     {
-        var content = Load(cache, $"research: [{{name: SCORE_TOPIC, cost: 1, points: {sign}, getOneFree: [SCORE_BONUS]}}, {{name: SCORE_BONUS, cost: 1, points: {sign}, lookup: SCORE_LOOKUP}}, {{name: SCORE_LOOKUP, cost: 1, points: {sign}}}]\nmanufacture: [{{name: SCORE_PRODUCT, time: 1, points: {sign}, producedItems: {{SUPPLY: 1}}}}]\nfacilities: [{{type: SCORE_LAB_WORKSHOP, mapName: LOGISTICS, labs: 1, workshops: 1}}]\n");
+        var content = Load($"research: [{{name: SCORE_TOPIC, cost: 1, points: {sign}, getOneFree: [SCORE_BONUS]}}, {{name: SCORE_BONUS, cost: 1, points: {sign}, lookup: SCORE_LOOKUP}}, {{name: SCORE_LOOKUP, cost: 1, points: {sign}}}]\nmanufacture: [{{name: SCORE_PRODUCT, time: 1, points: {sign}, producedItems: {{SUPPLY: 1}}}}]\nfacilities: [{{type: SCORE_LAB_WORKSHOP, mapName: LOGISTICS, labs: 1, workshops: 1}}]\n");
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), ResearchScores = [sign > 0 ? int.MaxValue - 3 : int.MinValue + 3] };
         initial = initial with
         {
@@ -3719,10 +3545,8 @@ public sealed partial class StrategicWorldHuntingTests
         Reload(content, safe, 81, "score-limit-after.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DeterministicRandomProductionMatchesNativeOrderingAndHistory(bool cache)
+    [Fact]
+    public void DeterministicRandomProductionMatchesNativeOrderingAndHistory()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var group in TestFixtures.Rows(oracle.RootElement, "productionDeterministicRandomRows")
@@ -3730,7 +3554,7 @@ public sealed partial class StrategicWorldHuntingTests
         {
             var choices = $"[1, {{SUPPLY: {group.Key.Quantity}}}]";
             if (group.Key.Duplicate) choices += $", [1, {{SUPPLY: {group.Key.Quantity}}}]";
-            var content = Load(cache, $"crafts: [{{type: RANDOM_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: RANDOM_PRODUCT, time: 2, requiredItems: {{SUPPLY: 2}}, producedItems: {{SUPPLY: 1}}, randomProducedItems: [{choices}], transferTimes: [{group.Key.Delay}]}}]\nfacilities: [{{type: RANDOM_WORKSHOP, mapName: LOGISTICS, workshops: 6}}]\n");
+            var content = Load($"crafts: [{{type: RANDOM_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: RANDOM_PRODUCT, time: 2, requiredItems: {{SUPPLY: 2}}, producedItems: {{SUPPLY: 1}}, randomProducedItems: [{choices}], transferTimes: [{group.Key.Delay}]}}]\nfacilities: [{{type: RANDOM_WORKSHOP, mapName: LOGISTICS, workshops: 6}}]\n");
             foreach (var row in group)
             {
                 var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
@@ -3767,13 +3591,11 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void RandomProductionHistoryOverflowStopsBeforeTickMutation(bool cache, bool hunting)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RandomProductionHistoryOverflowStopsBeforeTickMutation(bool hunting)
     {
-        var content = Load(cache, "manufacture: [{name: HISTORY_PRODUCT, time: 1, producedItems: {SUPPLY: 1}, randomProducedItems: [[0, {SUPPLY: 2147483647}], [1, {SUPPLY: 2}]]}]\nfacilities: [{type: HISTORY_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n");
+        var content = Load("manufacture: [{name: HISTORY_PRODUCT, time: 1, producedItems: {SUPPLY: 1}, randomProducedItems: [[0, {SUPPLY: 2147483647}], [1, {SUPPLY: 2}]]}]\nfacilities: [{type: HISTORY_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n");
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
         initial = initial with
         {
@@ -3795,11 +3617,9 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void PersonnelProductionMatchesNativeQuartersAndHunterFallthrough(bool cache, bool soldier)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PersonnelProductionMatchesNativeQuartersAndHunterFallthrough(bool soldier)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var group in TestFixtures.Rows(oracle.RootElement, soldier ? "productionSoldierHuntingRows" : "productionPersonnelRows")
@@ -3807,7 +3627,7 @@ public sealed partial class StrategicWorldHuntingTests
         {
             var quarters = group.Key.Assigned + 1 + group.Key.Headroom;
             var times = group.Key.Delay < 0 ? "0" : $"0, {group.Key.Delay}";
-            var content = Load(cache, $"crafts: [{{type: PERSONNEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: PERSONNEL_PRODUCT, time: 2, cost: 3, producedItems: {{SUPPLY: 1}}, spawnedPersonType: {(soldier ? "RECRUIT" : group.Key.Scientist ? "STR_SCIENTIST" : "STR_ENGINEER")}, transferTimes: [{times}]}}]\nfacilities: [{{type: PERSONNEL_WORKSHOP, mapName: LOGISTICS, workshops: 6, personnel: {quarters}}}]\n");
+            var content = Load($"crafts: [{{type: PERSONNEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: PERSONNEL_PRODUCT, time: 2, cost: 3, producedItems: {{SUPPLY: 1}}, spawnedPersonType: {(soldier ? "RECRUIT" : group.Key.Scientist ? "STR_SCIENTIST" : "STR_ENGINEER")}, transferTimes: [{times}]}}]\nfacilities: [{{type: PERSONNEL_WORKSHOP, mapName: LOGISTICS, workshops: 6, personnel: {quarters}}}]\n");
             foreach (var row in group)
             {
                 var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
@@ -3854,13 +3674,11 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void PersonnelProductionTransferLimitsStopBeforeMutation(bool cache, bool population)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PersonnelProductionTransferLimitsStopBeforeMutation(bool population)
     {
-        var content = Load(cache, "manufacture: [{name: PERSONNEL_LIMIT, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: STR_ENGINEER}]\nfacilities: [{type: PERSONNEL_LIMIT_WORKSHOP, mapName: LOGISTICS, workshops: 100001, personnel: 200000}]\n");
+        var content = Load("manufacture: [{name: PERSONNEL_LIMIT, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: STR_ENGINEER}]\nfacilities: [{type: PERSONNEL_LIMIT_WORKSHOP, mapName: LOGISTICS, workshops: 100001, personnel: 200000}]\n");
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), World = new() };
         initial = initial with
         {
@@ -3875,12 +3693,10 @@ public sealed partial class StrategicWorldHuntingTests
         AssertTimeBlocked(campaign, population ? "Production personnel arrivals exceed the supported population limit." : "Production arrivals exhaust the transfer identity range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void QueuedPersonnelProjectReservesOneQuarterUntilCancellation(bool cache)
+    [Fact]
+    public void QueuedPersonnelProjectReservesOneQuarterUntilCancellation()
     {
-        var content = Load(cache, "manufacture: [{name: HELD_PERSONNEL, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: STR_SCIENTIST}]\n");
+        var content = Load("manufacture: [{name: HELD_PERSONNEL, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: STR_SCIENTIST}]\n");
         var initial = HuntingSnapshot(content);
         initial = initial with { Bases = [initial.Bases[0] with { Soldiers = [], Engineers = 0, Scientists = 0, Research = [], Transfers = [], Productions = [new("HELD_PERSONNEL", 0, 0, 1, false, false, false, new Dictionary<string, int>())] }] };
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "personnel-held.sav");
@@ -3919,27 +3735,23 @@ public sealed partial class StrategicWorldHuntingTests
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), "Production personnel arrivals exceed the supported population limit.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ImportedPersonnelReservationsCannotOverflowQuarters(bool cache)
+    [Fact]
+    public void ImportedPersonnelReservationsCannotOverflowQuarters()
     {
-        var content = Load(cache, "manufacture: [{name: IMPORTED_PERSONNEL, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: STR_ENGINEER}]\n");
+        var content = Load("manufacture: [{name: IMPORTED_PERSONNEL, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: STR_ENGINEER}]\n");
         var initial = HuntingSnapshot(content);
         initial = initial with { Bases = [initial.Bases[0] with { Soldiers = [], Scientists = 0, Engineers = int.MaxValue, Research = [], Transfers = [], Productions = [new("IMPORTED_PERSONNEL", 0, 0, 1, false, false, false, new Dictionary<string, int>())] }] };
         var error = Assert.Throws<InvalidDataException>(() => CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)));
         Assert.Equal("Base personnel including incoming transfers exceed the supported range.", error.Message);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CorpseRuntimeProjectionsAndSavedOptionKeepFreshCacheSemantics(bool cache)
+    [Fact]
+    public void CorpseRuntimeProjectionsAndSavedOptionKeepFreshCacheSemantics()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var group in TestFixtures.Rows(oracle.RootElement, "researchCorpseRows").GroupBy(row => (Recover: row[6].GetBoolean(), Corpse: row[7].GetBoolean())))
         {
-            var content = Load(cache, $"items: [{{type: CORPSE_OUTPUT, recover: {group.Key.Recover.ToString().ToLowerInvariant()}, recoverCorpse: {group.Key.Corpse.ToString().ToLowerInvariant()}}}]\narmors: [{{type: CORPSE_ARMOR, corpseItem: CORPSE_OUTPUT, loftempsSet: [0]}}]\nunits: [{{type: CORPSE_TOPIC, armor: CORPSE_ARMOR}}]\n");
+            var content = Load($"items: [{{type: CORPSE_OUTPUT, recover: {group.Key.Recover.ToString().ToLowerInvariant()}, recoverCorpse: {group.Key.Corpse.ToString().ToLowerInvariant()}}}]\narmors: [{{type: CORPSE_ARMOR, corpseItem: CORPSE_OUTPUT, loftempsSet: [0]}}]\nunits: [{{type: CORPSE_TOPIC, armor: CORPSE_ARMOR}}]\n");
             var rules = content.RuntimeRules;
             var armor = rules.Armors[rules.Units[rules.Units.GetRequired("CORPSE_TOPIC")].Value.Armor!.Value].Value;
             var item = rules.Items[armor.CorpseGeoscape!.Value].Value;
@@ -3956,29 +3768,25 @@ public sealed partial class StrategicWorldHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void FixedRetainCorpsesOverridesImportedAndSavedSessionOptions(bool cache)
+    [Fact]
+    public void FixedRetainCorpsesOverridesImportedAndSavedSessionOptions()
     {
-        var content = Load(cache, "fixedUserOptions: {retainCorpses: 'true'}\n");
+        var content = Load("fixedUserOptions: {retainCorpses: 'true'}\n");
         var initial = HuntingSnapshot(content) with { Options = new(RetainCorpses: false) };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
         Assert.True(campaign.Options.RetainCorpses);
         Assert.True(Reload(content, campaign, 81, "fixed-corpse-option.sav").Options.RetainCorpses);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void LiveResearchRecoveryMatchesNativeRemovalAndDailyCallers(bool cache)
+    [Fact]
+    public void LiveResearchRecoveryMatchesNativeRemovalAndDailyCallers()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var group in TestFixtures.Rows(oracle.RootElement, "researchCorpseRows")
             .GroupBy(row => (Need: row[1].GetBoolean(), Destroy: row[2].GetBoolean(), Returns: row[3].GetBoolean(), Unit: row[5].GetBoolean(), Recover: row[6].GetBoolean(), Corpse: row[7].GetBoolean())))
         {
             var unit = group.Key.Unit ? "units: [{type: CORPSE_TOPIC, armor: CORPSE_ARMOR}]\n" : "";
-            var content = Load(cache, $"items: [{{type: CORPSE_OUTPUT, recover: {Bool(group.Key.Recover)}, recoverCorpse: {Bool(group.Key.Corpse)}}}]\narmors: [{{type: CORPSE_ARMOR, corpseItem: CORPSE_OUTPUT, loftempsSet: [0]}}]\nresearch: [{{name: CORPSE_TOPIC, cost: 1, needItem: {Bool(group.Key.Need)}, destroyItem: {Bool(group.Key.Destroy)}, returnsItem: {Bool(group.Key.Returns)}, neededItem: SUPPLY}}]\n{unit}");
+            var content = Load($"items: [{{type: CORPSE_OUTPUT, recover: {Bool(group.Key.Recover)}, recoverCorpse: {Bool(group.Key.Corpse)}}}]\narmors: [{{type: CORPSE_ARMOR, corpseItem: CORPSE_OUTPUT, loftempsSet: [0]}}]\nresearch: [{{name: CORPSE_TOPIC, cost: 1, needItem: {Bool(group.Key.Need)}, destroyItem: {Bool(group.Key.Destroy)}, returnsItem: {Bool(group.Key.Returns)}, neededItem: SUPPLY}}]\n{unit}");
             foreach (var row in group)
             {
                 var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), World = new() };
@@ -4003,13 +3811,11 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ResearchCorpseOverflowStopsBeforeDailyOrCancellationMutation(bool cache, bool cancel)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ResearchCorpseOverflowStopsBeforeDailyOrCancellationMutation(bool cancel)
     {
-        var content = Load(cache, "items: [{type: RECOVERY_OUTPUT}]\narmors: [{type: RECOVERY_ARMOR, corpseItem: RECOVERY_OUTPUT, loftempsSet: [0]}]\nunits: [{type: RECOVERY_TOPIC, armor: RECOVERY_ARMOR}]\nresearch: [{name: RECOVERY_TOPIC, cost: 1, needItem: true, destroyItem: true, neededItem: SUPPLY}]\n");
+        var content = Load("items: [{type: RECOVERY_OUTPUT}]\narmors: [{type: RECOVERY_ARMOR, corpseItem: RECOVERY_OUTPUT, loftempsSet: [0]}]\nunits: [{type: RECOVERY_TOPIC, armor: RECOVERY_ARMOR}]\nresearch: [{name: RECOVERY_TOPIC, cost: 1, needItem: true, destroyItem: true, neededItem: SUPPLY}]\n");
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), World = new() };
         initial = initial with
         {
@@ -4027,17 +3833,15 @@ public sealed partial class StrategicWorldHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void RecoveredCorpseStocksMatchNativeRefuelAndHunting(bool cache)
+    [Fact]
+    public void RecoveredCorpseStocksMatchNativeRefuelAndHunting()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var group in TestFixtures.Rows(oracle.RootElement, "researchCorpseHuntingRows")
             .GroupBy(row => (Need: row[1].GetBoolean(), Destroy: row[2].GetBoolean(), Returns: row[3].GetBoolean(), Unit: row[4].GetBoolean(), Recover: row[5].GetBoolean(), Corpse: row[6].GetBoolean())))
         {
             var unit = group.Key.Unit ? "units: [{type: CORPSE_TOPIC, armor: CORPSE_ARMOR}]\n" : "";
-            var content = Load(cache, $"items: [{{type: CORPSE_OUTPUT, recover: {Bool(group.Key.Recover)}, recoverCorpse: {Bool(group.Key.Corpse)}}}]\narmors: [{{type: CORPSE_ARMOR, corpseItem: CORPSE_OUTPUT, loftempsSet: [0]}}]\nresearch: [{{name: CORPSE_TOPIC, cost: 1, needItem: {Bool(group.Key.Need)}, destroyItem: {Bool(group.Key.Destroy)}, returnsItem: {Bool(group.Key.Returns)}, neededItem: SUPPLY}}]\n{unit}crafts: [{{type: CORPSE_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: CORPSE_OUTPUT}}]\n");
+            var content = Load($"items: [{{type: CORPSE_OUTPUT, recover: {Bool(group.Key.Recover)}, recoverCorpse: {Bool(group.Key.Corpse)}}}]\narmors: [{{type: CORPSE_ARMOR, corpseItem: CORPSE_OUTPUT, loftempsSet: [0]}}]\nresearch: [{{name: CORPSE_TOPIC, cost: 1, needItem: {Bool(group.Key.Need)}, destroyItem: {Bool(group.Key.Destroy)}, returnsItem: {Bool(group.Key.Returns)}, neededItem: SUPPLY}}]\n{unit}crafts: [{{type: CORPSE_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: CORPSE_OUTPUT}}]\n");
             foreach (var row in group)
             {
                 var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
@@ -4065,16 +3869,14 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void EarlierCompletionCancelsFinishedCorpseProjectBeforeItsDailyCaller(bool cache, bool returns)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EarlierCompletionCancelsFinishedCorpseProjectBeforeItsDailyCaller(bool returns)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         var rows = TestFixtures.Rows(oracle.RootElement, "researchCorpseRows").Where(row => row[1].GetBoolean() && row[2].GetBoolean() && row[3].GetBoolean() == returns && row[4].GetBoolean() && row[5].GetBoolean() && row[6].GetBoolean() && row[7].GetBoolean() && !row[8].GetBoolean()).ToArray();
         Assert.Equal(2, rows.Length);
-        var content = Load(cache, $"items: [{{type: CROSS_CORPSE}}]\narmors: [{{type: CROSS_CORPSE_ARMOR, corpseItem: CROSS_CORPSE, loftempsSet: [0]}}]\nunits: [{{type: CROSS_CORPSE_TOPIC, armor: CROSS_CORPSE_ARMOR}}]\nresearch: [{{name: CROSS_CORPSE_TOPIC, cost: 1, needItem: true, destroyItem: true, returnsItem: {returns.ToString().ToLowerInvariant()}, neededItem: SUPPLY}}]\ncrafts: [{{type: CROSS_CORPSE_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: CROSS_CORPSE}}]\n");
+        var content = Load($"items: [{{type: CROSS_CORPSE}}]\narmors: [{{type: CROSS_CORPSE_ARMOR, corpseItem: CROSS_CORPSE, loftempsSet: [0]}}]\nunits: [{{type: CROSS_CORPSE_TOPIC, armor: CROSS_CORPSE_ARMOR}}]\nresearch: [{{name: CROSS_CORPSE_TOPIC, cost: 1, needItem: true, destroyItem: true, returnsItem: {returns.ToString().ToLowerInvariant()}, neededItem: SUPPLY}}]\ncrafts: [{{type: CROSS_CORPSE_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: CROSS_CORPSE}}]\n");
         foreach (var row in rows)
         {
             var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
@@ -4099,15 +3901,11 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
+    [InlineData(false)]
+    [InlineData(true)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, true)]
-    [InlineData(false, true, true)]
-    [InlineData(true, true, true)]
-    public void FixedProductionSalesMatchNativeContinuationAndSharedFunds(bool cache, bool crossBase, bool scripted = false)
+    public void FixedProductionSalesMatchNativeContinuationAndSharedFunds(bool crossBase, bool scripted = false)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var group in TestFixtures.Rows(oracle.RootElement, "productionSaleRows")
@@ -4116,7 +3914,7 @@ public sealed partial class StrategicWorldHuntingTests
             var coefficient = group.Key.Coefficient;
             var itemScript = scripted ? ", scripts: {sellCostItem: 'mul cost_current 2; return cost_current;'}" : "";
             var events = scripted ? "extended: {scripts: {sellCostItem: [{new: before-production-price, offset: -1, code: 'add cost_current 1; return cost_current;'}, {new: after-production-price, offset: 1, code: 'div cost_current 2; sub cost_current 1; return cost_current;'}]}}\n" : "";
-            var caseContent = Load(cache, $"sellPriceCoefficient: [{coefficient}, {coefficient}, {coefficient}, {coefficient}, {coefficient}]\nitems: [{{type: SALE_OUTPUT, costSell: 7{itemScript}}}]\ncrafts: [{{type: SALE_PRODUCT_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: SALE_PRODUCT, time: 2, cost: {group.Key.Cost}, producedItems: {{SALE_OUTPUT: {group.Key.Quantity}}}, transferTimes: [{group.Key.Delay}]}}, {{name: SALE_LATER, time: 1, cost: 3, producedItems: {{SUPPLY: 1}}}}]\nfacilities: [{{type: SALE_WORKSHOP, mapName: LOGISTICS, workshops: 8}}]\n" + events);
+            var caseContent = Load($"sellPriceCoefficient: [{coefficient}, {coefficient}, {coefficient}, {coefficient}, {coefficient}]\nitems: [{{type: SALE_OUTPUT, costSell: 7{itemScript}}}]\ncrafts: [{{type: SALE_PRODUCT_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: SALE_PRODUCT, time: 2, cost: {group.Key.Cost}, producedItems: {{SALE_OUTPUT: {group.Key.Quantity}}}, transferTimes: [{group.Key.Delay}]}}, {{name: SALE_LATER, time: 1, cost: 3, producedItems: {{SUPPLY: 1}}}}]\nfacilities: [{{type: SALE_WORKSHOP, mapName: LOGISTICS, workshops: 8}}]\n" + events);
             foreach (var row in group)
             {
                 var initial = HuntingSnapshot(caseContent).WithCraft("SHIP", craft => craft with
@@ -4172,16 +3970,14 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void MixedProductionSaleValuesMatchNativePerItemAccounting(bool cache, bool hunting)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void MixedProductionSaleValuesMatchNativePerItemAccounting(bool hunting)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "productionMixedSaleRows"))
         {
-            var content = Load(cache, $"sellPriceCoefficient: [100, 100, 100, 100, 100]\nitems: [{{type: MIXED_FIRST, costSell: {row[0].GetInt32()}}}, {{type: MIXED_LAST, costSell: {row[1].GetInt32()}}}]\nmanufacture: [{{name: MIXED_SALE, time: 1, producedItems: {{MIXED_FIRST: 1, MIXED_LAST: 1}}}}]\nfacilities: [{{type: MIXED_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+            var content = Load($"sellPriceCoefficient: [100, 100, 100, 100, 100]\nitems: [{{type: MIXED_FIRST, costSell: {row[0].GetInt32()}}}, {{type: MIXED_LAST, costSell: {row[1].GetInt32()}}}]\nmanufacture: [{{name: MIXED_SALE, time: 1, producedItems: {{MIXED_FIRST: 1, MIXED_LAST: 1}}}}]\nfacilities: [{{type: MIXED_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
             var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), Funds = [10], Incomes = [0], Expenditures = [0] };
             initial = initial with
             {
@@ -4203,17 +3999,15 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ScriptedProductionSalePriceUsesTheActualHourlyContextDuringHunting(bool cache, bool global)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ScriptedProductionSalePriceUsesTheActualHourlyContextDuringHunting(bool global)
     {
         var script = "var ptr Time moment; var int second; geoscape_game.getTime moment; moment.getSecond second; return second;";
         var overlay = "items: [{type: SCRIPTED_SALE_ITEM, costSell: 7" + (global ? "" : $", scripts: {{sellCostItem: '{script}'}}") +
             "}]\nmanufacture: [{name: SCRIPTED_SALE, time: 1, producedItems: {SCRIPTED_SALE_ITEM: 1}}]\nfacilities: [{type: SCRIPTED_SALE_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n" +
             (global ? $"extended: {{scripts: {{sellCostItem: [{{new: future-sale-price, offset: 1, code: '{script}'}}]}}}}\n" : "");
-        var content = Load(cache, overlay);
+        var content = Load(overlay);
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), Funds = [0] };
         initial = initial with
         {
@@ -4235,19 +4029,15 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false, false)]
-    [InlineData(true, false, false)]
-    [InlineData(false, true, false)]
-    [InlineData(true, true, false)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, true)]
-    [InlineData(false, true, true)]
-    [InlineData(true, true, true)]
-    public void ProductionFuturePriceFailuresAndAggregateWorkAreAtomic(bool cache, bool hunting, bool workLimit)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ProductionFuturePriceFailuresAndAggregateWorkAreAtomic(bool hunting, bool workLimit)
     {
         var script = workLimit ? "loop var i 200000; end; return cost_current;" :
             "var ptr Time moment; var int second; geoscape_game.getTime moment; moment.getSecond second; div cost_current second; return cost_current;";
-        var content = Load(cache, $"items: [{{type: PRICE_FAILURE_ITEM, costSell: 7, scripts: {{sellCostItem: '{script}'}}}}]\nmanufacture: [{{name: PRICE_FAILURE_PRODUCT, time: 1, producedItems: {{PRICE_FAILURE_ITEM: 1}}}}]\nfacilities: [{{type: PRICE_FAILURE_WORKSHOP, mapName: LOGISTICS, workshops: 4}}]\n");
+        var content = Load($"items: [{{type: PRICE_FAILURE_ITEM, costSell: 7, scripts: {{sellCostItem: '{script}'}}}}]\nmanufacture: [{{name: PRICE_FAILURE_PRODUCT, time: 1, producedItems: {{PRICE_FAILURE_ITEM: 1}}}}]\nfacilities: [{{type: PRICE_FAILURE_WORKSHOP, mapName: LOGISTICS, workshops: 4}}]\n");
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), Funds = [0] };
         initial = initial with
         {
@@ -4269,15 +4059,13 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void KnownScriptedProductionPricesReserveTheirActualAccountingRange(bool cache, bool hunting)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void KnownScriptedProductionPricesReserveTheirActualAccountingRange(bool hunting)
     {
         foreach (var price in new[] { -7, 7 })
         {
-            var content = Load(cache, $"items: [{{type: EXACT_PRICE_ITEM, costSell: 1, scripts: {{sellCostItem: 'return {price};'}}}}]\nmanufacture: [{{name: EXACT_PRICE_PRODUCT, time: 1, producedItems: {{EXACT_PRICE_ITEM: 1}}}}]\nfacilities: [{{type: EXACT_PRICE_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+            var content = Load($"items: [{{type: EXACT_PRICE_ITEM, costSell: 1, scripts: {{sellCostItem: 'return {price};'}}}}]\nmanufacture: [{{name: EXACT_PRICE_PRODUCT, time: 1, producedItems: {{EXACT_PRICE_ITEM: 1}}}}]\nfacilities: [{{type: EXACT_PRICE_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
             var funds = price > 0 ? long.MaxValue - 10 : long.MinValue + 10;
             var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), Funds = [funds], Incomes = [0], Expenditures = [0] };
             initial = initial with
@@ -4299,14 +4087,12 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ProductionPricePreflightUsesOnlyTheDueFutureCaller(bool cache, bool completes)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ProductionPricePreflightUsesOnlyTheDueFutureCaller(bool completes)
     {
         var script = completes ? "var int days; geoscape_game.getDaysPassed days; if eq days 12; div cost_current 0; end; return days;" : "div cost_current 0; return cost_current;";
-        var content = Load(cache, $"items: [{{type: DUE_PRICE_ITEM, costSell: 7, scripts: {{sellCostItem: '{script}'}}}}]\nmanufacture: [{{name: DUE_PRICE_PRODUCT, time: 1, producedItems: {{DUE_PRICE_ITEM: 1}}}}]\nfacilities: [{{type: DUE_PRICE_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+        var content = Load($"items: [{{type: DUE_PRICE_ITEM, costSell: 7, scripts: {{sellCostItem: '{script}'}}}}]\nmanufacture: [{{name: DUE_PRICE_PRODUCT, time: 1, producedItems: {{DUE_PRICE_ITEM: 1}}}}]\nfacilities: [{{type: DUE_PRICE_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), DaysPassed = 12, Funds = [0] };
         initial = initial with
         {
@@ -4328,11 +4114,9 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ProductionPriceVmMatchesNativeCallerContextAndAccounting(bool cache, bool global)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ProductionPriceVmMatchesNativeCallerContextAndAccounting(bool global)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "productionScriptSaleContextRows")
@@ -4354,7 +4138,7 @@ public sealed partial class StrategicWorldHuntingTests
                 (global ? "" : $", scripts: {{sellCostItem: '{script}'}}") +
                 "}]\nmanufacture: [{name: CONTEXT_SALE, time: 1, producedItems: {CONTEXT_SALE_ITEM: 2}}]\nfacilities: [{type: CONTEXT_WORKSHOP, mapName: LOGISTICS, workshops: 1, labs: 1}]\n" +
                 (global ? $"extended: {{scripts: {{sellCostItem: [{{new: context-sale-price, offset: 1, code: '{script}'}}]}}}}\n" : "");
-            var content = Load(cache, overlay);
+            var content = Load(overlay);
             var initial = HuntingSnapshot(content) with
             {
                 Time = new(1, 1, 1, 1999, daily ? 23 : 1, 59, 55),
@@ -4389,15 +4173,11 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, "uncertain")]
-    [InlineData(true, "uncertain")]
-    [InlineData(false, "unrelated")]
-    [InlineData(true, "unrelated")]
-    [InlineData(false, "dead")]
-    [InlineData(true, "dead")]
-    [InlineData(false, "null")]
-    [InlineData(true, "null")]
-    public void DailyProductionPriceQueriesOnlyGuardConsumedUncertainResearch(bool cache, string query)
+    [InlineData("uncertain")]
+    [InlineData("unrelated")]
+    [InlineData("dead")]
+    [InlineData("null")]
+    public void DailyProductionPriceQueriesOnlyGuardConsumedUncertainResearch(string query)
     {
         var script = query switch
         {
@@ -4408,7 +4188,7 @@ public sealed partial class StrategicWorldHuntingTests
         var overlay = "research: [{name: PRICE_RANDOM_SOURCE, cost: 1, getOneFree: [PRICE_REWARD_A, PRICE_REWARD_B]}, {name: PRICE_REWARD_A, cost: 1}, {name: PRICE_REWARD_B, cost: 1}, {name: PRICE_UNRELATED, cost: 1}]\n" +
             $"items: [{{type: QUERY_PRICE_ITEM, costSell: 7, scripts: {{sellCostItem: '{script}'}}}}]\n" +
             "manufacture: [{name: QUERY_PRICE_PRODUCT, time: 1, producedItems: {QUERY_PRICE_ITEM: 1}}]\nfacilities: [{type: QUERY_PRICE_LAB, mapName: LOGISTICS, labs: 1, workshops: 1}]\n";
-        var content = Load(cache, overlay);
+        var content = Load(overlay);
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), Funds = [0] };
         initial = initial with
         {
@@ -4427,7 +4207,7 @@ public sealed partial class StrategicWorldHuntingTests
             AdvanceUnblocked(campaign, 1);
             Assert.Equal(query == "dead" ? 7 : 0, campaign.Capture().Funds[^1]);
             Assert.Contains("PRICE_RANDOM_SOURCE", campaign.Capture().CompletedResearch);
-            var controlContent = Load(cache, overlay.Replace(script, query == "dead" ? "return 7;" : "return 0;", StringComparison.Ordinal));
+            var controlContent = Load(overlay.Replace(script, query == "dead" ? "return 7;" : "return 0;", StringComparison.Ordinal));
             var control = CampaignState.Restore(initial, controlContent, new SplitMix64RandomSource(81));
             AdvanceUnblocked(control, 1);
             Assert.Equal(control.Capture().RandomState, campaign.Capture().RandomState);
@@ -4437,11 +4217,9 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ProductionPriceClockPointersMatchNativeIdentity(bool cache, bool global)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ProductionPriceClockPointersMatchNativeIdentity(bool global)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "priceTimePointerRows"))
@@ -4452,7 +4230,7 @@ public sealed partial class StrategicWorldHuntingTests
                 $"if {(row[2].GetBoolean() ? "neq" : "eq")} a b; div cost_current 0; end; " +
                 $"if {(row[1].GetBoolean() ? "eq" : "neq")} a null; div cost_current 0; end; " +
                 "a.getSecond second; add second 7; return second;";
-            var content = Load(cache, "manufacture: [{name: CLOCK_PRICE_PRODUCT, time: 1, producedItems: {CLOCK_PRICE_ITEM: 1}}]\nfacilities: [{type: CLOCK_PRICE_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n" +
+            var content = Load("manufacture: [{name: CLOCK_PRICE_PRODUCT, time: 1, producedItems: {CLOCK_PRICE_ITEM: 1}}]\nfacilities: [{type: CLOCK_PRICE_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n" +
                 (global ? $"items: [{{type: CLOCK_PRICE_ITEM}}]\nextended: {{scripts: {{sellCostItem: [{{new: clock-identity-price, offset: 1, code: '{script}'}}]}}}}\n" :
                     $"items: [{{type: CLOCK_PRICE_ITEM, scripts: {{sellCostItem: '{script}'}}}}]\n"));
             var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), Funds = [0] };
@@ -4472,11 +4250,9 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ProductionPriceRulePointersKeepNativeDefaultsAndSentinels(bool cache, bool global)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ProductionPriceRulePointersKeepNativeDefaultsAndSentinels(bool global)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         Assert.Equal(0, oracle.RootElement.GetProperty("noneItem").GetInt32());
@@ -4486,7 +4262,7 @@ public sealed partial class StrategicWorldHuntingTests
             "rules.getRuleResearch topic \"SELF_PRICE_TOPIC\"; topic.getLookup lookup; if neq lookup null; div cost_current 0; end; " +
             "absent.getRuleResearch topic \"SUPPLY\"; topic.getCost value; if neq value 0; div cost_current 0; end; " +
             "rules.getRuleItem item \"RULE_POINTER_PRICE_ITEM\"; if neq item item_rule; div cost_current 0; end; return 7;";
-        var content = Load(cache, "research: [{name: SUPPLY, cost: 1, needItem: true}, {name: SELF_PRICE_TOPIC, cost: 1, lookup: SELF_PRICE_TOPIC}]\nmanufacture: [{name: RULE_POINTER_PRICE_PRODUCT, time: 1, producedItems: {RULE_POINTER_PRICE_ITEM: 1}}]\nfacilities: [{type: RULE_POINTER_PRICE_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n" +
+        var content = Load("research: [{name: SUPPLY, cost: 1, needItem: true}, {name: SELF_PRICE_TOPIC, cost: 1, lookup: SELF_PRICE_TOPIC}]\nmanufacture: [{name: RULE_POINTER_PRICE_PRODUCT, time: 1, producedItems: {RULE_POINTER_PRICE_ITEM: 1}}]\nfacilities: [{type: RULE_POINTER_PRICE_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n" +
             (global ? $"items: [{{type: STR_NONE}}, {{type: RULE_POINTER_PRICE_ITEM}}]\nextended: {{scripts: {{sellCostItem: [{{new: rule-pointer-price, offset: 1, code: '{script}'}}]}}}}\n" :
                 $"items: [{{type: STR_NONE}}, {{type: RULE_POINTER_PRICE_ITEM, scripts: {{sellCostItem: '{script}'}}}}]\n"));
         Assert.True(content.RuntimeRules.Items.TryGet("STR_NONE", out _));
@@ -4506,11 +4282,9 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ProductionPriceResearchGettersMatchNativeMetadataAndNulls(bool cache, bool global)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ProductionPriceResearchGettersMatchNativeMetadataAndNulls(bool global)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         using var api = TestFixtures.ReadVerifiedExpected("script-api-catalog");
@@ -4535,7 +4309,7 @@ public sealed partial class StrategicWorldHuntingTests
                 var overlay = $"research: [{{name: PRICE_META_SOURCE, cost: {row[3].GetInt32()}, points: {row[4].GetInt32()}, needItem: {needed.ToString().ToLowerInvariant()}, neededItem: SUPPLY{(linked ? ", lookup: PRICE_META_LOOKUP" : "")}}}, {{name: PRICE_META_LOOKUP, cost: 1, points: 23}}]\n" +
                     (global ? $"extended: {{scripts: {{sellCostItem: [{{new: research-metadata-price, offset: 1, code: '{script}'}}]}}}}\nitems: [{{type: PRICE_META_ITEM}}]\n" : $"items: [{{type: PRICE_META_ITEM, scripts: {{sellCostItem: '{script}'}}}}]\n") +
                     "manufacture: [{name: PRICE_META_PRODUCT, time: 1, producedItems: {PRICE_META_ITEM: 1}}]\nfacilities: [{type: PRICE_META_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n";
-                var content = Load(cache, overlay);
+                var content = Load(overlay);
                 var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), Funds = [0] };
                 initial = initial with
                 {
@@ -4553,11 +4327,9 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void DailyProductionPricesObserveNativeDeterministicResearchRewards(bool cache, bool global)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DailyProductionPricesObserveNativeDeterministicResearchRewards(bool global)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         const string script = "var ptr RuleResearch topic; var int a; var int b; var int source; rules.getRuleResearch topic \"PRICE_REWARD_A\"; geoscape_game.isResearched a topic; rules.getRuleResearch topic \"PRICE_REWARD_B\"; geoscape_game.isResearched b topic; rules.getRuleResearch topic \"PRICE_REWARD_SOURCE\"; geoscape_game.isResearched source topic; mul b 10; mul source 100; add a b; add a source; return a;";
@@ -4567,7 +4339,7 @@ public sealed partial class StrategicWorldHuntingTests
             var overlay = $"research: [{{name: PRICE_REWARD_SOURCE, cost: 1, sequentialGetOneFree: {group.Key.Sequential.ToString().ToLowerInvariant()}, getOneFree: [{(group.Key.Duplicate ? "PRICE_REWARD_A, PRICE_REWARD_A" : "PRICE_REWARD_A")}], getOneFreeProtected: {{PRICE_REWARD_GATE: [PRICE_REWARD_B]}}}}, {{name: PRICE_REWARD_A, cost: 1}}, {{name: PRICE_REWARD_B, cost: 1}}, {{name: PRICE_REWARD_GATE, cost: 1}}]\n" +
                 (global ? $"extended: {{scripts: {{sellCostItem: [{{new: price-reward, offset: 1, code: '{script}'}}]}}}}\nitems: [{{type: PRICE_REWARD_ITEM}}]\n" : $"items: [{{type: PRICE_REWARD_ITEM, scripts: {{sellCostItem: '{script}'}}}}]\n") +
                 "manufacture: [{name: PRICE_REWARD_PRODUCT, time: 1, producedItems: {PRICE_REWARD_ITEM: 1}}]\nfacilities: [{type: PRICE_REWARD_LAB, mapName: LOGISTICS, labs: 1, workshops: 1}]\n";
-            var content = Load(cache, overlay);
+            var content = Load(overlay);
             foreach (var row in group)
             {
                 List<string> completed = [];
@@ -4604,7 +4376,7 @@ public sealed partial class StrategicWorldHuntingTests
                 var expected = 100 + (row[2].GetInt32() == 1 || row[5].GetInt32() == 1 ? 1 : 0) +
                     (row[3].GetInt32() == 1 || row[5].GetInt32() == 2 ? 10 : 0);
                 Assert.Equal(expected, campaign.Capture().Funds[^1]);
-                var controlContent = Load(cache, overlay.Replace(script, $"return {expected};", StringComparison.Ordinal));
+                var controlContent = Load(overlay.Replace(script, $"return {expected};", StringComparison.Ordinal));
                 var control = CampaignState.Restore(initial, controlContent, new SplitMix64RandomSource(81));
                 AdvanceUnblocked(control, 1);
                 Assert.Equal(control.Capture().RandomState, campaign.Capture().RandomState);
@@ -4615,25 +4387,18 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, "funds", true)]
-    [InlineData(true, "funds", true)]
-    [InlineData(false, "income", true)]
-    [InlineData(true, "income", true)]
-    [InlineData(false, "total", true)]
-    [InlineData(true, "total", true)]
-    [InlineData(false, "mixedfunds", true)]
-    [InlineData(true, "mixedfunds", true)]
-    [InlineData(false, "mixedincome", true)]
-    [InlineData(true, "mixedincome", true)]
-    [InlineData(false, "mixedfunds", false)]
-    [InlineData(true, "mixedfunds", false)]
-    [InlineData(false, "mixedincome", false)]
-    [InlineData(true, "mixedincome", false)]
-    public void ProductionSaleAccountingOverflowStopsBeforeTickMutation(bool cache, string field, bool hunting)
+    [InlineData("funds", true)]
+    [InlineData("income", true)]
+    [InlineData("total", true)]
+    [InlineData("mixedfunds", true)]
+    [InlineData("mixedincome", true)]
+    [InlineData("mixedfunds", false)]
+    [InlineData("mixedincome", false)]
+    public void ProductionSaleAccountingOverflowStopsBeforeTickMutation(string field, bool hunting)
     {
         var mixed = field.StartsWith("mixed", StringComparison.Ordinal);
         var outputs = field == "total" ? "SALE_LIMIT_A: 2147483647, SALE_LIMIT_B: 2147483647, SALE_LIMIT_C: 2147483647" : mixed ? "SALE_LIMIT_A: 1, SALE_LIMIT_B: 1" : "SALE_LIMIT_A: 1";
-        var content = Load(cache, $"sellPriceCoefficient: [100, 100, 100, 100, 100]\nitems: [{{type: SALE_LIMIT_A, costSell: {(mixed ? 7 : int.MaxValue)}}}, {{type: SALE_LIMIT_B, costSell: {(mixed ? -7 : int.MaxValue)}}}, {{type: SALE_LIMIT_C, costSell: 2147483647}}]\nmanufacture: [{{name: SALE_LIMIT, time: 1, producedItems: {{{outputs}}}}}]\nfacilities: [{{type: SALE_LIMIT_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+        var content = Load($"sellPriceCoefficient: [100, 100, 100, 100, 100]\nitems: [{{type: SALE_LIMIT_A, costSell: {(mixed ? 7 : int.MaxValue)}}}, {{type: SALE_LIMIT_B, costSell: {(mixed ? -7 : int.MaxValue)}}}, {{type: SALE_LIMIT_C, costSell: 2147483647}}]\nmanufacture: [{{name: SALE_LIMIT, time: 1, producedItems: {{{outputs}}}}}]\nfacilities: [{{type: SALE_LIMIT_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
         var initial = HuntingSnapshot(content) with
         {
             Time = new(1, 1, 1, 1999, 1, 59, 55),
@@ -4663,22 +4428,17 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, "fuel")]
-    [InlineData(true, "fuel")]
-    [InlineData(false, "craft")]
-    [InlineData(true, "craft")]
-    [InlineData(false, "ammunition")]
-    [InlineData(true, "ammunition")]
-    [InlineData(false, "overflow")]
-    [InlineData(true, "overflow")]
-    [InlineData(false, "fallback")]
-    [InlineData(true, "fallback")]
-    public void IncompleteProductionDoesNotChangeHunterTargetsOrStocks(bool cache, string source)
+    [InlineData("fuel")]
+    [InlineData("craft")]
+    [InlineData("ammunition")]
+    [InlineData("overflow")]
+    [InlineData("fallback")]
+    public void IncompleteProductionDoesNotChangeHunterTargetsOrStocks(string source)
     {
         var clip = source == "ammunition" ? "clip: SUPPLY" : "clip: ''";
         var fuel = source == "ammunition" ? "" : ", refuelItem: SUPPLY";
         var required = source == "craft" ? "requiredItems: {UNFINISHED_HUNT: 1}, " : "";
-        var content = Load(cache, $"crafts: [{{type: UNFINISHED_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, weapons: 1{fuel}}}]\ncraftWeapons: [{{type: UNFINISHED_GUN, ammoMax: 10, rearmRate: 4, launcher: SUPPLY, {clip}}}]\nmanufacture: [{{name: UNFINISHED_PRODUCT, time: 100, {required}producedItems: {{SUPPLY: 1}}}}]\nfacilities: [{{type: UNFINISHED_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+        var content = Load($"crafts: [{{type: UNFINISHED_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, weapons: 1{fuel}}}]\ncraftWeapons: [{{type: UNFINISHED_GUN, ammoMax: 10, rearmRate: 4, launcher: SUPPLY, {clip}}}]\nmanufacture: [{{name: UNFINISHED_PRODUCT, time: 100, {required}producedItems: {{SUPPLY: 1}}}}]\nfacilities: [{{type: UNFINISHED_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
         var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
         {
             RuleId = "UNFINISHED_HUNT",
@@ -4858,13 +4618,11 @@ public sealed partial class StrategicWorldHuntingTests
         Reload(content, campaign, 81, "ordered-escort-fuel.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ComposedEscortFuelAndHuntingMatchNativeOrder(bool cache)
+    [Fact]
+    public void ComposedEscortFuelAndHuntingMatchNativeOrder()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Load(cache, "crafts:\n  - {type: HUNT_FUEL_ESCORT, speedMax: 6000, damageMax: 100, fuelMax: 100, allowLanding: false}\n  - {type: HUNT_FUEL_LEADER, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, allowLanding: false}\n");
+        var content = Load("crafts:\n  - {type: HUNT_FUEL_ESCORT, speedMax: 6000, damageMax: 100, fuelMax: 100, allowLanding: false}\n  - {type: HUNT_FUEL_LEADER, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, allowLanding: false}\n");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "escortFuelRows"))
         {
             var relaunch = row[0].GetBoolean();
@@ -4946,12 +4704,10 @@ public sealed partial class StrategicWorldHuntingTests
             "Craft service capacity exceeds the supported range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void LiveHuntersSelectRevealMoveAndReload(bool cache)
+    [Fact]
+    public void LiveHuntersSelectRevealMoveAndReload()
     {
-        var content = Load(cache);
+        var content = Load();
         var initial = HuntingSnapshot(content);
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
         var result = campaign.Execute(new AdvanceCampaignTime(10));

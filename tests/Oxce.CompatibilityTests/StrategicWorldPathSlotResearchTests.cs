@@ -10,11 +10,9 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldPathSlotResearchTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void GeneratedPathsKeepMissingAndLaterGrantSlotsExclusive(bool cache, bool common)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedPathsKeepMissingAndLaterGrantSlotsExclusive(bool common)
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-site-timer");
@@ -22,7 +20,7 @@ public sealed class StrategicWorldPathSlotResearchTests
         for (var suppressedIndex = 0; suppressedIndex <= 1; suppressedIndex++)
         {
             var suppressed = suppressedIndex == 1;
-            var content = StrategicWorldRegionResearchTests.Content(cache, true, secondDuration: 1, suppressed: suppressed, common: common);
+            var content = StrategicWorldRegionResearchTests.Content(true, secondDuration: 1, suppressed: suppressed, common: common);
             var firstSeen = false;
             var otherSeen = false;
             for (ulong seed = 1; seed <= 32; seed++)
@@ -54,15 +52,13 @@ public sealed class StrategicWorldPathSlotResearchTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void MissingPathCannotGuaranteeResearchButACommonLaterSlotCan(bool cache)
+    [Fact]
+    public void MissingPathCannotGuaranteeResearchButACommonLaterSlotCan()
     {
         for (var commonIndex = 0; commonIndex <= 1; commonIndex++)
         {
             var common = commonIndex == 1;
-            var content = StrategicWorldRegionResearchTests.Content(cache, true, suppressed: true, common: common);
+            var content = StrategicWorldRegionResearchTests.Content(true, suppressed: true, common: common);
             var initial = StrategicWorldRegionResearchTests.Snapshot(content);
             AssertTimeBlocked(CampaignState.Restore(initial with
             {

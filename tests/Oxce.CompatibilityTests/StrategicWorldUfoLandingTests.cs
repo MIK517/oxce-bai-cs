@@ -12,12 +12,10 @@ namespace Oxce.CompatibilityTests;
 /// <summary>AlienMission::getLandPoint/ufoReachedWaypoint/ufoLifting and GeoscapeState's ground handlers.</summary>
 public sealed class StrategicWorldUfoLandingTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void AreaLandingRejectsWaterAndFliesToTheSelectedLandAfterReload(bool fromCache)
+    [Fact]
+    public void AreaLandingRejectsWaterAndFliesToTheSelectedLandAfterReload()
     {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul", fromCache);
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var rules = content.RuntimeRules;
         var region = rules.Regions[rules.Regions.GetRequired("REGION")].Value;
         var globe = rules.Campaign.Globe;
@@ -80,13 +78,11 @@ public sealed class StrategicWorldUfoLandingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void FixedPointWaveSpawnsDetectsLandsDepartsAndExpires(bool fromCache, bool longLanding)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FixedPointWaveSpawnsDetectsLandsDepartsAndExpires(bool longLanding)
     {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul", fromCache);
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var snapshot = CreateCampaign(content, halfHour: true, radar: true).Capture();
         var campaign = CampaignState.Restore(snapshot with
         {

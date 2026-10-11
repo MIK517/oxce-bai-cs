@@ -9,12 +9,10 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldDetectionBindingTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CraftStatWorkLimitIsReservedBeforeScanningConsumedFields(bool fromCache)
+    [Fact]
+    public void CraftStatWorkLimitIsReservedBeforeScanningConsumedFields()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             crafts:
               - type: CRAFT_STAT_WORK
                 speedMax: 6000
@@ -59,12 +57,10 @@ public sealed class StrategicWorldDetectionBindingTests
         AssertTimeBlocked(campaign, "Detection script work exceeds the supported half-hour limit.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void NewbornUfoIgnoresUnavailableCraftScriptWhenAllCraftAreGrounded(bool fromCache)
+    [Fact]
+    public void NewbornUfoIgnoresUnavailableCraftScriptWhenAllCraftAreGrounded()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             ufos:
               - type: UFO_NEWBORN_CALLER_GUARD
                 speedMax: 2200
@@ -95,12 +91,10 @@ public sealed class StrategicWorldDetectionBindingTests
         Reload(content, campaign, 209, "newborn-craft-caller-guard.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void UnavailableCraftDetectionBindingOnlyBlocksPossibleCallers(bool fromCache)
+    [Fact]
+    public void UnavailableCraftDetectionBindingOnlyBlocksPossibleCallers()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             ufos:
               - type: UFO_CRAFT_CALLER_GUARD
                 speedMax: 2200
@@ -149,10 +143,8 @@ public sealed class StrategicWorldDetectionBindingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CraftConditionsMatchNativeGettersWithWeaponBonuses(bool fromCache)
+    [Fact]
+    public void CraftConditionsMatchNativeGettersWithWeaponBonuses()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "craftConditions"))
@@ -169,7 +161,7 @@ public sealed class StrategicWorldDetectionBindingTests
                 code += $"absent.{getters[index]} value; if neq value 0; return DETECTION_NONE 0; end; ";
             }
             code += "return DETECTION_RADAR 100;";
-            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
                 crafts:
                   - type: CRAFT_CONDITIONS
                     speedMax: 6000
@@ -211,12 +203,10 @@ public sealed class StrategicWorldDetectionBindingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CraftZeroDamageMaximumPercentageStopsBeforeMutation(bool fromCache)
+    [Fact]
+    public void CraftZeroDamageMaximumPercentageStopsBeforeMutation()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             crafts:
               - type: CRAFT_ZERO_DAMAGE
                 speedMax: 6000
@@ -239,10 +229,8 @@ public sealed class StrategicWorldDetectionBindingTests
         AssertTimeBlocked(campaign, "Detection craft damage percentage exceeds the supported range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void EveryCraftInstanceStatIncludesInstalledDisabledWeaponBonuses(bool fromCache)
+    [Fact]
+    public void EveryCraftInstanceStatIncludesInstalledDisabledWeaponBonuses()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var native = TestFixtures.Rows(oracle.RootElement, "stats");
@@ -277,7 +265,7 @@ public sealed class StrategicWorldDetectionBindingTests
             code += $"absent.{pair.Key} value; if neq value 0; return DETECTION_NONE 0; end; ";
         }
         code += "return DETECTION_RADAR 100;";
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             crafts:
               - type: CRAFT_EFFECTIVE_STATS
             {{fields}}
@@ -315,12 +303,10 @@ public sealed class StrategicWorldDetectionBindingTests
         Reload(content, campaign, 203, "craft-effective-stats-after.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CraftInstanceStatOverflowStopsBeforeMutation(bool fromCache)
+    [Fact]
+    public void CraftInstanceStatOverflowStopsBeforeMutation()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             crafts:
               - type: CRAFT_STAT_OVERFLOW
                 speedMax: 6000
@@ -357,11 +343,9 @@ public sealed class StrategicWorldDetectionBindingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ArmorVisionMetadataMatchesNativeDefaultsAndOverrides(bool fromCache, bool overrides)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ArmorVisionMetadataMatchesNativeDefaultsAndOverrides(bool overrides)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var native = TestFixtures.Rows(oracle.RootElement, "armorVision")[overrides ? 1 : 0];
@@ -388,7 +372,7 @@ public sealed class StrategicWorldDetectionBindingTests
             code += $"absent.{pair.Key} value; if neq value 0; return DETECTION_NONE 0; end; ";
         }
         code += "return DETECTION_RADAR 100;";
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             armors:
               - type: ARMOR_VISION_READS
                 corpseBattle: [CORPSE]
@@ -409,10 +393,8 @@ public sealed class StrategicWorldDetectionBindingTests
         Reload(content, campaign, 202, "armor-vision-after.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ArmorRuleStatsUseNativeSignedValuesAndNullDefaults(bool fromCache)
+    [Fact]
+    public void ArmorRuleStatsUseNativeSignedValuesAndNullDefaults()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var native = TestFixtures.Rows(oracle.RootElement, "unitStats")[3];
@@ -441,7 +423,7 @@ public sealed class StrategicWorldDetectionBindingTests
             code += $"absent.{method} value; if neq value {oracle.RootElement.GetProperty("unitStatsNull").GetProperty(pair.Key).GetInt32()}; return DETECTION_NONE 0; end; ";
         }
         code += "return DETECTION_RADAR 100;";
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             armors:
               - type: ARMOR_STAT_READS
                 corpseBattle: [CORPSE]
@@ -462,10 +444,8 @@ public sealed class StrategicWorldDetectionBindingTests
         Reload(content, campaign, 201, "armor-stats-after.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SoldierRuleStatsPreserveNativePrefixesAndSignedWidths(bool fromCache)
+    [Fact]
+    public void SoldierRuleStatsPreserveNativePrefixesAndSignedWidths()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var rows = TestFixtures.Rows(oracle.RootElement, "unitStats");
@@ -501,7 +481,7 @@ public sealed class StrategicWorldDetectionBindingTests
             }
         }
         code += "return DETECTION_RADAR 100;";
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             soldiers:
               - type: SOLDIER_STAT_READS
                 armor: ARMOR
@@ -520,12 +500,10 @@ public sealed class StrategicWorldDetectionBindingTests
         Reload(content, campaign, 200, "soldier-stats-after.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void MissingInventoryMoveCostRemainsGuardedBeforeMutation(bool fromCache)
+    [Fact]
+    public void MissingInventoryMoveCostRemainsGuardedBeforeMutation()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             invs:
               - id: STR_RIGHT_HAND
               - id: STR_LEFT_HAND
@@ -546,15 +524,13 @@ public sealed class StrategicWorldDetectionBindingTests
         AssertTimeBlocked(campaign, "Detection inventory movement requires missing cost STR_RIGHT_HAND -> STR_LEFT_HAND.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void RuleMetadataReadsPreserveTextAndScalarDefaultsAcrossReload(bool fromCache)
+    [Fact]
+    public void RuleMetadataReadsPreserveTextAndScalarDefaultsAcrossReload()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var types = TestFixtures.Rows(oracle.RootElement, "ruleMetadata").Select(value => value.GetString()!).ToArray();
         var scalars = TestFixtures.Rows(oracle.RootElement, "ruleScalars").Select(value => value.GetInt32()).ToArray();
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             items:
               - type: {{types[0]}}
                 weight: {{scalars[0]}}
@@ -636,10 +612,8 @@ public sealed class StrategicWorldDetectionBindingTests
         Reload(content, campaign, 199, "rule-metadata-after.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void EveryCraftRuleStatUsesNativeRawFieldsAndReload(bool fromCache)
+    [Fact]
+    public void EveryCraftRuleStatUsesNativeRawFieldsAndReload()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var native = oracle.RootElement.GetProperty("craftStats");
@@ -674,7 +648,7 @@ public sealed class StrategicWorldDetectionBindingTests
             code += $"absent.{pair.Key} value; if neq value 0; return DETECTION_NONE 0; end; ";
         }
         code += "return DETECTION_RADAR 100;";
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             crafts:
               - type: CRAFT_RULE_STATS
             {{fields}}
@@ -707,10 +681,8 @@ public sealed class StrategicWorldDetectionBindingTests
         Reload(content, campaign, 196, "craft-rule-stats-after.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ModDetectionConstantsPreserveDefaultsOverridesAndReload(bool fromCache)
+    [Fact]
+    public void ModDetectionConstantsPreserveDefaultsOverridesAndReload()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var rows = TestFixtures.Rows(oracle.RootElement, "modSettings");
@@ -718,7 +690,7 @@ public sealed class StrategicWorldDetectionBindingTests
         {
             var values = rows[index].EnumerateArray().Select(value => value.GetInt32()).ToArray();
             var overrides = index == 0 ? "" : $"maxViewDistance: {values[0]}\nmaxDarknessToSeeUnits: {values[1]}";
-            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
                 {{overrides}}
                 ufos:
                   - type: UFO_MOD_READS
@@ -748,10 +720,8 @@ public sealed class StrategicWorldDetectionBindingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void UfoRuleGettersMatchNativeDefaultsAndReload(bool fromCache)
+    [Fact]
+    public void UfoRuleGettersMatchNativeDefaultsAndReload()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var sizes = new[] { "STR_VERY_SMALL", "STR_SMALL", "STR_MEDIUM_UC", "STR_LARGE", "STR_VERY_LARGE", "UNKNOWN" };
@@ -759,7 +729,7 @@ public sealed class StrategicWorldDetectionBindingTests
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "ufoRules"))
         {
             var values = row.EnumerateArray().Select(value => value.GetInt32()).ToArray();
-            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
                 ufos:
                   - type: UFO_RULE_READS
                     size: {{sizes[values[0]]}}
@@ -797,14 +767,12 @@ public sealed class StrategicWorldDetectionBindingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void UfoReadBindingsMatchReferenceAndReload(bool fromCache)
+    [Fact]
+    public void UfoReadBindingsMatchReferenceAndReload()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var values = TestFixtures.Rows(oracle.RootElement, "bindings")[0].EnumerateArray().Select(item => item.GetInt32()).ToArray();
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             ufos:
               - type: UFO_READ_BINDINGS
                 speedMax: 2200
@@ -862,12 +830,10 @@ public sealed class StrategicWorldDetectionBindingTests
         Reload(content, campaign, 93, "detection-read-after.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ShieldProvidersIncludeMissionRaceBonus(bool fromCache)
+    [Fact]
+    public void ShieldProvidersIncludeMissionRaceBonus()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             ufos:
               - type: UFO_READ_RACE
                 speedMax: 2200
@@ -904,12 +870,10 @@ public sealed class StrategicWorldDetectionBindingTests
         Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GameTimeAndNullReceiverProvidersUseCurrentTick(bool fromCache)
+    [Fact]
+    public void GameTimeAndNullReceiverProvidersUseCurrentTick()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             ufos:
               - type: UFO_READ_CLOCK
                 speedMax: 2200
@@ -941,12 +905,10 @@ public sealed class StrategicWorldDetectionBindingTests
         Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CraftProviderReadsInstalledRadarAndRuleCapacity(bool fromCache)
+    [Fact]
+    public void CraftProviderReadsInstalledRadarAndRuleCapacity()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             crafts:
               - type: SHIP
                 soldiers: 4
@@ -990,10 +952,8 @@ public sealed class StrategicWorldDetectionBindingTests
         Reload(content, campaign, 95, "detection-craft-read.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DamagePercentageMatchesNativeRoundingAndMissionRaceStats(bool fromCache)
+    [Fact]
+    public void DamagePercentageMatchesNativeRoundingAndMissionRaceStats()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "damage"))
@@ -1001,7 +961,7 @@ public sealed class StrategicWorldDetectionBindingTests
             var damage = row[0].GetInt32();
             var maximum = row[1].GetInt32();
             var percentage = row[2].GetInt32();
-            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
                 ufos:
                   - type: UFO_DAMAGE_BINDINGS
                     speedMax: 2200
@@ -1064,10 +1024,8 @@ public sealed class StrategicWorldDetectionBindingTests
         AssertTimeBlocked(campaign, "Detection UFO damage percentage exceeds the supported range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void EveryUfoStatBindingMatchesRawAndRaceAdjustedNativeFields(bool fromCache)
+    [Fact]
+    public void EveryUfoStatBindingMatchesRawAndRaceAdjustedNativeFields()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var rows = TestFixtures.Rows(oracle.RootElement, "stats");
@@ -1105,7 +1063,7 @@ public sealed class StrategicWorldDetectionBindingTests
             code += $"ufo.Stats.{pair.Key} value; if neq value {rows[1].GetProperty(pair.Key).GetInt32()}; return DETECTION_NONE 0; end; ";
         }
         code += "return DETECTION_RADAR 100;";
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             ufos:
               - type: UFO_ALL_STATS
             {{ruleFields}}
@@ -1128,12 +1086,10 @@ public sealed class StrategicWorldDetectionBindingTests
         Reload(content, campaign, 113, "ufo-stats-after.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void QueriedStatOverflowStopsBeforeMutation(bool fromCache)
+    [Fact]
+    public void QueriedStatOverflowStopsBeforeMutation()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             ufos:
               - type: UFO_STAT_OVERFLOW
                 speedMax: 2200

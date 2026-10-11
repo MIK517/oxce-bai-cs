@@ -10,16 +10,14 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldSiteResearchObjectiveTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CounterOnlyObjectivePrefixesRunBeforeSiteInterruption(bool cache)
+    [Fact]
+    public void CounterOnlyObjectivePrefixesRunBeforeSiteInterruption()
     {
         TestFixtures.LoadVerifiedManifest("strategic-wave-chain");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
         for (var objective = 0; objective <= 6; objective++)
         {
-            var content = Content(cache, objective);
+            var content = Content(objective);
             var initial = Snapshot(content, objective);
             var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(66));
             AdvanceUnblocked(campaign, 1);
@@ -50,15 +48,13 @@ public sealed class StrategicWorldSiteResearchObjectiveTests
     }
 
     [Theory]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    public void FinalObjectiveTransitionsCompleteBeforeSiteResearchAndCleanup(bool cache, int objective)
+    [InlineData(1)]
+    [InlineData(2)]
+    public void FinalObjectiveTransitionsCompleteBeforeSiteResearchAndCleanup(int objective)
     {
         TestFixtures.LoadVerifiedManifest("strategic-objective-base-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-infiltration-region");
-        var content = Content(cache, objective, prefix: false);
+        var content = Content(objective, prefix: false);
         var initial = Snapshot(content, objective);
         var control = CampaignState.Restore(initial with { World = initial.World with { MissionSites = [] } }, content, new SplitMix64RandomSource(66));
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(66)), 66, "objective-research-before.sav");
@@ -82,12 +78,10 @@ public sealed class StrategicWorldSiteResearchObjectiveTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void InstantRetaliationWithATargetKeepsTheBaseDefenseBoundary(bool cache)
+    [Fact]
+    public void InstantRetaliationWithATargetKeepsTheBaseDefenseBoundary()
     {
-        var content = Content(cache, 6);
+        var content = Content(6);
         var initial = Snapshot(content, 6);
         initial = initial with { World = initial.World with { Missions = [initial.World.Missions[0] with { RegionId = "REGION" }] } };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(66)),
@@ -95,20 +89,15 @@ public sealed class StrategicWorldSiteResearchObjectiveTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    [InlineData(false, 5)]
-    [InlineData(true, 5)]
-    public void SavedCompletedCounterMissionDoesNotResolveALinkAfterItsRemoval(bool cache, int objective)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(5)]
+    public void SavedCompletedCounterMissionDoesNotResolveALinkAfterItsRemoval(int objective)
     {
         TestFixtures.LoadVerifiedManifest("strategic-wave-chain");
-        var content = Content(cache, objective, prefix: false, interrupt: "MISSING_RESEARCH");
+        var content = Content(objective, prefix: false, interrupt: "MISSING_RESEARCH");
         var initial = Snapshot(content, objective);
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(66));
         AdvanceUnblocked(campaign, 1);
@@ -129,31 +118,27 @@ public sealed class StrategicWorldSiteResearchObjectiveTests
         Assert.Equivalent(after, Reload(content, campaign, 66, "removed-saved-research-link.sav").Capture(), strict: true);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SavedSurvivingPrefixStillResolvesItsInterruptionLink(bool cache)
+    [Fact]
+    public void SavedSurvivingPrefixStillResolvesItsInterruptionLink()
     {
-        var content = Content(cache, 3, interrupt: "MISSING_RESEARCH");
+        var content = Content(3, interrupt: "MISSING_RESEARCH");
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, 3), content, new SplitMix64RandomSource(66)),
             "Alien mission interruption references undefined research.");
     }
 
     [Theory]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    public void FinalObjectiveMarkerExhaustionStopsBeforeBasePactAndSiteGrant(bool cache, int objective)
+    [InlineData(1)]
+    [InlineData(2)]
+    public void FinalObjectiveMarkerExhaustionStopsBeforeBasePactAndSiteGrant(int objective)
     {
-        var content = Content(cache, objective, prefix: false);
+        var content = Content(objective, prefix: false);
         var initial = Snapshot(content, objective).WithNextId("STR_ALIEN_BASE", int.MaxValue);
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(66)),
             "Base objective IDs are exhausted or collide.");
     }
 
-    internal static RuntimeContent Content(bool cache, int objective, bool prefix = true, string interrupt = "CORE") => StrategicReadinessTestContent.Load(
-        ["strategic-world.rul"], cache, $$"""
+    internal static RuntimeContent Content(int objective, bool prefix = true, string interrupt = "CORE") => StrategicReadinessTestContent.Load(
+        ["strategic-world.rul"], $$"""
         research:
           - {name: UNLOCK, cost: 1}
           - {name: CORE, cost: 1}

@@ -12,14 +12,12 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldDailyResearchScorePrefixTests
 {
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    public void SignedDailyScorePrefixesMatchNativeOrderedCapacityAndReloads(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(1)]
+    public void SignedDailyScorePrefixesMatchNativeOrderedCapacityAndReloads(int mode)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Content(cache, mode);
+        var content = Content(mode);
         var projection = CampaignState.Restore(StrategicWorldDailyResearchQuantityTests.Snapshot(content, 1, false), content, new SplitMix64RandomSource(1));
         long work = 0;
         Assert.True(projection.ResearchPreflight.TryForecastDailyWorldStocks(ref work, out var forecast));
@@ -67,14 +65,12 @@ public sealed class StrategicWorldDailyResearchScorePrefixTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    public void UnsafeFinalOrIntermediateDailyScoresRemainAtomic(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(1)]
+    public void UnsafeFinalOrIntermediateDailyScoresRemainAtomic(int mode)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = Content(cache, mode);
+        var content = Content(mode);
         foreach (var score in new[] { mode == 0 ? int.MinValue + 1 : int.MaxValue - 1, mode == 0 ? int.MaxValue - 1 : int.MinValue + 1 })
         {
             var initial = StrategicWorldDailyResearchQuantityTests.Snapshot(content, 17, false) with { ResearchScores = [score] };
@@ -83,13 +79,11 @@ public sealed class StrategicWorldDailyResearchScorePrefixTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void FutureSiteAutomaticScoreDoesNotInflateTheDailyReservation(bool cache)
+    [Fact]
+    public void FutureSiteAutomaticScoreDoesNotInflateTheDailyReservation()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = StrategicWorldDailyResearchQuantityContextTests.Content(cache, 0);
+        var content = StrategicWorldDailyResearchQuantityContextTests.Content(0);
         for (ulong seed = 1; seed <= 12; seed++)
         {
             var initial = StrategicWorldDailyResearchQuantityTests.Snapshot(content, seed, true) with { ResearchScores = [int.MaxValue - 5] };
@@ -104,7 +98,7 @@ public sealed class StrategicWorldDailyResearchScorePrefixTests
         }
     }
 
-    internal static RuntimeContent Content(bool cache, int mode, string extra = "") =>
-        StrategicWorldDailyResearchQuantityTests.Content(cache, false, extra: extra,
+    internal static RuntimeContent Content(int mode, string extra = "") =>
+        StrategicWorldDailyResearchQuantityTests.Content(false, extra: extra,
             extraResearch: $"  - {{name: CORE, points: {(mode == 0 ? -4 : 4)}}}\n  - {{name: EQUIV_A, points: {(mode == 0 ? 3 : -3)}}}\n  - {{name: EQUIV_B, points: {(mode == 0 ? 2 : -2)}}}\n  - {{name: FUTURE_GATE, cost: 1}}\n  - {{name: UNREACHED_AUTO, cost: 0, points: 99, dependencies: [FUTURE_GATE]}}");
 }

@@ -12,18 +12,16 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldSiteResearchSpawnTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void AirborneBirthsPrecedeSiteResearchAndKeepCompletedMissionsAlive(bool cache, bool final)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AirborneBirthsPrecedeSiteResearchAndKeepCompletedMissionsAlive(bool final)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "spawnPathRows").Where(row => row[0].GetInt32() == 0 && row[1].GetInt32() == 0))
         {
             var second = row[2].GetInt32();
-            var content = Content(cache, $"PATH_0_{second}", final);
+            var content = Content($"PATH_0_{second}", final);
             var initial = Snapshot(content);
             var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
             AdvanceUnblocked(campaign, 1);
@@ -57,28 +55,24 @@ public sealed class StrategicWorldSiteResearchSpawnTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void AFinalBirthStillValidatesTheSurvivingMissionInterruptionLink(bool cache)
+    [Fact]
+    public void AFinalBirthStillValidatesTheSurvivingMissionInterruptionLink()
     {
-        var content = Content(cache, "PATH_0_0", true, "MISSING_RESEARCH");
+        var content = Content("PATH_0_0", true, "MISSING_RESEARCH");
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content), content, new SplitMix64RandomSource(17)),
             "Alien mission interruption references undefined research.");
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void GroundedBirthsKeepTheirTimerAndLandingIdentityAcrossSiteGrants(bool cache, bool final)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GroundedBirthsKeepTheirTimerAndLandingIdentityAcrossSiteGrants(bool final)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "spawnPathRows").Where(row => row[0].GetInt32() == 0 && row[1].GetInt32() == 1))
         {
-            var content = Content(cache, $"PATH_1_{row[2].GetInt32()}", final);
+            var content = Content($"PATH_1_{row[2].GetInt32()}", final);
             var initial = Snapshot(content);
             var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
             AdvanceUnblocked(campaign, 1);
@@ -114,27 +108,23 @@ public sealed class StrategicWorldSiteResearchSpawnTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GroundedBirthsRetainAtomicLandingMarkerLimits(bool cache)
+    [Fact]
+    public void GroundedBirthsRetainAtomicLandingMarkerLimits()
     {
-        var content = Content(cache, "PATH_1_0");
+        var content = Content("PATH_1_0");
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content).WithNextId("STR_LANDING_SITE", int.MaxValue),
             content, new SplitMix64RandomSource(17)), "UFO landing marker IDs are exhausted or collide with a saved UFO.");
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ImmediateNewbornTakeoffPreservesDetectionBeforeResearchAndLiftAfterIt(bool cache, bool final)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ImmediateNewbornTakeoffPreservesDetectionBeforeResearchAndLiftAfterIt(bool final)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
         var lift = Assert.Single(TestFixtures.Rows(oracle.RootElement, "normalLiftRows"), row => row[0].GetInt32() == 0 && row[1].GetInt32() == 0);
-        var content = Content(cache, "PATH_SHORT", final);
+        var content = Content("PATH_SHORT", final);
         var initial = Snapshot(content).WithFacility("RADAR_HYPER_TEST");
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         var result = campaign.Execute(new AdvanceCampaignTime(1));
@@ -153,14 +143,12 @@ public sealed class StrategicWorldSiteResearchSpawnTests
         Assert.Equivalent(after, Reload(content, campaign, 17, "site-research-immediate-lift.sav").Capture(), strict: true);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ActualNewbornDetectionScriptReadsResearchBeforeSiteGrantThenAfterReload(bool cache)
+    [Fact]
+    public void ActualNewbornDetectionScriptReadsResearchBeforeSiteGrantThenAfterReload()
     {
         TestFixtures.LoadVerifiedManifest("strategic-detection-scripts");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
-        var content = Content(cache, "PATH_SHORT", extra: """
+        var content = Content("PATH_SHORT", extra: """
             facilities:
               - {type: STORES, radarRange: 5000, radarChance: 100}
             ufos:
@@ -193,14 +181,12 @@ public sealed class StrategicWorldSiteResearchSpawnTests
         Assert.Equivalent(campaign.Capture(), Reload(content, campaign, 17, "newborn-detection-post-site.sav").Capture(), strict: true);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void BirthGeometryWorkIsBoundedBeforeSelectingAnyPointOrGrant(bool cache)
+    [Fact]
+    public void BirthGeometryWorkIsBoundedBeforeSelectingAnyPointOrGrant()
     {
         var origins = string.Join(", ", Enumerable.Repeat("[10, 10, 8, 8]", 256));
         var destinations = string.Join(", ", Enumerable.Repeat("[100, 100, 2, 2]", 256));
-        var content = Content(cache, "RESEARCH_GEOMETRY", extra: $$"""
+        var content = Content("RESEARCH_GEOMETRY", extra: $$"""
             regions:
               - type: RESEARCH_GEOMETRY_REGION
                 areas: [[0, 180, -30, 30]]
@@ -224,12 +210,10 @@ public sealed class StrategicWorldSiteResearchSpawnTests
             "Alien mission spawn geometry exceeds the supported work limit.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void NewHuntersStillStopBeforeCombatWithSiteResearch(bool cache)
+    [Fact]
+    public void NewHuntersStillStopBeforeCombatWithSiteResearch()
     {
-        var content = Content(cache, "PATH_0_0", ufo: "UFO_HUNTER");
+        var content = Content("PATH_0_0", ufo: "UFO_HUNTER");
         var initial = Snapshot(content).WithCraft("SHIP", craft => craft with
         {
             Logistics = craft.Logistics! with
@@ -247,8 +231,8 @@ public sealed class StrategicWorldSiteResearchSpawnTests
             "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
     }
 
-    internal static RuntimeContent Content(bool cache, string trajectory, bool final = false, string interrupt = "CORE", string extra = "", string ufo = "UFO_SCOUT") =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-spawn-paths.rul"], cache, $$$"""
+    internal static RuntimeContent Content(string trajectory, bool final = false, string interrupt = "CORE", string extra = "", string ufo = "UFO_SCOUT") =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-spawn-paths.rul"], $$$"""
         research:
           - {name: UNLOCK, cost: 1}
           - {name: CORE, cost: 1}

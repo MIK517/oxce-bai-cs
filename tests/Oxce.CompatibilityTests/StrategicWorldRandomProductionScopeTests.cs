@@ -12,16 +12,13 @@ namespace Oxce.CompatibilityTests;
 public sealed partial class StrategicWorldHuntingTests
 {
     [Theory]
-    [InlineData(false, "unused")]
-    [InlineData(true, "unused")]
-    [InlineData(false, "other-base")]
-    [InlineData(true, "other-base")]
-    [InlineData(false, "future-transfer")]
-    [InlineData(true, "future-transfer")]
-    public void RandomOutputFuelSensitivityUsesOnlyThisHoursPossibleBaseCraft(bool cache, string context)
+    [InlineData("unused")]
+    [InlineData("other-base")]
+    [InlineData("future-transfer")]
+    public void RandomOutputFuelSensitivityUsesOnlyThisHoursPossibleBaseCraft(string context)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Load(cache, ScopedVariantRules());
+        var content = Load(ScopedVariantRules());
         var rows = TestFixtures.Rows(oracle.RootElement, "productionVariantRows").Where(row => !row[0].GetBoolean() && row[1].GetInt32() == 0 && row[2].GetInt32() == 0).ToArray();
         HashSet<int> choices = [];
         for (ulong seed = 1; seed <= 12; seed++)
@@ -51,32 +48,27 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, "due-transfer")]
-    [InlineData(true, "due-transfer")]
-    [InlineData(false, "produced")]
-    [InlineData(true, "produced")]
-    public void DueAndPotentialProducedCraftKeepRandomFuelSensitivity(bool cache, string context)
+    [InlineData("due-transfer")]
+    [InlineData("produced")]
+    public void DueAndPotentialProducedCraftKeepRandomFuelSensitivity(string context)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
         var overlay = ScopedVariantRules();
         if (context == "produced") overlay = overlay.Replace("manufacture: [", "manufacture: [{name: OTHER_FUEL_PRODUCT, category: STR_CRAFT, time: 1, producedItems: {OTHER_FUEL: 1}}, ", StringComparison.Ordinal);
-        var content = Load(cache, overlay);
+        var content = Load(overlay);
         var initial = ScopedVariantSnapshot(content, context);
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "scoped-fuel-guard.sav");
         AssertTimeBlocked(campaign, "UFO retargeting requires production fuel-stock forecasts.");
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    public void UnconsumedScopedMaterialsPermitNativeRandomVariants(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void UnconsumedScopedMaterialsPermitNativeRandomVariants(int mode)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Load(cache, ScopedMaterialRules(mode));
+        var content = Load(ScopedMaterialRules(mode));
         var rows = TestFixtures.Rows(oracle.RootElement, "productionScopedMaterialRows").Where(row => row[0].GetInt32() == mode).ToArray();
         HashSet<int> choices = [];
         for (ulong seed = 1; seed <= 12; seed++)
@@ -111,16 +103,14 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    [InlineData(false, 4)]
-    [InlineData(true, 4)]
-    public void ContinuingScopedMaterialsRetainFallbackAwareGuard(bool cache, int mode)
+    [InlineData(3)]
+    [InlineData(4)]
+    public void ContinuingScopedMaterialsRetainFallbackAwareGuard(int mode)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         var rows = TestFixtures.Rows(oracle.RootElement, "productionScopedMaterialRows").Where(row => row[0].GetInt32() == mode).ToArray();
         Assert.Equal(2, rows.Select(row => row[5].GetInt32()).Distinct().Count());
-        var content = Load(cache, ScopedMaterialRules(mode));
+        var content = Load(ScopedMaterialRules(mode));
         var campaign = Reload(content, CampaignState.Restore(ScopedMaterialSnapshot(content, mode), content, new SplitMix64RandomSource(81)), 81, "scoped-material-guard.sav");
         AssertTimeBlocked(campaign, "UFO retargeting requires production fuel-stock forecasts.");
     }
@@ -151,18 +141,15 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    public void UnreachedAndDelayedScopedCraftBirthsDoNotConsumeCurrentFuel(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void UnreachedAndDelayedScopedCraftBirthsDoNotConsumeCurrentFuel(int mode)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         var overlay = ScopedVariantRules().Replace("manufacture: [", "manufacture: [{name: OTHER_FUEL_PRODUCT, category: STR_CRAFT, time: " +
             (mode == 1 ? 1 : 100) + ", producedItems: {OTHER_FUEL: 1}, transferTimes: [0, 0, " + (mode == 1 ? 2 : 0) + "]}, ", StringComparison.Ordinal);
-        var content = Load(cache, overlay);
+        var content = Load(overlay);
         var rows = TestFixtures.Rows(oracle.RootElement, "productionScopedCraftRows").Where(row => row[0].GetInt32() == mode).ToArray();
         HashSet<int> choices = [];
         for (ulong seed = 1; seed <= 12; seed++)

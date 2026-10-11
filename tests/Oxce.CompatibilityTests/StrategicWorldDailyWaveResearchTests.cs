@@ -29,19 +29,13 @@ public sealed class StrategicWorldDailyWaveResearchTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    [InlineData(false, 4)]
-    [InlineData(true, 4)]
-    [InlineData(false, 5)]
-    [InlineData(true, 5)]
-    public void DailyInterruptionPrecedesDueWavesAndFinalObjectives(bool cache, int kind)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    public void DailyInterruptionPrecedesDueWavesAndFinalObjectives(int kind)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
@@ -49,9 +43,9 @@ public sealed class StrategicWorldDailyWaveResearchTests
         TestFixtures.LoadVerifiedManifest("strategic-objective-base-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-infiltration-region");
-        var content = Content(cache, kind);
-        var interruptedContent = Content(cache, kind, "CORE");
-        var continuedContent = Content(cache, kind, "");
+        var content = Content(kind);
+        var interruptedContent = Content(kind, "CORE");
+        var continuedContent = Content(kind, "");
         var interruptedSeen = false;
         var continuedSeen = false;
         for (ulong seed = 1; seed <= 32; seed++)
@@ -88,15 +82,13 @@ public sealed class StrategicWorldDailyWaveResearchTests
         Assert.True(continuedSeen);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void PossibleDailyBirthsStillReserveBaseAndSiteMarkers(bool cache)
+    [Fact]
+    public void PossibleDailyBirthsStillReserveBaseAndSiteMarkers()
     {
-        var content = Content(cache, 3);
+        var content = Content(3);
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, 17, 3).WithNextId("DAILY_BASE", int.MaxValue), content, new SplitMix64RandomSource(17)),
             "Base objective IDs are exhausted or collide.");
-        content = Content(cache, 5);
+        content = Content(5);
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, 17, 5).WithNextId("DAILY_SITE", int.MaxValue), content, new SplitMix64RandomSource(17)),
             "Mission site marker IDs are exhausted or collide with a saved target.");
     }
@@ -115,17 +107,15 @@ public sealed class StrategicWorldDailyWaveResearchTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void GeneratedBaseRevelationBelongsToHalfHourThinkAndSkipsLateHunting(bool cache, bool hunting)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedBaseRevelationBelongsToHalfHourThinkAndSkipsLateHunting(bool hunting)
     {
         TestFixtures.LoadVerifiedManifest("strategic-objective-base-spawn");
         CampaignSnapshot? hidden = null;
         foreach (var show in new[] { false, true })
         {
-            var content = StrategicWorldSiteResearchGeneratedObjectiveTests.Content(cache, 2, hunting, prefix: false, interrupt: "", showBase: show);
+            var content = StrategicWorldSiteResearchGeneratedObjectiveTests.Content(2, hunting, prefix: false, interrupt: "", showBase: show);
             var initial = StrategicWorldSiteResearchGeneratedObjectiveTests.Snapshot(content, hunting);
             var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
             var result = campaign.Execute(new AdvanceCampaignTime(1));
@@ -144,7 +134,7 @@ public sealed class StrategicWorldDailyWaveResearchTests
         }
     }
 
-    internal static RuntimeContent Content(bool cache, int kind, string interrupt = "BONUS", int operation = 0, string sourceCode = "BONUS",
+    internal static RuntimeContent Content(int kind, string interrupt = "BONUS", int operation = 0, string sourceCode = "BONUS",
         int generation = 0, bool immediateResearch = false, bool includeSource = false)
     {
         var wave = kind switch
@@ -155,7 +145,7 @@ public sealed class StrategicWorldDailyWaveResearchTests
             5 => "{ufo: DEPLOY_DAILY_SITE, count: 1, trajectory: TRAJ_PATROL, timer: 0}",
             _ => "{count: 1, trajectory: TRAJ_PATROL, timer: 0}",
         };
-        return StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+        return StrategicReadinessTestContent.Load(["strategic-world.rul"], $$$"""
             research:
               - {name: CORE, cost: 1, getOneFree: [BONUS, OTHER]}
               - {name: BONUS, cost: 1}

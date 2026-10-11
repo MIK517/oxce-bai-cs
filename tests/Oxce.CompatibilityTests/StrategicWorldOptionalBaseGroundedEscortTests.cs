@@ -10,34 +10,24 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldOptionalBaseGroundedEscortTests
 {
     [Theory]
-    [InlineData(false, "STR_READY", false, false)]
-    [InlineData(true, "STR_READY", false, false)]
-    [InlineData(false, "STR_REPAIRS", false, false)]
-    [InlineData(true, "STR_REPAIRS", false, false)]
-    [InlineData(false, "STR_REARMING", false, false)]
-    [InlineData(true, "STR_REARMING", false, false)]
-    [InlineData(false, "STR_REFUELLING", false, false)]
-    [InlineData(true, "STR_REFUELLING", false, false)]
-    [InlineData(false, "STR_READY", true, false)]
-    [InlineData(true, "STR_READY", true, false)]
-    [InlineData(false, "STR_REPAIRS", true, false)]
-    [InlineData(true, "STR_REPAIRS", true, false)]
-    [InlineData(false, "STR_REARMING", true, false)]
-    [InlineData(true, "STR_REARMING", true, false)]
-    [InlineData(false, "STR_REFUELLING", true, false)]
-    [InlineData(true, "STR_REFUELLING", true, false)]
-    [InlineData(false, "STR_READY", false, true)]
-    [InlineData(true, "STR_READY", false, true)]
-    [InlineData(false, "STR_REFUELLING", true, true)]
-    [InlineData(true, "STR_REFUELLING", true, true)]
-    public void GroundedEscortServicingEitherIgnoresLeaderSpeedOrRelaunchesIndependently(bool cache, string status, bool auto, bool parked)
+    [InlineData("STR_READY", false, false)]
+    [InlineData("STR_REPAIRS", false, false)]
+    [InlineData("STR_REARMING", false, false)]
+    [InlineData("STR_REFUELLING", false, false)]
+    [InlineData("STR_READY", true, false)]
+    [InlineData("STR_REPAIRS", true, false)]
+    [InlineData("STR_REARMING", true, false)]
+    [InlineData("STR_REFUELLING", true, false)]
+    [InlineData("STR_READY", false, true)]
+    [InlineData("STR_REFUELLING", true, true)]
+    public void GroundedEscortServicingEitherIgnoresLeaderSpeedOrRelaunchesIndependently(string status, bool auto, bool parked)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.NotEmpty(TestFixtures.Rows(oracle.RootElement, "maintenanceRows"));
         Assert.NotEmpty(TestFixtures.Rows(oracle.RootElement, "hourlyMaintenanceRows"));
-        var content = StrategicWorldOptionalBaseCraftTests.Content(cache, itemFuel: true);
-        var deletedContent = StrategicWorldOptionalBaseCraftTests.Content(cache, "CORE", true);
-        var survivedContent = StrategicWorldOptionalBaseCraftTests.Content(cache, "", true);
+        var content = StrategicWorldOptionalBaseCraftTests.Content(itemFuel: true);
+        var deletedContent = StrategicWorldOptionalBaseCraftTests.Content("CORE", true);
+        var survivedContent = StrategicWorldOptionalBaseCraftTests.Content("", true);
         HashSet<bool> outcomes = [];
         for (var order = 0; order < 2; order++)
             for (ulong seed = 1; seed <= 16; seed++)
@@ -96,12 +86,10 @@ public sealed class StrategicWorldOptionalBaseGroundedEscortTests
             }
         Assert.Equal(2, outcomes.Count);
     }
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void IndependentRelaunchStillReservesWaypointIdentityBeforeResearch(bool cache)
+    [Fact]
+    public void IndependentRelaunchStillReservesWaypointIdentityBeforeResearch()
     {
-        var content = StrategicWorldOptionalBaseCraftTests.Content(cache, itemFuel: true);
+        var content = StrategicWorldOptionalBaseCraftTests.Content(itemFuel: true);
         var initial = StrategicWorldOptionalBaseSpeedEscortTests.NormalEscort(
             StrategicWorldOptionalBaseSpeedEscortTests.Snapshot(content, 17, false, 0))
             .WithCraft("SHIP", craft => craft with { Logistics = craft.Logistics! with { Speed = 500 } })

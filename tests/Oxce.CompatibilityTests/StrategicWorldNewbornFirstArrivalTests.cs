@@ -11,17 +11,15 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldNewbornFirstArrivalTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void PointBirthsAdvanceOneAirborneWaypointOnTheirFirstTick(bool cache, bool separate)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PointBirthsAdvanceOneAirborneWaypointOnTheirFirstTick(bool separate)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
         var transition = Assert.Single(TestFixtures.Rows(oracle.RootElement, "transitionRows"), row =>
             row[0].GetInt32() == 0 && row[1].GetInt32() == 0 && row[2].GetInt32() == 0 && row[3].GetInt32() == 0);
         TestFixtures.LoadVerifiedManifest("strategic-wave-chain");
-        var content = Content(cache, separate);
+        var content = Content(separate);
         for (ulong seed = 1; seed <= 16; seed++)
         {
             var initial = Snapshot(content, seed);
@@ -61,12 +59,10 @@ public sealed class StrategicWorldNewbornFirstArrivalTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CloseBirthsStillReserveIdsAndActivityBeforeMutation(bool cache)
+    [Fact]
+    public void CloseBirthsStillReserveIdsAndActivityBeforeMutation()
     {
-        var content = Content(cache, false);
+        var content = Content(false);
         var initial = Snapshot(content, 17).WithNextId("STR_UFO_UNIQUE", int.MaxValue - 2);
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "UFO unique IDs are exhausted or collide with a saved UFO.");
@@ -76,12 +72,10 @@ public sealed class StrategicWorldNewbornFirstArrivalTests
             "UFO alien activity exceeds the supported range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void AirborneBirthsSelectLandForTheirLaterGroundWaypoint(bool cache)
+    [Fact]
+    public void AirborneBirthsSelectLandForTheirLaterGroundWaypoint()
     {
-        var content = Content(cache, false, nextAltitude: 0, groundTimer: 2);
+        var content = Content(false, nextAltitude: 0, groundTimer: 2);
         var campaign = CampaignState.Restore(Snapshot(content, 17), content, new SplitMix64RandomSource(17));
         AdvanceUnblocked(campaign, 1);
         Assert.All(campaign.Capture().World.Ufos, ufo => Assert.Equal(1, ufo.TrajectoryPoint));
@@ -95,14 +89,14 @@ public sealed class StrategicWorldNewbornFirstArrivalTests
         });
     }
 
-    internal static RuntimeContent Content(bool cache, bool separate, string interrupt = "", int nextAltitude = 3,
+    internal static RuntimeContent Content(bool separate, string interrupt = "", int nextAltitude = 3,
         string extraRules = "", string generationRegion = "", int firstAltitude = 3, int groundTimer = 0,
         int points = 0, bool alerts = false, int nextSpeedPercentage = 80,
         int hunterPercentage = 0, bool escort = false, int radarRange = 0, int huntSpeed = 0,
         int firstSpeedPercentage = 100, int arrivalAltitude = 2, int fakeWaterLandingChance = 0,
         bool extraRulesAfterOverlays = false, int objective = 0, bool waveObjective = false,
         bool objectiveOnLandingSite = false, int spawnZone = -1, string? finalRules = null) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+        StrategicReadinessTestContent.Load(["strategic-world.rul"], $$$"""
             {{{extraRules}}}
             ufos:
               - {type: FIRST_ARRIVAL_UFO, speedMax: 2200, damageMax: 50, missionScore: 3, noAlert: {{{(alerts ? "false" : "true")}}}, shieldCapacity: 10, shieldRechargeInGeoscape: 100, hunterKillerPercentage: {{{hunterPercentage}}}, huntMode: 2, huntBehavior: 2, radarRange: {{{radarRange}}}, huntSpeed: {{{huntSpeed}}}, fakeWaterLandingChance: {{{fakeWaterLandingChance}}}}
@@ -132,22 +126,18 @@ public sealed class StrategicWorldNewbornFirstArrivalTests
         };
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void NewbornReplacementSpeedOverflowRefusesTheTickAtomically(bool cache)
+    [Fact]
+    public void NewbornReplacementSpeedOverflowRefusesTheTickAtomically()
     {
-        var content = Content(cache, false, nextSpeedPercentage: 100_000_000);
+        var content = Content(false, nextSpeedPercentage: 100_000_000);
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, 17), content, new SplitMix64RandomSource(17)),
             "Alien mission wave spawning requires world simulation.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void MaximumSafeNewbornReplacementSpeedStillExecutes(bool cache)
+    [Fact]
+    public void MaximumSafeNewbornReplacementSpeedStillExecutes()
     {
-        var content = Content(cache, false, nextSpeedPercentage: 97_612_893);
+        var content = Content(false, nextSpeedPercentage: 97_612_893);
         var campaign = CampaignState.Restore(Snapshot(content, 17), content, new SplitMix64RandomSource(17));
         AdvanceUnblocked(campaign, 1);
         Assert.All(campaign.Capture().World.Ufos, ufo => Assert.Equal(2_147_483_646, ufo.Speed));
@@ -157,25 +147,21 @@ public sealed class StrategicWorldNewbornFirstArrivalTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void NewbornInitialSpeedOverflowRefusesBeforeConstruction(bool cache, bool hunter)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NewbornInitialSpeedOverflowRefusesBeforeConstruction(bool hunter)
     {
-        var content = Content(cache, false, hunterPercentage: hunter ? 100 : 0, firstSpeedPercentage: 100_000_000);
+        var content = Content(false, hunterPercentage: hunter ? 100 : 0, firstSpeedPercentage: 100_000_000);
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, 17), content, new SplitMix64RandomSource(17)),
             hunter ? "UFO initial trajectory speed exceeds the supported range." : "Alien mission wave spawning requires world simulation.");
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void MaximumSafeNewbornInitialSpeedStillExecutes(bool cache, bool hunter)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void MaximumSafeNewbornInitialSpeedStillExecutes(bool hunter)
     {
-        var content = Content(cache, false, hunterPercentage: hunter ? 100 : 0, firstSpeedPercentage: 97_612_893);
+        var content = Content(false, hunterPercentage: hunter ? 100 : 0, firstSpeedPercentage: 97_612_893);
         var campaign = CampaignState.Restore(Snapshot(content, 17), content, new SplitMix64RandomSource(17));
         AdvanceUnblocked(campaign, 1);
         Assert.All(campaign.Capture().World.Ufos, ufo =>

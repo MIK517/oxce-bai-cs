@@ -10,20 +10,15 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldConditionalLeaderFollowerTests
 {
     [Theory]
-    [InlineData(false, false, false)]
-    [InlineData(true, false, false)]
-    [InlineData(false, true, false)]
-    [InlineData(true, true, false)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, true)]
-    [InlineData(false, true, true)]
-    [InlineData(true, true, true)]
-    public void ConditionalAirArrivalPreservesOrderedFollowerChains(bool cache, bool reverse, bool pursuit)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ConditionalAirArrivalPreservesOrderedFollowerChains(bool reverse, bool pursuit)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world");
         Assert.Equal(6, TestFixtures.Rows(oracle.RootElement, "idleEscortFollowerMovement").Length);
-        var content = StrategicWorldConditionalLeaderArrivalTests.Content(cache,
-            "crafts: [{type: SHIP, radarRange: 20000, radarChance: 100}]\n");
+        var content = StrategicWorldConditionalLeaderArrivalTests.Content("crafts: [{type: SHIP, radarRange: 20000, radarChance: 100}]\n");
         var region = content.RuntimeRules.Regions[content.RuntimeRules.Regions.GetRequired("REGION")].Value;
         for (ulong seed = 1; seed <= 64; seed++)
         {

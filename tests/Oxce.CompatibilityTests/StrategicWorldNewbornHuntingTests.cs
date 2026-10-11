@@ -12,13 +12,11 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldNewbornHuntingTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SiteResearchPreservesEveryProbabilisticImmediateEscortOutcome(bool cache)
+    [Fact]
+    public void SiteResearchPreservesEveryProbabilisticImmediateEscortOutcome()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = RetargetContent(cache, 2, escort: true, huntSpeed: 0, slowStart: true,
+        var content = RetargetContent(2, escort: true, huntSpeed: 0, slowStart: true,
             count: 2, immediate: true, hunterPercentage: 50, noAlert: true, siteResearch: true);
         var initial = RetargetSnapshot(content);
         initial = initial with
@@ -46,12 +44,10 @@ public sealed class StrategicWorldNewbornHuntingTests
         Assert.Equal(4, outcomes.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SiteResearchCannotHideEscortLeaderCombatOrMarkerExhaustion(bool cache)
+    [Fact]
+    public void SiteResearchCannotHideEscortLeaderCombatOrMarkerExhaustion()
     {
-        var content = RetargetContent(cache, 0, escort: true, noAlert: true, siteResearch: true);
+        var content = RetargetContent(0, escort: true, noAlert: true, siteResearch: true);
         var initial = RetargetSnapshot(content, escort: true);
         initial = initial with
         {
@@ -78,23 +74,17 @@ public sealed class StrategicWorldNewbornHuntingTests
     }
 
     [Theory]
-    [InlineData(false, 0, false)]
-    [InlineData(true, 0, false)]
-    [InlineData(false, 1, false)]
-    [InlineData(true, 1, false)]
-    [InlineData(false, 2, false)]
-    [InlineData(true, 2, false)]
-    [InlineData(false, 0, true)]
-    [InlineData(true, 0, true)]
-    [InlineData(false, 1, true)]
-    [InlineData(true, 1, true)]
-    [InlineData(false, 2, true)]
-    [InlineData(true, 2, true)]
-    public void NewbornEscortsUseOwnedLeaderOriginsAcrossSiteResearch(bool cache, int mode, bool leader)
+    [InlineData(0, false)]
+    [InlineData(1, false)]
+    [InlineData(2, false)]
+    [InlineData(0, true)]
+    [InlineData(1, true)]
+    [InlineData(2, true)]
+    public void NewbornEscortsUseOwnedLeaderOriginsAcrossSiteResearch(int mode, bool leader)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = RetargetContent(cache, mode, escort: true, siteResearch: true);
+        var content = RetargetContent(mode, escort: true, siteResearch: true);
         var initial = RetargetSnapshot(content, escort: leader);
         initial = initial with
         {
@@ -136,16 +126,13 @@ public sealed class StrategicWorldNewbornHuntingTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    public void OrdinaryNewbornHuntersSelectCraftAndPersistPursuit(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void OrdinaryNewbornHuntersSelectCraftAndPersistPursuit(int mode)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = RetargetContent(cache, mode);
+        var content = RetargetContent(mode);
         var initial = RetargetSnapshot(content);
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
             81, "target-birth-before.sav");
@@ -175,12 +162,10 @@ public sealed class StrategicWorldNewbornHuntingTests
         Reload(content, campaign, 81, "target-birth-following.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OrdinaryNewbornHuntingReservesNoAlertMarkersAndStopsBeforeCombat(bool cache)
+    [Fact]
+    public void OrdinaryNewbornHuntingReservesNoAlertMarkersAndStopsBeforeCombat()
     {
-        var content = RetargetContent(cache, 0, noAlert: true);
+        var content = RetargetContent(0, noAlert: true);
         var initial = RetargetSnapshot(content);
         AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("STR_UFO", int.MaxValue), content, new SplitMix64RandomSource(81)),
             "UFO contact marker IDs are exhausted or collide with a saved UFO.");
@@ -195,16 +180,13 @@ public sealed class StrategicWorldNewbornHuntingTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    public void NewbornEscortsHuntFromTheirLeaderOriginAndKeepTheBackup(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void NewbornEscortsHuntFromTheirLeaderOriginAndKeepTheBackup(int mode)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = RetargetContent(cache, mode, escort: true);
+        var content = RetargetContent(mode, escort: true);
         var initial = RetargetSnapshot(content, escort: true);
         var origin = new WorldPosition(0.7, 0.3);
         initial = initial with
@@ -235,15 +217,13 @@ public sealed class StrategicWorldNewbornHuntingTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, -1)]
-    [InlineData(true, -1)]
-    public void NewbornEscortCombatReachUsesInitializedSpeedWhenHuntSpeedDoesNotOverride(bool cache, int huntSpeed)
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void NewbornEscortCombatReachUsesInitializedSpeedWhenHuntSpeedDoesNotOverride(int huntSpeed)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "retargetRows"), row => row[0].GetInt32() == huntSpeed && row[1].GetInt32() == 900);
-        var content = RetargetContent(cache, 0, escort: true, huntSpeed: huntSpeed, slowStart: true);
+        var content = RetargetContent(0, escort: true, huntSpeed: huntSpeed, slowStart: true);
         var initial = RetargetSnapshot(content, escort: true);
         var leader = initial.World.Ufos[0];
         var owner = initial.Bases[0];
@@ -270,15 +250,13 @@ public sealed class StrategicWorldNewbornHuntingTests
         Reload(content, campaign, 81, "escort-initialized-speed.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ImmediateSameWaveEscortsCannotReuseAPreLeaderSpeedProof(bool cache)
+    [Fact]
+    public void ImmediateSameWaveEscortsCannotReuseAPreLeaderSpeedProof()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "spawnEscortSequenceRows"), row =>
             row[0].GetBoolean() && row[1].GetBoolean() && row[2].GetBoolean());
-        var content = RetargetContent(cache, 0, escort: true, huntSpeed: 0, slowStart: true,
+        var content = RetargetContent(0, escort: true, huntSpeed: 0, slowStart: true,
             count: 2, immediate: true, hunterPercentage: 50);
         var initial = RetargetSnapshot(content);
         var owner = initial.Bases[0];
@@ -297,20 +275,16 @@ public sealed class StrategicWorldNewbornHuntingTests
     }
 
     [Theory]
-    [InlineData(false, 0, false)]
-    [InlineData(true, 0, false)]
-    [InlineData(false, 1, false)]
-    [InlineData(true, 1, false)]
-    [InlineData(false, 0, true)]
-    [InlineData(true, 0, true)]
-    [InlineData(false, 1, true)]
-    [InlineData(true, 1, true)]
-    public void PriorOrdinaryBirthOriginsControlImmediateEscortHunting(bool cache, int mode, bool regional)
+    [InlineData(0, false)]
+    [InlineData(1, false)]
+    [InlineData(0, true)]
+    [InlineData(1, true)]
+    public void PriorOrdinaryBirthOriginsControlImmediateEscortHunting(int mode, bool regional)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "spawnEscortSequenceRows"), row =>
             row[0].GetBoolean() && row[1].GetBoolean() && row[2].GetBoolean());
-        var content = RetargetContent(cache, mode, escort: true, priorLeader: true, regional: regional);
+        var content = RetargetContent(mode, escort: true, priorLeader: true, regional: regional);
         var initial = RetargetSnapshot(content);
         initial = initial with
         {
@@ -337,12 +311,10 @@ public sealed class StrategicWorldNewbornHuntingTests
         Reload(content, campaign, 81, "prior-origin-following.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ProbabilisticSameWaveLeadersAllowOnlySafeHuntingOutcomes(bool cache)
+    [Fact]
+    public void ProbabilisticSameWaveLeadersAllowOnlySafeHuntingOutcomes()
     {
-        var content = RetargetContent(cache, 2, escort: true, huntSpeed: 0, slowStart: true,
+        var content = RetargetContent(2, escort: true, huntSpeed: 0, slowStart: true,
             count: 2, immediate: true, hunterPercentage: 50, noAlert: true);
         var initial = RetargetSnapshot(content);
         AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("STR_UFO", int.MaxValue - 1), content, new SplitMix64RandomSource(81)),
@@ -369,14 +341,14 @@ public sealed class StrategicWorldNewbornHuntingTests
         Assert.Equal(4, outcomes.Count);
     }
 
-    private static RuntimeContent RetargetContent(bool cache, int mode, bool escort = false, bool noAlert = false,
+    private static RuntimeContent RetargetContent(int mode, bool escort = false, bool noAlert = false,
         int huntSpeed = 150, bool slowStart = false, int count = 1, bool immediate = false, int hunterPercentage = 100,
         bool priorLeader = false, bool regional = false, bool siteResearch = false)
     {
         var waves = (priorLeader ? "- {ufo: UFO_SCOUT, count: 1, trajectory: BIRTH_PRIOR_PATH, timer: 9000}\n      " : "") +
             $"- {{ufo: BIRTH_RETARGET, count: {count}, trajectory: BIRTH_RETARGET_PATH, timer: {(immediate || priorLeader ? 0 : 9000)}, escort: {escort.ToString().ToLowerInvariant()}}}";
         var region = regional ? "regions: [{type: BIRTH_REGION, areas: [[0, 90, -30, 50]], missionZones: [[[2, 28, -18, 18, 10]], [[8, 8, 2, 2, 10]], [[22, 28, -8, 8, 11]], [[362, 362, 2, 2, 10]], [[10, 10, 8, 8, 10]], [[7.9, 8.1, 1.9, 2.1, 10]]]}]" : "";
-        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, $$"""
+        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], $$"""
             {{region}}
             crafts:
               - {type: BIRTH_SLOW, speedMax: 2000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
@@ -417,20 +389,16 @@ public sealed class StrategicWorldNewbornHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false, 0)]
-    [InlineData(true, false, 0)]
-    [InlineData(false, true, 0)]
-    [InlineData(true, true, 0)]
-    [InlineData(false, false, 1)]
-    [InlineData(true, false, 1)]
-    [InlineData(false, true, 1)]
-    [InlineData(true, true, 1)]
-    public void ZeroRadarHuntersAndEscortsSpawnAlongsideActiveCraft(bool cache, bool escort, int mode)
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    public void ZeroRadarHuntersAndEscortsSpawnAlongsideActiveCraft(bool escort, int mode)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "selectionRows"), row =>
             row[0].GetInt32() == mode && row[1].GetInt32() == 5 && row[2].GetInt32() == 0);
-        var content = Load(cache, escort, mode);
+        var content = Load(escort, mode);
         var initial = Snapshot(content, escort);
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "zero-radar-before.sav");
         AdvanceUnblocked(campaign, 1);
@@ -456,31 +424,26 @@ public sealed class StrategicWorldNewbornHuntingTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    public void ZeroRadarNewbornsRejectMalformedAttractionBeforeBirth(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(1)]
+    public void ZeroRadarNewbornsRejectMalformedAttractionBeforeBirth(int mode)
     {
-        var content = Load(cache, false, mode, "crafts: [{type: SHIP, soldiers: 2147483647}]\n");
+        var content = Load(false, mode, "crafts: [{type: SHIP, soldiers: 2147483647}]\n");
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, false), content, new SplitMix64RandomSource(81)),
             "Craft hunter attraction exceeds the supported range.");
     }
 
     [Theory]
-    [InlineData(false, false, 1)]
-    [InlineData(true, false, 1)]
-    [InlineData(false, true, 2)]
-    [InlineData(true, true, 2)]
-    [InlineData(false, true, 1)]
-    [InlineData(true, true, 1)]
-    public void PendingCraftJoinsNewbornCandidatesOnlyAtItsHourlyArrival(bool cache, bool hourly, int hours)
+    [InlineData(false, 1)]
+    [InlineData(true, 2)]
+    [InlineData(true, 1)]
+    public void PendingCraftJoinsNewbornCandidatesOnlyAtItsHourlyArrival(bool hourly, int hours)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "incomingCraftRows"), row => row[0].GetInt32() == hours);
         foreach (var escort in new[] { false, true })
         {
-            var content = Load(cache, escort, 0,
+            var content = Load(escort, 0,
                 "crafts: [{type: TIMED_INCOMING, speedMax: 6000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n", radar: 300);
             var initial = Snapshot(content, escort);
             var owner = initial.Bases[0];
@@ -526,11 +489,9 @@ public sealed class StrategicWorldNewbornHuntingTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    public void PositiveRadarNewbornsUseAllPossibleSpawnOrigins(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(1)]
+    public void PositiveRadarNewbornsUseAllPossibleSpawnOrigins(int mode)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "selectionRows"), row => row[0].GetInt32() == mode && row[1].GetInt32() == 7 && row[2].GetInt32() == 0);
@@ -540,7 +501,7 @@ public sealed class StrategicWorldNewbornHuntingTests
                 var extra = "regions: [{type: SPATIAL_REGION, areas: [[0, 90, -30, 50]], missionZones: [[[2, 28, -18, 18, 10]], [[8, 8, 2, 2, 10]], [[362, 362, 2, 2, 10]], [[20, 20, 8, 8, 10]], " +
                     (regional ? "[[7, 9, 1, 3, 10]]" : "[[10, 10, 8, 8, 10]]") + "]}]\n";
                 extra += "crafts: [{type: SPATIAL_CRAFT, speedMax: 6000, damageMax: 100, fuelMax: 1000, patrolWithoutFuel: true}]\n";
-                var content = Load(cache, false, mode, extra, radar: 300);
+                var content = Load(false, mode, extra, radar: 300);
                 var spawnAreas = WorldGeometry.MissionAreas(content.RuntimeRules.Regions[content.RuntimeRules.Regions.GetRequired("SPATIAL_REGION")].Value, 4);
                 Assert.Equal(!regional, spawnAreas[0].IsPoint);
                 var initial = Snapshot(content, false).WithCraft("SHIP", craft => craft with
@@ -580,17 +541,15 @@ public sealed class StrategicWorldNewbornHuntingTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    public void PositiveRadarEscortProofUsesTheLeaderOrigin(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(1)]
+    public void PositiveRadarEscortProofUsesTheLeaderOrigin(int mode)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "selectionRows"), row => row[1].GetInt32() == 7 && row[2].GetInt32() == 0);
         foreach (var nearLeader in new[] { false, true })
         {
-            var content = Load(cache, true, mode,
+            var content = Load(true, mode,
                 "crafts: [{type: ESCORT_SPATIAL, speedMax: 6000, damageMax: 100, fuelMax: 1000, patrolWithoutFuel: true}]\n", radar: 300);
             var initial = Snapshot(content, true).WithCraft("SHIP", craft => craft with
             {
@@ -633,18 +592,16 @@ public sealed class StrategicWorldNewbornHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void NegativeRadarNewbornsValidateAttractionAndPersistWithoutTargets(bool cache, bool escort)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NegativeRadarNewbornsValidateAttractionAndPersistWithoutTargets(bool escort)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "selectionRows"), row => row[1].GetInt32() == 8 && row[2].GetInt32() == 0);
         foreach (var radar in new[] { -1, int.MinValue })
             foreach (var mode in new[] { 0, 1 })
             {
-                var content = Load(cache, escort, mode, radar: radar);
+                var content = Load(escort, mode, radar: radar);
                 var campaign = Reload(content, CampaignState.Restore(Snapshot(content, escort), content,
                     new SplitMix64RandomSource(81)), 81, "negative-radar-before.sav");
                 AdvanceUnblocked(campaign, 1);
@@ -655,14 +612,14 @@ public sealed class StrategicWorldNewbornHuntingTests
                 campaign = Reload(content, campaign, 81, "negative-radar-after.sav");
                 AdvanceOne(campaign);
                 Reload(content, campaign, 81, "negative-radar-following.sav");
-                content = Load(cache, escort, mode, "crafts: [{type: SHIP, soldiers: 2147483647}]\n", radar);
+                content = Load(escort, mode, "crafts: [{type: SHIP, soldiers: 2147483647}]\n", radar);
                 AssertTimeBlocked(CampaignState.Restore(Snapshot(content, escort), content, new SplitMix64RandomSource(81)),
                     "Craft hunter attraction exceeds the supported range.");
             }
     }
 
-    private static RuntimeContent Load(bool cache, bool escort, int mode, string extra = "", int radar = 0) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, $$"""
+    private static RuntimeContent Load(bool escort, int mode, string extra = "", int radar = 0) =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], $$"""
             ufos:
               - type: ZERO_RADAR_HUNTER
                 speedMax: 2200
@@ -679,14 +636,12 @@ public sealed class StrategicWorldNewbornHuntingTests
             """);
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void GroundedAutoPatrolCraftBlocksNewbornHuntersOnlyWhenRefuellingLaunchesIt(bool cache, bool escort)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GroundedAutoPatrolCraftBlocksNewbornHuntersOnlyWhenRefuellingLaunchesIt(bool escort)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Load(cache, escort, 0,
+        var content = Load(escort, 0,
             "crafts: [{type: BIRTH_REFUEL, speedMax: 6000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n", radar: 300);
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "maintenanceRows").Where(row => !row[0].GetBoolean() && !row[3].GetBoolean() && !row[4].GetBoolean()))
         {
@@ -724,22 +679,18 @@ public sealed class StrategicWorldNewbornHuntingTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    [InlineData(false, -2)]
-    [InlineData(true, -2)]
-    public void ZeroRadarProofValidatesEveryPossibleConstructorMode(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(-2)]
+    public void ZeroRadarProofValidatesEveryPossibleConstructorMode(int mode)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         var nativeMode = mode < 0 ? -1 : mode;
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "constructorRows"), row =>
             row[0].GetInt32() == 100 && row[1].GetInt32() == nativeMode && row[2].GetInt32() == 0 &&
             row[3].GetInt32() == 0 && row[4].GetBoolean() && row[5].GetInt32() == (nativeMode > 1 ? 1 : nativeMode));
-        var content = Load(cache, false, mode,
+        var content = Load(false, mode,
             "crafts: [{type: MODE_LIMIT_CRAFT, soldiers: 0, speedMax: 2147483647, damageMax: 100, fuelMax: 2147483647}]\n");
         var initial = Snapshot(content, false).WithCraft("SHIP", craft => craft with
         {
@@ -757,12 +708,10 @@ public sealed class StrategicWorldNewbornHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ZeroRadarProofDoesNotReuseAValidModeForALaterImmediateWave(bool cache)
+    [Fact]
+    public void ZeroRadarProofDoesNotReuseAValidModeForALaterImmediateWave()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], """
             ufos: [{type: ZERO_RADAR_HUNTER, speedMax: 2200, damageMax: 50, radarRange: 0, hunterKillerPercentage: 100}]
             crafts: [{type: MODE_LIMIT_CRAFT, soldiers: 0, speedMax: 2147483647, damageMax: 100, fuelMax: 2147483647}]
             alienMissions:
@@ -807,14 +756,12 @@ public sealed class StrategicWorldNewbornHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void SharedFuelStockForecastControlsNewbornCandidateEligibility(bool cache, bool escort)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SharedFuelStockForecastControlsNewbornCandidateEligibility(bool escort)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Load(cache, escort, 0,
+        var content = Load(escort, 0,
             "crafts: [{type: SHARED_BIRTH, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\n", radar: 300);
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "sharedFuelRows"))
         {
