@@ -214,18 +214,25 @@ Tests: `StrategicWorldGeoscapeScreensTests`, `GeoscapeScreensTests`, `GeoscapeNo
   hyper-wave decoding its craft type, race, mission and zone (the world query now carries these as
   `CampaignWorldUfoDetails`). Intercept and Centre reset the speed and centre on it. The
   reference's Ctrl+Cancel "Ignore" is a separate Ignore button running `IgnoreUfoContact`; it is
-  not offered once the contact is ignored.
-- A craft whose pursued UFO left radar opens `GeoscapeCraftState` with the UFO's last position:
-  the status reads `STR_INTERCEPTING_UFO` and Cancel becomes "Go to last known UFO position"
-  (Esc), which sends the craft to a new waypoint there. Other lost targets (destroyed or ignored
-  UFOs, removed sites and bases) show nothing, as in the reference: the craft returns or patrols.
+  not offered once the contact is ignored, nor for crash sites (the command takes flying and landed
+  contacts).
+- A craft whose pursued UFO left radar opens `GeoscapeCraftState` with the UFO's last position
+  (`CraftTargetLost.OffersLastPosition`): the status reads `STR_INTERCEPTING_UFO` and Cancel becomes
+  "Go to last known UFO position" (Esc), which sends the craft to a new waypoint there. As in
+  `GeoscapeState::time5Seconds` this includes UFOs hidden as they were destroyed (trajectory end of
+  an interrupted mission, expired crash sites), while the craft heads home; a retaliation assault
+  run that landed or was destroyed, a visible destroyed or ignored UFO, and removed sites or bases
+  show nothing: the craft returns or patrols.
 - `AlienBaseState`: the title names "country, region", the region alone, or unknown, from the
   first country and region containing the base in saved order, using the deployment's
   `alienBaseDiscoveredMessage` (with the marker name) when it has one.
 The other alerts (UFO lost, site detected and lost, low fuel, craft ready and service shortages,
 waypoint reached, landing and hunting alerts, items arriving, construction, production, research,
 training, time refusals) keep their S5/S6 texts and buttons.
-Known differences: research completion has no "View reports" button (no Ufopaedia yet), training
+Known differences: "Go to last known UFO position" runs `DispatchCraftToWaypoint`, so it applies
+that command's armour, cargo and pilot checks and cancels auto-patrol, where the reference simply
+sets the destination; the large "Redirect craft" caption of that screen is not shown. Research
+completion has no "View reports" button (no Ufopaedia yet), training
 completion names soldiers by id, `STR_AIRBORNE` for underwater UFOs over water is not applied, and
 UFO alert sounds are not played.
 Tests: `GeoscapeNotificationsTests`, `StrategicWorldGlobeQueryTests`.

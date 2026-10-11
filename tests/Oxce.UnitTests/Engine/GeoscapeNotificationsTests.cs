@@ -13,6 +13,8 @@ public sealed class GeoscapeNotificationsTests
         ["STR_NOT_ENOUGH_MONEY_TO_PRODUCE_ITEM_AT_BASE"] = "No money for {0} at {1}",
         ["STR_NOT_ENOUGH_ITEM_TO_REFUEL_CRAFT_AT_BASE"] = "Not enough {0} to refuel {1} at {2}",
         ["STR_CRAFT_IS_READY"] = "{0} at {1} is ready",
+        ["STR_STATUS_"] = "Status: {0}",
+        ["STR_INTERCEPTING_UFO"] = "Intercepting UFO-{0}",
         ["STR_NOT_ENOUGH_ITEM_TO_REARM_FACILITY_AT_BASE"] = "Not enough {0} to rearm {1} at {2}",
         ["STR_FUEL_ITEM"] = "Elerium",
         ["STR_LASER_DEFENSE"] = "Laser Defense",
@@ -143,9 +145,13 @@ public sealed class GeoscapeNotificationsTests
         Assert.Null(Describe(new CraftTargetLost(1, "STR_INTERCEPTOR", 2,
             new WorldTargetReference(WorldTargetKind.MissionSite, "STR_TERROR_SITE", 3, 0.7, 0.3), ReturningToBase: false)));
 
-        var screen = Describe(new CraftTargetLost(1, "STR_INTERCEPTOR", 2, lostUfo, ReturningToBase: false))!;
+        // A UFO that left radar offers its last position even when the craft is returning (it was destroyed).
+        var screen = Describe(new CraftTargetLost(1, "STR_INTERCEPTOR", 2, lostUfo, ReturningToBase: true)
+        {
+            OffersLastPosition = true,
+        })!;
         Assert.Equal("INTERCEPTOR-2", screen.Title);
-        Assert.StartsWith("STR_STATUS_", screen.Lines[0], StringComparison.Ordinal);
+        Assert.Equal("Status: Intercepting UFO-9", screen.Lines[0]);
         var goTo = screen.Actions[^1];
         Assert.Equal("STR_GO_TO_LAST_KNOWN_UFO_POSITION", goTo.Label);
         Assert.True(goTo.CancelKey);

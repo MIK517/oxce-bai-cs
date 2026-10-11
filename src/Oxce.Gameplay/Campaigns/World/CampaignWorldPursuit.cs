@@ -312,8 +312,13 @@ internal sealed partial class CampaignWorld
             !exists && target.Kind != WorldTargetKind.Waypoint;
         CraftLogistics.TryEffectiveSpeedMaximum(campaign.Content.RuntimeRules.Crafts[craft.Rule].Value,
             state.Weapons, campaign.Content.RuntimeRules, out var maximum);
+        var offersLastPosition = ufo is { Detected: false } && !(ufo.TrajectoryId == RuntimeUfoTrajectoryRule.RetaliationAssaultRun &&
+            ufo.Status is UfoStatus.Landed or UfoStatus.Destroyed);
         effects.Notify(new CraftTargetLost(owner.Id, campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule),
-            craft.Id, exists ? target with { Longitude = targetPosition.Longitude, Latitude = targetPosition.Latitude } : target, returnHome));
+            craft.Id, exists ? target with { Longitude = targetPosition.Longitude, Latitude = targetPosition.Latitude } : target, returnHome)
+        {
+            OffersLastPosition = offersLastPosition,
+        });
         if (returnHome) return SetDestination(state, maximum, BaseReference(owner));
         return state with
         {
