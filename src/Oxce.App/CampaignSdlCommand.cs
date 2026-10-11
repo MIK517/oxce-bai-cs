@@ -51,6 +51,8 @@ internal static class CampaignSdlCommand
         Console.WriteLine("Tab detail, R radar, ./, select target, Enter target info, B bases, I intercept, F5/F9 save/load, Esc quit.");
         Console.WriteLine("Popups: Enter/Esc or 1-9 pick a button; Shift+click (or Shift+digit) adds craft to a wing;");
         Console.WriteLine("choosing a destination: left click a target or empty globe for a waypoint, Esc cancels.");
+        Console.WriteLine("Bases: a new game starts by clicking the starting base's site; N (or N in the base screens) builds");
+        Console.WriteLine("a new base: click a site, confirm the cost, type a name and press Enter.");
         Console.WriteLine("Bases: I stores; B/S/T buy/sell/transfer; arrows and +/- quantities; Enter then Y confirm; Esc back.");
         var host = new SdlIndexedWindowHost(client, new SdlWindowOptions("OXCE .NET geoscape")
         {

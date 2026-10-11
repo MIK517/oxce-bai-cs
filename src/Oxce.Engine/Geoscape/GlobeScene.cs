@@ -9,6 +9,12 @@ public readonly record struct GlobeMarker(double Longitude, double Latitude, int
 /// <summary>A radar circle: centre, range in radians, segment count and the drawn-segment stride.</summary>
 public readonly record struct GlobeCircle(double Longitude, double Latitude, double Range, int Segments, int Stride = 1);
 
+/// <summary>
+/// BuildNewBaseState's radar preview (Globe::setNewBaseHover): every facility radar range around the
+/// pointer and, with globeAllRadarsOnBaseBuild, around each placed base instead of its own radar.
+/// </summary>
+public sealed record GlobeBaseHover(double Longitude, double Latitude, bool AllRadarsOnBases = true);
+
 /// <summary>A great-circle flight path from a mover to its destination.</summary>
 public readonly record struct GlobePath(double FromLongitude, double FromLatitude, double ToLongitude, double ToLatitude);
 
@@ -62,7 +68,7 @@ public sealed class GlobeScene
     public static GlobeScene FromMarkers(IEnumerable<GlobeMarker> markers) => FromParts(markers);
 
     public static GlobeScene Build(CampaignWorldOverview world, RuntimeRuleCatalog rules,
-        Func<string, string>? localize = null)
+        Func<string, string>? localize = null, GlobeBaseHover? hover = null)
     {
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(rules);
@@ -89,9 +95,17 @@ public sealed class GlobeScene
         GlobeCircle[] Radars()
         {
             var circles = new List<GlobeCircle>();
+            // Every facility type's radar range (the zero ranges draw nothing visible; duplicates overdraw).
+            var hoverRanges = hover is null ? [] : rules.Facilities.Rules.Select(entry => entry.Value.RadarRange)
+                .Where(range => range > 0).Distinct().Select(Nautical).ToArray();
+            if (hover is not null)
+                foreach (var range in hoverRanges) circles.Add(new(hover.Longitude, hover.Latitude, range, 48));
             foreach (var owner in world.Bases)
             {
-                if ((owner.Longitude != 0.0 || owner.Latitude != 0.0) && owner.RadarRange > 0)
+                var placed = owner.Longitude != 0.0 || owner.Latitude != 0.0;
+                if (placed && hover is { AllRadarsOnBases: true })
+                    foreach (var range in hoverRanges) circles.Add(new(owner.Longitude, owner.Latitude, range, 48));
+                else if (placed && owner.RadarRange > 0)
                     circles.Add(new(owner.Longitude, owner.Latitude, Nautical(owner.RadarRange), 48));
                 foreach (var craft in world.Crafts)
                     if (craft.BaseId == owner.Id && craft.Status == "STR_OUT" && craft.RadarRange > 0)

@@ -28,7 +28,9 @@ The minimal presentation deferred by the campaign foundation also lands here.
 snapshots: clicking the globe places the starting base, Space advances one minute,
 and unchanged host ticks do not revise the frame. `Oxce.App --campaign-sdl` composes it
 with real runtime-linked installation content and optionally writes a compatible save
-on exit. No SDL or persistence type enters `Oxce.Gameplay`.
+on exit. No SDL or persistence type enters `Oxce.Gameplay`. (Phase 6 branch 4d retired
+`CampaignOverviewClient`: the geoscape client places bases on the globe and runs time; see
+`strategic-world-ui-status.md`.)
 
 ## Evidence
 

@@ -236,3 +236,23 @@ completion has no "View reports" button (no Ufopaedia yet), training
 completion names soldiers by id, `STR_AIRBORNE` for underwater UFOs over water is not applied, and
 UFO alert sounds are not played.
 Tests: `GeoscapeNotificationsTests`, `StrategicWorldGlobeQueryTests`.
+
+## S8 — Base placement on the globe (2026-10-11)
+
+A new game starts in `BuildNewBaseState` for the starting base (no Cancel): time and the base
+screens wait until a land site is clicked and named. Further bases start from N on the geoscape or
+N in the base screens (which close and hand over to the globe), with Esc or the sidebar Cancel to
+stop. While a site is chosen the radar lines are on and the pointer carries the radar preview
+(`Globe::setNewBaseHover`): every facility type's radar range around it and, with
+`globeAllRadarsOnBaseBuild` (default on), around each placed base instead of its own radar.
+A click on water or a forbidden fake-underwater texture shows `STR_XCOM_BASE_CANNOT_BE_BUILT`;
+otherwise the starting base goes to `BaseNameState`, and a new base to `ConfirmNewBaseState`
+(cost and area from the first region containing the site, now carried by `CampaignBaseSite`),
+whose OK refuses with `STR_NOT_ENOUGH_MONEY` when the funds fall short, then `BaseNameState`
+(typed text, Backspace, Enter or Esc to accept a non-empty name), the access lift choice when the
+base type offers several (`PlaceLiftState`), `CreateCampaignBase`, and the new base's screens.
+`CampaignOverviewClient`, the foundation's minimal view, is retired.
+Known differences: the access lift is placed at the grid centre instead of a clicked position,
+`baseNamesFirst/Middle/Last` random default names are not offered, and `customInitialBase` (a
+lift for the starting base) is not supported.
+Tests: `GeoscapeClientTests`, `StrategicWorldBasePlacementTests`.

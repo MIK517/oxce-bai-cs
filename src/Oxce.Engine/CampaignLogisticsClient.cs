@@ -56,12 +56,14 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
     private int _choice;
     private (int BaseId, CampaignResearchProduction State)? _economySnapshot;
     private readonly bool _advanceTime;
+    private readonly Action? _buildNewBase;
 
     public CampaignLogisticsClient(CampaignUiSession session, IndexedSpriteFont? font = null,
         Func<string, string>? localize = null, Action? save = null, Func<CampaignUiSession>? load = null,
-        bool advanceTime = true, int? baseId = null)
+        bool advanceTime = true, int? baseId = null, Action? buildNewBase = null)
     {
         _advanceTime = advanceTime;
+        _buildNewBase = buildNewBase;
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _font = font ?? IndexedInterfaceFont.Create();
         _text = localize ?? (value => value);
@@ -215,6 +217,12 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
                     Feedback(_session.Commands.Execute(new PlaceStartingBase(_baseIndex, "First Base", sites[0].Longitude, sites[0].Latitude)));
                     EnterWorld();
                 }
+            }
+            else if (key == 'n' && _buildNewBase is not null)
+            {
+                // Hosted by the geoscape: the new base's site is chosen on the globe.
+                _buildNewBase();
+                ExitRequested = true;
             }
             else if (key == 'n' && _session.Readiness is { } newBase)
             {

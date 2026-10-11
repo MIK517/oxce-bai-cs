@@ -4,7 +4,11 @@ namespace Oxce.Gameplay.Campaigns;
 
 public sealed record CreateCampaignBase(string Name, double Longitude, double Latitude, string LiftRuleId, int X, int Y) : ICampaignCommand;
 public sealed record CampaignBaseCreated(int BaseId, string Name, long Cost) : ICampaignEvent;
-public sealed record CampaignBaseSite(double Longitude, double Latitude, int Cost, bool FakeUnderwater, string? UnavailableReason);
+public sealed record CampaignBaseSite(double Longitude, double Latitude, int Cost, bool FakeUnderwater, string? UnavailableReason)
+{
+    /// <summary>ConfirmNewBaseState's area: the first region containing the site ("" when none).</summary>
+    public string RegionId { get; init; } = string.Empty;
+}
 
 public sealed partial class CampaignState
 {
@@ -32,9 +36,11 @@ public sealed partial class CampaignState
         lock (_transactionGate)
         {
             var texture = StrategicGeography.TextureAt(_content.RuntimeRules.Campaign.Globe, longitude, latitude);
-            return new(longitude, latitude, startingBase ? 0 : BaseCost(longitude, latitude),
+            var (cost, region) = BaseRegion(longitude, latitude);
+            return new(longitude, latitude, startingBase ? 0 : cost,
                 texture is { } id && _content.RuntimeRules.Campaign.Globe.Textures.GetValueOrDefault(id)?.FakeUnderwater == true,
-                BaseSiteRestriction(longitude, latitude, startingBase));
+                BaseSiteRestriction(longitude, latitude, startingBase))
+            { RegionId = region };
         }
     }
 
@@ -54,14 +60,16 @@ public sealed partial class CampaignState
         return null;
     }
 
-    private int BaseCost(double longitude, double latitude)
+    /// <summary>ConfirmNewBaseState: the cost and name of the first region containing the site.</summary>
+    private (int Cost, string RegionId) BaseRegion(double longitude, double latitude)
     {
         foreach (var region in _regions)
         {
             var rule = _content.RuntimeRules.Regions[region.Rule].Value;
-            if (rule.Areas.Any(a => AreaContains(a, longitude, latitude))) return rule.BaseCost;
+            if (rule.Areas.Any(a => AreaContains(a, longitude, latitude)))
+                return (rule.BaseCost, _content.RuntimeRules.Regions.GetExternalId(region.Rule));
         }
-        return 0;
+        return (0, string.Empty);
     }
 
     private CampaignCommandResult CreateBase(CreateCampaignBase command)
