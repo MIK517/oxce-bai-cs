@@ -27,9 +27,11 @@ public sealed class GlobeTargets
 
     public static GlobeTargets Empty { get; } = new([]);
 
-    public static GlobeTargets Build(CampaignWorldOverview world)
+    /// <param name="localize">Names an unnamed craft as Craft::getName does (type and id); identity when absent.</param>
+    public static GlobeTargets Build(CampaignWorldOverview world, Func<string, string>? localize = null)
     {
         ArgumentNullException.ThrowIfNull(world);
+        localize ??= static text => text;
         var targets = new List<GlobeTarget>();
         foreach (var owner in world.Bases)
         {
@@ -47,7 +49,7 @@ public sealed class GlobeTargets
                 if (craft.Longitude == owner.Longitude && craft.Latitude == owner.Latitude && craft.Destination is null)
                     continue;
                 targets.Add(new GlobeTarget(new WorldTargetReference(WorldTargetKind.Craft, craft.TypeId, craft.Id,
-                    craft.Longitude, craft.Latitude), craft.Name, craft.Longitude, craft.Latitude)
+                    craft.Longitude, craft.Latitude), GeoscapeScreens.CraftName(craft, localize), craft.Longitude, craft.Latitude)
                 {
                     Craft = craft,
                 });

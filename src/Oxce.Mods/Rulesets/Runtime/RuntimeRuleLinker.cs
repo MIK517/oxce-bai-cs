@@ -200,6 +200,7 @@ public static class RuntimeRuleLinker
                 DefaultStats = rule.Value.Stats.Integers,
                 HangarType = rule.Value.Integers["hangarType"],
                 WeaponSlots = rule.Value.Integers["weapons"],
+                WeaponStrings = rule.Value.WeaponStrings,
                 RefuelRate = rule.Value.Integers["refuelRate"],
                 RepairRate = rule.Value.Integers["repairRate"],
                 ShieldCapacity = rule.Value.Stats.Get("shieldCapacity"),

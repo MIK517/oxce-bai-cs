@@ -59,7 +59,7 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
 
     public CampaignLogisticsClient(CampaignUiSession session, IndexedSpriteFont? font = null,
         Func<string, string>? localize = null, Action? save = null, Func<CampaignUiSession>? load = null,
-        bool advanceTime = true)
+        bool advanceTime = true, int? baseId = null)
     {
         _advanceTime = advanceTime;
         _session = session ?? throw new ArgumentNullException(nameof(session));
@@ -79,6 +79,13 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
             colors[48 + shade] = new((byte)(255 * brightness), (byte)(170 * brightness), (byte)(120 * brightness));
         }
         Palette = new(colors);
+        // The geoscape's "Go to base" buttons open the screens on that base.
+        if (baseId is { } id)
+        {
+            var bases = _session.Queries.QueryOverview().Bases;
+            for (var index = 0; index < bases.Count; index++)
+                if (bases[index].Id == id) _baseIndex = index;
+        }
         Redraw();
     }
 

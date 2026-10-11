@@ -205,6 +205,8 @@ public sealed record RuntimeCraftRule(
     /// <summary>Runtime <c>GlobeMarkers</c> frame, or -1 for Craft::getMarker's default.</summary>
     public int Marker { get; init; } = -1;
     public int WeaponSlots { get; init; }
+    /// <summary>RuleCraft::getWeaponSlotString: the craft screen label of each weapon slot ("" hides it).</summary>
+    public IReadOnlyList<string> WeaponStrings { get; init; } = ["STR_WEAPON_ONE", "STR_WEAPON_TWO", "", ""];
     public int RefuelRate { get; init; }
     public int RepairRate { get; init; }
     public int ShieldCapacity { get; init; }

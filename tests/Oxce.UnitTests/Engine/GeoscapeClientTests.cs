@@ -68,8 +68,7 @@ public sealed class GeoscapeClientTests
         Assert.Equal(paused, campaign.QueryOverview().Time);
 
         // ItemsArrivingState binds OK to Esc; Enter belongs to "Go to base".
-        Key(client, 13);
-        Assert.Single(client.Popups);
+        Assert.IsType<BaseIntent>(Assert.Single(popup.Actions, action => action.OkKey).Intent);
         Key(client, 27);
         Assert.Empty(client.Popups);
         Assert.True(client.TimeCanRun);
@@ -136,12 +135,14 @@ public sealed class GeoscapeClientTests
         view.Center(owner.Longitude, owner.Latitude);
         Key(client, '.');
         Assert.Equal(WorldTargetKind.Base, client.Selected!.Kind);
+        // MultipleTargetsState::popupTarget opens a base's InterceptState.
         Key(client, 13);
-        Assert.Equal(owner.Name, Assert.Single(client.Popups).Title);
-        Key(client, 13);
+        Assert.Equal("STR_LAUNCH_INTERCEPTION", Assert.Single(client.Popups).Title);
+        Key(client, 27);
+        Assert.Empty(client.Popups);
         var (x, y) = view.Project(owner.Longitude, owner.Latitude);
         Click(client, x, y, 1);
-        Assert.Equal(owner.Name, Assert.Single(client.Popups).Title);
+        Assert.Equal("STR_LAUNCH_INTERCEPTION", Assert.Single(client.Popups).Title);
     }
 
     [Fact]

@@ -152,6 +152,13 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         };
     });
 
+    private static double BaseRangeOf(RuntimeCraftRule rule, int fuel, int speedMaximum)
+    {
+        if (speedMaximum <= 0) return 0;
+        var consumption = WorldFlight.FuelConsumption(rule.RefuelItem is not null, speedMaximum, speedMaximum, 0);
+        return consumption == 0 ? double.PositiveInfinity : WorldFlight.BaseRange(rule.RefuelItem is not null, speedMaximum, fuel);
+    }
+
     /// <summary>GeoscapeCraftState's fields; absent for a craft whose state was not resolved.</summary>
     private CampaignWorldCraft Details(CampaignWorldCraft summary, CampaignState.BaseState owner, CampaignState.CraftState craft)
     {
@@ -183,6 +190,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
             LowFuel = state.LowFuel,
             MissionComplete = state.MissionComplete,
             CanAutoPatrol = rule.AutoPatrol,
+            BaseRange = BaseRangeOf(rule, state.Fuel, speedMaximum),
         };
     }
 

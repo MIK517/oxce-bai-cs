@@ -68,14 +68,32 @@ public sealed class GeoscapeNotificationsTests
         Assert.Equal([(false, false, true), (true, true, false)],
             fuel.Actions.Select(action => (action.ResetSpeed, action.OkKey, action.CancelKey)));
 
-        // UfoDetectedState binds only Cancel; Centre resets the speed and centres on the UFO.
+        // UfoDetectedState binds only Cancel; Intercept and Centre reset the speed and centre on the UFO.
         var detected = Describe(new UfoContactDetected(70, Hyperwave: true))!;
         Assert.Equal("UFO-7", detected.Title);
         Assert.Contains("STR_HYPER_WAVE_TRANSMISSIONS_ARE_DECODED", detected.Lines);
-        Assert.Equal(new WorldPosition(0.5, 0.2), detected.Actions[0].Center);
-        Assert.True(detected.Actions[0].ResetSpeed);
+        Assert.Equal(["STR_INTERCEPT", "STR_CENTER_ON_UFO_TIME_5_SECONDS", "STR_CANCEL_UC"],
+            detected.Actions.Select(action => action.Label));
+        Assert.All(detected.Actions.Take(2), action =>
+        {
+            Assert.Equal(new WorldPosition(0.5, 0.2), action.Center);
+            Assert.True(action.ResetSpeed);
+        });
+        Assert.Equal(WorldTargetKind.Ufo, Assert.IsType<InterceptIntent>(detected.Actions[0].Intent).Target!.Kind);
         Assert.DoesNotContain(detected.Actions, action => action.OkKey);
-        Assert.True(detected.Actions[1].CancelKey);
+        Assert.True(detected.Actions[2].CancelKey);
+
+        // CraftPatrolState: Esc is OK, Enter redirects the craft without a timer reset.
+        var patrol = Describe(new CraftArrivedAtWaypoint(1, "STR_INTERCEPTOR", 2, 5))!;
+        Assert.Equal([(false, true), (true, false)], patrol.Actions.Select(action => (action.OkKey, action.CancelKey)));
+        Assert.False(patrol.Actions[1].ResetSpeed);
+        Assert.Equal(new CraftKey(1, "STR_INTERCEPTOR", 2),
+            Assert.Single(Assert.IsType<SelectDestinationIntent>(patrol.Actions[1].Intent).Wing));
+
+        // ItemsArrivingState and ProductionCompleteState: Enter goes to the base and resets the speed.
+        var goTo = Describe(new SuppliesArrived(1, []))!.Actions[1];
+        Assert.Equal((true, true, false, 1), (goTo.ResetSpeed, goTo.OkKey, goTo.CancelKey,
+            Assert.IsType<BaseIntent>(goTo.Intent).BaseId));
 
         Assert.True(Describe(new CampaignResearchCompleted(1, "STR_LASER", []))!.ResetsSpeedWhenShown);
         var lost = Describe(new UfoContactLost(70))!;

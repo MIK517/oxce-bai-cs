@@ -32,7 +32,7 @@ public sealed record GeoscapeClientSetup(
 /// queue and show one at a time; speed selection, timer resets, quick save and confirmed quick
 /// load. Base management opens the existing base screens on top.
 /// </summary>
-public sealed class GeoscapeClient : IIndexedLoopClient
+public sealed partial class GeoscapeClient : IIndexedLoopClient
 {
     public const int Width = 640;
     public const int Height = 400;
@@ -52,7 +52,7 @@ public sealed class GeoscapeClient : IIndexedLoopClient
     private readonly IndexedSurface _frame = new(Width, Height);
     private readonly GlobeRenderer _renderer;
     private readonly GeoscapeTimeController _time;
-    private readonly List<(GeoscapePopup Popup, Action<int>? Chosen)> _popups = [];
+    private readonly List<PopupEntry> _popups = [];
     private CampaignUiSession _session;
     private CampaignWorldOverview _world;
     private CampaignOverview _overview;
@@ -105,8 +105,8 @@ public sealed class GeoscapeClient : IIndexedLoopClient
     public string Status => _status;
     public GlobeRenderOptions Options => _options;
 
-    /// <summary>Time may run: no popup or screen above the globe and the world has been entered.</summary>
-    public bool TimeCanRun => _popups.Count == 0 && _bases is null && _worldReady;
+    /// <summary>Time may run: no popup, destination choice or screen above the globe and the world has been entered.</summary>
+    public bool TimeCanRun => _popups.Count == 0 && _bases is null && _selecting is null && _worldReady;
 
     public void Tick(TimeSpan fixedInterval)
     {
@@ -125,7 +125,7 @@ public sealed class GeoscapeClient : IIndexedLoopClient
             _blinkOn = !_blinkOn;
             _globeDirty = redraw = true;
         }
-        if ((_rotateLongitude != 0 || _rotateLatitude != 0) && _popups.Count == 0)
+        if ((_rotateLongitude != 0 || _rotateLatitude != 0) && !PopupShown)
         {
             _rotationElapsed += fixedInterval;
             while (_rotationElapsed >= GlobeView.RotationInterval)
@@ -164,13 +164,16 @@ public sealed class GeoscapeClient : IIndexedLoopClient
     public void HandleInput(in GameInputEvent input)
     {
         if (input.Kind == GameInputEventKind.PointerReleased && input.PointerButton == 2) _dragging = false;
+        if (input.Kind is GameInputEventKind.KeyPressed or GameInputEventKind.KeyReleased)
+            _shift = (input.Modifiers & InputKeyModifiers.Shift) != 0 ||
+                (input.Kind == GameInputEventKind.KeyPressed && input.KeyCode is ShiftLeft or ShiftRight);
         if (_bases is not null)
         {
             _bases.HandleInput(input);
             if (_bases.ExitRequested) CloseBases();
             return;
         }
-        if (_popups.Count != 0)
+        if (PopupShown)
         {
             HandlePopupInput(input);
             Redraw();
@@ -218,6 +221,11 @@ public sealed class GeoscapeClient : IIndexedLoopClient
             case 0x40000051: _rotateLatitude = pressed ? 1 : 0; return; // down
         }
         if (!pressed) return;
+        if (_selecting is not null)
+        {
+            HandleSelectionKey(key);
+            return;
+        }
         switch (key)
         {
             case >= '1' and <= '6':
@@ -242,12 +250,15 @@ public sealed class GeoscapeClient : IIndexedLoopClient
             case 'b':
                 OpenBases();
                 break;
+            case 'i':
+                OpenIntercept(new InterceptIntent(), NewGroup());
+                break;
             case '.' or ',':
                 SelectNext(key == '.' ? 1 : -1);
                 break;
             case 13 when _selected is not null:
                 View.Center(_selected.Longitude, _selected.Latitude);
-                Enqueue(Describe(_selected));
+                OpenTarget(_selected);
                 _globeDirty = true;
                 break;
             case 0x4000003E: // F5: GeoscapeState quick save
@@ -278,8 +289,16 @@ public sealed class GeoscapeClient : IIndexedLoopClient
         int x = (int)input.X, y = (int)input.Y;
         if (x >= GlobeWidth)
         {
+            if (_selecting is not null)
+            {
+                // SelectDestinationState's Cancel button.
+                if (input.PointerButton == 1 && y >= CancelTop && y < CancelTop + SpeedHeight) CancelSelection();
+                return;
+            }
             var row = (y - SpeedTop) / SpeedHeight;
             if (input.PointerButton == 1 && y >= SpeedTop && row < SpeedLabels.Length) _time.Select((CampaignTimeSpeed)row);
+            else if (input.PointerButton == 1 && y >= InterceptTop && y < InterceptTop + SpeedHeight)
+                OpenIntercept(new InterceptIntent(), NewGroup());
             return;
         }
         if (input.PointerButton == 2)
@@ -296,24 +315,31 @@ public sealed class GeoscapeClient : IIndexedLoopClient
             return;
         }
         if (input.PointerButton != 1) return;
+        if (_selecting is not null)
+        {
+            SelectDestinationAt(x, y, longitude, latitude);
+            return;
+        }
         var near = _targets.Near(View, x, y);
         if (near.Count == 0) return;
         _selected = near[0];
-        if (near.Count == 1) Enqueue(Describe(near[0]));
-        else
+        if (near.Count == 1) OpenTarget(near[0]);
+        else ChooseTarget(near, target =>
         {
-            // MultipleTargetsState: one button per target, then cancel.
-            var actions = near.Select(target => new GeoscapePopupAction(target.Label)).Append(
-                new GeoscapePopupAction(_setup.Localize("STR_CANCEL_UC"), CancelKey: true)).ToArray();
-            Enqueue(new GeoscapePopup(_setup.Localize("STR_TARGETS"), [], actions), choice =>
-            {
-                if (choice < near.Count)
-                {
-                    _selected = near[choice];
-                    Enqueue(Describe(near[choice]));
-                }
-            });
-        }
+            _selected = target;
+            OpenTarget(target);
+        });
+    }
+
+    /// <summary>MultipleTargetsState: one button per target, then cancel.</summary>
+    private void ChooseTarget(IReadOnlyList<GlobeTarget> near, Action<GlobeTarget> chosen, int group = 0)
+    {
+        var actions = near.Select(target => new GeoscapePopupAction(target.Label)).Append(
+            new GeoscapePopupAction(_setup.Localize("STR_CANCEL_UC"), CancelKey: true)).ToArray();
+        Push(new GeoscapePopup(_setup.Localize("STR_TARGETS"), [], actions), choice =>
+        {
+            if (choice < near.Count) chosen(near[choice]);
+        }, group);
     }
 
     private void HandlePopupInput(in GameInputEvent input)
@@ -335,7 +361,7 @@ public sealed class GeoscapeClient : IIndexedLoopClient
             choice = PopupButtonAt(popup, (int)input.X, (int)input.Y);
         else return;
         if (choice < 0) return;
-        Choose(choice);
+        Choose(choice, _shift || (input.Modifiers & InputKeyModifiers.Shift) != 0);
     }
 
     private static int IndexOf(GeoscapePopup popup, Func<GeoscapePopupAction, bool> binding)
@@ -345,22 +371,33 @@ public sealed class GeoscapeClient : IIndexedLoopClient
         return -1;
     }
 
-    /// <summary>Applies a popup button: speed reset, centring, then the popup's own action.</summary>
-    public void Choose(int choice)
+    /// <summary>
+    /// Applies a popup button: speed reset, centring, the popup's own callback, then the button's
+    /// command or the screen it opens. A disabled button keeps the popup open and reports why.
+    /// </summary>
+    public void Choose(int choice, bool shift = false)
     {
         if (_popups.Count == 0) throw new InvalidOperationException("No popup is open.");
-        var (popup, chosen) = _popups[0];
+        var entry = _popups[0];
         ArgumentOutOfRangeException.ThrowIfNegative(choice);
-        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(choice, popup.Actions.Count);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(choice, entry.Popup.Actions.Count);
+        var action = entry.Popup.Actions[choice];
+        if (action.Disabled is { } disabled && !(shift && action.Intent is InterceptRowIntent))
+        {
+            _status = disabled;
+            Redraw();
+            return;
+        }
         _popups.RemoveAt(0);
-        var action = popup.Actions[choice];
         if (action.ResetSpeed) _time.Reset();
         if (action.Center is { } center)
         {
             View.Center(center.Longitude, center.Latitude);
             _globeDirty = true;
         }
-        chosen?.Invoke(choice);
+        entry.Chosen?.Invoke(choice);
+        if (action.Command is { } command) Execute(command, entry.Group);
+        if (action.Intent is { } intent) Open(intent, entry, shift);
         Redraw();
     }
 
@@ -376,28 +413,11 @@ public sealed class GeoscapeClient : IIndexedLoopClient
     private void Enqueue(GeoscapePopup popup, Action<int>? chosen = null)
     {
         // GeoscapeState::popup pauses time and stops the globe rotating.
-        _popups.Add((popup, chosen));
+        _popups.Add(new(popup, chosen, 0));
         _rotateLongitude = _rotateLatitude = 0;
         _dragging = false;
         _time.Interrupt();
         if (popup.ResetsSpeedWhenShown) _time.Reset();
-    }
-
-    private GeoscapePopup Describe(GlobeTarget target)
-    {
-        var lines = new List<string>();
-        if (target.Target is { } world)
-        {
-            if (world.Status.Length != 0) lines.Add(world.Status);
-            if (world.Altitude.Length != 0) lines.Add(_setup.Localize(world.Altitude));
-            if (world.UnavailableActionReason is { } reason) lines.Add(reason);
-        }
-        if (target.Craft is { } craft)
-        {
-            lines.Add(_setup.Localize(craft.Status));
-            lines.Add(_setup.Localize("STR_FUEL") + ": " + craft.Fuel.ToString(CultureInfo.InvariantCulture));
-        }
-        return new GeoscapePopup(target.Label, lines, [new(_setup.Localize("STR_OK"), OkKey: true, CancelKey: true)]);
     }
 
     private void SelectNext(int direction)
@@ -416,7 +436,7 @@ public sealed class GeoscapeClient : IIndexedLoopClient
         _selected = visible[index];
     }
 
-    private void OpenBases()
+    private void OpenBases(int? baseId = null)
     {
         _rotateLongitude = _rotateLatitude = 0;
         _dragging = false;
@@ -427,7 +447,7 @@ public sealed class GeoscapeClient : IIndexedLoopClient
                 var session = _setup.Load();
                 Replace(session);
                 return session;
-            }, advanceTime: false);
+            }, advanceTime: false, baseId: baseId);
         _revision++;
     }
 
@@ -454,6 +474,8 @@ public sealed class GeoscapeClient : IIndexedLoopClient
         _session = session;
         _popups.Clear();
         _selected = null;
+        _selecting = null;
+        _confirm = null;
         _time.Select(CampaignTimeSpeed.FiveSeconds);
         EnterWorld();
         Refresh();
@@ -476,8 +498,9 @@ public sealed class GeoscapeClient : IIndexedLoopClient
         _world = _session.World!.QueryWorld();
         _overview = _session.Queries.QueryOverview();
         _scene = GlobeScene.Build(_world, _setup.Rules, _setup.Localize);
-        _targets = GlobeTargets.Build(_world);
+        _targets = GlobeTargets.Build(_world, _setup.Localize);
         if (_selected is not null) _selected = _targets.Find(_selected.Reference);
+        RepairScreens();
         _globeDirty = true;
     }
 
@@ -485,13 +508,13 @@ public sealed class GeoscapeClient : IIndexedLoopClient
     {
         if (_globeDirty)
         {
-            _renderer.Render(_scene, _overview.Time, _options, _blinkOn);
+            _renderer.Render(_scene, _overview.Time, _options, _blinkOn, CraftRange());
             _globeDirty = false;
         }
         _frame.Clear(0);
         _frame.Blit(_renderer.Surface, 0, 0, transparent: false);
         DrawSidebar();
-        if (_popups.Count != 0) DrawPopup(_popups[0].Popup);
+        if (PopupShown) DrawPopup(_popups[0].Popup);
         _revision++;
     }
 
@@ -502,6 +525,11 @@ public sealed class GeoscapeClient : IIndexedLoopClient
         Text(string.Create(CultureInfo.InvariantCulture, $"{time.Hour:00}:{time.Minute:00}:{time.Second:00}"), SidebarLeft, 8);
         Text(string.Create(CultureInfo.InvariantCulture, $"{time.Day:00}.{time.Month:00}.{time.Year}"), SidebarLeft, 20);
         Text(overview.Funds.ToString("N0", CultureInfo.InvariantCulture), SidebarLeft, 32);
+        if (_selecting is not null)
+        {
+            DrawSelectionSidebar(SpeedTop + 2 * SpeedHeight);
+            return;
+        }
         for (var index = 0; index < SpeedLabels.Length; index++)
         {
             var top = SpeedTop + index * SpeedHeight;
@@ -514,6 +542,10 @@ public sealed class GeoscapeClient : IIndexedLoopClient
         else if (!_time.Running) Text("Time halted", SidebarLeft, y);
         y += 14;
         Text("B " + _setup.Localize("STR_BASES"), SidebarLeft, y);
+        // GeoscapeState's Intercept button (also the I key).
+        _frame.FillRectangle(GlobeWidth + 2, InterceptTop, Width - GlobeWidth - 4, SpeedHeight - 2, ButtonColor);
+        Text(_setup.Localize("STR_INTERCEPT"), SidebarLeft, InterceptTop + 4, 0);
+        y = InterceptTop + SpeedHeight;
         if (_selected is { } selected)
         {
             y += 24;
@@ -525,31 +557,47 @@ public sealed class GeoscapeClient : IIndexedLoopClient
         if (message.Length != 0) Wrap(message, SidebarLeft, Height - 60, Width - SidebarLeft - 2);
     }
 
+    private const int PopupLeft = 36;
+    private const int PopupWidth = 440;
+    private const int ButtonHeight = 14;
+
     private void DrawPopup(GeoscapePopup popup)
     {
-        const int left = 96, top = 110, width = 320, height = 180;
-        _frame.FillRectangle(left, top, width, height, 0);
-        _frame.FillRectangle(left, top, width, 2, HighlightColor);
-        _frame.FillRectangle(left, top + height - 2, width, 2, HighlightColor);
-        _frame.FillRectangle(left, top, 2, height, HighlightColor);
-        _frame.FillRectangle(left + width - 2, top, 2, height, HighlightColor);
-        var y = Wrap(popup.Title, left + 10, top + 10, width - 20, HighlightColor) + 6;
-        foreach (var line in popup.Lines) y = Wrap(line, left + 10, y, width - 20) + 2;
+        var (top, height) = PopupBounds(popup);
+        _frame.FillRectangle(PopupLeft, top, PopupWidth, height, 0);
+        _frame.FillRectangle(PopupLeft, top, PopupWidth, 2, HighlightColor);
+        _frame.FillRectangle(PopupLeft, top + height - 2, PopupWidth, 2, HighlightColor);
+        _frame.FillRectangle(PopupLeft, top, 2, height, HighlightColor);
+        _frame.FillRectangle(PopupLeft + PopupWidth - 2, top, 2, height, HighlightColor);
+        var y = Wrap(popup.Title, PopupLeft + 10, top + 10, PopupWidth - 20, HighlightColor) + 6;
+        foreach (var line in popup.Lines) y = Wrap(line, PopupLeft + 10, y, PopupWidth - 20) + 2;
         for (var index = 0; index < popup.Actions.Count; index++)
         {
             var (bx, by, bw, bh) = ButtonRectangle(popup, index);
-            _frame.FillRectangle(bx, by, bw, bh, ButtonColor);
-            Text(popup.Actions[index].Label, bx + 4, by + 3, 0);
+            var action = popup.Actions[index];
+            _frame.FillRectangle(bx, by, bw, bh, action.Disabled is null ? ButtonColor : (byte)0);
+            Text(action.Label, bx + 4, by + 3, action.Disabled is null ? (byte)0 : TextColor);
         }
     }
 
-    private static (int X, int Y, int Width, int Height) ButtonRectangle(GeoscapePopup popup, int index)
+    /// <summary>The popup sized to its title, lines and buttons, centred on the globe.</summary>
+    private (int Top, int Height) PopupBounds(GeoscapePopup popup)
     {
-        const int left = 106, bottom = 280, width = 300, height = 14;
-        return (left, bottom - (popup.Actions.Count - index) * (height + 2), width, height);
+        var text = WrappedHeight(popup.Title, PopupWidth - 20) + 6;
+        foreach (var line in popup.Lines) text += WrappedHeight(line, PopupWidth - 20) + 2;
+        var height = Math.Min(Height - 8, 20 + text + 8 + popup.Actions.Count * (ButtonHeight + 2) + 8);
+        height = Math.Max(height, 120);
+        return ((Height - height) / 2, height);
     }
 
-    private static int PopupButtonAt(GeoscapePopup popup, int x, int y)
+    private (int X, int Y, int Width, int Height) ButtonRectangle(GeoscapePopup popup, int index)
+    {
+        var (top, height) = PopupBounds(popup);
+        var bottom = top + height - 10;
+        return (PopupLeft + 10, bottom - (popup.Actions.Count - index) * (ButtonHeight + 2), PopupWidth - 20, ButtonHeight);
+    }
+
+    private int PopupButtonAt(GeoscapePopup popup, int x, int y)
     {
         for (var index = 0; index < popup.Actions.Count; index++)
         {
@@ -557,6 +605,26 @@ public sealed class GeoscapeClient : IIndexedLoopClient
             if (x >= bx && x < bx + bw && y >= by && y < by + bh) return index;
         }
         return -1;
+    }
+
+    /// <summary>The height <see cref="Wrap"/> would use for a text.</summary>
+    private int WrappedHeight(string text, int width)
+    {
+        var font = _setup.Font;
+        var lines = 0;
+        var line = "";
+        foreach (var word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var candidate = line.Length == 0 ? word : line + " " + word;
+            if (line.Length != 0 && font.Measure(candidate).Width > width)
+            {
+                lines++;
+                line = word;
+            }
+            else line = candidate;
+        }
+        if (line.Length != 0) lines++;
+        return lines * (font.Height + 2);
     }
 
     private void Text(string text, int x, int y, byte color = TextColor) =>
