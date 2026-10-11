@@ -86,6 +86,8 @@ Slices, each followed by an independent audit before the next:
 - S10 scripted UI scenarios over public fixtures and private UFO/TFTD/modded saves; SDL smoke.
 - S11 performance, ADR, matrices, code map and combined branch 4 acceptance.
 
+Slice evidence is recorded in [strategic world UI status](strategic-world-ui-status.md).
+
 ## Validation
 
 Cover scheduling triggers/conditionals/labels/weights/history; all objectives and wave kinds;

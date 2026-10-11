@@ -70,6 +70,65 @@ public sealed class ResourceDescriptorResolverTests
     }
 
     [Fact]
+    public void SubdividedSpritesResolveEveryCellAndGlobeMarkersUseModOffsets()
+    {
+        using var fixture = ResourceModFixture.Create(
+            """
+            extraSprites:
+              - type: GlobeMarkers
+                width: 27
+                height: 3
+                subX: 3
+                subY: 3
+                files: {0: Resources/markers.png}
+            """,
+            """
+            extraSprites:
+              - type: GlobeMarkers
+                width: 6
+                height: 3
+                subX: 3
+                subY: 3
+                files: {9: Resources/extra.png}
+            crafts:
+              - type: CRAFT
+                marker: 9
+              - type: PLAIN
+            ufos:
+              - type: UFO
+                marker: 10
+                markerLand: 2
+                markerCrash: 11
+            """);
+        fixture.WriteMaster("Resources/markers.png", "markers");
+        fixture.WriteAddon("Resources/extra.png", "extra");
+
+        var snapshot = ContentSnapshotBuilder.Build(fixture.CreatePlan());
+
+        Assert.True(snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked),
+            string.Join(Environment.NewLine, snapshot.Diagnostics.Select(static diagnostic => diagnostic.Message)));
+        var markers = snapshot.Content.Resources.Descriptors
+            .Where(static descriptor => descriptor.OwnerId == "GlobeMarkers")
+            .OrderBy(static descriptor => descriptor.RuntimeIndex)
+            .ToArray();
+        Assert.Equal([0, 1, 2, 3, 4, 5, 6, 7, 8, 1009, 1010], markers.Select(static descriptor => descriptor.RuntimeIndex));
+        Assert.All(markers, static descriptor => Assert.Equal((3, 3), (descriptor.Width, descriptor.Height)));
+        Assert.Equal(new ResourceSubFrame(24, 0, 3, 3, 27, 3), markers[8].SubFrame);
+        Assert.Equal(new ResourceSubFrame(3, 0, 3, 3, 6, 3), markers[10].SubFrame);
+        Assert.Equal("Resources/extra.png", markers[10].CanonicalPath, ignoreCase: true);
+        Assert.True(snapshot.Content.Resources.TryResolveIndex(ResourceKind.Sprite, "GlobeMarkers", "resource-addon", 10,
+            out var resolved));
+        Assert.Equal(1010, resolved!.RuntimeIndex);
+
+        var rules = snapshot.Content.RuntimeRules;
+        Assert.Equal(1009, rules.Crafts[rules.Crafts.GetRequired("CRAFT")].Value.Marker);
+        Assert.Equal(-1, rules.Crafts[rules.Crafts.GetRequired("PLAIN")].Value.Marker);
+        var ufo = rules.Ufos[rules.Ufos.GetRequired("UFO")].Value;
+        // A shared frame keeps its number; an undeclared mod frame keeps its declared number.
+        Assert.Equal((1010, 2, 11), (ufo.Marker, ufo.LandedMarker, ufo.CrashedMarker));
+    }
+
+    [Fact]
     public void MissingAndOversizedDeclarationsPreventResourceCapabilityWithProvenance()
     {
         using var fixture = ResourceModFixture.Create(

@@ -75,7 +75,7 @@ internal sealed record CompiledContentCacheReadResult(
 internal static class CompiledContentCache
 {
     internal const int FormatVersion = 1;
-    internal const int CompilerRevision = 55;
+    internal const int CompilerRevision = 56;
     private const string FileName = "content-v1.json.gz";
     private const int CacheKeyLength = 64;
     private static ReadOnlySpan<byte> HeaderMagic => "OXCECC1\n"u8;
@@ -609,7 +609,8 @@ internal sealed record CachedRuntimeContent(
             descriptor.Width,
             descriptor.Height,
             descriptor.OwnerSection,
-            descriptor.OwnerId)).ToArray(),
+            descriptor.OwnerId,
+            descriptor.SubFrame)).ToArray(),
         snapshot.Content.Resources.Indexes.Select(static index => new CachedResourceIndex(
             index.Kind,
             index.SetId,
@@ -654,7 +655,8 @@ internal sealed record CachedRuntimeContent(
             descriptor.Width,
             descriptor.Height,
             descriptor.OwnerSection,
-            descriptor.OwnerId)).ToArray();
+            descriptor.OwnerId)
+        { SubFrame = descriptor.SubFrame }).ToArray();
         var indexes = ResourceIndexes.Select(index =>
         {
             if ((uint)index.DescriptorIndex >= (uint)descriptors.Length ||
@@ -768,7 +770,8 @@ internal sealed record CachedResourceDescriptor(
     int Width,
     int Height,
     string OwnerSection,
-    string OwnerId);
+    string OwnerId,
+    ResourceSubFrame? SubFrame = null);
 
 internal sealed record CachedResourceIndex(
     ResourceKind Kind,

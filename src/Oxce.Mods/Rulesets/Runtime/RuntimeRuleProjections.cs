@@ -199,6 +199,8 @@ public sealed record RuntimeCraftRule(
     public IReadOnlyDictionary<string, int> DefaultStats { get; init; } =
         new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
     public int HangarType { get; init; }
+    /// <summary>Runtime <c>GlobeMarkers</c> frame, or -1 for Craft::getMarker's default.</summary>
+    public int Marker { get; init; } = -1;
     public int WeaponSlots { get; init; }
     public int RefuelRate { get; init; }
     public int RepairRate { get; init; }

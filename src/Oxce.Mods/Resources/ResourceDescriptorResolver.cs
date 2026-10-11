@@ -79,6 +79,30 @@ public static class ResourceDescriptorResolver
                             }
                         }
                     }
+                    else if (declaration.SubX != 0 && !declaration.SingleImage)
+                    {
+                        // ExtraSprites::loadSurfaceSet assigns consecutive frames row by row.
+                        var columns = declaration.Width / declaration.SubX;
+                        var rows = declaration.Height / declaration.SubY;
+                        for (var row = 0; row < rows; row++)
+                        {
+                            for (var column = 0; column < columns; column++)
+                            {
+                                cancellationToken.ThrowIfCancellationRequested();
+                                var declaredIndex = checked(index + row * columns + column);
+                                var resolvedIndex = ResolveIndex(declaredIndex, shared, allocation, "extraSprites",
+                                    declaration.Type, declaration.Source);
+                                if (resolvedIndex is null) continue;
+                                var handle = AddFile(ResourceKind.Sprite, $"sprite/{declaration.Type}/{resolvedIndex}",
+                                    file.Value, ResourceLoadPolicy.Cache, resolvedIndex,
+                                    declaration.SubX, declaration.SubY, "extraSprites", declaration.Type, declaration.Source,
+                                    new ResourceSubFrame(column * declaration.SubX, row * declaration.SubY,
+                                        declaration.SubX, declaration.SubY, declaration.Width, declaration.Height));
+                                Index(ResourceKind.Sprite, declaration.Type, declaration.Source.ModId,
+                                    declaredIndex, resolvedIndex.Value, handle);
+                            }
+                        }
+                    }
                     else
                     {
                         var resolvedIndex = ResolveIndex(index, shared, allocation, "extraSprites",
@@ -326,7 +350,8 @@ public static class ResourceDescriptorResolver
         }
 
         ResourceHandle? AddFile(ResourceKind kind, string id, string path, ResourceLoadPolicy policy, int? runtimeIndex,
-            int width, int height, string section, string ownerId, RuleOperationSource source)
+            int width, int height, string section, string ownerId, RuleOperationSource source,
+            ResourceSubFrame? subFrame = null)
         {
             if (!files.TryGet(path, out var entry))
             {
@@ -335,7 +360,7 @@ public static class ResourceDescriptorResolver
                     section, ownerId, path, source);
                 return null;
             }
-            return Add(kind, id, entry!, policy, runtimeIndex, width, height, section, ownerId);
+            return Add(kind, id, entry!, policy, runtimeIndex, width, height, section, ownerId, subFrame);
         }
 
         void AddDirect(ResourceKind kind, string id, string path, ResourceLoadPolicy policy,
@@ -348,7 +373,7 @@ public static class ResourceDescriptorResolver
         }
 
         ResourceHandle Add(ResourceKind kind, string id, VirtualFileEntry entry, ResourceLoadPolicy policy, int? runtimeIndex,
-            int width, int height, string section, string ownerId)
+            int width, int height, string section, string ownerId, ResourceSubFrame? subFrame = null)
         {
             if (runtimeIndex is not null)
             {
@@ -358,7 +383,8 @@ public static class ResourceDescriptorResolver
                     var existing = descriptors[existingIndex];
                     descriptors[existingIndex] = new ResolvedResourceDescriptor(existing.Handle, existing.Id, kind,
                         entry.CanonicalPath, entry.SourcePath, entry.Provenance, policy, runtimeIndex,
-                        width, height, section, ownerId);
+                        width, height, section, ownerId)
+                    { SubFrame = subFrame };
                     return existing.Handle;
                 }
             }
@@ -374,7 +400,8 @@ public static class ResourceDescriptorResolver
             }
             var handle = new ResourceHandle(generation, descriptors.Count, kind);
             descriptors.Add(new ResolvedResourceDescriptor(handle, uniqueId, kind, entry.CanonicalPath,
-                entry.SourcePath, entry.Provenance, policy, runtimeIndex, width, height, section, ownerId));
+                entry.SourcePath, entry.Provenance, policy, runtimeIndex, width, height, section, ownerId)
+            { SubFrame = subFrame });
             descriptorIds.Add(uniqueId, handle.Index);
             if (runtimeIndex is not null)
             {

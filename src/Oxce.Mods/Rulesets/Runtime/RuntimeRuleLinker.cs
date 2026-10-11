@@ -194,6 +194,7 @@ public static class RuntimeRuleLinker
                 ScriptsFor(scriptBuild.ByOwner, "crafts", rule.Id))
             {
                 Type = rule.Id,
+                Marker = GlobeMarker(rule.Value.Marker, resources),
                 Purchase = new(rule.Value.Integers["monthlyBuyLimit"], rule.Value.Strings["monthlyBuyLimitMessage"],
                     rule.Value.Strings["requiresBuyCountry"], rule.Value.RequiredBuyBaseFunctions, []),
                 DefaultStats = rule.Value.Stats.Integers,
@@ -534,9 +535,9 @@ public static class RuntimeRuleLinker
                 source.Booleans["unmanned"],
                 source.Booleans["instaHyper"],
                 source.Booleans["noAlert"],
-                source.Marker.Index,
-                source.LandedMarker.Index,
-                source.CrashedMarker.Index,
+                GlobeMarker(source.Marker, resources),
+                GlobeMarker(source.LandedMarker, resources),
+                GlobeMarker(source.CrashedMarker, resources),
                 stats,
                 new ReadOnlyDictionary<string, RuntimeUfoStats>(bonuses),
                 ScriptsFor(scriptBuild.ByOwner, "ufos", id))
@@ -956,6 +957,16 @@ public static class RuntimeRuleLinker
             result[rule.Id] = result.GetValueOrDefault(rule.ReplaceBy, rule.ReplaceBy);
         return result;
     }
+
+    /// <summary>
+    /// Mod::getOffset(marker, 8): frames above the nine shared globe markers belong to the declaring
+    /// mod. They resolve through that mod's <c>GlobeMarkers</c> extra sprites; an undeclared frame keeps
+    /// its declared number, like other unresolved sprite references.
+    /// </summary>
+    private static int GlobeMarker(RuleIndexReference reference, ResolvedResourceCatalog resources) =>
+        reference.Index <= 8 ? reference.Index
+            : resources.TryResolveIndex(ResourceKind.Sprite, "GlobeMarkers", reference.ModId, reference.Index,
+                out var resolved) ? resolved!.RuntimeIndex : reference.Index;
 
     private static RuntimeIndexedResourceReference Resource(
         RuleIndexReference reference,
