@@ -272,8 +272,11 @@ writes them (a new save without one writes the reference defaults 0, 0, 0; a rew
 keeps the loaded values) and `OxceSaveDocument.GlobeView` reads them (absent keys are 0). The SDL
 campaign saves the geoscape's current centre and zoom, and a load (F9, or `--campaign-sdl ...
 --load` to start from the save) restores them through `CampaignUiSession.GlobeView`, as `Globe`'s
-constructor does; a zoom outside the levels is clamped. Quick save drops a time step still owed
-(the reference saves between steps), and a load clears every screen, choice, selection and owed
-step of the old campaign and returns the clock to five-second speed. Selections that lose their
+constructor does; a larger zoom is clamped to the closest view and a negative one wraps to it, as
+`Globe::setZoom(size_t)` does. A quick save during a step spread over frames saves the ticks done
+so far and the step keeps running. A load clears every screen, choice, selection, rotation and owed
+step of the old campaign, takes the save's view (0, 0, 0 without one) and returns the clock to
+five-second speed. A failed load keeps the running campaign; `--load` reports a missing or
+unreadable save instead of failing with a trace. Selections that lose their
 target after time runs are dropped on refresh (S3/S5).
 Tests: `StrategicWorldGlobeViewSaveTests`.

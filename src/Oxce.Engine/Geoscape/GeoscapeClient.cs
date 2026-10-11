@@ -100,12 +100,15 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     /// <summary>The globe's centre and zoom, for SavedGame's globeLon/globeLat/globeZoom.</summary>
     public GlobeViewState CurrentView => new(View.CenterLongitude, View.CenterLatitude, View.Zoom);
 
-    /// <summary>Globe's constructor: centre and zoom from the save (a zoom outside the levels is clamped).</summary>
+    /// <summary>
+    /// Globe's constructor: centre and zoom from the save. Globe::setZoom takes a size_t, so a
+    /// negative saved zoom wraps to the closest view and a larger one is clamped to it.
+    /// </summary>
     private void ApplyView(GlobeViewState? view)
     {
         if (view is null) return;
         if (double.IsFinite(view.Longitude) && double.IsFinite(view.Latitude)) View.Center(view.Longitude, view.Latitude);
-        View.SetZoom(view.Zoom);
+        View.SetZoom(view.Zoom < 0 ? GlobeView.ZoomLevels - 1 : view.Zoom);
         _globeDirty = true;
     }
 
@@ -303,8 +306,7 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
                 if (_setup.Save is null) _status = "Save is unavailable for this session.";
                 else Guard(() =>
                 {
-                    // The reference saves between time steps: a step still owed is dropped, as a pause would.
-                    _time.Interrupt();
+                    // A step spread over frames keeps running after the save; the save holds the ticks done so far.
                     _setup.Save();
                     _status = "Campaign saved.";
                 });
@@ -544,7 +546,8 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
         _buildNewBase = false;
         _suppressText = null;
         _time.Select(CampaignTimeSpeed.FiveSeconds);
-        ApplyView(session.GlobeView);
+        // A loaded save always has a view: SavedGame's defaults are 0, 0, 0.
+        ApplyView(session.GlobeView ?? new GlobeViewState(0, 0, 0));
         EnterWorld();
         Refresh();
     }
