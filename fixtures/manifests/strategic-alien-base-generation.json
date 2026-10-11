@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-alien-base-generation",
+  "description": "Exact GenerateSupplyMission, AlienMission region remapping and initialization timer, and RuleAlienMission region/race timelines. Asset-free collaborators supply rules/regions and minimum integer choices; subsequent half-hour processing is excluded. Includes extracted daily mission research interruption and isOver with controlled research completion.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "GeoscapeState::GenerateSupplyMission, AlienMission::start/setRegion, RuleAlienMission::generateRace/generateRegion, GeoscapeState::time1Day mission interruption, AlienMission::isOver",
+      "capture": "tools/capture-strategic-alien-base-generation-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; selected blocks inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_alien_base_generation_probe.cpp",
+      "size": 8147,
+      "sha256": "b4ede65d17e7acc81999550044fa97eb8c14c809e3959fc0a2707bee53f1fcce"
+    },
+    {
+      "path": "tools/capture-strategic-alien-base-generation-reference.ps1",
+      "size": 3803,
+      "sha256": "b38a817c24c30cdd06bb4972255bfe41ae869551ca6f4655c20a53f9a8d7a5bd"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-alien-base-generation.rul",
+      "size": 11133,
+      "sha256": "3bb6fc964f567830a94d3960dbcbaa6423aaa441a288946598467ae29a80eea3"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-world.rul",
+      "size": 14290,
+      "sha256": "9b1d246a38a20824d282ef0d14a64c65d68e687a780d3caa1f4da8c93a510c07"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-mission-race-fallback.rul",
+      "size": 1425,
+      "sha256": "0fd89bc4b8c01efc1ec5bd2e595d31701cb6abfd4fc3368a6531edcd9a3984f5"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-mission-region-remap.rul",
+      "size": 714,
+      "sha256": "425c721b349432189ac8f9d3c06c07e012864ddfd9fbb5e3bded523768ace5c3"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-mission-initialization.rul",
+      "size": 4622,
+      "sha256": "9f09e32b328ea86c1b211ec0ddf8c0361a2e31fac0a84a22d40f1dd380ac15c7"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-alien-base-generation.expected.json"
+}

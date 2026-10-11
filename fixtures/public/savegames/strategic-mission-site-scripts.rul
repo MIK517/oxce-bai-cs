@@ -1,0 +1,26 @@
+alienMissions:
+  - type: SITE_SCRIPT_A
+    objective: 3
+    spawnZone: 1
+    siteType: SITE_DEPLOY_B
+    raceWeights: {0: {RACE_A: 1}}
+    waves:
+      - {ufo: SITE_DEPLOY_B, count: 1, trajectory: TRAJ_SITE, timer: 3000, objective: true}
+  - type: SITE_SCRIPT_B
+    objective: 3
+    spawnZone: 1
+    siteType: SITE_DEPLOY_B
+    raceWeights: {0: {RACE_A: 1}}
+    waves:
+      - {ufo: SITE_DEPLOY_B, count: 1, trajectory: TRAJ_SITE, timer: 3000, objective: true}
+missionScripts:
+  - type: SITE_SCRIPT_START
+    firstMonth: 0
+    lastMonth: 0
+    varName: CITY_HISTORY
+    avoidRepeats: 2
+    useTable: false
+    startDelay: 30
+    missionWeights: {0: {SITE_SCRIPT_A: 3, SITE_SCRIPT_B: 1}}
+    regionWeights: {0: {REGION: 1}}
+    raceWeights: {0: {RACE_A: 1}}

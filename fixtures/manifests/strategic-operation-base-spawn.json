@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-operation-base-spawn",
+  "description": "Verbatim AlienMission::start new-base search: fake-water preference, technical region containment, 99th acceptance and 100th fallback/suppression.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "Full AlienMission::start with controlled geometry and spawn collaborators; Mod.cpp default/load and AlienBase constructor inspected",
+      "capture": "tools/capture-strategic-operation-base-spawn-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; selected blocks inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_operation_base_spawn_probe.cpp",
+      "size": 3546,
+      "sha256": "e2d5dd0cbed6ede7e0d88fac92632a224c3e9bcd7727a24a1e08b1067dd0a269"
+    },
+    {
+      "path": "tools/capture-strategic-operation-base-spawn-reference.ps1",
+      "size": 2650,
+      "sha256": "0642938171cf6540d7417b8cb6d3e4f52725a7f22510b2866998f6e7bb3bd97e"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-operation-base-spawn.expected.json"
+}

@@ -14,11 +14,16 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldEnduranceTests
 {
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SeventyTwoHoursComposeFiniteMissionsCraftOperationsAndReloads(bool fromCache)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void SeventyTwoHoursComposeFiniteMissionsCraftOperationsAndReloads(bool initializeWorld, bool detectionQueries)
     {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul", fromCache);
+        if (detectionQueries) VerifyQueryEvidence();
+        if (initializeWorld) TestFixtures.LoadVerifiedManifest("strategic-world-composition");
+        var content = StrategicReadinessTestContent.Load(initializeWorld
+            ? ["strategic-world.rul", "strategic-world-entry-endurance.rul"] : ["strategic-world.rul"], detectionQueries ? QueryRules : null);
         var snapshot = CreateLifecycleSnapshot(content);
         var owner = snapshot.Bases[0];
         var craft = owner.Crafts.Single(item => item.RuleId == "SHIP");
@@ -42,6 +47,11 @@ public sealed class StrategicWorldEnduranceTests
                     { RuleId = "MISSION_ENDURANCE", NextWave = 0, LiveUfos = 0, SpawnCountdown = 30 }],
             },
         };
+        if (initializeWorld) snapshot = snapshot with
+        {
+            MonthsPassed = -1,
+            World = snapshot.World with { Missions = [] },
+        };
         var stepped = Run(1, false);
         var batched = Run(120, false);
         var reloaded = Run(120, true);
@@ -51,6 +61,15 @@ public sealed class StrategicWorldEnduranceTests
         CampaignSnapshot Run(int maximumBatch, bool reload)
         {
             var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+            if (initializeWorld)
+            {
+                Assert.Equal("ENTRY_UNLOCK", Assert.IsType<CampaignArcUnlocked>(
+                    Assert.Single(campaign.Execute(new EnterCampaignWorld()).Events)).RuleId);
+                Assert.Equal(0, campaign.MonthsPassed);
+                Assert.Equal(snapshot.DaysPassed + 1, campaign.DaysPassed);
+                Assert.Single(campaign.Capture().World.Missions);
+                Assert.Single(campaign.Capture().World.Events);
+            }
             var ticks = 0;
             var contacts = 0;
             var landings = 0;
@@ -113,7 +132,18 @@ public sealed class StrategicWorldEnduranceTests
             Assert.Equal(2, peak);
             Assert.Empty(after.World.Ufos);
             Assert.Empty(after.World.Missions);
-            Assert.Equal(snapshot.DaysPassed + 3, after.DaysPassed);
+            Assert.Equal(snapshot.DaysPassed + 3 + (initializeWorld ? 1 : 0), after.DaysPassed);
+            if (initializeWorld)
+            {
+                Assert.Contains("ENTRY_UNLOCK", after.CompletedResearch);
+                Assert.Equal(snapshot.ResearchScores[^1] + 100, after.ResearchScores[^1]);
+                Assert.Equal(1, after.World.Strategy.MissionRuns.Single(pair => pair.Key == "ENTRY_RUN").Value);
+                Assert.Equal(1, after.World.GeneratedEvents["ENTRY_FUTURE"]);
+                Assert.Equal(1440, Assert.Single(after.World.Events).SpawnCountdown);
+                var beforeEntryRetry = campaign.Capture();
+                Assert.Empty(campaign.Execute(new EnterCampaignWorld()).Events);
+                Assert.Equivalent(beforeEntryRetry, campaign.Capture(), strict: true);
+            }
             Assert.Equal(0, Assert.Single(after.Bases[0].Facilities,
                 facility => facility.RuleId == "MIND_SCREEN_TEST").BuildTime);
             Assert.Equal(snapshot.NextIds.GetValueOrDefault("STR_UFO_UNIQUE", 1) + 36, after.NextIds["STR_UFO_UNIQUE"]);
@@ -121,15 +151,19 @@ public sealed class StrategicWorldEnduranceTests
         }
     }
 
-    [Fact]
-    public void PopulatedTicksScaleAndRecordSimulationAndPersistenceCosts()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PopulatedTicksScaleAndRecordSimulationAndPersistenceCosts(bool detectionQueries)
     {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        if (detectionQueries) VerifyQueryEvidence();
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], extraRules: detectionQueries ? QueryRules : null);
         List<object> measurements = [];
         foreach (var bases in new[] { 1, 8 })
             foreach (var operation in new[] { "flight", "boundary", "cleanup" })
             {
                 _ = Measure(8, bases, operation, record: false); // JIT and shared caches
+                _ = Measure(8, bases, operation, record: true);
                 var small = Measure(32, bases, operation, record: true);
                 var large = Measure(128, bases, operation, record: true);
                 // Fixed per-command costs cancel; what remains is the cost of each additional UFO.
@@ -137,7 +171,8 @@ public sealed class StrategicWorldEnduranceTests
                 Assert.True(perUfo <= MaximumBytesPerUfo(operation),
                     $"{operation}/{bases} bases: {perUfo:F1} B per additional UFO ({small} B for 32, {large} B for 128).");
             }
-        var path = TestFixtures.RepositoryPath("artifacts", "world-closure-measurements.json");
+        var path = TestFixtures.RepositoryPath("artifacts", detectionQueries
+            ? "world-query-closure-measurements.json" : "world-closure-measurements.json");
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, JsonSerializer.Serialize(measurements));
 
@@ -200,6 +235,31 @@ public sealed class StrategicWorldEnduranceTests
             var after = campaign.Capture();
             Assert.Equal(operation == "cleanup" ? 0 : count, after.World.Ufos.Count);
             Assert.Equal(after.World.Ufos.Count, after.World.Missions.Sum(item => item.LiveUfos));
+            long? warmBytes = null;
+            double? warmMs = null;
+            if (operation == "boundary")
+            {
+                // Reach the next half-hour naturally so compiled detection forecasts/frames
+                // remain cached without rewinding campaign state or random streams.
+                var remaining = 359;
+                while (remaining > 0)
+                {
+                    var preparation = campaign.Execute(new AdvanceCampaignTime(remaining));
+                    Assert.Empty(preparation.Events.OfType<CampaignActionBlocked>());
+                    var advanced = Assert.IsType<CampaignTimeAdvanced>(preparation.Events[0]).Summary.TickCount;
+                    Assert.InRange(advanced, 1, remaining);
+                    remaining -= advanced;
+                }
+                Assert.Equal(new CampaignTime(1, 1, 1, 1999, 1, 59, 55), campaign.Time);
+                start = Stopwatch.GetTimestamp();
+                before = GC.GetAllocatedBytesForCurrentThread();
+                var warm = campaign.Execute(new AdvanceCampaignTime(1));
+                warmBytes = GC.GetAllocatedBytesForCurrentThread() - before;
+                warmMs = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
+                Assert.Empty(warm.Events.OfType<CampaignActionBlocked>());
+                Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(warm.Events[0]).Summary.TickCount);
+                Assert.Equal(count, campaign.Capture().World.Ufos.Count);
+            }
             start = Stopwatch.GetTimestamp();
             before = GC.GetAllocatedBytesForCurrentThread();
             var captured = campaign.Capture();
@@ -213,8 +273,97 @@ public sealed class StrategicWorldEnduranceTests
             var loadMs = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
             Assert.Equivalent(captured, loaded.Capture(), strict: true);
             if (record)
-                measurements.Add(new { count, bases, operation, ticks, bytes, elapsed, writeBytes, writeMs, loadBytes, loadMs });
+                measurements.Add(new { count, bases, operation, ticks, bytes, elapsed, warmBytes, warmMs, writeBytes, writeMs, loadBytes, loadMs });
             return bytes;
         }
     }
+    private static void VerifyQueryEvidence()
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-detection-numeric");
+        TestFixtures.LoadVerifiedManifest("strategic-detection-damage");
+        TestFixtures.LoadVerifiedManifest("strategic-detection-scripts");
+        TestFixtures.LoadVerifiedManifest("strategic-world");
+    }
+
+    private const string QueryRules = """
+        items:
+          - type: QUERY_ITEM
+            damageAlter: {ToHealth: 0.5}
+          - type: UNRELATED_UNSAFE_QUERY_ITEM
+            damageAlter: {ToHealth: 1.0e100}
+        ufos:
+          - type: UFO_SCOUT
+            scripts:
+              detectUfoFromBase: &query |
+                var text name "QUERY_ITEM";
+                var text copied name;
+                var ptr RuleItem item;
+                var ptr RuleDamageType damage;
+                var ptr RuleItem next;
+                var ptr Ufo absent null;
+                var text identity;
+                var ptr RuleResearch topic;
+                var ptr Time time;
+                var int power 39;
+                var int value;
+                rules.getRuleItem item copied;
+                item.getType identity;
+                rules.getRuleItem next identity;
+                next.getType identity;
+                rules.getRuleItem item identity;
+                if neq identity "QUERY_ITEM"; return DETECTION_NONE 0; end;
+                item.getDamageType damage;
+                if eq identity "UNRELATED_UNSAFE_QUERY_ITEM";
+                  ufo.getDamagePercentage value;
+                  div value 0;
+                end;
+                absent.getDamagePercentage value;
+                if neq value 0; return DETECTION_NONE 0; end;
+                absent.Stats.getArmor value;
+                if neq value 0; return DETECTION_NONE 0; end;
+                set power distance; div power 2;
+                damage.getDamageToHealth value distance;
+                if neq value power; return DETECTION_NONE 0; end;
+                set power already_tracked; div power 2;
+                damage.getDamageToHealth value already_tracked;
+                if neq value power; return DETECTION_NONE 0; end;
+                ufo.getAltitude power;
+                damage.getDamageToHealth value power;
+                div power 2;
+                if neq value power; return DETECTION_NONE 0; end;
+                ufo.getStatus power;
+                damage.getDamageToHealth value power;
+                div power 2;
+                if neq value power; return DETECTION_NONE 0; end;
+                set power 39;
+                damage.getDamageToHealth value power;
+                if neq value 19; return DETECTION_NONE 0; end;
+                set power value; add power 1; div power 2; bit_and power 63;
+                wavegen_tri power 12 8 3;
+                damage.getDamageToHealth value power;
+                if neq value 0; return DETECTION_NONE 0; end;
+                set power 15; rules.getSmokeReduction power;
+                damage.getDamageToHealth value power;
+                if neq value 2; return DETECTION_NONE 0; end;
+                ufo.isHunting power;
+                damage.getDamageToHealth value power;
+                if neq value 0; return DETECTION_NONE 0; end;
+                geoscape_game.getTime time;
+                time.getSecondsPastMidnight power;
+                damage.getDamageToHealth value power;
+                div power 2;
+                if neq value power; return DETECTION_NONE 0; end;
+                rules.getRuleResearch topic "ENTRY_UNLOCK";
+                geoscape_game.isResearched power topic;
+                damage.getDamageToHealth value power;
+                if neq value 0; return DETECTION_NONE 0; end;
+                loop var country geoscape_game.getCountries.list;
+                  country.getPact power;
+                  damage.getDamageToHealth value power;
+                  if neq value 0; return DETECTION_NONE 0; end;
+                end;
+                return detection_type detection_chance;
+              detectUfoFromCraft: *query
+        """;
+
 }

@@ -68,7 +68,7 @@ $geometry = $geometry.Replace('int intValue = 0;', 'int calls = 0; int intValue 
 $geometry = $geometry.Replace('return std::min(max, min + intValue);', 'assert(min <= max); ++calls; return std::min(max, min + intValue);')
 $geometry = $geometry.Replace('return min + fraction * (max - min);', 'assert(min <= max); ++calls; return min + fraction * (max - min);')
 $geometry = $geometry.Replace('std::vector<MissionZone> _missionZones;', 'std::vector<MissionZone> _missionZones; const std::vector<MissionZone>& getMissionZones() const { return _missionZones; } std::string getType() const { return "REGION"; }')
-$collaborators = 'namespace RNG { size_t generate(int minimum, size_t maximum) { assert(minimum >= 0 && (size_t)minimum <= maximum); ++calls; return minimum; } bool percent(int chance) { return (int)generate(0, 99) < chance; } }' + "`n#define LOG_WARNING 0`n#define Log(level) std::cerr`n" + 'using Exception = std::runtime_error; namespace OpenXcom {'
+$collaborators = 'namespace RNG { size_t generate(int minimum, size_t maximum) { assert(minimum >= 0 && (size_t)minimum <= maximum); ++calls; return std::min(maximum, minimum + (size_t)intValue); } bool percent(int chance) { return (int)generate(0, 99) < chance; } }' + "`n#define LOG_WARNING 0`n#define Log(level) std::cerr`n" + 'using Exception = std::runtime_error; namespace OpenXcom {'
 $geometry = $geometry.Replace('namespace OpenXcom {', $collaborators)
 $template = [IO.File]::ReadAllText((Join-Path $repository 'fixtures/reference-probes/savegames/strategic_world_lifecycle_probe.cpp'))
 $template = $template.Replace('// GEOMETRY', $geometry)
@@ -81,6 +81,7 @@ $direct = [ordered]@{
  'MISSION_OVER' = @('src/Savegame/AlienMission.cpp', 'bool AlienMission::isOver() const')
  'MISSION_LIFT' = @('src/Savegame/AlienMission.cpp', 'void AlienMission::ufoLifting(Ufo &ufo, SavedGame &game)')
  'MISSION_WAYPOINT' = @('src/Savegame/AlienMission.cpp', 'std::pair<double, double> AlienMission::getWaypoint(')
+ 'MISSION_SITE_LAND' = @('src/Savegame/AlienMission.cpp', 'std::pair<double, double> AlienMission::getLandPointForMissionSite(')
  'MISSION_LAND' = @('src/Savegame/AlienMission.cpp', 'std::pair<double, double> AlienMission::getLandPoint(')
 }
 foreach ($entry in $direct.GetEnumerator()) { $template = $template.Replace('// ' + $entry.Key, (Read-ReferenceMethod $entry.Value[0] $entry.Value[1])) }
@@ -93,8 +94,6 @@ function Replace-UnsupportedBody([string]$Source, [string]$Condition) {
     return $Source.Substring(0,$open) + '{ throw std::runtime_error("Unsupported probe branch"); }' + $Source.Substring($end)
 }
 $arrival = Read-ReferenceMethod 'src/Savegame/AlienMission.cpp' 'void AlienMission::ufoReachedWaypoint('
-$arrival = Replace-UnsupportedBody $arrival 'if (Options::aggressiveRetaliation'
-$arrival = $arrival.Replace('Options::aggressiveRetaliation', 'false')
 $arrival = Replace-UnsupportedBody $arrival 'if (_missionSiteZoneArea != -1 && wave.objective'
 $arrival = Replace-UnsupportedBody $arrival 'else if (trajectory.getID() == UfoTrajectory::RETALIATION_ASSAULT_RUN)'
 $arrival = Replace-UnsupportedBody $arrival 'if (_rule.getObjective() == OBJECTIVE_BASE && wave.objectiveOnTheLandingSite'
@@ -103,7 +102,12 @@ $spawn = Read-ReferenceMethod 'src/Savegame/AlienMission.cpp' 'Ufo *AlienMission
 $start = $spawn.LastIndexOf('Ufo *ufo = new Ufo(ufoRule, game.getId("STR_UFO_UNIQUE"), hunterKillerPercentage, huntMode, huntBehavior);')
 $end = $spawn.IndexOf('// Only hunter-killers can escort', $start)
 if ($start -lt 0 -or $end -lt 0) { throw 'Ordinary spawn fragment missing.' }
-$spawn = 'Ufo* AlienMission::spawnUfo(SavedGame& game,const Mod& mod,const Globe& globe,const MissionWave& wave,const UfoTrajectory& trajectory) { const RuleUfo* ufoRule=&mod.ufo; int hunterKillerPercentage=0,huntMode=0,huntBehavior=0;' + $spawn.Substring($start,$end-$start) + 'return ufo;}'
+$ordinary = $spawn.Substring($start,$end-$start)
+$supplyStart = $spawn.IndexOf('if (ufoRule == 0 || (wave.objective && !_base))')
+$supplyEnd = $spawn.IndexOf('// Only hunter-killers can escort', $supplyStart)
+if ($supplyStart -lt 0 -or $supplyEnd -lt 0) { throw 'Supply spawn fragment missing.' }
+$supply = $spawn.Substring($supplyStart,$supplyEnd-$supplyStart)
+$spawn = 'Ufo* AlienMission::spawnUfo(SavedGame& game,const Mod& mod,const Globe& globe,const MissionWave& wave,const UfoTrajectory& trajectory) { const RuleUfo* ufoRule=&mod.ufo; int hunterKillerPercentage=0,huntMode=0,huntBehavior=0; if(_rule.getObjective()==OBJECTIVE_SUPPLY){' + $supply + 'return ufo;} ' + $ordinary + 'return ufo;}'
 $template = $template.Replace('// MISSION_SPAWN', $spawn)
 $think = Read-ReferenceMethod 'src/Savegame/AlienMission.cpp' 'void AlienMission::think('
 $prefixEnd = $think.IndexOf('else if ((mod.getDeployment')
@@ -113,6 +117,16 @@ $timerStart = $think.LastIndexOf('if (_nextWave != _rule.getWaveCount())')
 if ($prefixEnd -lt 0 -or $countersStart -lt 0 -or $countersEnd -lt 0 -or $timerStart -lt 0) {throw 'Mission countdown fragments missing.'}
 $think = $think.Substring(0,$prefixEnd) + $think.Substring($countersStart,$countersEnd-$countersStart) + $think.Substring($timerStart)
 $template = $template.Replace('// MISSION_THINK', $think)
+$site = Read-ReferenceMethod 'src/Geoscape/GeoscapeState.cpp' 'bool GeoscapeState::processMissionSite('
+$reactivationStart = $site.IndexOf('Ufo* ufo = site->getUfo();', [StringComparison]::Ordinal)
+$reactivationEnd = $site.IndexOf('return removeSite;', $reactivationStart, [StringComparison]::Ordinal)
+if ($reactivationStart -lt 0 -or $reactivationEnd -le $reactivationStart) { throw 'Site UFO reactivation fragment missing.' }
+$template = $template.Replace('// SITE_REACTIVATION', $site.Substring($reactivationStart, $reactivationEnd - $reactivationStart))
+$score = Read-ReferenceMethod 'src/Savegame/AlienMission.cpp' 'void AlienMission::addScore('
+$scoreStart = $score.IndexOf('if (_rule.getObjective() == OBJECTIVE_INFILTRATION)', [StringComparison]::Ordinal)
+$scoreEnd = $score.IndexOf('for (auto* region', $scoreStart, [StringComparison]::Ordinal)
+if ($scoreStart -lt 0 -or $scoreEnd -le $scoreStart) { throw 'Mission score filter missing.' }
+$template = $template.Replace('// MISSION_SCORE_FILTER', $score.Substring($scoreStart, $scoreEnd - $scoreStart))
 Assert-ReferenceContains 'src/Geoscape/GeoscapeState.cpp' 'if (ufo->getStatus() == Ufo::DESTROYED)'
 Assert-ReferenceContains 'src/Geoscape/GeoscapeState.cpp' 'mission->ufoLifting(*ufo, *_game->getSavedGame());'
 Assert-ReferenceContains 'src/Savegame/Ufo.cpp' '_mission->decreaseLiveUfos();'

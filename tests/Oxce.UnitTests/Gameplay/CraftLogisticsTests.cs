@@ -9,6 +9,29 @@ namespace Oxce.UnitTests.Gameplay;
 public sealed class CraftLogisticsTests
 {
     [Fact]
+    public void FuelSetterRejectsUnsafeRefundArithmeticAndPreservesUnusedExcess()
+    {
+        var rules = CampaignLogisticsTests.LoadFixture().RuntimeRules;
+        var rule = rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value with
+        {
+            FuelMaximum = 100,
+            RefuelItem = rules.Items.GetRequired("SUPPLY"),
+            RefuelRate = 40,
+        };
+        var state = CraftLogistics.LoadStarting(rule, null) with { Fuel = 245, ExcessFuel = 7, Weapons = [] };
+        var capped = CraftLogistics.SetFuel(state, rule, rules, 244);
+        Assert.Equal(100, capped.State.Fuel);
+        Assert.Equal(31, capped.State.ExcessFuel);
+        Assert.Equal(3, capped.FuelItemChange);
+        var exact = CraftLogistics.SetFuel(state, rule, rules, 100);
+        Assert.Equal(7, exact.State.ExcessFuel);
+        Assert.Equal(0, exact.FuelItemChange);
+        Assert.Throws<InvalidDataException>(() => CraftLogistics.SetFuel(state, rule with { RefuelRate = 0 }, rules, 244));
+        Assert.Throws<OverflowException>(() => CraftLogistics.SetFuel(state with { ExcessFuel = int.MaxValue }, rule, rules, 244));
+        Assert.Equal(0, CraftLogistics.SetFuel(state, rule, rules, -1).State.Fuel);
+    }
+
+    [Fact]
     public void OnboardItemLimitChecksContainerQuantityAndSizeSeparately()
     {
         var rules = CampaignLogisticsTests.LoadFixture().RuntimeRules;

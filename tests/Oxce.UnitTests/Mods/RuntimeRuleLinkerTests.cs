@@ -11,6 +11,51 @@ namespace Oxce.UnitTests.Mods;
 
 public sealed class RuntimeRuleLinkerTests
 {
+    [Fact]
+    public void CraftManufactureProjectsOnlyFirstNativeOutput()
+    {
+        using var fixture = new TemporaryModFixture("crafts: [{type: FIRST}]\nmanufacture: [{name: BUILD, category: STR_CRAFT, time: 1, producedItems: {FIRST: 1, ZZ_IGNORED: 5}}]\n");
+        var snapshot = ContentSnapshotBuilder.Build(TestFixtures.CreatePlan(fixture.Root));
+        Assert.True(snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked), Diagnostics(snapshot));
+        var rules = snapshot.Content.RuntimeRules;
+        var output = Assert.Single(rules.Manufacture[rules.Manufacture.GetRequired("BUILD")].Value.ProducedMaterials);
+        Assert.Equal("FIRST", rules.Crafts.GetExternalId(output.Craft!.Value));
+        Assert.Equal(1, output.Quantity);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(", armor: MISSING")]
+    public void MissingUnitArmorKeepsTypedValidationWithoutDuplicateRuntimeDiagnostic(string armor)
+    {
+        using var fixture = new TemporaryModFixture($"units: [{{type: CORPSE_UNIT{armor}}}]\n");
+        var snapshot = ContentSnapshotBuilder.Build(TestFixtures.CreatePlan(fixture.Root));
+        Assert.False(snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked));
+        Assert.Contains(snapshot.Diagnostics, diagnostic => diagnostic.Severity >= DiagnosticSeverity.Error &&
+            diagnostic.Message.Contains("armor", StringComparison.Ordinal));
+        Assert.DoesNotContain(snapshot.Diagnostics, diagnostic => diagnostic.Code == "OXCE-MOD-0030");
+        Assert.Null(snapshot.Content.RuntimeRules.Units[snapshot.Content.RuntimeRules.Units.GetRequired("CORPSE_UNIT")].Value.Armor);
+    }
+
+    [Theory]
+    [InlineData("", true, true)]
+    [InlineData(", recover: false", false, true)]
+    [InlineData(", recoverCorpse: false", true, false)]
+    public void ResearchCorpseRuntimeRelationshipsKeepRecoveryDefaults(string flags, bool recover, bool corpse)
+    {
+        using var fixture = new TemporaryModFixture($"items: [{{type: CORPSE{flags}}}]\narmors: [{{type: CORPSE_ARMOR, corpseItem: CORPSE, loftempsSet: [0]}}]\nunits: [{{type: CORPSE_UNIT, armor: CORPSE_ARMOR}}]\n");
+        var snapshot = ContentSnapshotBuilder.Build(TestFixtures.CreatePlan(fixture.Root));
+        Assert.True(snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked), Diagnostics(snapshot));
+        var rules = snapshot.Content.RuntimeRules;
+        var unit = rules.Units[rules.Units.GetRequired("CORPSE_UNIT")].Value;
+        var armor = rules.Armors[unit.Armor!.Value].Value;
+        var item = rules.Items[armor.CorpseGeoscape!.Value].Value;
+        Assert.Equal("CORPSE_ARMOR", armor.Type);
+        Assert.Equal("CORPSE", item.Type);
+        Assert.Equal(recover, item.Recoverable);
+        Assert.Equal(corpse, item.CorpseRecoverable);
+    }
+
     [Theory]
     [InlineData("startingBase: {}", 0, 0)]
     [InlineData("startingBase: {scientists: 10, engineers: 20}", 10, 20)]

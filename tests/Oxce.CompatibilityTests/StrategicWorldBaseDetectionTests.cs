@@ -13,13 +13,11 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldBaseDetectionTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public void LaterFlightAndGroundTimersCrossTheBoundaryAndPersistDiscovery(bool fromCache, bool landed)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LaterFlightAndGroundTimersCrossTheBoundaryAndPersistDiscovery(bool landed)
     {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul", fromCache);
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var snapshot = CreateSnapshot(content, landed);
         // Base Alpha's one-tile store gives Base::getDetectionChance (1 / 6 + 15) / 1 = 15%.
         Assert.True(new SplitMix64RandomSource(snapshot.RandomState).NextInclusive(0, 99) < 15);
@@ -215,16 +213,13 @@ public sealed class StrategicWorldBaseDetectionTests
     }
 
     [Theory]
-    [InlineData(false, 0, false, true)]
-    [InlineData(false, 0, true, true)]
-    [InlineData(false, 1, false, false)]
-    [InlineData(true, 0, false, true)]
-    [InlineData(true, 0, true, true)]
-    [InlineData(true, 1, false, false)]
+    [InlineData(0, false, true)]
+    [InlineData(0, true, true)]
+    [InlineData(1, false, false)]
     public void CompletedFacilityAreaCountsEvenWhenDisabled(
-        bool fromCache, int buildTime, bool disabled, bool scans)
+        int buildTime, bool disabled, bool scans)
     {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul", fromCache);
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var snapshot = CreateSnapshot(content);
         const ulong seed = 179;
         var choices = new SplitMix64RandomSource(seed);

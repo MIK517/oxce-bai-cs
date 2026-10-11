@@ -240,8 +240,22 @@ indexed UI actions. Branch 4a implements the bounded
 [ordinary UFO and craft operations](strategic-world-operations-status.md) and satisfies
 its supported UFO lifecycle closure gate with headless acceptance evidence. The
 2026-09-26 scope revision assigns remaining mission/arc/event scheduling, broader
-world lifecycles, scripts, pursuit and globe UI to branch 4c. Original combined branch
-4 acceptance gates 4c closure before branch 5; 4b is locally accepted and not yet merged.
+world lifecycles, scripts and pursuit to branch 4c; the approved
+[4c/4d split](phase-6-world-integration-plan.md) assigns globe UI and combined branch 4
+acceptance to 4d before branch 5. Branch 4b merged in `e10d96f`. Campaign-event payload
+effects remain guarded until branch 6; 4c owns scheduling and persistence.
+Branch 4c now includes [alien-base activity and discovery](strategic-world-alien-base-activity-status.md):
+daily scoring, facility sight and craft patrol sight with save/reload and precise
+transition guards. [Daily alien-base mission generation](strategic-world-alien-base-generation-status.md)
+now schedules linked missions with region/race selection and persistent limits.
+[Monthly upgrades and race evolution](strategic-world-alien-base-monthly-status.md)
+now execute through an isolated registered world operation, including link repair
+and save preservation. Existing operation-base initialization, broader ordinary
+objective waves and delayed hunting mission creation now execute; see
+[mission status](strategic-mission-script-status.md). Creation-tick immediate waves,
+new-base/deployment effects, special UFO hunting/escorts and actual monthly caller
+composition remain open with the other 4c capabilities. Research-driven linked
+base deletion is covered by its cleanup slice below.
 
 The first branch of the [2026-09-05 review](project-review-2026-09-05.md) corrects
 compiled-cache resource dependencies: shared TAB/CAT headers and lengths now participate
@@ -357,6 +371,12 @@ their owning gameplay slices. See
 
 ## Immediate next tasks
 
+Phase 6 branch 4c checkpoints are recorded in the
+[4c plan's progress](phase-6-world-integration-plan.md#progress) and the subsystem status
+documents it links; entries below link to them instead of copying them. Branch 4c is
+[closed with named restrictions](phase-6-world-integration-plan.md#branch-4c-closure-2026-10-11);
+branch 4d (globe integration) is next.
+
 The September compatibility-guardrail, script-allocation, compiled-content-cache,
 hot-runtime-partitioning, and portable Unicode-path slices are complete. The production
 content root no longer retains typed compatibility/provenance graphs, virtual resource
@@ -368,3 +388,197 @@ separately versioned campaign query, command, and event capabilities.
    Keep each branch integrated across commands, script providers, saves and UI actions.
 2. Continue adding focused executable C++ probes, compatibility matrix entries, and
    controlled benchmarks with every compatibility-sensitive slice.
+
+Branch 4c increment: [research-driven alien-base cleanup](strategic-world-alien-base-cleanup-status.md)
+owns daily self-destruction, safe mission unlinking and optional pact cancellation.
+Live Earth-operation interruption and remaining 4c capabilities remain guarded.
+
+### Ordinary mission lifecycle and contact checkpoint (2026-10-03)
+
+Recorded in `phase-6-world-integration-plan.md`: [Ordinary mission lifecycle and contact checkpoint (2026-10-03)](phase-6-world-integration-plan.md#ordinary-mission-lifecycle-and-contact-checkpoint-2026-10-03).
+
+Recorded in [`strategic-mission-script-status.md`](strategic-mission-script-status.md#additional-4c-cycle-ignored-ufo-contacts).
+
+### Four-batch 4c checkpoint (2026-10-03)
+
+Twelve implementation slices, audited in four groups of three, add ordinary ground
+spawn paths, ordered origin/destination areas and rectangular Earth-operation
+origins; explicit mission-site waypoint selection; live research interruption and
+linked base destruction; immediate no-object generation and hunting; and aggressive
+retaliation arrival RNG. Each slice is committed with pinned evidence, focused
+fresh/cache tests, save/reload coverage and status updates. Audit corrections cover
+stale guard tests and a confirmed technical-region work-limit bypass.
+
+The branch remains incomplete. Outstanding world effects and final acceptance are
+listed in [mission status](strategic-mission-script-status.md). Interception,
+deployment, event payload execution and integrated month rollover retain branch
+5/6 guards. Branch 4d has not started.
+
+Recorded in [`strategic-mission-script-status.md`](strategic-mission-script-status.md#batch-4-audit).
+
+### Additional three-slice 4c batch (2026-10-03)
+
+Three committed slices extend origin spawning to separated Space rectangles,
+land-tested rectangular areas and selected objective rectangles. Pinned captures,
+fresh/cache tests, RNG accounting, transition reloads and atomic guards cover the
+new paths. The combined audit confirmed a point-origin pole-normalization
+regression; its correction and regression fixtures are implemented. Root tests
+passed 1,568 cases before the correction; the user reports all post-fix tests
+passing. Fixture input checksums, code-map validation and `git diff --check` pass.
+The changed pinned text inputs use LF bytes to match clean Git checkouts.
+The user also verified formatting from normal PowerShell with
+`dotnet format Oxce.slnx --verify-no-changes --no-restore` (exit code 0).
+The audit fix is committed as `1d532c1`; this batch's validation is complete. See
+[mission status](strategic-mission-script-status.md) for evidence and remaining
+4c scope. Branch 4d remains untouched.
+
+### Direct mission-site generation batch (2026-10-03)
+
+Three slices implement explicit deployment waves, mission-rule/terrain deployment
+selection and player-base targeting. The pinned `strategic-site-spawn` capture
+includes actual AlienMission creation/base selection and Texture selection blocks.
+Fresh/cache tests cover RNG order, immediate chains, marker IDs, activity, suppression
+and transition reloads. The batch audit fixes idle dictionary allocations, missing
+hourly discovery and an atomic activity forecast for weighted null outcomes, and
+bounds scans of unreachable deployment entries. Existing objective decision tests
+now verify direct-site execution and precise remaining guards.
+See [site generation status](strategic-world-site-spawning-status.md).
+
+The headless gate remains open. UFO-to-site conversion, zero-hour immediate despawn,
+empty marker namespaces, site scheduling scripts, new-base objectives,
+infiltration/pacts, detection VM providers, UFO hunting/escorts and composed world
+hooks remain outstanding. Branch 5/6 boundaries remain; branch 4d is untouched.
+
+Validation: root `dotnet test --no-restore --no-build` passes all 1,605 tests
+without failures or skips after the final regressions were compiled. Earlier
+root runs and focused tests built the changes. Checksums, private corpus,
+allocation budgets, formatting verification, code-map validation and `git diff --check` pass. The reference
+checkout remains clean; obsolete probe objects were removed.
+
+### Mission-site expiry batch (2026-10-03)
+
+Three slices implement missing/interrupted instant-event suppression, live UFO
+follower restoration and safe zero-hour creation/expiry. Instant event payloads
+remain branch 6 work and are never converted to scheduled events. Known mission
+unlock research still guards before the tick. Pinned event and timer captures
+cover eligibility, weighted choice and target/UFO destination reset; creation
+captures include zero-hour durations. Fresh/cache transition reloads and atomic
+limits cover each slice. The audit corrects a reproduced same-day research/marker
+collision through the shared counter range forecast, and bounds aggregate despawn
+scans. See [expiry status](strategic-world-site-timer-status.md) and
+[creation status](strategic-world-site-spawning-status.md).
+
+Branch 4c remains incomplete: UFO-to-site conversion, empty marker namespaces,
+mission-unlock research, site script scheduling, new-base objectives,
+infiltration/pacts, real detection VM providers, UFO hunting/escorts and composed
+world hooks remain open. Branch 5/6 guards remain; branch 4d is untouched.
+
+Final batch validation: root `dotnet test --no-restore --verbosity quiet` passes
+all 1,630 tests with zero failures or skips, including fixture checksums, the
+private corpus and allocation budgets. Formatting verification, code-map and
+diff checks pass. The pinned reference checkout remains clean.
+
+### Selected objective UFO site conversion (2026-10-03)
+
+The first slice implements selected objective UFO conversion, immediate site
+revelation and delayed UFO cleanup on five-second ticks below the half-hour
+trigger. Canonical pinned captures, fresh/cache reloads and atomic ID/score tests
+cover it. Custom deployment, respawn linkage, compound half-hour counter forecasts
+and craft follower transfer retain specific guards. See
+[conversion status](strategic-world-ufo-site-conversion-status.md).
+
+The second conversion slice adds optional custom deployment metadata from
+effective UFO race stats. Captured custom rows, missing references, race overrides
+and reloads pass. It retains the primary strategic deployment and its duration.
+
+The third slice adds dormant respawn linkage for converted UFOs and transition
+reloads through site expiry/reactivation. Craft follower transfer and combined
+half-hour conversion remain specific guards; the headless gate remains open.
+
+The conversion batch audit confirmed a false landing guard when terrain always
+suppressed a respawn-enabled site. The forecast now treats that UFO as terminal,
+matching the reference's return before later UFO/craft movement. Pinned suppression
+rows and regressions cover no-site/no-link outcomes, skipped craft state, shield
+recharge and current-tick fallthrough. Branch 4c remains incomplete; branch 4d is
+untouched.
+
+Final batch validation: root `dotnet test --no-restore --verbosity quiet` passes
+all 1,644 tests with zero failures or skips, including checksums, all 19 staged
+saves and allocation checks. Formatting verification, code-map and diff checks
+pass. An unchanged patrol allocation assertion failed once before the updated
+conversion expectations were compiled; it passed in the focused rerun and both
+subsequent root runs without weakening its assertion. The pinned C++ checkout
+remains clean; the regenerated probe object was removed.
+
+### Combined-tick UFO site conversion (2026-10-03)
+
+Conversion now runs safely on half-hour/day ticks after ordered research, direct
+birth and expiry counter changes. Captured ID/counter methods and 84 focused
+conversion/spawn/timer tests verify fresh/cache ordering, reload and atomic
+collisions. Same-tick direct births followed by a shared marker decrease retain
+a specific guard. Craft follower transfer remains the next slice. Branch 4c is
+incomplete; branch 4d is untouched.
+
+Craft follower transfer now covers passengers, vehicle instances and empty-craft
+return for dormant conversions. Fuel-before-transfer, landing/equipment options,
+terminal current-tick fallthrough and transition reloads have focused coverage.
+Actual landing remains guarded for branch 5.
+
+Recorded in [`strategic-world-ufo-site-conversion-status.md`](strategic-world-ufo-site-conversion-status.md#selected-objective-ufo-conversion-to-mission-sites).
+
+Recorded in [`phase-6-ownership.md`](phase-6-ownership.md#selected-objective-ufo-site-conversion-2026-10-03).
+
+Recorded in [`strategic-world-hunting-status.md`](strategic-world-hunting-status.md#ufo-hunting-and-escort-integration).
+
+Recorded in [`phase-6-ownership.md`](phase-6-ownership.md#selected-objective-ufo-site-conversion-2026-10-03).
+
+Recorded in [`strategic-world-hunting-status.md`](strategic-world-hunting-status.md#ufo-hunting-and-escort-integration).
+
+- Branch 4c escort creation slice: enabled single airborne escort births, including
+  no-leader requests and same-tick expired-leader recovery. Focused hunting/escort
+  verification passed (59 cases); immediate-wave composition follows separately.
+
+- Branch 4c immediate escort slice: finite wave chains preserve earlier/later
+  leader order and origin semantics, including unmarked leader reloads and bounded
+  population scans. Focused verification passed (66 hunting/escort cases).
+
+- Branch 4c escort batch audit: reproduced and fixed relocated-escort activity
+  overflow after mutation. Preflight now includes saved and possible earlier-wave
+  leader positions; boundary and terminal-arrival persistence regressions pass.
+
+- Final escort-cycle root validation: 1,745 passed, zero failures/skips, including
+  private classifications, endurance, checksum and allocation coverage. Code-map
+  and diff checks pass, as does formatting verification; 4c remains open and 4d is untouched.
+
+- 4c grounded escort slice: extended pinned status traces and enabled long-timer
+  grounded births with active craft. Focused hunting/escort tests pass (87 cases).
+
+- 4c creation-tick grounded takeoff slice: timer-one hunter/escort births with
+  active craft are enabled. Scoring follows site/earlier-UFO order, terminal
+  arrivals skip newborn lifts, and 138 focused cases pass with reload coverage.
+
+- 4c saved idle escort slice: replaced the blanket newborn-leader boundary with
+  structural checks for craft pursuit, waypoint arrival and UFO followers.
+  Ordered attachment and reload/resource-limit tests pass (146 focused cases).
+
+Recorded in [`strategic-world-hunting-status.md`](strategic-world-hunting-status.md#saved-idle-escort-and-newborn-leader-composition).
+
+Recorded in [`strategic-mission-script-status.md`](strategic-mission-script-status.md#additional-batch-audit-2026-10-03).
+
+### Branch 4c: composed scheduling evidence and eligibility forecast
+
+Pinned GeoscapeState::determineAlienMissions arc/mission/event prefix and the initial GeoscapeState::init block in strategic-world-composition. The fixture isolates caller order and dependent eligibility; research, mission creation and event storage are controlled collaborators, not new payload/objective oracles. Pure preflight eligibility now represents research grants/disables and increasing variable/marker intervals without changing state or consuming RNG. Month rollover, event effects and branch 4d remain guarded. The composed caller and initial entry are the next slices.
+
+Branch 4c scheduling/entry cycle closes with registered monthly world composition and once-only public EnterCampaignWorld after first-base placement. Caller eligibility is preflighted across arc research, mission counters and event history before any RNG/mutation; score/funds remain fixed. Initial accounting and legacy world links are guarded, and entry expires stale logistics quotes. Batch audit fixed prospective operation-base identity collisions and removed a nonreference nonmonthly mode. Root verification passes 2,123 tests. Newly created bases with monthly upgrades/evolution, remaining detection providers/forecasts and final composed acceptance keep 4c open; branch 4d remains untouched.
+
+Recorded in [`phase-6-world-integration-plan.md`](phase-6-world-integration-plan.md#item-detection-metadata-cycle-audit-2026-10-04).
+
+Recorded in [`phase-6-ownership.md`](phase-6-ownership.md#item-detection-metadata-cycle-audit-2026-10-04).
+
+Recorded in [`phase-6-world-integration-plan.md`](phase-6-world-integration-plan.md#item-detection-metadata-cycle-audit-2026-10-04).
+
+Recorded in [`strategic-world-hunting-status.md`](strategic-world-hunting-status.md#maintenance-before-hunter-selection).
+
+Recorded in [`phase-6-world-integration-plan.md`](phase-6-world-integration-plan.md#item-detection-metadata-cycle-audit-2026-10-04).
+
+Recorded in [`strategic-world-hunting-status.md`](strategic-world-hunting-status.md#maintenance-before-hunter-selection).

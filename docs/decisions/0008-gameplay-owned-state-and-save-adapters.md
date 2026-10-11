@@ -55,6 +55,13 @@ semantic entity kind, and persistent identity. Gameplay does not carry raw YAML.
 save adapter decides whether preserved data still belongs to an entity that survives
 at the next write.
 
+Alien bases use a save-neutral preservation key to retain their sidecar through
+deployment upgrades. The adapter derives legacy keys from the original deployment
+and ID, writes the optional `oxcePortEntityKey`, and consumes each source occurrence
+once. Gameplay repairs marker-based target references while keeping the key stable.
+Deleted bases have no output node; their sidecars cannot recreate them. The reference
+ignores the port key. This follows the same identity mechanism used for repeated events.
+
 ## Consequences
 
 - Gameplay models can optimize their representation and enforce invariants independently

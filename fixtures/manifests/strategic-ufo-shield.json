@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-ufo-shield",
+  "description": "Flying-UFO shield initialization and recharge with exact C++ block and setter; scripted percent rolls, no combat.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "GeoscapeState.cpp time5Seconds flying-UFO shield block; Ufo.cpp setShield",
+      "probe": "fixtures/reference-probes/savegames/strategic_ufo_shield_probe.cpp",
+      "capture": "tools/capture-strategic-ufo-shield-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; reference statements inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "size": 1272,
+      "path": "fixtures/reference-probes/savegames/strategic_ufo_shield_probe.cpp",
+      "sha256": "48697fdd697eb372a93aac88f1ce59b4de8f1747e15733e95a8e8f18f37bb756"
+    },
+    {
+      "size": 3021,
+      "path": "tools/capture-strategic-ufo-shield-reference.ps1",
+      "sha256": "93e45439ac09040834bfa1aa6eb4d6261756636eaa7e8239adb58f2ba832c346"
+    },
+    {
+      "size": 14290,
+      "path": "fixtures/public/savegames/strategic-world.rul",
+      "sha256": "9b1d246a38a20824d282ef0d14a64c65d68e687a780d3caa1f4da8c93a510c07"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-ufo-shield.expected.json"
+}

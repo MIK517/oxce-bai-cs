@@ -8,6 +8,36 @@ namespace Oxce.UnitTests.Gameplay;
 
 public sealed class WorldGeometryTests
 {
+    [Theory]
+    [InlineData(0.0)]
+    [InlineData(1.0)]
+    [InlineData(4.0)]
+    public void EqualityUsesMachineEpsilonAndScalesWithCoordinates(double value)
+    {
+        const double epsilon = 2.2204460492503131e-16;
+        var inside = value + epsilon * Math.Max(1, Math.Abs(value));
+        var outside = value + 2 * epsilon * Math.Max(1, Math.Abs(value));
+        Assert.True(WorldGeometry.AreSame(value, inside));
+        Assert.True(WorldGeometry.AreSame(inside, value));
+        Assert.False(WorldGeometry.AreSame(value, outside));
+        Assert.False(WorldGeometry.AreSame(outside, value));
+    }
+
+    [Fact]
+    public void CoincidentAndAntipodalRoundingStaysInsideAcosDomain()
+    {
+        var from = new WorldPosition(0.2, 0.0002);
+        var nearby = new WorldPosition(0.2 + 1e-12, 0.0002);
+        var antipode = new WorldPosition(0.2 + Math.PI, -0.0002);
+        Assert.Equal(0.0, WorldGeometry.Distance(from, nearby));
+        Assert.Equal(0, WorldGeometry.XcomDistance(WorldGeometry.Distance(from, nearby)));
+        Assert.Equal(Math.PI, WorldGeometry.Distance(from, antipode));
+        Assert.Equal(WorldGeometry.Distance(from, nearby), WorldGeometry.Distance(nearby, from));
+        Assert.Equal(Math.PI, WorldGeometry.Distance(antipode, from));
+        // Clamping must not turn genuinely invalid input into a valid distance.
+        Assert.True(double.IsNaN(WorldGeometry.Distance(from, double.NaN, 0)));
+    }
+
     [Fact]
     public void LatitudePastAPoleFlipsTheLongitude()
     {
@@ -39,6 +69,28 @@ public sealed class WorldGeometryTests
         Assert.Equal(destination, position);
         Assert.True(WorldGeometry.ReachedDestination(position, destination));
         Assert.Equal(position, WorldGeometry.Move(position, destination, WorldGeometry.RadianSpeed(100_000)));
+    }
+
+    [Theory]
+    [InlineData(0.4, 0.2, 0.4, 0.2, 100)] // coincident
+    [InlineData(0.4, 0.2, 0.4001, 0.2, 100_000)] // arrives within one step
+    [InlineData(0.4, 0.2, 3.0, -0.6, 2200)] // ordinary step
+    [InlineData(0.4, 0.2, 3.0, -0.6, 0)] // zero speed
+    [InlineData(0.2, 0.0002, 3.3415926535897931, -0.0002, 5000)] // antipode
+    [InlineData(1.0, 1.5707963267948966, 2.0, 1.2, 3000)] // from the north pole
+    [InlineData(1.0, -1.2, 4.0, -1.5707963267948966, 3000)] // to the south pole
+    public void MoveWithPrecomputedDistanceMatchesMove(double fromLongitude, double fromLatitude,
+        double toLongitude, double toLatitude, int speed)
+    {
+        var from = WorldPosition.Create(fromLongitude, fromLatitude);
+        var to = WorldPosition.Create(toLongitude, toLatitude);
+        var speedRadian = WorldGeometry.RadianSpeed(speed);
+        var vector = WorldGeometry.SpeedVector(from, to, speedRadian);
+        var distance = WorldGeometry.Distance(from, to);
+        Assert.Equal(WorldGeometry.Move(from, to, speedRadian), WorldGeometry.Move(from, to, speedRadian, vector, distance));
+        // A step of exactly the remaining distance snaps to the destination, like the native `>` test.
+        Assert.Equal(WorldGeometry.Move(from, to, distance, vector), WorldGeometry.Move(from, to, distance, vector, distance));
+        Assert.Equal(WorldPosition.Create(to.Longitude, to.Latitude), WorldGeometry.Move(from, to, distance, vector, distance));
     }
 
     [Fact]

@@ -278,7 +278,7 @@ public sealed partial class CampaignState
                             transfers.Add(new(crewTransferId, row.Hours, CampaignTransferKind.Soldier, soldier.RuleId, 1, soldier)
                             { PreservationKey = $"{Identity.Id}:transfer:{crewTransferId}" });
                         }
-                        var moved = new CraftSnapshot(row.RuleId, original.Id) { Logistics = original.Logistics, PreservationKey = original.PreservationKey };
+                        var moved = new CraftSnapshot(row.RuleId, original.Id) { Logistics = original.Logistics, PreservationKey = original.PreservationKey, ScriptValues = original.ScriptValues?.Capture() ?? [] };
                         var transferId = nextTransferId++;
                         transfers.Add(new(transferId, row.Hours, row.Kind, row.RuleId, 1, Craft: moved)
                         { PreservationKey = $"{Identity.Id}:transfer:{transferId}" });
@@ -419,10 +419,10 @@ public sealed partial class CampaignState
         return null;
     }
 
-    private bool HasFunctions(BaseState state, IReadOnlyList<string> required)
+    private bool HasFunctions(BaseState state, IReadOnlyList<string> required, int completedBuildTime = 0)
     {
         if (required.Count == 0) return true;
-        var provided = state.Facilities.Where(f => f.BuildTime <= 0).SelectMany(f => _content.RuntimeRules.Facilities[f.Rule].Value.ProvidedBaseFunctions).ToHashSet(StringComparer.Ordinal);
+        var provided = state.Facilities.Where(f => f.BuildTime <= completedBuildTime).SelectMany(f => _content.RuntimeRules.Facilities[f.Rule].Value.ProvidedBaseFunctions).ToHashSet(StringComparer.Ordinal);
         // Base location services are added by their containing country/region.
         foreach (var country in _countries)
         {
@@ -443,12 +443,14 @@ public sealed partial class CampaignState
 
     private int AvailableStores(BaseState state) => state.Facilities.Where(f => f.BuildTime == 0).Sum(f => _content.RuntimeRules.Facilities[f.Rule].Value.Storage);
     private int AvailableQuarters(BaseState state) => state.Facilities.Where(f => f.BuildTime == 0).Sum(f => _content.RuntimeRules.Facilities[f.Rule].Value.Personnel);
-    private static int UsedQuarters(BaseState state) => checked(
-        state.Soldiers.Count + state.Scientists + state.Engineers +
-        state.Research.Sum(project => project.Assigned) +
-        state.Productions.Sum(project => project.Assigned) +
+    private int UsedQuarters(BaseState state) => checked((int)UsedQuartersWide(state));
+    private long UsedQuartersWide(BaseState state) =>
+        (long)state.Soldiers.Count + state.Scientists + state.Engineers +
+        state.Research.Sum(project => (long)project.Assigned) +
+        state.Productions.Sum(project => (long)project.Assigned) +
+        state.Productions.Count(project => _content.RuntimeRules.Manufacture[project.Rule].Value.SpawnedPersonType.Length != 0) +
         state.Transfers.Where(t => !t.Delivered && t.Kind is CampaignTransferKind.Soldier or
-            CampaignTransferKind.Scientist or CampaignTransferKind.Engineer).Sum(t => t.Quantity));
+            CampaignTransferKind.Scientist or CampaignTransferKind.Engineer).Sum(t => (long)t.Quantity);
     private double UsedStores(BaseState state) => state.Items.Sum(p => _content.RuntimeRules.Items[p.Key].Value.Size * p.Value) +
         state.Crafts.Sum(c => c.Logistics is { } logistics ? CraftLogistics.StoredSize(logistics, _content.RuntimeRules) : 0) +
         state.Transfers.Where(t => !t.Delivered).Sum(t => t.Kind == CampaignTransferKind.Item
@@ -476,19 +478,25 @@ public sealed partial class CampaignState
 
     private string? PreflightTransfers()
     {
+        long reuseWork = 0;
         foreach (var state in _bases)
         {
             if (state.Transfers.Count == 0) continue;
             long scientists = state.Scientists, engineers = state.Engineers;
             var incoming = new Dictionary<string, long>(StringComparer.Ordinal);
+            var reusableItems = 0;
+            var incomingCrafts = 0;
             foreach (var transfer in state.Transfers)
             {
                 if (transfer.Delivered || transfer.Hours > 1) continue;
+                if (transfer.Hours <= 0) return "Undelivered transfer arrival requires positive remaining hours.";
                 switch (transfer.Kind)
                 {
                     case CampaignTransferKind.Scientist: scientists += transfer.Quantity; break;
                     case CampaignTransferKind.Engineer: engineers += transfer.Quantity; break;
                     case CampaignTransferKind.Item:
+                        if (_content.RuntimeRules.Items[_content.RuntimeRules.Items.GetRequired(transfer.RuleId)].Value.BattleType == 0)
+                            reusableItems++;
                         var current = incoming.GetValueOrDefault(transfer.RuleId,
                             state.Items.GetValueOrDefault(_content.RuntimeRules.Items.GetRequired(transfer.RuleId)));
                         incoming[transfer.RuleId] = current + transfer.Quantity;
@@ -498,10 +506,13 @@ public sealed partial class CampaignState
                         if (transfer.Soldier?.Personal is null) return "Soldier arrival requires complete personal state.";
                         break;
                     case CampaignTransferKind.Craft:
+                        incomingCrafts++;
                         if (transfer.Craft?.Logistics is null) return "Craft arrival requires complete logistics state.";
                         break;
                 }
             }
+            reuseWork += reusableItems * ((long)state.Crafts.Count + incomingCrafts);
+            if (reuseWork > 1_000_000) return "Arrival item reuse exceeds the supported work limit.";
             if (scientists > int.MaxValue || engineers > int.MaxValue) return "Arrival exceeds the personnel quantity range.";
             // Pure arithmetic preflight includes the half-hour handler after all hourly deliveries.
             foreach (var transfer in state.Transfers)
@@ -529,6 +540,7 @@ public sealed partial class CampaignState
         foreach (var state in _bases)
         {
             List<int>? arrived = null;
+            List<RuleHandle<ItemRuleFamily>>? reusableItems = null;
             for (var index = 0; index < state.Transfers.Count; index++)
             {
                 var transfer = state.Transfers[index];
@@ -556,22 +568,14 @@ public sealed partial class CampaignState
                                 Logistics = CraftLogistics.Arrive(craft.Logistics!, _content.RuntimeRules.Crafts[craftRule].Value,
                                     _content.RuntimeRules, state.Longitude, state.Latitude),
                                 PreservationKey = craft.PreservationKey,
+                                ScriptValues = RestoreScriptValues(_content, "Craft", craft.ScriptValues),
                             });
                             break;
                         case CampaignTransferKind.Item:
                             var handle = _content.RuntimeRules.Items.GetRequired(transfer.RuleId);
-                            state.Items[handle] = state.Items.GetValueOrDefault(handle) + transfer.Quantity;
+                            ChangeStock(state.Items, handle, transfer.Quantity);
                             if (_content.RuntimeRules.Items[handle].Value.BattleType == 0)
-                                for (var craftIndex = 0; craftIndex < state.Crafts.Count; craftIndex++)
-                                {
-                                    var servicedCraft = state.Crafts[craftIndex];
-                                    if (servicedCraft.Logistics is null) continue;
-                                    state.Crafts[craftIndex] = servicedCraft with
-                                    {
-                                        Logistics = CraftServicing.ReuseItem(servicedCraft.Logistics,
-                                            _content.RuntimeRules.Crafts[servicedCraft.Rule].Value, _content.RuntimeRules, handle)
-                                    };
-                                }
+                                (reusableItems ??= []).Add(handle);
                             break;
                         default: throw new InvalidOperationException("Arrival provider was not preflighted.");
                     }
@@ -582,6 +586,20 @@ public sealed partial class CampaignState
             }
             if (arrived is not null)
             {
+                // ItemsArrivingState is constructed after every Transfer::advance.
+                // Reuse applies to all craft already delivered, in item transfer order.
+                if (reusableItems is not null)
+                    foreach (var handle in reusableItems)
+                        for (var craftIndex = 0; craftIndex < state.Crafts.Count; craftIndex++)
+                        {
+                            var craft = state.Crafts[craftIndex];
+                            if (craft.Logistics is null) continue;
+                            state.Crafts[craftIndex] = craft with
+                            {
+                                Logistics = CraftServicing.ReuseItem(craft.Logistics,
+                                    _content.RuntimeRules.Crafts[craft.Rule].Value, _content.RuntimeRules, handle),
+                            };
+                        }
                 state.Transfers.RemoveAll(static transfer => transfer.Delivered);
                 effects.Notify(new SuppliesArrived(state.Id, CampaignSnapshot.ReadOnly(arrived)));
             }

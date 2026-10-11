@@ -401,7 +401,7 @@ internal sealed class UnitBuilder
     {
         ["civilianRecoveryType"] = "",
         ["spawnedPersonName"] = "",
-        ["liveAlien"] = "STR_NULL",
+        ["liveAlien"] = "\0",
         ["race"] = "",
         ["rank"] = "",
         ["armor"] = "",

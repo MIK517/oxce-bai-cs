@@ -12,12 +12,10 @@ namespace Oxce.CompatibilityTests;
 /// <summary>GeoscapeState::time5Seconds/time30Minutes, Ufo::~Ufo and AlienMission::isOver.</summary>
 public sealed class StrategicWorldCleanupTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CleanupReleasesEachMissionOnceAndKeepsSurvivors(bool fromCache)
+    [Fact]
+    public void CleanupReleasesEachMissionOnceAndKeepsSurvivors()
     {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul", fromCache);
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var snapshot = CreateLifecycleSnapshot(content);
         var mission = snapshot.World.Missions[0];
         var ufo = snapshot.World.Ufos[0];
@@ -135,7 +133,7 @@ public sealed class StrategicWorldCleanupTests
     }
 
     [Fact]
-    public void PursuitGuardPreventsDeletingAReferencedUfo()
+    public void DeletedUfoReturnsFollowerBeforeCleanup()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var snapshot = CreateLifecycleSnapshot(content);
@@ -157,7 +155,12 @@ public sealed class StrategicWorldCleanupTests
             Bases = [owner with { Crafts = owner.Crafts.Select(item => item == craft ? follower : item).ToArray() }],
             World = snapshot.World with { Ufos = [ufo] },
         });
-        AssertTimeBlocked(campaign, "Craft pursuit and landing require world simulation.");
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.True(Assert.Single(result.Events.OfType<CraftTargetLost>()).ReturningToBase);
+        Assert.Empty(campaign.Capture().World.Ufos);
+        Assert.NotEqual(WorldTargetKind.Ufo, Ship(campaign.Capture()).Destination?.Kind);
+        Reload(content, campaign, 17, "deleted-ufo-follower.sav");
     }
 
     private static CraftLogisticsState Ship(CampaignSnapshot snapshot) =>

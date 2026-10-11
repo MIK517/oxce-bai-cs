@@ -1,0 +1,48 @@
+events:
+  - name: EVENT_SECOND
+    adhocMissionScriptTags: [second]
+  - name: EVENT_OTHER
+    adhocMissionScriptTags: [other]
+  - name: EVENT_BOTH
+    adhocMissionScriptTags: [other, second]
+  - name: EVENT_EMPTY
+  - name: EVENT_BAD
+    adhocMissionScriptTags: [bad]
+  - name: EVENT_THRESHOLD
+    adhocMissionScriptTags: [threshold]
+adhocScripts:
+  - type: SECOND_FIRST
+    adhocMissionScriptTags: [second, other]
+    varName: ADHOC_RUN
+    maxRuns: 1
+    label: 1
+    startDelay: 60
+    missionWeights: {0: {MISSION_SCOUT: 1}}
+    regionWeights: {0: {REGION: 1}}
+    raceWeights: {0: {RACE_A: 1}}
+  - type: FOLLOW_SECOND
+    adhocMissionScriptTags: [second]
+    conditionals: [1]
+    startDelay: 90
+    missionWeights: {0: {MISSION_SCOUT: 1}}
+    regionWeights: {0: {REGION: 1}}
+    raceWeights: {0: {RACE_A: 1}}
+  - type: OTHER_FIRST
+    adhocMissionScriptTags: [other, second]
+    startDelay: 120
+    missionWeights: {0: {MISSION_SCOUT: 1}}
+    regionWeights: {0: {REGION: 1}}
+    raceWeights: {0: {RACE_A: 1}}
+  - type: BAD_SITE
+    adhocMissionScriptTags: [bad]
+    missionWeights: {0: {STR_ALIEN_TERROR: 1}}
+    regionWeights: {0: {REGION: 1}}
+    raceWeights: {0: {RACE_A: 1}}
+  - type: THRESHOLD
+    adhocMissionScriptTags: [threshold]
+    minScore: 5
+    minFunds: 10
+    startDelay: 150
+    missionWeights: {0: {MISSION_SCOUT: 1}}
+    regionWeights: {0: {REGION: 1}}
+    raceWeights: {0: {RACE_A: 1}}

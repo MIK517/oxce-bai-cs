@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-infiltration-region",
+  "description": "AlienMission::think infiltration block, regional search; technical regions exclude country labels.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "Verbatim infiltration completion, chooseAlienBaseType and Texture deployment selector; one eligible country, regional mode, controlled geometry",
+      "capture": "tools/capture-strategic-infiltration-region-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; controlled geometry and creation collaborators"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_infiltration_region_probe.cpp",
+      "size": 5727,
+      "sha256": "8d87b4fc09c4919a91490d5d4a961701400eab16482179500a4309601ab38043"
+    },
+    {
+      "path": "tools/capture-strategic-infiltration-region-reference.ps1",
+      "size": 3027,
+      "sha256": "77d89405233db790963fe125689ab14ec0b92063ce646a1a5845a976f81fad2e"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-objective-base.rul",
+      "size": 793,
+      "sha256": "a684c3da27b9bdd25afa44c5317aa7f8f91cb89423cdb5b609a4a43cbe97097e"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-infiltration-region.expected.json"
+}

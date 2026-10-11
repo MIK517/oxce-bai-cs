@@ -1,0 +1,72 @@
+ufoTrajectories:
+  - id: PATH_0_0
+    groundTimer: 2
+    waypoints:
+      - [4, 3, 100]
+      - [5, 2, 80]
+      - [6, 0, 50]
+      - [6, 1, 100]
+  - id: PATH_0_1
+    groundTimer: 2
+    waypoints:
+      - [4, 3, 100]
+      - [5, 0, 80]
+      - [6, 0, 50]
+      - [6, 1, 100]
+  - id: PATH_1_0
+    groundTimer: 2
+    waypoints:
+      - [4, 0, 100]
+      - [5, 2, 80]
+      - [6, 0, 50]
+      - [6, 1, 100]
+  - id: PATH_1_1
+    groundTimer: 2
+    waypoints:
+      - [4, 0, 100]
+      - [5, 0, 80]
+      - [6, 0, 50]
+      - [6, 1, 100]
+  - id: PATH_SHORT
+    groundTimer: 1
+    waypoints:
+      - [4, 0, 100]
+      - [5, 2, 80]
+      - [6, 1, 100]
+alienMissions:
+  - type: SPAWN_PATH_SHORT
+    points: 7
+    waves:
+      - {ufo: UFO_SCOUT, count: 2, trajectory: PATH_SHORT, timer: 9000}
+  - type: SPAWN_PATH_0_0_0
+    objective: 0
+    waves:
+      - {ufo: UFO_SCOUT, count: 2, trajectory: PATH_0_0, timer: 9000, objective: false}
+  - type: SPAWN_PATH_0_0_1
+    objective: 0
+    waves:
+      - {ufo: UFO_SCOUT, count: 2, trajectory: PATH_0_1, timer: 9000, objective: false}
+  - type: SPAWN_PATH_0_1_0
+    objective: 0
+    waves:
+      - {ufo: UFO_SCOUT, count: 2, trajectory: PATH_1_0, timer: 9000, objective: false}
+  - type: SPAWN_PATH_0_1_1
+    objective: 0
+    waves:
+      - {ufo: UFO_SCOUT, count: 2, trajectory: PATH_1_1, timer: 9000, objective: false}
+  - type: SPAWN_PATH_1_0_0
+    objective: 5
+    waves:
+      - {ufo: UFO_SCOUT, count: 2, trajectory: PATH_0_0, timer: 9000, objective: true}
+  - type: SPAWN_PATH_1_0_1
+    objective: 5
+    waves:
+      - {ufo: UFO_SCOUT, count: 2, trajectory: PATH_0_1, timer: 9000, objective: true}
+  - type: SPAWN_PATH_1_1_0
+    objective: 5
+    waves:
+      - {ufo: UFO_SCOUT, count: 2, trajectory: PATH_1_0, timer: 9000, objective: true}
+  - type: SPAWN_PATH_1_1_1
+    objective: 5
+    waves:
+      - {ufo: UFO_SCOUT, count: 2, trajectory: PATH_1_1, timer: 9000, objective: true}

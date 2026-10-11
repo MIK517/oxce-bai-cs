@@ -129,6 +129,7 @@ public sealed class ScriptProgram
             _sourceMap[instructionIndex] = instruction.Source;
             var operandOffset = operandBuilder.Count;
             ScriptBindingDeclaration? hostBinding = null;
+            var separatedArguments = false;
             for (var operandIndex = 0; operandIndex < instruction.Operands.Count; operandIndex++)
             {
                 var operand = instruction.Operands[operandIndex];
@@ -141,9 +142,14 @@ public sealed class ScriptProgram
                             nameof(instructions));
                     }
                     hostBinding = _bindingSlots[slot];
+                    var argumentCount = instruction.Operands.Count - 1;
+                    separatedArguments = argumentCount == hostBinding.Parameters.Count;
+                    if (!separatedArguments && argumentCount != hostBinding.Parameters.Count(static parameter =>
+                        parameter.Type.Id != ScriptPrimitiveTypes.Separator))
+                        throw new ArgumentException($"Instruction {instructionIndex} has invalid binding argument count.", nameof(instructions));
                     operand = ScriptOperand.BindingSlot(slot);
                 }
-                else if (hostBinding is not null &&
+                else if (separatedArguments && hostBinding is not null &&
                     hostBinding.Parameters[operandIndex - 1].Type.Id == ScriptPrimitiveTypes.Separator)
                 {
                     continue;

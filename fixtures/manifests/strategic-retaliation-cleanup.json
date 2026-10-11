@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-retaliation-cleanup",
+  "description": "Exact Base::load retaliation link and GeoscapeState::time30Minutes finished retaliation cleanup blocks.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "capture": "tools/capture-strategic-retaliation-cleanup-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; selected blocks inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_retaliation_cleanup_probe.cpp",
+      "size": 2010,
+      "sha256": "04fb31a66bd2de8cd9b606ab5474dc600aab6c8767aaaa28618ba8d28790239d"
+    },
+    {
+      "path": "tools/capture-strategic-retaliation-cleanup-reference.ps1",
+      "size": 2781,
+      "sha256": "bd4571d8ef98340eafc7b0774dfce37e5f59c1f9239d1bbc264df2b56db8e3be"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-retaliation-cleanup.rul",
+      "size": 308,
+      "sha256": "7a1b26b2b1846ae81a68b03ae2f67c4508a69eff621300b3727205df82e889f2"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-world.rul",
+      "size": 14290,
+      "sha256": "9b1d246a38a20824d282ef0d14a64c65d68e687a780d3caa1f4da8c93a510c07"
+    }
+  ],
+  "expected": "fixtures/expected/savegames/strategic-retaliation-cleanup.expected.json"
+}

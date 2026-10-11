@@ -10,12 +10,10 @@ namespace Oxce.CompatibilityTests;
 /// </summary>
 public sealed class StrategicWorldRuleProjectionTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void WorldEntityRulesProjectIntoTheRuntimeCatalog(bool fromCache)
+    [Fact]
+    public void WorldEntityRulesProjectIntoTheRuntimeCatalog()
     {
-        var rules = StrategicReadinessTestContent.Load("strategic-world.rul", fromCache).RuntimeRules;
+        var rules = StrategicReadinessTestContent.Load("strategic-world.rul").RuntimeRules;
 
         var globe = rules.Campaign.Globe;
         Assert.Equal(3, globe.Polygons.Count);

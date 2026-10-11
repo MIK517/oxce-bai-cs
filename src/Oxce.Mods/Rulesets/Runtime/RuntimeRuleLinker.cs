@@ -1,5 +1,7 @@
+using System.Collections.Frozen;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Text;
 using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Oxce.Mods.Resources;
@@ -15,6 +17,7 @@ using AlienMissionRule = Oxce.Mods.Rulesets.MissionEvents.AlienMissionRule;
 using EventRule = Oxce.Mods.Rulesets.MissionEvents.EventRule;
 using UfoTrajectoryRule = Oxce.Mods.Rulesets.MissionEvents.UfoTrajectoryRule;
 using WeightedTimelineEntry = Oxce.Mods.Rulesets.MissionEvents.WeightedTimelineEntry;
+using StrategicScriptRule = Oxce.Mods.Rulesets.MissionEvents.StrategicScriptRule;
 
 namespace Oxce.Mods.Rulesets.Runtime;
 
@@ -59,10 +62,13 @@ public static class RuntimeRuleLinker
         var itemHandles = Handles<ItemRuleFamily, ItemRule>(generation, content.Items.Items);
         var soldierHandles = Handles<SoldierRuleFamily, SoldierRule>(generation, content.PersonnelTactical.Soldiers);
         var armorHandles = Handles<ArmorRuleFamily, ArmorRule>(generation, content.PersonnelTactical.Armors);
+        var unitHandles = Handles<UnitRuleFamily, UnitRule>(generation, content.PersonnelTactical.Units);
         var skillHandles = Handles<SkillRuleFamily, SkillRule>(generation, content.PersonnelTactical.Skills);
         var researchHandles = Handles<ResearchRuleFamily, ResearchRule>(generation, content.EquipmentProduction.Research);
         var manufactureHandles = Handles<ManufactureRuleFamily, ManufactureRule>(generation, content.EquipmentProduction.Manufacture);
         var eventHandles = Handles<EventRuleFamily, EventRule>(generation, content.MissionEvents.Events);
+        var missionHandles = Handles<AlienMissionRuleFamily, AlienMissionRule>(generation, content.MissionEvents.AlienMissions);
+        var raceHandles = Handles<AlienRaceRuleFamily, AlienRaceRule>(generation, content.TerrainDeployment.AlienRaces);
         var ufoHandles = Handles<UfoRuleFamily, UfoRule>(generation, content.EquipmentProduction.Ufos);
         var trajectoryHandles = Handles<UfoTrajectoryRuleFamily, UfoTrajectoryRule>(
             generation, content.MissionEvents.UfoTrajectories);
@@ -156,6 +162,8 @@ public static class RuntimeRuleLinker
                 ForbiddenBaseFunctions = rule.Value.ForbiddenBaseFunctions,
                 HangarType = rule.Value.HangarType,
                 ProvidedBaseFunctions = rule.Value.ProvidedBaseFunctions,
+                SightRange = rule.Value.SightRange,
+                SightChance = rule.Value.SightChance,
                 RadarRange = rule.Value.RadarRange,
                 RadarChance = rule.Value.RadarChance,
                 Hyperwave = rule.Value.HyperWave,
@@ -185,8 +193,10 @@ public static class RuntimeRuleLinker
                     "crafts", rule, "fixedWeapons"),
                 ScriptsFor(scriptBuild.ByOwner, "crafts", rule.Id))
             {
+                Type = rule.Id,
                 Purchase = new(rule.Value.Integers["monthlyBuyLimit"], rule.Value.Strings["monthlyBuyLimitMessage"],
                     rule.Value.Strings["requiresBuyCountry"], rule.Value.RequiredBuyBaseFunctions, []),
+                DefaultStats = rule.Value.Stats.Integers,
                 HangarType = rule.Value.Integers["hangarType"],
                 WeaponSlots = rule.Value.Integers["weapons"],
                 RefuelRate = rule.Value.Integers["refuelRate"],
@@ -194,11 +204,13 @@ public static class RuntimeRuleLinker
                 ShieldCapacity = rule.Value.Stats.Get("shieldCapacity"),
                 ShieldRechargeInGeoscape = rule.Value.Stats.Get("shieldRechargeInGeoscape"),
                 ShieldRechargeAtBase = rule.Value.Integers["shieldRechargedAtBase"],
+                SightRange = rule.Value.Stats.Get("sightRange"),
                 RadarRange = rule.Value.Stats.Get("radarRange"),
                 RadarChance = rule.Value.Stats.Get("radarChance"),
                 MaximumItems = rule.Value.Stats.Get("maxItems"),
                 MaximumStorageSpace = rule.Value.Stats.MaximumStorageSpace,
                 NotifyWhenRefueled = rule.Value.Booleans["notifyWhenRefueled"],
+                Undetectable = rule.Value.Booleans["undetectable"],
                 PatrolWithoutFuel = rule.Value.Booleans["patrolWithoutFuel"],
                 AutoPatrol = rule.Value.Booleans["autoPatrol"],
                 FixedWeaponSlots = rule.Value.FixedWeapons,
@@ -220,6 +232,7 @@ public static class RuntimeRuleLinker
             });
 
         cancellationToken.ThrowIfCancellationRequested();
+        var categoryReplacements = ItemCategoryReplacements(content);
         var items = BuildFamily<ItemRuleFamily, ItemRule, RuntimeItemRule>(
             generation, content.Items.Items, rule => new RuntimeItemRule(
                 rule.Value.Values.GetString("name"),
@@ -237,9 +250,27 @@ public static class RuntimeRuleLinker
                     .ToArray()),
                 ScriptsFor(scriptBuild.ByOwner, "items", rule.Id))
             {
+                Type = rule.Id,
+                Damage = RuntimeItemDamageProjection.Create(rule.Value.Damage),
+                MeleeDamage = RuntimeItemDamageProjection.Create(rule.Value.MeleeDamage),
+                Power = rule.Value.Values.GetInteger("power"),
+                MeleePower = rule.Value.Values.GetInteger("meleePower"),
+                ArmorValue = rule.Value.Values.GetInteger("armor"),
+                Waypoints = rule.Value.Values.GetInteger("waypoints"),
+                TwoHanded = rule.Value.Values.Boolean("twoHanded"),
+                BlockingBothHands = rule.Value.Values.Boolean("blockBothHands"),
+                WaterOnly = rule.Value.Values.Boolean("underwaterOnly"),
+                Categories = rule.Value.Categories.Select(category => categoryReplacements.GetValueOrDefault(category, category))
+                    .ToFrozenSet(StringComparer.Ordinal),
+                Accuracy = new(rule.Value.Actions["Aimed"].Accuracy, rule.Value.Actions["Auto"].Accuracy,
+                    rule.Value.Actions["Snap"].Accuracy, rule.Value.Actions["Melee"].Accuracy,
+                    rule.Value.Values.GetInteger("accuracyUse"), rule.Value.Values.GetInteger("accuracyMindControl"),
+                    rule.Value.Values.GetInteger("accuracyPanic"), rule.Value.Values.GetInteger("accuracyThrow")),
                 Purchase = new(rule.Value.Values.GetInteger("monthlyBuyLimit"), rule.Value.Values.GetString("monthlyBuyLimitMessage"),
                     rule.Value.Values.GetString("requiresBuyCountry"), rule.Value.RequiredBuyBaseFunctions, rule.Value.BuyRequirements),
                 IsAlien = rule.Value.Values.Boolean("liveAlien"),
+                Recoverable = rule.Value.Values.Boolean("recover"),
+                CorpseRecoverable = rule.Value.Values.Boolean("recoverCorpse"),
                 VehicleFixedAmmoSlot = rule.Value.Values.GetInteger("vehicleFixedAmmoSlot"),
                 VehicleArmor = rule.Value.Values.Boolean("fixedWeapon") && content.PersonnelTactical.Units.TryGet(rule.Id, out var vehicleUnit)
                     ? OptionalRuntime(armorHandles, vehicleUnit!.Value.Strings["armor"]) : null,
@@ -256,7 +287,25 @@ public static class RuntimeRuleLinker
                 rule.Value.EffectiveSpaceOccupied,
                 rule.Value.Strings["storeItem"],
                 OptionalItem(itemHandles, rule.Value.Strings["storeItem"]))
-            { Group = rule.Value.Integers["group"], Stats = rule.Value.Stats.Values });
+            {
+                Type = rule.Id,
+                Group = rule.Value.Integers["group"],
+                CorpseGeoscape = OptionalItem(itemHandles, rule.Value.Strings["corpseGeo"]),
+                Stats = rule.Value.Stats.Values,
+                Vision = new(
+                    rule.Value.Integers["visibilityAtDark"],
+                    rule.Value.Integers["visibilityAtDay"],
+                    rule.Value.Integers["camouflageAtDark"],
+                    rule.Value.Integers["camouflageAtDay"],
+                    rule.Value.Integers["antiCamouflageAtDark"],
+                    rule.Value.Integers["antiCamouflageAtDay"],
+                    rule.Value.Integers["heatVision"],
+                    rule.Value.Integers["visibilityThroughFire"],
+                    rule.Value.Integers["personalLight"],
+                    rule.Value.Integers["personalLightHostile"],
+                    rule.Value.Integers["personalLightNeutral"]),
+                Script = ArmorScriptFields(rule.Value, itemHandles, researchHandles),
+            });
 
         cancellationToken.ThrowIfCancellationRequested();
         var soldiers = BuildFamily<SoldierRuleFamily, SoldierRule, RuntimeSoldierRule>(
@@ -296,6 +345,14 @@ public static class RuntimeRuleLinker
             CustomTrainingFactor = content.CampaignStart.Settings.CustomTrainingFactor,
             ManaWoundThreshold = content.CampaignStart.Settings.ManaWoundThreshold,
             HealthWoundThreshold = content.CampaignStart.Settings.HealthWoundThreshold,
+            EscortRange = content.CampaignStart.Settings.EscortRange,
+            MaximumViewDistance = content.CampaignStart.Settings.MaximumViewDistance,
+            MaximumDarknessToSeeUnits = content.CampaignStart.Settings.MaximumDarknessToSeeUnits,
+            HunterKillerFastRetarget = content.CampaignStart.Settings.HunterKillerFastRetarget,
+            AllowAlienBasesOnWrongTextures = content.CampaignStart.Settings.AllowAlienBasesOnWrongTextures,
+            AllowCountriesToCancelAlienPact = content.CampaignStart.Settings.AllowCountriesToCancelAlienPact,
+            BuildInfiltrationBaseCloseToTheCountry = content.CampaignStart.Settings.BuildInfiltrationBaseCloseToTheCountry,
+            InfiltrateRandomCountryInTheRegion = content.CampaignStart.Settings.InfiltrateRandomCountryInTheRegion,
         };
         var compatibility = new RuntimeRuleCompatibilitySidecar(CompatibilityEntries(content));
         var catalog = new RuntimeRuleCatalog(
@@ -314,6 +371,25 @@ public static class RuntimeRuleLinker
             items,
             soldiers,
             armors,
+            BuildFamily<UnitRuleFamily, UnitRule, RuntimeUnitRule>(generation,
+                content.PersonnelTactical.Units, rule => new(rule.Id)
+                {
+                    // The typed catalog already rejects missing unit armor.
+                    Armor = OptionalRuntime(armorHandles, rule.Value.Strings["armor"]),
+                    SpawnUnit = OptionalRequired(unitHandles, rule.Value.Strings["spawnUnit"], "units", rule, "spawnUnit"),
+                    LiveAlien = rule.Value.Strings["liveAlien"] == "\0"
+                        ? OptionalItem(itemHandles, rule.Id)
+                        : rule.Value.Strings["liveAlien"] is "" or "STR_NONE" ? null
+                        : OptionalRequired(itemHandles, rule.Value.Strings["liveAlien"], "units", rule, "liveAlien"),
+                    CivilianRecoveryItem = rule.Value.Strings["civilianRecoveryType"] is "" or "\0" or "STR_NONE" or "STR_ENGINEER" or "STR_SCIENTIST" ||
+                        soldierHandles.ContainsKey(rule.Value.Strings["civilianRecoveryType"]) ? null
+                        : OptionalRequired(itemHandles, rule.Value.Strings["civilianRecoveryType"], "units", rule, "civilianRecoveryType"),
+                }),
+            BuildFamily<InventoryRuleFamily, InventoryRule, RuntimeInventoryRule>(generation,
+                content.PersonnelTactical.Inventories, rule => new(rule.Id, rule.Value.Type, rule.Value.Hand)
+                {
+                    Costs = rule.Value.Costs.ToFrozenDictionary(StringComparer.Ordinal),
+                }),
             BuildFamily<SoldierBonusRuleFamily, SoldierBonusRule, RuntimeSoldierBonusRule>(generation,
                 content.PersonnelTactical.Bonuses, rule => new(rule.Value.ListOrder, rule.Value.Stats.Values)),
             BuildFamily<SoldierTransformationRuleFamily, SoldierTransformationRule, RuntimeSoldierTransformationRule>(generation,
@@ -349,14 +425,17 @@ public static class RuntimeRuleLinker
                     rule.Value.Space, rule.Value.Time, rule.Value.Cost, rule.Value.Points,
                     rule.Value.Refund,
                     Array.AsReadOnly(rule.Value.RequiredItems.Select(pair => RequiredMaterial(pair.Key, pair.Value)).ToArray()),
-                    Array.AsReadOnly(rule.Value.EffectiveProducedItems().Select(pair => ProducedMaterial(
+                    Array.AsReadOnly((rule.Value.Category == "STR_CRAFT" ? rule.Value.EffectiveProducedItems().Take(1) : rule.Value.EffectiveProducedItems()).Select(pair => ProducedMaterial(
                             pair.Key, pair.Value, rule.Value.Category == "STR_CRAFT")).ToArray()),
                     rule.Value.RandomProducedItems, rule.Value.SpawnedPersonType,
                     rule.Value.SpawnedPersonName,
                     RuntimeSoldierTemplateLoader.Read(rule.Value.SpawnedSoldierTemplate),
                     rule.Value.TransferTimes, rule.Value.ListOrder,
                     rule.Value.Events)),
-            IdentityFamily<EventRuleFamily, EventRule>(generation, content.MissionEvents.Events),
+            BuildFamily<EventRuleFamily, EventRule, RuntimeEventRule>(generation, content.MissionEvents.Events,
+                static rule => new(rule.Value.Integers["timer"], rule.Value.Integers["timerRandom"],
+                    rule.Value.Strings["interruptResearch"],
+                    Array.AsReadOnly(rule.Value.AdhocMissionScriptTags.ToArray()))),
             BuildFamily<UfoRuleFamily, UfoRule, RuntimeUfoRule>(generation, content.EquipmentProduction.Ufos,
                 rule => BuildUfo(rule.Id, rule.Value)),
             BuildFamily<UfoTrajectoryRuleFamily, UfoTrajectoryRule, RuntimeUfoTrajectoryRule>(generation,
@@ -368,10 +447,66 @@ public static class RuntimeRuleLinker
             BuildFamily<AlienDeploymentRuleFamily, AlienDeploymentRule, RuntimeAlienDeploymentRule>(generation,
                 content.TerrainDeployment.AlienDeployments, rule => BuildAlienDeployment(rule.Id, rule.Value)),
             IdentityFamily<AlienRaceRuleFamily, AlienRaceRule>(generation, content.TerrainDeployment.AlienRaces),
+            BuildFamily<MissionScriptRuleFamily, StrategicScriptRule, RuntimeMissionScriptRule>(generation,
+                content.MissionEvents.MissionScripts, rule => BuildMissionScript(rule, "missionScripts")),
+            BuildFamily<AdhocScriptRuleFamily, StrategicScriptRule, RuntimeMissionScriptRule>(generation,
+                content.MissionEvents.AdhocScripts, rule => BuildMissionScript(rule, "adhocScripts")),
+            BuildFamily<ArcScriptRuleFamily, StrategicScriptRule, RuntimeArcScriptRule>(generation,
+                content.MissionEvents.ArcScripts, rule => new(BuildScriptCriteria(rule.Value), rule.Value.Integers["maxArcs"],
+                    References(researchHandles, rule.Value.Sequential), ScriptWeights(researchHandles, rule.Value.Random))),
+            BuildFamily<EventScriptRuleFamily, StrategicScriptRule, RuntimeEventScriptRule>(generation,
+                content.MissionEvents.EventScripts, rule => new(BuildScriptCriteria(rule.Value), rule.Value.Booleans["affectsGameProgression"],
+                    References(eventHandles, rule.Value.Sequential), ScriptWeights(eventHandles, rule.Value.Random),
+                    ScriptTimeline(eventHandles, rule.Value.EventWeights))),
             scriptBuild.Family,
             settings);
         cancellationToken.ThrowIfCancellationRequested();
         return new RuntimeRuleLinkResult(catalog, compatibility, Array.AsReadOnly(issues.ToArray()));
+
+        RuntimeMissionScriptRule BuildMissionScript(TypedRule<StrategicScriptRule> owner, string family)
+        {
+            var value = owner.Value;
+            bool? siteType = null;
+            var firstMission = true;
+            // Mod::loadAll derives the objective from the first ordinal ID across all months.
+            // It rejects a missing first ID, but skips later missing IDs during consistency checks.
+            foreach (var id in value.MissionWeights.SelectMany(entry => entry.Weights.Keys).Distinct(StringComparer.Ordinal)
+                         .Order(StringComparer.Ordinal))
+            {
+                if (!content.MissionEvents.AlienMissions.TryGet(id, out var mission))
+                {
+                    if (firstMission)
+                        Report(family, owner.Id, "missionWeights", id, "Referenced alien mission does not exist.", owner.LastUpdateSource);
+                    firstMission = false;
+                    continue;
+                }
+                firstMission = false;
+                var isSite = mission!.Value.Integers["objective"] == (int)RuntimeMissionObjective.Site;
+                if (siteType is { } previous && previous != isSite)
+                    Report(family, owner.Id, "missionWeights", id,
+                        "A mission script cannot mix site and non-site objectives.", owner.LastUpdateSource);
+                siteType ??= isSite;
+            }
+            return new(BuildScriptCriteria(value), value.Strings["varName"], value.Integers["label"],
+                value.Integers["targetBaseOdds"], value.Integers["maxRuns"], value.Integers["avoidRepeats"],
+                value.Integers["startDelay"], value.Integers["randomDelay"], value.Booleans["useTable"], siteType ?? false,
+                Array.AsReadOnly(value.Conditionals.ToArray()), Array.AsReadOnly(value.Tags.ToArray()),
+                ScriptTimeline(missionHandles, value.MissionWeights), ScriptTimeline(raceHandles, value.RaceWeights),
+                ScriptTimeline(regionHandles, value.RegionWeights));
+        }
+
+        RuntimeScriptCriteria BuildScriptCriteria(StrategicScriptRule value) => new(
+            value.Integers["firstMonth"], value.Integers["lastMonth"], value.Integers["executionOdds"],
+            value.Integers["minDifficulty"], value.Integers["maxDifficulty"],
+            value.Integers["minScore"], value.Integers["maxScore"], value.Longs["minFunds"], value.Longs["maxFunds"],
+            value.Strings["missionVarName"], value.Strings["missionMarkerName"], value.Integers["counterMin"], value.Integers["counterMax"],
+            ScriptTriggers(researchHandles, value.Triggers["researchTriggers"]),
+            ScriptTriggers(itemHandles, value.Triggers["itemTriggers"]),
+            ScriptTriggers(facilityHandles, value.Triggers["facilityTriggers"]),
+            ScriptTriggers(soldierHandles, value.Triggers["soldierTypeTriggers"]),
+            ScriptTriggers(regionHandles, value.Triggers["xcomBaseInRegionTriggers"]),
+            ScriptTriggers(countryHandles, value.Triggers["xcomBaseInCountryTriggers"]),
+            ScriptTriggers(countryHandles, value.Triggers["pactCountryTriggers"]));
 
         RuntimeUfoRule BuildUfo(string id, UfoRule source)
         {
@@ -404,7 +539,13 @@ public static class RuntimeRuleLinker
                 source.CrashedMarker.Index,
                 stats,
                 new ReadOnlyDictionary<string, RuntimeUfoStats>(bonuses),
-                ScriptsFor(scriptBuild.ByOwner, "ufos", id));
+                ScriptsFor(scriptBuild.ByOwner, "ufos", id))
+            {
+                Radius = source.EffectiveRadius,
+                WeaponRange = source.Integers["range"],
+                WeaponPower = source.Integers["power"],
+                WeaponReload = source.Integers["reload"],
+            };
         }
 
         static RuntimeUfoStats UfoStats(UfoStats source) => new(
@@ -417,7 +558,19 @@ public static class RuntimeRuleLinker
             source.Craft.Get("shieldCapacity"),
             source.Craft.Get("shieldRecharge"),
             source.Craft.Get("shieldRechargeInGeoscape"),
-            source.MissionCustomDeployment);
+            source.MissionCustomDeployment)
+        {
+            FuelMaximum = source.Craft.Get("fuelMax"),
+            HitBonus = source.Craft.Get("hitBonus"),
+            AvoidBonus = source.Craft.Get("avoidBonus"),
+            AvoidBonus2 = source.Craft.Get("avoidBonus2"),
+            PowerBonus = source.Craft.Get("powerBonus"),
+            Armor = source.Craft.Get("armor"),
+            ShieldBleedThrough = source.Craft.Get("shieldBleedThrough"),
+            MaximumUnits = source.Craft.Get("soldiers"),
+            MaximumVehicles = source.Craft.Get("vehicles"),
+            MaximumItems = source.Craft.Get("maxItems"),
+        };
 
         RuntimeAlienMissionRule BuildAlienMission(string id, AlienMissionRule source)
         {
@@ -517,7 +670,8 @@ public static class RuntimeRuleLinker
                 Timeline(source.HuntMissionWeights),
                 Timeline(source.AlienBaseUpgrades),
                 Array.AsReadOnly(evolution),
-                Weights(id, "despawnEvents", source.DespawnEvents));
+                Weights(id, "despawnEvents", source.DespawnEvents))
+            { StartingCondition = source.Strings["startingCondition"] };
         }
 
         RuntimeAlienRaceEvolution? ReadEvolution(string id, YamlNode node)
@@ -590,6 +744,7 @@ public static class RuntimeRuleLinker
                 HireEngineersBaseFunctions = source.HireEngineersRequiredBaseFunctions,
                 HireByCountryOdds = source.HireByCountryOdds,
                 HireByRegionOdds = source.HireByRegionOdds,
+                PerformanceBonusFactor = source.PerformanceBonusFactor,
                 FixedUserOptions = source.FixedUserOptions,
             };
         }
@@ -700,7 +855,7 @@ public static class RuntimeRuleLinker
             diagnostics.Report(new DiagnosticEvent(
                 ModDiagnosticCodes.InvalidRuntimeRuleLink,
                 DiagnosticSeverity.Error,
-                $"Runtime {family} rule '{ownerId}' property '{property}' references missing rule '{id}'.",
+                $"Runtime {family} rule '{ownerId}' property '{property}' ('{id}'): {message}",
                 source?.Span,
                 new DiagnosticContext(source?.LayerId, source?.ModId, family, ownerId, id)));
         }
@@ -717,6 +872,21 @@ public static class RuntimeRuleLinker
 
     private static readonly IReadOnlyDictionary<string, ulong> EmptyWeights =
         new ReadOnlyDictionary<string, ulong>(new Dictionary<string, ulong>(StringComparer.Ordinal));
+
+    private static ReadOnlyCollection<RuntimeScriptTrigger<TFamily>> ScriptTriggers<TFamily>(
+        Dictionary<string, RuleHandle<TFamily>> handles, IReadOnlyDictionary<string, bool> source) =>
+        Array.AsReadOnly(source.OrderBy(pair => pair.Key, StringComparer.Ordinal).Select(pair =>
+            new RuntimeScriptTrigger<TFamily>(new(pair.Key, OptionalRuntime(handles, pair.Key)), pair.Value)).ToArray());
+
+    private static ReadOnlyCollection<RuntimeScriptWeight<TFamily>> ScriptWeights<TFamily>(
+        Dictionary<string, RuleHandle<TFamily>> handles, IReadOnlyDictionary<string, ulong> source) =>
+        Array.AsReadOnly(source.Where(pair => pair.Value != 0).OrderBy(pair => pair.Key, StringComparer.Ordinal).Select(pair =>
+            new RuntimeScriptWeight<TFamily>(new(pair.Key, OptionalRuntime(handles, pair.Key)), pair.Value)).ToArray());
+
+    private static ReadOnlyCollection<RuntimeScriptTimeline<TFamily>> ScriptTimeline<TFamily>(
+        Dictionary<string, RuleHandle<TFamily>> handles, IReadOnlyList<WeightedTimelineEntry> source) =>
+        Array.AsReadOnly(source.Select(entry => new RuntimeScriptTimeline<TFamily>(entry.Month,
+            ScriptWeights(handles, entry.Weights))).ToArray());
 
     private static ReadOnlyCollection<RuntimeWeightedTimeline> Timeline(
         IEnumerable<WeightedTimelineEntry> source) =>
@@ -749,9 +919,43 @@ public static class RuntimeRuleLinker
         IEnumerable<string> ids) => new(ids.Select(id =>
             new RuntimeRuleReference<TFamily>(id, OptionalRuntime(handles, id))));
 
+    private static RuntimeArmorScriptFields ArmorScriptFields(ArmorRule armor,
+        Dictionary<string, RuleHandle<ItemRuleFamily>> items, Dictionary<string, RuleHandle<ResearchRuleFamily>> research)
+    {
+        var integers = armor.Integers;
+        (int, int) Cost(string key) => (armor.MoveCosts[key].TimePercent, armor.MoveCosts[key].EnergyPercent);
+        return new(
+            Array.AsReadOnly([integers["frontArmor"], unchecked(integers["sideArmor"] + integers["leftArmorDiff"]),
+                integers["sideArmor"], integers["rearArmor"], integers["underArmor"]]),
+            integers["drawingRoutine"],
+            armor.Booleans["drawBubbles"],
+            integers["deathFrames"],
+            armor.Booleans["constantAnimation"],
+            Cost("basePercent"),
+            Cost("baseNormalPercent"),
+            Cost("baseFlyPercent"),
+            Array.AsReadOnly(armor.CorpseBattle.Select(id => OptionalItem(items, id)).ToArray()),
+            OptionalRuntime(research, armor.Strings["requires"]));
+    }
+
     private static RuleHandle<ItemRuleFamily>? OptionalItem(
         Dictionary<string, RuleHandle<ItemRuleFamily>> handles,
         string id) => id.Length != 0 && id != "STR_NONE" && handles.TryGetValue(id, out var handle) ? handle : null;
+
+    private static Dictionary<string, string> ItemCategoryReplacements(Phase3ContentCatalog content)
+    {
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        // C++ applies each std::map replacement once in UTF-8 byte order. Resolve
+        // the same forward-only chains in reverse order, avoiding a scan of every
+        // replacement for every item category. Backward links and cycles stop.
+        var byteOrder = Comparer<byte[]>.Create(static (left, right) => left.AsSpan().SequenceCompareTo(right));
+        foreach (var rule in content.EquipmentProduction.ItemCategories.Rules
+            .Where(static rule => rule.Value.ReplaceBy.Length != 0)
+            .Select(static rule => (rule.Id, rule.Value.ReplaceBy, Key: Encoding.UTF8.GetBytes(rule.Id)))
+            .OrderByDescending(static rule => rule.Key, byteOrder))
+            result[rule.Id] = result.GetValueOrDefault(rule.ReplaceBy, rule.ReplaceBy);
+        return result;
+    }
 
     private static RuntimeIndexedResourceReference Resource(
         RuleIndexReference reference,

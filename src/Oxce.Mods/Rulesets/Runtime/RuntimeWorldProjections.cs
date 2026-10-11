@@ -18,9 +18,22 @@ public sealed record RuntimeUfoStats(
     int ShieldRechargeInGeoscape,
     string MissionCustomDeployment)
 {
+    public int FuelMaximum { get; init; }
+    public int HitBonus { get; init; }
+    public int AvoidBonus { get; init; }
+    public int AvoidBonus2 { get; init; }
+    public int PowerBonus { get; init; }
+    public int Armor { get; init; }
+    public int ShieldBleedThrough { get; init; }
+    public int MaximumUnits { get; init; }
+    public int MaximumVehicles { get; init; }
+    public int MaximumItems { get; init; }
+
     public static RuntimeUfoStats Empty { get; } = new(0, 0, 0, 0, 0, 0, 0, 0, 0, "");
 
-    /// <summary>RuleUfoStats::operator+= as used by <c>Ufo::setMissionInfo</c>.</summary>
+    /// <summary>RuleUfoStats::operator+= as used by <c>Ufo::setMissionInfo</c>.
+    /// Additional script-only fields retain 32-bit width; their callers validate consumed sums.
+    /// </summary>
     public RuntimeUfoStats WithBonus(RuntimeUfoStats bonus) => new(
         checked(SpeedMaximum + bonus.SpeedMaximum),
         checked(Acceleration + bonus.Acceleration),
@@ -31,7 +44,19 @@ public sealed record RuntimeUfoStats(
         checked(ShieldCapacity + bonus.ShieldCapacity),
         checked(ShieldRecharge + bonus.ShieldRecharge),
         checked(ShieldRechargeInGeoscape + bonus.ShieldRechargeInGeoscape),
-        bonus.MissionCustomDeployment.Length != 0 ? bonus.MissionCustomDeployment : MissionCustomDeployment);
+        bonus.MissionCustomDeployment.Length != 0 ? bonus.MissionCustomDeployment : MissionCustomDeployment)
+    {
+        FuelMaximum = unchecked(FuelMaximum + bonus.FuelMaximum),
+        HitBonus = unchecked(HitBonus + bonus.HitBonus),
+        AvoidBonus = unchecked(AvoidBonus + bonus.AvoidBonus),
+        AvoidBonus2 = unchecked(AvoidBonus2 + bonus.AvoidBonus2),
+        PowerBonus = unchecked(PowerBonus + bonus.PowerBonus),
+        Armor = unchecked(Armor + bonus.Armor),
+        ShieldBleedThrough = unchecked(ShieldBleedThrough + bonus.ShieldBleedThrough),
+        MaximumUnits = unchecked(MaximumUnits + bonus.MaximumUnits),
+        MaximumVehicles = unchecked(MaximumVehicles + bonus.MaximumVehicles),
+        MaximumItems = unchecked(MaximumItems + bonus.MaximumItems),
+    };
 }
 
 /// <summary>
@@ -57,6 +82,11 @@ public sealed record RuntimeUfoRule(
     IReadOnlyDictionary<string, RuntimeUfoStats> RaceBonuses,
     RuleHandleList<RuntimeScriptFamily> Scripts)
 {
+    public int Radius { get; init; }
+    public int WeaponRange { get; init; }
+    public int WeaponPower { get; init; }
+    public int WeaponReload { get; init; }
+
     /// <summary>RuleUfo::getRaceBonus: the unnamed bonus is the fallback.</summary>
     public RuntimeUfoStats RaceBonus(string race) =>
         RaceBonuses.TryGetValue(race, out var bonus) ? bonus : RaceBonuses.GetValueOrDefault("", RuntimeUfoStats.Empty);
@@ -202,6 +232,8 @@ public sealed record RuntimeAlienDeploymentRule(
     IReadOnlyList<RuntimeAlienRaceEvolution> AlienRaceEvolution,
     IReadOnlyDictionary<string, ulong> DespawnEvents)
 {
+    public string StartingCondition { get; init; } = string.Empty;
+
     /// <summary>
     /// AlienDeployment::generateHuntMission / generateAlienBaseUpgrade: the timeline is stored in
     /// descending month order and the first entry at or below the given month wins.

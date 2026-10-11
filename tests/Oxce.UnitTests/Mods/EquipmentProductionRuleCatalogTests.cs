@@ -12,6 +12,18 @@ namespace Oxce.UnitTests.Mods;
 
 public sealed class EquipmentProductionRuleCatalogTests
 {
+    [Theory]
+    [InlineData("UNKNOWN", -1, 0)]
+    [InlineData("STR_SMALL", -2, 3)]
+    [InlineData("UNKNOWN", 0, 0)]
+    [InlineData("STR_VERY_LARGE", 17, 17)]
+    public void UfoRadiusPreservesReferenceFallback(string size, int radius, int expected)
+    {
+        using var fixture = new TemporaryModFixture(("fixture.rul", $"ufos:\n  - type: UFO\n    size: {size}\n    radius: {radius}\n"));
+        var content = EquipmentProductionRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root), new DiagnosticCollector());
+        Assert.Equal(expected, Assert.Single(content.Ufos.Rules).Value.EffectiveRadius);
+    }
+
     [Fact]
     public void LoadsEquipmentFamiliesWithReferenceMergeAndDefaultSemantics()
     {

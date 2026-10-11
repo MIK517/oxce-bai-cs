@@ -12,12 +12,10 @@ namespace Oxce.CompatibilityTests;
 /// <summary>AlienMission::getLandPoint/ufoReachedWaypoint/ufoLifting and GeoscapeState's ground handlers.</summary>
 public sealed class StrategicWorldUfoLandingTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void AreaLandingRejectsWaterAndFliesToTheSelectedLandAfterReload(bool fromCache)
+    [Fact]
+    public void AreaLandingRejectsWaterAndFliesToTheSelectedLandAfterReload()
     {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul", fromCache);
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var rules = content.RuntimeRules;
         var region = rules.Regions[rules.Regions.GetRequired("REGION")].Value;
         var globe = rules.Campaign.Globe;
@@ -80,13 +78,11 @@ public sealed class StrategicWorldUfoLandingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void FixedPointWaveSpawnsDetectsLandsDepartsAndExpires(bool fromCache, bool longLanding)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FixedPointWaveSpawnsDetectsLandsDepartsAndExpires(bool longLanding)
     {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul", fromCache);
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var snapshot = CreateCampaign(content, halfHour: true, radar: true).Capture();
         var campaign = CampaignState.Restore(snapshot with
         {
@@ -331,7 +327,7 @@ public sealed class StrategicWorldUfoLandingTests
     }
 
     [Fact]
-    public void UnsupportedLandedMissionStopsBeforeMutation()
+    public void SiteMissionUsesOrdinaryLandedCountdownAndTakeoff()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var snapshot = CreateCampaign(content, landed: true).Capture();
@@ -341,7 +337,13 @@ public sealed class StrategicWorldUfoLandingTests
             { Missions = [Assert.Single(snapshot.World.Missions) with { RuleId = "MISSION_SITE" }] },
         }, content, new SplitMix64RandomSource(94));
 
-        AssertTimeBlocked(campaign, "UFO takeoff requires mission simulation.");
+        AdvanceOne(campaign);
+        var after = campaign.Capture();
+        Assert.Equal(UfoStatus.Flying, Assert.Single(after.World.Ufos).Status);
+        Assert.Equal(WorldAltitudes.VeryLow, after.World.Ufos[0].Altitude);
+        Assert.Equal(0, after.World.Ufos[0].SecondsRemaining);
+        Assert.Empty(after.World.MissionSites);
+        Reload(content, campaign, 94, "site-mission-takeoff.sav");
     }
 
     [Theory]
@@ -376,14 +378,59 @@ public sealed class StrategicWorldUfoLandingTests
     [Theory]
     [InlineData(26)]
     [InlineData(50)]
-    public void GroundArrivalThatWouldCrashRemainsGuarded(int damage)
+    public void DamagedGroundArrivalCrashesWithLandingTimerAndExpiresAfterReload(int damage)
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var snapshot = CreateCampaign(content).Capture();
-        var campaign = RestoreUfos(content, snapshot,
-            Assert.Single(snapshot.World.Ufos) with { TrajectoryPoint = 1, Damage = damage });
+        var source = Assert.Single(snapshot.World.Ufos) with { TrajectoryPoint = 1 };
+        var healthy = RestoreUfos(content, snapshot, source with { Damage = 25 });
+        var damaged = RestoreUfos(content, snapshot, source with { Damage = damage });
+        AdvanceOne(healthy);
+        // Ufo::setAltitude only swaps LANDED for CRASHED; ufoReachedWaypoint's ground
+        // branch still draws both waypoints and assigns the landing timer and marker.
+        var result = damaged.Execute(new AdvanceCampaignTime(1));
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(result.Events)).Summary.TickCount);
+        var landed = Assert.Single(healthy.Capture().World.Ufos);
+        Assert.Equal(UfoStatus.Landed, landed.Status);
+        var after = damaged.Capture();
+        var crashed = Assert.Single(after.World.Ufos);
+        Assert.Equal(landed with { Status = UfoStatus.Crashed, Damage = damage }, crashed);
+        Assert.Equal(healthy.Capture().RandomState, after.RandomState);
+        Assert.Equivalent(healthy.Capture().NextIds, after.NextIds, strict: true);
 
-        AssertTimeBlocked(campaign, "UFO waypoint arrival requires mission simulation.");
+        damaged = Reload(content, damaged, 97, "damaged-ground-arrival.sav");
+        AdvanceOne(damaged);
+        Assert.True(Assert.Single(damaged.Capture().World.Ufos).Detected);
+        // time30Minutes expires a crash whose remaining seconds are below half an hour.
+        Assert.InRange(crashed.SecondsRemaining, 5, 1795);
+        AdvanceUnblocked(damaged, 359);
+        Assert.DoesNotContain(damaged.Capture().World.Ufos, ufo => ufo.UniqueId == crashed.UniqueId && ufo.Status == UfoStatus.Crashed);
+        Reload(content, damaged, 98, "damaged-ground-arrival-expired.sav");
+    }
+
+    [Fact]
+    public void DamagedGroundArrivalWithAPursuingCraftRemainsGuarded()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var snapshot = CreateCampaign(content).Capture();
+        var source = Assert.Single(snapshot.World.Ufos) with { TrajectoryPoint = 1, Damage = 26 };
+        snapshot = snapshot.WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_OUT",
+                Takeoff = 0,
+                Fuel = 300,
+                Speed = 100,
+                Longitude = Degrees(20),
+                Latitude = Degrees(2),
+                Destination = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, source.Id,
+                    source.Longitude, source.Latitude)
+                { UniqueId = source.UniqueId },
+            },
+        });
+        AssertTimeBlocked(RestoreUfos(content, snapshot, source),
+            "Crashed UFO arrival with followers requires interception simulation.");
     }
 
     [Fact]

@@ -20,6 +20,27 @@ public sealed class StrategicWorldFixtureTests
     private const string Manifest = "strategic-world";
 
     [Fact]
+    public void EqualityAndArrivalMatchNativeMachineEpsilonBoundaries()
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected(Manifest);
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "equality"))
+        {
+            var expected = row[2].GetInt32() == 1;
+            Assert.Equal(expected, WorldGeometry.AreSame(Number(row[0]), Number(row[1])));
+            Assert.Equal(expected, WorldGeometry.AreSame(Number(row[1]), Number(row[0])));
+        }
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "arrivalEquality"))
+        {
+            var nearby = 1.0;
+            for (var step = 0; step < row[1].GetInt32(); step++) nearby = Math.BitIncrement(nearby);
+            var current = row[0].GetInt32() == 0 ? new WorldPosition(nearby, 1) : new(1, nearby);
+            var arrived = row[2].GetInt32() == 1;
+            Assert.Equal(arrived, WorldGeometry.ReachedDestination(current, new(1, 1)));
+            if (arrived) Assert.Equal(0, WorldGeometry.Distance(current, new(1, 1)));
+        }
+    }
+
+    [Fact]
     public void CoordinateWrappingAndDistancesMatchTheReference()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected(Manifest);

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-detection-damage",
+  "description": "Pinned native damage defaults, Mod built-in damage table, RuleItem damage-pointer identity and classification script helpers. Controlled item copies replace YAML loading; predefined selection and overrides have separate typed/runtime tests. Includes raw float conversions, truncation, half-away armor-percent rounding and defined int-range boundaries; undefined native float-to-int cases are excluded and guarded by the port. Null-profile/state random damage short-circuits use a throwing damage stub and recording RNG; nonnull random computation remains excluded.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "RuleDamageType constructor/isDirect; Mod built-in damage table; RuleItem getDamageType/getMeleeType and classification/armor script helpers; exact getDamageToScript template; ScriptBind.h BindSet; getRandomDamageScript short-circuit",
+      "capture": "tools/capture-strategic-detection-damage-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; method bodies inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_detection_damage_probe.cpp",
+      "size": 4912,
+      "sha256": "ff5903b940e9d573ac5ab55d50f7bfd9b5ded35d44a6f355cd10f035e907ef2a"
+    },
+    {
+      "path": "tools/capture-strategic-detection-damage-reference.ps1",
+      "size": 4400,
+      "sha256": "ccd74a268f34d043ffaca4e0d845ee2b9a1b1a9fd25135845252820813df1fb5"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-detection-damage.expected.json"
+}

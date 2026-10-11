@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-infiltration",
+  "description": "Country infiltration eligibility and pending-pact mutation; pinned Mod option defaults.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "Country::canBeInfiltrated/setNewPact inserted verbatim; Mod constructor defaults checked by capture; RNG::shuffle inserted verbatim",
+      "capture": "tools/capture-strategic-infiltration-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_infiltration_probe.cpp",
+      "size": 1167,
+      "sha256": "fad2bc5cec10dae812e719d7697aab2fe2be3acd2666073fc2babbc178dfb603"
+    },
+    {
+      "path": "tools/capture-strategic-infiltration-reference.ps1",
+      "size": 2930,
+      "sha256": "e8a746c32727d2a15833a47ec91b86d1965f139d371bd8fba0a029fb50a37aa1"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-infiltration.rul",
+      "size": 593,
+      "sha256": "77d1e15c95dffe61986b048745705ba6f75853414ae55494ee74f554579ef718"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-infiltration.expected.json"
+}

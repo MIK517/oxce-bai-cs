@@ -7,7 +7,13 @@ public interface ICampaignCommandTarget
     CampaignCommandResult Execute(ICampaignCommand command);
 }
 
-public sealed record AdvanceCampaignTime(int FiveSecondTicks) : ICampaignCommand;
+/// <summary>Reference geoscape selection, independent of command batch length.</summary>
+public enum CampaignTimeSpeed { FiveSeconds, OneMinute, FiveMinutes, ThirtyMinutes, OneHour, OneDay }
+
+public sealed record AdvanceCampaignTime(int FiveSecondTicks) : ICampaignCommand
+{
+    public CampaignTimeSpeed SelectedSpeed { get; init; } = CampaignTimeSpeed.FiveSeconds;
+}
 
 public sealed record PlaceStartingBase(int BaseIndex, string Name, double Longitude, double Latitude) : ICampaignCommand;
 
@@ -17,6 +23,12 @@ public sealed record CampaignActionBlocked(string Reason) : ICampaignEvent;
 
 /// <summary>A newly detected UFO contact; the reference pauses for its alert.</summary>
 public sealed record UfoContactDetected(int UniqueId, bool Hyperwave) : ICampaignEvent;
+
+/// <summary>A detected UFO lost at arrival with followers; reported before the flight pass returns.</summary>
+public sealed record UfoContactLost(int UniqueId) : ICampaignEvent;
+
+/// <summary>A facility sight check discovered an alien base; patrol discovery is silent.</summary>
+public sealed record AlienBaseDiscovered(int Id, string DeploymentId) : ICampaignEvent;
 
 public readonly record struct CampaignTimeTriggerSummary(
     int TickCount,
@@ -84,6 +96,7 @@ public sealed record CampaignTimeAdvanced(
     CampaignTimeTriggerSummary Summary) : ICampaignEvent
 {
     public CampaignTimeTriggerSequence Triggers => new(Previous, Summary.TickCount);
+    public CampaignTimeSpeed SelectedSpeed { get; init; } = CampaignTimeSpeed.FiveSeconds;
 }
 
 public sealed record StartingBasePlaced(

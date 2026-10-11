@@ -126,4 +126,37 @@ internal static class TestFixtures
 
         public DateTimeOffset UtcNow => new(2026, 9, 2, 20, 0, 0, TimeSpan.Zero);
     }
+    internal sealed class CountingMinimumRandomSource : IStatefulRandomSource
+    {
+        internal int IntegerCalls { get; private set; }
+        internal int UnitCalls { get; private set; }
+        public ulong State { get; private set; }
+        public int NextExclusive(int maximum) => NextInclusive(0, maximum - 1);
+        public int NextInclusive(int minimum, int maximum)
+        {
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(minimum, maximum);
+            IntegerCalls++;
+            State++;
+            return minimum;
+        }
+        public double NextUnit() { UnitCalls++; State++; return 0; }
+        public void Restore(ulong state) => State = state;
+    }
+
+    internal sealed class RecordingMinimumRandomSource : IStatefulRandomSource
+    {
+        internal List<(int Minimum, int Maximum)> Calls { get; } = [];
+        public ulong State { get; private set; }
+        public int NextExclusive(int exclusiveMaximum) => NextInclusive(0, exclusiveMaximum - 1);
+        public int NextInclusive(int minimum, int maximum)
+        {
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(minimum, maximum);
+            Calls.Add((minimum, maximum));
+            State++;
+            return minimum;
+        }
+        public double NextUnit() => throw new NotSupportedException();
+        public void Restore(ulong state) => State = state;
+    }
+
 }

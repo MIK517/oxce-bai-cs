@@ -89,6 +89,9 @@ mechanical translations with no executable acceptance test.
   so failures print the difference.
 - Iterate oracle arrays through `TestFixtures.Rows(...)`, which fails on an
   empty array.
+- `StrategicReadinessTestContent.Load` builds every ruleset fresh, restores it from the compiled
+  cache and asserts both are identical (`ContentStateDump`); tests run on the restored content.
+  Do not add fresh/cache theory parameters.
 - Private-asset tests must `Assert.SkipUnless` when `fixtures/private/` is absent.
 - Order file-system enumerations (`StringComparer.Ordinal`) before selecting
   entries.
@@ -96,6 +99,15 @@ mechanical translations with no executable acceptance test.
 - Private corpus tests (`Private*`, `Phase3ContentCorpusTests`, `ModLoadingFixtureTests`) need `fixtures/private/` and `data/` and are slow; the fast check is the unit tests plus the remaining compatibility tests.
 - Do not lower test strictness just because they fail, consider wheter it weakens the coverage first
 - Run formatting and checksum tests before major branch push
+
+## Documentation ownership
+
+- Record each fact once and link to it elsewhere; do not copy paragraphs between documents.
+- Phase 6 world work: subsystem slices, audits and evidence belong in the matching
+  `docs/strategic-*-status.md`; cross-cutting checkpoints, current scope and remaining guards
+  belong in the Progress section of `docs/phase-6-world-integration-plan.md`.
+  `docs/phase-6-ownership.md` keeps the ownership and fixture ledger, and
+  `docs/implementation-plan.md` keeps phase-level status; both link to those records.
 
 ## Completion standard
 

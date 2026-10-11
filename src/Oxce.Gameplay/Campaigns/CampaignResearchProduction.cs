@@ -22,6 +22,29 @@ public interface ICampaignResearchProductionQuery
     CampaignResearchProduction QueryResearchProduction(int baseId);
 }
 
+/// <summary>Read-only proof for guards that run before the daily research handler.</summary>
+internal interface ICampaignResearchPreflight
+{
+    IReadOnlySet<string> GuaranteedResearchAfterDailyProgress();
+    IReadOnlySet<string> PossibleResearchAfterDailyProgress();
+    bool TryForecastDailyStocks(ref long work, out DailyResearchStockForecast forecast, bool includeDiscoveries = false);
+    bool TryForecastDailyWorldStocks(ref long work, out DailyResearchStockForecast forecast);
+    bool HasDisabledDailyProjects(ref long work);
+}
+
+/// <summary>World arcs use SavedGame::addFinishedResearch, without daily project side effects.</summary>
+internal interface ICampaignArcResearch
+{
+    bool IsResearched(string id);
+    string? GrantReason(string id);
+    string Grant(string id);
+    bool ScoreCapacityFits(IReadOnlyList<IReadOnlySet<string>> possibleGrantSlots);
+    bool DiaryCapacityFits(IReadOnlyList<IReadOnlySet<string>> possibleGrantSlots);
+    IReadOnlySet<string> PossibleDisables(string id);
+    IReadOnlySet<string> PossibleAutomaticResearch();
+    string? Lookup(string id);
+}
+
 public sealed record CampaignResearchChoice(string RuleId, int Cost, string? UnavailableReason);
 public sealed record CampaignResearchProject(string RuleId, int Assigned, int Spent, int Cost, string Progress);
 public sealed record CampaignProductionChoice(string RuleId, int Time, int Cost, int Space, string? UnavailableReason);
@@ -32,10 +55,15 @@ public sealed record CampaignResearchProduction(
     IReadOnlyList<CampaignResearchChoice> ResearchChoices, IReadOnlyList<CampaignResearchProject> Research,
     IReadOnlyList<CampaignProductionChoice> ProductionChoices, IReadOnlyList<CampaignProductionProject> Productions);
 
-public sealed partial class CampaignState : ICampaignResearchProductionQuery
+public sealed partial class CampaignState : ICampaignResearchProductionQuery, ICampaignResearchPreflight, ICampaignArcResearch, ICampaignProductionPreflight
 {
     private void RegisterResearchProduction(CampaignCapabilityRegistry registry)
     {
+        registry.Operation<ICampaignResearchPreflight>(this);
+        registry.Operation<ICampaignProductionPreflight>(this);
+        registry.Operation<ICampaignArcResearch>(this);
+        registry.Operation<ICampaignMissionResearch>(this);
+        registry.Operation<ICampaignCustomCounters>(this);
         registry.Command<ConfigureResearchProject>(ConfigureResearch);
         registry.Command<ConfigureProductionProject>(ConfigureProduction);
         registry.Preflight(CampaignPreflightOrder.ResearchProduction, "research and production",
@@ -44,6 +72,8 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         registry.Capture(snapshot => snapshot with
         {
             CompletedResearch = CampaignSnapshot.ReadOnly(_completedResearch.Order(StringComparer.Ordinal)),
+            ResearchDiary = CampaignSnapshot.ReadOnly(_researchDiary),
+            ResearchDiarySequence = _researchDiarySequence,
             ResearchRuleStatus = CampaignSnapshot.ReadOnlyIds(_researchRuleStatus),
             ManufactureRuleStatus = CampaignSnapshot.ReadOnlyIds(_manufactureRuleStatus),
         });
@@ -52,10 +82,183 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
             _completedResearch = snapshot.CompletedResearch.ToHashSet(StringComparer.Ordinal);
             _researchRuleStatus = new Dictionary<string, int>(snapshot.ResearchRuleStatus, StringComparer.Ordinal);
             _manufactureRuleStatus = new Dictionary<string, int>(snapshot.ManufactureRuleStatus, StringComparer.Ordinal);
+            RestoreResearchDiary(snapshot);
         });
     }
 
     private bool? _researchEventWeightsFit;
+
+    internal bool HasCompletedResearch(string id) => _completedResearch.Contains(id);
+
+    internal ICampaignResearchPreflight ResearchPreflight => _handlers.Operation<ICampaignResearchPreflight>();
+
+    internal ICampaignArcResearch ArcResearch => _handlers.Operation<ICampaignArcResearch>();
+
+    bool ICampaignArcResearch.IsResearched(string id) => _debugMode || _completedResearch.Contains(id);
+
+    string? ICampaignArcResearch.GrantReason(string id)
+    {
+        if (_bases.Count == 0) return "Arc research requires a headquarters base.";
+        return _content.RuntimeRules.Research.TryGet(id, out _) ? null : $"Required arc research '{id}' does not exist.";
+    }
+
+    string ICampaignArcResearch.Grant(string id)
+    {
+        var rule = _content.RuntimeRules.Research[_content.RuntimeRules.Research.GetRequired(id)].Value;
+        var discoveries = new List<string>();
+        AddFinishedResearch(_bases[0], id, discoveries);
+        if (rule.Lookup.Length == 0 || !_content.RuntimeRules.Research.TryGet(rule.Lookup, out _)) return id;
+        AddFinishedResearch(_bases[0], rule.Lookup, discoveries);
+        return rule.Lookup;
+    }
+
+    string? ICampaignArcResearch.Lookup(string id) =>
+        _content.RuntimeRules.Research.TryGet(id, out var handle) &&
+        _content.RuntimeRules.Research[handle].Value.Lookup.Length != 0
+            ? _content.RuntimeRules.Research[handle].Value.Lookup : null;
+
+    IReadOnlySet<string> ICampaignArcResearch.PossibleDisables(string id) =>
+        _content.RuntimeRules.Research.TryGet(id, out var handle)
+            ? _content.RuntimeRules.Research[handle].Value.Disables.ToHashSet(StringComparer.Ordinal)
+            : new HashSet<string>(StringComparer.Ordinal);
+
+    IReadOnlySet<string> ICampaignArcResearch.PossibleAutomaticResearch() =>
+        _content.RuntimeRules.Research.Rules.Where(entry => entry.Value.Cost == 0)
+            .Select(entry => entry.Id).ToHashSet(StringComparer.Ordinal);
+
+    bool ICampaignArcResearch.ScoreCapacityFits(IReadOnlyList<IReadOnlySet<string>> possibleGrantSlots)
+    {
+        // Each slot grants at most one candidate. A direct grant and its optional
+        // lookup each run an automatic zero-cost chain; bound both score signs.
+        long automaticPositive = 0;
+        long automaticNegative = 0;
+        foreach (var entry in _content.RuntimeRules.Research.Rules)
+            if (entry.Value.Cost == 0)
+            {
+                automaticPositive += Math.Max(0, (long)entry.Value.Points);
+                automaticNegative += Math.Min(0, (long)entry.Value.Points);
+            }
+        long positive = 0;
+        long negative = 0;
+        foreach (var slot in possibleGrantSlots)
+        {
+            long slotPositive = 0;
+            long slotNegative = 0;
+            foreach (var id in slot)
+            {
+                var rule = _content.RuntimeRules.Research[_content.RuntimeRules.Research.GetRequired(id)].Value;
+                var candidatePositive = Math.Max(0, (long)rule.Points) + automaticPositive;
+                var candidateNegative = Math.Min(0, (long)rule.Points) + automaticNegative;
+                if (rule.Lookup.Length != 0 && _content.RuntimeRules.Research.TryGet(rule.Lookup, out var lookup))
+                {
+                    var linked = _content.RuntimeRules.Research[lookup].Value;
+                    candidatePositive += Math.Max(0, (long)linked.Points) + automaticPositive;
+                    candidateNegative += Math.Min(0, (long)linked.Points) + automaticNegative;
+                }
+                slotPositive = Math.Max(slotPositive, candidatePositive);
+                slotNegative = Math.Min(slotNegative, candidateNegative);
+            }
+            positive += slotPositive;
+            negative += slotNegative;
+        }
+        var score = (long)_researchScores[^1];
+        return positive <= int.MaxValue - score && negative >= int.MinValue - score;
+    }
+
+    bool ICampaignArcResearch.DiaryCapacityFits(IReadOnlyList<IReadOnlySet<string>> possibleGrantSlots)
+    {
+        var automatic = (long)_content.RuntimeRules.Research.Rules.Count(entry => entry.Value.Cost == 0);
+        long additions = 0;
+        foreach (var slot in possibleGrantSlots)
+        {
+            long slotAdditions = 0;
+            foreach (var id in slot)
+            {
+                var rule = _content.RuntimeRules.Research[_content.RuntimeRules.Research.GetRequired(id)].Value;
+                slotAdditions = Math.Max(slotAdditions, automatic * (rule.Lookup.Length == 0 ? 1 : 2));
+            }
+            additions += slotAdditions;
+        }
+        return ResearchDiaryCapacityFits(additions);
+    }
+
+    IReadOnlySet<string> ICampaignResearchPreflight.GuaranteedResearchAfterDailyProgress()
+    {
+        var rules = _content.RuntimeRules.Research;
+        var finishing = FinishingResearchTopics();
+        if (finishing.Count == 0) return _completedResearch;
+
+        var possible = DailyResearchPossibilities(finishing);
+        var possiblyDisabled = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var id in possible)
+            if (rules.TryGet(id, out var handle)) possiblyDisabled.UnionWith(rules[handle].Value.Disables);
+
+        var guaranteed = new HashSet<string>(_completedResearch, StringComparer.Ordinal);
+        foreach (var id in finishing)
+        {
+            AddGuaranteed(id);
+            AddGuaranteed(rules[rules.GetRequired(id)].Value.Lookup);
+        }
+        guaranteed.ExceptWith(possiblyDisabled);
+        return guaranteed;
+
+        void AddGuaranteed(string id)
+        {
+            // Repeatable research is not marked discovered, and disabled topics are ignored.
+            // Re-enabling and random/automatic discoveries can only add uncertain outcomes;
+            // they must not authorize an otherwise unavailable event payload tick.
+            if (rules.TryGet(id, out var handle) && !rules[handle].Value.Repeatable &&
+                _researchRuleStatus.GetValueOrDefault(id) != 2)
+                guaranteed.Add(id);
+        }
+    }
+
+    IReadOnlySet<string> ICampaignResearchPreflight.PossibleResearchAfterDailyProgress()
+    {
+        var finishing = FinishingResearchTopics();
+        if (finishing.Count == 0) return _completedResearch;
+        var possible = DailyResearchPossibilities(finishing);
+        possible.UnionWith(_completedResearch);
+        return possible;
+    }
+
+    private HashSet<string> FinishingResearchTopics()
+    {
+        var finishing = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var owner in _bases)
+            foreach (var project in owner.Research)
+                if ((long)project.Spent + project.Assigned >= project.Cost)
+                    finishing.Add(_content.RuntimeRules.Research.GetExternalId(project.Rule));
+        return finishing;
+    }
+
+    private HashSet<string> DailyResearchPossibilities(IReadOnlySet<string> finishing)
+    {
+        var rules = _content.RuntimeRules.Research;
+        // CompleteResearch applies a possible free topic and its lookup before the primary
+        // topic and its lookup. AddFinishedResearch can also discover zero-cost topics.
+        // Include all such possible disablers without choosing rewards or consuming RNG.
+        var possible = new HashSet<string>(finishing, StringComparer.Ordinal);
+        foreach (var id in finishing)
+        {
+            var rule = rules[rules.GetRequired(id)].Value;
+            possible.UnionWith(rule.GetOneFree);
+            foreach (var group in rule.GetOneFreeProtected) possible.UnionWith(group.Topics);
+        }
+        var topics = possible.ToArray();
+        foreach (var id in topics)
+            if (rules.TryGet(id, out var handle) && rules[handle].Value.Lookup.Length != 0)
+                possible.Add(rules[handle].Value.Lookup);
+        foreach (var entry in rules.Rules)
+            if (entry.Value.Cost == 0) possible.Add(entry.Id);
+        return possible;
+    }
+
+    private void ScheduleStrategicEvent(string ruleId, string source, TimeEffects effects)
+    {
+        _handlers.Operation<World.ICampaignEventScheduling>().Schedule(ruleId);
+        effects.Notify(new CampaignStrategicEventRequested(ruleId, source));
+    }
 
     private CampaignCommandResult ConfigureResearch(ConfigureResearchProject command)
     {
@@ -69,6 +272,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         {
             if (index < 0) return Blocked("Research project was not found.");
             var project = owner.Research[index];
+            if (ResearchRecoveryReason(owner, project) is { } recoveryReason) return Blocked(recoveryReason);
             RemoveResearchProject(owner, project);
             return new([new CampaignResearchChanged(owner.Id, command.RuleId, 0, true)]);
         }
@@ -258,6 +462,20 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
 
     private string? PreflightResearchProduction(CampaignTimeTrigger highest)
     {
+        long work = 0;
+        var reason = PreflightResearchProduction(highest, ref work, exactDailyScores: false, out var dailyScoresReserved);
+        if (highest < CampaignTimeTrigger.OneDay || !dailyScoresReserved ||
+            reason != "Research and production scores exceed the supported range.") return reason;
+        // Retry only a later production score refusal. The guaranteed daily
+        // final interval may provide headroom, after all ordered prefixes fit.
+        // Both attempts share one work budget; optional production never credits it.
+        return PreflightResearchProduction(highest, ref work, exactDailyScores: true, out _);
+    }
+
+    private string? PreflightResearchProduction(CampaignTimeTrigger highest, ref long work, bool exactDailyScores, out bool dailyScoresReserved)
+    {
+        dailyScoresReserved = false;
+        var scoreCapacity = new ResearchScoreCapacity(_researchScores[^1]);
         if (highest >= CampaignTimeTrigger.OneDay)
         {
             // Any topic can complete through free or lookup discoveries, so all research events are checked.
@@ -270,9 +488,23 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
                 foreach (var project in owner.Research)
                     if ((long)project.Spent + project.Assigned > int.MaxValue)
                         return "Research progress exceeds the supported range.";
+            var scoreReason = exactDailyScores ? ReserveExactDailyResearchScores(ref scoreCapacity, ref work, advanceGuaranteed: true) :
+                ReserveDailyResearchScores(ref scoreCapacity, ref work);
+            if (scoreReason is not null) return scoreReason;
+            dailyScoresReserved = true;
+            if (PreflightDailyResearchDiary(ref work) is { } diaryReason) return diaryReason;
+            if (PreflightResearchRecovery(ref work) is { } recoveryReason) return recoveryReason;
+            if (PreflightDailyResearchCounters(ref work) is { } counterReason) return counterReason;
         }
         if (highest >= CampaignTimeTrigger.OneHour)
+        {
+            var accountingCapacity = new ProductionAccountingCapacity(_funds[^1], _incomes[^1], _expenditures[^1]);
+            long possibleTransfers = 0;
+            long possibleSoldiers = 0;
+            Dictionary<RuleHandle<CraftRuleFamily>, long>? possibleCrafts = null;
+            var personnelBirths = false;
             foreach (var owner in _bases)
+            {
                 foreach (var production in owner.Productions)
                 {
                     if ((long)production.Spent + production.Assigned > int.MaxValue)
@@ -280,9 +512,76 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
                     // Restored saves can carry projects that were never validated by a start command.
                     var manufacture = _content.RuntimeRules.Manufacture[production.Rule].Value;
                     if (ProductionRuleInvalid(manufacture) is { } invalidReason) return invalidReason;
-                    if (production.Sell && ProductionSellUnavailable(manufacture) is { } sellReason)
-                        return sellReason;
                 }
+                if (ForecastProductionAssignments(owner, highest, out var assignments, ref work) is { } staffingReason)
+                    return staffingReason;
+                long possiblePersonnel = 0;
+                for (var index = 0; index < owner.Productions.Count; index++)
+                {
+                    var production = owner.Productions[index];
+                    var manufacture = _content.RuntimeRules.Manufacture[production.Rule].Value;
+                    var units = ProductionProgress.Requested(manufacture.Time, production.Spent, assignments[index], production.Amount, production.Infinite);
+                    if (units == 0) continue;
+                    if (PossibleProductionTransfers(manufacture, production.Sell, units, ref work, out var transferCount) is { } transferReason) return transferReason;
+                    possibleTransfers += transferCount;
+                    foreach (var material in manufacture.ProducedMaterials)
+                        if (material.Craft is { } craft)
+                        {
+                            possibleCrafts ??= [];
+                            possibleCrafts[craft] = possibleCrafts.GetValueOrDefault(craft) + units * (long)material.Quantity;
+                            if (ProducedCraftServiceReason(owner, craft) is { } craftReason) return craftReason;
+                        }
+                    if (manufacture.SpawnedPersonType.Length != 0)
+                    {
+                        personnelBirths = true;
+                        possiblePersonnel += units;
+                        if (manufacture.SpawnedPersonType is not "STR_SCIENTIST" and not "STR_ENGINEER")
+                        {
+                            if (ProducedSoldierReason(manufacture, units, ref work) is { } soldierReason) return soldierReason;
+                            possibleSoldiers += units;
+                        }
+                    }
+                    if (!scoreCapacity.Reserve(manufacture.Points, manufacture.Points, units))
+                        return "Research and production scores exceed the supported range.";
+                    if (ReserveProductionHistory(production, manufacture, units, ref work) is { } historyReason) return historyReason;
+                    var starts = units - (!production.Infinite && ProductionProgress.Produced(manufacture.Time,
+                        production.Spent + assignments[index], production.Amount) >= production.Amount ? 1 : 0);
+                    if (!accountingCapacity.Reserve(-manufacture.Cost, -manufacture.Cost, starts))
+                        return "Production accounting exceeds the supported range.";
+                    if (!production.Sell) continue;
+                    foreach (var material in manufacture.ProducedMaterials)
+                    {
+                        if (++work > 1_000_000) return "Production accounting exceeds the supported work limit.";
+                        if (material.Item is not { } item) continue;
+                        var rule = _content.RuntimeRules.Items[item].Value;
+                        var daily = highest >= CampaignTimeTrigger.OneDay;
+                        if (daily && DaysPassed == int.MaxValue) return "Production price days exceed the supported range.";
+                        var forecast = new PriceForecastContext(Time.Advance(out _), DaysPassed + (daily ? 1 : 0), daily, work);
+                        var price = ItemPrice(material.Id, rule, false, out var unavailable, forecast);
+                        var priceWork = forecast.Work - work;
+                        // Read-only prices are identical for each unit in this hour.
+                        // Reserve their repeated VM work before running any delivery.
+                        work += priceWork * units;
+                        if (unavailable is not null) return unavailable;
+                        if (work > 1_000_000) return "Production price forecasts exceed the supported work limit.";
+                        var value = (long)price * material.Quantity;
+                        if (!accountingCapacity.Reserve(value, value, units))
+                            return "Production accounting exceeds the supported range.";
+                    }
+                }
+                if (possiblePersonnel != 0 && UsedQuartersWide(owner) + possiblePersonnel > int.MaxValue)
+                    return "Production personnel exceed the supported population range.";
+            }
+            if (personnelBirths && ProductionPersonnelTransferCapacity(possibleTransfers, highest, ref work) is { } personnelReason) return personnelReason;
+            if (possibleSoldiers != 0 && ProductionSoldierCapacity(possibleSoldiers, possibleTransfers, possibleCrafts, highest, ref work) is { } soldierCapacityReason)
+                return soldierCapacityReason;
+            if (possibleCrafts is not null)
+            {
+                if (ProductionCraftCapacity(possibleCrafts, possibleSoldiers, highest, ref work) is { } craftReason) return craftReason;
+                if (!personnelBirths && ProductionPersonnelTransferCapacity(possibleTransfers, highest, ref work) is { } arrivalReason)
+                    return arrivalReason.Replace("personnel", "craft", StringComparison.Ordinal);
+            }
+        }
         return null;
     }
 
@@ -303,7 +602,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
             var rule = _content.RuntimeRules.Research[project.Rule].Value;
             owner.Scientists = checked(owner.Scientists + project.Assigned);
             owner.Research.Remove(project);
-            if (rule.ReturnsItem) ReturnHeldResearchItem(owner, rule);
+            ApplyResearchRecoveredItems(owner, rule, id, finished: true, dailyCompletion: true);
             var discoveries = CompleteResearch(owner, id, rule, sideEffects);
             effects.Notify(new CampaignResearchCompleted(owner.Id, id, discoveries));
         }
@@ -319,12 +618,15 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         BaseState owner, string id, RuntimeResearchRule rule, List<string> sideEffects)
     {
         var discoveries = new List<string>();
+        // Native time1Day records both core topics before selecting or granting the reward.
+        RecordResearchDiary(id, ResearchDiscoverySource.Base, owner.Name, considerDebug: true);
+        RecordResearchDiary(rule.Lookup, ResearchDiscoverySource.Base, owner.Name, considerDebug: true);
         var bonus = SelectResearchReward(rule);
         if (bonus is not null)
         {
             if (_content.RuntimeRules.Research.TryGet(bonus, out var bonusHandle))
                 CompleteResearchTopic(owner, bonus, _content.RuntimeRules.Research[bonusHandle].Value,
-                    discoveries, sideEffects);
+                    discoveries, sideEffects, id);
             else
                 AddFinishedResearch(owner, bonus, discoveries);
         }
@@ -333,72 +635,40 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
     }
 
     private void CompleteResearchTopic(
-        BaseState owner, string id, RuntimeResearchRule rule, List<string> discoveries, List<string> sideEffects)
+        BaseState owner, string id, RuntimeResearchRule rule, List<string> discoveries, List<string> sideEffects,
+        string? bonusSource = null)
     {
+        if (bonusSource is not null)
+            RecordResearchDiary(id, ResearchDiscoverySource.FreeFrom, bonusSource, considerDebug: true);
         AddFinishedResearch(owner, id, discoveries);
-        if (rule.Lookup.Length != 0) AddFinishedResearch(owner, rule.Lookup, discoveries);
+        if (rule.Lookup.Length != 0)
+        {
+            if (bonusSource is not null)
+                RecordResearchDiary(rule.Lookup, ResearchDiscoverySource.FreeFrom, bonusSource, considerDebug: true);
+            AddFinishedResearch(owner, rule.Lookup, discoveries);
+        }
         sideEffects.Add(id);
     }
 
     private void AddFinishedResearch(BaseState owner, string initial, List<string> discoveries)
     {
-        if (!_content.RuntimeRules.Research.TryGet(initial, out var initialHandle) ||
-            _researchRuleStatus.GetValueOrDefault(initial) == 2) return;
-        var markDiscovered = !_content.RuntimeRules.Research[initialHandle].Value.Repeatable;
-        var queue = new List<string> { initial };
-        var queued = new HashSet<string>(StringComparer.Ordinal) { initial };
-        for (var offset = 0; offset < queue.Count; offset++)
+        long work = 0;
+        var progress = new ResearchDiscoveryProgress(_content.RuntimeRules, _completedResearch, _researchRuleStatus);
+        progress.Advance(initial, (id, rule) =>
         {
-            var id = queue[offset];
-            if (!_content.RuntimeRules.Research.TryGet(id, out var handle) ||
-                _researchRuleStatus.GetValueOrDefault(id) == 2) continue;
-            var rule = _content.RuntimeRules.Research[handle].Value;
-            var wasComplete = _completedResearch.Contains(id);
-            // Captured before disables/re-enables, like SavedGame::addFinishedResearch step 1.
-            var hadProtectedUnlock = wasComplete && HasProtectedUnlock(rule);
-            if (!wasComplete)
-            {
-                if (markDiscovered)
-                {
-                    _completedResearch.Add(id);
-                    discoveries.Add(id);
-                }
-                _researchScores[^1] = checked(_researchScores[^1] + rule.Points);
-                foreach (var disabled in rule.Disables)
-                {
-                    _completedResearch.Remove(disabled);
-                    _researchRuleStatus[disabled] = 2;
-                }
-            }
-            foreach (var enabled in rule.Reenables)
-                if (_researchRuleStatus.GetValueOrDefault(enabled) == 2) _researchRuleStatus[enabled] = 0;
-            if (wasComplete && !hadProtectedUnlock) continue;
-            HashSet<string>? unlocked = null;
-            foreach (var candidate in _content.RuntimeRules.Research.Rules)
-            {
-                if (candidate.Value.Cost != 0 || queued.Contains(candidate.Id)) continue;
-                if ((candidate.Value.Requirements.Count == 0 || rule.Unlocks.Contains(candidate.Id, StringComparer.Ordinal)) &&
-                    ZeroCostResearchAvailable(owner, candidate.Id, candidate.Value, ref unlocked) && queued.Add(candidate.Id))
-                    queue.Add(candidate.Id);
-            }
-        }
-    }
-
-    /// <summary>
-    /// SavedGame::getAvailableResearchProjects for the completing base: besides the global
-    /// rules, a topic already running there, lacking its needed item, or lacking required
-    /// base functions is not auto-completed.
-    /// </summary>
-    private bool ZeroCostResearchAvailable(
-        BaseState owner, string id, RuntimeResearchRule rule, ref HashSet<string>? unlocked)
-    {
-        unlocked ??= ExplicitlyUnlockedResearch();
-        if (CoreResearchUnavailable(id, rule, ResearchEligibilityOptions.None, unlocked) is not null) return false;
-        var handle = _content.RuntimeRules.Research.GetRequired(id);
-        if (owner.Research.Any(project => project.Rule == handle)) return false;
-        if (rule.NeedItem && (rule.NeededItem is null || !_content.RuntimeRules.Items.TryGet(rule.NeededItem, out var item) ||
-            owner.Items.GetValueOrDefault(item) == 0)) return false;
-        return HasFunctions(owner, rule.RequiredBaseFunctions);
+            var handle = _content.RuntimeRules.Research.GetRequired(id);
+            var eligible = !owner.Research.Any(project => project.Rule == handle) &&
+                (!rule.NeedItem || rule.NeededItem is { } needed && _content.RuntimeRules.Items.TryGet(needed, out var item) &&
+                    owner.Items.GetValueOrDefault(item) != 0) && HasFunctions(owner, rule.RequiredBaseFunctions);
+            return (eligible, 0L);
+        }, (id, points, markDiscovered) =>
+        {
+            if (markDiscovered) discoveries.Add(id);
+            // The callback runs only for new discoveries, after marking them complete.
+            // Automatic entries retain the initial grant as their source, including repeatable grants.
+            if (id != initial) AppendResearchDiary(id, ResearchDiscoverySource.FreeAfter, initial);
+            _researchScores[^1] = checked(_researchScores[^1] + points);
+        }, ref work, long.MaxValue);
     }
 
     private string? CoreResearchUnavailable(
@@ -422,10 +692,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
 
     private string? SelectResearchReward(RuntimeResearchRule rule)
     {
-        var candidates = rule.GetOneFree.Where(IsNew).ToList();
-        foreach (var protectedGroup in rule.GetOneFreeProtected)
-            if (_completedResearch.Contains(protectedGroup.Prerequisite))
-                candidates.AddRange(protectedGroup.Topics.Where(IsNew));
+        var candidates = new ResearchDiscoveryProgress(_content.RuntimeRules, _completedResearch, _researchRuleStatus).RewardCandidates(rule);
         if (candidates.Count == 0) return null;
         return rule.SequentialGetOneFree ? candidates[0] : candidates[_random.NextExclusive(candidates.Count)];
     }
@@ -462,17 +729,15 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
             if (_content.RuntimeRules.Items.TryGet(id, out _))
                 QueueTransfer(owner, 1, CampaignTransferKind.Item, id, 1);
         foreach (var id in rule.IncreaseCounters)
-            if (id.Length != 0)
-                _nextIds[id] = checked(_nextIds.TryGetValue(id, out var value) ? value + 1 : 2);
+            CustomCounters.Apply(new CustomCounterChange(id, true));
         foreach (var id in rule.DecreaseCounters)
-            if (id.Length != 0)
-                _nextIds[id] = _nextIds.TryGetValue(id, out var value) ? Math.Max(1, value - 1) : 1;
+            CustomCounters.Apply(new CustomCounterChange(id, false));
         if (rule.SpawnedEvent.Length != 0)
-            effects.Notify(new CampaignStrategicEventRequested(rule.SpawnedEvent, source));
+            ScheduleStrategicEvent(rule.SpawnedEvent, source, effects);
         var selectedEvent = SelectWeighted(rule.Events, static entry => entry.Value,
             "Strategic event weights exceed the supported range.");
         if (selectedEvent.HasValue)
-            effects.Notify(new CampaignStrategicEventRequested(selectedEvent.Value.Key, source));
+            ScheduleStrategicEvent(selectedEvent.Value.Key, source, effects);
         if (!HasRemainingResearchReward(rule) && !HasProtectedUnlock(rule))
         {
             var sourceHandle = _content.RuntimeRules.Research.GetRequired(source);
@@ -495,27 +760,28 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
     {
         foreach (var owner in _bases)
         {
+            if (owner.Productions.Count == 0) continue;
+            List<ProductionState> removals = [];
             foreach (var original in owner.Productions.ToArray())
             {
                 var production = original;
                 if (production.IsFallback)
                 {
-                    var freeEngineers = owner.Engineers;
-                    var freeWorkshops = AvailableWorkshops(owner) - UsedWorkshopSpace(owner);
-                    if (production.Spent == 0 && production.Assigned == 0)
-                        freeWorkshops -= _content.RuntimeRules.Manufacture[production.Rule].Value.Space;
-                    if (freeEngineers > 0 && freeWorkshops > 0)
+                    var additional = checked((int)ProductionProgress.FallbackAdditional(production.Spent,
+                        production.Assigned, _content.RuntimeRules.Manufacture[production.Rule].Value.Space,
+                        owner.Engineers, AvailableWorkshops(owner) - (long)UsedWorkshopSpace(owner)));
+                    if (additional > 0)
                     {
-                        var assigned = Math.Min(freeEngineers, freeWorkshops);
-                        owner.Engineers -= assigned;
-                        production = production with { Assigned = checked(production.Assigned + assigned) };
+                        production = production with { Assigned = checked(production.Assigned + additional) };
+                        owner.Engineers -= additional;
                         owner.Productions[owner.Productions.IndexOf(original)] = production;
                     }
                 }
                 var before = Produced(production);
                 var progressed = production with { Spent = checked(production.Spent + production.Assigned) };
                 var after = Produced(progressed);
-                var requested = progressed.Infinite ? after - before : Math.Min(after, progressed.Amount) - before;
+                var requested = ProductionProgress.Requested(_content.RuntimeRules.Manufacture[production.Rule].Value.Time,
+                    production.Spent, production.Assigned, production.Amount, production.Infinite);
                 var made = 0;
                 string? stop = null;
                 while (made < requested)
@@ -524,30 +790,30 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
                     made++;
                     if (!progressed.Infinite && before + made >= progressed.Amount) break;
                     stop = StartProductionUnit(owner, _content.RuntimeRules.Manufacture[progressed.Rule].Value,
-                        checkLivingSpace: made >= requested);
+                        checkLivingSpace: made >= requested, effects: effects);
                     if (stop is not null) break;
                 }
                 var complete = !progressed.Infinite && after >= progressed.Amount;
-                if (complete || stop is not null)
-                {
-                    owner.Engineers = checked(owner.Engineers + progressed.Assigned);
-                    owner.Productions.Remove(production);
-                }
-                else
-                {
-                    var index = owner.Productions.IndexOf(production);
-                    owner.Productions[index] = progressed;
-                }
+                var index = owner.Productions.IndexOf(production);
+                owner.Productions[index] = progressed;
+                if (complete || stop is not null) removals.Add(progressed);
                 if (made != 0 || stop is not null || complete)
                     effects.Notify(new CampaignProductionProgress(owner.Id,
                         _content.RuntimeRules.Manufacture.GetExternalId(progressed.Rule), made,
                         stop ?? (complete ? "STR_PRODUCTION_COMPLETE" : null)));
             }
+            // GeoscapeState::time1Hour removes projects after every step in this base.
+            // Released staff and workshop space cannot feed a later fallback this hour.
+            foreach (var production in removals)
+            {
+                owner.Engineers = checked(owner.Engineers + production.Assigned);
+                owner.Productions.Remove(production);
+            }
         }
     }
 
     private string? StartProductionUnit(
-        BaseState owner, RuntimeManufactureRule rule, bool initial = false, bool checkLivingSpace = true)
+        BaseState owner, RuntimeManufactureRule rule, bool initial = false, bool checkLivingSpace = true, TimeEffects? effects = null)
     {
         // RuleManufacture::haveEnoughMoneyForOneMoreUnit: free units start even with negative funds.
         if (rule.Cost > 0 && _funds[^1] < rule.Cost) return "STR_NOT_ENOUGH_MONEY";
@@ -561,6 +827,13 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         }
         if (!TryPlanProductionMaterials(owner, rule, out var materialPlan, out var materialReason))
             return materialReason;
+        if (materialPlan.Any(material => material.Craft is not null))
+        {
+            var craftTargets = materialPlan.Where(material => material.Craft is not null)
+                .Select(material => (material.Id, material.Craft!.Id)).ToArray();
+            if (_handlers.Operation<World.ICampaignCraftRemoval>().PlanReason(craftTargets) is { } removalReason)
+                return removalReason;
+        }
         foreach (var material in materialPlan)
         {
             if (material.Item is { } item) ChangeStock(owner.Items, item, -material.Quantity);
@@ -569,6 +842,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
                 foreach (var unloaded in CraftLogistics.UnloadedItems(removed.Logistics!, _content.RuntimeRules))
                     ChangeStock(owner.Items, _content.RuntimeRules.Items.GetRequired(unloaded.Key), unloaded.Value);
                 owner.Crafts.Remove(removed);
+                _handlers.Operation<World.ICampaignCraftRemoval>().Removed(material.Id, removed.Id, effects);
                 foreach (var soldier in owner.Soldiers.Where(s => s.Personal is { } personal &&
                     personal.CraftType == material.Id && personal.CraftId == removed.Id).ToArray())
                 {
@@ -588,13 +862,20 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         BaseState owner, RuntimeManufactureRule rule,
         out IReadOnlyList<ProductionMaterialConsumption> plan, out string reason)
     {
+        return TryPlanProductionMaterials(owner.Items, owner.Crafts, rule, out plan, out reason);
+    }
+
+    private static bool TryPlanProductionMaterials(
+        IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int> items, IReadOnlyList<CraftState> crafts,
+        RuntimeManufactureRule rule, out IReadOnlyList<ProductionMaterialConsumption> plan, out string reason)
+    {
         var result = new List<ProductionMaterialConsumption>();
-        var availableCrafts = owner.Crafts.Where(craft => craft.Logistics?.Status != "STR_OUT").ToList();
+        List<ProductionMaterialConsumption>? craftPlan = null;
         foreach (var material in rule.RequiredMaterials)
         {
             if (material.Item is { } item)
             {
-                if (owner.Items.GetValueOrDefault(item) < material.Quantity)
+                if (items.GetValueOrDefault(item) < material.Quantity)
                 {
                     plan = [];
                     reason = "STR_NOT_ENOUGH_MATERIALS";
@@ -604,26 +885,27 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
                 continue;
             }
             if (material.Craft is not { } craft) continue;
-            for (var count = 0; count < material.Quantity; count++)
+            // Native eligibility counts grounded craft, while startItem removes
+            // the first matching craft once, irrespective of the requested quantity.
+            if (crafts.Count(value => value.Rule == craft && value.Logistics?.Status != "STR_OUT") < material.Quantity)
             {
-                var index = availableCrafts.FindIndex(value => value.Rule == craft);
-                if (index < 0)
-                {
-                    plan = [];
-                    reason = "STR_NOT_ENOUGH_MATERIALS";
-                    return false;
-                }
-                var selected = availableCrafts[index];
-                if (selected.Logistics is null)
-                {
-                    plan = [];
-                    reason = "Required craft material has unresolved logistics state.";
-                    return false;
-                }
-                availableCrafts.RemoveAt(index);
-                result.Add(new(material.Id, 1, null, selected));
+                plan = [];
+                reason = "STR_NOT_ENOUGH_MATERIALS";
+                return false;
             }
+            var selected = crafts.FirstOrDefault(value => value.Rule == craft);
+            if (selected is null) continue;
+            if (selected.Logistics is null)
+            {
+                plan = [];
+                reason = "Required craft material has unresolved logistics state.";
+                return false;
+            }
+            (craftPlan ??= []).Add(new(material.Id, 1, null, selected));
         }
+        // startItem consumes every item before unloading any craft, preserving
+        // reference material order within both groups.
+        if (craftPlan is not null) result.AddRange(craftPlan);
         plan = result;
         reason = string.Empty;
         return true;
@@ -640,7 +922,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
     private void CompleteProductionUnit(BaseState owner, ProductionState production, TimeEffects effects)
     {
         var rule = _content.RuntimeRules.Manufacture[production.Rule].Value;
-        var saleValue = 0L;
+        var saleAccounting = new AccountingState(_funds[^1], _incomes[^1], _expenditures[^1]);
         if (production.Sell)
             foreach (var material in rule.ProducedMaterials)
                 if (material.Item is { } item)
@@ -648,10 +930,12 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
                     var price = ItemPrice(material.Id, _content.RuntimeRules.Items[item].Value,
                         buying: false, out var unavailable);
                     if (unavailable is not null) throw new InvalidOperationException(unavailable);
-                    saleValue = checked(saleValue + checked((long)price * material.Quantity));
+                    // Native setFunds runs separately for every item: mixed signs
+                    // must retain both income and expenditure, even when net funds do not change.
+                    if (!TryStageAccounting(checked((long)price * material.Quantity), saleAccounting, out var next))
+                        throw new InvalidDataException("Production accounting exceeds the supported range.");
+                    saleAccounting = next;
                 }
-        if (!TryStageAccounting(saleValue, out var saleAccounting))
-            throw new InvalidDataException("Production accounting exceeds the supported range.");
         foreach (var material in rule.ProducedMaterials)
         {
             if (material.Item is { } item)
@@ -686,8 +970,8 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         var selectedEvent = SelectWeighted(rule.Events, static entry => entry.Value,
             "Strategic event weights exceed the supported range.");
         if (selectedEvent.HasValue)
-            effects.Notify(new CampaignStrategicEventRequested(selectedEvent.Value.Key,
-                _content.RuntimeRules.Manufacture.GetExternalId(production.Rule)));
+            ScheduleStrategicEvent(selectedEvent.Value.Key,
+                _content.RuntimeRules.Manufacture.GetExternalId(production.Rule), effects);
         _researchScores[^1] = checked(_researchScores[^1] + rule.Points);
     }
 
@@ -742,7 +1026,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
 
     private void DeliverProducedItem(BaseState owner, string id, int quantity, RuntimeManufactureRule rule)
     {
-        if (quantity <= 0) return;
+        if (quantity < 0) throw new InvalidDataException("Production item quantities cannot be negative.");
         var transferHours = rule.TransferTimes.Count == 0 ? 0 : Math.Max(0, rule.TransferTimes[0]);
         if (transferHours == 0)
         {
@@ -775,7 +1059,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
             var craftId = NextCraftId(id);
             _nextIds[id] = checked(craftId + 1);
             var key = FormattableString.Invariant($"created:{Identity.Id}:craft:{id}:{craftId}");
-            var logistics = CraftLogistics.LoadStarting(_content.RuntimeRules.Crafts[craft].Value, null);
+            var logistics = ProducedCraftLogistics(owner, craft);
             var value = new CraftSnapshot(id, craftId) { PreservationKey = key, Logistics = logistics };
             if (transferHours == 0)
                 owner.Crafts.Add(new(craft, craftId) { PreservationKey = key, Logistics = logistics });
@@ -801,9 +1085,10 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
             var soldierId = NextSoldierId();
             _nextIds["STR_SOLDIER"] = checked(soldierId + 1);
             var personal = SoldierGeneration.Generate(definition,
-                _content.RuntimeRules.Armors.GetExternalId(definition.Armor), -1,
-                _bases.SelectMany(baseState => baseState.Soldiers)
-                    .Select(s => s.Personal?.Name ?? "").ToHashSet(StringComparer.Ordinal), _random);
+                _content.RuntimeRules.Armors.GetExternalId(definition.Armor), SelectNationality(definition, owner),
+                _bases.SelectMany(baseState => baseState.Soldiers.Select(soldier => soldier.Personal?.Name ?? "")
+                    .Concat(baseState.Transfers.Where(transfer => transfer.Soldier is not null)
+                        .Select(transfer => transfer.Soldier!.Personal?.Name ?? ""))).ToHashSet(StringComparer.Ordinal), _random);
             if (rule.SpawnedSoldierTemplate is { } template)
                 personal = SoldierGeneration.ApplyTemplate(personal, template, definition,
                     _content.RuntimeRules, _random);
@@ -834,9 +1119,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
     }
 
     private int Produced(ProductionState state) =>
-        _content.RuntimeRules.Manufacture[state.Rule].Value.Time > 0
-            ? state.Spent / _content.RuntimeRules.Manufacture[state.Rule].Value.Time
-            : state.Amount;
+        ProductionProgress.Produced(_content.RuntimeRules.Manufacture[state.Rule].Value.Time, state.Spent, state.Amount);
     private static bool CanAutoSell(RuntimeManufactureRule rule) =>
         rule.SpawnedPersonType.Length == 0 && rule.RandomProducedItems.Count == 0;
     private static bool TryReassignProjectStaff(
@@ -855,16 +1138,12 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         rule.ProducedMaterials.FirstOrDefault(material => material.Craft is not null)?.Craft;
     private static bool HoldsResearchItem(RuntimeResearchRule rule) =>
         rule.NeedItem && (rule.DestroyItem || rule.ReturnsItem);
-    private void ReturnHeldResearchItem(BaseState owner, RuntimeResearchRule rule)
-    {
-        if (HoldsResearchItem(rule) && rule.NeededItem is { } id &&
-            _content.RuntimeRules.Items.TryGet(id, out var item)) ChangeStock(owner.Items, item, 1);
-    }
-
     private void RemoveResearchProject(BaseState owner, ResearchProjectState project)
     {
         owner.Scientists = checked(owner.Scientists + project.Assigned);
-        ReturnHeldResearchItem(owner, _content.RuntimeRules.Research[project.Rule].Value);
+        var rule = _content.RuntimeRules.Research[project.Rule].Value;
+        ApplyResearchRecoveredItems(owner, rule, _content.RuntimeRules.Research.GetExternalId(project.Rule),
+            project.Spent >= project.Cost, dailyCompletion: false);
         owner.Research.Remove(project);
     }
 

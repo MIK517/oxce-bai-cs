@@ -1,0 +1,751 @@
+# Daily alien-base mission generation
+
+Branch 4c incremental slice, pinned to reference
+`4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`.
+
+The existing daily world handler now executes `GenerateSupplyMission` after
+alien-base activity and before facility discovery. Weighted mission selection
+precedes the generation limit and frequency checks. Empty choices skip the
+frequency roll; exhausted limits skip it; zero frequency still draws it.
+Undefined nonempty mission choices fail before the affected tick mutates time,
+scores, counters or RNG, even when their generation limit is exhausted.
+
+Region selection preserves target-base odds, player-base order and duplicate
+regions, weighted monthly regions, or the first containing saved region of the
+alien base. `missionRegion` remaps exactly once. Race selection preserves the
+deployment's `genMissionRaceFromAlienBase` option, optional mission race weights
+and reverse timeline scan. A race timeline before its first entry returns the
+reference's empty race without drawing a weighted roll; the existing load repair
+interrupts that mission and assigns the first race on reload. A region timeline
+before its first entry instead fails intentionally, defining the reference's
+invalid iterator dereference as a port input error.
+
+Creation owns mission ID allocation, zeroed wave/live counters, site-area selection,
+initial timer rounding, source-base link and generation-count increment. All seven
+mission objectives may be scheduled. All six non-space operation modes reuse the
+already linked source base: `AlienMission::start` does not acquire or create a new
+base in this caller. This does not implement their later wave/objective effects.
+Neither strategy run counts nor script repeat/location tables change in this caller.
+
+Midnight falls through to the half-hour handlers. Creation is currently allowed
+only when the first timer guarantees a countdown above thirty minutes at creation
+(`timer / 30 >= 4`). That pass subtracts thirty minutes immediately. Shorter timers
+stop before the daily tick with an explicit immediate-generation boundary until
+new mission candidates can participate in the combined wave/scoring/detection
+forecasts. Later waves use existing capability checks; supply, site, retaliation
+and other unavailable wave paths stop before their affected tick. Event payloads,
+combat, deployment and campaign month rollover retain their established guards.
+
+Preflight checks all reachable weighted choices and selection branches without
+RNG. It reserves one possible mission per generating base, bounds population to
+100,000 and prevents exhausted or colliding IDs. Weighted totals and initial
+countdown maxima must fit signed integers. Generation selection and region scans
+share the existing one-million daily base-work budget. Disabled frequency/limit
+paths do not inspect unreachable region/race dependencies. The absent-base fast
+path remains allocation-free; the existing campaign allocation gates pass.
+
+Daily mission interruption now executes after the player-base/research loop and
+before alien-base activity/generation, as in `GeoscapeState::time1Day`. It checks
+completed research without debug shortcuts. Missions created later in that same
+day are first checked at the following daily boundary. Zero-live missions become
+interrupted and the same tick's half-hour cleanup removes them; generation limits
+and base links retain their existing ownership across this transition.
+
+The shared research preflight provides guaranteed and possible daily discoveries
+without rolling rewards or executing research. Guaranteed interruption is applied
+to mission-wave and UFO scoring forecasts, preventing obsolete wave candidates
+from blocking the tick or reserving effects. Uncertain reward/disabler outcomes
+retain an explicit guard; the possible set conservatively includes free/protected
+topics, their lookups and zero-cost discoveries. Interruption with live UFOs also
+retains an explicit daily guard until combined arrival, pursuit and site forecasts
+support it. Missing interruption research, malformed live counts with remaining
+UFO links, and deferred retaliation cleanup stop before mutation. Already
+interrupted missions use the existing lifecycle and save behavior.
+
+The extracted `strategic-alien-base-generation` probe inserts the exact
+`GenerateSupplyMission::operator()`, `AlienMission::setRegion`, start timer block,
+and `RuleAlienMission::generateRace/generateRegion` methods into asset-free rule
+and target collaborators. Minimum integer choices record call ranges; weighted
+collaborators use ordinal map order. Twenty-three traces cover local/weighted/
+player-base targeting, race choices, site areas, all objectives and base-operation
+modes, exhausted limits, zero frequency and empty choices. The oracle ends at
+creation; fresh/cache gameplay comparisons separately check current-tick
+half-hour fallthrough. This is controlled-decision evidence, not RNG stream parity
+or a full C++ engine reload of port saves.
+
+The extended capture also inserts the exact daily interruption loop and
+`AlienMission::isOver`; four additional traces cover completed/uncompleted research
+and existing interruption flags. `StrategicWorldMissionInterruptionTests` compares
+those zero-live traces through real daily/half-hour processing, exercises the audit
+reproduction through generation and transition reloads, and checks same-day primary
+and lookup research, discarded wave score forecasts, uncertainty/live-UFO guards,
+missing rules and malformed links. The installed-handler order test records the
+new daily phase explicitly.
+
+Additional tests cover real deterministic frequency outcomes, malformed region
+timelines/weights/zones/fallbacks, immediate boundaries, combined ID reservations,
+future supply-wave guards, and 72 hours of generation/countdown/cleanup with a
+persisted limit across reloads. Repeated loaded rewrites conserve unknown mission
+fields only while their mission survives; deletion does not resurrect sidecars or
+reset the source base's count. Existing save fields `alienBase`, `uniqueID`,
+`missionSiteZone`, wave/countdown counters and `genMissionCount` already have
+gameplay ownership, so no save schema or compiled-cache revision changes.
+
+References also inspected: `AlienDeployment` constructor/load/chooseGenMissionType,
+`SavedGame::locateRegion`, `AlienMission` constructor/load/save, and the mission
+spawning branches. Defaults remain frequency 0, limit 1000 and race-from-base true.
+Hunting, linked self-destruction, upgrades/evolution, broad wave spawning and the
+remaining scheduler/script work are still open. Branch 4c is incomplete; 4d is
+untouched.
+
+Validation checkpoint: all 1,358 root tests pass with no failures or skips,
+including 20 new generation compatibility cases, 18 interruption cases, ten local
+selection tests and the existing allocation gates. Fixture checksums, formatting verification,
+regenerated code-map validation and `git diff --check` pass. The private fresh/cache
+corpus retains nine executable saves through 360 ticks, two stopping at mission
+spawning (125 and 220 ticks), and eight active-battle preservation-only imports.
+These horizons establish bounded continuation, not branch 4c closure.
+## Immediate airborne generation (2026-10-07)
+
+Daily base-generated score/supply missions can now produce ordinary airborne UFOs
+in their creation tick. Pure candidate missions cover every reachable region and
+race without allocating identities or drawing RNG. The existing wave preflight
+reserves UFO identities/population and checks geometry, scoring and detection;
+optional candidates never contribute negative score headroom. New missions bypass
+the earlier daily interruption pass, as in the reference. Hunters, initial ground
+states and other immediate objectives retain a creation-lifecycle restriction.
+
+Evidence: pinned `GeoscapeState::GenerateSupplyMission/time1Day/time30Minutes`,
+`AlienMission::start/think/spawnUfo`, the verified `strategic-alien-base-generation`
+initial timer rows and `strategic-world` ordinary-wave/scoring fixtures. Fresh/cache
+seeded tests cover zero/random timers, same-tick points, before/after reloads and
+atomic UFO-identity exhaustion. No persistence/cache schema changes are needed.
+
+Composed acceptance now compares both creation callers with the native
+`strategic-wave-chain` five-object zero-timer trace. Midnight produces daily
+UFOs first, scores/detects them, then creates the hunting chain; hunting births
+miss that earlier handler. Both weighted races, one region remap, allocated
+mission/UFO order, live counters and reloads execute. Already completed
+interruption research does not retroactively affect either newborn mission.
+Combined identity and activity overflow reject before any tick mutation.
+The prior shared-execution broad check passed all 1,838 strategic-world cases.
+
+The batch audit confirmed three gaps: a heap iterator allocated on empty-world
+ticks, hunting wave classification did not charge its future-wave scan, and
+daily creation could resolve a duplicate marker/source ID to the wrong base.
+The additional fix uses stack traversal, reserves classification work before
+scanning, and refuses ambiguous source links before mutation. The original
+campaign allocation thresholds now pass all twelve foundation cases; fresh/cache
+large-wave and shared-marker regressions retain atomic snapshot/RNG assertions.
+
+Final batch validation: all 3,240 root tests pass without failures or skips,
+including the unchanged allocation gates, native checksums, private corpus and
+endurance cases. Formatting, code-map and diff checks pass; the reference checkout
+is clean. No unexpected access denial occurred. The iterator and identity fixes
+are committed separately from the three implementation slices.
+
+## Initial ground and site-wave creation (2026-10-07)
+
+Daily score missions now admit initial ground UFOs when their positive timer
+keeps them landed through the creation tick. They join the existing doubled
+half-hour activity/detection reservations, then decrement once at five seconds.
+The next tick uses the existing takeoff preflight and execution. Native
+`strategic-world-lifecycle/spawnPathRows` pins status, ten-second initial timer
+and speed; fresh/cache tests compare that trace and reload before birth, after
+birth and after takeoff. A one-step initial timer retains a precise guard.
+Reference: pinned `AlienMission::spawnUfo`, `Ufo::think/takeoff` and the daily,
+half-hour and five-second Geoscape caller positions.
+
+The hunting caller now also admits those ground births, including non-escort
+hunter initialization. Landed UFOs miss both retarget passes; their future
+takeoff uses the saved-mission forecasts with real identity. Fresh/cache ordinary
+and 100-percent-hunter cases cover both callers, native timer countdown, no
+premature hunting/escort state, correct half-hour points and three reloads.
+Creation-time airborne hunters, ground escorts and same-tick ground releases
+retain the lifecycle restriction.
+
+Generated site missions now admit ordinary non-objective opening waves. Their
+selected site area is persisted but unconsumed until an objective wave; a due
+objective follow-up retains the creation boundary. Fresh/cache daily-plus-hunting
+cases run 72 hours from both airborne and ground openings, reloading every day,
+with native generation/site-area and lifecycle evidence. Future objective waves
+remain pending, avoiding unavailable payload/combat effects. Separate zero-timer
+objective cases verify rejection before even the first ordinary wave mutates state.
+
+The ground/site batch audit found no additional confirmed defect. It checked
+native ground timers, constructor hunter state, both retarget caller positions,
+site-area consumption, half-hour scoring/detection, future objective boundaries,
+identity reservations and transition reloads. All 3,250 root tests pass without
+failures/skips, including private corpus, checksums and populated allocation gates.
+Formatting, regenerated code-map and diff checks pass; the reference is clean.
+
+## Alternative generation forecasts (2026-10-07)
+
+An immediate generated mission before its first race timeline now retains the
+native empty race instead of stopping at a forecast restriction. UFOs use default
+stats; subsequent save loading interrupts the mission and substitutes the first
+mod race, as `AlienMission::load` does. Verified generation `futureRace` rows and
+pinned `RuleAlienMission::generateRace` back fresh/cache daily/hunting tests,
+exact repaired-snapshot comparison and continued UFO persistence. No RNG is
+consumed during forecasting and no schema/cache revision changes are needed.
+
+Duplicate target-base regions now share one immediate-wave forecast after their
+single region remap. Live generation keeps every base entry and its native index
+roll, including duplicates. A fresh/cache 64-base regression previously rejected
+the final available UFO identity; it now creates one UFO, retains the `[0,63]`
+selection range and reloads successfully. Evidence: pinned
+`GeoscapeState::GenerateSupplyMission` and verified generation `target` rows.
+
+UFO identity/population reservations now take the largest immediate chain for
+each unique source and daily/hunting caller. Different rules, regions and races
+are all validated but cannot create simultaneous missions at one caller. The
+callers remain separate, so midnight daily-plus-hunting births add together.
+Fresh/cache seeded alternatives consume one or two identities at the allocator
+boundary and preserve the actual selected rule/race, live counts and reloads.
+All existing combined exhaustion regressions retain their strict refusal.
+
+The batch audit reproduced a post-mutation retarget work failure: 750 daily
+generated missions enlarge the lookup list for 1,400 saved airborne hunters.
+The earlier forecast counted only saved missions. The separate audit fix now
+reserves the enlarged list before the tick, including regular newly spawned
+airborne hunters and escort lookup actors, while retaining the existing craft,
+selection and follower work bounds. Pass-local reservations reset on every world
+preflight. Fresh/cache regressions cover both saved hunters and a 1,500-hunter
+saved-mission wave; all four cases refuse with unchanged snapshot and RNG state.
+All 56 focused generation cases pass. Final root validation passes all 3,260
+tests without failures or skips, including native fixture checksums, private
+corpus, endurance and unchanged allocation gates. Formatting, regenerated
+code-map and diff checks pass; the pinned reference remains clean. The audit
+fix is separate from the three implementation commits. Existing native captures
+and diagnostic outputs remain useful; this cycle created no compiled probes.
+
+## Generated airborne hunting (2026-10-07)
+
+Daily-generated airborne hunters now execute when no current or incoming craft
+can become a target. They retain their trajectory waypoint and native constructor
+state through both retarget callers. Pinned `AlienMission::spawnUfo`,
+`Ufo::Ufo` and `GeoscapeState::ufoHuntingAndEscorting` establish the behavior;
+verified `strategic-hunting/constructorRows` and generation/lifecycle fixtures
+back fresh/cache seeded 50/100-percent cases, scoring, strict transition reloads
+and atomic identity exhaustion.
+
+Daily target-dependent hunters now use the ordinary newborn reach/attraction
+forecasts with an explicit, unallocated mission context for race stats. Proofs
+include rule, region, race and source alongside wave/counter/mode, then apply to
+the same allocated mission after creation. They cannot leak between candidates
+sharing the private ID zero. Fresh/cache native selection/retarget rows cover
+all three constructor modes, backup waypoints, notifications, pursuit reloads,
+hidden-contact marker exhaustion and atomic interception refusal. A separate
+two-source regression proves that a safe first origin cannot hide combat at the
+second source. The focused generation/newborn suite passes 146 cases.
+
+The later base-hunting caller now admits airborne hunter births too. Their
+possible hunt contacts reserve the largest reachable chain per source before
+mutation, even on ten-minute ticks with no half-hour detection work. Daily
+detection and later hunting contacts share the contact allocator reservation.
+Fresh/cache tests cover both ten-minute/half-hour caller positions, all constructor
+modes, strict pursuit reloads and the last two identities in a combined midnight
+birth. Existing base-hunting eligibility tests use an immediate site objective
+for their unavailable-effect boundary; their strict snapshot/RNG assertions remain.
+Generated escorts and immediate objective/ground-release transitions stay guarded.
+
+The batch audit confirmed an uncaught race-stat overflow in hunting generation:
+the daily caller already refused it, but hunting exposed `OverflowException`.
+The separate fix converts consumed hunting field overflow into an explicit
+preflight refusal. Four fresh/cache malformed radar-bonus cases retain strict
+snapshot/RNG atomicity checks. The initial root batch passed all 3,280 cases;
+final root validation passes all 3,284 cases without failures or skips. Formatting,
+regenerated code-map and diff checks pass, including native checksums, private
+corpus and unchanged allocation gates. The pinned reference remains clean;
+existing captures remain useful and this cycle created no disposable probes.
+
+## Generated escorts (2026-10-07)
+
+Both daily and hunting callers now admit grounded escort births whose timer
+keeps them landed through the creation tick. Native initialization may attach
+them to an earlier ordinary birth, relocating them and setting maximum speed
+before half-hour activity. Ground status still prevents both retarget passes;
+later takeoff restores trajectory speed without clearing escort linkage.
+Evidence: pinned `AlienMission::spawnUfo/ufoLifting`, `Ufo::think`,
+`Ufo::setEscortedUfo` and verified `strategic-hunting/spawnEscortRows` with
+grounded sources. Fresh/cache cases compare native flags/speed/status, no-leader
+and earlier-leader chains, caller scoring and reloads before/after birth and
+takeoff. The generation/escort focused suite passes 214 cases.
+
+Airborne generated escorts now execute when no craft can be selected, including
+zero-radar births alongside active craft. Collection validates escort speed and
+spawn geometry immediately, deferring only the pure target proof until newborn
+preflight. Native saved-order leader attachment, backup waypoint and speed are
+retained, and later movement uses the moved leader's real position rather than
+forcing colocation. Fresh/cache cases cover both callers, absent/earlier leaders,
+activity and strict birth/pursuit reloads.
+
+Positive-radar generated escorts now use the creation mission's initial wave
+state to enumerate earlier ordinary/stochastic birth origins. Each due step
+passes that immutable context explicitly; the saved-mission caller retains its
+existing lookup. Native first ordinary leader order, relocated hunting origin,
+backup waypoint and initialized speed remain intact. Fresh/cache daily/hunting
+cases cover all modes, selection, hidden-marker exhaustion, combat refusal at
+the earlier leader's position and all four two-birth 50-percent constructor
+outcomes through reloads. The combined generation/newborn/escort suite passes
+306 cases. Same-tick ground release and immediate site objective creation remain
+guarded; combat, deployment, payload and campaign-month boundaries are unchanged.
+
+The escort batch audit confirmed an adjacent idle-hunter atomicity defect:
+zero trajectory speed masked a negative maximum speed when no craft could be
+selected, and live retargeting threw after mission/UFO creation. The separate
+fix validates always-consumed hunter speed/radar sums before the no-target
+shortcut. Fresh/cache regressions assert a preflight refusal with unchanged
+snapshot/RNG. Added initialized-speed tests cover hunt-speed zero/minus-one at
+both callers and retain strict combat refusal between nominal and escort reach.
+The existing escort-specific invalid-speed diagnostic remains intact; its strict
+regression caught the generic hunter reason during validation. The initial root
+batch passed all 3,302 tests; final root validation passes all 3,306 tests without
+failures or skips, including native checksums, private corpus and unchanged
+allocation gates. All 310 focused generation/newborn/escort cases pass.
+Formatting, regenerated code-map and diff checks pass, and the pinned reference
+remains clean. Existing captures and diagnostic logs remain useful; this cycle
+created no disposable probes.
+
+## Creation-tick ground release (2026-10-07)
+
+Daily generated UFOs with a five-second initial ground timer now lift during
+their creation tick. The existing shared activity forecast reserves doubled
+landed UFO points before half-hour detection, then positive mission takeoff
+points after site processing and earlier UFO movement. Pinned
+`GeoscapeState::time5Seconds/time30Minutes`, `Ufo::think` and
+`AlienMission::ufoLifting` establish that order. Verified lifecycle spawn rows
+back fresh/cache ordinary/hunter constructor cases, native restored speed,
+strict reloads before/after lift and atomic combined-score overflow refusal.
+All 139 focused generation/landing cases pass. Hunting and escort five-second
+births remain guarded pending their respective creation forecasts.
+
+Hunting-generated five-second ground timers now execute at both ten-minute and
+half-hour caller positions. Their births skip the earlier activity/detection
+pass, but reserve positive mission lift points alongside saved takeoffs and
+daily birth points. The pure composite traversal includes late births without
+running their detection scripts or reserving landing contacts. Pinned
+`GeoscapeState::time10Minutes/baseHunting/time5Seconds` and the same lifecycle
+fixture establish the order. Fresh/cache ordinary/hunter cases cover caller
+scoring, strict transition reloads, isolated overflow and combined midnight
+limits. All 183 focused generation/landing/base-hunting cases pass; five-second
+escort births still await relocation-aware lift acceptance.
+
+Five-second escort births now execute at both callers. Native constructor
+attachment relocates a landed escort to the earlier ordinary leader; scoring
+and lift points use that position. Lift restores the trajectory percentage
+speed while retaining the leader link and original waypoint, and does not move
+the newly airborne escort again in that flight pass. Verified grounded
+`strategic-hunting/spawnEscortRows` and `AlienMission::ufoLifting` back fresh/cache
+leader/no-leader cases, caller-specific activity, strict birth/following reloads
+and combined-point overflow refusal. All 355 focused generation/newborn/escort/
+landing cases pass. The blanket generated ground-release restriction is removed;
+immediate site objectives and the established later-branch guards remain.
+
+The three-slice batch audit found no confirmed defect. It checked caller ordering,
+optional birth activity, escort relocation and saved-UFO terminal arrivals that
+defer newborn takeoffs. Root validation passes all 3,316 tests without failures
+or skips, including native checksums, private corpus and unchanged allocation
+gates. Formatting, code-map and diff checks pass; the pinned reference remains
+clean. Existing evidence remains useful and no disposable probes were created.
+
+## Generated site-objective openings (2026-10-07)
+
+Daily site-objective UFO births now project every selectable site area before
+allocation. Ordinary opening waves still share an area-neutral candidate; due
+objective waves receive the exact selected index, and newborn hunter proofs
+include that index when consumed. Pinned `GenerateSupplyMission`,
+`AlienMission::getWaypoint/spawnUfo/ufoReachedWaypoint` and verified
+`strategic-world-lifecycle/selectedSiteRows` establish selection and landing
+semantics. Fresh/cache seeded cases cover both selected city areas and
+`objectiveOnTheLandingSite`, strict birth/conversion/expiry reloads and precise
+empty-zone/resource-limit refusals. All 198 focused generation/selected-site/
+newborn cases pass. Hunting openings remain guarded for the next slice.
+
+The later hunting caller now projects selected objective areas too, while
+preserving its skipped half-hour scoring/detection. Fresh/cache cases execute
+both landing flags across seeded area choices, convert and expire sites through
+strict reloads, and retain precise malformed-area refusals. Both creation
+callers also compose for 72 hours with daily reloads through UFO deletion,
+mission cleanup and site expiry. All 196 focused generation/selected-site/
+base-hunting/conversion cases pass. Deployment-only generated objectives remain
+guarded; event payload, combat and campaign-month boundaries are unchanged.
+
+Generated daily contact and landing-marker reservations now take the largest
+possible chain per source, rather than summing mutually exclusive rule/race/
+region/area candidates. This follows native one-mission-per-source selection;
+late hunting contacts retain their separate caller reservation. Fresh/cache
+two/256-area cases use the last valid one/two-contact IDs, preserve strict
+reloads and refuse real exhaustion atomically. A selected-origin hunter case
+also proves that a safe first area cannot hide combat at the second area sharing
+candidate ID zero. All 338 focused generation/escort/newborn/selected-site cases
+pass. Later-branch boundaries remain intact.
+
+The batch audit confirmed two defects. Area-neutral objective births/lifts were
+awarded once per forecast area, refusing a valid final activity slot; hunting
+area projection indexed an invalid spawn zone before the established refusal.
+The separate fix deduplicates area-neutral awards by source, rule, region, race,
+wave/counter and caller, retaining area-dependent and escort alternatives. It
+also validates the hunting zone before collection. Fresh/cache two/256-area
+airborne/ground cases exercise the exact last activity value and real overflow,
+with distinct-source/counter acceptance and strict malformed-zone atomicity.
+All 386 focused cases pass. The initial root batch passed all 3,332 tests;
+final root validation passes all 3,340 tests without failures or skips, including
+native checksums, private corpus and unchanged allocation gates. Formatting,
+regenerated code-map and diff checks pass; the pinned reference remains clean.
+Existing evidence/logs remain useful and no disposable probes were created.
+Broader alternative activity
+uncertainty remains open rather than being claimed complete by this correction.
+
+## Generated deployment-only waves (2026-10-07)
+
+Daily score missions can now create explicit deployment sites during their
+creation tick without a UFO. Collection recognizes executable deployment
+waves, then the shared mission/site capabilities validate and execute them.
+Generated site scoring keeps birth uncertainty instead of crediting an optional
+negative award as overflow headroom. Pinned `GenerateSupplyMission`,
+`AlienMission::think/spawnMissionSite` and verified `strategic-site-spawn`
+creation cases back fresh/cache seeded rectangle/point choices, marker/timer/
+race/texture preservation, before/birth/expiry reloads and atomic ID/activity
+refusals. A 50-percent negative-source regression retains strict snapshot/RNG
+checks. All 208 focused generation/site-spawn/site-timer cases pass. Hunting
+and selected site-objective direct waves remain guarded for the next slices.
+
+The later hunting caller now creates explicit deployment sites too. Their
+timers and activity remain untouched until the next site-processing pass;
+completed no-UFO missions remain until the next half-hour cleanup. Preflight
+passes the real processing context into direct-site validation, so a late
+zero-duration site with an unavailable despawn event can be scheduled/persisted
+and refuses only before that payload is due. Its daily counterpart refuses
+before the creation tick. Native `baseHunting/AlienMission::think` and
+`GeoscapeState::processMissionSite` order back seeded fresh/cache caller cases,
+strict creation/expiry reloads and the zero-duration payload stopping horizon.
+All 252 focused generation/site-spawn/site-timer/base-hunting cases pass.
+
+Supply missions now create explicit deployment sites at both generation callers,
+including finite zero-timer site/UFO/site chains. Pinned `AlienMission::think`
+and verified `strategic-site-spawn`/`strategic-wave-chain` establish the shared
+creation semantics. Fresh/cache cases cover rectangle/point creation, 72 hours
+of composed activity with daily reloads, cleanup and joint site/UFO ID exhaustion
+before mutation. All 154 focused generation/wave/site-spawn cases pass.
+Selected site-objective direct waves remain guarded pending reservations across
+their mutually exclusive selected areas.
+
+The three-slice audit confirmed that direct-site marker/population reservations
+summed mutually exclusive generated race choices. The separate fix reserves the
+largest chain per source and caller, including save-counter birth forecasts,
+while validating every candidate's fields and preserving separate real sources.
+Eight fresh/cache daily/hunting single/mixed-chain regressions reproduce the
+old final-ID refusal, accept the exact remaining capacity through reload and
+retain atomic real exhaustion. All 184 focused generation/wave/site-spawn/
+site-timer cases pass. Alternative activity and expiry-counter uncertainty are
+still tracked as remaining work; this fix does not claim those complete.
+
+Final root validation passes all 3,366 tests without failures or skips, including
+native checksums, private corpus and the unchanged allocation gates. Full
+formatting verification, regenerated code-map and diff checks pass; the pinned
+reference is clean. Useful evidence/logs remain and no disposable probes were
+created in this cycle.
+
+## Generated selected direct sites (2026-10-07)
+
+Daily site-objective missions now create direct deployment sites using their
+selected area. Pinned `GenerateSupplyMission` and `AlienMission::think/
+spawnMissionSite`, plus verified generation/site-spawn fixtures, establish the
+one-time area selection and reuse across immediate waves. Fresh/cache seeded
+cases cover single rectangle/point sites and mixed site/UFO/site chains, the
+last two marker IDs, retained mission area and before/birth/expiry reloads.
+All 212 focused generation/site-spawn/selected-waypoint cases pass. Hunting
+selected direct waves and alternative activity reservations remain subsequent
+slices; later-branch guards are unchanged.
+
+The later hunting caller now executes selected direct waves and mixed chains,
+retaining the selected mission area through reload while leaving new site timers
+untouched until the next half-hour pass. Seeded fresh/cache cases cover both
+cities, shared final marker capacity and cleanup after the second hidden site's
+hourly discovery postponement. All 254 focused generation/site-spawn/base-hunting
+cases pass. This completes selected direct admission at both callers; activity
+uncertainty remains the third slice.
+
+Generated direct-site activity now unions the whole candidate chain per source,
+starting each mutually exclusive rule/region/race/area choice at the same ordered
+prefix. Real sources still add together, and optional negative births cannot
+provide headroom. All projection copying/merging is charged to the shared work
+limit. Four fresh/cache score/site-objective regressions first reproduce the
+old refusal, then accept exact last activity values, preserve reloads and retain
+atomic single/two-source overflow. All 280 focused generation/site-spawn/
+site-timer/base-hunting cases pass. Broader UFO activity and expiry-counter
+uncertainty remain separate work.
+
+The batch audit found unnecessary marker/activity projection allocations on
+generated UFO-only paths. The separate correction creates both reservation
+contexts only when a direct-site wave consumes them. Expanded fresh/cache cases
+retain whole two-site chain activity, separate sources, real overflow, unsafe
+durations and 72 hours of selected direct/UFO activity with daily reloads.
+All 292 focused generation/site-spawn/site-timer/base-hunting cases pass. Reviewed
+source grouping, selected-area reuse, deployment precedence, empty-zone refusal
+and late payload timing; no additional correctness defect was confirmed.
+
+Final root validation passes all 3,390 tests without failures or skips, including
+native checksums, private corpus and unchanged population/allocation gates.
+Full formatting verification, regenerated code-map and diff checks pass; the
+reference remains clean at the pinned commit. No new probes were created; empty
+successful-format logs were removed and reusable evidence remains. This closes
+the six-cycle timed run (18 implementation slices and six batch audits). Other
+immediate objectives, broader uncertainty forecasts and branch-wide headless
+acceptance still keep 4c open; no 4d work was started.
+
+## Generated activity alternatives (2026-10-08)
+
+Half-hour UFO birth scoring now unions each source's generated mission/race/
+region/area alternatives while accumulating every wave within a candidate.
+The bounded private projection remains lazy and does not execute RNG or scripts.
+Pinned `GenerateSupplyMission`, `GeoscapeState::time30Minutes` and verified
+generation/lifecycle fixtures establish one selected mission and per-UFO
+scoring. The fresh/cache weighted-rule regression reproduces the old activity
+refusal, accepts the exact remaining capacity, persists either one/two-UFO
+outcome and still refuses real overflow atomically. All 236 focused generation/
+wave-chain/site-spawn cases pass. Same-tick lift alternatives and joint direct
+site composition remain the following slices.
+
+Creation-tick grounded takeoffs now retain each forecast candidate's complete
+ordered score chain and union alternatives per source/caller. Daily birth and
+late hunting phases remain distinct; an earlier saved terminal arrival still
+suppresses every newborn takeoff. Optional generation does not turn positive
+points into guaranteed score headroom. Pinned `AlienMission::ufoLifting` and
+verified generation/hunting/lifecycle fixtures back four fresh/cache seeded
+one/two-UFO cases that first reproduce the old refusal, then accept exact
+capacity through before/after/following reloads and reject genuine overflow.
+All 231 focused generation/wave/landing/escort cases pass.
+
+Direct-site activity now shares the same bounded source/caller alternative
+operation as UFO birth/takeoff forecasts, retaining its existing work-limit
+diagnostic and lazy consumption. Four fresh/cache mixed race cases exercise
+score/site objectives at exact joint UFO/site capacity, strict transition reloads,
+genuine overflow and 72-hour cleanup with daily reloads at both callers.
+All 244 focused generation/site-spawn/wave-chain cases pass. This unifies stage
+ownership; correlations between different scoring stages remain conservative.
+
+The batch audit confirmed a missing merge-work charge in the shared range
+operation. Its separate correction bounds two baseline copies, two candidate
+copies and the complete merge. Fresh/cache 600-region/256-area cases first
+reproduce the uncharged advance, then refuse atomically; 500-region cases still
+advance and reload. All 246 focused generation/site-spawn/wave-chain cases pass.
+Reviewed source/caller grouping, optional negative headroom, distinct waves,
+terminal-arrival suppression and lazy allocation; no other defect was confirmed.
+
+Root validation passes all 3,400 tests without failures or skips, including
+native checksums, private corpus and populated allocation gates. Full formatting
+verification, code-map and diff checks pass; the pinned reference stays clean.
+No probes were generated, and the empty successful-format log was removed.
+Generated expiry-counter alternatives and broader immediate objectives remain
+4c work, alongside the final headless acceptance reconciliation.
+
+## Generated expiry counter alternatives (2026-10-08)
+
+Generated direct-site forecasts now retain the largest complete expiry-counter
+chain per source/caller across mission/race/region/area alternatives. Every real
+wave and distinct source still accumulates; marker allocation and expiry aliases
+remain separate contributions, and uncertain decreases supply no headroom.
+Pinned `GenerateSupplyMission` selects one generated mission at each caller,
+while `GeoscapeState::processMissionSite` applies all six ordered fields to each
+actual expired site. Verified generation/site-spawn captures back four fresh/cache
+one/two-site regressions that reproduce the old refusal, accept exact custom and
+marker capacity through transition reloads, and reject real overflow and two-source
+composition atomically. All 246 generation/site-spawn cases pass. Projection
+work is charged and scratch state is private to one preflight pass.
+
+Late hunting direct-site IDs now include the preceding half-hour saved-site
+expiry counters and possible newborn expiry changes. The bounded prefix is
+computed once per pass and applies guaranteed saved changes in native order,
+retaining the one-based decrease floor. Daily births still precede site expiry;
+hunting births follow it, as in `GeoscapeState::time30Minutes/time10Minutes`.
+Four fresh/cache regressions first reproduce increment/decrement collisions
+with a surviving target, then stop atomically while safe shifted/floor IDs
+execute through before/after reloads. All 272 generation/site-spawn/site-timer
+cases pass. Same-tick daily/hunting birth composition is part of the batch audit.
+
+The batch audit reproduced late hunting ID reuse after a preceding expiry
+decrease, both with a surviving daily newborn and with hourly craft production.
+The separate fix refuses those specific shared-namespace compositions before
+mutation, tracking possible surviving early world markers and production-owned
+identity forecasts. Expired zero-hour daily sites do not trigger the live-world
+guard. Four fresh/cache regressions reproduce the old unsafe advance, retain
+atomic refusal and reload safe daily/hunting/production allocations. Prefix
+work now includes field copies, base scans and both subsequent counter scans.
+All 288 affected generation/site-spawn/site-timer/production/base cases pass.
+Exact projection of decreased counters across surviving newborn identities
+remains 4c work; these precise guards do not claim that composition complete.
+
+Root validation passes all 3,414 tests without failures or skips, including
+native checksums, private corpus and populated allocation gates. Full formatting
+verification, regenerated fixture ownership map and diff checks pass. The pinned
+reference remains clean; no native probe was generated and the empty successful
+format log was removed. This closes the three-slice counter cycle and its audit.
+
+## Generated base and infiltration openings (2026-10-08)
+
+Daily generated base/infiltration missions now project finite creation-tick
+prefixes through the existing UFO/direct-site lifecycle handlers. Native
+`AlienMission::think` advances wave counters before testing final objective
+completion; nonfinal openings therefore do not build a base or sign a pact.
+Verified generation, lifecycle and objective-base captures back four fresh/cache
+regressions that first reproduce the old blanket generation guard, then advance
+ordinary UFO births and preserve the pending objective over 72 hours with daily
+reloads. All 212 generation cases pass. Creation-tick final completion keeps its
+specific forecast guard, and the hunting caller remains the next slice.
+
+Late hunting now uses the same base/infiltration prefix projection, retaining
+its actual caller timing: newly generated UFOs miss half-hour scoring/detection,
+and the later objective remains pending. Four additional fresh/cache cases
+reproduce the old hunting guard and run 72 hours with daily reloads, checking
+stable mission/UFO linkage, cleanup and absence of premature pact/base effects.
+All 256 generation/base-hunting cases pass. Native baseHunting and
+`AlienMission::think`, plus verified hunting-generation/lifecycle captures,
+establish the caller order. Final objective completion retains its precise guard.
+
+Daily generated final base waves now consume the existing objective-base creation
+forecast and handler at the mission think position, before UFO scoring/detection.
+The handler owns deployment selection, land search, marker IDs, birth sequence,
+race and completion points. Four fresh/cache airborne/one-step-ground cases
+reproduce the former completion guard, check the native base-before-UFO order,
+exact score capacity and atomic marker/activity overflow, then run 72 hours with
+daily reloads through UFO/mission cleanup. Base takeoff points remain suppressed
+as in `AlienMission::ufoLifting`; `addScore` likewise excludes infiltration.
+All 270 generation/objective-base cases pass. Hunting final completion,
+infiltration completion and generated no-object-only final bases remain guarded.
+
+The batch audit confirmed alternate races were incorrectly reserving multiple
+base populations, IDs and completion scores for one generated mission. The
+separate correction shares target reservations with direct sites and unions
+base completion activity per source, preserving separate actual sources and
+saved/landing behavior. Two fresh/cache seeded cases reproduce the old refusal,
+accept exact marker/score capacity with both races, preserve strict reloads,
+and retain atomic real/two-source overflow. Reservation and range work are
+charged. Finite immediate-chain guard regressions verify unsupported hunting/
+infiltration completion stops before the earlier prefix mutates state; native
+endless zero-timer inputs retain their work-limit rejection. All 320 affected
+generation/objective-base/site-spawn cases pass. Cross-objective alternatives
+and possible newborn hunting remain conservative rather than claimed complete.
+
+Root validation passes all 3,430 tests without failures or skips, including
+native checksums, private corpus and populated allocation gates. Full formatting
+verification, regenerated code-map and diff checks pass. The pinned reference
+remains clean, no native probe was generated, and the empty successful format
+log was removed. This closes the three-slice objective-opening cycle and audit.
+
+## Generated final objective waves (2026-10-08)
+
+Daily no-object-only base missions now receive creation forecasts even without
+a UFO or direct-site wave. Native `AlienMission::think` tests base completion
+after counter advancement regardless of the spawned object, then cleans up the
+finished mission with no live UFOs. Verified objective-base/generation captures
+back two fresh/cache seeded alternate-race cases that reproduce the old guard,
+create exactly one base at final marker/score capacity, reload around creation
+and cleanup, and reject real ID overflow atomically. All 316 generation/
+objective-base/base-hunting cases pass. Hunting final-base and infiltration
+completion remain the following slices.
+
+Late hunting final-base waves now execute with caller-specific population,
+marker and completion-score projections. Newly appended bases are excluded
+from the current hunting iteration and begin hunting at the next caller;
+daily-born bases retain their earlier caller position. The expanded native
+baseHunting capture pins its saved end with stable vector capacity, avoiding
+undefined iterator behavior after reallocation; its prior rows are unchanged.
+Four fresh/cache tests canonically compare appended live/disabled base timers,
+then reload through the next half-hour cleanup. Four more first reproduce
+increment/decrement expiry-counter collisions with saved bases, then preserve
+atomic refusal and safe shifted IDs. Late base/site allocation shares the
+bounded prefix and precise decreased-counter newborn/production guards.
+All 370 generation/objective-base/base-hunting/site-spawn cases pass. The
+obsolete native object was removed; captures, executable and extracted source
+remain useful. Generated infiltration completion remains the next slice.
+
+Daily final infiltration waves now use the existing regional/country base search
+and pending-pact handler, sharing source alternatives across generated birth
+reservations. Native `AlienMission::think` sets a pending pact only after a base
+can be created, links that base to its country, and leaves pact signing/score
+to the monthly boundary. Verified infiltration option/eligibility/region/country
+and generation captures back eight fresh/cache cases across both placement modes,
+airborne/no-object final waves and alternate races. They reload around creation,
+run 72 hours through UFO/mission cleanup, preserve one pending pact and reject
+real marker overflow atomically. All 271 generation/infiltration/repeat cases pass.
+Late hunting infiltration completion retains its specific forecast boundary;
+cross-source eligibility and daily pact-base destruction are part of the audit.
+
+The batch audit confirmed a missed daily pact-cancellation eligibility change
+and false capacity reservations when several sources compete for one country.
+Pure country forecasts now apply guaranteed daily base destruction before
+regional/country search, charging their scans and retaining native
+`Country::setCancelPact`/`canBeInfiltrated` semantics. Pact births and marker
+reservations are bounded by the projected eligible countries; ordinary base
+alternatives retain independent reservations because they do not consume a
+country. Six fresh/cache regressions cover the original atomic-collision gap,
+safe destruction/reinfiltration reloads, shared-country final ID capacity, and
+mixed pact/ordinary base capacity. The cleanup and infiltration captures pin
+the native flag transition. All 327 focused generation/infiltration/repeat/
+objective-base cases pass. Region and cross-objective correlations remain
+conservative; there is no RNG or campaign mutation during preflight.
+
+Root validation passes all 3,454 tests without failures or skips, including
+native fixture checksums, private corpus and populated allocation gates.
+Formatting verification, regenerated code-map and diff checks pass. The pinned
+reference is clean; useful native birth captures remain and the empty successful
+format log was removed. This closes the three-slice final-objective cycle and audit.
+
+## Late infiltration and generated retaliation (2026-10-08)
+
+Late hunting infiltration completion now uses the caller-specific base/marker
+and projected-country forecasts instead of its generic immediate-completion
+guard. Native `AlienMission::think`, country eligibility and the saved-end
+`baseHunting` capture define the same pending-pact transition after the
+half-hour site pass. Eight additional fresh/cache placement/wave cases exercise
+alternate races, final ID capacity, reloads and 72 hours through cleanup. The
+finite two-wave hunting chain now completes instead of stopping at its prefix;
+two further cases preserve single-country capacity across competing hunting
+sources. All 337 focused generation/infiltration/repeat/objective-base cases
+pass. Pact signing, event payloads and month rollover remain deferred.
+
+Daily generated retaliation now participates in complete creation forecasts,
+including ordinary scouting and safely airborne assault spawning. Collection
+uses the effective native spawn wave, preserving `spawnUfo` overrides and the
+`__RETALIATION_ASSAULT_RUN` identity from `UfoTrajectory.cpp`; it validates
+retaliation target selection before accepting a proof. Native `spawnUfo` and
+`selectXcomBase` traces back eight fresh/cache selection/override cases with
+source origins, target movement, scoring, capacity refusal and reloads. Two
+scouting scenarios run 72 hours through cleanup. Two instant-retaliation cases
+refuse targeted base defense atomically. All 284 generation/retaliation cases
+pass, followed by the ten-case endurance subset. No combat or defense effect
+is executed.
+
+Late hunting retaliation uses the same effective-wave proofs after the native
+base-discovery caller. Existing uncertainty guards still stop scouting missions
+whose target classification could change during that earlier caller. Eight
+additional fresh/cache selection/override cases preserve late birth scoring
+order and generation counters, reload through spawning, and run 72-hour
+scouting cleanup. Two hunting instant-retaliation cases retain atomic defense
+refusal. All 294 focused generation/retaliation cases pass. The reference
+`baseHunting`/`generateHuntMission` and retaliation spawn captures establish
+caller order; this does not execute interception or base defense.
+
+The batch audit reproduced an override-only retaliation gap: a missing wave
+UFO can still produce an assault UFO through the mission's `spawnUfo` rule.
+Candidate collection now includes no-object retaliation rules, and finite
+chain counters count the effective overridden UFO. The existing malformed
+targeted-wave tests now require precise missing-UFO or base-defense refusals,
+replacing their generic generated-world boundary. The native spawn capture
+adds 16 missing-original/override cases and uses the exact assault identity;
+all 512 earlier traces are unchanged. Four fresh/cache daily/hunting regressions
+canonically compare the constructor outcomes, execute two-wave override chains,
+reload at final unique-ID capacity and reject actual exhaustion atomically.
+All 377 focused generation/retaliation/infiltration/repeat/objective-base cases
+pass. Native captures remain useful; the obsolete object was removed. No
+additional confirmed defect was found in target discovery, caller timing,
+country reservations or save ownership during this batch audit.
+
+Root validation passes all 3,488 tests without failures or skips, including
+native fixture checksums, private corpus and populated allocation gates.
+Full formatting verification, regenerated code-map and diff checks pass.
+The reference checkout is clean. Useful captures remain, the native object
+and empty successful formatting log were removed, and the three-slice
+late-infiltration/retaliation cycle and batch audit are closed.

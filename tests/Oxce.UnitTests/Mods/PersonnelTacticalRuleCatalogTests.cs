@@ -13,6 +13,86 @@ namespace Oxce.UnitTests.Mods;
 
 public sealed class PersonnelTacticalRuleCatalogTests
 {
+    [Theory]
+    [InlineData("liveAlien", "STR_NULL")]
+    [InlineData("liveAlien", "MISSING_ITEM")]
+    [InlineData("civilianRecoveryType", "STR_NULL")]
+    [InlineData("civilianRecoveryType", "MISSING_ITEM")]
+    public void UnitExplicitNullableNamesMustResolveAsRealNames(string property, string id)
+    {
+        using var fixture = new TemporaryModFixture(("fixture.rul", $$"""
+            items:
+              - type: CORPSE
+                battleType: 11
+            armors:
+              - type: ARMOR
+                corpseBattle: [CORPSE]
+            units:
+              - type: UNIT
+                armor: ARMOR
+                {{property}}: {{id}}
+            """));
+        var plan = TestFixtures.CreatePlan(fixture.Root);
+        var content = PersonnelTacticalRuleCatalog.Load(plan);
+        var result = content.ValidateRelationships(ItemRuleCatalog.Load(plan),
+            EquipmentProductionRuleCatalog.Load(plan));
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Issues, issue => issue.Property == property && issue.RelatedId == id);
+    }
+
+    [Fact]
+    public void ExplicitGeoscapeCorpseOverridesTheBattleCorpseDefault()
+    {
+        // Armor::load: corpseItem/corpseBattle set the default, then corpseGeo overrides it.
+        using var fixture = new TemporaryModFixture(("fixture.rul", """
+            armors:
+              - type: BATTLE_ONLY
+                corpseBattle: [FIRST, SECOND]
+              - type: BATTLE_AND_GEO
+                corpseGeo: GEO
+                corpseBattle: [FIRST, SECOND]
+              - type: ITEM_AND_GEO
+                corpseItem: SINGLE
+                corpseGeo: GEO
+            """));
+        var content = PersonnelTacticalRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root));
+        string Geo(string id) => content.Armors.Rules.Single(rule => rule.Id == id).Value.Strings["corpseGeo"];
+        Assert.Equal("FIRST", Geo("BATTLE_ONLY"));
+        Assert.Equal("GEO", Geo("BATTLE_AND_GEO"));
+        Assert.Equal("GEO", Geo("ITEM_AND_GEO"));
+        Assert.Equal(["SINGLE"], content.Armors.Rules.Single(rule => rule.Id == "ITEM_AND_GEO").Value.CorpseBattle);
+    }
+
+    [Fact]
+    public void UnitNullableNamesKeepNulDistinctFromLiteralStrNull()
+    {
+        using var fixture = new TemporaryModFixture(("fixture.rul", """
+            units:
+              - type: DEFAULT
+              - type: "NULL"
+                liveAlien: null
+                civilianRecoveryType: null
+                spawnedPersonName: null
+              - type: LITERAL
+                liveAlien: STR_NULL
+                civilianRecoveryType: STR_NULL
+                spawnedPersonName: STR_NULL
+              - type: EMPTY
+                liveAlien: ""
+            """));
+        var content = PersonnelTacticalRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root));
+        var defaults = content.Units.Rules.Single(rule => rule.Id == "DEFAULT").Value;
+        Assert.Equal("\0", defaults.Strings["liveAlien"]);
+        var nulls = content.Units.Rules.Single(rule => rule.Id == "NULL").Value;
+        var literal = content.Units.Rules.Single(rule => rule.Id == "LITERAL").Value;
+        foreach (var key in new[] { "liveAlien", "civilianRecoveryType", "spawnedPersonName" })
+        {
+            Assert.Equal("\0", nulls.Strings[key]);
+            Assert.Equal("STR_NULL", literal.Strings[key]);
+        }
+        Assert.Equal("", content.Units.Rules.Single(rule => rule.Id == "EMPTY").Value.Strings["liveAlien"]);
+    }
+
     [Fact]
     public void LoadsPersonnelFamiliesWithReferenceDefaultsAndMergeSemantics()
     {

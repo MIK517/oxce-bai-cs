@@ -1,0 +1,22 @@
+# Controlled operation births followed by the pinned final monthly caller.
+alienRaces:
+  - {id: RACE_C, members: [SECTOID]}
+alienDeployments:
+  - {type: NEWBORN_TARGET, alienBase: true, markerName: STR_ALIEN_BASE, huntMissionMaxFrequency: 120}
+  - {type: NEWBORN_MARKER_TARGET, alienBase: true, markerName: NEWBORN_DESTINATION, huntMissionMaxFrequency: 120}
+  - {type: NEWBORN_upgrade, alienBase: true, markerName: STR_ALIEN_BASE, alienBaseUpgrades: {0: {NEWBORN_TARGET: 1}}}
+  - {type: NEWBORN_evolution, alienBase: true, markerName: STR_ALIEN_BASE, alienBaseUpgrades: {0: {NEWBORN_TARGET: 1}}}
+  - {type: NEWBORN_loop, alienBase: true, markerName: STR_ALIEN_BASE, alienBaseUpgrades: {0: {NEWBORN_TARGET: 1}}}
+  - {type: NEWBORN_marker, alienBase: true, markerName: NEWBORN_SOURCE, alienBaseUpgrades: {0: {NEWBORN_MARKER_TARGET: 1}}}
+alienMissions:
+  - type: NEWBORN_MISSION
+    operationType: 2
+    operationSpawnZone: 4
+    raceWeights: {0: {RACE_A: 1}}
+    waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 60}]
+missionScripts:
+  - type: NEWBORN_SCRIPT
+    startDelay: 60
+    missionWeights: {0: {NEWBORN_MISSION: 1}}
+    raceWeights: {0: {RACE_A: 1}}
+    regionWeights: {0: {REGION: 1}}

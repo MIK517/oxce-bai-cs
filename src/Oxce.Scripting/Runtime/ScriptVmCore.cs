@@ -484,12 +484,14 @@ public static partial class ScriptVm
         {
             if (left.Kind != ScriptRuntimeValueKind.Scalar || right.Kind != ScriptRuntimeValueKind.Scalar)
             {
-                var equal = left.Kind == right.Kind && left.Kind switch
-                {
-                    ScriptRuntimeValueKind.Text => string.Equals(left.Text, right.Text, StringComparison.Ordinal),
-                    ScriptRuntimeValueKind.Reference => ReferenceEquals(left.Reference, right.Reference),
-                    _ => false,
-                };
+                // Script null literals are scalar zero; host pointer outputs retain their reference kind.
+                var equal = IsNullPointer(left) && IsNullPointer(right) ||
+                    left.Kind == right.Kind && left.Kind switch
+                    {
+                        ScriptRuntimeValueKind.Text => string.Equals(left.Text, right.Text, StringComparison.Ordinal),
+                        ScriptRuntimeValueKind.Reference => ReferenceEquals(left.Reference, right.Reference),
+                        _ => false,
+                    };
                 return condition switch
                 {
                     ScriptConditionKind.Equal => equal,
@@ -508,6 +510,10 @@ public static partial class ScriptVm
                 _ => false,
             };
         }
+
+        private static bool IsNullPointer(ScriptRuntimeValue value) =>
+            value.Kind == ScriptRuntimeValueKind.Reference && value.Reference is null ||
+            value.Kind == ScriptRuntimeValueKind.Scalar && value.Scalar == 0;
 
         private bool OffsetModulo(ReadOnlySpan<ScriptOperand> operands, out int? destinationValue)
         {

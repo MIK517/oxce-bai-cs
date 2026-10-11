@@ -14,12 +14,10 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldLifecycleTraceTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void LifecycleMatchesCapturedCppTransitionsAcrossReloadsAndBatches(bool fromCache)
+    [Fact]
+    public void LifecycleMatchesCapturedCppTransitionsAcrossReloadsAndBatches()
     {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul", fromCache);
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
         foreach (var scenario in TestFixtures.Rows(oracle.RootElement, "cases"))
         {

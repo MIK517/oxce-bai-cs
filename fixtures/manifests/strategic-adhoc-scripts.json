@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-adhoc-scripts",
+  "description": "Extracted GeoscapeState adhoc tag-filter block with controlled event/script rules; the composed gameplay fixture also checks mission order and persistence.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "GeoscapeState::determineAlienMissions level-zero adhoc tag filter",
+      "capture": "tools/capture-strategic-adhoc-scripts-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; filter block inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_adhoc_scripts_probe.cpp",
+      "size": 1786,
+      "sha256": "fa4a0b02184c36a751621d31a3b86d978b4e4c06f1312c93deefecf0ac76fdd2"
+    },
+    {
+      "path": "tools/capture-strategic-adhoc-scripts-reference.ps1",
+      "size": 2775,
+      "sha256": "8e2e2fe88ba4d582e521e0f5594dcf6be4f9ae243915896608d9eda6acc5fb78"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-adhoc-scripts.rul",
+      "size": 1411,
+      "sha256": "8f67f2a86ca6428fd540f57c5cd1f0f743c4a17bd2813fd51cfdc1c92cd90540"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-world.rul",
+      "size": 14290,
+      "sha256": "9b1d246a38a20824d282ef0d14a64c65d68e687a780d3caa1f4da8c93a510c07"
+    }
+  ],
+  "normalization": ["compact-json"],
+  "expected": "fixtures/expected/savegames/strategic-adhoc-scripts.expected.json"
+}

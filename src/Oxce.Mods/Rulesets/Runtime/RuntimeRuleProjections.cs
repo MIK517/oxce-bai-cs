@@ -1,5 +1,6 @@
-using Oxce.Mods.Resources;
+using System.Collections.Frozen;
 using System.Collections.ObjectModel;
+using Oxce.Mods.Resources;
 using Oxce.Mods.Rulesets.CampaignStart;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.Mods.Rulesets.EquipmentProduction;
@@ -7,6 +8,21 @@ using Oxce.Mods.Rulesets.EquipmentProduction;
 namespace Oxce.Mods.Rulesets.Runtime;
 
 public sealed record RuntimeIdentityRule(string Id);
+
+/// <summary>Immutable inventory metadata for read-only rule scripts.</summary>
+public sealed record RuntimeInventoryRule(string Id, int Type, int Hand)
+{
+    public IReadOnlyDictionary<string, int> Costs { get; init; } = FrozenDictionary<string, int>.Empty;
+}
+
+/// <summary>Read-only Unit metadata used by script rule lookups.</summary>
+public sealed record RuntimeUnitRule(string Type)
+{
+    public RuleHandle<ArmorRuleFamily>? Armor { get; init; }
+    public RuleHandle<UnitRuleFamily>? SpawnUnit { get; init; }
+    public RuleHandle<ItemRuleFamily>? LiveAlien { get; init; }
+    public RuleHandle<ItemRuleFamily>? CivilianRecoveryItem { get; init; }
+}
 
 public sealed record RuntimeResearchRule(
     string Lookup,
@@ -149,6 +165,8 @@ public sealed record RuntimeFacilityRule(
     public IReadOnlyList<string> ForbiddenBaseFunctions { get; init; } = [];
     public int HangarType { get; init; }
     public IReadOnlyList<string> ProvidedBaseFunctions { get; init; } = [];
+    public int SightRange { get; init; }
+    public int SightChance { get; init; }
     public int RadarRange { get; init; }
     public int RadarChance { get; init; }
     public bool Hyperwave { get; init; }
@@ -175,7 +193,11 @@ public sealed record RuntimeCraftRule(
     RuleHandleList<CraftWeaponRuleFamily> FixedWeapons,
     RuleHandleList<RuntimeScriptFamily> Scripts)
 {
+    public string Type { get; init; } = "";
     public RuntimePurchaseRequirements Purchase { get; init; } = new(0, "", "", [], []);
+    /// <summary>RuleCraft::_stats, before installed weapon bonuses and capacity limits.</summary>
+    public IReadOnlyDictionary<string, int> DefaultStats { get; init; } =
+        new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
     public int HangarType { get; init; }
     public int WeaponSlots { get; init; }
     public int RefuelRate { get; init; }
@@ -183,11 +205,13 @@ public sealed record RuntimeCraftRule(
     public int ShieldCapacity { get; init; }
     public int ShieldRechargeInGeoscape { get; init; }
     public int ShieldRechargeAtBase { get; init; }
+    public int SightRange { get; init; }
     public int RadarRange { get; init; }
     public int RadarChance { get; init; }
     public int MaximumItems { get; init; }
     public double MaximumStorageSpace { get; init; }
     public bool NotifyWhenRefueled { get; init; }
+    public bool Undetectable { get; init; }
     public bool PatrolWithoutFuel { get; init; }
     public bool AutoPatrol { get; init; }
     public IReadOnlyList<string> FixedWeaponSlots { get; init; } = [];
@@ -215,6 +239,12 @@ public sealed record RuntimeCraftWeaponRule(int AmmoMaximum, int RearmRate, stri
     public double BonusStorageSpace { get; init; }
 }
 
+/// <summary>Raw rule action accuracy before tactical bonuses and random rolls.</summary>
+public sealed record RuntimeItemAccuracy(int Aimed, int Auto, int Snap, int Melee, int Use, int Mind, int Panic, int Throw)
+{
+    public static RuntimeItemAccuracy Default { get; } = new(0, 0, 0, 0, 0, 0, 20, 100);
+}
+
 public sealed record RuntimeItemRule(
     string Name,
     int ListOrder,
@@ -229,8 +259,22 @@ public sealed record RuntimeItemRule(
     IReadOnlyList<RuleHandleList<ItemRuleFamily>> CompatibleAmmo,
     RuleHandleList<RuntimeScriptFamily> Scripts)
 {
+    public string Type { get; init; } = "";
+    public RuntimeItemAccuracy Accuracy { get; init; } = RuntimeItemAccuracy.Default;
+    public RuntimeItemDamageRule Damage { get; init; } = new(0, 8, 0, 0, 1, new(0, 0.1f, 0, 1, 0, 0, 0, 0.25f, 0.5f, 0, 1));
+    public RuntimeItemDamageRule MeleeDamage { get; init; } = new(0, 8, 0, 0, 1, new(0, 0.1f, 0, 1, 0, 0, 0, 0.25f, 0.5f, 0, 1));
+    public bool TwoHanded { get; init; }
+    public bool BlockingBothHands { get; init; }
+    public bool WaterOnly { get; init; }
+    public IReadOnlySet<string> Categories { get; init; } = FrozenSet<string>.Empty;
+    public int Power { get; init; }
+    public int MeleePower { get; init; }
+    public int ArmorValue { get; init; } = 20;
+    public int Waypoints { get; init; }
     public RuntimePurchaseRequirements Purchase { get; init; } = new(0, "", "", [], []);
     public bool IsAlien { get; init; }
+    public bool Recoverable { get; init; } = true;
+    public bool CorpseRecoverable { get; init; } = true;
     public int VehicleFixedAmmoSlot { get; init; }
     public RuleHandle<ArmorRuleFamily>? VehicleArmor { get; init; }
     public int PrisonType { get; init; }
@@ -245,8 +289,50 @@ public sealed record RuntimeArmorRule(
     string StoreItemId,
     RuleHandle<ItemRuleFamily>? StoreItem)
 {
+    public string Type { get; init; } = "";
+    public RuntimeArmorVision Vision { get; init; } = RuntimeArmorVision.Default;
+    public RuleHandle<ItemRuleFamily>? CorpseGeoscape { get; init; }
     public int Group { get; init; }
     public IReadOnlyDictionary<string, short> Stats { get; init; } = new ReadOnlyDictionary<string, short>(new Dictionary<string, short>());
+    public RuntimeArmorScriptFields Script { get; init; } = RuntimeArmorScriptFields.Default;
+}
+
+/// <summary>
+/// Remaining read-only Armor::ScriptRegister providers: side armor in UnitSide order
+/// (front, left = side + leftArmorDiff, right, rear, under), presentation fields,
+/// base move costs, linked battle corpses and required research.
+/// </summary>
+public sealed record RuntimeArmorScriptFields(
+    IReadOnlyList<int> Sides,
+    int DrawingRoutine,
+    bool DrawBubbles,
+    int DeathFrames,
+    bool ConstantAnimation,
+    (int Time, int Energy) MoveCostBase,
+    (int Time, int Energy) MoveCostBaseNormal,
+    (int Time, int Energy) MoveCostBaseFly,
+    IReadOnlyList<RuleHandle<ItemRuleFamily>?> CorpseBattle,
+    RuleHandle<ResearchRuleFamily>? RequiredResearch)
+{
+    public static RuntimeArmorScriptFields Default { get; } =
+        new([0, 0, 0, 0, 0], 0, false, 3, false, (100, 100), (100, 100), (100, 100), [], null);
+}
+
+/// <summary>Immutable Armor vision and light metadata, before tactical calculations.</summary>
+public sealed record RuntimeArmorVision(
+    int VisibilityAtDark,
+    int VisibilityAtDay,
+    int CamouflageAtDark,
+    int CamouflageAtDay,
+    int AntiCamouflageAtDark,
+    int AntiCamouflageAtDay,
+    int HeatVision,
+    int VisibilityThroughFire,
+    int PersonalLight,
+    int PersonalLightHostile,
+    int PersonalLightNeutral)
+{
+    public static RuntimeArmorVision Default { get; } = new(0, 0, 0, 0, 0, 0, 0, 100, 15, 0, 0);
 }
 
 public sealed record RuntimeSoldierRule(
@@ -357,12 +443,21 @@ public sealed record RuntimeCampaignSettings(
     public int CustomTrainingFactor { get; init; } = 100;
     public int ManaWoundThreshold { get; init; } = 200;
     public int HealthWoundThreshold { get; init; } = 100;
+    public int EscortRange { get; init; } = 20;
+    public int MaximumViewDistance { get; init; } = 20;
+    public int MaximumDarknessToSeeUnits { get; init; } = 9;
+    public bool HunterKillerFastRetarget { get; init; } = true;
+    public bool AllowAlienBasesOnWrongTextures { get; init; } = true;
+    public bool AllowCountriesToCancelAlienPact { get; init; }
+    public bool BuildInfiltrationBaseCloseToTheCountry { get; init; }
+    public bool InfiltrateRandomCountryInTheRegion { get; init; }
     public IReadOnlyList<int> BuyPriceCoefficients { get; init; } = Array.AsReadOnly<int>([100, 100, 100, 100, 100]);
     public IReadOnlyList<int> SellPriceCoefficients { get; init; } = Array.AsReadOnly<int>([100, 100, 100, 100, 100]);
     public IReadOnlyList<string> HireScientistsBaseFunctions { get; init; } = [];
     public IReadOnlyList<string> HireEngineersBaseFunctions { get; init; } = [];
     public int HireByCountryOdds { get; init; }
     public int HireByRegionOdds { get; init; }
+    public double PerformanceBonusFactor { get; init; }
     /// <summary>Mod::getFixedUserOptions: options that the loaded mods force for every campaign.</summary>
     public IReadOnlyDictionary<string, string> FixedUserOptions { get; init; } =
         new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(new Dictionary<string, string>());

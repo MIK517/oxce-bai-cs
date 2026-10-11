@@ -1,0 +1,14 @@
+ufoTrajectories:
+  - id: AGGRESSIVE_RECT
+    waypoints: [[4, 3, 100], [5, 2, 80], [6, 0, 50], [2, 1, 100]]
+regions:
+  - type: AGGRESSIVE_TECHNICAL
+    areas: []
+    missionZones:
+      - [[10, 10, 8, 8, 10]]
+      - [[10, 10, 8, 8, 10]]
+      - [[22, 28, -8, 8, 11]]
+      - [[10, 10, 8, 8, 10]]
+      - [[10, 10, 8, 8, 10]]
+      - [[8, 8, 2, 2, 10]]
+      - [[8.01, 8.01, 2, 2, 10]]

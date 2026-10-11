@@ -1,0 +1,137 @@
+# Direct mission-site waves: coordinates convert to the captured radian bounds.
+globe:
+  textures:
+    - {id: 10, deployments: {RULE_DEPLOY: 1, DIRECT_DEPLOY: 3}}
+    - {id: 30, deployments: {DIRECT_DEPLOY: 0}}
+    - {id: 31, deployments: {DIRECT_DEPLOY: 0, RULE_DEPLOY: 0}}
+    - {id: 32, deployments: {}}
+    - {id: 33, deployments: {DIRECT_DEPLOY: 2147483647, RULE_DEPLOY: 1}}
+    - {id: 34, deployments: {MISSING_DEPLOY: 0, DIRECT_DEPLOY: 1}}
+    - {id: 35, deployments: {"": 1, DIRECT_NEGATIVE: 1}}
+regions:
+  - type: SITE_SPAWN_REGION
+    areas: [[0, 60, -20, 20]]
+    missionZones:
+      - [[5.7295779513082321, 17.188733853924695, -11.459155902616464, 11.459155902616464, 10, CITY], [28.647889756541161, 28.647889756541161, 5.7295779513082321, 5.7295779513082321, 10, CITY_SELECTED]]
+  - type: SITE_SINGLE_ZERO
+    missionZones:
+      - [[5.7295779513082321, 17.188733853924695, -11.459155902616464, 11.459155902616464, 30, CITY]]
+  - type: SITE_ALL_ZERO
+    missionZones:
+      - [[5.7295779513082321, 17.188733853924695, -11.459155902616464, 11.459155902616464, 31, CITY]]
+  - type: SITE_EMPTY
+    missionZones:
+      - [[5.7295779513082321, 17.188733853924695, -11.459155902616464, 11.459155902616464, 32, CITY]]
+  - type: SITE_MISSING_TEXTURE
+    missionZones:
+      - [[5.7295779513082321, 17.188733853924695, -11.459155902616464, 11.459155902616464, 99, CITY]]
+  - type: SITE_OVERFLOW_WEIGHTS
+    missionZones:
+      - [[5.7295779513082321, 17.188733853924695, -11.459155902616464, 11.459155902616464, 33, CITY]]
+  - type: SITE_ZERO_MISSING
+    missionZones:
+      - [[5.7295779513082321, 17.188733853924695, -11.459155902616464, 11.459155902616464, 34, CITY]]
+  - type: SITE_NULL_CHOICE
+    missionZones:
+      - [[11.459155902616464, 11.459155902616464, 5.7295779513082321, 5.7295779513082321, 35]]
+alienDeployments:
+  - type: DIRECT_DEPLOY
+    markerName: DIRECT_MARKER
+    duration: [2, 3]
+    points: 4
+  - type: DIRECT_NEGATIVE
+    markerName: DIRECT_MARKER
+    duration: [2, 2]
+    points: -4
+  - type: RULE_DEPLOY
+    markerName: RULE_MARKER
+    duration: [3, 4]
+    points: 7
+  - type: DIRECT_MAX_SCORE
+    markerName: DIRECT_MARKER
+    duration: [2, 2]
+    points: 2147483647
+  - type: DIRECT_ZERO_DURATION
+    markerName: DIRECT_MARKER
+    duration: [0, 0]
+  - type: DIRECT_ZERO_COUNTERS
+    markerName: DIRECT_MARKER
+    duration: [0, 0]
+    points: 4
+    despawnPenalty: 9
+    counterDespawn: shared
+    counterFailure: shared
+    counterAll: DIRECT_MARKER
+  - type: DIRECT_MIXED_DURATION
+    markerName: DIRECT_MARKER
+    duration: [0, 2]
+    points: 4
+    despawnPenalty: 9
+  - type: DIRECT_NEGATIVE_DURATION
+    markerName: DIRECT_MARKER
+    duration: [-1, 0]
+  - type: DIRECT_OVERFLOW_DURATION
+    markerName: DIRECT_MARKER
+    duration: [1, 2147483647]
+ufoTrajectories:
+  - id: DIRECT_SITE
+    waypoints: [[0, 3, 100], [0, 4, 100]]
+alienMissions:
+  - type: DIRECT_OVERRIDE
+    siteType: RULE_DEPLOY
+    spawnZone: 0
+    waves: [{ufo: DIRECT_DEPLOY, count: 1, trajectory: DIRECT_SITE, timer: 3000}]
+  - type: DIRECT_SELECTED
+    spawnZone: 0
+    waves: [{ufo: DIRECT_DEPLOY, count: 1, trajectory: DIRECT_SITE, timer: 3000}]
+  - type: DIRECT_CHAIN
+    spawnZone: 0
+    waves:
+      - {ufo: DIRECT_DEPLOY, count: 1, trajectory: DIRECT_SITE, timer: 3000}
+      - {ufo: DIRECT_DEPLOY, count: 1, trajectory: DIRECT_SITE, timer: 0}
+      - {ufo: RULE_DEPLOY, count: 1, trajectory: DIRECT_SITE, timer: 0}
+  - type: DIRECT_ZERO_DURATION
+    spawnZone: 0
+    waves: [{ufo: DIRECT_ZERO_DURATION, count: 1, trajectory: DIRECT_SITE, timer: 3000}]
+  - type: DIRECT_ZERO_COUNTERS
+    spawnZone: 0
+    waves: [{ufo: DIRECT_ZERO_COUNTERS, count: 1, trajectory: DIRECT_SITE, timer: 3000}]
+  - type: DIRECT_ZERO_CHAIN
+    spawnZone: 0
+    waves:
+      - {ufo: DIRECT_ZERO_COUNTERS, count: 1, trajectory: DIRECT_SITE, timer: 3000}
+      - {ufo: DIRECT_ZERO_COUNTERS, count: 1, trajectory: DIRECT_SITE, timer: 0}
+      - {ufo: DIRECT_DEPLOY, count: 1, trajectory: DIRECT_SITE, timer: 0}
+  - type: DIRECT_MIXED_DURATION
+    spawnZone: 0
+    waves: [{ufo: DIRECT_MIXED_DURATION, count: 1, trajectory: DIRECT_SITE, timer: 3000}]
+  - type: DIRECT_NEGATIVE_DURATION
+    spawnZone: 0
+    waves: [{ufo: DIRECT_NEGATIVE_DURATION, count: 1, trajectory: DIRECT_SITE, timer: 3000}]
+  - type: DIRECT_OVERFLOW_DURATION
+    spawnZone: 0
+    waves: [{ufo: DIRECT_OVERFLOW_DURATION, count: 1, trajectory: DIRECT_SITE, timer: 3000}]
+  - type: DIRECT_RULE
+    objective: 3
+    siteType: RULE_DEPLOY
+    spawnZone: 0
+    waves: [{ufo: UNKNOWN_DIRECT_UFO, count: 1, trajectory: DIRECT_SITE, timer: 3000, objective: true}]
+  - type: DIRECT_TERRAIN
+    objective: 3
+    spawnZone: 0
+    waves: [{ufo: UNKNOWN_DIRECT_UFO, count: 1, trajectory: DIRECT_SITE, timer: 3000, objective: true}]
+  - type: DIRECT_BASE
+    spawnZone: 0
+    waves: [{ufo: DIRECT_DEPLOY, count: 1, trajectory: DIRECT_SITE, timer: 3000, objectiveOnXcomBase: true}]
+  - type: DIRECT_BASE_ZERO
+    spawnZone: 0
+    waves: [{ufo: DIRECT_ZERO_DURATION, count: 1, trajectory: DIRECT_SITE, timer: 3000, objectiveOnXcomBase: true}]
+  - type: DIRECT_BASE_MAX_SCORE
+    spawnZone: 0
+    waves: [{ufo: DIRECT_MAX_SCORE, count: 1, trajectory: DIRECT_SITE, timer: 3000, objectiveOnXcomBase: true}]
+  - type: DIRECT_NULL_CHAIN
+    objective: 3
+    spawnZone: 0
+    waves:
+      - {ufo: UNKNOWN_DIRECT_UFO, count: 1, trajectory: DIRECT_SITE, timer: 3000, objective: true}
+      - {ufo: DIRECT_DEPLOY, count: 1, trajectory: DIRECT_SITE, timer: 0}

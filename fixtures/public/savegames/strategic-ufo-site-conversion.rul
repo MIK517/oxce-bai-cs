@@ -1,0 +1,57 @@
+# Selected objective UFOs convert at their ground waypoint.
+ufos:
+  - type: UFO_SITE_UNMANNED
+    speedMax: 2200
+    damageMax: 50
+    unmanned: true
+    fakeWaterLandingChance: 20
+  - type: UFO_SITE_CUSTOM
+    speedMax: 2200
+    damageMax: 50
+    fakeWaterLandingChance: 20
+    missionCustomDeploy: CUSTOM_DEPLOY
+    raceBonus:
+      RACE_B: {missionCustomDeploy: RULE_DEPLOY}
+alienDeployments:
+  - type: CUSTOM_DEPLOY
+    markerName: CUSTOM_MARKER
+    duration: [5, 6]
+ufoTrajectories:
+  - id: UFO_SITE_CONVERSION
+    waypoints: [[0, 2, 100], [0, 0, 50], [0, 4, 100]]
+alienMissions:
+  - type: UFO_SITE_CONVERSION
+    objective: 3
+    points: 5
+    siteType: DIRECT_DEPLOY
+    spawnZone: 0
+    waves: [{ufo: UFO_SCOUT, count: 1, trajectory: UFO_SITE_CONVERSION, timer: 3000, objective: true}]
+  - type: UFO_SITE_AT_LANDING
+    refNode: &conversion
+      objective: 3
+      points: 5
+      siteType: DIRECT_DEPLOY
+      spawnZone: 0
+    waves: [{ufo: UFO_SCOUT, count: 1, trajectory: UFO_SITE_CONVERSION, timer: 3000, objective: true, objectiveOnTheLandingSite: true}]
+  - type: UFO_SITE_RESPAWN
+    refNode: *conversion
+    respawnUfoAfterSiteDespawn: true
+    waves: [{ufo: UFO_SCOUT, count: 1, trajectory: UFO_SITE_CONVERSION, timer: 3000, objective: true}]
+  - type: UFO_SITE_RESPAWN_LANDING
+    refNode: *conversion
+    respawnUfoAfterSiteDespawn: true
+    waves: [{ufo: UFO_SCOUT, count: 1, trajectory: UFO_SITE_CONVERSION, timer: 3000, objective: true, objectiveOnTheLandingSite: true}]
+  - type: UFO_SITE_SUPPRESSED
+    refNode: *conversion
+    siteType: ""
+    respawnUfoAfterSiteDespawn: true
+    waves: [{ufo: UFO_SCOUT, count: 1, trajectory: UFO_SITE_CONVERSION, timer: 3000, objective: true}]
+  - type: UFO_SITE_SUPPRESSED_NO_RESPAWN
+    refNode: *conversion
+    siteType: ""
+    waves: [{ufo: UFO_SCOUT, count: 1, trajectory: UFO_SITE_CONVERSION, timer: 3000, objective: true}]
+
+items:
+  - type: VEHICLE
+    battleType: 0
+    size: 1

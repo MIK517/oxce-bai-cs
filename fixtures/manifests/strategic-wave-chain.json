@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-wave-chain",
+  "description": "Extracted AlienMission::think countdown, wave counters and exact-zero recursive scheduling; creation is a counted collaborator. Includes verbatim infiltration/base completion conditions with payload bodies replaced by boundary predicates. Direct-site predicate rows preserve deployment-marker and Site/objective-flag requirements when spawnUfo returns no object.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "src/Savegame/AlienMission.cpp::think countdown, counter and recursive scheduling blocks",
+      "probe": "fixtures/reference-probes/savegames/strategic_wave_chain_probe.cpp",
+      "capture": "tools/capture-strategic-wave-chain-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; reference blocks extracted verbatim; RNG chooses minimum"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_wave_chain_probe.cpp",
+      "size": 3560,
+      "sha256": "7f4d0d869d086454de2953a2f91de2d2ede801ca26ac09c7150cf0e6be018d66"
+    },
+    {
+      "path": "tools/capture-strategic-wave-chain-reference.ps1",
+      "size": 4330,
+      "sha256": "8925d1d4c02b2c6e6395b92021e3a6b7aa866346f5f8b103259d37f778ad1835"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-world.rul",
+      "size": 14290,
+      "sha256": "9b1d246a38a20824d282ef0d14a64c65d68e687a780d3caa1f4da8c93a510c07"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-objective-waves.rul",
+      "size": 3379,
+      "sha256": "d513b8dfa6a109bfba23af1a6725cccbcb97730192c639a34a4f0fc87b79335f"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-no-object-waves.rul",
+      "size": 11963,
+      "sha256": "8297bcb816b9552c4037b8757cf71c385310e5c4683137f77f174d9227b0ce1b"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-wave-chain.expected.json"
+}

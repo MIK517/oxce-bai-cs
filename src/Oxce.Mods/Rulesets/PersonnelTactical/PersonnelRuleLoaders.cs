@@ -138,7 +138,7 @@ internal sealed class UnitRuleLoader : IdOnlyTypedRuleFamilyLoader<UnitBuilder, 
         {
             if (!reader.TryGet(key, out var node)) continue;
             builder.Strings[key] = key is "civilianRecoveryType" or "spawnedPersonName" or "liveAlien"
-                ? PersonnelTacticalYaml.ReadNullableName(node!)
+                ? ReadUnitNullableName(node!)
                 : YamlValueReader.ReadString(node!);
         }
         foreach (var key in builder.Integers.Keys.ToArray())
@@ -176,6 +176,14 @@ internal sealed class UnitRuleLoader : IdOnlyTypedRuleFamilyLoader<UnitBuilder, 
             pair => pair.Key, pair => (IReadOnlyList<RuleIndexReference>)pair.Value.AsReadOnly(), StringComparer.Ordinal)),
         builder.MoveSound,
         builder.SpawnedSoldierTemplate);
+
+    private static string ReadUnitNullableName(YamlNode node)
+    {
+        if (node is YamlNullNode) return "\0";
+        var value = YamlValueReader.ReadString(node);
+        if (value == "\0") throw new YamlFormatException("A NUL name is reserved for explicit null.", node.Span);
+        return value;
+    }
 
     private static void ApplyBuiltInWeapons(UnitBuilder builder, RulePropertyReader reader)
     {

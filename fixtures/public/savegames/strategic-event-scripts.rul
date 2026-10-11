@@ -1,0 +1,118 @@
+events:
+  - name: A
+    timer: 119
+    interruptResearch: STOP
+  - name: B
+    timer: 60
+    interruptResearch: STOP
+  - name: C
+    timer: 60
+    interruptResearch: STOP
+  - name: BAD_TIMER
+    timerRandom: -1
+research:
+  - name: STOP
+    cost: 1
+eventScripts:
+  - type: FIRST
+    lastMonth: 0
+    oneTimeSequentialEvents: [A, A, B]
+    oneTimeRandomEvents: {A: 1, B: 1}
+    eventWeights: {0: {A: 1}}
+  - type: SECOND
+    lastMonth: 0
+    oneTimeSequentialEvents: [A, C]
+    oneTimeRandomEvents: {A: 1, B: 1}
+    eventWeights: {0: {MISSING: 1}}
+  - type: GATED
+    firstMonth: 1
+    lastMonth: 1
+    minScore: 20
+    maxScore: 30
+    minFunds: 5000000000
+    maxFunds: 6000000000
+    minDifficulty: 2
+    maxDifficulty: 2
+    missionVarName: RUNS
+    missionMarkerName: MARKER
+    counterMin: 1
+    counterMax: 2
+    researchTriggers: {STOP: true, MISSING: false}
+    itemTriggers: {SUPPLY: true, BULKY: false}
+    facilityTriggers: {STORES: true, MISSING: false}
+    soldierTypeTriggers: {RECRUIT: true, MISSING: false}
+    xcomBaseInRegionTriggers: {REGION: true}
+    xcomBaseInCountryTriggers: {COUNTRY: true}
+    pactCountryTriggers: {COUNTRY: true}
+    oneTimeSequentialEvents: [C]
+  - type: ROLL_FIRST
+    firstMonth: 2
+    lastMonth: 2
+    executionOdds: 50
+    eventWeights: {0: {A: 1}}
+  - type: ROLL_SECOND
+    firstMonth: 2
+    lastMonth: 2
+    executionOdds: 50
+    eventWeights: {0: {B: 1}}
+  - type: VALID_BEFORE_BAD
+    firstMonth: 3
+    lastMonth: 6
+    oneTimeSequentialEvents: [A]
+  - type: MISSING_REQUIRED
+    firstMonth: 3
+    lastMonth: 3
+    oneTimeSequentialEvents: [MISSING]
+  - type: WEIGHT_OVERFLOW
+    firstMonth: 4
+    lastMonth: 4
+    oneTimeRandomEvents: {A: 2147483647, B: 1}
+  - type: INVALID_TIMER
+    firstMonth: 5
+    lastMonth: 5
+    eventWeights: {0: {BAD_TIMER: 1}}
+  - type: NO_CURRENT_TIMELINE
+    firstMonth: 6
+    lastMonth: 6
+    eventWeights: {7: {A: 1}}
+  - type: IMPOSSIBLE
+    firstMonth: 7
+    lastMonth: 7
+    executionOdds: 0
+    eventWeights: {0: {BAD_TIMER: 1}}
+  - type: MISSING_RANDOM
+    firstMonth: 8
+    lastMonth: 8
+    oneTimeRandomEvents: {MISSING: 1}
+  - type: SELF_TAIL
+    firstMonth: 9
+    lastMonth: 9
+    oneTimeSequentialEvents: [A, A, MISSING]
+    oneTimeRandomEvents: {A: 1}
+    eventWeights: {0: {A: 1}}
+  - type: TIMER_TAIL
+    firstMonth: 10
+    lastMonth: 10
+    oneTimeSequentialEvents: [A, BAD_TIMER]
+  - type: EARLIER_SEQUENTIAL
+    firstMonth: 11
+    lastMonth: 11
+    oneTimeSequentialEvents: [A]
+  - type: EARLIER_RANDOM
+    firstMonth: 12
+    lastMonth: 12
+    oneTimeRandomEvents: {A: 1}
+  - type: EARLIER_REPEATABLE
+    firstMonth: 13
+    lastMonth: 13
+    executionOdds: 50
+    eventWeights: {0: {A: 1}}
+  - type: EARLIER_ZERO_ODDS
+    firstMonth: 14
+    lastMonth: 14
+    executionOdds: 0
+    oneTimeSequentialEvents: [A]
+  - type: LATER_TAIL
+    firstMonth: 11
+    lastMonth: 14
+    oneTimeSequentialEvents: [A, A, MISSING]

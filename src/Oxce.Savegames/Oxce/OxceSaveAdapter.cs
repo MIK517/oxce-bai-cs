@@ -189,7 +189,7 @@ public static partial class OxceSaveAdapter
             created,
             Boolean(header, "ironman", false));
         var world = ReadWorld(body, content);
-        var markers = new WorldMarkerIndex(world.MissionSites, world.AlienBases, content);
+        var markers = new WorldMarkerIndex(world.MissionSites, world.AlienBases, content, body);
         var difficultyValue = Integer(body, "difficulty", 0);
         if (difficultyValue is < 0 or > 4) throw new InvalidDataException("Save difficulty is outside 0..4.");
         var snapshot = new CampaignSnapshot(
@@ -217,6 +217,8 @@ public static partial class OxceSaveAdapter
             CompletedResearch = Array.AsReadOnly(Sequence(body, "discovered").Select(YamlValueReader.ReadString)
                 .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray()),
             ResearchRuleStatus = ReadIntMap(body, "researchRuleStatus"),
+            ResearchDiary = ReadResearchDiary(body, content),
+            ResearchDiarySequence = ULong(body, "oxcePortResearchDiarySequence", 0),
             ManufactureRuleStatus = ReadIntMap(body, "manufactureRuleStatus"),
             MonthlyPurchaseLog = ReadIntMap(body, "monthlyPurchaseLimitLog"),
             DebugMode = Boolean(body, "debug", false),
@@ -293,7 +295,7 @@ public static partial class OxceSaveAdapter
             var crafts = Sequence(map, "crafts").Select(item =>
             {
                 var craft = RequireMap(item, "craft");
-                return ReadCraft(craft, markers);
+                return ReadCraft(craft, markers, content);
             }).ToArray();
             var soldiers = Sequence(map, "soldiers").Select(item =>
             {
@@ -318,9 +320,11 @@ public static partial class OxceSaveAdapter
                 Array.AsReadOnly(soldiers), items, scientists, engineers)
             {
                 Transfers = Array.AsReadOnly(Maps(map, "transfers").Select(transfer =>
-                    ReadTransfer(transfer, entityIndex.TransferIds[transfer], defaultSoldier, markers)).ToArray()),
+                    ReadTransfer(transfer, entityIndex.TransferIds[transfer], defaultSoldier, markers, content)).ToArray()),
                 FakeUnderwater = Boolean(map, "fakeUnderwater", false),
                 RetaliationTarget = Boolean(map, "retaliationTarget", false),
+                RetaliationMissionId = map.TryGet("retaliationMissionUniqueId", out _)
+                    ? Integer(map, "retaliationMissionUniqueId", 0) : null,
                 Research = research,
                 Productions = productions,
             };
@@ -423,8 +427,7 @@ public static partial class OxceSaveAdapter
             static map => String(map, "id", string.Empty));
         var originalSites = FirstByKey(Maps(source?.Body, "missionSites"), static map =>
             $"{String(map, "deployment", "STR_TERROR_MISSION")}:{Integer(map, "id", 0)}");
-        var originalAlienBases = FirstByKey(Maps(source?.Body, "alienBases"), static map =>
-            $"{String(map, "deployment", "STR_ALIEN_BASE_ASSAULT")}:{Integer(map, "id", 0)}");
+        var originalAlienBases = MatchAlienBases(snapshot.World.AlienBases, Maps(source?.Body, "alienBases"));
         var originalEvents = MatchScheduledEvents(snapshot.World.Events, Maps(source?.Body, "geoscapeEvents"));
         YamlMappingNode? originalStrategy = null;
         if (source?.Body is { } sourceBody && sourceBody.TryGet("alienStrategy", out var strategyNode))
@@ -475,22 +478,28 @@ public static partial class OxceSaveAdapter
                 snapshot.World.MissionSites.Select(site => BuildMissionSite(site,
                     originalSites.GetValueOrDefault($"{site.DeploymentId}:{site.Id}"))))),
             Pair("alienBases", BuildWorldSection(snapshot.World.AlienBases.Count,
-                snapshot.World.AlienBases.Select(alienBase => BuildAlienBase(alienBase,
-                    originalAlienBases.GetValueOrDefault($"{alienBase.DeploymentId}:{alienBase.Id}"))))),
+                snapshot.World.AlienBases.Select((alienBase, index) => BuildAlienBase(alienBase,
+                    originalAlienBases[index])))),
             Pair("geoscapeEvents", BuildWorldSection(snapshot.World.Events.Count,
                 snapshot.World.Events.Select((scheduled, index) => Overlay(originalEvents[index],
                 [
                     Pair("name", Scalar(scheduled.RuleId)),
+                    Pair("oxcePortEntityKey", Scalar(scheduled.PreservationKey)),
                     Pair("spawnCountdown", Integer(scheduled.SpawnCountdown)),
                     Pair("over", scheduled.Over ? Boolean(true) : null),
                 ])))),
             Pair("alienStrategy", BuildAlienStrategy(snapshot.World.Strategy, originalStrategy)),
+            Pair("generatedEvents", IntMapping(snapshot.World.GeneratedEvents)),
+            Pair("oxcePortAlienBaseBirthSequence", snapshot.World.AlienBaseBirthSequence == 0
+                ? null : ULong(snapshot.World.AlienBaseBirthSequence)),
             // Legacy terror sites were imported as mission sites, so the legacy node is not rewritten.
             Pair("terrorSites", null),
             Pair("tags", ScriptValues(snapshot.ScriptValues)),
             Pair("discovered", snapshot.CompletedResearch.Count == 0 ? null : Sequence(snapshot.CompletedResearch.Select(Scalar))),
             Pair("researchRuleStatus", snapshot.ResearchRuleStatus.Count == 0 ? null :
                 IntMapping(snapshot.ResearchRuleStatus)),
+            Pair("researchDiary", WriteResearchDiary(snapshot.ResearchDiary, source?.Body)),
+            Pair("oxcePortResearchDiarySequence", snapshot.ResearchDiarySequence == 0 ? null : ULong(snapshot.ResearchDiarySequence)),
             Pair("manufactureRuleStatus", snapshot.ManufactureRuleStatus.Count == 0 ? null :
                 IntMapping(snapshot.ManufactureRuleStatus)),
             Pair("monthlyPurchaseLimitLog", snapshot.MonthlyPurchaseLog.Count == 0 ? null : IntMapping(snapshot.MonthlyPurchaseLog)),
@@ -505,7 +514,10 @@ public static partial class OxceSaveAdapter
                 Pair("allowBuildingQueue", Boolean(snapshot.Options.AllowBuildingQueue)),
                 Pair("oxceUfoLandingAlert", Boolean(snapshot.Options.UfoLandingAlert)),
                 Pair("aggressiveRetaliation", Boolean(snapshot.Options.AggressiveRetaliation)),
-                Pair("craftLaunchAlways", Boolean(snapshot.Options.CraftLaunchAlways))])),
+                Pair("craftLaunchAlways", Boolean(snapshot.Options.CraftLaunchAlways)),
+                Pair("oxceGeoSuppressLandingWithoutEquipment", Boolean(snapshot.Options.SuppressLandingWithoutEquipment)),
+                Pair("oxceGeoSuppressRedundantHKAlert", Boolean(snapshot.Options.SuppressRedundantHunterAlert)),
+                Pair("retainCorpses", Boolean(snapshot.Options.RetainCorpses))])),
         ]);
     }
 
@@ -556,6 +568,7 @@ public static partial class OxceSaveAdapter
             Pair("name", value.Name.Length == 0 ? null : Scalar(value.Name)),
             Pair("fakeUnderwater", value.FakeUnderwater ? Boolean(true) : null),
             Pair("retaliationTarget", value.RetaliationTarget ? Boolean(true) : null),
+            Pair("retaliationMissionUniqueId", value.RetaliationMissionId is { } missionId ? Integer(missionId) : null),
             Pair("facilities", Sequence(facilities)), Pair("soldiers", Sequence(soldiers)),
             Pair("crafts", Sequence(crafts)),
             Pair("items", IntMapping(value.Items)),
@@ -626,7 +639,8 @@ public static partial class OxceSaveAdapter
     {
         var source = MatchingSource(index.Crafts.GetValueOrDefault(EntityIdentity(value)), value.PreservationKey, $"craft:{value.RuleId}:{value.Id}");
         var identity = Overlay(source,
-            [Pair("type", Scalar(value.RuleId)), Pair("id", Integer(value.Id)), Pair("oxcePortEntityKey", Scalar(value.PreservationKey))]);
+            [Pair("type", Scalar(value.RuleId)), Pair("id", Integer(value.Id)), Pair("oxcePortEntityKey", Scalar(value.PreservationKey)),
+                Pair("tags", ScriptValues(value.ScriptValues))]);
         if (value.Logistics is not { } state) return identity;
         var originalWeapons = Maps(source, "weapons").ToArray();
         var originalVehicles = Maps(source, "vehicles").Select((node, slot) => new
@@ -752,7 +766,7 @@ public static partial class OxceSaveAdapter
             p => p.Key, p => checked((short)p.Value), StringComparer.Ordinal));
     }
 
-    private static CraftSnapshot ReadCraft(YamlMappingNode map, WorldMarkerIndex markers)
+    private static CraftSnapshot ReadCraft(YamlMappingNode map, WorldMarkerIndex markers, RuntimeContent content)
     {
         var type = RequiredString(map, "type");
         var id = Integer(map, "id", 0);
@@ -761,17 +775,19 @@ public static partial class OxceSaveAdapter
         {
             PreservationKey = preservationKey,
             Logistics = ReadCraftLogistics(map, preservationKey, markers),
+            ScriptValues = ReadScriptValues(map, content, "Craft"),
         };
     }
 
     private static CampaignOptions ReadOptions(YamlMappingNode map)
     {
-        RejectDuplicateKnownKeys(map, ["storageLimitsEnforced", "canSellLiveAliens", "autoCombatDefaultSoldier", "anytimePsiTraining", "allowPsiStrengthImprovement", "maximumBases", "allowBuildingQueue", "oxceUfoLandingAlert", "aggressiveRetaliation", "craftLaunchAlways"]);
+        RejectDuplicateKnownKeys(map, ["storageLimitsEnforced", "canSellLiveAliens", "autoCombatDefaultSoldier", "anytimePsiTraining", "allowPsiStrengthImprovement", "maximumBases", "allowBuildingQueue", "oxceUfoLandingAlert", "aggressiveRetaliation", "craftLaunchAlways", "oxceGeoSuppressLandingWithoutEquipment", "oxceGeoSuppressRedundantHKAlert", "retainCorpses"]);
         return new(Boolean(map, "storageLimitsEnforced", false), Boolean(map, "canSellLiveAliens", false),
             Boolean(map, "autoCombatDefaultSoldier", true), Boolean(map, "anytimePsiTraining", false),
             Boolean(map, "allowPsiStrengthImprovement", false), Integer(map, "maximumBases", 8),
             Boolean(map, "allowBuildingQueue", false), Boolean(map, "oxceUfoLandingAlert", false),
-            Boolean(map, "aggressiveRetaliation", true), Boolean(map, "craftLaunchAlways", false));
+            Boolean(map, "aggressiveRetaliation", true), Boolean(map, "craftLaunchAlways", false),
+            Boolean(map, "oxceGeoSuppressLandingWithoutEquipment", false), Boolean(map, "oxceGeoSuppressRedundantHKAlert", true), Boolean(map, "retainCorpses", false));
     }
 
     /// <summary>
@@ -795,6 +811,9 @@ public static partial class OxceSaveAdapter
             UfoLandingAlert = Snapshot("oxceUfoLandingAlert", defaults.UfoLandingAlert),
             AggressiveRetaliation = Snapshot("aggressiveRetaliation", defaults.AggressiveRetaliation),
             CraftLaunchAlways = Snapshot("craftLaunchAlways", defaults.CraftLaunchAlways),
+            SuppressLandingWithoutEquipment = Snapshot("oxceGeoSuppressLandingWithoutEquipment", defaults.SuppressLandingWithoutEquipment),
+            SuppressRedundantHunterAlert = Snapshot("oxceGeoSuppressRedundantHKAlert", defaults.SuppressRedundantHunterAlert),
+            RetainCorpses = Snapshot("retainCorpses", defaults.RetainCorpses),
         };
 
         bool Snapshot(string key, bool fallback) =>
@@ -838,7 +857,7 @@ public static partial class OxceSaveAdapter
     }
 
     private static TransferSnapshot ReadTransfer(
-        YamlMappingNode map, int id, string defaultSoldier, WorldMarkerIndex markers)
+        YamlMappingNode map, int id, string defaultSoldier, WorldMarkerIndex markers, RuntimeContent content)
     {
         RejectDuplicateKnownKeys(map, ["hours", "soldier", "craft", "itemId", "itemQty", "scientists", "engineers", "delivered", "oxcePortTransferId"]);
         var payloads = TransferPayloadKeys.Count(key => map.TryGet(key, out _));
@@ -854,7 +873,7 @@ public static partial class OxceSaveAdapter
         if (map.TryGet("craft", out var craftNode))
         {
             var craft = RequireMap(craftNode!, "transfer craft");
-            var value = ReadCraft(craft, markers);
+            var value = ReadCraft(craft, markers, content);
             return Preserve(new(id, hours, CampaignTransferKind.Craft, value.RuleId, 1, Craft: value, Delivered: delivered));
         }
         if (map.TryGet("itemId", out _))

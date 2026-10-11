@@ -12,6 +12,45 @@ namespace Oxce.UnitTests.Mods;
 public sealed class CampaignStartRuleCatalogTests
 {
     [Fact]
+    public void ModDetectionConstantsRetainDefaultsAndOrderedGlobalOverrides()
+    {
+        using var fixture = new TemporaryModFixture(
+            ("20-first.rul", "maxViewDistance: 31\nmaxDarknessToSeeUnits: -7\n"),
+            ("10-second.rul", "maxViewDistance: 0\n"));
+        var settings = CampaignStartRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root)).Settings;
+        Assert.Equal(0, settings.MaximumViewDistance);
+        Assert.Equal(-7, settings.MaximumDarknessToSeeUnits);
+        using var defaults = new TemporaryModFixture(("default.rul", "initialFunding: 5\n"));
+        var defaultSettings = CampaignStartRuleCatalog.Load(TestFixtures.CreatePlan(defaults.Root)).Settings;
+        Assert.Equal(20, defaultSettings.MaximumViewDistance);
+        Assert.Equal(9, defaultSettings.MaximumDarknessToSeeUnits);
+    }
+
+    [Fact]
+    public void ModDetectionConstantsPreserveYamlIntegerWidth()
+    {
+        using var fixture = new TemporaryModFixture(("fixture.rul", "maxViewDistance: 2147483648\n"));
+        Assert.Equal(int.MinValue, CampaignStartRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root)).Settings.MaximumViewDistance);
+    }
+
+    [Theory]
+    [InlineData("maxViewDistance: invalid")]
+    [InlineData("maxDarknessToSeeUnits: [9]")]
+    public void MalformedModDetectionConstantsFailIntentionally(string yaml)
+    {
+        using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
+        Assert.Throws<YamlFormatException>(() => CampaignStartRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root)));
+    }
+
+    [Fact]
+    public void NonfinitePerformanceBonusFactorFailsAtRuleLoad()
+    {
+        using var fixture = new TemporaryModFixture(("fixture.rul", "performanceBonusFactor: NaN"));
+        Assert.Throws<YamlFormatException>(() =>
+            CampaignStartRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root)));
+    }
+
+    [Fact]
     public void LoadsGeographyAndFacilityMergeSemantics()
     {
         const string yaml = """
