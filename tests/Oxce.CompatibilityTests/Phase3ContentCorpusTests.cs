@@ -185,7 +185,9 @@ public sealed class Phase3ContentCorpusTests
                 ContentLoadStage.Composed | ContentLoadStage.Typed,
                 new Dictionary<string, int>
                 {
-                    [ModDiagnosticCodes.MissingRuleReference] = 220,
+                    // Explicit armor corpseGeo overrides the battle corpse (Armor::load): 15 armors now
+                    // name the absent STR_ALIEN_SURGERY and 4 others resolve, net +11 since 86f296d0.
+                    [ModDiagnosticCodes.MissingRuleReference] = 231,
                     [ModDiagnosticCodes.InvalidRuleRelationship] = 62,
                 }),
             ("mods", "xcom1") => new(
@@ -193,7 +195,9 @@ public sealed class Phase3ContentCorpusTests
                 ContentLoadStage.Composed | ContentLoadStage.Typed,
                 new Dictionary<string, int>
                 {
-                    [ModDiagnosticCodes.MissingRuleReference] = 653,
+                    // +27 since 86f296d0: Final Mod Pack armors' explicit corpseGeo names vanilla
+                    // corpses that the synthetic xcom1 master does not define.
+                    [ModDiagnosticCodes.MissingRuleReference] = 680,
                     [ModDiagnosticCodes.InvalidRuleRelationship] = 3,
                     [ModDiagnosticCodes.InvalidRuntimeRuleLink] = 13,
                 }),
