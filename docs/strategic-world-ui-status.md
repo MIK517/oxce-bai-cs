@@ -103,3 +103,27 @@ city labels come from the campaign's own countries and regions (the query lists 
 reference visits the saved game's lists. Still to come with base placement (S8): the hover radar
 circles drawn while choosing a new base site. Tests: `GlobeRendererTests`, `GlobeSceneTests`,
 `StrategicWorldGlobeQueryTests`.
+
+## S5 — Geoscape shell (2026-10-11)
+
+`GeoscapeClient` is the SDL campaign's top screen: the globe in a 512×400 area and the clock,
+funds and six speed buttons beside it. `GeoscapeTimeController` ports
+`GeoscapeState::timeAdvance`: every `geoClockSpeed` step (80 ms) the selected speed owes 1, 12,
+60, 360, 720 or 17,280 ticks, executed as `AdvanceCampaignTime` chunks that carry the selected
+speed and spread over host frames within a 12 ms budget (one-day speed is otherwise far slower
+than a frame; gameplay is unchanged because every chunk keeps the speed context). A tick raising
+notifications ends the step like a popup's `_pause`; a refused tick halts the clock with its
+reason until a speed is selected. Time runs only while no popup, confirmation or base screen is
+open and the world has been entered: `GeoscapeState::init`'s entry runs when the client opens and
+again when the base screens close (where the first base is placed until S8). Popups queue and show
+one at a time (`GeoscapeState::popup`, rotation stops); `GeoscapeNotifications` maps each campaign
+notification to the reference popup text and buttons and to its `timerReset` behaviour (UFO and
+site detection reset on Centre, alien base discovery on OK, low fuel, craft errors, UFO landing
+and hunting alerts on "OK – 5 seconds", research completion when queued; others never).
+Keyboard: 1–6 speeds, arrows rotate (10 ms steps scaled by zoom), +/- and the wheel zoom,
+Tab detail, R radar lines, `.`/`,` cycle front-facing targets (Tab is the reference detail key),
+Enter centres and describes the selection, B base screens, F5 quick save, F9 load after
+confirmation, Esc quit; right click centres, middle drag scrolls (`geoDragScrollButton`), left
+click selects one target or lists several (`MultipleTargetsState`). Interception, destination and
+craft screens follow in S6; the popups' Intercept, Redirect and Go-to-base buttons with them.
+Tests: `GeoscapeTimeControllerTests`, `GeoscapeClientTests`.
