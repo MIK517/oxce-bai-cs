@@ -44,3 +44,17 @@ Tests: `ResourceDescriptorResolverTests` (cells, offsets, one report for an inva
 `InstallationContentLoaderTests.SubdividedSpriteCellsAndModOffsetsSurviveCompiledCache`,
 `RuntimeGlobeProjectionTests`, `GeoscapeAssetsTests`; the owned-installation check
 `PrivateGeoscapeAssetsTests` (UFO, TFTD, Rosigma) runs with the private corpus.
+
+## S3 — Globe geometry and targets (2026-10-11)
+
+`GlobeView` ports `Globe.cpp`'s orthographic projection (`polarToCart` with its flooring,
+`cartToPolar` with longitude kept in [0, 2π) and off-globe points rejected where the
+reference yields NaN and ignores the click), `pointBack`, the six `setupRadii` zoom radii
+(0.45–3.60 × height), `setZoom`'s texture detail offset, `rotate`'s speed scaling by
+`geoScrollSpeed` and zoom, and `targetNear` (`NEAR_RADIUS` 25 reference pixels, scaled to
+the 2× frame). `GlobeTargets` orders selectable markers as `Globe::getTargets` does: each
+placed base followed by its airborne craft (a craft at its base with no destination is
+skipped), then UFOs, waypoints, sites and alien bases; it re-finds a selection by stable
+identity (UFOs by unique id). Intentional differences: only detected sites are selectable
+(the reference also lets an undetected site be clicked, revealing it), and a destroyed UFO is
+not selectable during the instant before its removal. Tests: `GlobeViewTests`.
