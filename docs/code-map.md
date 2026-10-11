@@ -27,7 +27,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
 | [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 295 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
-| [Oxce.UnitTests](#oxceunittests) | 98 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
+| [Oxce.UnitTests](#oxceunittests) | 99 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
 | [Oxce.FixtureTool](#oxcefixturetool) | 1 | FixtureSupport, Formats, Mods, Savegames |
 | [Oxce.ResourceBrowser](#oxceresourcebrowser) | 2 | Formats, Mods, Platform.Sdl, Rendering, Resources |
@@ -136,7 +136,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `GeoscapeClientSetup` (record) [GeoscapeClient.cs](../src/Oxce.Engine/Geoscape/GeoscapeClient.cs) - What a geoscape client needs; persistence and the clock are supplied by the host.
 - `GeoscapeClient` (class) [GeoscapeClient.cs](../src/Oxce.Engine/Geoscape/GeoscapeClient.cs) - The geoscape: the globe on the left of a 640x400 frame (the reference 320x200 layout at 2x) and the clock and speed controls on the right.
 - `GeoscapePopupAction` (record) [GeoscapeNotifications.cs](../src/Oxce.Engine/Geoscape/GeoscapeNotifications.cs) - A button on a geoscape popup.
-- `GeoscapePopup` (record) [GeoscapeNotifications.cs](../src/Oxce.Engine/Geoscape/GeoscapeNotifications.cs) - A queued geoscape message window and its buttons; the first is the default (Enter), the last cancels (Esc).
+- `GeoscapePopup` (record) [GeoscapeNotifications.cs](../src/Oxce.Engine/Geoscape/GeoscapeNotifications.cs) - A queued geoscape message window and its buttons.
 - `GeoscapeNotifications` (class) [GeoscapeNotifications.cs](../src/Oxce.Engine/Geoscape/GeoscapeNotifications.cs) - Maps campaign notifications to the reference geoscape popups and their speed resets (GeoscapeState::popup callers and each state's timerR...
 - `GeoscapeTimeStep` (record struct) [GeoscapeTimeController.cs](../src/Oxce.Engine/Geoscape/GeoscapeTimeController.cs) - The outcome of one host tick of the geoscape clock.
 - `GeoscapeTimeController` (class) [GeoscapeTimeController.cs](../src/Oxce.Engine/Geoscape/GeoscapeTimeController.cs) - GeoscapeState::timeAdvance driven by the host clock.
@@ -1398,9 +1398,9 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.UnitTests
 
-`tests/Oxce.UnitTests` - 98 files.
+`tests/Oxce.UnitTests` - 99 files.
 
-<details><summary>98 test classes</summary>
+<details><summary>99 test classes</summary>
 
 - `ProjectDependencyTests` ([ProjectDependencyTests.cs](../tests/Oxce.UnitTests/Architecture/ProjectDependencyTests.cs))
 - `DiagnosticTests` ([DiagnosticTests.cs](../tests/Oxce.UnitTests/Core/DiagnosticTests.cs))
@@ -1409,6 +1409,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `FixedStepSchedulerTests` ([FixedStepSchedulerTests.cs](../tests/Oxce.UnitTests/Engine/FixedStepSchedulerTests.cs))
 - `GeoscapeAssetsTests` ([GeoscapeAssetsTests.cs](../tests/Oxce.UnitTests/Engine/GeoscapeAssetsTests.cs))
 - `GeoscapeClientTests` ([GeoscapeClientTests.cs](../tests/Oxce.UnitTests/Engine/GeoscapeClientTests.cs))
+- `GeoscapeNotificationsTests` ([GeoscapeNotificationsTests.cs](../tests/Oxce.UnitTests/Engine/GeoscapeNotificationsTests.cs))
 - `GeoscapeTimeControllerTests` ([GeoscapeTimeControllerTests.cs](../tests/Oxce.UnitTests/Engine/GeoscapeTimeControllerTests.cs))
 - `GlobeRendererTests` ([GlobeRendererTests.cs](../tests/Oxce.UnitTests/Engine/GlobeRendererTests.cs))
 - `GlobeViewTests` ([GlobeViewTests.cs](../tests/Oxce.UnitTests/Engine/GlobeViewTests.cs))

@@ -55,10 +55,13 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
     private int _gridY;
     private int _choice;
     private (int BaseId, CampaignResearchProduction State)? _economySnapshot;
+    private readonly bool _advanceTime;
 
     public CampaignLogisticsClient(CampaignUiSession session, IndexedSpriteFont? font = null,
-        Func<string, string>? localize = null, Action? save = null, Func<CampaignUiSession>? load = null)
+        Func<string, string>? localize = null, Action? save = null, Func<CampaignUiSession>? load = null,
+        bool advanceTime = true)
     {
+        _advanceTime = advanceTime;
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _font = font ?? IndexedInterfaceFont.Create();
         _text = localize ?? (value => value);
@@ -176,6 +179,7 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
                 _screen = null; _row = 0;
             }
             // Global campaign keys run before view handlers so every view can advance time and open logistics.
+            else if (key == ' ' && !_advanceTime) _message = "Return to the geoscape to advance time.";
             else if (key == ' ')
             {
                 _screen = null;

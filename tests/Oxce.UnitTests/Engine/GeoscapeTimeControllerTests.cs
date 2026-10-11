@@ -88,7 +88,11 @@ public sealed class GeoscapeTimeControllerTests
         var requests = commands.Requests.Count;
         Assert.Equal(0, clock.Tick(GeoscapeTimeController.GeoClock, commands).Ticks);
         Assert.Equal(requests, commands.Requests.Count);
+        // timerReset changes the speed but does not resume a halted clock; selecting a speed does.
         clock.Reset();
+        Assert.Equal((CampaignTimeSpeed.FiveSeconds, false), (clock.Speed, clock.Running));
+        Assert.Equal(0, clock.Tick(GeoscapeTimeController.GeoClock, commands).Ticks);
+        clock.Select(CampaignTimeSpeed.FiveSeconds);
         Assert.Equal((CampaignTimeSpeed.FiveSeconds, true, null), (clock.Speed, clock.Running, clock.HaltReason));
         Assert.Equal(1, clock.Tick(GeoscapeTimeController.GeoClock, commands).Ticks);
     }

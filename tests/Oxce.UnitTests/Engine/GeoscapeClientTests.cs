@@ -67,7 +67,10 @@ public sealed class GeoscapeClientTests
         for (var step = 0; step < 5; step++) client.Tick(Step);
         Assert.Equal(paused, campaign.QueryOverview().Time);
 
+        // ItemsArrivingState binds OK to Esc; Enter belongs to "Go to base".
         Key(client, 13);
+        Assert.Single(client.Popups);
+        Key(client, 27);
         Assert.Empty(client.Popups);
         Assert.True(client.TimeCanRun);
         Assert.Equal(CampaignTimeSpeed.OneHour, client.Time.Speed);
@@ -139,6 +142,58 @@ public sealed class GeoscapeClientTests
         var (x, y) = view.Project(owner.Longitude, owner.Latitude);
         Click(client, x, y, 1);
         Assert.Equal(owner.Name, Assert.Single(client.Popups).Title);
+    }
+
+    [Fact]
+    public void BaseScreensCannotAdvanceTimeAndFailuresStayInTheSession()
+    {
+        var content = CampaignLogisticsTests.LoadFixture();
+        var campaign = Placed(content);
+        var client = Client(campaign, content, save: () => throw new IOException("Disk full."),
+            load: () => throw new FileNotFoundException("No quick save."));
+        var start = campaign.QueryOverview().Time;
+        Key(client, 'b');
+        Key(client, ' ');
+        Assert.Equal(start, campaign.QueryOverview().Time);
+        client.Tick(Step);
+        Assert.Equal(start, campaign.QueryOverview().Time);
+        Key(client, 27);
+
+        Key(client, 0x4000003E);
+        Assert.Equal("Disk full.", client.Status);
+        Key(client, 0x40000042);
+        Key(client, 13);
+        Assert.Equal("No quick save.", client.Status);
+        Assert.Empty(client.Popups);
+        Assert.False(client.ExitRequested);
+    }
+
+    [Fact]
+    public void AnInternalTimeFailureHaltsTheClockInsteadOfEndingTheSession()
+    {
+        var content = CampaignLogisticsTests.LoadFixture();
+        var campaign = Placed(content);
+        var failing = new FailingCommands(campaign);
+        var assets = new GeoscapeAssets(IndexedPalette.CreateGrayscale(), new Dictionary<int, IndexedSurface>(),
+            new Dictionary<int, IndexedSurface>(), RuntimeGlobeColors.Default);
+        var client = new GeoscapeClient(new GeoscapeClientSetup(CampaignUiSession.ForCampaign(campaign, campaign, failing),
+            content.RuntimeRules, assets, IndexedInterfaceFont.Create(), static text => text)
+        {
+            Stopwatch = static () => TimeSpan.Zero,
+        });
+        failing.Fail = true;
+        client.Tick(Step);
+        Assert.False(client.Time.Running);
+        Assert.Contains("internal error", client.Time.HaltReason, StringComparison.Ordinal);
+    }
+
+    private sealed class FailingCommands(CampaignState campaign) : ICampaignCommandTarget
+    {
+        public bool Fail { get; set; }
+
+        public CampaignCommandResult Execute(ICampaignCommand command) => Fail && command is AdvanceCampaignTime
+            ? throw new InvalidOperationException("Monthly world preflight failed after calendar advancement.")
+            : campaign.Execute(command);
     }
 
     private static CampaignState Placed(RuntimeContent content)
