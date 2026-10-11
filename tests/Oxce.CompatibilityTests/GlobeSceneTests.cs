@@ -65,6 +65,9 @@ public sealed class GlobeSceneTests
         ], 0, 0)
         {
             Bases = [new(1, "Alpha", 0.1, 0.1) { RadarRange = 1500 }, new(2, "Quiet", 0.2, 0.2)],
+            // Globe::drawDetail visits the campaign's countries and regions, not every rule.
+            CountryIds = [.. rules.Countries.Rules.Select(rule => rule.Id).Take(1), "MISSING_COUNTRY"],
+            RegionIds = ["REGION"],
             Crafts =
             [
                 new(1, "SHIELD_CRAFT", 1, "Out", "STR_OUT", 0.12, 0.1, 1,
@@ -84,7 +87,7 @@ public sealed class GlobeSceneTests
         Assert.Equal([new GlobePath(0.12, 0.1, 0.15, 0.15), new GlobePath(0.3, 0, 0.31, 0.01)], scene.Flights);
 
         var labels = scene.Labels;
-        Assert.Equal(rules.Countries.Count, labels.Count(label => label.MinimumZoom == 2 && label.BoxWidth == 150));
+        Assert.Equal(Math.Min(1, rules.Countries.Count), labels.Count(label => label.MinimumZoom == 2 && label.BoxWidth == 150));
         var extra = Assert.Single(labels, label => label.Text == "[STR_OCEAN_LABEL]");
         Assert.Equal(((byte)7, 4, 120), (extra.Color, extra.MinimumZoom, extra.BoxWidth));
         var cities = labels.Where(label => label.City).Select(label => label.Text).ToArray();

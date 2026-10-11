@@ -72,7 +72,7 @@ public sealed class GlobeRenderer
 
     private void DrawRadars(GlobeScene scene, GlobeCircle? craftRange)
     {
-        if (craftRange is { } range && range.Range < Math.PI)
+        if (craftRange is { } range && range.Range > 0 && range.Range < Math.PI)
         {
             DrawCircle(range with { Segments = 64, Stride = 1 });
             DrawCircle(range with { Range = range.Range - 0.025, Segments = 64, Stride = 2 });

@@ -49,6 +49,9 @@ public sealed record CampaignWorldOverview(
 {
     public IReadOnlyList<CampaignWorldBase> Bases { get; init; } = [];
     public IReadOnlyList<CampaignWorldCraft> Crafts { get; init; } = [];
+    /// <summary>The campaign's country and region rules in saved order, as Globe::drawDetail visits them.</summary>
+    public IReadOnlyList<string> CountryIds { get; init; } = [];
+    public IReadOnlyList<string> RegionIds { get; init; } = [];
 }
 
 public interface ICampaignWorldQuery

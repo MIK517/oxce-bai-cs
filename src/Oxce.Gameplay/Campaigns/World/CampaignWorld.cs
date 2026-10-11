@@ -118,6 +118,10 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
             { Detected = true });
         return new CampaignWorldOverview(CampaignSnapshot.ReadOnly(targets), _missions.Count, _events.Count)
         {
+            CountryIds = CampaignSnapshot.ReadOnly(campaign.CountryStates.Select(country =>
+                campaign.Content.RuntimeRules.Countries.GetExternalId(country.Rule))),
+            RegionIds = CampaignSnapshot.ReadOnly(campaign.RegionStates.Select(region =>
+                campaign.Content.RuntimeRules.Regions.GetExternalId(region.Rule))),
             Bases = CampaignSnapshot.ReadOnly(campaign.BaseStates.Where(static owner => owner.IsPlaced)
                 .Select(owner => new CampaignWorldBase(owner.Id, owner.Name, owner.Longitude, owner.Latitude)
                 {
