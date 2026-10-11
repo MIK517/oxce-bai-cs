@@ -48,7 +48,9 @@ internal static class CampaignSdlCommand
             Load = savePath is null ? null : Load,
         });
         Console.WriteLine("Geoscape: 1-6 speed, arrows rotate, +/- zoom, wheel zoom, right click centre, middle drag scroll,");
-        Console.WriteLine("Tab detail, R radar, ./, select target, Enter target info, B bases, F5/F9 save/load, Esc quit.");
+        Console.WriteLine("Tab detail, R radar, ./, select target, Enter target info, B bases, I intercept, F5/F9 save/load, Esc quit.");
+        Console.WriteLine("Popups: Enter/Esc or 1-9 pick a button; Shift+click (or Shift+digit) adds craft to a wing;");
+        Console.WriteLine("choosing a destination: left click a target or empty globe for a waypoint, Esc cancels.");
         Console.WriteLine("Bases: I stores; B/S/T buy/sell/transfer; arrows and +/- quantities; Enter then Y confirm; Esc back.");
         var host = new SdlIndexedWindowHost(client, new SdlWindowOptions("OXCE .NET geoscape")
         {

@@ -161,3 +161,38 @@ weapons with ammunition, crew, low fuel, mission complete, auto-patrol, the refu
 dispatch and for patrol or recall, saturated rather than thrown for out-of-range bonuses), and
 each target carries the classified reason its action is unavailable.
 Tests: `StrategicWorldWingTests`.
+
+## S6b — Craft, interception and destination screens (2026-10-11)
+
+The geoscape's craft and target screens are popups pushed above queued notifications
+(`GeoscapeScreens` builds them; `GeoscapeClient` runs their buttons). Screens opened from one
+another share a group, so a launch closes them together as the reference pops its state stack, and
+a cancel returns to the screen below.
+- `InterceptState` (Intercept button, I key, or a click on a base for that base's craft): every
+  craft with status, base and weapons/soldiers/vehicles, paged six rows at a time. A craft that
+  cannot start (`allowStart`) is listed but refuses with its reason in the status line;
+  Shift+click adds or removes up to three wing members, a plain click launches with that craft
+  leading — to `ConfirmDestinationState` when a target is given, otherwise to destination choice.
+- `SelectDestinationState`: the globe takes the next left click; targets near it (the leader
+  excluded) open `MultipleTargetsState` when several, an empty spot becomes a new waypoint. Time
+  and queued notifications wait, as in the reference. A grounded leader's return range
+  (`Craft::getBaseRange`, now in the world query) is drawn while radar lines are on. Esc or the
+  sidebar Cancel ends the choice.
+- `ConfirmDestinationState`: the target, the leader's ETA (`oxceShowETAMode` 1: none for moving
+  targets) and, for a wing, the follow-wing-leader toggle (off when going after a flying UFO). OK
+  executes `DispatchCraftWing`; a refusal closes the screens and shows the reference text
+  (`TextKey`, `STR_NOT_ENOUGH_PILOTS` with the craft's pilot requirement) or the port reason.
+- `GeoscapeCraftState` (click an airborne craft): status, base, speed, fuel, damage, shield,
+  weapons by the rule's slot labels (`weaponStrings`, now projected) with rounds, crew and ETA;
+  Return to base, Select new target, Patrol/Auto patrol and Cancel. The commands are hidden for a
+  craft returning on low fuel or after its mission.
+- `TargetInfoState` (waypoint, mission site, alien base) and the UFO screen offer Intercept. The
+  detection popups gain Intercept (timer reset and centring, `InterceptState` above them);
+  `CraftPatrolState` gains Redirect (Enter); items arriving, construction and production gain Go
+  to base / Allocate manufacture (Enter, timer reset), which open the base screens on that base.
+Unnamed craft are labelled by type and id on the globe, as `Craft::getName` does.
+Known differences: craft altitude, maintenance times in the intercept list, distance sorting
+(`oxceGeoSortCraftByDistanceToTarget`), `Ctrl` ignore on UFO alerts and the "Go to last known UFO
+position" craft screen (with the lost-target notifications, S7) are not shown; button and row
+layout is the popup layout, not the reference windows.
+Tests: `StrategicWorldGeoscapeScreensTests`, `GeoscapeNotificationsTests`, `GeoscapeClientTests`.

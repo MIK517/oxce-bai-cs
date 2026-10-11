@@ -10,7 +10,33 @@ namespace Oxce.Engine.Geoscape;
 /// as the reference state does.
 /// </summary>
 public sealed record GeoscapePopupAction(string Label, bool ResetSpeed = false, WorldPosition? Center = null,
-    bool OkKey = false, bool CancelKey = false);
+    bool OkKey = false, bool CancelKey = false)
+{
+    /// <summary>The screen the button opens after the popup closes.</summary>
+    public GeoscapeIntent? Intent { get; init; }
+    /// <summary>The campaign command the button executes; a refusal is reported in a popup.</summary>
+    public ICampaignCommand? Command { get; init; }
+    /// <summary>The button is shown but refuses with this reason (a hidden reference button).</summary>
+    public string? Disabled { get; init; }
+}
+
+/// <summary>A geoscape screen a popup button leads to.</summary>
+public abstract record GeoscapeIntent;
+
+/// <summary>InterceptState: the craft list, optionally aimed at a target.</summary>
+public sealed record InterceptIntent(WorldTargetReference? Target = null, int? BaseId = null) : GeoscapeIntent;
+
+/// <summary>GeoscapeCraftState for an airborne craft.</summary>
+public sealed record CraftIntent(CraftKey Craft) : GeoscapeIntent;
+
+/// <summary>SelectDestinationState for a wing whose first craft leads.</summary>
+public sealed record SelectDestinationIntent(IReadOnlyList<CraftKey> Wing) : GeoscapeIntent;
+
+/// <summary>BasescapeState (or ManufactureState) for one base.</summary>
+public sealed record BaseIntent(int BaseId) : GeoscapeIntent;
+
+/// <summary>TargetInfoState for a UFO, mission site or alien base.</summary>
+public sealed record TargetInfoIntent(WorldTargetReference Target) : GeoscapeIntent;
 
 /// <summary>A queued geoscape message window and its buttons.</summary>
 public sealed record GeoscapePopup(string Title, IReadOnlyList<string> Lines, IReadOnlyList<GeoscapePopupAction> Actions)
@@ -37,16 +63,22 @@ public static class GeoscapeNotifications
         GeoscapePopupAction OkCancelOnly() => new(tr("STR_OK"), CancelKey: true);
         GeoscapePopupAction OkFiveSeconds() => new(tr("STR_OK_5_SECONDS"), ResetSpeed: true, OkKey: true);
         GeoscapePopupAction Cancel() => new(tr("STR_CANCEL_UC"), CancelKey: true);
+        // ItemsArrivingState and ProductionCompleteState: the base button resets the speed and is bound to Enter.
+        GeoscapePopupAction GoToBase(int baseId, string label = "STR_GO_TO_BASE") =>
+            new(tr(label), ResetSpeed: true, OkKey: true) { Intent = new BaseIntent(baseId) };
         switch (notification)
         {
             case UfoContactDetected detected:
                 {
-                    // UfoDetectedState: Centre and Intercept reset the speed; Cancel does not.
+                    // UfoDetectedState: Intercept and Centre reset the speed and centre on the UFO; Cancel does not.
                     var ufo = Ufo(detected.UniqueId);
                     var lines = new List<string> { tr("STR_DETECTED") };
                     if (detected.Hyperwave) lines.Add(tr("STR_HYPER_WAVE_TRANSMISSIONS_ARE_DECODED"));
                     return new(UfoName(ufo, detected.UniqueId), lines,
-                    [new(tr("STR_CENTER_ON_UFO_TIME_5_SECONDS"), true, Position(ufo)), Cancel()]);
+                    [
+                        new(tr("STR_INTERCEPT"), true, Position(ufo)) { Intent = new InterceptIntent(ufo?.Reference) },
+                        new(tr("STR_CENTER_ON_UFO_TIME_5_SECONDS"), true, Position(ufo)), Cancel(),
+                    ]);
                 }
             case UfoContactLost lost:
                 return new(UfoName(Ufo(lost.UniqueId), lost.UniqueId), [tr("STR_TRACKING_LOST")], [Ok()]);
@@ -57,7 +89,10 @@ public static class GeoscapeNotifications
                 {
                     var target = Find(WorldTargetKind.MissionSite, site.SiteId);
                     return new(target?.Label ?? Format(tr(site.MarkerName), site.SiteId), [],
-                        [new(tr("STR_CENTER_ON_SITE_TIME_5_SECONDS"), true, Position(target)), Cancel()]);
+                    [
+                        new(tr("STR_INTERCEPT"), true, Position(target)) { Intent = new InterceptIntent(target?.Reference) },
+                        new(tr("STR_CENTER_ON_SITE_TIME_5_SECONDS"), true, Position(target)), Cancel(),
+                    ]);
                 }
             case AlienBaseDiscovered alienBase:
                 {
@@ -92,20 +127,28 @@ public static class GeoscapeNotifications
             case CraftArrivedAtWaypoint arrived:
                 return new(Format(tr("STR_CRAFT_HAS_REACHED_DESTINATION"),
                     CraftName(arrived.BaseId, arrived.CraftTypeId, arrived.CraftId),
-                    Format(tr(WorldTargetReference.WaypointType), arrived.WaypointId)), [tr("STR_NOW_PATROLLING")], [OkCancelOnly()]);
+                    Format(tr(WorldTargetReference.WaypointType), arrived.WaypointId)), [tr("STR_NOW_PATROLLING")],
+                    [
+                        OkCancelOnly(),
+                        // CraftPatrolState::btnRedirectClick opens SelectDestinationState without a timer reset.
+                        new(tr("STR_REDIRECT_CRAFT"), OkKey: true)
+                        {
+                            Intent = new SelectDestinationIntent([new(arrived.BaseId, arrived.CraftTypeId, arrived.CraftId)]),
+                        },
+                    ]);
             case CraftTargetLost lostTarget:
                 return new(CraftName(lostTarget.BaseId, lostTarget.CraftTypeId, lostTarget.CraftId),
                     [tr("STR_TRACKING_LOST"), lostTarget.ReturningToBase ? tr("STR_RETURNING_TO_BASE") : tr("STR_NOW_PATROLLING")],
                     [Ok()]);
             case SuppliesArrived supplies:
-                return new(tr("STR_ITEMS_ARRIVING"), [BaseName(supplies.BaseId)], [OkCancelOnly()]);
+                return new(tr("STR_ITEMS_ARRIVING"), [BaseName(supplies.BaseId)], [OkCancelOnly(), GoToBase(supplies.BaseId)]);
             case CampaignConstructionCompleted construction:
                 return new(Format(tr("STR_CONSTRUCTION_OF_FACILITY_AT_BASE_IS_COMPLETE"), tr(construction.RuleId),
-                    BaseName(construction.BaseId)), [], [OkCancelOnly()]);
+                    BaseName(construction.BaseId)), [], [OkCancelOnly(), GoToBase(construction.BaseId)]);
             case CampaignProductionProgress { StopReason: { } reason } production:
                 // GeoscapeState::time1Hour opens ProductionCompleteState only when a project ends.
                 return new(Format(tr(ProductionMessage(reason)), tr(production.RuleId), BaseName(production.BaseId)), [],
-                    [OkCancelOnly()]);
+                    [OkCancelOnly(), GoToBase(production.BaseId, "STR_ALLOCATE_MANUFACTURE")]);
             case CampaignResearchCompleted research:
                 return new(tr("STR_RESEARCH_COMPLETED"), [tr(research.RuleId)], [OkCancelOnly()]) { ResetsSpeedWhenShown = true };
             case CampaignTrainingCompleted training:

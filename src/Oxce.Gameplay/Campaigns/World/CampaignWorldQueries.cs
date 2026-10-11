@@ -61,6 +61,11 @@ public sealed record CampaignWorldCraft(int BaseId, string TypeId, int Id, strin
     public bool MissionComplete { get; init; }
     /// <summary>RuleCraft::canAutoPatrol: Patrol becomes auto-patrol.</summary>
     public bool CanAutoPatrol { get; init; }
+    /// <summary>
+    /// Craft::getBaseRange in radians: how far the craft can fly out and still return, drawn while a
+    /// grounded craft picks a destination. Infinite when the craft burns no fuel at maximum speed.
+    /// </summary>
+    public double BaseRange { get; init; } = double.PositiveInfinity;
 }
 
 /// <summary>The alien activity the player can act on plus the scheduled work behind it.</summary>
