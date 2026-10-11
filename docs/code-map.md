@@ -134,7 +134,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 - `GeoscapeAssets` (class) [GeoscapeAssets.cs](../src/Oxce.Engine/Geoscape/GeoscapeAssets.cs) - Indexed resources the globe draws with.
 - `GlobeTarget` (record) [GlobeTargets.cs](../src/Oxce.Engine/Geoscape/GlobeTargets.cs) - A selectable globe marker.
-- `GlobeTargets` (class) [GlobeTargets.cs](../src/Oxce.Engine/Geoscape/GlobeTargets.cs) - The selectable globe targets in Globe::getTargets order: each placed base followed by its airborne craft, then detected UFOs, waypoints,...
+- `GlobeTargets` (class) [GlobeTargets.cs](../src/Oxce.Engine/Geoscape/GlobeTargets.cs) - The selectable globe targets in Globe::getTargets order: each placed base (except one at exactly (0, 0)) followed by its airborne craft,...
 - `GlobeView` (class) [GlobeView.cs](../src/Oxce.Engine/Geoscape/GlobeView.cs) - The globe's orthographic view: centre, zoom and the projection between globe and screen.
 
 ### `Oxce.Engine.Input`

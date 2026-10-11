@@ -17,6 +17,7 @@ public sealed class GlobeView
     public const int NearRadius = 25;
     /// <summary>Options::geoScrollSpeed default.</summary>
     public const int DefaultScrollSpeed = 20;
+    private const double LoopLimit = 1024 * Math.PI;
     private static readonly double[] RadiusFactors = [0.45, 0.60, 0.90, 1.40, 2.25, 3.60];
 
     public GlobeView(int width, int height, int pixelScale = 1)
@@ -156,6 +157,9 @@ public sealed class GlobeView
     public static double NormalizeLongitude(double longitude)
     {
         if (!double.IsFinite(longitude)) return longitude;
+        // Ordinary values keep the reference's repeated additions bit for bit. A huge value, such as
+        // an untrusted saved centre, is reduced first so the loops terminate.
+        if (Math.Abs(longitude) > LoopLimit) longitude %= 2 * Math.PI;
         while (longitude < 0) longitude += 2 * Math.PI;
         while (longitude >= 2 * Math.PI) longitude -= 2 * Math.PI;
         return longitude;

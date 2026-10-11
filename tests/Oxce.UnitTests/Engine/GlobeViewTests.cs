@@ -59,6 +59,25 @@ public sealed class GlobeViewTests
         Assert.False(view.IsBack(Math.PI / 2, 0));
         Assert.False(view.IsBack(0, Math.PI / 2));
         Assert.False(view.IsNear(Math.PI, 0, 256, 200));
+
+        // Centred 30° south: the north pole is hidden and the equator projects above the centre.
+        view.Center(0, Math.PI / 6);
+        Assert.True(view.IsBack(0, -Math.PI / 2));
+        Assert.False(view.IsBack(0, Math.PI / 2));
+        Assert.Equal((256, 110), view.Project(0, 0));
+    }
+
+    [Fact]
+    public void HugeLongitudesNormaliseWithoutLooping()
+    {
+        Assert.Equal(0.5, GlobeView.NormalizeLongitude(0.5 - 4 * Math.PI), 12);
+        var huge = GlobeView.NormalizeLongitude(1e17);
+        Assert.InRange(huge, 0, 2 * Math.PI);
+        Assert.InRange(GlobeView.NormalizeLongitude(-1e300), 0, 2 * Math.PI);
+        var view = View();
+        view.Center(1e17, 0);
+        Assert.True(view.TryUnproject(256, 200, out var longitude, out _));
+        Assert.InRange(longitude, 0, 2 * Math.PI);
     }
 
     [Theory]
@@ -110,17 +129,20 @@ public sealed class GlobeViewTests
         var waypoint = new CampaignWorldTarget(WorldTargetKind.Waypoint, 4, WorldTargetReference.WaypointType, "WP", 0.02, 0) { Detected = true };
         var site = new CampaignWorldTarget(WorldTargetKind.MissionSite, 2, "STR_TERROR_SITE", "Site", 0.03, 0) { Detected = true };
         var alienBase = new CampaignWorldTarget(WorldTargetKind.AlienBase, 1, "STR_ALIEN_BASE", "Base", 0.04, 0) { Detected = true };
+        var hidden = new CampaignWorldTarget(WorldTargetKind.Ufo, 8, "STR_SMALL_SCOUT", "UFO-8", 0.01, 0);
         var ufo = new CampaignWorldTarget(WorldTargetKind.Ufo, 7, "STR_SMALL_SCOUT", "UFO-7", 0.01, 0)
         {
             Detected = true,
             Reference = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, 7, 0.01, 0) { UniqueId = 70 },
         };
-        var world = new CampaignWorldOverview([alienBase, site, waypoint, ufo], 1, 0)
+        var world = new CampaignWorldOverview([alienBase, site, waypoint, hidden, ufo], 1, 0)
         {
-            Bases = [new(1, "Alpha", 0, 0), new(2, "Beta", 3, 0)],
+            Bases = [new(3, "Origin", 0, 0), new(1, "Alpha", 0.001, 0), new(2, "Beta", 3, 0)],
             Crafts =
             [
-                new(1, "SHIP", 1, "SHIP-1", "STR_READY", 0, 0, 10, null, null, null),
+                new(3, "SHIP", 9, "SHIP-9", "STR_OUT", 0.002, 0, 10, null, null, null),
+                new(1, "SHIP", 1, "SHIP-1", "STR_READY", 0.001, 0, 10, null, null, null),
+                new(1, "SHIP", 4, "SHIP-4", "STR_OUT", 0.001, 0, 10, WorldTargetReference.ForWaypoint(4, new(0.02, 0)), null, null),
                 new(2, "SHIP", 2, "SHIP-2", "STR_OUT", 0.005, 0, 10, WorldTargetReference.ForWaypoint(4, new(0.02, 0)), null, null),
                 new(1, "SHIP", 3, "SHIP-3", "STR_OUT", 0.006, 0, 10, null, null, null),
             ],
@@ -128,16 +150,17 @@ public sealed class GlobeViewTests
 
         var targets = GlobeTargets.Build(world);
 
-        Assert.Equal(["Alpha", "SHIP-3", "Beta", "SHIP-2", "UFO-7", "WP", "Site", "Base"],
+        // A base at exactly (0, 0) hides with its craft; a craft at its base with a destination stays.
+        Assert.Equal(["Alpha", "SHIP-4", "SHIP-3", "Beta", "SHIP-2", "UFO-7", "WP", "Site", "Base"],
             targets.All.Select(target => target.Label));
         var view = View();
         var near = targets.Near(view, 256, 200);
-        Assert.Equal(["Alpha", "SHIP-3", "SHIP-2", "UFO-7", "WP", "Site", "Base"], near.Select(target => target.Label));
-        var excluded = targets.Near(view, 256, 200, near[1].Reference);
+        Assert.Equal(["Alpha", "SHIP-4", "SHIP-3", "SHIP-2", "UFO-7", "WP", "Site", "Base"], near.Select(target => target.Label));
+        var excluded = targets.Near(view, 256, 200, near[2].Reference);
         Assert.DoesNotContain(excluded, target => target.Label == "SHIP-3");
         Assert.DoesNotContain(targets.Visible(view), target => target.Label == "Beta");
         // UFOs are found again by unique id even after their marker id changes.
-        Assert.Same(targets.All[4], targets.Find(new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, 99, 0, 0) { UniqueId = 70 }));
+        Assert.Same(targets.All[5], targets.Find(new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, 99, 0, 0) { UniqueId = 70 }));
         Assert.Null(targets.Find(new(WorldTargetKind.Craft, "SHIP", 1, 0, 0)));
     }
 }
