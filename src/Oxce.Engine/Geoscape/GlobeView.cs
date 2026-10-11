@@ -6,6 +6,9 @@ namespace Oxce.Engine.Geoscape;
 /// setZoom, rotate, center, targetNear). Coordinates are frame pixels; <see cref="PixelScale"/>
 /// scales the reference's 320x200 distances such as <c>NEAR_RADIUS</c>.
 /// </summary>
+/// <summary>The globe's centre (radians) and zoom level, as SavedGame stores them.</summary>
+public sealed record GlobeViewState(double Longitude, double Latitude, int Zoom);
+
 public sealed class GlobeView
 {
     /// <summary>Globe::ROTATE_LONGITUDE and ROTATE_LATITUDE, in radians per rotation tick.</summary>

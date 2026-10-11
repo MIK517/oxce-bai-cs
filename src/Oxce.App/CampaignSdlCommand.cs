@@ -13,8 +13,10 @@ using Oxce.Savegames.Oxce;
 internal static class CampaignSdlCommand
 {
     public static int Run(
-        string installationRoot, string masterId, string addOnId, string destination, InputValidationMode validationMode)
+        string installationRoot, string masterId, string addOnId, string destination, InputValidationMode validationMode,
+        bool loadAtStart = false)
     {
+        if (loadAtStart && destination == "-") throw new ArgumentException("--load needs a save path.", nameof(destination));
         var request = InstallationLoadRequest.ForMasterAndAddOn(
             installationRoot, masterId, addOnId, new ModEngineIdentity("Extended", "8.6.1.0"), validationMode);
         var loaded = InstallationContentLoader.Load(request);
@@ -40,8 +42,9 @@ internal static class CampaignSdlCommand
         var extensionSession = extensions.AttachCampaign(campaign, campaign);
         OxceSaveDocument? source = null;
         var savePath = destination == "-" ? null : Path.GetFullPath(destination);
-        var client = new GeoscapeClient(new GeoscapeClientSetup(
-            CampaignUiSession.ForCampaign(campaign, extensionSession, extensionSession), content.RuntimeRules,
+        var session = loadAtStart ? Load() : CampaignUiSession.ForCampaign(campaign, extensionSession, extensionSession);
+        GeoscapeClient? client = null;
+        client = new GeoscapeClient(new GeoscapeClientSetup(session, content.RuntimeRules,
             geoscapeAssets, assets.Font, assets.Localize)
         {
             Save = savePath is null ? null : Save,
@@ -74,8 +77,11 @@ internal static class CampaignSdlCommand
 
         void Save()
         {
-            if (source is null) OxceSaveAdapter.WriteNewCampaignAtomic(savePath!, campaign.Capture());
-            else OxceSaveAdapter.RewriteLoadedCampaignAtomic(savePath!, campaign.Capture(), source);
+            // SavedGame keeps where the globe looked.
+            var view = client!.CurrentView;
+            var options = new OxceSaveWriteOptions { GlobeView = new(view.Longitude, view.Latitude, view.Zoom) };
+            if (source is null) OxceSaveAdapter.WriteNewCampaignAtomic(savePath!, campaign.Capture(), options);
+            else OxceSaveAdapter.RewriteLoadedCampaignAtomic(savePath!, campaign.Capture(), source, options);
         }
 
         static void PrintWarnings(DiagnosticCollector diagnostics)
@@ -95,7 +101,11 @@ internal static class CampaignSdlCommand
             campaign = restored.Campaign;
             source = restored.Source;
             extensionSession = extensions.AttachCampaign(campaign, campaign);
-            return CampaignUiSession.ForCampaign(campaign, extensionSession, extensionSession);
+            var view = source.GlobeView;
+            return CampaignUiSession.ForCampaign(campaign, extensionSession, extensionSession) with
+            {
+                GlobeView = new GlobeViewState(view.Longitude, view.Latitude, view.Zoom),
+            };
         }
     }
 }

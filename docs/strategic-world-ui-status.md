@@ -264,3 +264,16 @@ radar ranges (the same pixels), costs use a comma thousands separator instead of
 space, names are limited to 40 characters and a blank name is refused, and a custom
 `GeoscapeClientSetup.OpenBases` factory keeps its own new-base behaviour.
 Tests: `GeoscapeClientTests`, `StrategicWorldBasePlacementTests`.
+
+## S9 — Globe view in saves and quick save/load (2026-10-12)
+
+Saves now own SavedGame's `globeLon`, `globeLat` and `globeZoom`: `OxceSaveWriteOptions.GlobeView`
+writes them (a new save without one writes the reference defaults 0, 0, 0; a rewrite without one
+keeps the loaded values) and `OxceSaveDocument.GlobeView` reads them (absent keys are 0). The SDL
+campaign saves the geoscape's current centre and zoom, and a load (F9, or `--campaign-sdl ...
+--load` to start from the save) restores them through `CampaignUiSession.GlobeView`, as `Globe`'s
+constructor does; a zoom outside the levels is clamped. Quick save drops a time step still owed
+(the reference saves between steps), and a load clears every screen, choice, selection and owed
+step of the old campaign and returns the clock to five-second speed. Selections that lose their
+target after time runs are dropped on refresh (S3/S5).
+Tests: `StrategicWorldGlobeViewSaveTests`.

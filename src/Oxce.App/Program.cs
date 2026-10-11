@@ -17,9 +17,11 @@ if (args.Length != 0 && args[0].StartsWith(InputModeOption, StringComparison.Ord
     args = args[1..];
 }
 
-if (args is ["--campaign-sdl", var installationRoot, var masterId, var addOnId, var destination])
+if (args is ["--campaign-sdl", var installationRoot, var masterId, var addOnId, var destination, .. var rest] &&
+    rest is [] or ["--load"])
 {
-    Environment.ExitCode = CampaignSdlCommand.Run(installationRoot, masterId, addOnId, destination, validationMode);
+    Environment.ExitCode = CampaignSdlCommand.Run(installationRoot, masterId, addOnId, destination, validationMode,
+        loadAtStart: rest.Length == 1);
     return;
 }
 
@@ -100,6 +102,7 @@ if (args.Length == 1 && string.Equals(args[0], "--sdl-smoke", StringComparison.O
 Console.WriteLine("OXCE .NET compatibility port");
 Console.WriteLine("Use --sdl-smoke to run the indexed-window SDL3 event-loop smoke test.");
 Console.WriteLine("Use --sdl-audio-smoke to run the SDL3 managed-mixer playback smoke test.");
-Console.WriteLine("Use --campaign-sdl <installation> <master> <add-on|-> <save|-> to run the campaign view.");
+Console.WriteLine("Use --campaign-sdl <installation> <master> <add-on|-> <save|-> [--load] to run the campaign view;");
+Console.WriteLine("--load starts from the save instead of a new campaign.");
 Console.WriteLine("Prefix --input-mode=compatibility to accept malformed mod input like the reference engine;");
 Console.WriteLine("the default --input-mode=strict rejects it.");
