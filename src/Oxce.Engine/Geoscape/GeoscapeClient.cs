@@ -23,6 +23,8 @@ public sealed record GeoscapeClientSetup(
     public GlobeRenderOptions Options { get; init; } = new();
     /// <summary>Options::oxceShowETAMode: 0 (default) no ETA, 1 not for moving targets, 2 always.</summary>
     public int ShowEtaMode { get; init; }
+    /// <summary>Options::globeAllRadarsOnBaseBuild (default on): base placement previews every radar on each base.</summary>
+    public bool AllRadarsOnBaseBuild { get; init; } = true;
     /// <summary>Opens the base screens; defaults to the indexed logistics client.</summary>
     public Func<CampaignUiSession, IIndexedLoopClient>? OpenBases { get; init; }
 }
@@ -121,7 +123,7 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
             if (_bases.ExitRequested) CloseBases();
             return;
         }
-        var redraw = false;
+        var redraw = TickHover(fixedInterval);
         _blinkElapsed += fixedInterval;
         while (_blinkElapsed >= BlinkInterval)
         {
@@ -169,6 +171,9 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     {
         if (input.Kind == GameInputEventKind.PointerReleased && input.PointerButton == 2) _dragging = false;
         if (input.Kind == GameInputEventKind.FocusLost) _shift = false;
+        _keyText = input.Kind == GameInputEventKind.KeyPressed && input.KeyCode is >= 32 and < 127
+            ? ((char)input.KeyCode).ToString()
+            : null;
         if (input.Kind is GameInputEventKind.KeyPressed or GameInputEventKind.KeyReleased)
             _shift = (input.Modifiers & InputKeyModifiers.Shift) != 0 ||
                 (input.Kind == GameInputEventKind.KeyPressed && input.KeyCode is ShiftLeft or ShiftRight);
@@ -516,7 +521,7 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
         _intercept = null;
         _placing = null;
         _naming = null;
-        _hover = null;
+        _hover = _pendingHover = null;
         _time.Select(CampaignTimeSpeed.FiveSeconds);
         EnterWorld();
         Refresh();

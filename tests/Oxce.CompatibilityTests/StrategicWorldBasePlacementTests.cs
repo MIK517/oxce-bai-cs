@@ -33,19 +33,31 @@ public sealed class StrategicWorldBasePlacementTests
         // ConfirmNewBaseState: the region's cost and area; Esc returns to choosing a site.
         var confirm = Assert.Single(client.Popups);
         Assert.Equal("STR_COST_", confirm.Title);
+        Assert.Equal(["STR_AREA_"], confirm.Lines);
+        Assert.NotEqual("", site.RegionId);
         Key(client, 27);
         Assert.Equal(false, client.PlacingBase);
         Click(client, 256, 200);
+        // The digit that picks OK also arrives as text; it does not start the name.
+        Key(client, '1');
+        client.HandleInput(GameInputEvent.TextEntry(0, 0, "1"));
+        Assert.Equal("", client.BaseName);
         Key(client, 13);
         Assert.Equal("", client.BaseName);
-        client.HandleInput(GameInputEvent.TextEntry(0, 0, "Beta"));
+        client.HandleInput(GameInputEvent.TextEntry(0, 0, " Beta"));
+        Assert.False(client.TimeCanRun);
         Key(client, 13);
-        if (client.Popups is [{ Title: "STR_ACCESS_LIFT" } lifts])
-            client.Choose(lifts.Actions.ToList().FindIndex(action => action.Label == "LIFT"));
+        // PlaceLiftState lists the access lifts this base type allows.
+        var lifts = Assert.Single(client.Popups);
+        Assert.Equal("STR_ACCESS_LIFT", lifts.Title);
+        Assert.Equal(campaign.QueryAccessLifts(false).Where(lift => lift.UnavailableReason is null).Select(lift => lift.RuleId),
+            lifts.Actions.Select(action => action.Label));
+        client.Choose(lifts.Actions.ToList().FindIndex(action => action.Label == "LIFT"));
 
         Assert.Null(client.PlacingBase);
-        var created = Assert.Single(campaign.Capture().Bases, owner => owner.Name == "Beta");
-        Assert.Equal("LIFT", Assert.Single(created.Facilities).RuleId);
+        var created = Assert.Single(campaign.Capture().Bases, owner => owner.Name == " Beta");
+        var lift = Assert.Single(created.Facilities);
+        Assert.Equal(("LIFT", 2, 2), (lift.RuleId, lift.X, lift.Y));
         Assert.Equal(20_000 - site.Cost, campaign.QueryOverview().Funds);
         // PlaceLiftState continues to the new base's screens.
         Assert.True(client.BasesOpen);
@@ -72,6 +84,22 @@ public sealed class StrategicWorldBasePlacementTests
         Assert.Equal(false, client.PlacingBase);
         Assert.Null(client.BaseName);
         Assert.Equivalent(before, campaign.Capture(), strict: true);
+    }
+
+    [Fact]
+    public void NoNewBaseStartsAtTheBaseLimit()
+    {
+        var content = StrategicReadinessTestContent.Load();
+        var (campaign, client) = Open(content, funds: 1_000_000);
+        var site = campaign.QueryBaseSites(false).First(candidate => !candidate.FakeUnderwater);
+        while (campaign.QueryOverview().Bases.Count < new CampaignOptions().MaximumBases)
+            Assert.IsType<CampaignBaseCreated>(Assert.Single(campaign.Execute(
+                new CreateCampaignBase("Extra", site.Longitude, site.Latitude, "LIFT", 2, 2)).Events));
+        Assert.Equal("Maximum number of bases reached.", campaign.QueryNewBaseRestriction());
+
+        Key(client, 'n');
+        Assert.Null(client.PlacingBase);
+        Assert.Equal("Maximum number of bases reached.", Assert.Single(client.Popups).Title);
     }
 
     [Fact]

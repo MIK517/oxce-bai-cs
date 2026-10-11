@@ -48,7 +48,8 @@ internal static class CampaignSdlCommand
             Load = savePath is null ? null : Load,
         });
         Console.WriteLine("Geoscape: 1-6 speed, arrows rotate, +/- zoom, wheel zoom, right click centre, middle drag scroll,");
-        Console.WriteLine("Tab detail, R radar, ./, select target, Enter target info, B bases, I intercept, F5/F9 save/load, Esc quit.");
+        Console.WriteLine("Tab detail, R radar, ./, select target, Enter target info, B bases, I intercept, N new base, F5/F9 save/load, Esc quit");
+        Console.WriteLine("(while the starting base's site is chosen, close the window to quit).");
         Console.WriteLine("Popups: Enter/Esc or 1-9 pick a button; Shift+click (or Shift+digit) adds craft to a wing;");
         Console.WriteLine("choosing a destination: left click a target or empty globe for a waypoint, Esc cancels.");
         Console.WriteLine("Bases: a new game starts by clicking the starting base's site; N (or N in the base screens) builds");
@@ -58,6 +59,8 @@ internal static class CampaignSdlCommand
         {
             Scale = 2,
             ExitOnEscape = false,
+            // BaseNameState types base names.
+            EnableTextInput = true,
         });
         int result;
         try
