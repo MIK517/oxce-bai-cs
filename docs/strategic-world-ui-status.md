@@ -285,22 +285,25 @@ Tests: `StrategicWorldGlobeViewSaveTests`.
 
 - `StrategicWorldGeoscapeScenarioTests` plays a public campaign through the client's inputs: the
   player clicks a detected landing, intercepts it with the ship and confirms; time runs at one
-  minute speed with every alert answered, while the driver checks that time never moves under a
-  popup or a choice. The crewless ship waits over the landing (no `ConfirmLandingState`), and when
+  minute speed with every alert answered by a button that only closes it, while the driver checks
+  that time never moves under a popup, a destination or site choice, a name or the base screens. The crewless ship waits over the landing (no `ConfirmLandingState`), and when
   the UFO lifts off the interception needs strategic combat (branch 5): the clock halts with the
   reason in a popup and stays halted. The ship is recalled from its craft screen, time resumes
   until it is home, and quick save and load continue the same campaign with the same view.
 - `PrivateGeoscapeScenarioTests` (owned installation; the user's Windows run) loads every early
   UFO, TFTD and ROSIGMA save with the real globe resources, opens and closes the screen of every
-  target, runs a game day with the alerts answered, and checks quick save and load.
+  target, runs a game day (or until a branch 5/6 boundary halts the clock with its reason) with the
+  alerts answered, and checks quick save and load.
 - `Oxce.App --campaign-sdl-smoke <installation> <master> <add-on|->` runs an unattended geoscape
   window (`ScriptedLoopClient` replays speed, interception, detail, zoom and target keys for eight
-  seconds) and prints the SDL driver, frame and campaign-time diagnostics. SDL3 is not available on
+  seconds at five-second speed) and prints the SDL driver, frame and campaign-time diagnostics; it
+  fails when the window closes early, the script does not finish or a popup is left open. SDL3 is not available on
   the Linux build VM, so it runs on Windows; a public synthetic installation with globe resources
   does not exist, so the smoke needs an owned installation.
-- Found by the private drive: UFO, landing, crash, site, alien base and waypoint names showed their
-  raw language keys. Names now follow `Target::getName` (`GeoscapeScreens.TargetLabel`: a custom
-  name, or the marker key formatted with the marker id), the world query uses the reference marker
+- Noticed in the private drive's alert titles: UFO, landing, crash, site, alien base and waypoint
+  names were language keys never formatted with their marker id. Names now follow `Target::getName`
+  (`GeoscapeScreens.TargetLabel`: a custom name as it is, or the marker key formatted with the
+  marker id), the world query uses the reference marker
   keys for alien bases (`markerName_`) and waypoints (`STR_WAY_POINT_`), and `UfoContactLost`
   carries the marker id for a UFO already off the radar.
 Tests: `StrategicWorldGeoscapeScenarioTests`, `PrivateGeoscapeScenarioTests`, `ScriptedLoopClientTests`,

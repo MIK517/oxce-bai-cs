@@ -83,8 +83,11 @@ public sealed class PrivateGeoscapeScenarioTests
                 var start = campaign.QueryOverview().Time;
                 Key(client, '5');
                 var seen = StrategicWorldGeoscapeScenarioTests.Drive(client, () => campaign, 24 * 60, () => false);
-                Assert.True(campaign.QueryOverview().Time != start || !client.Time.Running,
-                    $"{family}/{name} neither advanced nor stopped: {string.Join(" | ", seen)}");
+                // A day runs unless a branch 5/6 boundary halts the clock with its reason.
+                var after = campaign.QueryOverview().Time;
+                var minutes = (after.Day - start.Day) * 1440 + (after.Hour - start.Hour) * 60 + after.Minute - start.Minute;
+                Assert.True(after.Month != start.Month || minutes >= 24 * 60 || client.Time.HaltReason is not null,
+                    $"{family}/{name} stopped after {minutes} minutes without a reason: {string.Join(" | ", seen)}");
             }
 
             Key(client, 0x4000003E);

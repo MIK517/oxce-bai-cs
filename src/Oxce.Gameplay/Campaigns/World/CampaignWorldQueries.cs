@@ -1,9 +1,9 @@
 namespace Oxce.Gameplay.Campaigns.World;
 
-/// <summary>A globe target as the player sees it. Detection state decides visibility.</summary>
 /// <summary>
-/// A target the player can see. <see cref="Label"/> is a custom name or the marker's language key,
-/// which Target::getDefaultName formats with <see cref="Id"/> (the landing or crash id for those markers).
+/// A globe target as the player sees it; detection state decides visibility. <see cref="Label"/> is
+/// a custom name (<see cref="HasCustomName"/>) or the marker's language key, which
+/// Target::getDefaultName formats with <see cref="Id"/> (the landing or crash id for those markers).
 /// </summary>
 public sealed record CampaignWorldTarget(
     WorldTargetKind Kind,
@@ -14,6 +14,8 @@ public sealed record CampaignWorldTarget(
     double Latitude)
 {
     public string Status { get; init; } = string.Empty;
+    /// <summary>Target::getName returns a custom name as it is, untranslated.</summary>
+    public bool HasCustomName { get; init; }
     public string Altitude { get; init; } = string.Empty;
     public bool Detected { get; init; }
     /// <summary>Future UFO detection alerts are ignored until the campaign is reloaded.</summary>

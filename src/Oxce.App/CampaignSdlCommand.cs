@@ -139,6 +139,7 @@ internal static class CampaignSdlCommand
         if (!loaded.IsSuccess) throw new InvalidDataException(loaded.DescribeFailure());
         var content = loaded.Content!;
         var diagnostics = new DiagnosticCollector();
+        foreach (var diagnostic in loaded.Diagnostics) diagnostics.Report(diagnostic);
         var assets = CampaignUiAssets.Load(loaded.VirtualFiles!, content.Presentation, diagnostics);
         var geoscapeAssets = GeoscapeAssets.Load(loaded.VirtualFiles!, content.Resources, content.RuntimeRules.Campaign.Globe);
         var campaign = CampaignFactory.Create(content,
@@ -147,17 +148,22 @@ internal static class CampaignSdlCommand
             new SplitMix64RandomSource(0x534D4F4BUL), SystemCampaignClock.Instance);
         var site = campaign.QueryBaseSites(true).FirstOrDefault(candidate => candidate.Longitude != 0 || candidate.Latitude != 0)
             ?? throw new InvalidDataException("The globe has no legal starting-base site.");
-        campaign.Execute(new PlaceStartingBase(0, "Smoke", site.Longitude, site.Latitude));
+        if (campaign.Execute(new PlaceStartingBase(0, "Smoke", site.Longitude, site.Latitude)).Events
+                .OfType<CampaignActionBlocked>().FirstOrDefault() is { } refused)
+            throw new InvalidDataException("The starting base could not be placed: " + refused.Reason);
         var start = campaign.QueryOverview().Time;
         var client = new GeoscapeClient(new GeoscapeClientSetup(CampaignUiSession.ForCampaign(campaign, campaign, campaign),
             content.RuntimeRules, geoscapeAssets, assets.Font, assets.Localize));
         static ScriptedInput Key(double seconds, uint key) => new(TimeSpan.FromSeconds(seconds),
             GameInputEvent.Key(GameInputEventKind.KeyPressed, 0, 0, 0, key, InputKeyModifiers.None));
-        var scripted = new ScriptedLoopClient(client,
+        // Five-second speed keeps alerts away while the screens are opened and closed by key: the
+        // Intercept list, globe detail, zoom, the base (selected with '.') and its Intercept list.
+        ScriptedInput[] script =
         [
-            Key(0.5, '4'), Key(2.0, 'i'), Key(2.5, 27), Key(3.0, 9), Key(3.5, '+'), Key(4.0, '.'), Key(4.5, 13), Key(5.0, 27),
-            Key(5.5, '5'),
-        ], TimeSpan.FromSeconds(8));
+            Key(0.5, '1'), Key(2.0, 'i'), Key(2.5, 27), Key(3.0, 9), Key(3.5, '+'), Key(4.0, '.'), Key(4.5, 13), Key(5.0, 27),
+            Key(5.5, '2'),
+        ];
+        var scripted = new ScriptedLoopClient(client, script, TimeSpan.FromSeconds(8));
         var host = new SdlIndexedWindowHost(scripted, new SdlWindowOptions("OXCE .NET geoscape smoke")
         {
             Scale = 2,
@@ -174,6 +180,12 @@ internal static class CampaignSdlCommand
             $"popups open: {client.Popups.Count}; status: {client.Time.HaltReason ?? client.Status}");
         foreach (var diagnostic in diagnostics.Snapshot().Where(static diagnostic => diagnostic.Severity >= DiagnosticSeverity.Warning))
             Console.Error.WriteLine($"{diagnostic.Code}: {diagnostic.Message}");
+        // A window closed early, a run cut by the time limit or a popup left open is a failed smoke.
+        if (result == 0 && (scripted.Replayed < script.Length || client.Popups.Count != 0 || client.ExitRequested))
+        {
+            Console.Error.WriteLine("The scripted geoscape run did not complete.");
+            return 1;
+        }
         return result;
     }
 }

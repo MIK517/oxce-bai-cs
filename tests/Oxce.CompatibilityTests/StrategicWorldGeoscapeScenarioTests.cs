@@ -109,8 +109,8 @@ public sealed class StrategicWorldGeoscapeScenarioTests
     }
 
     /// <summary>
-    /// Runs the clock through the client for a number of game minutes, answering every popup with
-    /// its Cancel (or OK) button, and checks that time never runs under a popup or a choice.
+    /// Runs the clock through the client for a number of game minutes, answering every popup with a
+    /// button that only closes it, and checks that time never runs under a popup or a choice.
     /// </summary>
     internal static List<string> Drive(GeoscapeClient client, Func<CampaignState> campaign, int minutes, Func<bool> stop)
     {
@@ -118,17 +118,32 @@ public sealed class StrategicWorldGeoscapeScenarioTests
         var start = Minutes(campaign().QueryOverview().Time);
         for (var frame = 0; frame < 200_000 && Minutes(campaign().QueryOverview().Time) - start < minutes; frame++)
         {
-            if (client.Popups.Count != 0)
+            var choosing = client.SelectingWing is not null || client.PlacingBase is not null || client.BaseName is not null ||
+                client.BasesOpen;
+            if (client.Popups.Count != 0 || choosing)
             {
-                var popup = client.Popups[0];
-                seen.Add(popup.Lines.Count == 0 ? popup.Title : popup.Title + ": " + popup.Lines[0]);
+                // Time waits under a popup, a destination or base-site choice, a name and the base screens.
                 Assert.False(client.TimeCanRun);
                 var before = campaign().QueryOverview().Time;
                 client.Tick(GeoscapeTimeController.GeoClock);
                 Assert.Equal(before, campaign().QueryOverview().Time);
-                var choice = IndexOf(popup, action => action.CancelKey && action.Intent is null && action.Command is null);
-                if (choice < 0) choice = IndexOf(popup, action => action.Intent is null && action.Command is null);
-                client.Choose(Math.Max(choice, 0));
+            }
+            Assert.False(choosing, "The drive does not answer choices other than popups.");
+            if (client.Popups.Count != 0)
+            {
+                var popup = client.Popups[0];
+                seen.Add(popup.Lines.Count == 0 ? popup.Title : popup.Title + ": " + popup.Lines[0]);
+                // Answer with a button that only closes the popup, never one that runs a command or opens a screen.
+                var choice = IndexOf(popup, action => action.CancelKey && action.Intent is null && action.Command is null &&
+                    action.Disabled is null);
+                if (choice < 0) choice = IndexOf(popup, action => action.Intent is null && action.Command is null && action.Disabled is null);
+                // The lost-UFO craft screen's Cancel is "Go to last known UFO position".
+                if (choice < 0) choice = IndexOf(popup, action => action.CancelKey && action.Intent is null && action.Disabled is null);
+                Assert.True(choice >= 0, $"No button closes \"{popup.Title}\".");
+                var count = client.Popups.Count;
+                client.Choose(choice);
+                Assert.True(client.Popups.Count < count || !ReferenceEquals(client.Popups[0], popup),
+                    $"\"{popup.Title}\" did not close.");
                 continue;
             }
             if (stop() || !client.Time.Running) break;

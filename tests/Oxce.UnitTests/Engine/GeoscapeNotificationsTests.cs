@@ -163,10 +163,10 @@ public sealed class GeoscapeNotificationsTests
     {
         CampaignWorldOverview With(string country, string region, string message) => World with
         {
-            Targets = [new(WorldTargetKind.AlienBase, 4, "STR_ALIEN_BASE", "STR_ALIEN_BASE_4", 0.4, 0.4)
+            Targets = [new(WorldTargetKind.AlienBase, 4, "ALIEN_BASE_DEPLOY", "STR_ALIEN_BASE_", 0.4, 0.4)
             {
                 Detected = true,
-                Reference = new(WorldTargetKind.AlienBase, "STR_ALIEN_BASE_", 4, 0.4, 0.4),
+                Reference = new(WorldTargetKind.AlienBase, "STR_ALIEN_BASE", 4, 0.4, 0.4),
                 CountryId = country,
                 RegionId = region,
                 DiscoveredMessage = message,
@@ -185,7 +185,7 @@ public sealed class GeoscapeNotificationsTests
         Assert.Equal("Base in STR_FRANCE, STR_EUROPA", Title(With("STR_FRANCE", "STR_EUROPA", "")));
         Assert.Equal("Base in STR_EUROPA", Title(With("", "STR_EUROPA", "")));
         Assert.Equal("Base in STR_UNKNOWN", Title(With("", "", "")));
-        Assert.Equal("STR_ALIEN_BASE_ found in STR_EUROPA", Title(With("", "STR_EUROPA", "STR_CUSTOM")));
+        Assert.Equal("STR_ALIEN_BASE found in STR_EUROPA", Title(With("", "STR_EUROPA", "STR_CUSTOM")));
     }
 
     [Fact]
@@ -199,7 +199,8 @@ public sealed class GeoscapeNotificationsTests
         };
         var ufo = World.Targets[0] with { Label = "STR_UFO_" };
         Assert.Equal("UFO-7", GeoscapeScreens.TargetLabel(ufo, Names));
-        Assert.Equal("Custom", GeoscapeScreens.TargetLabel(ufo with { Label = "Custom" }, Names));
+        // Target::getName returns a custom name untranslated, even one that is a language key.
+        Assert.Equal("STR_UFO_", GeoscapeScreens.TargetLabel(ufo with { HasCustomName = true }, Names));
         var world = World with { Targets = [ufo] };
         Assert.Equal("UFO-7", GeoscapeNotifications.Describe(new UfoContactDetected(70, false), world, Names)!.Title);
         // A UFO already off the radar is named by the marker id it had when lost.
