@@ -14,7 +14,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Benchmarks](#oxcebenchmarks) | 15 | Engine, Formats, Mods, Rendering, Resources, Savegames |
 | [Oxce.App](#oxceapp) | 3 | Engine, Extensions, Formats, Mods, Platform.Sdl, Rendering, Savegames |
 | [Oxce.Core](#oxcecore) | 8 | - |
-| [Oxce.Engine](#oxceengine) | 17 | Core, Gameplay, Rendering, Resources |
+| [Oxce.Engine](#oxceengine) | 19 | Core, Gameplay, Rendering, Resources |
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
@@ -27,7 +27,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
 | [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 293 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
-| [Oxce.UnitTests](#oxceunittests) | 94 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
+| [Oxce.UnitTests](#oxceunittests) | 95 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
 | [Oxce.FixtureTool](#oxcefixturetool) | 1 | FixtureSupport, Formats, Mods, Savegames |
 | [Oxce.ResourceBrowser](#oxceresourcebrowser) | 2 | Formats, Mods, Platform.Sdl, Rendering, Resources |
@@ -102,7 +102,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Engine
 
-`src/Oxce.Engine` - 17 files.
+`src/Oxce.Engine` - 19 files.
 
 ### `Oxce.Engine`
 
@@ -133,6 +133,9 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 ### `Oxce.Engine.Geoscape`
 
 - `GeoscapeAssets` (class) [GeoscapeAssets.cs](../src/Oxce.Engine/Geoscape/GeoscapeAssets.cs) - Indexed resources the globe draws with.
+- `GlobeTarget` (record) [GlobeTargets.cs](../src/Oxce.Engine/Geoscape/GlobeTargets.cs) - A selectable globe marker.
+- `GlobeTargets` (class) [GlobeTargets.cs](../src/Oxce.Engine/Geoscape/GlobeTargets.cs) - The selectable globe targets in Globe::getTargets order: each placed base followed by its airborne craft, then detected UFOs, waypoints,...
+- `GlobeView` (class) [GlobeView.cs](../src/Oxce.Engine/Geoscape/GlobeView.cs) - The globe's orthographic view: centre, zoom and the projection between globe and screen.
 
 ### `Oxce.Engine.Input`
 
@@ -1377,9 +1380,9 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.UnitTests
 
-`tests/Oxce.UnitTests` - 94 files.
+`tests/Oxce.UnitTests` - 95 files.
 
-<details><summary>94 test classes</summary>
+<details><summary>95 test classes</summary>
 
 - `ProjectDependencyTests` ([ProjectDependencyTests.cs](../tests/Oxce.UnitTests/Architecture/ProjectDependencyTests.cs))
 - `DiagnosticTests` ([DiagnosticTests.cs](../tests/Oxce.UnitTests/Core/DiagnosticTests.cs))
@@ -1387,6 +1390,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CampaignLogisticsClientTests` ([CampaignLogisticsClientTests.cs](../tests/Oxce.UnitTests/Engine/CampaignLogisticsClientTests.cs))
 - `FixedStepSchedulerTests` ([FixedStepSchedulerTests.cs](../tests/Oxce.UnitTests/Engine/FixedStepSchedulerTests.cs))
 - `GeoscapeAssetsTests` ([GeoscapeAssetsTests.cs](../tests/Oxce.UnitTests/Engine/GeoscapeAssetsTests.cs))
+- `GlobeViewTests` ([GlobeViewTests.cs](../tests/Oxce.UnitTests/Engine/GlobeViewTests.cs))
 - `InputAudioTests` ([InputAudioTests.cs](../tests/Oxce.UnitTests/Engine/InputAudioTests.cs))
 - `ManagedAudioMixerTests` ([ManagedAudioMixerTests.cs](../tests/Oxce.UnitTests/Engine/ManagedAudioMixerTests.cs))
 - `PresentationRevisionGateTests` ([PresentationRevisionGateTests.cs](../tests/Oxce.UnitTests/Engine/PresentationRevisionGateTests.cs))
