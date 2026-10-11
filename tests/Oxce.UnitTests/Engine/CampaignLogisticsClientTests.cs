@@ -144,11 +144,20 @@ public sealed class CampaignLogisticsClientTests
     [Fact]
     public void ExtensionWrappedSessionStillReachesTypedCampaignViews()
     {
+        var empty = Directory.CreateTempSubdirectory("oxce-no-extensions-");
+        try
+        {
+            RunWithEmptyExtensionDirectory(empty.FullName);
+        }
+        finally { empty.Delete(recursive: true); }
+    }
+
+    private static void RunWithEmptyExtensionDirectory(string extensionRoot)
+    {
         var content = CampaignLogisticsTests.LoadFixture();
         var campaign = TestFixtures.CreateLogisticsCampaign(content, "UI");
         using var host = ManagedExtensionHost.LoadFromDirectory(
-            Path.Combine(Path.GetTempPath(), "oxce-no-extensions-" + nameof(ExtensionWrappedSessionStillReachesTypedCampaignViews)),
-            new DiagnosticCollector(), cancellationToken: TestContext.Current.CancellationToken);
+            extensionRoot, new DiagnosticCollector(), cancellationToken: TestContext.Current.CancellationToken);
         using var session = host.AttachCampaign(campaign, campaign, TestContext.Current.CancellationToken);
 
         var wrapped = new CampaignUiSession(session, session);
