@@ -43,7 +43,7 @@ public sealed class StrategicWorldWingTests
         var wing = new DispatchCraftWing([new(owner, "SHIP", 1), new(owner, "INTERCEPTOR", 1)], leader, null, true);
         var before = campaign.Capture();
 
-        // A grounded craft is not a globe target (GeoscapeState::getTargets), so it cannot be picked.
+        // A grounded craft is not a globe target (Globe::getTargets), so it cannot be picked.
         var grounded = Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(wing).Events));
         Assert.StartsWith("target.", grounded.Code, StringComparison.Ordinal);
         Assert.Equivalent(before, campaign.Capture(), strict: true);
@@ -78,11 +78,51 @@ public sealed class StrategicWorldWingTests
             [new(owner, "SHIP", 1), new(owner, "SHIP", 1)], null, new(0.3, 0.1), true)).Events)).Code);
         Assert.Equal("wing.size", Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(new DispatchCraftWing(
             [], null, new(0.3, 0.1), true)).Events)).Code);
+        Assert.Equal("wing.size", Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(new DispatchCraftWing(
+            [.. Enumerable.Range(1, 5).Select(id => new CraftKey(owner, "SHIP", id))], null, new(0.3, 0.1), true)).Events)).Code);
         Assert.Equal("craft.not-ready", Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(
             new DispatchCraftToWaypoint(owner, "INTERCEPTOR", 1, 0.3, 0.1)).Events)).Code);
         Assert.Equivalent(before, campaign.Capture(), strict: true);
         Assert.Throws<ArgumentException>(() => campaign.Execute(new DispatchCraftWing(
             [new(owner, "SHIP", 1)], new(WorldTargetKind.Base, WorldTargetReference.BaseType, owner, 0, 0), new(0.3, 0.1), true)));
+    }
+
+    [Theory]
+    [InlineData("pilots")]
+    [InlineData("ids")]
+    public void ALateRefusalOfAFollowerLeavesTheWholeWingUntouched(string gate)
+    {
+        var content = gate == "pilots"
+            ? StrategicReadinessTestContent.Load(["strategic-world.rul"], "crafts: [{type: INTERCEPTOR, pilots: 2}]\n", extraRulesAfterOverlays: true)
+            : StrategicReadinessTestContent.Load("strategic-world.rul");
+        if (gate == "pilots")
+            // One soldier is on board the interceptor; two pilots are required.
+            Assert.Equal(2, content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("INTERCEPTOR")].Value.Pilots);
+        var (campaign, owner) = Ready(content, nextWaypointId: gate == "ids" ? int.MaxValue : null);
+        var before = campaign.Capture();
+
+        var blocked = Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(new DispatchCraftWing(
+            [new(owner, "SHIP", 1), new(owner, "INTERCEPTOR", 1)], null, new(0.3, 0.1), true)).Events));
+
+        Assert.Equal(gate == "pilots" ? ("craft.no-pilots", "STR_NOT_ENOUGH_PILOTS") : ("waypoint.ids", null),
+            (blocked.Code, blocked.TextKey));
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+    }
+
+    [Fact]
+    public void DispatchCancelsAutoPatrolOnlyForCraftThatCanUseIt()
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], "crafts: [{type: SHIP, autoPatrol: true}]\n",
+            extraRulesAfterOverlays: true);
+        Assert.True(content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("SHIP")].Value.AutoPatrol);
+        Assert.False(content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("INTERCEPTOR")].Value.AutoPatrol);
+        var (campaign, owner) = Ready(content, autoPatrolling: true);
+
+        campaign.Execute(new DispatchCraftWing([new(owner, "SHIP", 1), new(owner, "INTERCEPTOR", 1)], null, new(0.3, 0.1), false));
+
+        var crafts = campaign.Capture().Bases[0].Crafts;
+        Assert.False(crafts.Single(craft => craft.RuleId == "SHIP").Logistics!.IsAutoPatrolling);
+        Assert.True(crafts.Single(craft => craft.RuleId == "INTERCEPTOR").Logistics!.IsAutoPatrolling);
     }
 
     [Fact]
@@ -106,17 +146,25 @@ public sealed class StrategicWorldWingTests
     }
 
     private static (CampaignState Campaign, int Owner) Ready(Oxce.Mods.Rulesets.Content.RuntimeContent content,
-        string interceptorStatus = "STR_READY")
+        string interceptorStatus = "STR_READY", int? nextWaypointId = null, bool autoPatrolling = false)
     {
         var snapshot = CreateSnapshot(content, "Wing")
             .WithCraft("SHIP", craft => craft with
             {
-                Logistics = craft.Logistics! with { Status = "STR_READY", Fuel = 100, Weapons = [], Items = new Dictionary<string, int>() },
+                Logistics = craft.Logistics! with
+                {
+                    Status = "STR_READY",
+                    Fuel = 100,
+                    Weapons = [],
+                    Items = new Dictionary<string, int>(),
+                    IsAutoPatrolling = autoPatrolling,
+                },
             })
             .WithCraft("INTERCEPTOR", craft => craft with
             {
-                Logistics = craft.Logistics! with { Status = interceptorStatus, Fuel = 10 },
+                Logistics = craft.Logistics! with { Status = interceptorStatus, Fuel = 10, IsAutoPatrolling = autoPatrolling },
             });
+        if (nextWaypointId is { } id) snapshot = snapshot.WithNextId(WorldTargetReference.WaypointType, id);
         return (CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(31)), snapshot.Bases[0].Id);
     }
 }
