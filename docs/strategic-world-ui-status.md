@@ -60,3 +60,20 @@ identity (UFOs by unique id). Intentional differences: only detected sites are s
 not selectable during the instant before its removal; both are recorded in the S11 ADR.
 Longitude normalisation keeps the reference loops for ordinary values and reduces a huge
 (untrusted saved) centre first so it cannot hang. Tests: `GlobeViewTests`.
+
+## S4a — Globe surface rendering (2026-10-11)
+
+`GlobeRenderer` draws in `Globe::draw` order: the ocean disc (`radius + 20`, offset one
+reference pixel), land polygons culled and projected as `Globe::cache` does (re-projected only
+when the view moves) and filled with `IndexedSurface.FillTexturedPolygon`, a port of SDL_gfx
+`texturedPolygonMT` (16.16 scanline spans, screen-space texture tiling, colour 0 copied), the
+texture detail level `polygon texture + Globe::_zoomTexture`, then `CreateShadow` over every
+pixel and the markers. `GlobeShading` ports `GlobeStaticData`'s terminator gradient and noise
+decomposition, `getShadowValue`, ocean and land shading (`isOcean` honours `oceanShading`) and
+`getSunDirection` with `GameTime::getDaylight` and the optional seasons. The noise table uses a
+fixed local seed (the reference seeds it from the clock), so only its distribution matters.
+Markers follow `Target::getMarker` and `Globe::drawMarkers` order (bases except one at (0, 0),
+waypoints, sites with default frame 5, alien bases only with a marker icon, UFOs by status with
+defaults 2/3/4, airborne craft with default 1), are centred, scaled to the frame, and shift one
+colour while the 100 ms blink is off (cities excepted). Repeat frames allocate nothing.
+Tests: `GlobeRendererTests`, `GlobeSceneTests`.
