@@ -185,6 +185,62 @@ public sealed class IndexedSurface
         }
     }
 
+    /// <summary>
+    /// SDL_gfx texturedPolygonMT, as Surface::drawTexturedPolygon uses it: scanlines from the
+    /// polygon's top to bottom take 16.16 fixed-point edge intersections, and each span copies the
+    /// texture tiled in screen space at <c>((x - dx) mod w, (y + dy) mod h)</c>, including colour 0.
+    /// </summary>
+    /// <param name="scratch">At least one element per point.</param>
+    public void FillTexturedPolygon(ReadOnlySpan<IndexedPoint> points, IndexedSurface texture, int textureDx,
+        int textureDy, Span<int> scratch)
+    {
+        ArgumentNullException.ThrowIfNull(texture);
+        if (points.Length < 3) return;
+        if (scratch.Length < points.Length)
+            throw new ArgumentException("Polygon intersection scratch must match the point count.", nameof(scratch));
+        var minimumY = points[0].Y;
+        var maximumY = points[0].Y;
+        for (var index = 1; index < points.Length; index++)
+        {
+            minimumY = Math.Min(minimumY, points[index].Y);
+            maximumY = Math.Max(maximumY, points[index].Y);
+        }
+        for (var y = Math.Max(minimumY, 0); y <= Math.Min(maximumY, Height - 1); y++)
+        {
+            var count = 0;
+            for (var index = 0; index < points.Length; index++)
+            {
+                var previous = points[index == 0 ? points.Length - 1 : index - 1];
+                var current = points[index];
+                int y1, y2, x1, x2;
+                if (previous.Y < current.Y) (y1, y2, x1, x2) = (previous.Y, current.Y, previous.X, current.X);
+                else if (previous.Y > current.Y) (y1, y2, x1, x2) = (current.Y, previous.Y, current.X, previous.X);
+                else continue;
+                if ((y >= y1 && y < y2) || (y == maximumY && y > y1 && y <= y2))
+                    scratch[count++] = unchecked(65536 * (y - y1) / (y2 - y1) * (x2 - x1) + 65536 * x1);
+            }
+            scratch[..count].Sort();
+            var row = GetRow(y);
+            var textureRow = texture.GetRow(Modulo(y + textureDy, texture.Height));
+            for (var index = 0; index + 1 < count; index += 2)
+            {
+                var left = scratch[index] + 1;
+                left = (left >> 16) + ((left & 32768) >> 15);
+                var right = scratch[index + 1] - 1;
+                right = (right >> 16) + ((right & 32768) >> 15);
+                left = Math.Max(left, 0);
+                right = Math.Min(right, Width - 1);
+                for (var x = left; x <= right; x++) row[x] = textureRow[Modulo(x - textureDx, texture.Width)];
+            }
+        }
+
+        static int Modulo(int value, int divisor)
+        {
+            var result = value % divisor;
+            return result < 0 ? result + divisor : result;
+        }
+    }
+
     public void Blit(IndexedSurface source, int destinationX, int destinationY, bool transparent = true)
     {
         ArgumentNullException.ThrowIfNull(source);
