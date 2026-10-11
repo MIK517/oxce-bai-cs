@@ -1,8 +1,8 @@
 # Phase 6 world integration delivery plan
 
 Approved 2026-09-26. Branch 4c: `codex/strategic-world-integration`, based on
-`e10d96f` (merged branch 4b). Branch 4d: `codex/strategic-world-ui`, from main after
-4c merges. Branch 5 follows 4d. Reference: `4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`.
+`e10d96f` (merged branch 4b). Branch 4d: `claude/strategic-world-ui`, from main after
+4c merges (`e22b6853`). Branch 5 follows 4d. Reference: `4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`.
 
 ## Branch 4c: tested headless slices
 
@@ -46,6 +46,44 @@ through headless APIs. Pause editing/confirmation screens and preserve tick fall
 Use explicit reference speeds, F5 save and confirmed F9 load; repair stale selection.
 Verify structural rendering, input, SDL smoke and UFO/TFTD/modded scenarios. Full polish
 remains Phase 8. Combined world acceptance closes here, with the named later-phase guards.
+
+### Branch 4d slices (approved 2026-10-11)
+
+Starting audit of `e22b6853` found: the SDL app reaches the campaign through
+`CampaignExtensionSession`, which exposes only `ICampaignQuery`, so the readiness,
+research/production and world views are unreachable outside tests; no UI path calls
+`EnterCampaignWorld`; headless refusal reasons are English literals; wings and airborne
+craft transfer have no headless command; one-day speed (17,280 ticks per 80 ms
+`geoClockSpeed` frame) costs 0.3–1.1 s at measured tick costs; globe polylines, cities,
+craft markers, geoscape interface colours, palettes, `TEXTURE.DAT` and `GlobeMarkers`
+are not projected; `SavedGame` globe view fields are unowned; and every timed
+notification pauses, whereas the reference pauses for popups and resets speed per popup.
+
+Decisions: refusals become typed reason codes mapped to reference `STR_` keys where one
+exists (port-only guards keep English text); wings are an atomic headless command;
+airborne craft transfer is a named restriction; the client is one 640×400 frame with the
+reference geoscape layout at 2×; time advance is chunked under a per-frame budget with
+the selected speed, pause and speed-reset behaviour preserved.
+
+Slices, each followed by an independent audit before the next:
+
+- S0 record this plan.
+- S1 typed UI session (queries from the campaign, commands through the extension
+  session, reattached on load) and world entry after first base placement or load.
+- S2 geoscape content projection and resource resolution (compiler/cache revision).
+- S3 globe geometry: `polarToCart`/`cartToPolar`, back-side test, zoom radii,
+  rotation/centring, target hit testing and keyboard target order.
+- S4 indexed globe renderer: ocean, textured land, shadow, radars, flight paths,
+  markers and detail, without per-frame allocation.
+- S5 geoscape shell: screen stack, modal pause, six reference speeds, chunked advance,
+  popup queue and speed-reset table, top-screen F5/F9, base screens.
+- S6 target information, craft information, interception list, destination selection and
+  confirmation, patrol/recall, wings and reason codes.
+- S7 detection, loss, fuel, patrol, site/base and boundary notifications.
+- S8 globe base placement; retire `CampaignOverviewClient`.
+- S9 globe view persistence, F5/F9 with live world state, stale-selection repair.
+- S10 scripted UI scenarios over public fixtures and private UFO/TFTD/modded saves; SDL smoke.
+- S11 performance, ADR, matrices, code map and combined branch 4 acceptance.
 
 ## Validation
 

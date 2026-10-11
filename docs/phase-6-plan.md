@@ -7,7 +7,7 @@ Status (scope revised 2026-09-26): branches 1–3 have bounded acceptance docume
 [research and production status](strategic-research-production-status.md).
 Branch 4a supplies the bounded world foundation; branch 4b satisfies its revised
 ordinary-lifecycle closure gate and merged in `e10d96f` (PR #72).
-Branch 4c is in progress; branch 4d and branches 5–6 remain planned.
+Branch 4c merged in `e22b6853` (PR #73); branch 4d is in progress and branches 5–6 remain planned.
 This is not a Phase 6 completion claim.
 
 ## Goal and scope
@@ -56,7 +56,7 @@ Every branch carries its own integration and closure work.
 | 4a | `codex/strategic-world-simulation` | Link world rules, preserve the target graph and alien strategy, pin world arithmetic, and keep live-world time guarded | 7 existing commits plus closure |
 | 4b | `codex/strategic-world-operations` | Complete the supported ordinary UFO lifecycle alongside headless craft operations and bounded spawning | Scope by vertical slices |
 | 4c | `codex/strategic-world-integration` | Complete headless mission/arc/event scheduling, broader world lifecycles, pursuit and scripts | Scope by vertical slices |
-| 4d | `codex/strategic-world-ui` (planned) | Globe controls and combined branch 4 acceptance | Scope by vertical slices |
+| 4d | `claude/strategic-world-ui` | Globe controls and combined branch 4 acceptance | Scope by vertical slices |
 | 5 | `codex/strategic-interception-deployment` | Resolve interceptions and commit/reload a validated deployment handoff | 6 |
 | 6 | `codex/strategic-campaign-cycle` | Complete monthly evaluation, campaign events/endings, and integrated strategic closure | 6 |
 
@@ -376,7 +376,7 @@ partial tick mutation. World-owned research and counters are implemented at thei
 
 ### Branch 4d — Globe integration and combined acceptance
 
-`codex/strategic-world-ui` starts from merged main after 4c. It adds navigable indexed
+`claude/strategic-world-ui` starts from merged main after 4c (`e22b6853`, PR #73). It adds navigable indexed
 globe, target information, dispatch/patrol/recall controls, notifications, explicit
 pause/speed and save/load flows using the headless commands. It closes UI and combined
 world scenarios. The original branch 4 acceptance below gates 4d closure and branch 5,

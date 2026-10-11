@@ -5,7 +5,7 @@ branches: `codex/strategic-base-logistics`, `codex/strategic-base-readiness`,
 `codex/strategic-research-production`, the branch 4a world foundation, and
 `codex/strategic-world-operations` (4b, merged in `e10d96f`).
 `codex/strategic-world-integration` (4c) owns remaining headless world simulation;
-`codex/strategic-world-ui` (4d) owns UI and combined closure
+`claude/strategic-world-ui` (4d) owns UI and combined closure
 under the 2026-09-26 scope revision. This is
 an implementation/evidence ledger; bounded acceptance is recorded in their status files.
 Checkpoint narratives are recorded once, in the subsystem status documents or the
