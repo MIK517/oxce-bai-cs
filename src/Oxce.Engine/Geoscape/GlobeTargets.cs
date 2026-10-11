@@ -12,8 +12,8 @@ public sealed record GlobeTarget(WorldTargetReference Reference, string Label, d
 }
 
 /// <summary>
-/// The selectable globe targets in Globe::getTargets order: each placed base followed by its
-/// airborne craft, then detected UFOs, waypoints, mission sites and discovered alien bases.
+/// The selectable globe targets in Globe::getTargets order: each placed base (except one at
+/// exactly (0, 0)) followed by its airborne craft, then detected UFOs, waypoints, mission sites and discovered alien bases.
 /// Visibility follows the world query, which exposes only detected sites; the reference also
 /// lets an undetected site be clicked, which would reveal hidden activity.
 /// </summary>
@@ -33,6 +33,8 @@ public sealed class GlobeTargets
         var targets = new List<GlobeTarget>();
         foreach (var owner in world.Bases)
         {
+            // Globe::getTargets skips a base at exactly (0, 0) together with its craft.
+            if (owner.Longitude == 0.0 && owner.Latitude == 0.0) continue;
             targets.Add(new GlobeTarget(new WorldTargetReference(WorldTargetKind.Base, WorldTargetReference.BaseType,
                 owner.Id, owner.Longitude, owner.Latitude), owner.Name, owner.Longitude, owner.Latitude)
             {

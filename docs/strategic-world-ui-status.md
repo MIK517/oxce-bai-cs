@@ -53,8 +53,10 @@ reference yields NaN and ignores the click), `pointBack`, the six `setupRadii` z
 (0.45–3.60 × height), `setZoom`'s texture detail offset, `rotate`'s speed scaling by
 `geoScrollSpeed` and zoom, and `targetNear` (`NEAR_RADIUS` 25 reference pixels, scaled to
 the 2× frame). `GlobeTargets` orders selectable markers as `Globe::getTargets` does: each
-placed base followed by its airborne craft (a craft at its base with no destination is
-skipped), then UFOs, waypoints, sites and alien bases; it re-finds a selection by stable
+placed base followed by its airborne craft (a base at exactly (0, 0) is skipped with its
+craft, and so is a craft at its base with no destination), then UFOs, waypoints, sites and alien bases; it re-finds a selection by stable
 identity (UFOs by unique id). Intentional differences: only detected sites are selectable
 (the reference also lets an undetected site be clicked, revealing it), and a destroyed UFO is
-not selectable during the instant before its removal. Tests: `GlobeViewTests`.
+not selectable during the instant before its removal; both are recorded in the S11 ADR.
+Longitude normalisation keeps the reference loops for ordinary values and reduces a huge
+(untrusted saved) centre first so it cannot hang. Tests: `GlobeViewTests`.
