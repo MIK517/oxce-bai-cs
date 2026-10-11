@@ -280,3 +280,28 @@ five-second speed. A failed load keeps the running campaign; `--load` reports a 
 unreadable save instead of failing with a trace. Selections that lose their
 target after time runs are dropped on refresh (S3/S5).
 Tests: `StrategicWorldGlobeViewSaveTests`.
+
+## S10 — Scripted scenarios and SDL smoke (2026-10-12)
+
+- `StrategicWorldGeoscapeScenarioTests` plays a public campaign through the client's inputs: the
+  player clicks a detected landing, intercepts it with the ship and confirms; time runs at one
+  minute speed with every alert answered, while the driver checks that time never moves under a
+  popup or a choice. The crewless ship waits over the landing (no `ConfirmLandingState`), and when
+  the UFO lifts off the interception needs strategic combat (branch 5): the clock halts with the
+  reason in a popup and stays halted. The ship is recalled from its craft screen, time resumes
+  until it is home, and quick save and load continue the same campaign with the same view.
+- `PrivateGeoscapeScenarioTests` (owned installation; the user's Windows run) loads every early
+  UFO, TFTD and ROSIGMA save with the real globe resources, opens and closes the screen of every
+  target, runs a game day with the alerts answered, and checks quick save and load.
+- `Oxce.App --campaign-sdl-smoke <installation> <master> <add-on|->` runs an unattended geoscape
+  window (`ScriptedLoopClient` replays speed, interception, detail, zoom and target keys for eight
+  seconds) and prints the SDL driver, frame and campaign-time diagnostics. SDL3 is not available on
+  the Linux build VM, so it runs on Windows; a public synthetic installation with globe resources
+  does not exist, so the smoke needs an owned installation.
+- Found by the private drive: UFO, landing, crash, site, alien base and waypoint names showed their
+  raw language keys. Names now follow `Target::getName` (`GeoscapeScreens.TargetLabel`: a custom
+  name, or the marker key formatted with the marker id), the world query uses the reference marker
+  keys for alien bases (`markerName_`) and waypoints (`STR_WAY_POINT_`), and `UfoContactLost`
+  carries the marker id for a UFO already off the radar.
+Tests: `StrategicWorldGeoscapeScenarioTests`, `PrivateGeoscapeScenarioTests`, `ScriptedLoopClientTests`,
+`GeoscapeNotificationsTests`.

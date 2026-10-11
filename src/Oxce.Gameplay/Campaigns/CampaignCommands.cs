@@ -46,7 +46,11 @@ public sealed record CampaignReason(string Code, string Text)
 public sealed record UfoContactDetected(int UniqueId, bool Hyperwave) : ICampaignEvent;
 
 /// <summary>A detected UFO lost at arrival with followers; reported before the flight pass returns.</summary>
-public sealed record UfoContactLost(int UniqueId) : ICampaignEvent;
+public sealed record UfoContactLost(int UniqueId) : ICampaignEvent
+{
+    /// <summary>The UFO's marker id when it was lost, for UfoLostState's name (Ufo::getName).</summary>
+    public int MarkerId { get; init; }
+}
 
 /// <summary>A facility sight check discovered an alien base; patrol discovery is silent.</summary>
 public sealed record AlienBaseDiscovered(int Id, string DeploymentId) : ICampaignEvent;

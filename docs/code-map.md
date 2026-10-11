@@ -14,7 +14,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Benchmarks](#oxcebenchmarks) | 15 | Engine, Formats, Mods, Rendering, Resources, Savegames |
 | [Oxce.App](#oxceapp) | 3 | Engine, Extensions, Formats, Mods, Platform.Sdl, Rendering, Savegames |
 | [Oxce.Core](#oxcecore) | 8 | - |
-| [Oxce.Engine](#oxceengine) | 27 | Core, Gameplay, Rendering, Resources |
+| [Oxce.Engine](#oxceengine) | 28 | Core, Gameplay, Rendering, Resources |
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
@@ -25,9 +25,9 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 5 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 298 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 301 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
-| [Oxce.UnitTests](#oxceunittests) | 100 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
+| [Oxce.UnitTests](#oxceunittests) | 101 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
 | [Oxce.FixtureTool](#oxcefixturetool) | 1 | FixtureSupport, Formats, Mods, Savegames |
 | [Oxce.ResourceBrowser](#oxceresourcebrowser) | 2 | Formats, Mods, Platform.Sdl, Rendering, Resources |
@@ -102,7 +102,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Engine
 
-`src/Oxce.Engine` - 27 files.
+`src/Oxce.Engine` - 28 files.
 
 ### `Oxce.Engine`
 
@@ -112,6 +112,8 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `IGameHost` (interface) [IGameHost.cs](../src/Oxce.Engine/IGameHost.cs) - Owns the application loop without exposing a specific windowing backend.
 - `IIndexedLoopClient` (interface) [IIndexedLoopClient.cs](../src/Oxce.Engine/IIndexedLoopClient.cs) - Platform-neutral indexed-frame client driven by a window host.
 - `PresentationRevisionGate` (class) [PresentationRevisionGate.cs](../src/Oxce.Engine/PresentationRevisionGate.cs) - Tracks the last frame revision accepted by a presenter so unchanged simulation ticks do not repeat conversion and upload work.
+- `ScriptedInput` (record struct) [ScriptedLoopClient.cs](../src/Oxce.Engine/ScriptedLoopClient.cs) - An input to replay once the scripted run reaches its time.
+- `ScriptedLoopClient` (class) [ScriptedLoopClient.cs](../src/Oxce.Engine/ScriptedLoopClient.cs) - Drives another client with timed inputs and ends the run after a duration, for unattended smoke runs of a real window host.
 
 ### `Oxce.Engine.Audio`
 
@@ -164,6 +166,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `GlobeShading` (class) [GlobeShading.cs](../src/Oxce.Engine/Geoscape/GlobeShading.cs) - Day/night shading of the globe.
 - `GlobeTarget` (record) [GlobeTargets.cs](../src/Oxce.Engine/Geoscape/GlobeTargets.cs) - A selectable globe marker.
 - `GlobeTargets` (class) [GlobeTargets.cs](../src/Oxce.Engine/Geoscape/GlobeTargets.cs) - The selectable globe targets in Globe::getTargets order: each placed base (except one at exactly (0, 0)) followed by its airborne craft,...
+- `GlobeViewState` (record) [GlobeView.cs](../src/Oxce.Engine/Geoscape/GlobeView.cs) - The globe's centre (radians) and zoom level, as SavedGame stores them.
 - `GlobeView` (class) [GlobeView.cs](../src/Oxce.Engine/Geoscape/GlobeView.cs) - The globe's orthographic view: centre, zoom and the projection between globe and screen.
 
 ### `Oxce.Engine.Input`
@@ -973,6 +976,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `OxceSaveAdapter` (class) [OxceSaveAdapter.cs](../src/Oxce.Savegames/Oxce/OxceSaveAdapter.cs) - Reads and writes the strategic subset of the two-document OXCE save stream.
 - `OxceSaveLoadOptions` (record) [OxceSaveContracts.cs](../src/Oxce.Savegames/Oxce/OxceSaveContracts.cs)
 - `OxceSaveWriteOptions` (record) [OxceSaveContracts.cs](../src/Oxce.Savegames/Oxce/OxceSaveContracts.cs)
+- `OxceGlobeView` (record) [OxceSaveContracts.cs](../src/Oxce.Savegames/Oxce/OxceSaveContracts.cs) - SavedGame::_globeLon, _globeLat (radians) and _globeZoom: where the geoscape globe looks.
 - `OxceSaveDocument` (class) [OxceSaveContracts.cs](../src/Oxce.Savegames/Oxce/OxceSaveContracts.cs)
 - `LoadedOxceCampaign` (record) [OxceSaveContracts.cs](../src/Oxce.Savegames/Oxce/OxceSaveContracts.cs)
 - `OxceSaveAdapter` (class) [OxceWorldSave.cs](../src/Oxce.Savegames/Oxce/OxceWorldSave.cs) - The strategic world sections of the save: alien missions, UFOs, waypoints, mission sites, alien bases, scheduled events and the alien str...
@@ -1102,7 +1106,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 298 files.
+`tests/Oxce.CompatibilityTests` - 301 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1110,7 +1114,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>295 test classes</summary>
+<details><summary>298 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1145,6 +1149,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `PrivateCatSoundCorpusTests` ([PrivateCatSoundCorpusTests.cs](../tests/Oxce.CompatibilityTests/PrivateCatSoundCorpusTests.cs))
 - `PrivateFlcCorpusTests` ([PrivateFlcCorpusTests.cs](../tests/Oxce.CompatibilityTests/PrivateFlcCorpusTests.cs))
 - `PrivateGeoscapeAssetsTests` ([PrivateGeoscapeAssetsTests.cs](../tests/Oxce.CompatibilityTests/PrivateGeoscapeAssetsTests.cs))
+- `PrivateGeoscapeScenarioTests` ([PrivateGeoscapeScenarioTests.cs](../tests/Oxce.CompatibilityTests/PrivateGeoscapeScenarioTests.cs))
 - `PrivateGmCatCorpusTests` ([PrivateGmCatCorpusTests.cs](../tests/Oxce.CompatibilityTests/PrivateGmCatCorpusTests.cs))
 - `PrivateIndexedBmpCorpusTests` ([PrivateIndexedBmpCorpusTests.cs](../tests/Oxce.CompatibilityTests/PrivateIndexedBmpCorpusTests.cs))
 - `PrivateIndexedGifCorpusTests` ([PrivateIndexedGifCorpusTests.cs](../tests/Oxce.CompatibilityTests/PrivateIndexedGifCorpusTests.cs))
@@ -1276,8 +1281,10 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicWorldGeneratedTimerResearchTests` ([StrategicWorldGeneratedTimerResearchTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGeneratedTimerResearchTests.cs))
 - `StrategicWorldAlienBaseGenerationTests` ([StrategicWorldGeneratedVariantTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGeneratedVariantTests.cs))
 - `StrategicWorldAlienBaseGenerationTests` ([StrategicWorldGeneratedWaveTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGeneratedWaveTests.cs))
+- `StrategicWorldGeoscapeScenarioTests` ([StrategicWorldGeoscapeScenarioTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGeoscapeScenarioTests.cs))
 - `StrategicWorldGeoscapeScreensTests` ([StrategicWorldGeoscapeScreensTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGeoscapeScreensTests.cs))
 - `StrategicWorldGlobeQueryTests` ([StrategicWorldGlobeQueryTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGlobeQueryTests.cs))
+- `StrategicWorldGlobeViewSaveTests` ([StrategicWorldGlobeViewSaveTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGlobeViewSaveTests.cs))
 - `StrategicWorldGroundResearchTests` ([StrategicWorldGroundResearchTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGroundResearchTests.cs))
 - `StrategicWorldHuntingTests` ([StrategicWorldHuntingMaterialTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldHuntingMaterialTests.cs))
 - `StrategicWorldHuntingTests` ([StrategicWorldHuntingPopulationTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldHuntingPopulationTests.cs))
@@ -1421,9 +1428,9 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.UnitTests
 
-`tests/Oxce.UnitTests` - 100 files.
+`tests/Oxce.UnitTests` - 101 files.
 
-<details><summary>100 test classes</summary>
+<details><summary>101 test classes</summary>
 
 - `ProjectDependencyTests` ([ProjectDependencyTests.cs](../tests/Oxce.UnitTests/Architecture/ProjectDependencyTests.cs))
 - `DiagnosticTests` ([DiagnosticTests.cs](../tests/Oxce.UnitTests/Core/DiagnosticTests.cs))
@@ -1440,6 +1447,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `InputAudioTests` ([InputAudioTests.cs](../tests/Oxce.UnitTests/Engine/InputAudioTests.cs))
 - `ManagedAudioMixerTests` ([ManagedAudioMixerTests.cs](../tests/Oxce.UnitTests/Engine/ManagedAudioMixerTests.cs))
 - `PresentationRevisionGateTests` ([PresentationRevisionGateTests.cs](../tests/Oxce.UnitTests/Engine/PresentationRevisionGateTests.cs))
+- `ScriptedLoopClientTests` ([ScriptedLoopClientTests.cs](../tests/Oxce.UnitTests/Engine/ScriptedLoopClientTests.cs))
 - `ManagedExtensionHostTests` ([ManagedExtensionHostTests.cs](../tests/Oxce.UnitTests/Extensions/ManagedExtensionHostTests.cs))
 - `CanonicalJsonTests` ([CanonicalJsonTests.cs](../tests/Oxce.UnitTests/Fixtures/CanonicalJsonTests.cs))
 - `FixtureManifestTests` ([FixtureManifestTests.cs](../tests/Oxce.UnitTests/Fixtures/FixtureManifestTests.cs))
@@ -1610,6 +1618,7 @@ Prefer these over local copies (see AGENTS.md, *Test conventions*).
 - `TypedRuleReplayFixtureTests.ProbeBuilder` (private class) [TypedRuleReplayFixtureTests.cs](../tests/Oxce.CompatibilityTests/TypedRuleReplayFixtureTests.cs)
 - `TypedRuleReplayFixtureTests.ProbeRule` (private record) [TypedRuleReplayFixtureTests.cs](../tests/Oxce.CompatibilityTests/TypedRuleReplayFixtureTests.cs)
 - `VirtualFileCatalogFixtureTests.FixtureRow` (private record) [VirtualFileCatalogFixtureTests.cs](../tests/Oxce.CompatibilityTests/VirtualFileCatalogFixtureTests.cs)
+- `ScriptedLoopClientTests.Recorder` (private class) [ScriptedLoopClientTests.cs](../tests/Oxce.UnitTests/Engine/ScriptedLoopClientTests.cs)
 - `ContentSnapshotTests.TemporaryArchiveMod` (private class) [ContentSnapshotTests.cs](../tests/Oxce.UnitTests/Mods/ContentSnapshotTests.cs)
 - `InstallationContentLoaderTests.ProgressCollector` (private class) [InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs)
 - `InstallationContentLoaderTests.CancellingProgress` (private class) [InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs)

@@ -25,6 +25,12 @@ if (args is ["--campaign-sdl", var installationRoot, var masterId, var addOnId, 
     return;
 }
 
+if (args is ["--campaign-sdl-smoke", var smokeRoot, var smokeMaster, var smokeAddOn])
+{
+    Environment.ExitCode = CampaignSdlCommand.RunSmoke(smokeRoot, smokeMaster, smokeAddOn, validationMode);
+    return;
+}
+
 if (args.Length == 1 && string.Equals(args[0], "--sdl-audio-smoke", StringComparison.Ordinal))
 {
     const int sampleRate = 22_050;
@@ -104,5 +110,6 @@ Console.WriteLine("Use --sdl-smoke to run the indexed-window SDL3 event-loop smo
 Console.WriteLine("Use --sdl-audio-smoke to run the SDL3 managed-mixer playback smoke test.");
 Console.WriteLine("Use --campaign-sdl <installation> <master> <add-on|-> <save|-> [--load] to run the campaign view;");
 Console.WriteLine("--load starts from the save instead of a new campaign.");
+Console.WriteLine("Use --campaign-sdl-smoke <installation> <master> <add-on|-> for an unattended geoscape window run.");
 Console.WriteLine("Prefix --input-mode=compatibility to accept malformed mod input like the reference engine;");
 Console.WriteLine("the default --input-mode=strict rejects it.");

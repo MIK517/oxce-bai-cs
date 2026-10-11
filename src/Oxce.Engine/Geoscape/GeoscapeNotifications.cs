@@ -86,14 +86,17 @@ public static class GeoscapeNotifications
                     ]);
                 }
             case UfoContactLost lost:
-                return new(UfoName(Ufo(lost.UniqueId), lost.UniqueId), [tr("STR_TRACKING_LOST")], [Ok()]);
+                // UfoLostState names the UFO as it was when lost; it may already be off the radar.
+                return new(Ufo(lost.UniqueId) is { } known ? GeoscapeScreens.TargetLabel(known, tr)
+                    : lost.MarkerId > 0 ? Format(tr("STR_UFO_"), lost.MarkerId) : UfoName(null, lost.UniqueId),
+                    [tr("STR_TRACKING_LOST")], [Ok()]);
             case MissionSiteLost site:
                 return new(site.CustomName.Length != 0 ? site.CustomName : Format(tr(site.MarkerName), site.SiteId),
                     [tr("STR_TRACKING_LOST")], [Ok()]);
             case MissionSiteDetected site:
                 {
                     var target = Find(WorldTargetKind.MissionSite, site.SiteId);
-                    return new(target?.Label ?? Format(tr(site.MarkerName), site.SiteId), [],
+                    return new(target is null ? Format(tr(site.MarkerName), site.SiteId) : GeoscapeScreens.TargetLabel(target, tr), [],
                     [
                         new(tr("STR_INTERCEPT"), true, Position(target)) { Intent = new InterceptIntent(target?.Reference) },
                         new(tr("STR_CENTER_ON_SITE_TIME_5_SECONDS"), true, Position(target)), Cancel(),
@@ -185,8 +188,8 @@ public static class GeoscapeNotifications
         static WorldPosition? Position(CampaignWorldTarget? target) =>
             target is null ? null : new WorldPosition(target.Longitude, target.Latitude);
 
-        static string UfoName(CampaignWorldTarget? ufo, int uniqueId) =>
-            ufo?.Label ?? "UFO-" + uniqueId.ToString(CultureInfo.InvariantCulture);
+        string UfoName(CampaignWorldTarget? ufo, int uniqueId) =>
+            ufo is null ? "UFO-" + uniqueId.ToString(CultureInfo.InvariantCulture) : GeoscapeScreens.TargetLabel(ufo, tr);
 
         string CraftName(int? baseId, string typeId, int craftId) =>
             world.Crafts.FirstOrDefault(craft => (baseId is null || craft.BaseId == baseId) && craft.TypeId == typeId &&

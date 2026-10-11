@@ -61,7 +61,7 @@ public sealed class GlobeTargets
             foreach (var target in world.Targets)
             {
                 if (target.Kind != kind || !target.Detected) continue;
-                targets.Add(new GlobeTarget(target.Reference, target.Label, target.Longitude, target.Latitude)
+                targets.Add(new GlobeTarget(target.Reference, GeoscapeScreens.TargetLabel(target, localize), target.Longitude, target.Latitude)
                 {
                     Target = target,
                 });
