@@ -14,20 +14,20 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Benchmarks](#oxcebenchmarks) | 15 | Engine, Formats, Mods, Rendering, Resources, Savegames |
 | [Oxce.App](#oxceapp) | 3 | Engine, Extensions, Formats, Mods, Platform.Sdl, Rendering, Savegames |
 | [Oxce.Core](#oxcecore) | 8 | - |
-| [Oxce.Engine](#oxceengine) | 25 | Core, Gameplay, Rendering, Resources |
+| [Oxce.Engine](#oxceengine) | 27 | Core, Gameplay, Rendering, Resources |
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 166 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 168 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 93 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 5 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 295 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 298 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
-| [Oxce.UnitTests](#oxceunittests) | 99 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
+| [Oxce.UnitTests](#oxceunittests) | 100 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
 | [Oxce.FixtureTool](#oxcefixturetool) | 1 | FixtureSupport, Formats, Mods, Savegames |
 | [Oxce.ResourceBrowser](#oxceresourcebrowser) | 2 | Formats, Mods, Platform.Sdl, Rendering, Resources |
@@ -102,14 +102,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Engine
 
-`src/Oxce.Engine` - 25 files.
+`src/Oxce.Engine` - 27 files.
 
 ### `Oxce.Engine`
 
 - `CampaignUiSession` (record) [CampaignLogisticsClient.cs](../src/Oxce.Engine/CampaignLogisticsClient.cs) - The queries and command target a campaign client operates.
 - `CampaignLogisticsClient` (class) [CampaignLogisticsClient.cs](../src/Oxce.Engine/CampaignLogisticsClient.cs) - Keyboard-operated indexed logistics UI; persistence is supplied by App.
 - `CampaignLogisticsScreen` (class) [CampaignLogisticsScreen.cs](../src/Oxce.Engine/CampaignLogisticsScreen.cs) - Paused logistics interaction.
-- `CampaignOverviewClient` (class) [CampaignOverviewClient.cs](../src/Oxce.Engine/CampaignOverviewClient.cs) - Minimal indexed campaign view used to operate the headless foundation without making SDL or persistence part of gameplay.
 - `IGameHost` (interface) [IGameHost.cs](../src/Oxce.Engine/IGameHost.cs) - Owns the application loop without exposing a specific windowing backend.
 - `IIndexedLoopClient` (interface) [IIndexedLoopClient.cs](../src/Oxce.Engine/IIndexedLoopClient.cs) - Platform-neutral indexed-frame client driven by a window host.
 - `PresentationRevisionGate` (class) [PresentationRevisionGate.cs](../src/Oxce.Engine/PresentationRevisionGate.cs) - Tracks the last frame revision accepted by a presenter so unchanged simulation ticks do not repeat conversion and upload work.
@@ -133,16 +132,31 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 ### `Oxce.Engine.Geoscape`
 
 - `GeoscapeAssets` (class) [GeoscapeAssets.cs](../src/Oxce.Engine/Geoscape/GeoscapeAssets.cs) - Indexed resources the globe draws with.
+- `GeoscapeClient` (class) [GeoscapeClient.Bases.cs](../src/Oxce.Engine/Geoscape/GeoscapeClient.Bases.cs) - Base placement on the globe: BuildNewBaseState (radar preview under the pointer), ConfirmNewBaseState (cost and area), BaseNameState and...
+- `GeoscapeClient` (class) [GeoscapeClient.Screens.cs](../src/Oxce.Engine/Geoscape/GeoscapeClient.Screens.cs) - The craft and target screens: GeoscapeCraftState, InterceptState, SelectDestinationState, MultipleTargetsState, ConfirmDestinationState a...
 - `GeoscapeClientSetup` (record) [GeoscapeClient.cs](../src/Oxce.Engine/Geoscape/GeoscapeClient.cs) - What a geoscape client needs; persistence and the clock are supplied by the host.
 - `GeoscapeClient` (class) [GeoscapeClient.cs](../src/Oxce.Engine/Geoscape/GeoscapeClient.cs) - The geoscape: the globe on the left of a 640x400 frame (the reference 320x200 layout at 2x) and the clock and speed controls on the right.
 - `GeoscapePopupAction` (record) [GeoscapeNotifications.cs](../src/Oxce.Engine/Geoscape/GeoscapeNotifications.cs) - A button on a geoscape popup.
+- `GeoscapeIntent` (record) [GeoscapeNotifications.cs](../src/Oxce.Engine/Geoscape/GeoscapeNotifications.cs) - A geoscape screen a popup button leads to.
+- `InterceptIntent` (record) [GeoscapeNotifications.cs](../src/Oxce.Engine/Geoscape/GeoscapeNotifications.cs) - InterceptState: the craft list, optionally aimed at a target.
+- `CraftIntent` (record) [GeoscapeNotifications.cs](../src/Oxce.Engine/Geoscape/GeoscapeNotifications.cs) - GeoscapeCraftState for an airborne craft.
+- `SelectDestinationIntent` (record) [GeoscapeNotifications.cs](../src/Oxce.Engine/Geoscape/GeoscapeNotifications.cs) - SelectDestinationState for a wing whose first craft leads.
+- `BaseIntent` (record) [GeoscapeNotifications.cs](../src/Oxce.Engine/Geoscape/GeoscapeNotifications.cs) - BasescapeState (or ManufactureState) for one base.
+- `TargetInfoIntent` (record) [GeoscapeNotifications.cs](../src/Oxce.Engine/Geoscape/GeoscapeNotifications.cs) - TargetInfoState for a UFO, mission site or alien base.
 - `GeoscapePopup` (record) [GeoscapeNotifications.cs](../src/Oxce.Engine/Geoscape/GeoscapeNotifications.cs) - A queued geoscape message window and its buttons.
 - `GeoscapeNotifications` (class) [GeoscapeNotifications.cs](../src/Oxce.Engine/Geoscape/GeoscapeNotifications.cs) - Maps campaign notifications to the reference geoscape popups and their speed resets (GeoscapeState::popup callers and each state's timerR...
+- `InterceptRowIntent` (record) [GeoscapeScreens.cs](../src/Oxce.Engine/Geoscape/GeoscapeScreens.cs) - InterceptState row: a click launches the wing led by this craft; Shift+click adds or removes it.
+- `InterceptPageIntent` (record) [GeoscapeScreens.cs](../src/Oxce.Engine/Geoscape/GeoscapeScreens.cs) - InterceptState scrolling: shows another page of the craft list.
+- `FollowLeaderIntent` (record) [GeoscapeScreens.cs](../src/Oxce.Engine/Geoscape/GeoscapeScreens.cs) - ConfirmDestinationState's follow-wing-leader toggle.
+- `GeoscapeLostUfo` (record) [GeoscapeScreens.cs](../src/Oxce.Engine/Geoscape/GeoscapeScreens.cs) - GeoscapeCraftState's lost-target variant: the UFO's last known position and marker id.
+- `GeoscapeDestination` (record) [GeoscapeScreens.cs](../src/Oxce.Engine/Geoscape/GeoscapeScreens.cs) - Where a wing is sent: a globe target or a new waypoint.
+- `GeoscapeScreens` (class) [GeoscapeScreens.cs](../src/Oxce.Engine/Geoscape/GeoscapeScreens.cs) - The geoscape's craft and target screens as popups: GeoscapeCraftState, InterceptState, ConfirmDestinationState and TargetInfoState.
 - `GeoscapeTimeStep` (record struct) [GeoscapeTimeController.cs](../src/Oxce.Engine/Geoscape/GeoscapeTimeController.cs) - The outcome of one host tick of the geoscape clock.
 - `GeoscapeTimeController` (class) [GeoscapeTimeController.cs](../src/Oxce.Engine/Geoscape/GeoscapeTimeController.cs) - GeoscapeState::timeAdvance driven by the host clock.
 - `GlobeRenderer` (class) [GlobeRenderer.cs](../src/Oxce.Engine/Geoscape/GlobeRenderer.cs) - Draws the globe into an indexed surface as Globe::draw and Globe::blit compose it: ocean and textured land; radar circles and flight path...
 - `GlobeMarker` (record struct) [GlobeScene.cs](../src/Oxce.Engine/Geoscape/GlobeScene.cs) - A marker frame at a globe position.
 - `GlobeCircle` (record struct) [GlobeScene.cs](../src/Oxce.Engine/Geoscape/GlobeScene.cs) - A radar circle: centre, range in radians, segment count and the drawn-segment stride.
+- `GlobeBaseHover` (record) [GlobeScene.cs](../src/Oxce.Engine/Geoscape/GlobeScene.cs) - BuildNewBaseState's radar preview (Globe::setNewBaseHover): every facility radar range around the pointer and, with globeAllRadarsOnBaseB...
 - `GlobePath` (record struct) [GlobeScene.cs](../src/Oxce.Engine/Geoscape/GlobeScene.cs) - A great-circle flight path from a mover to its destination.
 - `GlobeLabel` (record) [GlobeScene.cs](../src/Oxce.Engine/Geoscape/GlobeScene.cs) - A detail label centred in a reference text box of `BoxWidth` pixels at the projected point, shown from `MinimumZoom`; cities also draw th...
 - `GlobeRenderOptions` (record) [GlobeScene.cs](../src/Oxce.Engine/Geoscape/GlobeScene.cs) - Display options the reference keeps in Options (globeSeasons, globeDetail, ...).
@@ -314,7 +328,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 166 files.
+`src/Oxce.Gameplay` - 168 files.
 
 ### `Oxce.Gameplay`
 
@@ -334,7 +348,8 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `AdvanceCampaignTime` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
 - `PlaceStartingBase` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
 - `ICampaignEvent` (interface) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
-- `CampaignActionBlocked` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
+- `CampaignActionBlocked` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs) - A refused command or tick.
+- `CampaignReason` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs) - Why an action is unavailable: a stable code, English text and, where one exists, the reference text key.
 - `UfoContactDetected` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs) - A newly detected UFO contact; the reference pauses for its alert.
 - `UfoContactLost` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs) - A detected UFO lost at arrival with followers; reported before the flight pass returns.
 - `AlienBaseDiscovered` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs) - A facility sight check discovered an alien base; patrol discovery is silent.
@@ -503,13 +518,18 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CraftTargetLost` (record) [CampaignWorldCrafts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldCrafts.cs) - The craft stopped pursuit; the last position can be confirmed as a new waypoint.
 - `UfoStartedHunting` (record) [CampaignWorldHunting.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldHunting.cs)
 - `CampaignWorldTarget` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs) - A globe target as the player sees it.
+- `CampaignWorldCraftWeapon` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs) - A craft weapon slot for the craft screen: weapon rule and rounds.
 - `CampaignWorldBase` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs)
 - `CampaignWorldCraft` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs)
+- `CampaignWorldUfoDetails` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs) - UfoDetectedState: size, heading (STR_NONE_UC unless flying) and speed, then the hyper-wave decoded craft type, race, mission rule and mis...
 - `CampaignWorldOverview` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs) - The alien activity the player can act on plus the scheduled work behind it.
 - `ICampaignWorldQuery` (interface) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs)
 - `EnterCampaignWorld` (record) [CampaignWorldScheduling.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldScheduling.cs) - Enters the strategic world after first-base placement, like GeoscapeState::init.
+- `CraftKey` (record) [CampaignWorldWings.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldWings.cs) - A craft by owner base, rule type and identity.
+- `DispatchCraftWing` (record) [CampaignWorldWings.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldWings.cs) - Launch a wing of one to four craft at a target or a new waypoint, as InterceptState and ConfirmDestinationState::btnOkClick do.
 - `WorldAlienBaseSight` (class) [WorldAlienBaseSight.cs](../src/Oxce.Gameplay/Campaigns/World/WorldAlienBaseSight.cs) - GeoscapeState::time1Day/time10Minutes alien-base sight checks at 4df3a5e.
 - `WorldAltitudes` (class) [WorldAltitudes.cs](../src/Oxce.Gameplay/Campaigns/World/WorldAltitudes.cs) - UFO altitude and heading vocabulary.
+- `WorldCommandReasons` (class) [WorldCommandReasons.cs](../src/Oxce.Gameplay/Campaigns/World/WorldCommandReasons.cs) - Codes for the refusals of world craft commands and of the guarded target actions.
 - `WorldTargetKind` (enum) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - The kinds of globe target a moving target can be sent to.
 - `WorldTargetReference` (record) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - A saved reference to a globe target: the external type name plus the identity used by `Target::saveId`.
 - `UfoStatus` (enum) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - Reference: `Ufo::UfoStatus`.
@@ -1082,7 +1102,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 295 files.
+`tests/Oxce.CompatibilityTests` - 298 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1090,7 +1110,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>292 test classes</summary>
+<details><summary>295 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1196,6 +1216,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicWorldArrivalLossTests` ([StrategicWorldArrivalLossTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldArrivalLossTests.cs))
 - `StrategicWorldArrivalResearchEnduranceTests` ([StrategicWorldArrivalResearchEnduranceTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldArrivalResearchEnduranceTests.cs))
 - `StrategicWorldBaseDetectionTests` ([StrategicWorldBaseDetectionTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldBaseDetectionTests.cs))
+- `StrategicWorldBasePlacementTests` ([StrategicWorldBasePlacementTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldBasePlacementTests.cs))
 - `StrategicWorldCleanupTests` ([StrategicWorldCleanupTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldCleanupTests.cs))
 - `StrategicWorldCompositionTests` ([StrategicWorldCompositionTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldCompositionTests.cs))
 - `StrategicWorldConditionalLeaderArrivalTests` ([StrategicWorldConditionalLeaderArrivalTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldConditionalLeaderArrivalTests.cs))
@@ -1255,6 +1276,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicWorldGeneratedTimerResearchTests` ([StrategicWorldGeneratedTimerResearchTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGeneratedTimerResearchTests.cs))
 - `StrategicWorldAlienBaseGenerationTests` ([StrategicWorldGeneratedVariantTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGeneratedVariantTests.cs))
 - `StrategicWorldAlienBaseGenerationTests` ([StrategicWorldGeneratedWaveTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGeneratedWaveTests.cs))
+- `StrategicWorldGeoscapeScreensTests` ([StrategicWorldGeoscapeScreensTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGeoscapeScreensTests.cs))
 - `StrategicWorldGlobeQueryTests` ([StrategicWorldGlobeQueryTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGlobeQueryTests.cs))
 - `StrategicWorldGroundResearchTests` ([StrategicWorldGroundResearchTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGroundResearchTests.cs))
 - `StrategicWorldHuntingTests` ([StrategicWorldHuntingMaterialTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldHuntingMaterialTests.cs))
@@ -1375,6 +1397,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicWorldUfoTransitTests` ([StrategicWorldUfoTransitTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldUfoTransitTests.cs))
 - `StrategicWorldWaveChainTests` ([StrategicWorldWaveChainTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldWaveChainTests.cs))
 - `StrategicWorldWaypointTests` ([StrategicWorldWaypointTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldWaypointTests.cs))
+- `StrategicWorldWingTests` ([StrategicWorldWingTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldWingTests.cs))
 - `TerrainDataFixtureTests` ([TerrainDataFixtureTests.cs](../tests/Oxce.CompatibilityTests/TerrainDataFixtureTests.cs))
 - `TerrainDeploymentRulesFixtureTests` ([TerrainDeploymentRulesFixtureTests.cs](../tests/Oxce.CompatibilityTests/TerrainDeploymentRulesFixtureTests.cs))
 - `TerrainMapRouteFixtureTests` ([TerrainMapRouteFixtureTests.cs](../tests/Oxce.CompatibilityTests/TerrainMapRouteFixtureTests.cs))
@@ -1398,9 +1421,9 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.UnitTests
 
-`tests/Oxce.UnitTests` - 99 files.
+`tests/Oxce.UnitTests` - 100 files.
 
-<details><summary>99 test classes</summary>
+<details><summary>100 test classes</summary>
 
 - `ProjectDependencyTests` ([ProjectDependencyTests.cs](../tests/Oxce.UnitTests/Architecture/ProjectDependencyTests.cs))
 - `DiagnosticTests` ([DiagnosticTests.cs](../tests/Oxce.UnitTests/Core/DiagnosticTests.cs))
@@ -1410,6 +1433,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `GeoscapeAssetsTests` ([GeoscapeAssetsTests.cs](../tests/Oxce.UnitTests/Engine/GeoscapeAssetsTests.cs))
 - `GeoscapeClientTests` ([GeoscapeClientTests.cs](../tests/Oxce.UnitTests/Engine/GeoscapeClientTests.cs))
 - `GeoscapeNotificationsTests` ([GeoscapeNotificationsTests.cs](../tests/Oxce.UnitTests/Engine/GeoscapeNotificationsTests.cs))
+- `GeoscapeScreensTests` ([GeoscapeScreensTests.cs](../tests/Oxce.UnitTests/Engine/GeoscapeScreensTests.cs))
 - `GeoscapeTimeControllerTests` ([GeoscapeTimeControllerTests.cs](../tests/Oxce.UnitTests/Engine/GeoscapeTimeControllerTests.cs))
 - `GlobeRendererTests` ([GlobeRendererTests.cs](../tests/Oxce.UnitTests/Engine/GlobeRendererTests.cs))
 - `GlobeViewTests` ([GlobeViewTests.cs](../tests/Oxce.UnitTests/Engine/GlobeViewTests.cs))

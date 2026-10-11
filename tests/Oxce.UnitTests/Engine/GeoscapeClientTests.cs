@@ -27,14 +27,37 @@ public sealed class GeoscapeClientTests
         client.Tick(Step);
         Assert.Equal(start, campaign.QueryOverview().Time);
 
-        // The base screens place the base; returning enters the world like GeoscapeState::init.
-        Key(client, 'b');
-        Assert.True(client.BasesOpen);
-        var revision = client.PresentationRevision;
-        Key(client, 'p');
+        // A new game starts with BuildNewBaseState for the starting base: no cancel, no base screens.
+        Assert.True(client.PlacingBase);
         Key(client, 27);
-        Assert.False(client.BasesOpen);
+        Key(client, 'b');
+        Assert.Equal((true, false), (client.PlacingBase, client.BasesOpen));
+
+        // An ocean click is refused; a land click names the base, then the world starts.
+        var ocean = Ocean(campaign);
+        client.View.Center(ocean.Longitude, ocean.Latitude);
+        Click(client, 256, 200, 1);
+        Assert.Equal("STR_XCOM_BASE_CANNOT_BE_BUILT", Assert.Single(client.Popups).Title);
+        Key(client, 13);
+        var site = campaign.QueryBaseSites(true).First(site => site.Longitude != 0 || site.Latitude != 0);
+        client.View.Center(site.Longitude, site.Latitude);
+        var revision = client.PresentationRevision;
+        Click(client, 256, 200, 1);
+        Assert.Equal("", client.BaseName);
+        Key(client, 13);
+        Assert.Equal("", client.BaseName);
+        client.HandleInput(GameInputEvent.TextEntry(0, 0, "Alphx"));
+        Key(client, 8);
+        client.HandleInput(GameInputEvent.TextEntry(0, 0, "a"));
+        Assert.Equal("Alpha", client.BaseName);
+        Assert.False(client.TimeCanRun);
+        Key(client, 13);
+        Assert.Null(client.BaseName);
+        Assert.Null(client.PlacingBase);
         Assert.True(client.PresentationRevision > revision);
+        var placed = campaign.QueryOverview().Bases[0];
+        Assert.Equal(("Alpha", true), (placed.Name, placed.IsPlaced));
+        Assert.Equal(site.Longitude, placed.Longitude, 6);
         Assert.Equal(0, campaign.MonthsPassed);
         Assert.True(client.TimeCanRun);
 
@@ -195,6 +218,15 @@ public sealed class GeoscapeClientTests
         public CampaignCommandResult Execute(ICampaignCommand command) => Fail && command is AdvanceCampaignTime
             ? throw new InvalidOperationException("Monthly world preflight failed after calendar advancement.")
             : campaign.Execute(command);
+    }
+
+    private static (double Longitude, double Latitude) Ocean(CampaignState campaign)
+    {
+        for (var latitude = -1.2; latitude <= 1.2; latitude += 0.1)
+            for (var longitude = 0.05; longitude < Math.Tau; longitude += 0.1)
+                if (campaign.QueryBaseSite(longitude, latitude, true).UnavailableReason == "STR_XCOM_BASE_CANNOT_BE_BUILT")
+                    return (longitude, latitude);
+        throw new InvalidOperationException("The fixture globe has no ocean.");
     }
 
     private static CampaignState Placed(RuntimeContent content)

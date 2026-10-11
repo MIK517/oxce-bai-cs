@@ -74,6 +74,7 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     private int _rotateLatitude;
     private bool _dragging;
     private bool _globeDirty = true;
+    private bool _buildNewBase;
 
     public GeoscapeClient(GeoscapeClientSetup setup)
     {
@@ -108,7 +109,8 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     public GlobeRenderOptions Options => _options;
 
     /// <summary>Time may run: no popup, destination choice or screen above the globe and the world has been entered.</summary>
-    public bool TimeCanRun => _popups.Count == 0 && _bases is null && _selecting is null && _worldReady;
+    public bool TimeCanRun => _popups.Count == 0 && _bases is null && _selecting is null && _placing is null &&
+        _naming is null && _worldReady;
 
     public void Tick(TimeSpan fixedInterval)
     {
@@ -166,6 +168,7 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     public void HandleInput(in GameInputEvent input)
     {
         if (input.Kind == GameInputEventKind.PointerReleased && input.PointerButton == 2) _dragging = false;
+        if (input.Kind == GameInputEventKind.FocusLost) _shift = false;
         if (input.Kind is GameInputEventKind.KeyPressed or GameInputEventKind.KeyReleased)
             _shift = (input.Modifiers & InputKeyModifiers.Shift) != 0 ||
                 (input.Kind == GameInputEventKind.KeyPressed && input.KeyCode is ShiftLeft or ShiftRight);
@@ -173,6 +176,12 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
         {
             _bases.HandleInput(input);
             if (_bases.ExitRequested) CloseBases();
+            return;
+        }
+        if (_naming is not null)
+        {
+            HandleNamingInput(input);
+            Redraw();
             return;
         }
         if (PopupShown)
@@ -200,6 +209,10 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
             case GameInputEventKind.PointerReleased when input.PointerButton == 2:
                 _dragging = false;
                 break;
+            case GameInputEventKind.PointerMoved when _placing is not null && !_dragging && input.X < GlobeWidth:
+                // BuildNewBaseState::globeHover: the radar preview follows the pointer.
+                HoverBaseSite((int)input.X, (int)input.Y);
+                break;
             case GameInputEventKind.PointerMoved when _dragging:
                 // Globe::mouseOver drag scrolling, measured in reference pixels.
                 var factor = 1.0 / (View.Zoom + 1) / 2 / (GlobeView.DefaultScrollSpeed / 10.0) / PixelScale;
@@ -223,9 +236,10 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
             case 0x40000051: _rotateLatitude = pressed ? 1 : 0; return; // down
         }
         if (!pressed) return;
-        if (_selecting is not null)
+        if (_selecting is not null || _placing is not null)
         {
-            HandleSelectionKey(key);
+            if (_placing is not null && key == 27) CancelBasePlacement();
+            else HandleSelectionKey(key);
             return;
         }
         switch (key)
@@ -254,6 +268,10 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
                 break;
             case 'i':
                 OpenIntercept(new InterceptIntent(), NewGroup());
+                break;
+            case 'n':
+                // BasescapeState's "Build new base" (BuildNewBaseState).
+                BeginBasePlacement();
                 break;
             case '.' or ',':
                 SelectNext(key == '.' ? 1 : -1);
@@ -291,6 +309,11 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
         int x = (int)input.X, y = (int)input.Y;
         if (x >= GlobeWidth)
         {
+            if (_placing is not null)
+            {
+                if (input.PointerButton == 1 && y >= CancelTop && y < CancelTop + SpeedHeight) CancelBasePlacement();
+                return;
+            }
             if (_selecting is not null)
             {
                 // SelectDestinationState's Cancel button.
@@ -317,6 +340,11 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
             return;
         }
         if (input.PointerButton != 1) return;
+        if (_placing is not null)
+        {
+            ChooseBaseSite(longitude, latitude);
+            return;
+        }
         if (_selecting is not null)
         {
             SelectDestinationAt(x, y, longitude, latitude);
@@ -451,7 +479,7 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
                 var session = _setup.Load();
                 Replace(session);
                 return session;
-            }, advanceTime: false, baseId: baseId);
+            }, advanceTime: false, baseId: baseId, buildNewBase: () => _buildNewBase = true);
         _revision++;
     }
 
@@ -463,6 +491,11 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
         // Placing the first base in the base screens enters the world, as GeoscapeState::init does.
         EnterWorld();
         Refresh();
+        if (_buildNewBase)
+        {
+            _buildNewBase = false;
+            BeginBasePlacement();
+        }
         Redraw();
     }
 
@@ -481,6 +514,9 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
         _selecting = null;
         _confirm = null;
         _intercept = null;
+        _placing = null;
+        _naming = null;
+        _hover = null;
         _time.Select(CampaignTimeSpeed.FiveSeconds);
         EnterWorld();
         Refresh();
@@ -494,6 +530,9 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
         _world = _session.World!.QueryWorld();
         _overview = _session.Queries.QueryOverview();
         _worldReady = _overview.Bases.Count != 0 && _overview.Bases[0].IsPlaced && _entryBlocked is null;
+        // A new game starts by choosing the starting base's site (BuildNewBaseState for the first base).
+        if (_placing is null && _overview.Bases.Count != 0 && !_overview.Bases[0].IsPlaced && _session.Readiness is not null)
+            BeginBasePlacement();
         Notify(result.Events.Where(static e => e is not CampaignActionBlocked).ToArray());
     }
 
@@ -502,7 +541,7 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     {
         _world = _session.World!.QueryWorld();
         _overview = _session.Queries.QueryOverview();
-        _scene = GlobeScene.Build(_world, _setup.Rules, _setup.Localize);
+        _scene = GlobeScene.Build(_world, _setup.Rules, _setup.Localize, _placing is null ? null : _hover);
         _targets = GlobeTargets.Build(_world, _setup.Localize);
         if (_selected is not null) _selected = _targets.Find(_selected.Reference);
         RepairScreens();
@@ -513,13 +552,16 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     {
         if (_globeDirty)
         {
-            _renderer.Render(_scene, _overview.Time, _options, _blinkOn, CraftRange());
+            // BuildNewBaseState switches radar lines on while a site is chosen.
+            _renderer.Render(_scene, _overview.Time, _placing is null ? _options : _options with { RadarLines = true },
+                _blinkOn, CraftRange());
             _globeDirty = false;
         }
         _frame.Clear(0);
         _frame.Blit(_renderer.Surface, 0, 0, transparent: false);
         DrawSidebar();
-        if (PopupShown) DrawPopup(_popups[0].Popup);
+        if (_naming is not null) DrawPopup(NamingPopup());
+        else if (PopupShown) DrawPopup(_popups[0].Popup);
         _revision++;
     }
 
@@ -533,6 +575,11 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
         if (_selecting is not null)
         {
             DrawSelectionSidebar(SpeedTop + 2 * SpeedHeight);
+            return;
+        }
+        if (_placing is not null)
+        {
+            DrawPlacementSidebar(SpeedTop + 2 * SpeedHeight);
             return;
         }
         for (var index = 0; index < SpeedLabels.Length; index++)
