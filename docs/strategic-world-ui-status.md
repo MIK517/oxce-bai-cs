@@ -117,9 +117,18 @@ reason until a speed is selected. Time runs only while no popup, confirmation or
 open and the world has been entered: `GeoscapeState::init`'s entry runs when the client opens and
 again when the base screens close (where the first base is placed until S8). Popups queue and show
 one at a time (`GeoscapeState::popup`, rotation stops); `GeoscapeNotifications` maps each campaign
-notification to the reference popup text and buttons and to its `timerReset` behaviour (UFO and
-site detection reset on Centre, alien base discovery on OK, low fuel, craft errors, UFO landing
-and hunting alerts on "OK – 5 seconds", research completion when queued; others never).
+notification to the reference popup text (formatted with its arguments, for example the item,
+craft and base of a refuel or rearm shortage, which the service events now carry), its buttons
+with their `keyOk`/`keyCancel` bindings and its `timerReset` behaviour (UFO and site detection
+reset on Centre, alien base discovery on OK, low fuel, craft errors, UFO landing and hunting
+alerts on "OK – 5 seconds" bound to Enter, research completion and instant events when queued;
+others never). Production pops up only when a project ends, as `time1Hour` does. A timer reset
+changes only the speed: a halted clock stays halted until a speed is chosen. Save, load and
+unexpected time failures report in the status line (the clock halts after a time failure) instead
+of ending the session; the base screens cannot advance time while the geoscape hosts them.
+Known difference: the reference resets the speed inside `time1Day` when research completes, so
+that tick's five-second hunting retarget already sees five-second speed; here the reset applies
+from the next tick, because each command's preflight fixes its speed context.
 Keyboard: 1–6 speeds, arrows rotate (10 ms steps scaled by zoom), +/- and the wheel zoom,
 Tab detail, R radar lines, `.`/`,` cycle front-facing targets (Tab is the reference detail key),
 Enter centres and describes the selection, B base screens, F5 quick save, F9 load after

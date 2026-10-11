@@ -105,7 +105,10 @@ public sealed partial class CampaignState
                 if (!result.MissingFuel && state.Status == "STR_READY" &&
                     state.IsAutoPatrolling && rule.AutoPatrol)
                     effects.AutoPatrolCandidates.Add((owner.Id, type, craft.Id));
-                if (result.MissingFuel) effects.Notify(new CraftArrivalServiceMessage(owner.Id, type, craft.Id, "STR_NOT_ENOUGH_ITEM_TO_REFUEL_CRAFT_AT_BASE"));
+                if (result.MissingFuel) effects.Notify(new CraftArrivalServiceMessage(owner.Id, type, craft.Id, "STR_NOT_ENOUGH_ITEM_TO_REFUEL_CRAFT_AT_BASE")
+                {
+                    ItemId = rule.RefuelItem is { } fuel ? _content.RuntimeRules.Items.GetExternalId(fuel) : string.Empty,
+                });
                 else if (state.Status == "STR_READY" && rule.NotifyWhenRefueled)
                     effects.Notify(new CraftArrivalServiceMessage(owner.Id, type, craft.Id, "STR_CRAFT_IS_READY"));
             }

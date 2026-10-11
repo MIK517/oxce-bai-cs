@@ -4,10 +4,15 @@ using Oxce.Gameplay.Campaigns.World;
 
 namespace Oxce.Engine.Geoscape;
 
-/// <summary>A button on a geoscape popup. <see cref="ResetSpeed"/> is GeoscapeState::timerReset.</summary>
-public sealed record GeoscapePopupAction(string Label, bool ResetSpeed = false, WorldPosition? Center = null);
+/// <summary>
+/// A button on a geoscape popup. <see cref="ResetSpeed"/> is GeoscapeState::timerReset;
+/// <see cref="OkKey"/> and <see cref="CancelKey"/> bind Options::keyOk (Enter) and keyCancel (Esc)
+/// as the reference state does.
+/// </summary>
+public sealed record GeoscapePopupAction(string Label, bool ResetSpeed = false, WorldPosition? Center = null,
+    bool OkKey = false, bool CancelKey = false);
 
-/// <summary>A queued geoscape message window and its buttons; the first is the default (Enter), the last cancels (Esc).</summary>
+/// <summary>A queued geoscape message window and its buttons.</summary>
 public sealed record GeoscapePopup(string Title, IReadOnlyList<string> Lines, IReadOnlyList<GeoscapePopupAction> Actions)
 {
     /// <summary>The reference resets the speed when it queues this popup (research completion).</summary>
@@ -26,9 +31,12 @@ public static class GeoscapeNotifications
         ArgumentNullException.ThrowIfNull(notification);
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(tr);
-        GeoscapePopupAction Ok() => new(tr("STR_OK"));
-        GeoscapePopupAction OkFiveSeconds() => new(tr("STR_OK_5_SECONDS"), ResetSpeed: true);
-        GeoscapePopupAction Cancel() => new(tr("STR_CANCEL_UC"));
+        // Single-button states bind both keys to OK; two-button states bind Esc to OK and Enter to the
+        // other button (LowFuelState, CraftErrorState, ItemsArrivingState, ...).
+        GeoscapePopupAction Ok() => new(tr("STR_OK"), OkKey: true, CancelKey: true);
+        GeoscapePopupAction OkCancelOnly() => new(tr("STR_OK"), CancelKey: true);
+        GeoscapePopupAction OkFiveSeconds() => new(tr("STR_OK_5_SECONDS"), ResetSpeed: true, OkKey: true);
+        GeoscapePopupAction Cancel() => new(tr("STR_CANCEL_UC"), CancelKey: true);
         switch (notification)
         {
             case UfoContactDetected detected:
@@ -57,48 +65,57 @@ public static class GeoscapeNotifications
                     var target = Find(WorldTargetKind.AlienBase, alienBase.Id);
                     return new(target?.Label ?? tr(alienBase.DeploymentId),
                         [Format(tr("STR_XCOM_AGENTS_HAVE_LOCATED_AN_ALIEN_BASE_IN_REGION"), tr("STR_UNKNOWN"))],
-                        [new(tr("STR_OK"), true, Position(target))]);
+                        [new(tr("STR_OK"), true, Position(target), OkKey: true, CancelKey: true)]);
                 }
             case UfoLanded landed:
                 return new(Format(tr("STR_UFO_HAS_LANDED"), UfoName(Ufo(landed.UfoUniqueId), landed.UfoUniqueId)), [],
-                    [Ok(), OkFiveSeconds()]);
+                    [OkCancelOnly(), OkFiveSeconds()]);
             case UfoStartedHunting hunting:
                 return new(Format(tr("STR_UFO_STARTED_HUNTING"), UfoName(Ufo(hunting.UniqueId), hunting.UniqueId),
-                    CraftName(null, hunting.CraftTypeId, hunting.CraftId)), [], [Ok(), OkFiveSeconds()]);
+                    CraftName(null, hunting.CraftTypeId, hunting.CraftId)), [], [OkCancelOnly(), OkFiveSeconds()]);
             case CraftLowFuel fuel:
                 return new(CraftName(fuel.BaseId, fuel.CraftTypeId, fuel.CraftId),
-                    [tr("STR_IS_LOW_ON_FUEL_RETURNING_TO_BASE")], [Ok(), OkFiveSeconds()]);
+                    [tr("STR_IS_LOW_ON_FUEL_RETURNING_TO_BASE")], [OkCancelOnly(), OkFiveSeconds()]);
             case CraftArrivalServiceMessage service:
-                return new(service.Message, [], [Ok(), OkFiveSeconds()]);
+                {
+                    // GeoscapeState::time1Hour/time30Minutes: "craft is ready" names craft and base;
+                    // the refuel and rearm warnings name the item first.
+                    var craft = CraftName(service.BaseId, service.CraftType, service.CraftId);
+                    var text = service.ItemId.Length == 0
+                        ? Format(tr(service.Message), craft, BaseName(service.BaseId))
+                        : Format(tr(service.Message), tr(service.ItemId), craft, BaseName(service.BaseId));
+                    return new(text, [], [OkCancelOnly(), OkFiveSeconds()]);
+                }
             case FacilityServiceMessage service:
-                return new(service.Message, [], [Ok(), OkFiveSeconds()]);
+                return new(Format(tr(service.Message), tr(service.ItemId), tr(service.FacilityRuleId),
+                    BaseName(service.BaseId)), [], [OkCancelOnly(), OkFiveSeconds()]);
             case CraftArrivedAtWaypoint arrived:
                 return new(Format(tr("STR_CRAFT_HAS_REACHED_DESTINATION"),
                     CraftName(arrived.BaseId, arrived.CraftTypeId, arrived.CraftId),
-                    Format(tr(WorldTargetReference.WaypointType), arrived.WaypointId)), [tr("STR_NOW_PATROLLING")], [Ok()]);
+                    Format(tr(WorldTargetReference.WaypointType), arrived.WaypointId)), [tr("STR_NOW_PATROLLING")], [OkCancelOnly()]);
             case CraftTargetLost lostTarget:
                 return new(CraftName(lostTarget.BaseId, lostTarget.CraftTypeId, lostTarget.CraftId),
                     [tr("STR_TRACKING_LOST"), lostTarget.ReturningToBase ? tr("STR_RETURNING_TO_BASE") : tr("STR_NOW_PATROLLING")],
                     [Ok()]);
             case SuppliesArrived supplies:
-                return new(tr("STR_ITEMS_ARRIVING"), [BaseName(supplies.BaseId)], [Ok()]);
+                return new(tr("STR_ITEMS_ARRIVING"), [BaseName(supplies.BaseId)], [OkCancelOnly()]);
             case CampaignConstructionCompleted construction:
                 return new(Format(tr("STR_CONSTRUCTION_OF_FACILITY_AT_BASE_IS_COMPLETE"), tr(construction.RuleId),
-                    BaseName(construction.BaseId)), [], [Ok()]);
-            case CampaignProductionProgress production:
-                return new(production.StopReason ?? Format(tr("STR_PRODUCTION_OF_ITEM_AT_BASE_IS_COMPLETE"),
-                    tr(production.RuleId), BaseName(production.BaseId)), [], [Ok()]);
+                    BaseName(construction.BaseId)), [], [OkCancelOnly()]);
+            case CampaignProductionProgress { StopReason: { } reason } production:
+                // GeoscapeState::time1Hour opens ProductionCompleteState only when a project ends.
+                return new(Format(tr(ProductionMessage(reason)), tr(production.RuleId), BaseName(production.BaseId)), [],
+                    [OkCancelOnly()]);
             case CampaignResearchCompleted research:
-                return new(tr("STR_RESEARCH_COMPLETED"), [tr(research.RuleId)], [Ok()]) { ResetsSpeedWhenShown = true };
+                return new(tr("STR_RESEARCH_COMPLETED"), [tr(research.RuleId)], [OkCancelOnly()]) { ResetsSpeedWhenShown = true };
             case CampaignTrainingCompleted training:
                 return new(tr(training.Psi ? "STR_PSI_TRAINING" : "STR_TRAINING"),
-                    [BaseName(training.BaseId), "#" + training.SoldierId.ToString(CultureInfo.InvariantCulture)], [Ok()]);
-            case CampaignArcUnlocked arc:
-                return new(tr(arc.RuleId), [], [Ok()]);
+                    [BaseName(training.BaseId), "#" + training.SoldierId.ToString(CultureInfo.InvariantCulture)], [OkCancelOnly()]);
             case CampaignStrategicEventRequested request:
-                return new(tr(request.RuleId), [], [Ok()]);
+                // An instant event pops GeoscapeEventState with a timer reset; its payload is branch 6.
+                return new(tr(request.RuleId), [], [Ok()]) { ResetsSpeedWhenShown = true };
             case CampaignTransformationEventSelected transformation:
-                return new(tr(transformation.RuleId), [], [Ok()]);
+                return new(tr(transformation.RuleId), [], [Ok()]) { ResetsSpeedWhenShown = true };
             case CampaignActionBlocked blocked:
                 return new("Time cannot advance", [blocked.Reason], [Ok()]);
             default:
@@ -126,6 +143,16 @@ public static class GeoscapeNotifications
         string BaseName(int baseId) =>
             world.Bases.FirstOrDefault(owner => owner.Id == baseId)?.Name ?? "#" + baseId.ToString(CultureInfo.InvariantCulture);
     }
+
+    /// <summary>ProductionCompleteState's message for a project that ended.</summary>
+    private static string ProductionMessage(string reason) => reason switch
+    {
+        "STR_PRODUCTION_COMPLETE" => "STR_PRODUCTION_OF_ITEM_AT_BASE_IS_COMPLETE",
+        "STR_NOT_ENOUGH_MONEY" => "STR_NOT_ENOUGH_MONEY_TO_PRODUCE_ITEM_AT_BASE",
+        "STR_NOT_ENOUGH_MATERIALS" => "STR_NOT_ENOUGH_SPECIAL_MATERIALS_TO_PRODUCE_ITEM_AT_BASE",
+        "STR_NOT_ENOUGH_LIVING_SPACE" => "STR_NOT_ENOUGH_LIVING_SPACE_AT_BASE",
+        _ => reason,
+    };
 
     /// <summary>LocalizedText::arg: replaces <c>{0}</c>, <c>{1}</c>, ... in order.</summary>
     public static string Format(string text, params object[] arguments)

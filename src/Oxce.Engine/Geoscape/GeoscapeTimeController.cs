@@ -58,8 +58,21 @@ public sealed class GeoscapeTimeController
         HaltReason = null;
     }
 
-    /// <summary>GeoscapeState::timerReset: back to five-second speed.</summary>
-    public void Reset() => Select(CampaignTimeSpeed.FiveSeconds);
+    /// <summary>GeoscapeState::timerReset: back to five-second speed; a halted clock stays halted.</summary>
+    public void Reset()
+    {
+        if (Speed != CampaignTimeSpeed.FiveSeconds) _owed = 0;
+        Speed = CampaignTimeSpeed.FiveSeconds;
+    }
+
+    /// <summary>Stops the clock after a failure outside the guarded transitions.</summary>
+    public void Halt(string reason)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        Running = false;
+        HaltReason = reason;
+        _owed = 0;
+    }
 
     /// <summary>Stops owing the rest of a step, as the reference does when a popup opens.</summary>
     public void Interrupt()

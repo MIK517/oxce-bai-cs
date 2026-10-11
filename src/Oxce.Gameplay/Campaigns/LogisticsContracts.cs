@@ -1,6 +1,10 @@
 namespace Oxce.Gameplay.Campaigns;
 
-public sealed record CraftArrivalServiceMessage(int BaseId, string CraftType, int CraftId, string Message) : ICampaignEvent;
+public sealed record CraftArrivalServiceMessage(int BaseId, string CraftType, int CraftId, string Message) : ICampaignEvent
+{
+    /// <summary>The missing refuel or rearm item the message names, when it names one.</summary>
+    public string ItemId { get; init; } = string.Empty;
+}
 
 public enum LogisticsOperation { Purchase, Sell, Transfer }
 

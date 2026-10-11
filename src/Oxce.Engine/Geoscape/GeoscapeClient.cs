@@ -55,6 +55,8 @@ public sealed class GeoscapeClient : IIndexedLoopClient
     private readonly List<(GeoscapePopup Popup, Action<int>? Chosen)> _popups = [];
     private CampaignUiSession _session;
     private CampaignWorldOverview _world;
+    private CampaignOverview _overview;
+    private bool _worldReady;
     private GlobeScene _scene = GlobeScene.Empty;
     private GlobeTargets _targets = GlobeTargets.Empty;
     private IIndexedLoopClient? _bases;
@@ -83,6 +85,7 @@ public sealed class GeoscapeClient : IIndexedLoopClient
         var stopwatch = setup.Stopwatch ?? CreateStopwatch();
         _time = new GeoscapeTimeController(stopwatch);
         _world = _session.World.QueryWorld();
+        _overview = _session.Queries.QueryOverview();
         EnterWorld();
         Refresh();
         Redraw();
@@ -103,16 +106,7 @@ public sealed class GeoscapeClient : IIndexedLoopClient
     public GlobeRenderOptions Options => _options;
 
     /// <summary>Time may run: no popup or screen above the globe and the world has been entered.</summary>
-    public bool TimeCanRun => _popups.Count == 0 && _bases is null && WorldReady;
-
-    private bool WorldReady
-    {
-        get
-        {
-            var overview = _session.Queries.QueryOverview();
-            return overview.Bases.Count != 0 && overview.Bases[0].IsPlaced && _entryBlocked is null;
-        }
-    }
+    public bool TimeCanRun => _popups.Count == 0 && _bases is null && _worldReady;
 
     public void Tick(TimeSpan fixedInterval)
     {
@@ -143,8 +137,21 @@ public sealed class GeoscapeClient : IIndexedLoopClient
         }
         if (TimeCanRun)
         {
-            var step = _time.Tick(fixedInterval, _session.Commands);
-            if (step.Ticks > 0 || step.Events.Count > 0)
+            GeoscapeTimeStep step;
+            try
+            {
+                step = _time.Tick(fixedInterval, _session.Commands);
+            }
+            catch (Exception error) when (error is InvalidOperationException or InvalidDataException or OverflowException)
+            {
+                // A failure after the transaction gate may leave the tick partly applied.
+                _time.Halt("Time stopped after an internal error; load a save to continue. " + error.Message);
+                Refresh();
+                Redraw();
+                return;
+            }
+            // GeoscapeState::timeAdvance redraws once its step ends or a popup interrupts it.
+            if (step.Events.Count > 0 || (step.Ticks > 0 && _time.Owed == 0))
             {
                 Refresh();
                 Notify(step.Events);
@@ -156,6 +163,7 @@ public sealed class GeoscapeClient : IIndexedLoopClient
 
     public void HandleInput(in GameInputEvent input)
     {
+        if (input.Kind == GameInputEventKind.PointerReleased && input.PointerButton == 2) _dragging = false;
         if (_bases is not null)
         {
             _bases.HandleInput(input);
@@ -244,18 +252,19 @@ public sealed class GeoscapeClient : IIndexedLoopClient
                 break;
             case 0x4000003E: // F5: GeoscapeState quick save
                 if (_setup.Save is null) _status = "Save is unavailable for this session.";
-                else
+                else Guard(() =>
                 {
                     _setup.Save();
                     _status = "Campaign saved.";
-                }
+                });
                 break;
             case 0x40000042: // F9: quick load after confirmation
                 if (_setup.Load is null) _status = "Load is unavailable for this session.";
                 else Enqueue(new GeoscapePopup("Load saved campaign?", ["Unsaved progress will be lost."],
-                    [new(_setup.Localize("STR_OK")), new(_setup.Localize("STR_CANCEL_UC"))]), choice =>
+                    [new(_setup.Localize("STR_OK"), OkKey: true), new(_setup.Localize("STR_CANCEL_UC"), CancelKey: true)]),
+                    choice =>
                     {
-                        if (choice == 0) LoadCampaign();
+                        if (choice == 0) Guard(LoadCampaign);
                     });
                 break;
             case 27:
@@ -295,7 +304,7 @@ public sealed class GeoscapeClient : IIndexedLoopClient
         {
             // MultipleTargetsState: one button per target, then cancel.
             var actions = near.Select(target => new GeoscapePopupAction(target.Label)).Append(
-                new GeoscapePopupAction(_setup.Localize("STR_CANCEL_UC"))).ToArray();
+                new GeoscapePopupAction(_setup.Localize("STR_CANCEL_UC"), CancelKey: true)).ToArray();
             Enqueue(new GeoscapePopup(_setup.Localize("STR_TARGETS"), [], actions), choice =>
             {
                 if (choice < near.Count)
@@ -316,8 +325,8 @@ public sealed class GeoscapeClient : IIndexedLoopClient
         {
             choice = input.KeyCode switch
             {
-                13 => 0,
-                27 => count - 1,
+                13 => IndexOf(popup, static action => action.OkKey),
+                27 => IndexOf(popup, static action => action.CancelKey),
                 >= '1' and <= '9' when input.KeyCode - '1' < count => (int)(input.KeyCode - '1'),
                 _ => -1,
             };
@@ -327,6 +336,13 @@ public sealed class GeoscapeClient : IIndexedLoopClient
         else return;
         if (choice < 0) return;
         Choose(choice);
+    }
+
+    private static int IndexOf(GeoscapePopup popup, Func<GeoscapePopupAction, bool> binding)
+    {
+        for (var index = 0; index < popup.Actions.Count; index++)
+            if (binding(popup.Actions[index])) return index;
+        return -1;
     }
 
     /// <summary>Applies a popup button: speed reset, centring, then the popup's own action.</summary>
@@ -362,6 +378,7 @@ public sealed class GeoscapeClient : IIndexedLoopClient
         // GeoscapeState::popup pauses time and stops the globe rotating.
         _popups.Add((popup, chosen));
         _rotateLongitude = _rotateLatitude = 0;
+        _dragging = false;
         _time.Interrupt();
         if (popup.ResetsSpeedWhenShown) _time.Reset();
     }
@@ -380,7 +397,7 @@ public sealed class GeoscapeClient : IIndexedLoopClient
             lines.Add(_setup.Localize(craft.Status));
             lines.Add(_setup.Localize("STR_FUEL") + ": " + craft.Fuel.ToString(CultureInfo.InvariantCulture));
         }
-        return new GeoscapePopup(target.Label, lines, [new(_setup.Localize("STR_OK"))]);
+        return new GeoscapePopup(target.Label, lines, [new(_setup.Localize("STR_OK"), OkKey: true, CancelKey: true)]);
     }
 
     private void SelectNext(int direction)
@@ -402,13 +419,15 @@ public sealed class GeoscapeClient : IIndexedLoopClient
     private void OpenBases()
     {
         _rotateLongitude = _rotateLatitude = 0;
+        _dragging = false;
+        // Time belongs to the geoscape: the base screens may not advance it behind its popups.
         _bases = _setup.OpenBases?.Invoke(_session) ?? new CampaignLogisticsClient(_session, _setup.Font, _setup.Localize,
             _setup.Save, _setup.Load is null ? null : () =>
             {
                 var session = _setup.Load();
                 Replace(session);
                 return session;
-            });
+            }, advanceTime: false);
         _revision++;
     }
 
@@ -434,7 +453,8 @@ public sealed class GeoscapeClient : IIndexedLoopClient
         if (session.World is null) throw new InvalidOperationException("The loaded session has no world query.");
         _session = session;
         _popups.Clear();
-        _time.Reset();
+        _selected = null;
+        _time.Select(CampaignTimeSpeed.FiveSeconds);
         EnterWorld();
         Refresh();
     }
@@ -445,6 +465,8 @@ public sealed class GeoscapeClient : IIndexedLoopClient
         _entryBlocked = result.Events.OfType<CampaignActionBlocked>().FirstOrDefault()?.Reason;
         if (_entryBlocked is not null) _status = "World entry is blocked: " + _entryBlocked;
         _world = _session.World!.QueryWorld();
+        _overview = _session.Queries.QueryOverview();
+        _worldReady = _overview.Bases.Count != 0 && _overview.Bases[0].IsPlaced && _entryBlocked is null;
         Notify(result.Events.Where(static e => e is not CampaignActionBlocked).ToArray());
     }
 
@@ -452,6 +474,7 @@ public sealed class GeoscapeClient : IIndexedLoopClient
     private void Refresh()
     {
         _world = _session.World!.QueryWorld();
+        _overview = _session.Queries.QueryOverview();
         _scene = GlobeScene.Build(_world, _setup.Rules, _setup.Localize);
         _targets = GlobeTargets.Build(_world);
         if (_selected is not null) _selected = _targets.Find(_selected.Reference);
@@ -462,7 +485,7 @@ public sealed class GeoscapeClient : IIndexedLoopClient
     {
         if (_globeDirty)
         {
-            _renderer.Render(_scene, _session.Queries.QueryOverview().Time, _options, _blinkOn);
+            _renderer.Render(_scene, _overview.Time, _options, _blinkOn);
             _globeDirty = false;
         }
         _frame.Clear(0);
@@ -474,7 +497,7 @@ public sealed class GeoscapeClient : IIndexedLoopClient
 
     private void DrawSidebar()
     {
-        var overview = _session.Queries.QueryOverview();
+        var overview = _overview;
         var time = overview.Time;
         Text(string.Create(CultureInfo.InvariantCulture, $"{time.Hour:00}:{time.Minute:00}:{time.Second:00}"), SidebarLeft, 8);
         Text(string.Create(CultureInfo.InvariantCulture, $"{time.Day:00}.{time.Month:00}.{time.Year}"), SidebarLeft, 20);
@@ -487,7 +510,7 @@ public sealed class GeoscapeClient : IIndexedLoopClient
             Text(_setup.Localize(SpeedLabels[index]), SidebarLeft, top + 4, current ? (byte)0 : TextColor);
         }
         var y = SpeedTop + SpeedLabels.Length * SpeedHeight + 8;
-        if (!WorldReady) Text(_entryBlocked is null ? "Place a base (B)" : "World entry blocked", SidebarLeft, y);
+        if (!_worldReady) Text(_entryBlocked is null ? "Place a base (B)" : "World entry blocked", SidebarLeft, y);
         else if (!_time.Running) Text("Time halted", SidebarLeft, y);
         y += 14;
         Text("B " + _setup.Localize("STR_BASES"), SidebarLeft, y);
@@ -561,6 +584,20 @@ public sealed class GeoscapeClient : IIndexedLoopClient
             y += font.Height + 2;
         }
         return y;
+    }
+
+    /// <summary>Save and load report failures in the status line instead of ending the session.</summary>
+    private void Guard(Action action)
+    {
+        try
+        {
+            action();
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException or
+                                          InvalidOperationException or ArgumentException or OverflowException)
+        {
+            _status = error.Message;
+        }
     }
 
     private static Func<TimeSpan> CreateStopwatch()
