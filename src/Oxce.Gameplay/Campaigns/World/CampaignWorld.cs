@@ -105,7 +105,8 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
             });
         foreach (var alienBase in _alienBases.Where(static alienBase => alienBase.Discovered))
             targets.Add(new CampaignWorldTarget(WorldTargetKind.AlienBase, alienBase.Id, alienBase.DeploymentId,
-                alienBase.Name.Length != 0 ? alienBase.Name : MarkerName(alienBase.DeploymentId),
+                // Target::getMarkerName: the alien base's type (the deployment marker) plus "_".
+                alienBase.Name.Length != 0 ? alienBase.Name : MarkerName(alienBase.DeploymentId) + "_",
                 alienBase.Longitude, alienBase.Latitude)
             {
                 Detected = alienBase.Discovered,
@@ -122,7 +123,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         foreach (var waypoint in _waypoints)
             targets.Add(new CampaignWorldTarget(WorldTargetKind.Waypoint, waypoint.Id,
                 WorldTargetReference.WaypointType,
-                waypoint.Name.Length != 0 ? waypoint.Name : WorldTargetReference.WaypointType,
+                waypoint.Name.Length != 0 ? waypoint.Name : WorldTargetReference.WaypointType + "_",
                 waypoint.Longitude, waypoint.Latitude)
             { Detected = true });
         return new CampaignWorldOverview(CampaignSnapshot.ReadOnly(targets), _missions.Count, _events.Count)

@@ -306,7 +306,8 @@ public sealed class StrategicWorldPursuitTests
         var arrival = campaign.Execute(new AdvanceCampaignTime(1));
         Assert.Collection(arrival.Events,
             item => Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(item).Summary.TickCount),
-            item => Assert.Equal(new UfoContactLost(snapshot.World.Ufos[0].UniqueId), Assert.IsType<UfoContactLost>(item)));
+            item => Assert.Equal(new UfoContactLost(snapshot.World.Ufos[0].UniqueId) { MarkerId = snapshot.World.Ufos[0].Id },
+                Assert.IsType<UfoContactLost>(item)));
         Assert.Equal(UfoStatus.Destroyed, Assert.Single(campaign.Capture().World.Ufos).Status);
         Assert.Equal(WorldTargetKind.Ufo, Ship(campaign.Capture()).Destination!.Kind);
         campaign = Reload(content, campaign, 92, "terminal-pursuit.sav");

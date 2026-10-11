@@ -41,7 +41,7 @@ public sealed class StrategicWorldArrivalLossTests
             var interrupted = after.CompletedResearch.Contains("BONUS");
             var destroyed = terminal || interrupted;
             Assert.Equal(destroyed ? UfoStatus.Destroyed : UfoStatus.Flying, after.World.Ufos[0].Status);
-            if (destroyed) Assert.Equal(new UfoContactLost(ufo.UniqueId), Assert.Single(result.Events.OfType<UfoContactLost>()));
+            if (destroyed) Assert.Equal(new UfoContactLost(ufo.UniqueId) { MarkerId = ufo.Id }, Assert.Single(result.Events.OfType<UfoContactLost>()));
             else Assert.Empty(result.Events.OfType<UfoContactLost>());
             Assert.Empty(result.Events.OfType<CraftTargetLost>());
             if (destroyed)

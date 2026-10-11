@@ -187,4 +187,28 @@ public sealed class GeoscapeNotificationsTests
         Assert.Equal("Base in STR_UNKNOWN", Title(With("", "", "")));
         Assert.Equal("STR_ALIEN_BASE_ found in STR_EUROPA", Title(With("", "STR_EUROPA", "STR_CUSTOM")));
     }
+
+    [Fact]
+    public void MarkersAreNamedByTheirLanguageKeyAndId()
+    {
+        static string Names(string key) => key switch
+        {
+            "STR_UFO_" => "UFO-{0}",
+            "STR_WAY_POINT_" => "Way point-{0}",
+            _ => key,
+        };
+        var ufo = World.Targets[0] with { Label = "STR_UFO_" };
+        Assert.Equal("UFO-7", GeoscapeScreens.TargetLabel(ufo, Names));
+        Assert.Equal("Custom", GeoscapeScreens.TargetLabel(ufo with { Label = "Custom" }, Names));
+        var world = World with { Targets = [ufo] };
+        Assert.Equal("UFO-7", GeoscapeNotifications.Describe(new UfoContactDetected(70, false), world, Names)!.Title);
+        // A UFO already off the radar is named by the marker id it had when lost.
+        Assert.Equal("UFO-4", GeoscapeNotifications.Describe(new UfoContactLost(55) { MarkerId = 4 }, world, Names)!.Title);
+        var waypoint = new CampaignWorldTarget(WorldTargetKind.Waypoint, 6, WorldTargetReference.WaypointType, "STR_WAY_POINT_", 0.1, 0.1)
+        {
+            Detected = true,
+        };
+        Assert.Equal("Way point-6", Assert.Single(GlobeTargets.Build(World with { Targets = [waypoint] }, Names).All,
+            target => target.Kind == WorldTargetKind.Waypoint).Label);
+    }
 }

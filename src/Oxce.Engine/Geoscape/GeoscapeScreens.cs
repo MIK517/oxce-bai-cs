@@ -167,7 +167,7 @@ public static class GeoscapeScreens
         // IgnoreUfoContact accepts flying and landed contacts; a crash site has no alerts left to ignore.
         if (!ufo.DetectionAlertIgnored && ufo.Reference.UniqueId > 0 && ufo.Status != nameof(UfoStatus.Crashed))
             actions.Add(new(tr("STR_IGNORE_UC")) { Command = new IgnoreUfoContact(ufo.Reference.UniqueId, ufo.Reference.Id) });
-        return new(ufo.Label, lines, actions);
+        return new(TargetLabel(ufo, tr), lines, actions);
     }
 
     /// <summary>
@@ -263,7 +263,7 @@ public static class GeoscapeScreens
         if (target.Status.Length != 0) lines.Add(target.Status);
         if (target.Altitude.Length != 0) lines.Add(tr(target.Altitude));
         if (target.UnavailableActionReason is { } reason) lines.Add(reason);
-        return new(target.Label, lines,
+        return new(TargetLabel(target, tr), lines,
         [
             new(tr("STR_INTERCEPT")) { Intent = new InterceptIntent(target.Reference) },
             new(tr("STR_OK"), CancelKey: true),
@@ -350,6 +350,14 @@ public static class GeoscapeScreens
         };
     }
 
+    /// <summary>Target::getName: a custom name, or the marker's language key with its id.</summary>
+    public static string TargetLabel(CampaignWorldTarget target, Func<string, string> tr)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        ArgumentNullException.ThrowIfNull(tr);
+        return Format(tr(target.Label), target.Id);
+    }
+
     public static string TargetName(CampaignWorldOverview world, WorldTargetReference target, Func<string, string> tr)
     {
         ArgumentNullException.ThrowIfNull(world);
@@ -364,10 +372,11 @@ public static class GeoscapeScreens
                     : tr(target.TypeId) + "-" + target.Id.ToString(CultureInfo.InvariantCulture);
             case WorldTargetKind.Ufo:
                 return world.Targets.FirstOrDefault(entry => entry.Kind == WorldTargetKind.Ufo &&
-                    entry.Reference.UniqueId == target.UniqueId)?.Label ?? tr(target.TypeId);
+                    entry.Reference.UniqueId == target.UniqueId) is { } ufo ? TargetLabel(ufo, tr) : tr(target.TypeId);
             default:
-                return world.Targets.FirstOrDefault(entry => entry.Kind == target.Kind && entry.Id == target.Id)?.Label
-                    ?? Format(tr(target.TypeId), target.Id);
+                return world.Targets.FirstOrDefault(entry => entry.Kind == target.Kind && entry.Id == target.Id) is { } found
+                    ? TargetLabel(found, tr)
+                    : Format(tr(target.TypeId), target.Id);
         }
     }
 

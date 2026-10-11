@@ -1,6 +1,10 @@
 namespace Oxce.Gameplay.Campaigns.World;
 
 /// <summary>A globe target as the player sees it. Detection state decides visibility.</summary>
+/// <summary>
+/// A target the player can see. <see cref="Label"/> is a custom name or the marker's language key,
+/// which Target::getDefaultName formats with <see cref="Id"/> (the landing or crash id for those markers).
+/// </summary>
 public sealed record CampaignWorldTarget(
     WorldTargetKind Kind,
     int Id,

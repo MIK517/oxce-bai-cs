@@ -1,8 +1,10 @@
+using System.Globalization;
 using Oxce.Core.Compatibility;
 using Oxce.Core.Diagnostics;
 using Oxce.Core.Random;
 using Oxce.Engine;
 using Oxce.Engine.Geoscape;
+using Oxce.Engine.Input;
 using Oxce.Extensions;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Bootstrap;
@@ -123,5 +125,55 @@ internal static class CampaignSdlCommand
                 GlobeView = new GlobeViewState(view.Longitude, view.Latitude, view.Zoom),
             };
         }
+    }
+
+    /// <summary>
+    /// An unattended geoscape window run: a new campaign with its starting base on the first legal
+    /// site, then scripted speed, interception, detail and zoom inputs for a few seconds.
+    /// </summary>
+    public static int RunSmoke(string installationRoot, string masterId, string addOnId, InputValidationMode validationMode)
+    {
+        var request = InstallationLoadRequest.ForMasterAndAddOn(
+            installationRoot, masterId, addOnId, new ModEngineIdentity("Extended", "8.6.1.0"), validationMode);
+        var loaded = InstallationContentLoader.Load(request);
+        if (!loaded.IsSuccess) throw new InvalidDataException(loaded.DescribeFailure());
+        var content = loaded.Content!;
+        var diagnostics = new DiagnosticCollector();
+        var assets = CampaignUiAssets.Load(loaded.VirtualFiles!, content.Presentation, diagnostics);
+        var geoscapeAssets = GeoscapeAssets.Load(loaded.VirtualFiles!, content.Resources, content.RuntimeRules.Campaign.Globe);
+        var campaign = CampaignFactory.Create(content,
+            new NewCampaignRequest(new CampaignId(Guid.NewGuid()), "SDL smoke", masterId, request.ActiveMods,
+                CampaignDifficulty.Beginner),
+            new SplitMix64RandomSource(0x534D4F4BUL), SystemCampaignClock.Instance);
+        var site = campaign.QueryBaseSites(true).FirstOrDefault(candidate => candidate.Longitude != 0 || candidate.Latitude != 0)
+            ?? throw new InvalidDataException("The globe has no legal starting-base site.");
+        campaign.Execute(new PlaceStartingBase(0, "Smoke", site.Longitude, site.Latitude));
+        var start = campaign.QueryOverview().Time;
+        var client = new GeoscapeClient(new GeoscapeClientSetup(CampaignUiSession.ForCampaign(campaign, campaign, campaign),
+            content.RuntimeRules, geoscapeAssets, assets.Font, assets.Localize));
+        static ScriptedInput Key(double seconds, uint key) => new(TimeSpan.FromSeconds(seconds),
+            GameInputEvent.Key(GameInputEventKind.KeyPressed, 0, 0, 0, key, InputKeyModifiers.None));
+        var scripted = new ScriptedLoopClient(client,
+        [
+            Key(0.5, '4'), Key(2.0, 'i'), Key(2.5, 27), Key(3.0, 9), Key(3.5, '+'), Key(4.0, '.'), Key(4.5, 13), Key(5.0, 27),
+            Key(5.5, '5'),
+        ], TimeSpan.FromSeconds(8));
+        var host = new SdlIndexedWindowHost(scripted, new SdlWindowOptions("OXCE .NET geoscape smoke")
+        {
+            Scale = 2,
+            ExitOnEscape = false,
+            EnableTextInput = true,
+            MaximumRunTime = TimeSpan.FromSeconds(20),
+        });
+        var result = host.Run();
+        var run = host.LastRunDiagnostics;
+        Console.WriteLine($"SDL video driver: {run?.VideoDriver}; renderer: {run?.Renderer}");
+        Console.WriteLine($"Ticks: {run?.TickCount}; presented frames: {run?.PresentedFrameCount}; " +
+            $"average presentation us: {run?.AveragePresentationDuration.TotalMicroseconds.ToString("F3", CultureInfo.InvariantCulture)}");
+        Console.WriteLine($"Scripted inputs replayed: {scripted.Replayed}; campaign time {start} -> {campaign.QueryOverview().Time}; " +
+            $"popups open: {client.Popups.Count}; status: {client.Time.HaltReason ?? client.Status}");
+        foreach (var diagnostic in diagnostics.Snapshot().Where(static diagnostic => diagnostic.Severity >= DiagnosticSeverity.Warning))
+            Console.Error.WriteLine($"{diagnostic.Code}: {diagnostic.Message}");
+        return result;
     }
 }
