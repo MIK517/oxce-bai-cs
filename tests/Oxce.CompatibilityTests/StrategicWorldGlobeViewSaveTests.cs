@@ -78,12 +78,36 @@ public sealed class StrategicWorldGlobeViewSaveTests
         client.View.SetZoom(0);
 
         Key(client, '4');
+        Key(client, '.');
+        Assert.NotNull(client.Selected);
+        client.HandleInput(GameInputEvent.Key(GameInputEventKind.KeyPressed, 0, 0, 0, 0x4000004F, InputKeyModifiers.None));
         Key(client, 0x40000042);
         Key(client, 13);
         Assert.Equal(1, loads);
+        Assert.Null(client.Selected);
+        var centre = client.View.CenterLongitude;
+        client.Tick(TimeSpan.FromMilliseconds(30));
+        Assert.Equal(centre, client.View.CenterLongitude);
         Assert.Equal(0, client.Time.Owed);
         Assert.Equal(CampaignTimeSpeed.FiveSeconds, client.Time.Speed);
         Assert.Equal(new GlobeViewState(2.0, 0.4, 2), client.CurrentView);
+    }
+
+    [Theory]
+    [InlineData(-1, 5)]
+    [InlineData(99, 5)]
+    [InlineData(3, 3)]
+    public void ASavedZoomOutsideTheLevelsTakesTheClosestView(int saved, int expected)
+    {
+        Assert.Equal(6, GlobeView.ZoomLevels);
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = CampaignState.Restore(StrategicWorldTestSupport.CreateSnapshot(content, "Zoom"), content,
+            new SplitMix64RandomSource(5));
+        var client = Client(content, CampaignUiSession.ForCampaign(campaign, campaign, campaign) with
+        {
+            GlobeView = new GlobeViewState(1.0, 0.2, saved),
+        }, static () => TimeSpan.Zero, static () => { }, () => throw new InvalidOperationException());
+        Assert.Equal(expected, client.CurrentView.Zoom);
     }
 
     private static GeoscapeClient Client(RuntimeContent content, CampaignUiSession session, Func<TimeSpan> stopwatch,

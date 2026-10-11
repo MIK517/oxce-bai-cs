@@ -16,7 +16,11 @@ internal static class CampaignSdlCommand
         string installationRoot, string masterId, string addOnId, string destination, InputValidationMode validationMode,
         bool loadAtStart = false)
     {
-        if (loadAtStart && destination == "-") throw new ArgumentException("--load needs a save path.", nameof(destination));
+        if (loadAtStart && destination == "-")
+        {
+            Console.Error.WriteLine("--load needs a save path.");
+            return 2;
+        }
         var request = InstallationLoadRequest.ForMasterAndAddOn(
             installationRoot, masterId, addOnId, new ModEngineIdentity("Extended", "8.6.1.0"), validationMode);
         var loaded = InstallationContentLoader.Load(request);
@@ -42,7 +46,17 @@ internal static class CampaignSdlCommand
         var extensionSession = extensions.AttachCampaign(campaign, campaign);
         OxceSaveDocument? source = null;
         var savePath = destination == "-" ? null : Path.GetFullPath(destination);
-        var session = loadAtStart ? Load() : CampaignUiSession.ForCampaign(campaign, extensionSession, extensionSession);
+        CampaignUiSession session;
+        try
+        {
+            session = loadAtStart ? Load() : CampaignUiSession.ForCampaign(campaign, extensionSession, extensionSession);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            extensionSession.Dispose();
+            Console.Error.WriteLine($"The save could not be loaded: {error.Message}");
+            return 1;
+        }
         GeoscapeClient? client = null;
         client = new GeoscapeClient(new GeoscapeClientSetup(session, content.RuntimeRules,
             geoscapeAssets, assets.Font, assets.Localize)
@@ -97,10 +111,12 @@ internal static class CampaignSdlCommand
             var restored = OxceSaveAdapter.LoadFile(savePath!, content, new SplitMix64RandomSource(0),
                 new(masterId, activeMods.ToHashSet(StringComparer.Ordinal), Diagnostics: saveDiagnostics));
             PrintWarnings(saveDiagnostics);
+            // Attach before swapping so a failure leaves the running campaign and its session intact.
+            var attached = extensions.AttachCampaign(restored.Campaign, restored.Campaign);
             extensionSession.Dispose();
+            extensionSession = attached;
             campaign = restored.Campaign;
             source = restored.Source;
-            extensionSession = extensions.AttachCampaign(campaign, campaign);
             var view = source.GlobeView;
             return CampaignUiSession.ForCampaign(campaign, extensionSession, extensionSession) with
             {
