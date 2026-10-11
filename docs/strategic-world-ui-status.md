@@ -80,3 +80,23 @@ colour while the 100 ms blink is off (cities excepted; a shade wrapping to 0 is 
 on the reference's colour-keyed marker layer). Repeat frames allocate nothing. Radar circles,
 flight paths and the detail layer follow in S4b.
 Tests: `GlobeRendererTests`, `GlobeSceneTests`.
+
+## S4b — Radar, flight and detail layers (2026-10-11)
+
+The world query now carries what `Globe::drawRadars`/`drawFlights` read: each base's largest
+completed facility radar below 10,000 nautical miles, each craft's radar range with weapon
+bonuses, and for UFOs the hunter-killer, hyper-wave and hunting flags, radar range (rule plus
+mission race bonus) and destination (an unresolved anonymous UFO waypoint keeps its recorded
+position). `drawEnemyRadarCircles` and `extraGlobeLabels` are projected (compiler/cache revision
+57). `GlobeScene` collects radar circles (bases 48 segments, airborne craft, hunter-killer UFOs
+per `drawEnemyRadarCircles`, discovered alien bases with a detection range, 24 segments), flight
+paths (airborne craft to their destination, hunting UFOs; the reference meeting point is disabled)
+and labels (countries from zoom 2 in their label colour, extra labels from their own zoom, cities —
+named point mission areas — and base names from zoom 3). `GlobeRenderer` shades radar and path
+segments from the unshaded globe onto their own layer (`XuLine`, `drawGlobeCircle`, `drawPath`),
+including the destination-selection craft range circle, then composes the shadowed globe, that
+layer, borders (`LINE_COLOR`, zoom 1+), labels (`Text` palette shift: colour plus glyph value,
+centred in the reference text box) with city markers, and the markers. The globe options
+`globeRadarLines`, `globeFlightPaths` and `globeDetail` toggle the layers. Labels use the small
+font at its own size on the 2× frame. Tests: `GlobeRendererTests`, `GlobeSceneTests`,
+`StrategicWorldGlobeQueryTests`.

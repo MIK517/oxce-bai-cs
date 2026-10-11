@@ -25,6 +25,7 @@ public sealed class CampaignStartSettings
         ManaWoundThreshold = builder.ManaWoundThreshold;
         HealthWoundThreshold = builder.HealthWoundThreshold;
         EscortRange = builder.EscortRange;
+        DrawEnemyRadarCircles = builder.DrawEnemyRadarCircles;
         MaximumViewDistance = builder.MaximumViewDistance;
         MaximumDarknessToSeeUnits = builder.MaximumDarknessToSeeUnits;
         HunterKillerFastRetarget = builder.HunterKillerFastRetarget;
@@ -107,8 +108,10 @@ public sealed class CampaignStartSettings
         int buildTimeReductionScaling, int customTrainingFactor, int manaWoundThreshold, int healthWoundThreshold,
         IReadOnlyDictionary<string, string>? fixedUserOptions = null, int escortRange = 20,
         double performanceBonusFactor = 0, bool allowCountriesToCancelAlienPact = false, bool hunterKillerFastRetarget = true, bool allowAlienBasesOnWrongTextures = true,
-        bool buildInfiltrationBaseCloseToTheCountry = false, bool infiltrateRandomCountryInTheRegion = false, int maximumViewDistance = 20, int maximumDarknessToSeeUnits = 9)
+        bool buildInfiltrationBaseCloseToTheCountry = false, bool infiltrateRandomCountryInTheRegion = false, int maximumViewDistance = 20, int maximumDarknessToSeeUnits = 9,
+        int drawEnemyRadarCircles = 1)
     {
+        DrawEnemyRadarCircles = drawEnemyRadarCircles;
         FixedUserOptions = Sorted(fixedUserOptions ?? new Dictionary<string, string>());
         BuildTimeReductionScaling = buildTimeReductionScaling;
         CustomTrainingFactor = customTrainingFactor;
@@ -165,6 +168,8 @@ public sealed class CampaignStartSettings
     public int ManaWoundThreshold { get; }
     public int HealthWoundThreshold { get; }
     public int EscortRange { get; }
+    /// <summary>Mod::_drawEnemyRadarCircles: 0 none, 1 hyper-detected hunter-killers, above 1 all.</summary>
+    public int DrawEnemyRadarCircles { get; }
     public int MaximumViewDistance { get; }
     public int MaximumDarknessToSeeUnits { get; }
     public bool HunterKillerFastRetarget { get; }
@@ -226,6 +231,7 @@ internal sealed class CampaignStartSettingsBuilder
     public int ManaWoundThreshold { get; set; } = 200;
     public int HealthWoundThreshold { get; set; } = 100;
     public int EscortRange { get; set; } = 20;
+    public int DrawEnemyRadarCircles { get; set; } = 1;
     public int MaximumViewDistance { get; set; } = 20;
     public int MaximumDarknessToSeeUnits { get; set; } = 9;
     public bool HunterKillerFastRetarget { get; set; } = true;

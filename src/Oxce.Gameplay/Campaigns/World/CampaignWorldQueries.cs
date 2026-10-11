@@ -18,13 +18,28 @@ public sealed record CampaignWorldTarget(
     public WorldTargetReference Reference { get; init; } = new(Kind, TypeId, Id, Longitude, Latitude);
     /// <summary>Reason interception or landing cannot yet execute; pursuit may still be available.</summary>
     public string? UnavailableActionReason { get; init; }
+    /// <summary>UFO radar circle inputs (Globe::drawRadars): hunter-killer, hyper-wave detection and radar range in nautical miles.</summary>
+    public bool HunterKiller { get; init; }
+    public bool HyperDetected { get; init; }
+    public int RadarRange { get; init; }
+    /// <summary>A hunting UFO's current destination, for its flight path (Globe::drawFlights).</summary>
+    public bool Hunting { get; init; }
+    public WorldPosition? Destination { get; init; }
 }
 
-public sealed record CampaignWorldBase(int Id, string Name, double Longitude, double Latitude);
+public sealed record CampaignWorldBase(int Id, string Name, double Longitude, double Latitude)
+{
+    /// <summary>The largest completed facility radar below 10,000 nautical miles (Globe::drawRadars).</summary>
+    public int RadarRange { get; init; }
+}
 
 public sealed record CampaignWorldCraft(int BaseId, string TypeId, int Id, string Name, string Status,
     double Longitude, double Latitude, int Fuel, WorldTargetReference? Destination,
-    string? DispatchUnavailableReason, string? PatrolRecallUnavailableReason);
+    string? DispatchUnavailableReason, string? PatrolRecallUnavailableReason)
+{
+    /// <summary>Craft::getCraftStats().radarRange in nautical miles, including weapon bonuses.</summary>
+    public int RadarRange { get; init; }
+}
 
 /// <summary>The alien activity the player can act on plus the scheduled work behind it.</summary>
 public sealed record CampaignWorldOverview(

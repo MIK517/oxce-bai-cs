@@ -139,11 +139,71 @@ public sealed class GlobeRendererTests
         Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
     }
 
+    [Fact]
+    public void RadarFlightAndDetailLayersShadeFromTheGlobeAndFollowZoom()
+    {
+        var view = new GlobeView(512, 400, 2);
+        var assets = Assets(withCity: true);
+        var globe = Globe() with
+        {
+            Polylines = [new RuntimeGlobePolyline([new(-0.1, 0.1), new(0.1, 0.1)])],
+        };
+        var renderer = new GlobeRenderer(view, assets, globe, IndexedInterfaceFont.Create());
+        var scene = GlobeScene.FromParts([],
+            [new GlobeCircle(0, 0, 0.5, 48)],
+            [new GlobePath(-0.2, 0, 0.2, 0)],
+            [new GlobeLabel(0, -0.2, "CITY", 138, 3, 100, 2, City: true)]);
+
+        renderer.Render(scene, Noon, new GlobeRenderOptions(), blinkOn: true);
+        var surface = renderer.Surface;
+        // Flight paths over lit land take the land shade (+8 within the group) of the unshaded globe.
+        Assert.Equal(0x61 + 8, surface.GetPixel(256, 200));
+        // The radar ring crosses lit ocean: ocean colour + 6 + 8.
+        Assert.Contains(Around(surface, view.Project(0, 0.5)), color => color == 192 + 14);
+        // Borders only from zoom 1, labels and city markers only from zoom 3.
+        Assert.DoesNotContain(Around(surface, view.Project(0, 0.1)), color => color == 162);
+        Assert.NotEqual(0x30, surface.GetPixel(view.Project(0, -0.2).X, view.Project(0, -0.2).Y));
+
+        renderer.Render(scene, Noon, new GlobeRenderOptions(RadarLines: false, FlightPaths: false), blinkOn: true);
+        Assert.Equal(0x61, surface.GetPixel(256, 200));
+        Assert.DoesNotContain(Around(surface, view.Project(0, 0.5)), color => color == 192 + 14);
+
+        view.SetZoom(1);
+        renderer.Render(scene, Noon, new GlobeRenderOptions(), blinkOn: true);
+        Assert.Contains(Around(surface, view.Project(0, 0.1)), color => color == 162);
+        renderer.Render(scene, Noon, new GlobeRenderOptions(Detail: false), blinkOn: true);
+        Assert.DoesNotContain(Around(surface, view.Project(0, 0.1)), color => color == 162);
+
+        view.SetZoom(3);
+        renderer.Render(scene, Noon, new GlobeRenderOptions(), blinkOn: false);
+        var (cityX, cityY) = view.Project(0, -0.2);
+        // City markers never blink; the label below is coloured 138 + glyph value.
+        Assert.Equal(0x30, surface.GetPixel(cityX, cityY));
+        var labelPixels = 0;
+        for (var y = cityY + 4; y < cityY + 16; y++)
+            for (var x = cityX - 60; x < cityX + 60; x++)
+                if (surface.GetPixel(x, y) is > 138 and < 138 + 16) labelPixels++;
+        Assert.True(labelPixels > 5);
+
+        var options = new GlobeRenderOptions();
+        var craftRange = new GlobeCircle(0, 0, 0.4, 64);
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        for (var frame = 0; frame < 3; frame++) renderer.Render(scene, Noon, options, frame % 2 == 0, craftRange);
+        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+    }
+
+    private static IEnumerable<byte> Around(IndexedSurface surface, (int X, int Y) point)
+    {
+        for (var y = point.Y - 2; y <= point.Y + 2; y++)
+            for (var x = point.X - 2; x <= point.X + 2; x++)
+                yield return surface.GetPixel(x, y);
+    }
+
     private static RuntimeGlobe Globe() => new(
         [new WorldPolygon(0, [new(-0.3, -0.3), new(0.3, -0.3), new(0.3, 0.3), new(-0.3, 0.3)])],
         new ReadOnlyDictionary<int, RuntimeGlobeTexture>(new Dictionary<int, RuntimeGlobeTexture>()));
 
-    private static GeoscapeAssets Assets()
+    private static GeoscapeAssets Assets(bool withCity = false)
     {
         var textures = new Dictionary<int, IndexedSurface>();
         for (var frame = 0; frame < 3; frame++)
@@ -154,8 +214,14 @@ public sealed class GlobeRendererTests
         }
         var marker = new IndexedSurface(3, 3);
         marker.Clear(0x10);
-        return new GeoscapeAssets(IndexedPalette.CreateGrayscale(), textures,
-            new Dictionary<int, IndexedSurface> { [GlobeScene.BaseMarker] = marker }, RuntimeGlobeColors.Default);
+        var markers = new Dictionary<int, IndexedSurface> { [GlobeScene.BaseMarker] = marker };
+        if (withCity)
+        {
+            var city = new IndexedSurface(3, 3);
+            city.Clear(0x30);
+            markers[GlobeScene.CityMarker] = city;
+        }
+        return new GeoscapeAssets(IndexedPalette.CreateGrayscale(), textures, markers, RuntimeGlobeColors.Default);
     }
 
     private static GlobeScene GlobeSceneFor(params GlobeMarker[] markers) => GlobeScene.FromMarkers(markers);

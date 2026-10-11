@@ -25,7 +25,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 5 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 294 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 295 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 96 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -133,8 +133,11 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 ### `Oxce.Engine.Geoscape`
 
 - `GeoscapeAssets` (class) [GeoscapeAssets.cs](../src/Oxce.Engine/Geoscape/GeoscapeAssets.cs) - Indexed resources the globe draws with.
-- `GlobeRenderer` (class) [GlobeRenderer.cs](../src/Oxce.Engine/Geoscape/GlobeRenderer.cs) - Draws the globe into an indexed surface in Globe::draw order: ocean, textured land, the day/night shadow over every globe pixel, then mar...
+- `GlobeRenderer` (class) [GlobeRenderer.cs](../src/Oxce.Engine/Geoscape/GlobeRenderer.cs) - Draws the globe into an indexed surface as Globe::draw and Globe::blit compose it: ocean and textured land; radar circles and flight path...
 - `GlobeMarker` (record struct) [GlobeScene.cs](../src/Oxce.Engine/Geoscape/GlobeScene.cs) - A marker frame at a globe position.
+- `GlobeCircle` (record struct) [GlobeScene.cs](../src/Oxce.Engine/Geoscape/GlobeScene.cs) - A radar circle: centre, range in radians, segment count and the drawn-segment stride.
+- `GlobePath` (record struct) [GlobeScene.cs](../src/Oxce.Engine/Geoscape/GlobeScene.cs) - A great-circle flight path from a mover to its destination.
+- `GlobeLabel` (record) [GlobeScene.cs](../src/Oxce.Engine/Geoscape/GlobeScene.cs) - A detail label centred in a reference text box of `BoxWidth` pixels at the projected point, shown from `MinimumZoom`; cities also draw th...
 - `GlobeRenderOptions` (record) [GlobeScene.cs](../src/Oxce.Engine/Geoscape/GlobeScene.cs) - Display options the reference keeps in Options (globeSeasons, globeDetail, ...).
 - `GlobeScene` (class) [GlobeScene.cs](../src/Oxce.Engine/Geoscape/GlobeScene.cs) - What the globe draws for one world state, built when the world changes rather than per frame.
 - `GlobeShading` (class) [GlobeShading.cs](../src/Oxce.Engine/Geoscape/GlobeShading.cs) - Day/night shading of the globe.
@@ -819,6 +822,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RuntimeManufactureMaterial` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
 - `RuntimeManufactureRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
 - `RuntimePurchaseRequirements` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeGlobeLabel` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
 - `RuntimeCountryRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
 - `RuntimeRegionRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
 - `RuntimeIndexedResourceReference` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
@@ -1071,7 +1075,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 294 files.
+`tests/Oxce.CompatibilityTests` - 295 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1079,7 +1083,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>291 test classes</summary>
+<details><summary>292 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1244,6 +1248,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicWorldGeneratedTimerResearchTests` ([StrategicWorldGeneratedTimerResearchTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGeneratedTimerResearchTests.cs))
 - `StrategicWorldAlienBaseGenerationTests` ([StrategicWorldGeneratedVariantTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGeneratedVariantTests.cs))
 - `StrategicWorldAlienBaseGenerationTests` ([StrategicWorldGeneratedWaveTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGeneratedWaveTests.cs))
+- `StrategicWorldGlobeQueryTests` ([StrategicWorldGlobeQueryTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGlobeQueryTests.cs))
 - `StrategicWorldGroundResearchTests` ([StrategicWorldGroundResearchTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGroundResearchTests.cs))
 - `StrategicWorldHuntingTests` ([StrategicWorldHuntingMaterialTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldHuntingMaterialTests.cs))
 - `StrategicWorldHuntingTests` ([StrategicWorldHuntingPopulationTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldHuntingPopulationTests.cs))

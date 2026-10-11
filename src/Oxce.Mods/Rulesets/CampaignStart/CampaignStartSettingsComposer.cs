@@ -37,6 +37,7 @@ internal static class CampaignStartSettingsComposer
         b.BuildTimeReductionScaling = Read(root, "buildTimeReductionScaling", b.BuildTimeReductionScaling);
         b.CustomTrainingFactor = Read(root, "customTrainingFactor", b.CustomTrainingFactor);
         b.EscortRange = Read(root, "escortRange", b.EscortRange);
+        b.DrawEnemyRadarCircles = Read(root, "drawEnemyRadarCircles", b.DrawEnemyRadarCircles);
         b.MaximumViewDistance = Read(root, "maxViewDistance", b.MaximumViewDistance);
         b.MaximumDarknessToSeeUnits = Read(root, "maxDarknessToSeeUnits", b.MaximumDarknessToSeeUnits);
         b.HunterKillerFastRetarget = Read(root, "hunterKillerFastRetarget", b.HunterKillerFastRetarget);

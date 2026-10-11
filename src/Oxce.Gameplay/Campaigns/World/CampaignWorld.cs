@@ -82,6 +82,13 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
                 Reference = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, ufo.Id, ufo.Longitude, ufo.Latitude)
                 { UniqueId = ufo.UniqueId },
                 UnavailableActionReason = ufo.Status == UfoStatus.Flying ? InterceptionReason : LandingReason,
+                HunterKiller = ufo.HunterKiller,
+                HyperDetected = ufo.HyperDetected,
+                RadarRange = UfoRadarRange(ufo),
+                Hunting = ufo.Hunting,
+                // UFO waypoints are anonymous Waypoint objects outside the player's list.
+                Destination = Resolve(ufo.Destination)?.Position ??
+                    (ufo.Destination is { Kind: WorldTargetKind.Waypoint } waypoint ? waypoint.Position : null),
             });
         foreach (var site in _sites.Where(static site => site.Detected))
             targets.Add(new CampaignWorldTarget(WorldTargetKind.MissionSite, site.Id, site.DeploymentId,
@@ -112,7 +119,10 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         return new CampaignWorldOverview(CampaignSnapshot.ReadOnly(targets), _missions.Count, _events.Count)
         {
             Bases = CampaignSnapshot.ReadOnly(campaign.BaseStates.Where(static owner => owner.IsPlaced)
-                .Select(owner => new CampaignWorldBase(owner.Id, owner.Name, owner.Longitude, owner.Latitude))),
+                .Select(owner => new CampaignWorldBase(owner.Id, owner.Name, owner.Longitude, owner.Latitude)
+                {
+                    RadarRange = BaseRadarRange(owner),
+                })),
             Crafts = CampaignSnapshot.ReadOnly(campaign.BaseStates.SelectMany(owner => owner.Crafts.Select(craft =>
             {
                 var state = craft.Logistics;
@@ -121,10 +131,43 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
                 return new CampaignWorldCraft(owner.Id, campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule),
                     craft.Id, state?.Name ?? string.Empty, state?.Status ?? string.Empty,
                     state?.Longitude ?? owner.Longitude, state?.Latitude ?? owner.Latitude,
-                    state?.Fuel ?? 0, Resolve(state?.Destination), DispatchReason(owner, craft), airborneReason);
+                    state?.Fuel ?? 0, Resolve(state?.Destination), DispatchReason(owner, craft), airborneReason)
+                {
+                    RadarRange = CraftRadarRange(craft),
+                };
             }))),
         };
     });
+
+    private int BaseRadarRange(CampaignState.BaseState owner)
+    {
+        // Globe::drawRadars: the largest completed radar below MAX_DRAW_RADAR_CIRCLE_RADIUS.
+        var range = 0;
+        foreach (var facility in owner.Facilities)
+        {
+            if (facility.BuildTime != 0) continue;
+            var radar = campaign.Content.RuntimeRules.Facilities[facility.Rule].Value.RadarRange;
+            if (radar < 10_000 && radar > range) range = radar;
+        }
+        return range;
+    }
+
+    private int CraftRadarRange(CampaignState.CraftState craft)
+    {
+        if (craft.Logistics is not { } state) return 0;
+        var rules = campaign.Content.RuntimeRules;
+        CraftLogistics.EffectiveRadar(rules.Crafts[craft.Rule].Value, state.Weapons, rules, out var range, out _);
+        return range;
+    }
+
+    private int UfoRadarRange(UfoSnapshot ufo)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        if (!rules.Ufos.TryGet(ufo.RuleId, out var handle)) return 0;
+        var rule = rules.Ufos[handle].Value;
+        var race = FindMission(ufo.MissionId)?.Race ?? string.Empty;
+        return (int)Math.Clamp((long)rule.Stats.RadarRange + rule.RaceBonus(race).RadarRange, 0, int.MaxValue);
+    }
 
     private CampaignSnapshot CaptureWorldState(CampaignSnapshot snapshot) => snapshot with
     {
