@@ -1,6 +1,7 @@
 using System.Globalization;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
+using Oxce.Mods.Rulesets.Runtime;
 
 namespace Oxce.Engine.Geoscape;
 
@@ -52,7 +53,9 @@ public sealed record GeoscapePopup(string Title, IReadOnlyList<string> Lines, IR
 /// </summary>
 public static class GeoscapeNotifications
 {
-    public static GeoscapePopup? Describe(ICampaignEvent notification, CampaignWorldOverview world, Func<string, string> tr)
+    /// <param name="rules">Labels the craft screen's weapon slots; the defaults are used without it.</param>
+    public static GeoscapePopup? Describe(ICampaignEvent notification, CampaignWorldOverview world, Func<string, string> tr,
+        RuntimeRuleCatalog? rules = null, int etaMode = 0)
     {
         ArgumentNullException.ThrowIfNull(notification);
         ArgumentNullException.ThrowIfNull(world);
@@ -73,6 +76,7 @@ public static class GeoscapeNotifications
                 {
                     // UfoDetectedState: Intercept and Centre reset the speed and centre on the UFO; Cancel does not.
                     var ufo = Ufo(detected.UniqueId);
+                    if (ufo is not null) return GeoscapeScreens.Ufo(ufo, detected: true, detected.Hyperwave, tr);
                     var lines = new List<string> { tr("STR_DETECTED") };
                     if (detected.Hyperwave) lines.Add(tr("STR_HYPER_WAVE_TRANSMISSIONS_ARE_DECODED"));
                     return new(UfoName(ufo, detected.UniqueId), lines,
@@ -98,9 +102,15 @@ public static class GeoscapeNotifications
             case AlienBaseDiscovered alienBase:
                 {
                     // AlienBaseState: OK centres on the base and resets the speed.
+                    // AlienBaseState: "country, region", the region alone or unknown, in the deployment's message.
                     var target = Find(WorldTargetKind.AlienBase, alienBase.Id);
-                    return new(target?.Label ?? tr(alienBase.DeploymentId),
-                        [Format(tr("STR_XCOM_AGENTS_HAVE_LOCATED_AN_ALIEN_BASE_IN_REGION"), tr("STR_UNKNOWN"))],
+                    var location = target is { CountryId.Length: > 0 }
+                        ? Format(tr("STR_COUNTRIES_COMMA"), tr(target.CountryId), target.RegionId.Length == 0 ? "" : tr(target.RegionId))
+                        : target is { RegionId.Length: > 0 } ? tr(target.RegionId) : tr("STR_UNKNOWN");
+                    var title = target is { DiscoveredMessage.Length: > 0 }
+                        ? Format(tr(target.DiscoveredMessage), location, tr(target.Reference.TypeId))
+                        : Format(tr("STR_XCOM_AGENTS_HAVE_LOCATED_AN_ALIEN_BASE_IN_REGION"), location);
+                    return new(title, [],
                         [new(tr("STR_OK"), true, Position(target), OkKey: true, CancelKey: true)]);
                 }
             case UfoLanded landed:
@@ -137,10 +147,15 @@ public static class GeoscapeNotifications
                             Intent = new CraftIntent(new(arrived.BaseId, arrived.CraftTypeId, arrived.CraftId)),
                         },
                     ]);
-            case CraftTargetLost lostTarget:
-                return new(CraftName(lostTarget.BaseId, lostTarget.CraftTypeId, lostTarget.CraftId),
-                    [tr("STR_TRACKING_LOST"), lostTarget.ReturningToBase ? tr("STR_RETURNING_TO_BASE") : tr("STR_NOW_PATROLLING")],
-                    [Ok()]);
+            case CraftTargetLost { ReturningToBase: false, Target.Kind: WorldTargetKind.Ufo } lostTarget
+                when world.Crafts.FirstOrDefault(craft => craft.BaseId == lostTarget.BaseId &&
+                    craft.TypeId == lostTarget.CraftTypeId && craft.Id == lostTarget.CraftId) is { } pursuer:
+                // GeoscapeState::time5Seconds: a pursued UFO left radar; the craft screen offers its last position.
+                return GeoscapeScreens.Craft(pursuer, world, rules, tr, etaMode,
+                    new GeoscapeLostUfo(lostTarget.Target.Position, lostTarget.Target.Id));
+            case CraftTargetLost:
+                // A destroyed or ignored target, or one that no longer exists: the craft just returns or patrols.
+                return null;
             case SuppliesArrived supplies:
                 return new(tr("STR_ITEMS_ARRIVING"), [BaseName(supplies.BaseId)], [OkCancelOnly(), GoToBase(supplies.BaseId, okKey: true)]);
             case CampaignConstructionCompleted construction:

@@ -27,6 +27,15 @@ public sealed record CampaignWorldTarget(
     public WorldPosition? Destination { get; init; }
     /// <summary>The classified <see cref="UnavailableActionReason"/>.</summary>
     public CampaignReason? ActionUnavailable { get; init; }
+    /// <summary>UfoDetectedState's lists for a UFO; absent for other targets.</summary>
+    public CampaignWorldUfoDetails? Ufo { get; init; }
+    /// <summary>
+    /// AlienBaseState's location for an alien base: the first country and region containing it
+    /// in saved order ("" when none), and its deployment's discovery message ("" for the default).
+    /// </summary>
+    public string CountryId { get; init; } = string.Empty;
+    public string RegionId { get; init; } = string.Empty;
+    public string DiscoveredMessage { get; init; } = string.Empty;
 }
 
 /// <summary>A craft weapon slot for the craft screen: weapon rule and rounds.</summary>
@@ -67,6 +76,12 @@ public sealed record CampaignWorldCraft(int BaseId, string TypeId, int Id, strin
     /// </summary>
     public double BaseRange { get; init; } = double.PositiveInfinity;
 }
+
+/// <summary>
+/// UfoDetectedState: size, heading (STR_NONE_UC unless flying) and speed, then the hyper-wave
+/// decoded craft type, race, mission rule and mission region.
+/// </summary>
+public sealed record CampaignWorldUfoDetails(string Size, string Heading, int Speed, string Race, string Mission, string Region);
 
 /// <summary>The alien activity the player can act on plus the scheduled work behind it.</summary>
 public sealed record CampaignWorldOverview(

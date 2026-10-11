@@ -72,7 +72,7 @@ public sealed class GeoscapeNotificationsTests
         var detected = Describe(new UfoContactDetected(70, Hyperwave: true))!;
         Assert.Equal("UFO-7", detected.Title);
         Assert.Contains("STR_HYPER_WAVE_TRANSMISSIONS_ARE_DECODED", detected.Lines);
-        Assert.Equal(["STR_INTERCEPT", "STR_CENTER_ON_UFO_TIME_5_SECONDS", "STR_CANCEL_UC"],
+        Assert.Equal(["STR_INTERCEPT", "STR_CENTER_ON_UFO_TIME_5_SECONDS", "STR_CANCEL_UC", "STR_IGNORE_UC"],
             detected.Actions.Select(action => action.Label));
         Assert.All(detected.Actions.Take(2), action =>
         {
@@ -105,5 +105,80 @@ public sealed class GeoscapeNotificationsTests
         // SavedGame::spawnEvent only schedules: the popup and reset come when the event fires.
         Assert.Null(Describe(new CampaignStrategicEventRequested("STR_EVENT", "research")));
         Assert.Null(Describe(new CampaignTransformationEventSelected("STR_EVENT")));
+    }
+
+    [Fact]
+    public void TheUfoAlertListsItsDetailsAndCanIgnoreTheContact()
+    {
+        var world = World with
+        {
+            Targets = [World.Targets[0] with
+            {
+                Altitude = "STR_HIGH_UP",
+                Ufo = new CampaignWorldUfoDetails("STR_SMALL", "STR_NORTH_EAST", 2200, "STR_SECTOID", "STR_ALIEN_RESEARCH", "STR_EUROPA"),
+            }],
+        };
+        var plain = GeoscapeNotifications.Describe(new UfoContactDetected(70, Hyperwave: false), world, Tr)!;
+        Assert.Equal("STR_DETECTED", plain.Lines[0]);
+        Assert.Contains("STR_HEADING . . STR_NORTH_EAST", plain.Lines);
+        Assert.Contains("STR_SPEED . . 2,200", plain.Lines);
+        Assert.DoesNotContain("STR_RACE . . STR_SECTOID", plain.Lines);
+        var ignore = Assert.Single(plain.Actions, action => action.Command is not null);
+        Assert.Equal(new IgnoreUfoContact(70, 7), ignore.Command);
+        Assert.False(ignore.CancelKey);
+
+        var decoded = GeoscapeNotifications.Describe(new UfoContactDetected(70, Hyperwave: true), world, Tr)!;
+        Assert.Contains("STR_RACE . . STR_SECTOID", decoded.Lines);
+        Assert.Contains("STR_ZONE . . STR_EUROPA", decoded.Lines);
+        var ignored = world with { Targets = [world.Targets[0] with { DetectionAlertIgnored = true }] };
+        Assert.DoesNotContain(GeoscapeNotifications.Describe(new UfoContactDetected(70, false), ignored, Tr)!.Actions,
+            action => action.Command is not null);
+    }
+
+    [Fact]
+    public void ALostUfoOffersItsLastPositionAndOtherLostTargetsStaySilent()
+    {
+        var lostUfo = new WorldTargetReference(WorldTargetKind.Ufo, WorldTargetReference.UfoType, 9, 0.7, 0.3) { UniqueId = 90 };
+        Assert.Null(Describe(new CraftTargetLost(1, "STR_INTERCEPTOR", 2, lostUfo, ReturningToBase: true)));
+        Assert.Null(Describe(new CraftTargetLost(1, "STR_INTERCEPTOR", 2,
+            new WorldTargetReference(WorldTargetKind.MissionSite, "STR_TERROR_SITE", 3, 0.7, 0.3), ReturningToBase: false)));
+
+        var screen = Describe(new CraftTargetLost(1, "STR_INTERCEPTOR", 2, lostUfo, ReturningToBase: false))!;
+        Assert.Equal("INTERCEPTOR-2", screen.Title);
+        Assert.StartsWith("STR_STATUS_", screen.Lines[0], StringComparison.Ordinal);
+        var goTo = screen.Actions[^1];
+        Assert.Equal("STR_GO_TO_LAST_KNOWN_UFO_POSITION", goTo.Label);
+        Assert.True(goTo.CancelKey);
+        Assert.Equal(new DispatchCraftToWaypoint(1, "STR_INTERCEPTOR", 2, 0.7, 0.3), goTo.Command);
+    }
+
+    [Fact]
+    public void AnAlienBaseIsLocatedByCountryAndRegion()
+    {
+        CampaignWorldOverview With(string country, string region, string message) => World with
+        {
+            Targets = [new(WorldTargetKind.AlienBase, 4, "STR_ALIEN_BASE", "STR_ALIEN_BASE_4", 0.4, 0.4)
+            {
+                Detected = true,
+                Reference = new(WorldTargetKind.AlienBase, "STR_ALIEN_BASE_", 4, 0.4, 0.4),
+                CountryId = country,
+                RegionId = region,
+                DiscoveredMessage = message,
+            }],
+        };
+        static string Located(string key) => key switch
+        {
+            "STR_XCOM_AGENTS_HAVE_LOCATED_AN_ALIEN_BASE_IN_REGION" => "Base in {0}",
+            "STR_COUNTRIES_COMMA" => "{0}, {1}",
+            "STR_CUSTOM" => "{1} found in {0}",
+            _ => key,
+        };
+        string Title(CampaignWorldOverview world) =>
+            GeoscapeNotifications.Describe(new AlienBaseDiscovered(4, "STR_ALIEN_BASE"), world, Located)!.Title;
+
+        Assert.Equal("Base in STR_FRANCE, STR_EUROPA", Title(With("STR_FRANCE", "STR_EUROPA", "")));
+        Assert.Equal("Base in STR_EUROPA", Title(With("", "STR_EUROPA", "")));
+        Assert.Equal("Base in STR_UNKNOWN", Title(With("", "", "")));
+        Assert.Equal("STR_ALIEN_BASE_ found in STR_EUROPA", Title(With("", "STR_EUROPA", "STR_CUSTOM")));
     }
 }
