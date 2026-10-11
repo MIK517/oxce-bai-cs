@@ -48,6 +48,7 @@ internal sealed partial class CampaignWorld
         registry.Command<DispatchCraftToTarget>(DispatchTarget);
         registry.Command<RecallCraft>(Recall);
         registry.Command<PatrolCraft>(Patrol);
+        registry.Command<DispatchCraftWing>(DispatchWing);
         registry.Preflight(CampaignPreflightOrder.CraftMovement, "craft movement", (_, highest) => CraftMovementReason(highest));
         registry.Timed(CampaignTimeTrigger.FiveSeconds, CampaignTimeOrder.FiveSecondsWorldCrafts,
             "world craft movement", MoveCrafts);
@@ -82,7 +83,11 @@ internal sealed partial class CampaignWorld
             craft.Id, destination)]);
     }
 
-    private string? DispatchReason(CampaignState.BaseState owner, CampaignState.CraftState craft)
+    private string? DispatchReason(CampaignState.BaseState owner, CampaignState.CraftState craft) =>
+        LaunchReason(owner, craft) ?? ArmorReason(owner, craft) ?? ItemsReason(craft) ?? PilotsReason(owner, craft);
+
+    /// <summary>InterceptState::lstCraftsLeftClick's allowStart plus the port's speed guard.</summary>
+    private string? LaunchReason(CampaignState.BaseState owner, CampaignState.CraftState craft)
     {
         if (craft.Logistics is not { } state) return "Craft dispatch requires resolved craft state.";
         if (!owner.IsPlaced) return "A craft cannot depart from an unplaced base.";
@@ -96,17 +101,20 @@ internal sealed partial class CampaignWorld
             if (IsReturningHome(state)) return ReturningReason;
         }
         var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
-        if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
-                campaign.Content.RuntimeRules, out _))
-            return SpeedRangeReason;
-        // ConfirmDestinationState::btnOkClick checks armor, cargo, then pilots.
-        if (!campaign.HasAllowedArmorsOnboard(owner, craft))
-            return "The craft carries armor forbidden by its rules.";
-        if (CraftLogistics.TooManyItemsOnboard(state, rule, campaign.Content.RuntimeRules))
-            return "The craft carries too many items.";
-        if (!campaign.HasRequiredPilots(owner, craft)) return "The craft does not have enough pilots.";
-        return null;
+        return CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons, campaign.Content.RuntimeRules, out _)
+            ? null : SpeedRangeReason;
     }
+
+    // ConfirmDestinationState::btnOkClick checks armor, cargo, then pilots.
+    private string? ArmorReason(CampaignState.BaseState owner, CampaignState.CraftState craft) =>
+        campaign.HasAllowedArmorsOnboard(owner, craft) ? null : "The craft carries armor forbidden by its rules.";
+
+    private string? ItemsReason(CampaignState.CraftState craft) =>
+        CraftLogistics.TooManyItemsOnboard(craft.Logistics!, campaign.Content.RuntimeRules.Crafts[craft.Rule].Value,
+            campaign.Content.RuntimeRules) ? "The craft carries too many items." : null;
+
+    private string? PilotsReason(CampaignState.BaseState owner, CampaignState.CraftState craft) =>
+        campaign.HasRequiredPilots(owner, craft) ? null : "The craft does not have enough pilots.";
 
     /// <summary>Craft::getLowFuel or getMissionComplete: the craft is already heading home.</summary>
     private static bool IsReturningHome(CraftLogisticsState state) => state.LowFuel || state.MissionComplete;
@@ -585,5 +593,5 @@ internal sealed partial class CampaignWorld
     }
 
     private static CampaignCommandResult Blocked(string reason) =>
-        new([new CampaignActionBlocked(reason)]);
+        new([CampaignActionBlocked.From(WorldCommandReasons.For(reason))]);
 }

@@ -15,18 +15,7 @@ internal sealed partial class CampaignWorld
         var craft = owner.Crafts[index];
         if (DispatchReason(owner, craft) is { } reason) return Blocked(reason);
         var target = command.Target;
-        if (!Enum.IsDefined(target.Kind)) return Blocked("The destination kind is invalid.");
-        if (target.Kind == WorldTargetKind.Ufo && target.UniqueId <= 0)
-            return Blocked("UFO dispatch requires its stable unique identity.");
-        if (Resolve(target) is not { } resolved || !IsVisibleTarget(resolved))
-            return Blocked("The destination no longer exists or is not visible.");
-        resolved = resolved.Kind switch
-        {
-            WorldTargetKind.Ufo => resolved with { TypeId = WorldTargetReference.UfoType, Id = TargetUfo(resolved)!.Id },
-            WorldTargetKind.Base => resolved with { TypeId = WorldTargetReference.BaseType },
-            WorldTargetKind.Waypoint => resolved with { TypeId = WorldTargetReference.WaypointType },
-            _ => resolved,
-        };
+        if (DestinationReason(target, out var resolved) is { } destinationReason) return Blocked(destinationReason);
         if (target.Kind == WorldTargetKind.Craft && target.Id == craft.Id && target.TypeId == command.CraftTypeId)
             return Blocked("A craft cannot escort itself.");
         if (target.Kind == WorldTargetKind.Base && target.Id != owner.Id)
@@ -42,6 +31,25 @@ internal sealed partial class CampaignWorld
                 speed, resolved),
         };
         return new([new CraftDestinationChanged(owner.Id, command.CraftTypeId, craft.Id, resolved)]);
+    }
+
+    /// <summary>Resolves a visible destination to the reference a craft stores.</summary>
+    private string? DestinationReason(WorldTargetReference target, out WorldTargetReference resolved)
+    {
+        resolved = target;
+        if (!Enum.IsDefined(target.Kind)) return "The destination kind is invalid.";
+        if (target.Kind == WorldTargetKind.Ufo && target.UniqueId <= 0)
+            return "UFO dispatch requires its stable unique identity.";
+        if (Resolve(target) is not { } found || !IsVisibleTarget(found))
+            return "The destination no longer exists or is not visible.";
+        resolved = found.Kind switch
+        {
+            WorldTargetKind.Ufo => found with { TypeId = WorldTargetReference.UfoType, Id = TargetUfo(found)!.Id },
+            WorldTargetKind.Base => found with { TypeId = WorldTargetReference.BaseType },
+            WorldTargetKind.Waypoint => found with { TypeId = WorldTargetReference.WaypointType },
+            _ => found,
+        };
+        return null;
     }
 
     private UfoSnapshot? TargetUfo(WorldTargetReference reference)
