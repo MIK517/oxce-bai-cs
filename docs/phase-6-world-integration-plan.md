@@ -50,8 +50,9 @@ remains Phase 8. Combined world acceptance closes here, with the named later-pha
 ### Branch 4d slices (approved 2026-10-11)
 
 Starting audit of `e22b6853` found: the SDL app reaches the campaign through
-`CampaignExtensionSession`, which exposes only `ICampaignQuery`, so the readiness,
-research/production and world views are unreachable outside tests; no UI path calls
+`CampaignExtensionSession`, which implements none of the readiness, research/production
+or world query interfaces, so the client's readiness and research/production views are
+unreachable outside tests and no world view exists; no UI path calls
 `EnterCampaignWorld`; headless refusal reasons are English literals; wings and airborne
 craft transfer have no headless command; one-day speed (17,280 ticks per 80 ms
 `geoClockSpeed` frame) costs 0.3–1.1 s at measured tick costs; globe polylines, cities,

@@ -375,7 +375,7 @@ Phase 6 branch 4c checkpoints are recorded in the
 [4c plan's progress](phase-6-world-integration-plan.md#progress) and the subsystem status
 documents it links; entries below link to them instead of copying them. Branch 4c is
 [closed with named restrictions](phase-6-world-integration-plan.md#branch-4c-closure-2026-10-11);
-branch 4d (globe integration) is next.
+branch 4d (globe integration) is in progress; see [4d slices](phase-6-world-integration-plan.md#branch-4d-slices-approved-2026-10-11).
 
 The September compatibility-guardrail, script-allocation, compiled-content-cache,
 hot-runtime-partitioning, and portable Unicode-path slices are complete. The production
