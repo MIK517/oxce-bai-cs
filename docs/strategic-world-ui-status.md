@@ -98,5 +98,8 @@ including the destination-selection craft range circle, then composes the shadow
 layer, borders (`LINE_COLOR`, zoom 1+), labels (`Text` palette shift: colour plus glyph value,
 centred in the reference text box) with city markers, and the markers. The globe options
 `globeRadarLines`, `globeFlightPaths` and `globeDetail` toggle the layers. Labels use the small
-font at its own size on the 2× frame. Tests: `GlobeRendererTests`, `GlobeSceneTests`,
+font at its own size on the 2× frame and are not clipped to the reference text box. Country and
+city labels come from the campaign's own countries and regions (the query lists them), as the
+reference visits the saved game's lists. Still to come with base placement (S8): the hover radar
+circles drawn while choosing a new base site. Tests: `GlobeRendererTests`, `GlobeSceneTests`,
 `StrategicWorldGlobeQueryTests`.

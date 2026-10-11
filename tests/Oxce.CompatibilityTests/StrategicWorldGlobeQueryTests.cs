@@ -38,6 +38,9 @@ public sealed class StrategicWorldGlobeQueryTests
         var world = campaign.GetQuery<ICampaignWorldQuery>()!.QueryWorld();
 
         Assert.Equal(1000, Assert.Single(world.Bases).RadarRange);
+        Assert.Equal(campaign.Capture().Countries.Select(country => country.RuleId), world.CountryIds);
+        Assert.Equal(campaign.Capture().Regions.Select(region => region.RuleId), world.RegionIds);
+        Assert.NotEmpty(world.RegionIds);
         var ufo = Assert.Single(world.Targets, target => target.Kind == WorldTargetKind.Ufo);
         var rule = content.RuntimeRules.Ufos[content.RuntimeRules.Ufos.GetRequired("UFO_HUNTER")].Value;
         Assert.Equal((true, true, true), (ufo.HunterKiller, ufo.HyperDetected, ufo.Hunting));

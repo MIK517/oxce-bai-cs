@@ -125,25 +125,33 @@ public sealed class GlobeScene
             return [.. paths];
         }
 
-        // Globe::drawDetail labels: countries from zoom 2, extra labels from their own zoom, then
-        // cities (named point mission areas, RuleRegion::getCities) and base names from zoom 3.
+        // Globe::drawDetail labels for the campaign's countries and regions: countries from zoom 2,
+        // extra labels from their own zoom, then cities (named point mission areas,
+        // RuleRegion::getCities) and base names from zoom 3.
         GlobeLabel[] Labels()
         {
             var colors = rules.Campaign.Globe.Colors;
             var labels = new List<GlobeLabel>();
-            foreach (var country in rules.Countries.Rules)
-                labels.Add(new(country.Value.LabelLongitude, country.Value.LabelLatitude, localize(country.Id),
-                    country.Value.LabelColor > 0 ? (byte)country.Value.LabelColor : colors.CountryLabel, 2, 150, 0));
+            foreach (var id in world.CountryIds)
+            {
+                if (!rules.Countries.TryGet(id, out var handle)) continue;
+                var country = rules.Countries[handle].Value;
+                labels.Add(new(country.LabelLongitude, country.LabelLatitude, localize(id),
+                    country.LabelColor > 0 ? (byte)country.LabelColor : colors.CountryLabel, 2, 150, 0));
+            }
             foreach (var label in rules.Campaign.GlobeLabels)
                 labels.Add(new(label.LabelLongitude, label.LabelLatitude, localize(label.Type),
                     label.LabelColor > 0 ? (byte)label.LabelColor : colors.CountryLabel, label.ZoomLevel, 120, 0));
-            foreach (var region in rules.Regions.Rules)
-                foreach (var zone in region.Value.MissionZones)
+            foreach (var id in world.RegionIds)
+            {
+                if (!rules.Regions.TryGet(id, out var region)) continue;
+                foreach (var zone in rules.Regions[region].Value.MissionZones)
                     foreach (var area in zone.Areas)
                         if (area.Name.Length != 0 && Same(area.LongitudeMinimum, area.LongitudeMaximum) &&
                             Same(area.LatitudeMinimum, area.LatitudeMaximum))
                             labels.Add(new(area.LongitudeMinimum, area.LatitudeMinimum, localize(area.Name),
                                 colors.CityLabel, 3, 100, 2, City: true));
+            }
             foreach (var owner in world.Bases)
                 if (owner.Longitude != 0.0 || owner.Latitude != 0.0)
                     labels.Add(new(owner.Longitude, owner.Latitude, owner.Name, colors.BaseLabel, 3, 100, 2));
