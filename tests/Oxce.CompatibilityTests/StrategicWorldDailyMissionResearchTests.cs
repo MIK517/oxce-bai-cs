@@ -11,29 +11,22 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldDailyMissionResearchTests
 {
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    [InlineData(false, 4)]
-    [InlineData(true, 4)]
-    [InlineData(false, 5)]
-    [InlineData(true, 5)]
-    [InlineData(false, 6)]
-    [InlineData(true, 6)]
-    public void DailyRewardSelectsMissionInterruptionBeforeAllOrdinaryFlightPaths(bool cache, int path)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    [InlineData(6)]
+    public void DailyRewardSelectsMissionInterruptionBeforeAllOrdinaryFlightPaths(int path)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-objective-base-spawn");
-        var content = Content(cache, path);
-        var interruptedContent = Content(cache, path, "CORE");
-        var continuedContent = Content(cache, path, "");
+        var content = Content(path);
+        var interruptedContent = Content(path, "CORE");
+        var continuedContent = Content(path, "");
         var interruptedSeen = false;
         var continuedSeen = false;
         for (ulong seed = 1; seed <= 32; seed++)
@@ -66,16 +59,14 @@ public sealed class StrategicWorldDailyMissionResearchTests
         Assert.True(continuedSeen);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void PossibleDailyContinuationRetainsMarkerCapacityAndCombatBoundaries(bool cache)
+    [Fact]
+    public void PossibleDailyContinuationRetainsMarkerCapacityAndCombatBoundaries()
     {
-        var content = Content(cache, 5);
+        var content = Content(5);
         var initial = Snapshot(content, 17, 5).WithNextId("ARRIVAL_BASE", int.MaxValue);
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "Base objective IDs are exhausted or collide.");
-        content = Content(cache, 0);
+        content = Content(0);
         initial = Snapshot(content, 17, 0).WithCraft("SHIP", craft => craft with
         {
             Logistics = craft.Logistics! with { Longitude = Degrees(8), Latitude = Degrees(2), Speed = 6000, Takeoff = 0 },
@@ -95,15 +86,13 @@ public sealed class StrategicWorldDailyMissionResearchTests
             "Craft interception requires strategic combat (Phase 6 branch 5).");
     }
 
-    internal static RuntimeContent Content(bool cache, int path, string interrupt = "BONUS") =>
-        StrategicWorldConversionResearchTests.Content(cache, respawn: path == 4, interrupt: interrupt, baseLanding: path == 5);
+    internal static RuntimeContent Content(int path, string interrupt = "BONUS") =>
+        StrategicWorldConversionResearchTests.Content(respawn: path == 4, interrupt: interrupt, baseLanding: path == 5);
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void PossibleDailyCleanupCannotOrphanUfosOrInvalidRetaliationLinks(bool cache)
+    [Fact]
+    public void PossibleDailyCleanupCannotOrphanUfosOrInvalidRetaliationLinks()
     {
-        var content = Content(cache, 0);
+        var content = Content(0);
         var initial = Snapshot(content, 17, 0);
         initial = initial with { World = initial.World with { Missions = [initial.World.Missions[0] with { LiveUfos = 0, NextWave = 0 }] } };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),

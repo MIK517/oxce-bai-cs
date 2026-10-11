@@ -12,12 +12,10 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicEventScriptTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SelectionAndHistoryMatchExtractedLoop(bool fromCache)
+    [Fact]
+    public void SelectionAndHistoryMatchExtractedLoop()
     {
-        var content = StrategicReadinessTestContent.Load("strategic-event-scripts.rul", fromCache);
+        var content = StrategicReadinessTestContent.Load("strategic-event-scripts.rul");
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-event-scripts");
         var history = new Dictionary<string, int>(StringComparer.Ordinal);
         var round = 0;
@@ -42,13 +40,11 @@ public sealed class StrategicEventScriptTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SubsystemSchedulesPersistsSuppressesAndCleansUpRepeatedEvents(bool fromCache)
+    [Fact]
+    public void SubsystemSchedulesPersistsSuppressesAndCleansUpRepeatedEvents()
     {
         TestFixtures.LoadVerifiedManifest("strategic-event-scripts");
-        var content = StrategicReadinessTestContent.Load("strategic-event-scripts.rul", fromCache);
+        var content = StrategicReadinessTestContent.Load("strategic-event-scripts.rul");
         var initial = CreateSnapshot(content, "Event scripts") with { RandomState = 17, CompletedResearch = ["STOP"] };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         Assert.Empty(campaign.Execute(new ScheduleMonthlyWorldEvents(0, 0)).Events);
@@ -168,16 +164,13 @@ public sealed class StrategicEventScriptTests
     }
 
     [Theory]
-    [InlineData(9, 3, false)]
-    [InlineData(9, 3, true)]
-    [InlineData(10, 1, false)]
-    [InlineData(10, 1, true)]
-    [InlineData(14, 1, false)]
-    [InlineData(14, 1, true)]
-    public void UnreachableSequentialTailWaitsUntilNextPassEvenAcrossReload(int month, int count, bool fromCache)
+    [InlineData(9, 3)]
+    [InlineData(10, 1)]
+    [InlineData(14, 1)]
+    public void UnreachableSequentialTailWaitsUntilNextPassEvenAcrossReload(int month, int count)
     {
         TestFixtures.LoadVerifiedManifest("strategic-event-scripts");
-        var content = StrategicReadinessTestContent.Load("strategic-event-scripts.rul", fromCache);
+        var content = StrategicReadinessTestContent.Load("strategic-event-scripts.rul");
         var initial = CreateSnapshot(content, "Sequential tail") with { MonthsPassed = month, RandomState = 17 };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         Assert.Empty(campaign.Execute(new ScheduleMonthlyWorldEvents(0, 0)).Events);
@@ -190,16 +183,13 @@ public sealed class StrategicEventScriptTests
     }
 
     [Theory]
-    [InlineData(11, false)]
-    [InlineData(11, true)]
-    [InlineData(12, false)]
-    [InlineData(12, true)]
-    [InlineData(13, false)]
-    [InlineData(13, true)]
-    public void EarlierScriptsExposeSequentialTailBeforeAnyMutationOrRandomDraw(int month, bool fromCache)
+    [InlineData(11)]
+    [InlineData(12)]
+    [InlineData(13)]
+    public void EarlierScriptsExposeSequentialTailBeforeAnyMutationOrRandomDraw(int month)
     {
         TestFixtures.LoadVerifiedManifest("strategic-event-scripts");
-        var content = StrategicReadinessTestContent.Load("strategic-event-scripts.rul", fromCache);
+        var content = StrategicReadinessTestContent.Load("strategic-event-scripts.rul");
         var initial = CreateSnapshot(content, "Earlier script exposes tail") with { MonthsPassed = month, RandomState = 17 };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         var before = campaign.Capture();

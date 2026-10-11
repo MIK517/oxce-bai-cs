@@ -14,12 +14,10 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicReadinessFixtureTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void BasePlacementFacilityConstructionAndSaveReloadFormACompatibilitySlice(bool fromCache)
+    [Fact]
+    public void BasePlacementFacilityConstructionAndSaveReloadFormACompatibilitySlice()
     {
-        var content = StrategicReadinessTestContent.Load(fromCache: fromCache);
+        var content = StrategicReadinessTestContent.Load();
         var original = TestFixtures.CreateLogisticsCampaign(content, "Bases");
         var funded = original.Capture() with { Funds = [20_000], Incomes = [0], Expenditures = [0] };
         var campaign = CampaignState.Restore(funded, content, new SplitMix64RandomSource(42));
@@ -110,12 +108,10 @@ public sealed class StrategicReadinessFixtureTests
             StringComparison.Ordinal);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SoldierTrainingEligibilityFormsAnIndependentCompatibilitySlice(bool fromCache)
+    [Fact]
+    public void SoldierTrainingEligibilityFormsAnIndependentCompatibilitySlice()
     {
-        var (content, _, facilityState, facilityBase) = CreateReadinessScenario(fromCache);
+        var (content, _, facilityState, facilityBase) = CreateReadinessScenario();
 
         var recruit = content.RuntimeRules.Soldiers[content.RuntimeRules.Soldiers.GetRequired("RECRUIT")].Value;
         var undertrainedStats = recruit.TrainingStatCaps.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
@@ -159,12 +155,10 @@ public sealed class StrategicReadinessFixtureTests
         Assert.Equivalent(beforeTraining, trainingCampaign.Capture(), strict: true);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CraftCapacityRulesFormAnIndependentCompatibilitySlice(bool fromCache)
+    [Fact]
+    public void CraftCapacityRulesFormAnIndependentCompatibilitySlice()
     {
-        var (content, _, facilityState, facilityBase) = CreateReadinessScenario(fromCache);
+        var (content, _, facilityState, facilityBase) = CreateReadinessScenario();
         var recruit = content.RuntimeRules.Soldiers[content.RuntimeRules.Soldiers.GetRequired("RECRUIT")].Value;
         var undertrainedStats = recruit.TrainingStatCaps.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
         foreach (var key in new[] { "firing", "health", "melee", "throwing", "strength", "tu", "stamina" })
@@ -234,12 +228,10 @@ public sealed class StrategicReadinessFixtureTests
         Assert.Equivalent(beforeWeaponRemoval, capacityCampaign.Capture(), strict: true);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CraftVehicleManagementFormsAnIndependentCompatibilitySlice(bool fromCache)
+    [Fact]
+    public void CraftVehicleManagementFormsAnIndependentCompatibilitySlice()
     {
-        var (content, _, facilityState, facilityBase) = CreateReadinessScenario(fromCache);
+        var (content, _, facilityState, facilityBase) = CreateReadinessScenario();
         var vehicleShipRule = content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("SHIP")].Value;
 
         var vehicleCraft = CraftLogistics.Purchase(vehicleShipRule, content.RuntimeRules, 0, 0);
@@ -300,12 +292,10 @@ public sealed class StrategicReadinessFixtureTests
         Assert.Equivalent(identitySnapshot, identityReloaded.Campaign.Capture(), strict: true);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SoldierTransformationsFormAnIndependentCompatibilitySlice(bool fromCache)
+    [Fact]
+    public void SoldierTransformationsFormAnIndependentCompatibilitySlice()
     {
-        var (content, campaign, facilityState, facilityBase) = CreateReadinessScenario(fromCache);
+        var (content, campaign, facilityState, facilityBase) = CreateReadinessScenario();
         using var readinessOracle = TestFixtures.ReadVerifiedExpected("strategic-readiness");
         var recruit = content.RuntimeRules.Soldiers[content.RuntimeRules.Soldiers.GetRequired("RECRUIT")].Value;
         var stats = recruit.MinimumStats.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
@@ -453,9 +443,9 @@ public sealed class StrategicReadinessFixtureTests
     }
 
     private static (RuntimeContent Content, CampaignState Campaign, CampaignSnapshot State,
-        BaseSnapshot Base) CreateReadinessScenario(bool fromCache)
+        BaseSnapshot Base) CreateReadinessScenario()
     {
-        var content = StrategicReadinessTestContent.Load(fromCache: fromCache);
+        var content = StrategicReadinessTestContent.Load();
         var original = TestFixtures.CreateLogisticsCampaign(content, "Bases");
         var initial = original.Capture();
         var prepared = initial.Bases[0] with
@@ -478,12 +468,10 @@ public sealed class StrategicReadinessFixtureTests
         return (content, campaign, state, state.Bases[0]);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void FreshAndCachedServicingPreserveShieldAndFacilityAmmunitionThroughSaveOverlays(bool fromCache)
+    [Fact]
+    public void FreshAndCachedServicingPreserveShieldAndFacilityAmmunitionThroughSaveOverlays()
     {
-        var content = StrategicReadinessTestContent.Load("strategic-servicing.rul", fromCache);
+        var content = StrategicReadinessTestContent.Load("strategic-servicing.rul");
         var campaign = TestFixtures.CreateLogisticsCampaign(content, "Service");
         Assert.Equal(2, campaign.QueryReadiness(0).Crafts[0].Shield);
         Assert.Equal(15, campaign.QueryReadiness(0).Crafts[0].ShieldMaximum);

@@ -30,26 +30,22 @@ public sealed class StrategicWorldDetectionClosureTests
         Assert.Equal(expected, CampaignTimeScriptValues.DaysPastEpoch(new CampaignTime(1, day, month, year, hour, 0, 0)));
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void DaysPastEpochReadsTheDetectionTick(bool fromCache, bool fromCraft) =>
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DaysPastEpochReadsTheDetectionTick(bool fromCraft) =>
         AssertDetectionReadScript("var ptr Time time; var ptr GeoscapeGame absent null; var int value; " +
             "geoscape_game.getTime time; time.getDaysPastEpoch value; if neq value 10592; return DETECTION_NONE 0; end; " +
             "absent.getTime time; time.getDaysPastEpoch value; if neq value 0; return DETECTION_NONE 0; end; " +
-            "return DETECTION_RADAR 100;", fromCache, fromCraft);
+            "return DETECTION_RADAR 100;", fromCraft);
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void LiteralLimitRegistersBoundCountedLoops(bool fromCache, bool fromCraft) =>
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LiteralLimitRegistersBoundCountedLoops(bool fromCraft) =>
         AssertDetectionReadScript("var int count 1; var int runs; var int skipped; loop var i count; add runs 1; end; " +
             "set count 3; loop var j count; add runs 1; end; if neq runs 4; return DETECTION_NONE 0; end; " +
             "loop var k skipped; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
-            fromCache, fromCraft);
+            fromCraft);
 
     [Theory]
     [InlineData("var int count 1; add count 1; loop var i count; add detection_chance 1; end; return;")]
@@ -58,7 +54,7 @@ public sealed class StrategicWorldDetectionClosureTests
     [InlineData("var int count 2000000; loop var i count; add detection_chance 1; end; return;")]
     public void ComputedOrOversizedLoopLimitsRemainGuarded(string code)
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             ufos:
               - type: UFO_LOOP_GUARD
                 speedMax: 2200
@@ -72,11 +68,9 @@ public sealed class StrategicWorldDetectionClosureTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ArmorScriptProvidersReadOverridesDefaultsAndLinks(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ArmorScriptProvidersReadOverridesDefaultsAndLinks(bool fromCraft)
     {
         // Armor::getArmor, the remaining Armor::ScriptRegister getters and their defaults
         // (deathFrames 3, move costs 100/100, no corpses or research) and null receivers.
@@ -104,7 +98,7 @@ public sealed class StrategicWorldDetectionClosureTests
             "armor.getRequiredResearch research; research.getPoints value; if neq value 7; return DETECTION_NONE 0; end; " +
             "plain.getRequiredResearch research; if neq research null; return DETECTION_NONE 0; end; " +
             "return DETECTION_RADAR 100;";
-        AssertDetectionReadScript(code, fromCache, fromCraft, """
+        AssertDetectionReadScript(code, fromCraft, """
             items:
               - type: CORPSE_GEO
               - type: CORPSE_A

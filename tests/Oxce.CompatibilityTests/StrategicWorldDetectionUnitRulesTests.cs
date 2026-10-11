@@ -10,11 +10,9 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldDetectionUnitRulesTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void SmokeReductionMatchesNativeSignedArithmetic(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SmokeReductionMatchesNativeSignedArithmetic(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var rows = TestFixtures.Rows(oracle.RootElement, "smokeReduction");
@@ -25,7 +23,7 @@ public sealed class StrategicWorldDetectionUnitRulesTests
                 code += $"set smoke {row[1].GetInt32()}; rules.getSmokeReduction smoke; if neq smoke {row[2].GetInt32()}; return DETECTION_NONE 0; end; ";
             code += "return DETECTION_RADAR 100;";
             var parser = fromCraft ? "detectUfoFromCraft" : "detectUfoFromBase";
-            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
                 maxViewDistance: {{group.Key}}
                 ufos:
                   - type: UFO_SMOKE_READ
@@ -48,11 +46,9 @@ public sealed class StrategicWorldDetectionUnitRulesTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void SmokeQueriesAcceptProvenAliasesAndRepairNullBranches(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SmokeQueriesAcceptProvenAliasesAndRepairNullBranches(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "smokeReduction"))
@@ -61,17 +57,17 @@ public sealed class StrategicWorldDetectionUnitRulesTests
                 $"var int smoke {row[1].GetInt32()}; ";
             var query = $"alias.getSmokeReduction smoke; if neq smoke {row[2].GetInt32()}; " +
                 "return DETECTION_NONE 0; end; return DETECTION_RADAR 100;";
-            AssertDetectionReadScript(prefix + "set alias original; " + query, fromCache, fromCraft,
+            AssertDetectionReadScript(prefix + "set alias original; " + query, fromCraft,
                 $"maxViewDistance: {row[0].GetInt32()}");
         }
         AssertDetectionReadScript("var ptr RuleMod alias rules; var int smoke 15; " +
             "if eq already_tracked 0; set alias null; end; " +
             "if eq alias null; set alias rules; end; alias.getSmokeReduction smoke; " +
             "if neq smoke 5; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
-            fromCache, fromCraft, "maxViewDistance: 20");
+            fromCraft, "maxViewDistance: 20");
         AssertDetectionReadScript("var ptr RuleMod alias null; var int smoke 15; " +
             "if neq alias null; alias.getSmokeReduction smoke; end; return DETECTION_RADAR 100;",
-            fromCache, fromCraft);
+            fromCraft);
     }
 
     [Theory]
@@ -108,7 +104,7 @@ public sealed class StrategicWorldDetectionUnitRulesTests
     [InlineData("var ptr RuleMod absent; absent.getSmokeReduction detection_chance; return;")]
     public void UnsafeSmokeReceiverStopsBeforeTickMutation(string code)
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             ufos:
               - type: UFO_UNSAFE_SMOKE
                 speedMax: 2200
@@ -121,11 +117,9 @@ public sealed class StrategicWorldDetectionUnitRulesTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void LinkedUnitMetadataMatchesNativeNullableAndRecoverySemantics(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LinkedUnitMetadataMatchesNativeNullableAndRecoverySemantics(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "unitLinks"))
@@ -151,7 +145,7 @@ public sealed class StrategicWorldDetectionUnitRulesTests
             code += $"unit.getCivilianRecoveryItemType item; item.getType name; if neq name \"{row.GetProperty("recovery").GetString()}\"; return DETECTION_NONE 0; end; ";
             code += "absent.getSpawnUnit spawned; if neq spawned null; return DETECTION_NONE 0; end; absent.getLiveAlienGeoscape item; if neq item null; return DETECTION_NONE 0; end; absent.getCivilianRecoveryItemType item; if neq item null; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;";
             var parser = fromCraft ? "detectUfoFromCraft" : "detectUfoFromBase";
-            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
                 items:
                   - type: UNIT_METADATA
                     battleType: 0
@@ -192,11 +186,9 @@ public sealed class StrategicWorldDetectionUnitRulesTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void UnitLookupAndTypeTextMatchNativeBindings(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void UnitLookupAndTypeTextMatchNativeBindings(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var code = "var ptr RuleUnit rule; var ptr RuleMod absent null; var text name; ";
@@ -213,7 +205,7 @@ public sealed class StrategicWorldDetectionUnitRulesTests
         }
         code += "return DETECTION_RADAR 100;";
         var parser = fromCraft ? "detectUfoFromCraft" : "detectUfoFromBase";
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             units:
               - type: UNIT_METADATA
                 armor: ARMOR
@@ -239,7 +231,7 @@ public sealed class StrategicWorldDetectionUnitRulesTests
         Reload(content, campaign, 211, "unit-lookup-after.sav");
         var unit = content.RuntimeRules.Units[content.RuntimeRules.Units.GetRequired("UNIT_METADATA")].Value;
         Assert.Equal("UNIT_METADATA", unit.Type);
-        var other = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, """
+        var other = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             units:
               - type: UNIT_METADATA
                 armor: ARMOR

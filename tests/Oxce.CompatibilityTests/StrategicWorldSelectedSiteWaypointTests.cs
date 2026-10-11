@@ -10,13 +10,11 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldSelectedSiteWaypointTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SelectedSiteAreaPreservesDestinationAndConvertsOnArrival(bool cache)
+    [Fact]
+    public void SelectedSiteAreaPreservesDestinationAndConvertsOnArrival()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-selected-site-waypoints.rul"], cache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-selected-site-waypoints.rul"]);
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "selectedSiteRows"))
         {
             var landing = row[0].GetInt32() != 0;

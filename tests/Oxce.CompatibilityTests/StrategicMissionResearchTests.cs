@@ -10,16 +10,14 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicMissionResearchTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void MissionGrantsMatchNativeDiaryAndImmediateExplicitInterruption(bool cache)
+    [Fact]
+    public void MissionGrantsMatchNativeDiaryAndImmediateExplicitInterruption()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-research-diary-execution");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "executionRows").Where(row => row.GetProperty("mission").GetBoolean()))
         {
             var scenario = row.GetProperty("scenario").GetInt32();
-            var content = Content(cache, scenario);
+            var content = Content(scenario);
             var initial = DailySnapshot(content);
             var snapshot = initial with
             {
@@ -56,7 +54,7 @@ public sealed class StrategicMissionResearchTests
     [InlineData(true)]
     public void MissionResearchInterruptsExplicitTopicsIncludingDisabledOnesWithoutPrimaryEffects(bool disabled)
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             research:
               - {name: UNLOCK, cost: 1}
               - {name: CORE, cost: 1, points: 3, getOneFree: [BONUS], sequentialGetOneFree: true, lookup: LOOKUP, spawnedItem: SUPPLY, spawnedEvent: EVENT_DESPAWN, increaseCounters: [RESEARCH_COUNTER]}
@@ -95,7 +93,7 @@ public sealed class StrategicMissionResearchTests
     [Fact]
     public void MissionBonusIsSelectedAfterCoreSatisfiesItsProtectedPrerequisite()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             research:
               - {name: UNLOCK, cost: 1}
               - name: CORE
@@ -115,7 +113,7 @@ public sealed class StrategicMissionResearchTests
     [Fact]
     public void MissionCapacityAndRandomRewardForecastsAreReadOnly()
     {
-        var content = Content(false, 0);
+        var content = Content(0);
         var snapshot = DailySnapshot(content) with { ResearchDiarySequence = ulong.MaxValue - 3 };
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
         var before = campaign.Capture();
@@ -123,7 +121,7 @@ public sealed class StrategicMissionResearchTests
         Assert.Throws<InvalidOperationException>(() => campaign.MissionResearch.Grant("CORE", "DEPLOY_DIARY"));
         Assert.Equivalent(before, campaign.Capture(), strict: true);
 
-        content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, """
+        content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             research:
               - {name: UNLOCK, cost: 1}
               - {name: CORE, cost: 1, getOneFree: [BONUS, OTHER]}
@@ -148,7 +146,7 @@ public sealed class StrategicMissionResearchTests
     [Fact]
     public void MissingResearchIsANativeNoOpAndEmptyCampaignsRemainInvalid()
     {
-        var content = Content(false, 0);
+        var content = Content(0);
         var snapshot = CreateSnapshot(content, "No research grant");
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
         Assert.Null(campaign.MissionResearch.GrantReason("MISSING"));
@@ -162,7 +160,7 @@ public sealed class StrategicMissionResearchTests
     [InlineData(-2147483648, -1, 1)]
     public void MissionResearchScorePrefixCannotOverflowEvenWhenLaterRewardWouldCancelIt(int score, int corePoints, int bonusPoints)
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             research:
               - {name: UNLOCK, cost: 1}
               - {name: CORE, cost: 1, points: {{corePoints}}, getOneFree: [BONUS], sequentialGetOneFree: true}
@@ -188,7 +186,7 @@ public sealed class StrategicMissionResearchTests
             "research:\n  - {name: UNLOCK, cost: 1}\n  - {name: CORE, cost: 1}\n" +
             string.Concat(Enumerable.Range(0, candidates).Select(index =>
                 $"  - {{name: AUTO_{index}, cost: 0, dependencies: [CORE], requiresBaseFunc: [DIARY_MISSING]}}\n"));
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, extra);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], extra);
         var snapshot = CreateSnapshot(content, "Mission function work");
         var campaign = CampaignState.Restore(snapshot with
         {
@@ -215,8 +213,7 @@ public sealed class StrategicMissionResearchTests
     public void OrderedRandomGrantOutcomesBoundPopulationAndScoreBeforeAnySelection()
     {
         var rewards = string.Join(", ", Enumerable.Range(0, 32).Select(index => "REWARD_" + index));
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false,
-            $"research:\n  - {{name: UNLOCK, cost: 1}}\n  - {{name: CORE, cost: 1, getOneFree: [{rewards}]}}\n" +
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $"research:\n  - {{name: UNLOCK, cost: 1}}\n  - {{name: CORE, cost: 1, getOneFree: [{rewards}]}}\n" +
             string.Concat(Enumerable.Range(0, 32).Select(index => $"  - {{name: REWARD_{index}, cost: 1}}\n")));
         var campaign = CampaignState.Restore(CreateSnapshot(content, "Bounded research alternatives"), content, new SplitMix64RandomSource(17));
         var before = campaign.Capture();
@@ -230,7 +227,7 @@ public sealed class StrategicMissionResearchTests
     [Fact]
     public void UnsafeRandomRewardAlternativeBlocksEvenWhenOtherChoiceFits()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             research:
               - {name: UNLOCK, cost: 1}
               - {name: CORE, cost: 1, getOneFree: [SAFE, OVERFLOW]}
@@ -245,16 +242,14 @@ public sealed class StrategicMissionResearchTests
         Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void RandomAlternativesMatchNativeDuplicateProtectedAndDisabledCandidateSelection(bool cache)
+    [Fact]
+    public void RandomAlternativesMatchNativeDuplicateProtectedAndDisabledCandidateSelection()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-research-diary-execution");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "randomRows"))
         {
             var scenario = row.GetProperty("scenario").GetInt32();
-            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$$"""
                 research:
                   - {name: UNLOCK, cost: 1}
                   - {name: CORE, cost: 1, repeatable: {{{(scenario == 3 ? "true" : "false")}}}, getOneFree: [BONUS, OTHER, BONUS], getOneFreeProtected: {CORE: [PROTECTED]}}
@@ -290,7 +285,7 @@ public sealed class StrategicMissionResearchTests
     [Fact]
     public void OrderedGrantsReserveRepeatedMissionValidationAndInterruptionPasses()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             research:
               - {name: UNLOCK, cost: 1}
               - {name: CORE, cost: 1}

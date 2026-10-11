@@ -15,16 +15,13 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldEscortEnduranceTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void EscortRingsComposeCraftPursuitPatrolFuelAndReloadsForSeventyTwoHours(bool cache)
+    [Fact]
+    public void EscortRingsComposeCraftPursuitPatrolFuelAndReloadsForSeventyTwoHours()
     {
         TestFixtures.LoadVerifiedManifest("strategic-world");
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
         TestFixtures.LoadVerifiedManifest("strategic-detection-scripts");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache,
-            "ufos: [{type: HUNTER, scripts: {detectUfoFromBase: 'return DETECTION_RADAR 100;'}}]");
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], "ufos: [{type: HUNTER, scripts: {detectUfoFromBase: 'return DETECTION_RADAR 100;'}}]");
         var initial = Ring(content, 3);
         var ship = CreateSnapshot(content, "Escort craft operations").Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
         ship = ship with
@@ -97,16 +94,14 @@ public sealed class StrategicWorldEscortEnduranceTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void EscortRingDetectionExecutesLiveFlagsAndInstanceTagsAcrossRewrites(bool cache, bool reverse)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EscortRingDetectionExecutesLiveFlagsAndInstanceTagsAcrossRewrites(bool reverse)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var tagValue = TestFixtures.Rows(oracle.RootElement, "tagValues")[2][1].GetInt32();
         TestFixtures.LoadVerifiedManifest("strategic-world");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], $$"""
             extended:
               tags:
                 Ufo: {ESCORT_INSTANCE: int}
@@ -157,14 +152,12 @@ public sealed class StrategicWorldEscortEnduranceTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void EscortChainCleanupRepairsOnlyDirectFollowersAcrossReloads(bool cache, bool reverse)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EscortChainCleanupRepairsOnlyDirectFollowersAcrossReloads(bool reverse)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"]);
         var initial = Ring(content, 4, reverse);
         initial = initial with
         {
@@ -257,14 +250,12 @@ public sealed class StrategicWorldEscortEnduranceTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void EscortRingsComposeSeventyTwoHoursAcrossBatchesAndReloads(bool cache, bool reverse)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EscortRingsComposeSeventyTwoHoursAcrossBatchesAndReloads(bool reverse)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"]);
         var initial = Ring(content, 3, reverse);
         var native = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "escortMovement")

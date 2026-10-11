@@ -9,10 +9,8 @@ namespace Oxce.CompatibilityTests;
 
 public sealed partial class StrategicWorldAlienBaseGenerationTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DailyGeneratedGroundReleaseScoresBeforeAndAfterTakeoffAndReloads(bool cache)
+    [Fact]
+    public void DailyGeneratedGroundReleaseScoresBeforeAndAfterTakeoffAndReloads()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
         var native = TestFixtures.Rows(oracle.RootElement, "spawnPathRows").Single(row =>
@@ -20,7 +18,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         foreach (var percentage in new[] { 0, 100 })
         {
-            var content = GeneratedWaveContent(cache, 0, groundTimer: 1, hunterPercentage: percentage, missionPoints: 7);
+            var content = GeneratedWaveContent(0, groundTimer: 1, hunterPercentage: percentage, missionPoints: 7);
             var initial = GeneratedWaveSnapshot(content, 19);
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(19)),
                 19, "daily-release-before.sav");
@@ -46,17 +44,15 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void HuntingGeneratedGroundReleaseMissesHalfHourScoringButReservesTakeoff(bool cache)
+    [Fact]
+    public void HuntingGeneratedGroundReleaseMissesHalfHourScoringButReservesTakeoff()
     {
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
         foreach (var minute in new[] { 9, 29 })
             foreach (var percentage in new[] { 0, 100 })
             {
-                var content = GeneratedWaveContent(cache, 0, hunting: true, groundTimer: 1,
+                var content = GeneratedWaveContent(0, hunting: true, groundTimer: 1,
                     hunterPercentage: percentage, missionPoints: 7);
                 var initial = HuntingGeneratedWaveSnapshot(content, new(1, 1, 1, 1999, 0, minute, 55));
                 var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(19)),
@@ -81,14 +77,12 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DailyAndHuntingGroundReleaseShareCreationTickActivityLimits(bool cache)
+    [Fact]
+    public void DailyAndHuntingGroundReleaseShareCreationTickActivityLimits()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
-        var content = GeneratedWaveContent(cache, 0, hunting: true, combined: true, groundTimer: 1, missionPoints: 7);
+        var content = GeneratedWaveContent(0, hunting: true, combined: true, groundTimer: 1, missionPoints: 7);
         var initial = HuntingGeneratedWaveSnapshot(content, new(1, 1, 1, 1999, 23, 59, 55));
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(19));
         AdvanceUnblocked(campaign, 1);
@@ -104,11 +98,9 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void GeneratedGroundEscortReleaseRetainsRelocationAndRestoresTrajectorySpeed(bool cache, bool hunting)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedGroundEscortReleaseRetainsRelocationAndRestoresTrajectorySpeed(bool hunting)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
@@ -117,7 +109,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             var native = TestFixtures.Rows(oracle.RootElement, "spawnEscortRows").Single(row =>
                 row[0].GetBoolean() && row[1].GetBoolean() && row[2].GetInt32() == (leader ? 3 : 0) &&
                 row[3].GetInt32() == 0 && row[12].GetInt32() == 1);
-            var content = GeneratedEscortContent(cache, hunting, ground: true, leader: leader,
+            var content = GeneratedEscortContent(hunting, ground: true, leader: leader,
                 groundTimer: 1, missionPoints: 7);
             var initial = GeneratedEscortSnapshot(content, hunting);
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),

@@ -12,14 +12,12 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldSiteResearchWaveTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void NoObjectChainsRunBeforeSiteInterruptionWithNativeCountersAndDraws(bool cache)
+    [Fact]
+    public void NoObjectChainsRunBeforeSiteInterruptionWithNativeCountersAndDraws()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-wave-chain");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = Content(cache);
+        var content = Content();
         foreach (var example in TestFixtures.Rows(oracle.RootElement, "cases"))
         {
             var name = example.GetProperty("name").GetString()!;
@@ -46,12 +44,10 @@ public sealed class StrategicWorldSiteResearchWaveTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CompletedNoObjectMissionIsRemovedBeforeSiteGrant(bool cache)
+    [Fact]
+    public void CompletedNoObjectMissionIsRemovedBeforeSiteGrant()
     {
-        var content = Content(cache);
+        var content = Content();
         var campaign = CampaignState.Restore(Snapshot(content, "zero", 0), content, new SplitMix64RandomSource(66));
         AdvanceUnblocked(campaign, 1);
         var after = campaign.Capture();
@@ -66,7 +62,7 @@ public sealed class StrategicWorldSiteResearchWaveTests
     [InlineData(true)]
     public void ImmediateActorChainsComposeWhileExcessiveChainsStillStopBeforeSiteResearch(bool excessive)
     {
-        var content = Content(false);
+        var content = Content();
         var initial = Snapshot(content, excessive ? "excessive" : "ufos", 0);
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(66));
         if (excessive)
@@ -92,7 +88,7 @@ public sealed class StrategicWorldSiteResearchWaveTests
         }
     }
 
-    internal static RuntimeContent Content(bool cache) => StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, """
+    internal static RuntimeContent Content() => StrategicReadinessTestContent.Load(["strategic-world.rul"], """
         research:
           - {name: UNLOCK, cost: 1}
           - {name: CORE, cost: 1}

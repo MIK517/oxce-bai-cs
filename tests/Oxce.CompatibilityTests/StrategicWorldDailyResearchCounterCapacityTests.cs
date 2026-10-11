@@ -9,20 +9,16 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldDailyResearchCounterCapacityTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ExactOrderedBranchesFitWhereAUnionOfPossibleIncreasesDoesNot(bool cache, bool withSite) =>
-        StrategicWorldDailyResearchCounterAlternativeTests.AssertNativeCounterAlternatives(cache, 1, withSite);
-
-    [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void UnsafeIntermediateInAnyCounterBranchRemainsAtomic(bool cache)
+    public void ExactOrderedBranchesFitWhereAUnionOfPossibleIncreasesDoesNot(bool withSite) =>
+        StrategicWorldDailyResearchCounterAlternativeTests.AssertNativeCounterAlternatives(1, withSite);
+
+    [Fact]
+    public void UnsafeIntermediateInAnyCounterBranchRemainsAtomic()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = StrategicWorldDailyResearchQuantityTests.Content(cache, false, extraResearch:
+        var content = StrategicWorldDailyResearchQuantityTests.Content(false, extraResearch:
             "  - {name: EQUIV_A, increaseCounter: [TRACE_COUNTER]}\n  - {name: EQUIV_B, increaseCounter: [TRACE_COUNTER, TRACE_COUNTER], decreaseCounter: [TRACE_COUNTER]}");
         var initial = StrategicWorldDailyResearchCounterAlternativeTests.Snapshot(content, 17, int.MaxValue - 1);
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));

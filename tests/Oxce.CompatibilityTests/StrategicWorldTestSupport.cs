@@ -11,11 +11,11 @@ namespace Oxce.CompatibilityTests;
 /// <summary>Shared setup and assertions for the strategic-world compatibility tests.</summary>
 internal static class StrategicWorldTestSupport
 {
-    /// <summary>Executes one native-backed read script in either detection caller across cache and reload.</summary>
-    public static void AssertDetectionReadScript(string code, bool fromCache, bool fromCraft, string extraRules = "")
+    /// <summary>Executes one native-backed read script in either detection caller across reload.</summary>
+    public static void AssertDetectionReadScript(string code, bool fromCraft, string extraRules = "")
     {
         var parser = fromCraft ? "detectUfoFromCraft" : "detectUfoFromBase";
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             {{extraRules}}
             ufos:
               - type: UFO_READ_SCRIPT

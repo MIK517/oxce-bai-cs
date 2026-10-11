@@ -26,12 +26,10 @@ public sealed class StrategicWorldUfoShieldTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void RaceBonusesRechargeInFlightAcrossSaveAndBatchBoundaries(bool fromCache)
+    [Fact]
+    public void RaceBonusesRechargeInFlightAcrossSaveAndBatchBoundaries()
     {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul", fromCache);
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var snapshot = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 1, 0),
             "UFO_SHIELD_TEST").Capture();
         snapshot = snapshot with
@@ -59,12 +57,10 @@ public sealed class StrategicWorldUfoShieldTests
         Assert.Equivalent(batch.Capture(), campaign.Capture(), strict: true);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void LandedAndTakeoffTicksDoNotRecharge(bool fromCache)
+    [Fact]
+    public void LandedAndTakeoffTicksDoNotRecharge()
     {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul", fromCache);
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var snapshot = CreateLifecycleSnapshot(content);
         var campaign = CampaignState.Restore(snapshot with
         {

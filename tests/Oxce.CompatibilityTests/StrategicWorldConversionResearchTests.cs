@@ -11,22 +11,18 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldConversionResearchTests
 {
     [Theory]
-    [InlineData(false, false, false)]
-    [InlineData(true, false, false)]
-    [InlineData(false, true, false)]
-    [InlineData(true, true, false)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, true)]
-    [InlineData(false, true, true)]
-    [InlineData(true, true, true)]
-    public void SelectedConversionPreservesSiteFollowerAndDormantUfoOutcomes(bool cache, bool respawn, bool units)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void SelectedConversionPreservesSiteFollowerAndDormantUfoOutcomes(bool respawn, bool units)
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = Content(cache, respawn);
-        var interruptedContent = Content(cache, respawn, "CORE");
-        var continuedContent = Content(cache, respawn, "");
+        var content = Content(respawn);
+        var interruptedContent = Content(respawn, "CORE");
+        var continuedContent = Content(respawn, "");
         var interruptedSeen = false;
         var continuedSeen = false;
         for (ulong seed = 1; seed <= 32; seed++)
@@ -118,8 +114,8 @@ public sealed class StrategicWorldConversionResearchTests
         });
     }
 
-    internal static RuntimeContent Content(bool cache, bool respawn = false, string interrupt = "BONUS", bool baseLanding = false,
-        bool showBase = false, int operation = 0, string sourceCode = "BONUS", bool includeSource = false) => StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+    internal static RuntimeContent Content(bool respawn = false, string interrupt = "BONUS", bool baseLanding = false,
+        bool showBase = false, int operation = 0, string sourceCode = "BONUS", bool includeSource = false) => StrategicReadinessTestContent.Load(["strategic-world.rul"], $$$"""
         research:
           - {name: UNLOCK, cost: 1}
           - {name: CORE, cost: 1, getOneFree: [BONUS, OTHER]}

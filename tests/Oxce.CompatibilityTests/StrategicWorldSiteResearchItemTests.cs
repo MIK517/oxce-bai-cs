@@ -10,14 +10,12 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldSiteResearchItemTests
 {
     [Theory]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    public void AmmunitionSavingSelectsActualAutomaticResearchWithoutForecastRng(bool cache, int supply)
+    [InlineData(2)]
+    [InlineData(3)]
+    public void AmmunitionSavingSelectsActualAutomaticResearchWithoutForecastRng(int supply)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = Content(cache, supply, """
+        var content = Content(supply, """
             items:
               - {type: SUPPLY, clipSize: 3}
             craftWeapons:
@@ -55,27 +53,19 @@ public sealed class StrategicWorldSiteResearchItemTests
     }
 
     [Theory]
-    [InlineData(false, "refuel", 1)]
-    [InlineData(true, "refuel", 1)]
-    [InlineData(false, "refuel", 2)]
-    [InlineData(true, "refuel", 2)]
-    [InlineData(false, "transfer", 1)]
-    [InlineData(true, "transfer", 1)]
-    [InlineData(false, "transfer", 2)]
-    [InlineData(true, "transfer", 2)]
-    [InlineData(false, "production", 1)]
-    [InlineData(true, "production", 1)]
-    [InlineData(false, "production", 2)]
-    [InlineData(true, "production", 2)]
-    [InlineData(false, "daily", 1)]
-    [InlineData(true, "daily", 1)]
-    [InlineData(false, "daily", 2)]
-    [InlineData(true, "daily", 2)]
-    public void AutomaticSiteResearchUsesStocksAfterEarlierCallers(bool cache, string source, int supply)
+    [InlineData("refuel", 1)]
+    [InlineData("refuel", 2)]
+    [InlineData("transfer", 1)]
+    [InlineData("transfer", 2)]
+    [InlineData("production", 1)]
+    [InlineData("production", 2)]
+    [InlineData("daily", 1)]
+    [InlineData("daily", 2)]
+    public void AutomaticSiteResearchUsesStocksAfterEarlierCallers(string source, int supply)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = Content(cache, supply);
+        var content = Content(supply);
         var initial = Snapshot(content, source, supply);
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         var result = campaign.Execute(new AdvanceCampaignTime(1));
@@ -95,7 +85,7 @@ public sealed class StrategicWorldSiteResearchItemTests
         }
     }
 
-    internal static RuntimeContent Content(bool cache, int supply, string extraRules = "", string eventInterrupt = "") => StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+    internal static RuntimeContent Content(int supply, string extraRules = "", string eventInterrupt = "") => StrategicReadinessTestContent.Load(["strategic-world.rul"], $$$"""
         research:
           - {name: UNLOCK, cost: 1}
           - {name: DAY, cost: 1, needItem: true, neededItem: SUPPLY, destroyItem: true, returnsItem: true}

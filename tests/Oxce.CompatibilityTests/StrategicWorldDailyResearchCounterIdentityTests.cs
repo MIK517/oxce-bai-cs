@@ -11,14 +11,12 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldDailyResearchCounterIdentityTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void DifferentOrderedTracesWithTheSameFinalIdentityComposeWithBirths(bool cache, bool person)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DifferentOrderedTracesWithTheSameFinalIdentityComposeWithBirths(bool person)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = StrategicWorldDailyResearchQuantityIdentityTests.Content(cache, person, floorRewardTrace: true);
+        var content = StrategicWorldDailyResearchQuantityIdentityTests.Content(person, floorRewardTrace: true);
         var counter = person ? "STR_SOLDIER" : "PRODUCED_CRAFT";
         foreach (var start in new[] { 1, 20, int.MaxValue - 1 })
         {
@@ -52,13 +50,11 @@ public sealed class StrategicWorldDailyResearchCounterIdentityTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DifferentFinalCraftIdentitiesRemainGuardedAndCancellationClearsTheProof(bool cache)
+    [Fact]
+    public void DifferentFinalCraftIdentitiesRemainGuardedAndCancellationClearsTheProof()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = StrategicWorldDailyResearchQuantityIdentityTests.Content(cache, false, floorRewardTrace: true, differentFinalCounters: true);
+        var content = StrategicWorldDailyResearchQuantityIdentityTests.Content(false, floorRewardTrace: true, differentFinalCounters: true);
         var initial = StrategicWorldDailyResearchQuantityIdentityTests.Snapshot(content, 17, "PRODUCED_CRAFT", 20);
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         AssertTimeBlocked(campaign, "Craft production requires daily research identity forecasts.");
@@ -70,13 +66,11 @@ public sealed class StrategicWorldDailyResearchCounterIdentityTests
         Reload(content, campaign, 17, "different-counter-after-cancel.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void UnsafeConsumedCounterIntermediateStillBlocksBeforeBirth(bool cache)
+    [Fact]
+    public void UnsafeConsumedCounterIntermediateStillBlocksBeforeBirth()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = StrategicWorldDailyResearchQuantityIdentityTests.Content(cache, false);
+        var content = StrategicWorldDailyResearchQuantityIdentityTests.Content(false);
         var initial = StrategicWorldDailyResearchQuantityIdentityTests.Snapshot(content, 17, "PRODUCED_CRAFT", int.MaxValue);
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), "Craft production exhausts the craft identity range.");
     }

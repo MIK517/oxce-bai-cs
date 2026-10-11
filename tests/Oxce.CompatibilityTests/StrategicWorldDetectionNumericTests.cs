@@ -64,22 +64,18 @@ public sealed class StrategicWorldDetectionNumericTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void MaskedCallerInputsProvideBoundedDamagePowers(bool fromCache, bool fromCraft) =>
+    [InlineData(false)]
+    [InlineData(true)]
+    public void MaskedCallerInputsProvideBoundedDamagePowers(bool fromCraft) =>
         AssertDetectionReadScript("var ptr RuleItem item; var ptr RuleDamageType damage; var int value; var int power distance; " +
             "rules.getRuleItem item \"BIT_POWER\"; item.getDamageType damage; bit_and power 63; " +
             "damage.getDamageToHealth value power; if neq value power; return DETECTION_NONE 0; end; " +
-            "return DETECTION_RADAR 100;", fromCache, fromCraft, "items: [{type: BIT_POWER, damageAlter: {ToHealth: 1}}]");
+            "return DETECTION_RADAR 100;", fromCraft, "items: [{type: BIT_POWER, damageAlter: {ToHealth: 1}}]");
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void NativeWaveResultsFeedSubsequentDamageQueries(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NativeWaveResultsFeedSubsequentDamageQueries(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-numeric");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "cases").Where(row =>
@@ -90,7 +86,7 @@ public sealed class StrategicWorldDetectionNumericTests
                 row.GetProperty("source").GetString()!.Replace("return result;", "", StringComparison.Ordinal) +
                 "rules.getRuleItem item \"WAVE_POWER\"; item.getDamageType damage; damage.getDamageToHealth value result; " +
                 $"if neq value {row.GetProperty("result").GetInt32()}; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;";
-            AssertDetectionReadScript(code, fromCache, fromCraft, "items: [{type: WAVE_POWER, damageAlter: {ToHealth: 1}}]");
+            AssertDetectionReadScript(code, fromCraft, "items: [{type: WAVE_POWER, damageAlter: {ToHealth: 1}}]");
         }
     }
 
@@ -148,11 +144,9 @@ public sealed class StrategicWorldDetectionNumericTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void CalculatedPowersAndClampsFeedDamageQueries(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CalculatedPowersAndClampsFeedDamageQueries(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-numeric");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "cases").Where(row =>
@@ -169,17 +163,15 @@ public sealed class StrategicWorldDetectionNumericTests
                 "rules.getRuleItem item \"NUMERIC_POWER\"; item.getDamageType damage; " +
                 "damage.getDamageToHealth converted result; " +
                 $"if neq converted {expected}; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;";
-            AssertDetectionReadScript(code, fromCache, fromCraft,
+            AssertDetectionReadScript(code, fromCraft,
                 $"items: [{{type: NUMERIC_POWER, damageAlter: {{ToHealth: {(half ? "0.5" : "1")}}}}}]");
         }
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void CalculatedDivisorsAndWavePeriodsMatchNative(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CalculatedDivisorsAndWavePeriodsMatchNative(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-numeric");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "cases").Where(row =>
@@ -188,10 +180,10 @@ public sealed class StrategicWorldDetectionNumericTests
             var code = $"var int result {row.GetProperty("seed").GetInt32()}; " +
                 row.GetProperty("source").GetString()!.Replace("return result;", "", StringComparison.Ordinal) +
                 $"if neq result {row.GetProperty("result").GetInt32()}; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;";
-            AssertDetectionReadScript(code, fromCache, fromCraft);
+            AssertDetectionReadScript(code, fromCraft);
         }
         AssertDetectionReadScript("var int divisor distance; limit divisor 1 10; " +
-            "div detection_chance divisor; return DETECTION_RADAR 100;", fromCache, fromCraft);
+            "div detection_chance divisor; return DETECTION_RADAR 100;", fromCraft);
     }
 
     [Theory]
@@ -226,23 +218,21 @@ public sealed class StrategicWorldDetectionNumericTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ScalarConditionEdgesProveSafeDivisorsAndPowerBounds(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ScalarConditionEdgesProveSafeDivisorsAndPowerBounds(bool fromCraft)
     {
         AssertDetectionReadScript("var int divisor distance; if gt divisor 0; div detection_chance divisor; end; " +
-            "if lt divisor 0; div detection_chance divisor; end; return DETECTION_RADAR 100;", fromCache, fromCraft);
+            "if lt divisor 0; div detection_chance divisor; end; return DETECTION_RADAR 100;", fromCraft);
         AssertDetectionReadScript("var int divisor distance; if eq divisor 3; div detection_chance divisor; end; " +
-            "return DETECTION_RADAR 100;", fromCache, fromCraft);
+            "return DETECTION_RADAR 100;", fromCraft);
         AssertDetectionReadScript("var int divisor 0; if neq divisor 0; div detection_chance divisor; end; " +
-            "return DETECTION_RADAR 100;", fromCache, fromCraft);
+            "return DETECTION_RADAR 100;", fromCraft);
         AssertDetectionReadScript("var ptr RuleItem item; var ptr RuleDamageType damage; var int power already_tracked; " +
             "var int value -7; rules.getRuleItem item \"CONDITION_POWER\"; item.getDamageType damage; " +
             "if and ge power 0 le power 39; damage.getDamageToHealth value power; " +
             "if neq value power; return DETECTION_NONE 0; end; end; return DETECTION_RADAR 100;",
-            fromCache, fromCraft, "items: [{type: CONDITION_POWER, damageAlter: {ToHealth: 1}}]");
+            fromCraft, "items: [{type: CONDITION_POWER, damageAlter: {ToHealth: 1}}]");
     }
 
     [Theory]

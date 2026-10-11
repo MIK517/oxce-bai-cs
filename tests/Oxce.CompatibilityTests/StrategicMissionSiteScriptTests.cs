@@ -129,13 +129,11 @@ public sealed class StrategicMissionSiteScriptTests
         Assert.Equal(before, random.State);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SiteScriptSchedulesPointAndRunsOwnedSiteLifecycleAfterReload(bool cache)
+    [Fact]
+    public void SiteScriptSchedulesPointAndRunsOwnedSiteLifecycleAfterReload()
     {
         TestFixtures.LoadVerifiedManifest("strategic-mission-site-candidates");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-mission-site-scripts.rul"], cache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-mission-site-scripts.rul"]);
         var initial = CreateSnapshot(content, "Site script scheduling") with
         {
             RandomState = 17,
@@ -172,14 +170,12 @@ public sealed class StrategicMissionSiteScriptTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public void MultiRegionSiteSelectionPreservesWeightedOrUniformRegionThenAreaOrder(bool cache, bool uniform)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void MultiRegionSiteSelectionPreservesWeightedOrUniformRegionThenAreaOrder(bool uniform)
     {
         var weights = uniform ? "{}" : "{0: {REGION: 4, SITE_SECOND: 1}}";
-        var content = LoadSite(cache, $$$"""
+        var content = LoadSite($$$"""
             regions:
               - type: SITE_SECOND
                 areas: [[90, 180, -20, 20]]
@@ -222,12 +218,10 @@ public sealed class StrategicMissionSiteScriptTests
         Reload(content, campaign, 17, "multi-region-site-script.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void PointRepeatHistorySurvivesSiteBirthAndSuppressesAnExhaustedLocationSet(bool cache)
+    [Fact]
+    public void PointRepeatHistorySurvivesSiteBirthAndSuppressesAnExhaustedLocationSet()
     {
-        var content = LoadSite(cache);
+        var content = LoadSite();
         var initial = CreateSnapshot(content, "Site repeat history") with
         {
             RandomState = 17,
@@ -258,12 +252,10 @@ public sealed class StrategicMissionSiteScriptTests
         Reload(content, campaign, 17, "site-history-exhausted.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ComposedSiteCommandsObserveLiveOccupancyAndFalseLabels(bool cache)
+    [Fact]
+    public void ComposedSiteCommandsObserveLiveOccupancyAndFalseLabels()
     {
-        var content = LoadSite(cache, """
+        var content = LoadSite("""
             missionScripts:
               - type: SITE_SCRIPT_START
                 executionOdds: 0
@@ -348,14 +340,12 @@ public sealed class StrategicMissionSiteScriptTests
         Reload(content, campaign, 17, "conditioned-site-region.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GenerationOnlyRegionsConditionOnTheSignedListingIntersection(bool cache)
+    [Fact]
+    public void GenerationOnlyRegionsConditionOnTheSignedListingIntersection()
     {
         // Signed listing scan stops at the 2^31 key; the unsigned generation scan
         // stays on month zero, so SITE_SECOND is generated but never listed.
-        var content = LoadSite(cache, """
+        var content = LoadSite("""
             regions:
               - type: SITE_SECOND
                 areas: [[90, 180, -20, 20]]
@@ -445,14 +435,12 @@ public sealed class StrategicMissionSiteScriptTests
 
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public void ComposedMultiRegionSitesUseLiveOccupancyWithoutUnboundedRetries(bool cache, bool uniform)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ComposedMultiRegionSitesUseLiveOccupancyWithoutUnboundedRetries(bool uniform)
     {
         var weights = uniform ? "{}" : "{0: {REGION: 4, SITE_SECOND: 1}}";
-        var content = LoadSite(cache, $$$"""
+        var content = LoadSite($$$"""
             regions:
               - type: SITE_SECOND
                 areas: [[90, 180, -20, 20]]
@@ -491,12 +479,10 @@ public sealed class StrategicMissionSiteScriptTests
         Reload(content, campaign, 17, "composed-multi-region-sites.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void EmptySiteMissionListSetsFalseLabelWithoutUsingRaceDelayOrHistory(bool cache)
+    [Fact]
+    public void EmptySiteMissionListSetsFalseLabelWithoutUsingRaceDelayOrHistory()
     {
-        var content = LoadSite(cache, """
+        var content = LoadSite("""
             missionScripts:
               - type: SITE_SCRIPT_START
                 executionOdds: 0
@@ -546,12 +532,10 @@ public sealed class StrategicMissionSiteScriptTests
         Reload(content, campaign, 17, "empty-site-command-failure-label.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void TaggedEmptySiteCommandLeavesStateIntactAndDueEventRemainsGuarded(bool cache)
+    [Fact]
+    public void TaggedEmptySiteCommandLeavesStateIntactAndDueEventRemainsGuarded()
     {
-        var content = LoadSite(cache, """
+        var content = LoadSite("""
             events:
               - name: EVENT_EMPTY_SITE
                 adhocMissionScriptTags: [emptySite]
@@ -582,12 +566,10 @@ public sealed class StrategicMissionSiteScriptTests
         campaign = CampaignState.Restore(scheduled, content, new SplitMix64RandomSource(scheduled.RandomState));
         AssertTimeBlocked(campaign, "Strategic event consequences require campaign event execution (Phase 6 branch 6).");
     }
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DivergentSignedRegionListingIsBlockedBeforeAnyCommandMutatesState(bool cache)
+    [Fact]
+    public void DivergentSignedRegionListingIsBlockedBeforeAnyCommandMutatesState()
     {
-        var content = LoadSite(cache, """
+        var content = LoadSite("""
             regions:
               - type: SITE_SECOND
                 areas: [[90, 180, -20, 20]]
@@ -613,10 +595,10 @@ public sealed class StrategicMissionSiteScriptTests
         Assert.Equal(CanonicalJson.Normalize(before), CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(campaign.Capture())));
     }
 
-    private static Oxce.Mods.Rulesets.Content.RuntimeContent LoadSite(bool cache = false, string? overlay = null)
+    private static Oxce.Mods.Rulesets.Content.RuntimeContent LoadSite(string? overlay = null)
     {
         TestFixtures.LoadVerifiedManifest("strategic-mission-site-candidates");
-        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-mission-site-scripts.rul"], cache, overlay);
+        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-mission-site-scripts.rul"], overlay);
     }
 
 }

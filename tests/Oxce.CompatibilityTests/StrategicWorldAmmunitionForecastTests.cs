@@ -12,15 +12,11 @@ namespace Oxce.CompatibilityTests;
 public sealed partial class StrategicWorldHuntingTests
 {
     [Theory]
-    [InlineData(false, "stock")]
-    [InlineData(true, "stock")]
-    [InlineData(false, "transfer")]
-    [InlineData(true, "transfer")]
-    [InlineData(false, "production")]
-    [InlineData(true, "production")]
-    [InlineData(false, "facility")]
-    [InlineData(true, "facility")]
-    public void SharedAmmunitionFuelRangesExecuteWhenEveryOutcomeRelaunchesTheSameCraft(bool cache, string source)
+    [InlineData("stock")]
+    [InlineData("transfer")]
+    [InlineData("production")]
+    [InlineData("facility")]
+    public void SharedAmmunitionFuelRangesExecuteWhenEveryOutcomeRelaunchesTheSameCraft(string source)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         var native = TestFixtures.Rows(oracle.RootElement, "ammunitionFuelRows")
@@ -28,7 +24,7 @@ public sealed partial class StrategicWorldHuntingTests
         var overlay = AmmunitionForecastRules();
         if (source == "production") overlay += "manufacture: [{name: RANGE_REFILL, time: 1, producedItems: {RANGE_AMMO: 1}}]\n";
         overlay += "facilities: [{type: RANGE_WORKSHOP, mapName: LOGISTICS, workshops: 1}, {type: RANGE_FACILITY, mapName: LOGISTICS, ammoItem: RANGE_AMMO, ammoMax: 2, rearmRate: 1}]\n";
-        var content = Load(cache, overlay);
+        var content = Load(overlay);
         HashSet<int> outcomes = [];
         for (ulong seed = 1; seed <= 12; seed++)
         {
@@ -61,14 +57,12 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    public void OrderedFuelConsumersRequireEnoughStockAtBothAmmunitionEndpoints(bool cache, int stock)
+    [InlineData(2)]
+    [InlineData(3)]
+    public void OrderedFuelConsumersRequireEnoughStockAtBothAmmunitionEndpoints(int stock)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = Load(cache, AmmunitionForecastRules());
+        var content = Load(AmmunitionForecastRules());
         var initial = AmmunitionRangeSnapshot(content, stock, true);
         var owner = initial.Bases[0];
         initial = initial with { Bases = [owner with { Crafts = [owner.Crafts[0], owner.Crafts[1], owner.Crafts[1] with { Id = 4 }] }] };
@@ -90,14 +84,12 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void NonfuelAmmunitionRangesPreserveRealStocksAndSharedCraftStates(bool cache, bool shared)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NonfuelAmmunitionRangesPreserveRealStocksAndSharedCraftStates(bool shared)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = Load(cache, AmmunitionForecastRules());
+        var content = Load(AmmunitionForecastRules());
         HashSet<int> quantities = [];
         for (ulong seed = 1; seed <= 20; seed++)
         {
@@ -125,21 +117,17 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, "craft")]
-    [InlineData(true, "craft")]
-    [InlineData(false, "facility")]
-    [InlineData(true, "facility")]
-    [InlineData(false, "material")]
-    [InlineData(true, "material")]
-    [InlineData(false, "overflow")]
-    [InlineData(true, "overflow")]
-    public void StochasticSharedEffectsStopBeforeTickMutation(bool cache, string effect)
+    [InlineData("craft")]
+    [InlineData("facility")]
+    [InlineData("material")]
+    [InlineData("overflow")]
+    public void StochasticSharedEffectsStopBeforeTickMutation(string effect)
     {
         var overlay = AmmunitionForecastRules();
         if (effect is "material" or "overflow") overlay +=
             $"manufacture: [{{name: RANGE_PRODUCT, time: 1, {(effect == "material" ? "requiredItems: {RANGE_AMMO: 1}, producedItems: {SUPPLY: 1}" : "producedItems: {RANGE_AMMO: 1}")}}}]\n";
         overlay += "facilities: [{type: RANGE_WORKSHOP, mapName: LOGISTICS, workshops: 6}, {type: RANGE_FACILITY, mapName: LOGISTICS, ammoItem: RANGE_AMMO, ammoMax: 2, rearmRate: 1}]\n";
-        var content = Load(cache, overlay);
+        var content = Load(overlay);
         var initial = AmmunitionRangeSnapshot(content, effect == "overflow" ? int.MaxValue : 1, false);
         var owner = initial.Bases[0];
         if (effect == "craft") initial = initial with
@@ -167,16 +155,14 @@ public sealed partial class StrategicWorldHuntingTests
         });
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void RearmRangesMatchBothNativeBulletSavingEndpointsWithoutChangingInputs(bool cache)
+    [Fact]
+    public void RearmRangesMatchBothNativeBulletSavingEndpointsWithoutChangingInputs()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var settings in TestFixtures.Rows(oracle.RootElement, "ammunitionFuelRows")
             .GroupBy(row => (Size: row[0].GetInt32(), Saving: row[1].GetBoolean())))
         {
-            var rules = Load(cache, AmmunitionForecastRules(settings.Key.Size, settings.Key.Saving)).RuntimeRules;
+            var rules = Load(AmmunitionForecastRules(settings.Key.Size, settings.Key.Saving)).RuntimeRules;
             foreach (var outcomes in settings.GroupBy(row => (Ammo: row[2].GetInt32(), Stock: row[3].GetInt32())))
             {
                 var state = new CraftLogisticsState(100, 0, "STR_REARMING", [new("RANGE_GUN", outcomes.Key.Ammo, true)], new Dictionary<string, int>(), []);

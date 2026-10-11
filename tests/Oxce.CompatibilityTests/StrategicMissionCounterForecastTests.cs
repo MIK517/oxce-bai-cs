@@ -26,14 +26,12 @@ public sealed class StrategicMissionCounterForecastTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void LegacyArrivalUsesCountersAfterTheHalfHourWaveRatherThanTheSavedCounter(bool cache)
+    [Fact]
+    public void LegacyArrivalUsesCountersAfterTheHalfHourWaveRatherThanTheSavedCounter()
     {
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         TestFixtures.LoadVerifiedManifest("strategic-wave-chain");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             ufoTrajectories:
               - id: LEGACY_ARRIVAL
                 groundTimer: 60

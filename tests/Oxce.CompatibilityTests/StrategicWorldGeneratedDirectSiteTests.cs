@@ -14,26 +14,20 @@ namespace Oxce.CompatibilityTests;
 public sealed partial class StrategicWorldAlienBaseGenerationTests
 {
     [Theory]
-    [InlineData(false, false, 0)]
-    [InlineData(true, false, 0)]
-    [InlineData(false, true, 0)]
-    [InlineData(true, true, 0)]
-    [InlineData(false, false, 5)]
-    [InlineData(true, false, 5)]
-    [InlineData(false, true, 5)]
-    [InlineData(true, true, 5)]
-    [InlineData(false, false, 3)]
-    [InlineData(true, false, 3)]
-    [InlineData(false, true, 3)]
-    [InlineData(true, true, 3)]
-    public void GeneratedDeploymentWavesCreateAndExpireSitesWithoutUfosAtBothCallers(bool cache, bool hunting, int objective)
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 5)]
+    [InlineData(true, 5)]
+    [InlineData(false, 3)]
+    [InlineData(true, 3)]
+    public void GeneratedDeploymentWavesCreateAndExpireSitesWithoutUfosAtBothCallers(bool hunting, int objective)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-site-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
         var native = TestFixtures.Rows(oracle.RootElement, "cases").Single(row => row.GetProperty("name").GetString() == "selected")
             .GetProperty("site");
-        var content = GeneratedDirectSiteContent(cache, hunting, objective: objective);
+        var content = GeneratedDirectSiteContent(hunting, objective: objective);
         HashSet<string> cities = [];
         for (ulong seed = 1; seed <= 12; seed++)
         {
@@ -76,12 +70,10 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         Assert.Equal(2, cities.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DailyGeneratedDirectSiteReservesMarkerAndActivityBeforeMutation(bool cache)
+    [Fact]
+    public void DailyGeneratedDirectSiteReservesMarkerAndActivityBeforeMutation()
     {
-        var content = GeneratedDirectSiteContent(cache);
+        var content = GeneratedDirectSiteContent();
         var initial = GeneratedDirectSiteSnapshot(content, 41);
         AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("DIRECT_MARKER", int.MaxValue), content,
             new SplitMix64RandomSource(41)), "Mission site marker IDs are exhausted or collide with a saved target.");
@@ -91,13 +83,11 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             "UFO alien activity exceeds the supported range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OptionalGeneratedNegativeSiteCannotSupplyActivityHeadroom(bool cache)
+    [Fact]
+    public void OptionalGeneratedNegativeSiteCannotSupplyActivityHeadroom()
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
-        var content = GeneratedDirectSiteContent(cache);
+        var content = GeneratedDirectSiteContent();
         var initial = GeneratedDirectSiteSnapshot(content, 41) with
         {
             World = new()
@@ -112,13 +102,11 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             "UFO alien activity exceeds the supported range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void HuntingGeneratedZeroTimerSiteStopsOnlyWhenItsPayloadWouldExecute(bool cache)
+    [Fact]
+    public void HuntingGeneratedZeroTimerSiteStopsOnlyWhenItsPayloadWouldExecute()
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
-        var content = GeneratedDirectSiteContent(cache, hunting: true, deployment: "GENERATED_DIRECT_ZERO_EVENT");
+        var content = GeneratedDirectSiteContent(hunting: true, deployment: "GENERATED_DIRECT_ZERO_EVENT");
         var initial = GeneratedDirectSiteSnapshot(content, 41, hunting: true) with
         { Time = new(1, 1, 1, 1999, 0, 9, 55) };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(41));
@@ -129,25 +117,21 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         campaign = Reload(content, campaign, 41, "late-zero-site-before-payload.sav");
         AssertTimeBlocked(campaign, "Mission site despawn requires research or event payloads.");
 
-        content = GeneratedDirectSiteContent(cache, deployment: "GENERATED_DIRECT_ZERO_EVENT");
+        content = GeneratedDirectSiteContent(deployment: "GENERATED_DIRECT_ZERO_EVENT");
         AssertTimeBlocked(CampaignState.Restore(GeneratedDirectSiteSnapshot(content, 41), content,
             new SplitMix64RandomSource(41)), "Mission site despawn requires research or event payloads.");
     }
 
     [Theory]
-    [InlineData(false, false, 5)]
-    [InlineData(true, false, 5)]
-    [InlineData(false, true, 5)]
-    [InlineData(true, true, 5)]
-    [InlineData(false, false, 3)]
-    [InlineData(true, false, 3)]
-    [InlineData(false, true, 3)]
-    [InlineData(true, true, 3)]
-    public void GeneratedDeploymentAndUfoChainsReserveTogetherAndCompose(bool cache, bool hunting, int objective)
+    [InlineData(false, 5)]
+    [InlineData(true, 5)]
+    [InlineData(false, 3)]
+    [InlineData(true, 3)]
+    public void GeneratedDeploymentAndUfoChainsReserveTogetherAndCompose(bool hunting, int objective)
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-wave-chain");
-        var content = GeneratedDirectSiteContent(cache, hunting, objective: objective, chain: true);
+        var content = GeneratedDirectSiteContent(hunting, objective: objective, chain: true);
         var initial = GeneratedDirectSiteSnapshot(content, 41, hunting, chain: true);
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(41)),
             41, "generated-supply-chain-before.sav");
@@ -173,18 +157,14 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, false, false)]
-    [InlineData(true, false, false)]
-    [InlineData(false, true, false)]
-    [InlineData(true, true, false)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, true)]
-    [InlineData(false, true, true)]
-    [InlineData(true, true, true)]
-    public void GeneratedDeploymentRaceChoicesShareTheLastMarkerId(bool cache, bool hunting, bool chain)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void GeneratedDeploymentRaceChoicesShareTheLastMarkerId(bool hunting, bool chain)
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
-        var content = GeneratedDirectSiteContent(cache, hunting, chain: chain, alternatives: true);
+        var content = GeneratedDirectSiteContent(hunting, chain: chain, alternatives: true);
         var count = chain ? 2 : 1;
         var initial = GeneratedDirectSiteSnapshot(content, 41, hunting, chain).WithNextId("DIRECT_MARKER", int.MaxValue - count);
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(41));
@@ -206,15 +186,13 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void GeneratedSelectedDirectChainsKeepOneAreaAcrossWavesAndReload(bool cache, bool hunting)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedSelectedDirectChainsKeepOneAreaAcrossWavesAndReload(bool hunting)
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
-        var content = GeneratedDirectSiteContent(cache, hunting, objective: 3, chain: true);
+        var content = GeneratedDirectSiteContent(hunting, objective: 3, chain: true);
         HashSet<int> areas = [];
         for (ulong seed = 1; seed <= 12; seed++)
         {
@@ -244,18 +222,14 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, 0, false)]
-    [InlineData(true, 0, false)]
-    [InlineData(false, 3, false)]
-    [InlineData(true, 3, false)]
-    [InlineData(false, 0, true)]
-    [InlineData(true, 0, true)]
-    [InlineData(false, 3, true)]
-    [InlineData(true, 3, true)]
-    public void GeneratedDirectActivityReservesExclusiveChoicesAndSeparateSources(bool cache, int objective, bool repeatSite)
+    [InlineData(0, false)]
+    [InlineData(3, false)]
+    [InlineData(0, true)]
+    [InlineData(3, true)]
+    public void GeneratedDirectActivityReservesExclusiveChoicesAndSeparateSources(int objective, bool repeatSite)
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
-        var content = GeneratedDirectSiteContent(cache, objective: objective, alternatives: true, repeatSite: repeatSite);
+        var content = GeneratedDirectSiteContent(objective: objective, alternatives: true, repeatSite: repeatSite);
         var count = repeatSite ? 2 : 1;
         var points = count * 4;
         var initial = GeneratedDirectSiteSnapshot(content, 41);
@@ -282,33 +256,29 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void GeneratedSelectedDirectSitesRejectUnsafeDurationsBeforeMutation(bool cache, bool hunting)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedSelectedDirectSitesRejectUnsafeDurationsBeforeMutation(bool hunting)
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
         foreach (var deployment in new[] { "DIRECT_NEGATIVE_DURATION", "DIRECT_OVERFLOW_DURATION" })
         {
-            var content = GeneratedDirectSiteContent(cache, hunting, deployment, objective: 3);
+            var content = GeneratedDirectSiteContent(hunting, deployment, objective: 3);
             AssertTimeBlocked(CampaignState.Restore(GeneratedDirectSiteSnapshot(content, 41, hunting), content,
                 new SplitMix64RandomSource(41)), "Direct mission site duration is outside the supported range.");
         }
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void GeneratedMixedRaceChoicesShareActivityAcrossUfosAndSites(bool cache, bool hunting)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedMixedRaceChoicesShareActivityAcrossUfosAndSites(bool hunting)
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-wave-chain");
         foreach (var objective in new[] { 0, 3 })
         {
-            var content = GeneratedDirectSiteContent(cache, hunting, objective: objective, chain: true, alternatives: true);
+            var content = GeneratedDirectSiteContent(hunting, objective: objective, chain: true, alternatives: true);
             var initial = GeneratedDirectSiteSnapshot(content, 41, hunting, chain: true);
             var points = hunting ? 0 : 11;
             var limited = initial with
@@ -338,15 +308,13 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    public void GeneratedExpiryCountersReserveCompleteChainsAcrossRaceAlternatives(bool cache, int count)
+    [InlineData(1)]
+    [InlineData(2)]
+    public void GeneratedExpiryCountersReserveCompleteChainsAcrossRaceAlternatives(int count)
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
-        var content = GeneratedDirectSiteContent(cache, deployment: "DIRECT_ZERO_COUNTERS", alternatives: true, directCount: count);
+        var content = GeneratedDirectSiteContent(deployment: "DIRECT_ZERO_COUNTERS", alternatives: true, directCount: count);
         for (ulong seed = 1; seed <= 8; seed++)
         {
             var initial = GeneratedDirectSiteSnapshot(content, seed)
@@ -376,15 +344,13 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void HuntingDirectSiteIdsFollowEarlierSavedExpiryCounters(bool cache, bool decrease)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HuntingDirectSiteIdsFollowEarlierSavedExpiryCounters(bool decrease)
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
-        var content = GeneratedDirectSiteContent(cache, hunting: true, expiryShift: decrease ? -1 : 1);
+        var content = GeneratedDirectSiteContent(hunting: true, expiryShift: decrease ? -1 : 1);
         var shiftedId = decrease ? 4 : 6;
         var initial = GeneratedDirectSiteSnapshot(content, 41, hunting: true).WithNextId("DIRECT_MARKER", 5);
         initial = initial with
@@ -413,14 +379,12 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void LateHuntingCannotReuseSurvivingDailyBirthIdAfterExpiryDecreases(bool cache)
+    [Fact]
+    public void LateHuntingCannotReuseSurvivingDailyBirthIdAfterExpiryDecreases()
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
-        var content = GeneratedDirectSiteContent(cache, hunting: true, expiryShift: -1, bothCallers: true);
+        var content = GeneratedDirectSiteContent(hunting: true, expiryShift: -1, bothCallers: true);
         var initial = GeneratedDirectSiteSnapshot(content, 41, hunting: true).WithNextId("DIRECT_MARKER", 5) with
         {
             Time = new(1, 1, 1, 1999, 23, 59, 55),
@@ -439,7 +403,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         Assert.Equal(5, campaign.Capture().World.MissionSites[0].Id);
         Assert.Equal(6, campaign.Capture().World.MissionSites[1].Id);
         Reload(content, campaign, 41, "daily-and-hunting-site-ids.sav");
-        content = GeneratedDirectSiteContent(cache, hunting: true, expiryShift: -1, bothCallers: true,
+        content = GeneratedDirectSiteContent(hunting: true, expiryShift: -1, bothCallers: true,
             deployment: "DIRECT_ZERO_COUNTERS");
         campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(41));
         AdvanceUnblocked(campaign, 1);
@@ -447,14 +411,12 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         Reload(content, campaign, 41, "expired-daily-and-hunting-site-ids.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void LateHuntingCannotReuseProducedCraftIdAfterExpiryDecreases(bool cache)
+    [Fact]
+    public void LateHuntingCannotReuseProducedCraftIdAfterExpiryDecreases()
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-research-production");
-        var content = GeneratedDirectSiteContent(cache, hunting: true, expiryShift: -1, produceMarkerCraft: true);
+        var content = GeneratedDirectSiteContent(hunting: true, expiryShift: -1, produceMarkerCraft: true);
         var initial = GeneratedDirectSiteSnapshot(content, 41, hunting: true).WithNextId("DIRECT_MARKER", 5) with
         { Time = new(1, 1, 1, 1999, 23, 59, 55) };
         initial = initial with
@@ -477,10 +439,10 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         Reload(content, campaign, 41, "produced-craft-and-hunting-site.sav");
     }
 
-    private static RuntimeContent GeneratedDirectSiteContent(bool cache, bool hunting = false, string deployment = "DIRECT_DEPLOY",
+    private static RuntimeContent GeneratedDirectSiteContent(bool hunting = false, string deployment = "DIRECT_DEPLOY",
         int objective = 0, bool chain = false, bool alternatives = false, bool repeatSite = false, int directCount = 1, int expiryShift = 0,
         bool bothCallers = false, bool produceMarkerCraft = false) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], cache, $$$"""
+        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], $$$"""
             crafts:
               - {type: GENERATED_DIRECT_CRAFT, speedMax: 2000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
               {{{(produceMarkerCraft ? "- {type: DIRECT_MARKER, damageMax: 100, fuelMax: 0, allowLanding: false}" : "")}}}

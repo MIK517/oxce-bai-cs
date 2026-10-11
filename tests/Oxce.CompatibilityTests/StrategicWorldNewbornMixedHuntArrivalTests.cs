@@ -12,15 +12,13 @@ public sealed class StrategicWorldNewbornMixedHuntArrivalTests
     private static readonly CampaignTimeSpeed[] Speeds = [CampaignTimeSpeed.FiveSeconds, CampaignTimeSpeed.OneDay];
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 150)]
-    [InlineData(true, 150)]
-    public void ConstructorsChooseBetweenSafePursuitAndOrdinaryFirstArrival(bool cache, int huntSpeed)
+    [InlineData(0)]
+    [InlineData(150)]
+    public void ConstructorsChooseBetweenSafePursuitAndOrdinaryFirstArrival(int huntSpeed)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
-        var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false, hunterPercentage: 50,
+        var content = StrategicWorldNewbornFirstArrivalTests.Content(false, hunterPercentage: 50,
             radarRange: 300, huntSpeed: huntSpeed);
         HashSet<int> patterns = [];
         foreach (var speed in Speeds)

@@ -13,18 +13,14 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldResearchStockAlternativesTests
 {
     [Theory]
-    [InlineData(false, false, 0)]
-    [InlineData(true, false, 0)]
-    [InlineData(false, true, 0)]
-    [InlineData(true, true, 0)]
-    [InlineData(false, false, 2)]
-    [InlineData(true, false, 2)]
-    [InlineData(false, true, 2)]
-    [InlineData(true, true, 2)]
-    public void EquivalentFreeRewardsFeedFuelAndHuntingWithoutChoosingResearch(bool cache, bool duplicate, int count)
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
+    public void EquivalentFreeRewardsFeedFuelAndHuntingWithoutChoosingResearch(bool duplicate, int count)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Content(cache, duplicate, count);
+        var content = Content(duplicate, count);
         HashSet<int> choices = [];
         for (ulong seed = 1; seed <= 32; seed++)
         {
@@ -71,15 +67,13 @@ public sealed class StrategicWorldResearchStockAlternativesTests
         Assert.Equal(2, choices.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DifferentConsequencesRemainAtomicAndProjectionWorkIsBounded(bool cache)
+    [Fact]
+    public void DifferentConsequencesRemainAtomicAndProjectionWorkIsBounded()
     {
         foreach (var content in new[]
         {
-            Content(cache, false, 2, extraResearch: "  - {name: EQUIV_B, spawnedItemList: [SUPPLY]}"),
-            Content(cache, false, 2, otherCounter: "OTHER_COUNTER"),
+            Content(false, 2, extraResearch: "  - {name: EQUIV_B, spawnedItemList: [SUPPLY]}"),
+            Content(false, 2, otherCounter: "OTHER_COUNTER"),
         })
         {
             var campaign = CampaignState.Restore(Snapshot(content, 17), content, new SplitMix64RandomSource(17));
@@ -98,7 +92,7 @@ public sealed class StrategicWorldResearchStockAlternativesTests
             }
             else AssertTimeBlocked(campaign, "UFO retargeting requires daily research fuel-stock forecasts.");
         }
-        var supported = Content(cache, false, 2);
+        var supported = Content(false, 2);
         var limited = CampaignState.Restore(Snapshot(supported, 17), supported, new SplitMix64RandomSource(17));
         var initial = limited.Capture();
         long exhausted = 999_999;
@@ -107,7 +101,7 @@ public sealed class StrategicWorldResearchStockAlternativesTests
         var identities = Enumerable.Range(0, 4097).Select(index => "LIMIT_REWARD_" + index).ToArray();
         var labels = string.Join(", ", identities);
         var extraResearch = string.Join("\n", identities.Select(id => "  - {name: " + id + ", cost: 1}"));
-        var oversized = Content(cache, false, 2, labels: labels, extraResearch: extraResearch);
+        var oversized = Content(false, 2, labels: labels, extraResearch: extraResearch);
         limited = CampaignState.Restore(Snapshot(oversized, 17), oversized, new SplitMix64RandomSource(17));
         initial = limited.Capture();
         long branching = 0;
@@ -117,18 +111,14 @@ public sealed class StrategicWorldResearchStockAlternativesTests
     }
 
     [Theory]
-    [InlineData(false, false, false)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, false)]
-    [InlineData(true, false, true)]
-    [InlineData(false, true, false)]
-    [InlineData(false, true, true)]
-    [InlineData(true, true, false)]
-    [InlineData(true, true, true)]
-    public void AutomaticClosureMakesDistinctRewardsAnExactFinalResearchProjection(bool cache, bool duplicate, bool withSite)
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void AutomaticClosureMakesDistinctRewardsAnExactFinalResearchProjection(bool duplicate, bool withSite)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Content(cache, duplicate, 2, withSite ? StrategicWorldSiteResearchTests.Deployment : "", convergent: true);
+        var content = Content(duplicate, 2, withSite ? StrategicWorldSiteResearchTests.Deployment : "", convergent: true);
         HashSet<int> choices = [];
         for (ulong seed = 1; seed <= 32; seed++)
         {
@@ -168,12 +158,10 @@ public sealed class StrategicWorldResearchStockAlternativesTests
         Assert.Equal(2, choices.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void MatchingCompletedTopicsDoNotHideDifferentResearchStatuses(bool cache)
+    [Fact]
+    public void MatchingCompletedTopicsDoNotHideDifferentResearchStatuses()
     {
-        var content = Content(cache, false, 2, convergent: true, unequalStatus: true);
+        var content = Content(false, 2, convergent: true, unequalStatus: true);
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         HashSet<int> choices = [];
         for (ulong seed = 1; seed <= 32; seed++)
@@ -198,15 +186,13 @@ public sealed class StrategicWorldResearchStockAlternativesTests
     }
 
     [Theory]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    [InlineData(false, 4096)]
-    [InlineData(true, 4096)]
-    public void WeightedDuplicateLabelsShareProofWithoutChangingActualSelection(bool cache, int repeats)
+    [InlineData(3)]
+    [InlineData(4096)]
+    public void WeightedDuplicateLabelsShareProofWithoutChangingActualSelection(int repeats)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         var labels = string.Join(", ", Enumerable.Repeat("EQUIV_A", repeats).Append("EQUIV_B"));
-        var content = Content(cache, false, 2, labels: labels);
+        var content = Content(false, 2, labels: labels);
         foreach (var seed in new ulong[] { 1, repeats == 3 ? 7UL : 221UL })
         {
             var predictedChoice = new SplitMix64RandomSource(seed).NextExclusive(repeats + 1) == repeats ? 1 : 0;
@@ -236,15 +222,13 @@ public sealed class StrategicWorldResearchStockAlternativesTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    public void StockCallersIgnoreUnusedRewardScoresAndDiaryMetadata(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(1)]
+    public void StockCallersIgnoreUnusedRewardScoresAndDiaryMetadata(int mode)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         using var diary = TestFixtures.ReadVerifiedExpected("strategic-research-diary-execution");
-        var content = Content(cache, false, 2, otherPoints: mode == 0 ? 2 : 1, rewardLookup: mode == 1, extraResearch: "  - {name: UNLOCK, cost: 1}");
+        var content = Content(false, 2, otherPoints: mode == 0 ? 2 : 1, rewardLookup: mode == 1, extraResearch: "  - {name: UNLOCK, cost: 1}");
         HashSet<int> choices = [];
         for (ulong seed = 1; seed <= 32; seed++)
         {
@@ -284,16 +268,13 @@ public sealed class StrategicWorldResearchStockAlternativesTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    public void EmptyCounterNamesAreUnconsumedInEquivalentRewardEffects(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void EmptyCounterNamesAreUnconsumedInEquivalentRewardEffects(int mode)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Content(cache, false, 2, rewardCounter: mode == 1 ? "EQUIV_COUNTER" : "",
+        var content = Content(false, 2, rewardCounter: mode == 1 ? "EQUIV_COUNTER" : "",
             otherCounter: mode == 1 ? "EQUIV_COUNTER" : "", emptyDecrease: mode != 0);
         HashSet<int> choices = [];
         for (ulong seed = 1; seed <= 32; seed++)
@@ -326,15 +307,13 @@ public sealed class StrategicWorldResearchStockAlternativesTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 10000)]
-    [InlineData(true, 10000)]
-    public void EmptyOnlyEffectsUseTheBoundedFastStockProof(bool cache, int labels)
+    [InlineData(0)]
+    [InlineData(10000)]
+    public void EmptyOnlyEffectsUseTheBoundedFastStockProof(int labels)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         var counters = string.Join(", ", Enumerable.Repeat("''", labels));
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             crafts: [{type: SHIP, fuelMax: 1000, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]
             facilities: [{type: EQUIV_LAB, mapName: LOGISTICS, labs: 2}]
             ufos: [{type: UFO_HUNTER, radarRange: 20000}]
@@ -387,8 +366,8 @@ public sealed class StrategicWorldResearchStockAlternativesTests
         Assert.Equal(2, choices.Count);
     }
 
-    internal static RuntimeContent Content(bool cache, bool duplicate, int count, string extra = "", int? otherCount = null, string otherCounter = "EQUIV_COUNTER", int otherPoints = 1, string? labels = null, string extraResearch = "", bool convergent = false, bool unequalStatus = false, bool rewardLookup = false, string rewardCounter = "EQUIV_COUNTER", bool emptyDecrease = false) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$"""
+    internal static RuntimeContent Content(bool duplicate, int count, string extra = "", int? otherCount = null, string otherCounter = "EQUIV_COUNTER", int otherPoints = 1, string? labels = null, string extraResearch = "", bool convergent = false, bool unequalStatus = false, bool rewardLookup = false, string rewardCounter = "EQUIV_COUNTER", bool emptyDecrease = false) =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
         crafts: [{type: SHIP, fuelMax: 1000, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]
         facilities: [{type: EQUIV_LAB, mapName: LOGISTICS, labs: 2}]
         ufos: [{type: UFO_HUNTER, radarRange: 20000}]

@@ -10,19 +10,17 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldOptionalSpaceSourceTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void PossibleSpaceSourceDeletionClearsLinksWithoutInterruptingOrdinaryFlight(bool cache)
+    [Fact]
+    public void PossibleSpaceSourceDeletionClearsLinksWithoutInterruptingOrdinaryFlight()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         TestFixtures.LoadVerifiedManifest("strategic-objective-base-spawn");
         for (var path = 0; path < 7; path++)
         {
-            var content = FlightContent(cache, path);
-            var deletedContent = FlightContent(cache, path, "CORE");
-            var survivedContent = FlightContent(cache, path, "");
+            var content = FlightContent(path);
+            var deletedContent = FlightContent(path, "CORE");
+            var survivedContent = FlightContent(path, "");
             var deletedSeen = false;
             var survivedSeen = false;
             for (ulong seed = 1; seed <= 32; seed++)
@@ -57,10 +55,8 @@ public sealed class StrategicWorldOptionalSpaceSourceTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SpaceSourceDeletionPreservesDueRegionalWavesAndFinalObjectives(bool cache)
+    [Fact]
+    public void SpaceSourceDeletionPreservesDueRegionalWavesAndFinalObjectives()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
         TestFixtures.LoadVerifiedManifest("strategic-wave-chain");
@@ -68,9 +64,9 @@ public sealed class StrategicWorldOptionalSpaceSourceTests
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
         for (var kind = 0; kind < 6; kind++)
         {
-            var content = WaveContent(cache, kind);
-            var deletedContent = WaveContent(cache, kind, "CORE");
-            var survivedContent = WaveContent(cache, kind, "");
+            var content = WaveContent(kind);
+            var deletedContent = WaveContent(kind, "CORE");
+            var survivedContent = WaveContent(kind, "");
             var deletedSeen = false;
             var survivedSeen = false;
             for (ulong seed = 1; seed <= 32; seed++)
@@ -110,17 +106,15 @@ public sealed class StrategicWorldOptionalSpaceSourceTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void SpaceSourceUnlinkingKeepsHunterAndEscortMissionSemantics(bool cache, bool escort)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SpaceSourceUnlinkingKeepsHunterAndEscortMissionSemantics(bool escort)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
         TestFixtures.LoadVerifiedManifest("strategic-mission-origin");
-        var content = FlightContent(cache, 0);
-        var deletedContent = FlightContent(cache, 0, "CORE");
-        var survivedContent = FlightContent(cache, 0, "");
+        var content = FlightContent(0);
+        var deletedContent = FlightContent(0, "CORE");
+        var survivedContent = FlightContent(0, "");
         var deletedSeen = false;
         var survivedSeen = false;
         for (ulong seed = 1; seed <= 32; seed++)
@@ -160,10 +154,10 @@ public sealed class StrategicWorldOptionalSpaceSourceTests
         Assert.True(survivedSeen);
     }
 
-    private static RuntimeContent FlightContent(bool cache, int path, string code = "BONUS") =>
-        StrategicWorldConversionResearchTests.Content(cache, respawn: path == 4, interrupt: "", baseLanding: path == 5,
+    private static RuntimeContent FlightContent(int path, string code = "BONUS") =>
+        StrategicWorldConversionResearchTests.Content(respawn: path == 4, interrupt: "", baseLanding: path == 5,
             sourceCode: code, includeSource: true);
 
-    private static RuntimeContent WaveContent(bool cache, int kind, string code = "BONUS") =>
-        StrategicWorldDailyWaveResearchTests.Content(cache, kind, interrupt: "", sourceCode: code, includeSource: true);
+    private static RuntimeContent WaveContent(int kind, string code = "BONUS") =>
+        StrategicWorldDailyWaveResearchTests.Content(kind, interrupt: "", sourceCode: code, includeSource: true);
 }

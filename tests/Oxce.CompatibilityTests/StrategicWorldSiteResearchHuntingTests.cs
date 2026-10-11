@@ -12,15 +12,13 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldSiteResearchHuntingTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void SiteResearchPrecedesHunterSelectionAndItsRetargetedFlight(bool cache, bool uncertain)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SiteResearchPrecedesHunterSelectionAndItsRetargetedFlight(bool uncertain)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = Content(cache, uncertain);
+        var content = Content(uncertain);
         var snapshot = Snapshot(content);
         // An idle hunter can begin at its ordinary waypoint: retargeting to a
         // distant craft takes precedence over the uncertain ordinary arrival.
@@ -51,8 +49,8 @@ public sealed class StrategicWorldSiteResearchHuntingTests
         }
     }
 
-    internal static RuntimeContent Content(bool cache, bool uncertain = false, string extraRules = "", string[]? ruleFiles = null, string? finalRules = null) =>
-        StrategicReadinessTestContent.Load(ruleFiles ?? ["strategic-world.rul", "strategic-hunting.rul"], cache, $$"""
+    internal static RuntimeContent Content(bool uncertain = false, string extraRules = "", string[]? ruleFiles = null, string? finalRules = null) =>
+        StrategicReadinessTestContent.Load(ruleFiles ?? ["strategic-world.rul", "strategic-hunting.rul"], $$"""
             research:
               - {name: UNLOCK, cost: 1}
               - {name: CORE, cost: 1{{(uncertain ? ", getOneFree: [BONUS, OTHER]" : "")}}}

@@ -12,10 +12,8 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldNewbornMonthlyTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OperationBirthsUpgradeAndEvolveInTheSameMonthlyCall(bool fromCache)
+    [Fact]
+    public void OperationBirthsUpgradeAndEvolveInTheSameMonthlyCall()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-newborn-monthly");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows"))
@@ -27,7 +25,7 @@ public sealed class StrategicWorldNewbornMonthlyTests
             if (name == "loop")
                 extra += "\nalienDeployments: [{type: NEWBORN_TARGET, alienRaceEvolution: [[3, RACE_A, RACE_A]]}]";
             var content = StrategicReadinessTestContent.Load(
-                ["strategic-world.rul", "strategic-world-newborn-monthly.rul"], fromCache, extra);
+                ["strategic-world.rul", "strategic-world-newborn-monthly.rul"], extra);
             var snapshot = CreateSnapshot(content, "Newborn monthly bases") with { MonthsPassed = 3, RandomState = 17 };
             var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
             var result = campaign.Execute(new ScheduleWorldScripts());

@@ -13,12 +13,10 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldAlienBaseMonthlyTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void MonthlyUpgradesAndEvolutionMatchExtractedReference(bool cache)
+    [Fact]
+    public void MonthlyUpgradesAndEvolutionMatchExtractedReference()
     {
-        var content = Load(cache);
+        var content = Load();
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-monthly");
         var rows = new List<object[]>();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows"))
@@ -55,12 +53,10 @@ public sealed class StrategicWorldAlienBaseMonthlyTests
             CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void EvolutionLimitsMatchReferenceIncludingFiniteHundredTransitionChain(bool cache)
+    [Fact]
+    public void EvolutionLimitsMatchReferenceIncludingFiniteHundredTransitionChain()
     {
-        var content = Load(cache);
+        var content = Load();
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-monthly");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "evolutionLimitRows"))
         {
@@ -75,12 +71,10 @@ public sealed class StrategicWorldAlienBaseMonthlyTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DeploymentChangesRepairMissionAndCraftReferencesAndPersistAllBaseState(bool cache)
+    [Fact]
+    public void DeploymentChangesRepairMissionAndCraftReferencesAndPersistAllBaseState()
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Snapshot(content, "MONTHLY_upgrade");
         var link = new WorldTargetReference(WorldTargetKind.AlienBase, "STR_ALIEN_BASE", 2, 0.2, 0.1);
         snapshot = snapshot.WithCraft("SHIP", craft => craft with
@@ -107,12 +101,10 @@ public sealed class StrategicWorldAlienBaseMonthlyTests
         Reload(content, campaign, 40, "monthly-upgraded-base-links.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void UnknownSidecarsFollowUpgradesAcrossRepeatedLoadedRewritesAndDoNotResurrectDeletedBases(bool cache)
+    [Fact]
+    public void UnknownSidecarsFollowUpgradesAcrossRepeatedLoadedRewritesAndDoNotResurrectDeletedBases()
     {
-        var content = Load(cache);
+        var content = Load();
         var yaml = OxceSaveAdapter.EmitNewCampaign(Snapshot(content, "MONTHLY_upgrade"));
         var start = yaml.IndexOf("alienBases:\n", StringComparison.Ordinal);
         Assert.True(start >= 0);
@@ -181,13 +173,11 @@ public sealed class StrategicWorldAlienBaseMonthlyTests
     }
 
     [Theory]
-    [InlineData(false, "MONTHLY_craftMarkerUpgrade")]
-    [InlineData(true, "MONTHLY_craftMarkerUpgrade")]
-    [InlineData(false, "MONTHLY_legacyMarkerUpgrade")]
-    [InlineData(true, "MONTHLY_legacyMarkerUpgrade")]
-    public void UpgradeMarkerPreservesFollowerOrStopsBeforeAmbiguousReload(bool cache, string deployment)
+    [InlineData("MONTHLY_craftMarkerUpgrade")]
+    [InlineData("MONTHLY_legacyMarkerUpgrade")]
+    public void UpgradeMarkerPreservesFollowerOrStopsBeforeAmbiguousReload(string deployment)
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Snapshot(content, deployment);
         var destination = new WorldTargetReference(WorldTargetKind.AlienBase, "STR_ALIEN_BASE", 2, 0.2, 0.1);
         snapshot = snapshot.WithCraft("SHIP", craft => craft with
@@ -205,12 +195,10 @@ public sealed class StrategicWorldAlienBaseMonthlyTests
             Assert.Single(reloaded.Bases[0].Crafts, craft => craft.RuleId == "SHIP").Logistics!.Destination);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ActualCraftIdentityCollisionStopsBeforeUpgradeAndFollowerRewiring(bool cache)
+    [Fact]
+    public void ActualCraftIdentityCollisionStopsBeforeUpgradeAndFollowerRewiring()
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Snapshot(content, "MONTHLY_craftMarkerUpgrade");
         var owner = snapshot.Bases[0];
         var craft = Assert.Single(owner.Crafts, craft => craft.RuleId == "SHIP");
@@ -218,12 +206,10 @@ public sealed class StrategicWorldAlienBaseMonthlyTests
         AssertBlocked(content, snapshot, "Alien base upgrades can collide with another world target's marker identity.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SavedMarkerClassificationMatchesCraftLoadAndFinishLoadingReference(bool cache)
+    [Fact]
+    public void SavedMarkerClassificationMatchesCraftLoadAndFinishLoadingReference()
     {
-        var content = Load(cache);
+        var content = Load();
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-monthly");
         var rows = new List<object[]>();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "markerRows"))
@@ -323,10 +309,10 @@ public sealed class StrategicWorldAlienBaseMonthlyTests
         Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
-    private static RuntimeContent Load(bool cache = false)
+    private static RuntimeContent Load()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-monthly");
-        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-monthly.rul"], cache);
+        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-monthly.rul"]);
     }
 
     private static CampaignSnapshot Snapshot(RuntimeContent content, string deployment, int month = 3) =>

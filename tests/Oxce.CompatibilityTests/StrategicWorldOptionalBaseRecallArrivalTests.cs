@@ -13,17 +13,15 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldOptionalBaseRecallArrivalTests
 {
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 5)]
-    [InlineData(true, 5)]
-    public void EmptyFuelRecallConvergesBeforeNativeArrival(bool cache, int takeoff)
+    [InlineData(0)]
+    [InlineData(5)]
+    public void EmptyFuelRecallConvergesBeforeNativeArrival(int takeoff)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         TestFixtures.LoadVerifiedManifest("strategic-world");
-        var content = StrategicWorldOptionalBaseFuelParityTests.Content(cache);
-        var deletedContent = StrategicWorldOptionalBaseFuelParityTests.Content(cache, "CORE");
-        var survivedContent = StrategicWorldOptionalBaseFuelParityTests.Content(cache, "");
+        var content = StrategicWorldOptionalBaseFuelParityTests.Content();
+        var deletedContent = StrategicWorldOptionalBaseFuelParityTests.Content("CORE");
+        var survivedContent = StrategicWorldOptionalBaseFuelParityTests.Content("");
         foreach (var fuel in new[] { 0, 1, 10 })
         {
             HashSet<bool> outcomes = [];
@@ -62,12 +60,10 @@ public sealed class StrategicWorldOptionalBaseRecallArrivalTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void UncertainRecallRemainsAtomicAndAlreadyLowFuelArrivalIsOwned(bool cache)
+    [Fact]
+    public void UncertainRecallRemainsAtomicAndAlreadyLowFuelArrivalIsOwned()
     {
-        var content = StrategicWorldOptionalBaseFuelParityTests.Content(cache);
+        var content = StrategicWorldOptionalBaseFuelParityTests.Content();
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, 17, 0, 21, false), content, new SplitMix64RandomSource(17)),
             "Alien base self-destruction requires craft speed alternatives for uncertain research.");
         var campaign = CampaignState.Restore(Snapshot(content, 17, 5, 0, true), content, new SplitMix64RandomSource(17));

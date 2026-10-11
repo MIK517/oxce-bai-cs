@@ -12,14 +12,12 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldResearchArrivalOrderTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void NonReusableArrivalPermutationsPreserveTransferMultiplicityAndActualOrder(bool cache, bool duplicate)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NonReusableArrivalPermutationsPreserveTransferMultiplicityAndActualOrder(bool duplicate)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Content(cache, duplicate);
+        var content = Content(duplicate);
         HashSet<int> choices = [];
         for (ulong seed = 1; seed <= 32; seed++)
         {
@@ -71,13 +69,11 @@ public sealed class StrategicWorldResearchArrivalOrderTests
         Assert.Equal(2, choices.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ReusableAmmunitionPermutationsRemainOrderedAndRefusedAtomically(bool cache)
+    [Fact]
+    public void ReusableAmmunitionPermutationsRemainOrderedAndRefusedAtomically()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Content(cache, false, reusable: true);
+        var content = Content(false, reusable: true);
         HashSet<int> choices = [];
         for (ulong seed = 1; seed <= 32; seed++)
         {
@@ -123,15 +119,13 @@ public sealed class StrategicWorldResearchArrivalOrderTests
     }
 
     [Theory]
-    [InlineData(false, 1000)]
-    [InlineData(true, 1000)]
-    [InlineData(false, 10000)]
-    [InlineData(true, 10000)]
-    public void LargeOrderedReusableListsDoNotPayForAnUnusedSort(bool cache, int count)
+    [InlineData(1000)]
+    [InlineData(10000)]
+    public void LargeOrderedReusableListsDoNotPayForAnUnusedSort(int count)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         var labels = string.Join(", ", Enumerable.Repeat("SUPPLY", count));
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
         crafts: [{type: SHIP, fuelMax: 1000, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true, weapons: 2}]
         facilities: [{type: EQUIV_LAB, mapName: LOGISTICS, labs: 2}]
         ufos: [{type: UFO_HUNTER, radarRange: 20000}]
@@ -174,8 +168,8 @@ public sealed class StrategicWorldResearchArrivalOrderTests
         Assert.Equal(2, choices.Count);
     }
 
-    internal static RuntimeContent Content(bool cache, bool duplicate, bool reusable = false) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$"""
+    internal static RuntimeContent Content(bool duplicate, bool reusable = false) =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
         items: [{type: CLIP, battleType: {{(reusable ? 0 : 2)}}}]
         crafts: [{type: SHIP, fuelMax: 1000, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true, weapons: 2}]
         craftWeapons: [{type: REUSE_CLIP, launcher: SUPPLY, clip: CLIP, ammoMax: 10, rearmRate: 1}, {type: REUSE_SUPPLY, launcher: SUPPLY, clip: SUPPLY, ammoMax: 10, rearmRate: 1}]

@@ -12,16 +12,14 @@ public sealed class StrategicWorldSiteResearchDirectBirthTests
 {
     private static readonly string[] DiaryTopics = ["CORE", "BONUS"];
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void SavedDirectSiteChainsSurviveTheBirthTickGrantAndPersistTheirLaterResearch(bool cache, bool final)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SavedDirectSiteChainsSurviveTheBirthTickGrantAndPersistTheirLaterResearch(bool final)
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-site-timer");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = Content(cache, final);
+        var content = Content(final);
         var initial = Snapshot(content);
         var control = CampaignState.Restore(initial with { World = initial.World with { MissionSites = [] } }, content, new SplitMix64RandomSource(17));
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), 17, "direct-research-before.sav");
@@ -56,31 +54,27 @@ public sealed class StrategicWorldSiteResearchDirectBirthTests
         Reload(content, campaign, 17, "direct-research-expired.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SavedDirectSitesRetainDurationAndIdentityBoundaries(bool cache)
+    [Fact]
+    public void SavedDirectSitesRetainDurationAndIdentityBoundaries()
     {
-        var content = Content(cache, duration: -1);
+        var content = Content(duration: -1);
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content), content, new SplitMix64RandomSource(17)),
             "Direct mission site duration is outside the supported range.");
-        content = Content(cache);
+        content = Content();
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content).WithNextId("RESEARCH_BORN_MARKER", int.MaxValue - 1), content, new SplitMix64RandomSource(17)),
             "Mission site marker IDs are exhausted or collide with a saved target.");
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void DailyGeneratedDirectSitesComposeBeforeResearchAndRetainCleanupOrdering(bool cache, bool final)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DailyGeneratedDirectSitesComposeBeforeResearchAndRetainCleanupOrdering(bool final)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
         for (var objective = 0; objective <= 3; objective += 3)
         {
-            var content = Content(cache, final, generated: true, objective: objective,
+            var content = Content(final, generated: true, objective: objective,
                 interrupt: final ? "MISSING_RESEARCH" : "CORE");
             var initial = GeneratedSnapshot(content);
             var control = CampaignState.Restore(initial with { World = initial.World with { MissionSites = [] } }, content, new SplitMix64RandomSource(17));
@@ -104,32 +98,28 @@ public sealed class StrategicWorldSiteResearchDirectBirthTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DailyGeneratedDirectSitesPreserveDurationAndMarkerBoundaries(bool cache)
+    [Fact]
+    public void DailyGeneratedDirectSitesPreserveDurationAndMarkerBoundaries()
     {
-        var content = Content(cache, generated: true, duration: -1);
+        var content = Content(generated: true, duration: -1);
         AssertTimeBlocked(CampaignState.Restore(GeneratedSnapshot(content), content, new SplitMix64RandomSource(17)),
             "Direct mission site duration is outside the supported range.");
-        content = Content(cache, generated: true);
+        content = Content(generated: true);
         AssertTimeBlocked(CampaignState.Restore(GeneratedSnapshot(content).WithNextId("RESEARCH_BORN_MARKER", int.MaxValue - 1), content, new SplitMix64RandomSource(17)),
             "Mission site marker IDs are exhausted or collide with a saved target.");
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    public void LateGeneratedDirectSitesDeferTheirExpiryAndResearchUntilTheNextCaller(bool cache, int duration)
+    [InlineData(0)]
+    [InlineData(1)]
+    public void LateGeneratedDirectSitesDeferTheirExpiryAndResearchUntilTheNextCaller(int duration)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
         TestFixtures.LoadVerifiedManifest("strategic-site-timer");
         for (var finalIndex = 0; finalIndex <= 1; finalIndex++)
         {
             var final = finalIndex == 1;
-            var content = Content(cache, final, duration, hunting: true, interrupt: final ? "MISSING_RESEARCH" : "CORE");
+            var content = Content(final, duration, hunting: true, interrupt: final ? "MISSING_RESEARCH" : "CORE");
             var initial = GeneratedSnapshot(content, hunting: true);
             var control = CampaignState.Restore(initial with { World = initial.World with { MissionSites = [] } }, content, new SplitMix64RandomSource(17));
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), 17, "late-direct-before.sav");
@@ -166,20 +156,18 @@ public sealed class StrategicWorldSiteResearchDirectBirthTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void LateGeneratedDirectSitesRetainBirthTickCapacityBoundaries(bool cache)
+    [Fact]
+    public void LateGeneratedDirectSitesRetainBirthTickCapacityBoundaries()
     {
-        var content = Content(cache, hunting: true, duration: 0);
+        var content = Content(hunting: true, duration: 0);
         AssertTimeBlocked(CampaignState.Restore(GeneratedSnapshot(content, hunting: true).WithNextId("RESEARCH_BORN_MARKER", int.MaxValue - 1), content, new SplitMix64RandomSource(17)),
             "Mission site marker IDs are exhausted or collide with a saved target.");
     }
 
-    internal static RuntimeContent Content(bool cache, bool final = false, int duration = 1, bool generated = false, bool hunting = false,
+    internal static RuntimeContent Content(bool final = false, int duration = 1, bool generated = false, bool hunting = false,
         int objective = 0, string interrupt = "CORE", int? maximumDuration = null, string eventInterrupt = "", int frequency = 100,
         int count = 2, int firstTimer = 0) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], cache, $$$"""
+        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], $$$"""
         research:
           - {name: UNLOCK, cost: 1}
           - {name: CORE, cost: 1}

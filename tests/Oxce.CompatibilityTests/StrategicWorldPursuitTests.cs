@@ -13,12 +13,11 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldPursuitTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    public void FuelReturnPrecedesGuardedArrivalInTheSameTick(bool fromCache, bool landed)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FuelReturnPrecedesGuardedArrivalInTheSameTick(bool landed)
     {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul", fromCache);
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var snapshot = landed ? CreateLifecycleSnapshot(content) : PursuitCampaign(content).Capture();
         var ufo = snapshot.World.Ufos[0] with { Detected = true, Speed = 0 };
         snapshot = snapshot with
@@ -78,12 +77,10 @@ public sealed class StrategicWorldPursuitTests
         AssertTimeBlocked(campaign, "Craft interception requires strategic combat (Phase 6 branch 5).");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void PursuitMovesAfterUfoAndMatchesReferenceAcrossReloads(bool fromCache)
+    [Fact]
+    public void PursuitMovesAfterUfoAndMatchesReferenceAcrossReloads()
     {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul", fromCache);
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = PursuitCampaign(content);
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world");
         var actual = new List<double[]>();
@@ -319,13 +316,11 @@ public sealed class StrategicWorldPursuitTests
     }
 
     [Theory]
-    [InlineData(false, 0.2001, 30)]
-    [InlineData(true, 0.2001, 30)]
-    [InlineData(false, 0.3, 60)]
-    public void CraftEscortUsesReferenceRangeAndFuelFloor(bool fromCache, double leaderLongitude, int consumption)
+    [InlineData(0.2001, 30)]
+    [InlineData(0.3, 60)]
+    public void CraftEscortUsesReferenceRangeAndFuelFloor(double leaderLongitude, int consumption)
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-escort.rul"], fromCache,
-            finalRules: "crafts: [{type: SHIP, fuelMax: 300}]\n");
+        var content = StrategicReadinessTestContent.Load(["strategic-escort.rul"], finalRules: "crafts: [{type: SHIP, fuelMax: 300}]\n");
         Assert.Equal(42, content.RuntimeRules.Campaign.EscortRange);
         var snapshot = CreateSnapshot(content, "Escort fuel") with
         { Time = new CampaignTime(1, 1, 1, 1999, 1, 9, 55) };

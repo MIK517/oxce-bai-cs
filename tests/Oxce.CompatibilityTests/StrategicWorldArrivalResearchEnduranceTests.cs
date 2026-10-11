@@ -10,20 +10,17 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldArrivalResearchEnduranceTests
 {
     [Theory]
-    [InlineData(false, false, false)]
-    [InlineData(true, false, false)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, true)]
-    [InlineData(false, true, false)]
-    [InlineData(true, true, false)]
-    public void SelectedArrivalComposesForSeventyTwoHoursAcrossBatchSizesAndReloads(bool cache, bool baseLanding, bool respawn)
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public void SelectedArrivalComposesForSeventyTwoHoursAcrossBatchSizesAndReloads(bool baseLanding, bool respawn)
     {
         TestFixtures.LoadVerifiedManifest("strategic-objective-base-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
         TestFixtures.LoadVerifiedManifest("strategic-event");
-        var content = StrategicWorldConversionResearchTests.Content(cache, respawn, baseLanding: baseLanding);
+        var content = StrategicWorldConversionResearchTests.Content(respawn, baseLanding: baseLanding);
         foreach (var interrupted in new[] { false, true })
         {
             var seed = SeedForOutcome(content, baseLanding, interrupted);

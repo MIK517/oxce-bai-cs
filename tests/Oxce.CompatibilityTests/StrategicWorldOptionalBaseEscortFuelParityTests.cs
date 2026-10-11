@@ -13,21 +13,17 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldOptionalBaseEscortFuelParityTests
 {
     [Theory]
-    [InlineData(false, false, 0)]
-    [InlineData(true, false, 0)]
-    [InlineData(false, true, 0)]
-    [InlineData(true, true, 0)]
-    [InlineData(false, false, 5)]
-    [InlineData(true, false, 5)]
-    [InlineData(false, true, 5)]
-    [InlineData(true, true, 5)]
-    public void UnequalEscortBurnsPreserveEligibilityAndNativeSavedOrder(bool cache, bool reverse, int takeoff)
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 5)]
+    [InlineData(true, 5)]
+    public void UnequalEscortBurnsPreserveEligibilityAndNativeSavedOrder(bool reverse, int takeoff)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         TestFixtures.LoadVerifiedManifest("strategic-world");
-        var content = Content(cache);
-        var deletedContent = Content(cache, "CORE");
-        var survivedContent = Content(cache, "");
+        var content = Content();
+        var deletedContent = Content("CORE");
+        var survivedContent = Content("");
         foreach (var (fuel, low) in new[] { (100, false), (149, false), (200, false), (1500, false), (150, true) })
         {
             HashSet<bool> outcomes = [];
@@ -73,13 +69,11 @@ public sealed class StrategicWorldOptionalBaseEscortFuelParityTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void EscortLowFuelDifferencesRemainAtomic(bool cache)
+    [Fact]
+    public void EscortLowFuelDifferencesRemainAtomic()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Content(cache);
+        var content = Content();
         foreach (var fuel in new[] { 150, 160 })
         {
             var rows = TestFixtures.Rows(oracle.RootElement, "optionalEscortFuelRows").Where(row =>
@@ -108,8 +102,8 @@ public sealed class StrategicWorldOptionalBaseEscortFuelParityTests
         return initial.WithCraft(craft.RuleId, craft => craft with { Logistics = craft.Logistics! with { Fuel = threshold + returnBurn } });
     }
 
-    internal static RuntimeContent Content(bool cache, string code = "BONUS") =>
-        StrategicWorldOptionalBaseCraftTests.Content(cache, code, itemFuel: true, escortSpeedMaximum: 2100);
+    internal static RuntimeContent Content(string code = "BONUS") =>
+        StrategicWorldOptionalBaseCraftTests.Content(code, itemFuel: true, escortSpeedMaximum: 2100);
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content, ulong seed, bool reverse, int takeoff, int fuel, bool low)
     {

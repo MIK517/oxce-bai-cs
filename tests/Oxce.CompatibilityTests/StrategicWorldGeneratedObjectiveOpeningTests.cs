@@ -13,21 +13,17 @@ namespace Oxce.CompatibilityTests;
 public sealed partial class StrategicWorldAlienBaseGenerationTests
 {
     [Theory]
-    [InlineData(false, 1, false)]
-    [InlineData(true, 1, false)]
-    [InlineData(false, 2, false)]
-    [InlineData(true, 2, false)]
-    [InlineData(false, 1, true)]
-    [InlineData(true, 1, true)]
-    [InlineData(false, 2, true)]
-    [InlineData(true, 2, true)]
-    public void GeneratedObjectiveOpeningPreservesPendingCompletion(bool cache, int objective, bool hunting)
+    [InlineData(1, false)]
+    [InlineData(2, false)]
+    [InlineData(1, true)]
+    [InlineData(2, true)]
+    public void GeneratedObjectiveOpeningPreservesPendingCompletion(int objective, bool hunting)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         TestFixtures.LoadVerifiedManifest("strategic-objective-base-spawn");
-        var content = GeneratedObjectiveOpeningContent(cache, objective, hunting);
+        var content = GeneratedObjectiveOpeningContent(objective, hunting);
         var initial = GeneratedObjectiveOpeningSnapshot(content, hunting);
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(41)),
             41, "generated-objective-prefix-before.sav");
@@ -55,16 +51,14 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    public void DailyGeneratedFinalBaseWaveCreatesBaseBeforeUfoLifecycle(bool cache, int groundTimer)
+    [InlineData(0)]
+    [InlineData(1)]
+    public void DailyGeneratedFinalBaseWaveCreatesBaseBeforeUfoLifecycle(int groundTimer)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-objective-base-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
-        var content = GeneratedObjectiveOpeningContent(cache, 2, groundTimer: groundTimer, prefix: false);
+        var content = GeneratedObjectiveOpeningContent(2, groundTimer: groundTimer, prefix: false);
         var initial = GeneratedObjectiveOpeningSnapshot(content).WithNextId("STR_ALIEN_BASE", 7);
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(41)),
             41, "generated-final-base-before.sav");
@@ -100,14 +94,12 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             new SplitMix64RandomSource(41)), "UFO alien activity exceeds the supported range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GeneratedFinalBaseRaceAlternativesShareOneBirthReservation(bool cache)
+    [Fact]
+    public void GeneratedFinalBaseRaceAlternativesShareOneBirthReservation()
     {
         TestFixtures.LoadVerifiedManifest("strategic-objective-base-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
-        var content = GeneratedObjectiveOpeningContent(cache, 2, prefix: false, raceAlternatives: true);
+        var content = GeneratedObjectiveOpeningContent(2, prefix: false, raceAlternatives: true);
         HashSet<string> races = [];
         for (ulong seed = 1; seed <= 8; seed++)
         {
@@ -141,16 +133,14 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         Assert.Equal(2, races.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void HuntingInfiltrationCompletionRunsItsFiniteImmediatePrefix(bool cache)
+    [Fact]
+    public void HuntingInfiltrationCompletionRunsItsFiniteImmediatePrefix()
     {
         TestFixtures.LoadVerifiedManifest("strategic-wave-chain");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
         TestFixtures.LoadVerifiedManifest("strategic-infiltration");
-        var content = GeneratedObjectiveOpeningContent(cache, 1, hunting: true, finalImmediate: true);
+        var content = GeneratedObjectiveOpeningContent(1, hunting: true, finalImmediate: true);
         var campaign = CampaignState.Restore(GeneratedObjectiveOpeningSnapshot(content, hunting: true), content,
             new SplitMix64RandomSource(41));
         AdvanceUnblocked(campaign, 1);
@@ -162,14 +152,12 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         Reload(content, campaign, 41, "hunting-infiltration-immediate.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DailyGeneratedNoObjectFinalBaseCreatesAndCleansItsMission(bool cache)
+    [Fact]
+    public void DailyGeneratedNoObjectFinalBaseCreatesAndCleansItsMission()
     {
         TestFixtures.LoadVerifiedManifest("strategic-objective-base-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
-        var content = GeneratedObjectiveOpeningContent(cache, 2, prefix: false, noObject: true, raceAlternatives: true);
+        var content = GeneratedObjectiveOpeningContent(2, prefix: false, noObject: true, raceAlternatives: true);
         for (ulong seed = 1; seed <= 8; seed++)
         {
             var initial = GeneratedObjectiveOpeningSnapshot(content) with { RandomState = seed };
@@ -193,17 +181,15 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void HuntingFinalBaseBirthMissesCurrentHuntingIteration(bool cache, bool detectable)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HuntingFinalBaseBirthMissesCurrentHuntingIteration(bool detectable)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-hunt-generation");
         TestFixtures.LoadVerifiedManifest("strategic-objective-base-spawn");
         var row = TestFixtures.Rows(oracle.RootElement, "birthRows").Single(row =>
             row[0].GetString() == (detectable ? "appendLive" : "appendDisabled"));
-        var content = GeneratedObjectiveOpeningContent(cache, 2, hunting: true, prefix: false, noObject: true,
+        var content = GeneratedObjectiveOpeningContent(2, hunting: true, prefix: false, noObject: true,
             detectableDestination: detectable);
         var initial = GeneratedObjectiveOpeningSnapshot(content, hunting: true).WithNextId("STR_ALIEN_BASE", 7);
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(41)),
@@ -225,15 +211,13 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void HuntingFinalBaseIdsFollowEarlierSiteExpiryCounters(bool cache, bool decrease)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HuntingFinalBaseIdsFollowEarlierSiteExpiryCounters(bool decrease)
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-timer");
         TestFixtures.LoadVerifiedManifest("strategic-objective-base-spawn");
-        var content = GeneratedObjectiveOpeningContent(cache, 2, hunting: true, prefix: false, noObject: true,
+        var content = GeneratedObjectiveOpeningContent(2, hunting: true, prefix: false, noObject: true,
             expiryShift: decrease ? -1 : 1);
         var shiftedId = decrease ? 6 : 8;
         var initial = GeneratedObjectiveOpeningSnapshot(content, hunting: true).WithNextId("STR_ALIEN_BASE", 7);
@@ -258,29 +242,21 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, false, false, false)]
-    [InlineData(true, false, false, false)]
-    [InlineData(false, true, false, false)]
-    [InlineData(true, true, false, false)]
-    [InlineData(false, false, true, false)]
-    [InlineData(true, false, true, false)]
-    [InlineData(false, true, true, false)]
-    [InlineData(true, true, true, false)]
-    [InlineData(false, false, false, true)]
-    [InlineData(true, false, false, true)]
-    [InlineData(false, true, false, true)]
-    [InlineData(true, true, false, true)]
-    [InlineData(false, false, true, true)]
-    [InlineData(true, false, true, true)]
-    [InlineData(false, true, true, true)]
-    [InlineData(true, true, true, true)]
-    public void GeneratedInfiltrationCreatesOnePendingPactAndLinkedBase(bool cache, bool countryBase, bool noObject, bool hunting)
+    [InlineData(false, false, false)]
+    [InlineData(true, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(true, true, false)]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, true)]
+    public void GeneratedInfiltrationCreatesOnePendingPactAndLinkedBase(bool countryBase, bool noObject, bool hunting)
     {
         TestFixtures.LoadVerifiedManifest("strategic-infiltration");
         TestFixtures.LoadVerifiedManifest(countryBase ? "strategic-infiltration-country" : "strategic-infiltration-region");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
-        var content = GeneratedObjectiveOpeningContent(cache, 1, hunting: hunting, prefix: false, raceAlternatives: true,
+        var content = GeneratedObjectiveOpeningContent(1, hunting: hunting, prefix: false, raceAlternatives: true,
             noObject: noObject, countryBase: countryBase);
         for (ulong seed = 1; seed <= 8; seed++)
         {
@@ -315,15 +291,13 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GeneratedInfiltrationSeesDailyPactBaseDestructionBeforeAllocatingIds(bool cache)
+    [Fact]
+    public void GeneratedInfiltrationSeesDailyPactBaseDestructionBeforeAllocatingIds()
     {
         TestFixtures.LoadVerifiedManifest("strategic-infiltration");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
-        var content = GeneratedObjectiveOpeningContent(cache, 1, prefix: false, noObject: true, destroyedPact: true);
+        var content = GeneratedObjectiveOpeningContent(1, prefix: false, noObject: true, destroyedPact: true);
         var initial = GeneratedObjectiveOpeningSnapshot(content).WithNextId("STR_ALIEN_BASE", 7) with
         {
             CompletedResearch = ["OBJECTIVE_PACT_END"],
@@ -353,16 +327,14 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void MultipleGeneratedInfiltrationSourcesReserveOnlyAvailableCountries(bool cache, bool hunting)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void MultipleGeneratedInfiltrationSourcesReserveOnlyAvailableCountries(bool hunting)
     {
         TestFixtures.LoadVerifiedManifest("strategic-infiltration");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
-        var content = GeneratedObjectiveOpeningContent(cache, 1, hunting: hunting, prefix: false, noObject: true, raceAlternatives: true);
+        var content = GeneratedObjectiveOpeningContent(1, hunting: hunting, prefix: false, noObject: true, raceAlternatives: true);
         var initial = GeneratedObjectiveOpeningSnapshot(content, hunting: hunting).WithNextId("STR_ALIEN_BASE", int.MaxValue - 1);
         initial = initial with
         {
@@ -382,14 +354,12 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         Reload(content, campaign, 41, "shared-country-generation-after.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void MixedGeneratedPactAndOrdinaryBasesReserveIndependentBirths(bool cache)
+    [Fact]
+    public void MixedGeneratedPactAndOrdinaryBasesReserveIndependentBirths()
     {
         TestFixtures.LoadVerifiedManifest("strategic-infiltration");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
-        var content = GeneratedObjectiveOpeningContent(cache, 1, prefix: false, noObject: true, mixedObjectives: true);
+        var content = GeneratedObjectiveOpeningContent(1, prefix: false, noObject: true, mixedObjectives: true);
         var initial = GeneratedObjectiveOpeningSnapshot(content).WithNextId("STR_ALIEN_BASE", int.MaxValue - 1);
         initial = initial with
         {
@@ -401,11 +371,11 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             "Base objective IDs are exhausted or collide.");
     }
 
-    private static RuntimeContent GeneratedObjectiveOpeningContent(bool cache, int objective, bool hunting = false,
+    private static RuntimeContent GeneratedObjectiveOpeningContent(int objective, bool hunting = false,
         int groundTimer = 0, bool prefix = true, bool raceAlternatives = false, bool finalImmediate = false, bool noObject = false,
         bool detectableDestination = false, int expiryShift = 0, bool countryBase = false, bool destroyedPact = false,
         bool mixedObjectives = false) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+        StrategicReadinessTestContent.Load(["strategic-world.rul"], $$$"""
             buildInfiltrationBaseCloseToTheCountry: {{{countryBase}}}
             allowCountriesToCancelAlienPact: {{{destroyedPact}}}
             alienDeployments:

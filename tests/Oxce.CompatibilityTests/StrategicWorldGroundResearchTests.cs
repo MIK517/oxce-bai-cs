@@ -10,23 +10,19 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldGroundResearchTests
 {
     [Theory]
-    [InlineData(false, 8, "UFO_SCOUT", true)]
-    [InlineData(true, 8, "UFO_SCOUT", true)]
-    [InlineData(false, 25, "UFO_SCOUT", true)]
-    [InlineData(true, 25, "UFO_SCOUT", true)]
-    [InlineData(false, 25, "UFO_SPAWN", false)]
-    [InlineData(true, 25, "UFO_SPAWN", false)]
-    [InlineData(false, 50, "UFO_SCOUT", false)]
-    [InlineData(true, 50, "UFO_SCOUT", false)]
-    public void SelectedInterruptionPreservesLandWaterTimersAlertsAndFallthrough(bool cache, double longitude,
+    [InlineData(8, "UFO_SCOUT", true)]
+    [InlineData(25, "UFO_SCOUT", true)]
+    [InlineData(25, "UFO_SPAWN", false)]
+    [InlineData(50, "UFO_SCOUT", false)]
+    public void SelectedInterruptionPreservesLandWaterTimersAlertsAndFallthrough(double longitude,
         string ruleId, bool landingAllowed)
     {
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = StrategicWorldAirborneResearchTests.Content(cache, landing: true);
-        var interruptedContent = StrategicWorldAirborneResearchTests.Content(cache, "CORE", landing: true);
-        var continuedContent = StrategicWorldAirborneResearchTests.Content(cache, "", landing: true);
+        var content = StrategicWorldAirborneResearchTests.Content(landing: true);
+        var interruptedContent = StrategicWorldAirborneResearchTests.Content("CORE", landing: true);
+        var continuedContent = StrategicWorldAirborneResearchTests.Content("", landing: true);
         var interruptedSeen = false;
         var continuedSeen = false;
         for (ulong seed = 1; seed <= 32; seed++)

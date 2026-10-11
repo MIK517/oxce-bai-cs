@@ -12,16 +12,14 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicResearchDiaryExecutionTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DailyDiaryOrderSourcesAndDebugBehaviorMatchNativeCaller(bool cache)
+    [Fact]
+    public void DailyDiaryOrderSourcesAndDebugBehaviorMatchNativeCaller()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-research-diary-execution");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "executionRows").Where(row => !row.GetProperty("mission").GetBoolean()))
         {
             var scenario = row.GetProperty("scenario").GetInt32();
-            var content = Content(cache, scenario);
+            var content = Content(scenario);
             var snapshot = DailySnapshot(content) with
             {
                 DebugMode = row.GetProperty("debug").GetBoolean(),
@@ -47,7 +45,7 @@ public sealed class StrategicResearchDiaryExecutionTests
     public void DailyDiaryCapacityStopsBeforeAnyTickMutation(bool identityLimit)
     {
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = Content(false, 0);
+        var content = Content(0);
         var snapshot = DailySnapshot(content);
         var diary = identityLimit ? Array.Empty<ResearchDiaryEntrySnapshot>() :
             Enumerable.Range(0, CampaignState.MaximumResearchDiaryEntries).Select(index =>
@@ -67,7 +65,7 @@ public sealed class StrategicResearchDiaryExecutionTests
     [Fact]
     public void DebugDailyCompletionCanProceedWithNoDiaryIdentityHeadroom()
     {
-        var content = Content(false, 0);
+        var content = Content(0);
         var campaign = CampaignState.Restore(DailySnapshot(content) with
         { DebugMode = true, ResearchDiarySequence = ulong.MaxValue }, content, new SplitMix64RandomSource(17));
         AdvanceUnblocked(campaign, 1);
@@ -78,7 +76,7 @@ public sealed class StrategicResearchDiaryExecutionTests
     [Fact]
     public void AutomaticDiscoveriesCanRepeatWithRepeatableParent()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             research:
               - {name: UNLOCK, cost: 1}
               - {name: PARENT, cost: 1, repeatable: true}
@@ -110,7 +108,7 @@ public sealed class StrategicResearchDiaryExecutionTests
     [Fact]
     public void NestedAutomaticDiscoveriesKeepInitialSourceRatherThanQueueParent()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             research:
               - {name: UNLOCK, cost: 1}
               - {name: PARENT, cost: 1}
@@ -133,8 +131,8 @@ public sealed class StrategicResearchDiaryExecutionTests
         Reload(content, campaign, 17, "nested-diary.sav");
     }
 
-    internal static RuntimeContent Content(bool cache, int scenario, string extraRules = "", string[]? ruleFiles = null) =>
-        StrategicReadinessTestContent.Load(ruleFiles ?? ["strategic-world.rul"], cache, $$"""
+    internal static RuntimeContent Content(int scenario, string extraRules = "", string[]? ruleFiles = null) =>
+        StrategicReadinessTestContent.Load(ruleFiles ?? ["strategic-world.rul"], $$"""
         research:
           - {name: UNLOCK, cost: 1}
           - {name: CORE, cost: 1, lookup: LOOKUP, getOneFree: [BONUS], sequentialGetOneFree: true, repeatable: {{(scenario == 2 ? "true" : "false")}}}

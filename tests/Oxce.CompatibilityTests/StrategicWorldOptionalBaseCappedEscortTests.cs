@@ -8,23 +8,17 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldOptionalBaseCappedEscortTests
 {
     [Theory]
-    [InlineData(false, false, 0)]
-    [InlineData(true, false, 0)]
-    [InlineData(false, true, 0)]
-    [InlineData(true, true, 0)]
-    [InlineData(false, false, 5)]
-    [InlineData(true, false, 5)]
-    [InlineData(false, true, 5)]
-    [InlineData(true, true, 5)]
-    public void OrdinaryCappedEscortsKeepEquivalentConsumptionAndOrderedMovement(bool cache, bool reverse, int takeoff)
-        => StrategicWorldOptionalBaseSpeedEscortTests.AssertEquivalentEscort(cache, reverse, takeoff, true);
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 5)]
+    [InlineData(true, 5)]
+    public void OrdinaryCappedEscortsKeepEquivalentConsumptionAndOrderedMovement(bool reverse, int takeoff)
+        => StrategicWorldOptionalBaseSpeedEscortTests.AssertEquivalentEscort(reverse, takeoff, true);
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DifferentCapsAndInvalidFollowerStatisticsRemainAtomic(bool cache)
+    [Fact]
+    public void DifferentCapsAndInvalidFollowerStatisticsRemainAtomic()
     {
-        var content = StrategicWorldOptionalBaseCraftTests.Content(cache, itemFuel: true);
+        var content = StrategicWorldOptionalBaseCraftTests.Content(itemFuel: true);
         var initial = StrategicWorldOptionalBaseSpeedEscortTests.NormalEscort(
             StrategicWorldOptionalBaseSpeedEscortTests.Snapshot(content, 17, false, 0));
         initial = initial with
@@ -47,12 +41,10 @@ public sealed class StrategicWorldOptionalBaseCappedEscortTests
             "Craft speed exceeds the supported range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void EquivalentReturnDependencyScansRetainTheirAggregateWorkLimit(bool cache)
+    [Fact]
+    public void EquivalentReturnDependencyScansRetainTheirAggregateWorkLimit()
     {
-        var content = StrategicWorldOptionalBaseCraftTests.Content(cache, itemFuel: true);
+        var content = StrategicWorldOptionalBaseCraftTests.Content(itemFuel: true);
         var initial = StrategicWorldOptionalBaseSpeedCraftTests.Snapshot(content, 17, true, 0);
         var craft = initial.Bases[0].Crafts[0];
         initial = initial with { Bases = [initial.Bases[0] with { Crafts = Enumerable.Range(1, 1100).Select(id => craft with { Id = id }).ToArray() }] };

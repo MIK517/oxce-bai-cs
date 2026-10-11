@@ -6,11 +6,9 @@ namespace Oxce.CompatibilityTests;
 public sealed partial class StrategicProductionPriceMetadataTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void NativeSoldierAndArmorStatWidthsAndTagsComposeWithPrices(bool cache, bool global)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NativeSoldierAndArmorStatWidthsAndTagsComposeWithPrices(bool global)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var rows = TestFixtures.Rows(oracle.RootElement, "unitStats");
@@ -32,7 +30,7 @@ public sealed partial class StrategicProductionPriceMetadataTests
                     $"{(group == 3 ? "absentArmor" : "absentSoldier")}.{field.Name} value; if neq value 0; div cost_current 0; end; ";
         }
         var armorField = fields[fields.LastIndexOf("    stats:", StringComparison.Ordinal)..];
-        AssertPrice(Load(cache, global, code + "return 7;", extraRules:
+        AssertPrice(Load(global, code + "return 7;", extraRules:
             "soldiers:\n  - type: PRICE_SOLDIER\n    armor: ARMOR\n    tags: {PRICE_SOLDIER_TAG: -7}\n" + fields[..^armorField.Length] +
             "armors:\n  - type: PRICE_STAT_ARMOR\n    corpseBattle: [CORPSE]\n    corpseGeo: CORPSE\n    loftempsSet: [0]\n" + armorField,
             extraExtended: "tags:\n  RuleSoldier: {PRICE_SOLDIER_TAG: int}"));
@@ -46,11 +44,9 @@ public sealed partial class StrategicProductionPriceMetadataTests
     };
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void UnitLookupsPreserveNativeEmptyMissingNoneAndNullRules(bool cache, bool global)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void UnitLookupsPreserveNativeEmptyMissingNoneAndNullRules(bool global)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var code = "var ptr RuleUnit unit; var ptr RuleMod absent null; var text id; ";
@@ -63,16 +59,14 @@ public sealed partial class StrategicProductionPriceMetadataTests
                 $"if neq id \"{row.GetProperty("type").GetString()}\"; div cost_current 0; end; " +
                 $"if {(row.GetProperty("found").GetBoolean() ? "eq" : "neq")} unit null; div cost_current 0; end; ";
         }
-        AssertPrice(Load(cache, global, code + "return 7;", extraRules:
+        AssertPrice(Load(global, code + "return 7;", extraRules:
             "units: [{type: UNIT_METADATA, armor: ARMOR}, {type: STR_NONE, armor: ARMOR}]"));
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void UnitLinksPreserveNativeRecoveryAndCanonicalItemIdentity(bool cache, bool global)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void UnitLinksPreserveNativeRecoveryAndCanonicalItemIdentity(bool global)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "unitLinks"))
@@ -99,18 +93,16 @@ public sealed partial class StrategicProductionPriceMetadataTests
                     "rules.getRuleItem same name; if neq same item; div cost_current 0; end; " +
                     $"absent.{method} item; if neq item null; div cost_current 0; end; ";
             code += "absent.getSpawnUnit spawn; if neq spawn null; div cost_current 0; end; return 7;";
-            AssertPrice(Load(cache, global, code, extraRules:
+            AssertPrice(Load(global, code, extraRules:
                 $"units:\n  - type: {id}\n    armor: ARMOR\n" + Indent(fields, 4) + "soldiers: [{type: COLLISION, armor: ARMOR}]",
                 extraItems: "- {type: UNIT_METADATA}\n- {type: LIVE_ITEM}\n- {type: RECOVERY}\n- {type: STR_NULL}\n- {type: COLLISION}"));
         }
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ArmorAndSkillLookupsRetainNativeMissingAndNullRules(bool cache, bool global)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ArmorAndSkillLookupsRetainNativeMissingAndNullRules(bool global)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var code = "var ptr RuleMod absent null; var ptr RuleArmor armor; var ptr RuleSkill skill; ";
@@ -122,16 +114,14 @@ public sealed partial class StrategicProductionPriceMetadataTests
             code += $"{receiver}.getRuleArmor armor \"{name}\"; if {(row[3].GetInt32() == 0 ? "neq" : "eq")} armor null; div cost_current 0; end; " +
                 $"{receiver}.getRuleSkill skill \"{name}\"; if {(row[5].GetInt32() == 0 ? "neq" : "eq")} skill null; div cost_current 0; end; ";
         }
-        AssertPrice(Load(cache, global, code + "return 7;", extraRules:
+        AssertPrice(Load(global, code + "return 7;", extraRules:
             "armors: [{type: PRICE_LOOKUP, corpseBattle: [CORPSE], corpseGeo: CORPSE, loftempsSet: [0]}]\nskills: [{type: PRICE_LOOKUP}]"));
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ArmorVisionAndSkillIdentityRetainNativeReadersAndTags(bool cache, bool global)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ArmorVisionAndSkillIdentityRetainNativeReadersAndTags(bool global)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         using var copy = TestFixtures.ReadVerifiedExpected("strategic-detection-value-copy");
@@ -156,7 +146,7 @@ public sealed partial class StrategicProductionPriceMetadataTests
             foreach (var field in rows[stage].EnumerateObject())
                 code += $"armor.{field.Name} value; if neq value {field.Value.GetInt32()}; div cost_current 0; end; " +
                     $"absent.{field.Name} value; if neq value 0; div cost_current 0; end; ";
-            AssertPrice(Load(cache, global, code + "return 7;", extraRules:
+            AssertPrice(Load(global, code + "return 7;", extraRules:
                 "armors:\n  - type: PRICE_ARMOR\n    corpseBattle: [CORPSE]\n    corpseGeo: CORPSE\n    loftempsSet: [0]\n" +
                 "    tags: {PRICE_ARMOR_TAG: -7}\n" + fields + $"\nskills: [{{type: {skillId}, tags: {{PRICE_SKILL_TAG: 31}}}}]",
                 extraExtended: "tags:\n  RuleArmor: {PRICE_ARMOR_TAG: int}\n  RuleSkill: {PRICE_SKILL_TAG: int}"));

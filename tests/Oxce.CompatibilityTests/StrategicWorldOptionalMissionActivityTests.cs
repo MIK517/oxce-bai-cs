@@ -11,38 +11,30 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldOptionalMissionActivityTests
 {
     [Theory]
-    [InlineData(false, false, 1)]
-    [InlineData(true, false, 1)]
-    [InlineData(false, false, -1)]
-    [InlineData(true, false, -1)]
-    [InlineData(false, true, 1)]
-    [InlineData(true, true, 1)]
-    [InlineData(false, true, -1)]
-    [InlineData(true, true, -1)]
-    public void OptionalDailyWaveAwardCannotMaskLaterSiteOverflow(bool cache, bool direct, int sign)
+    [InlineData(false, 1)]
+    [InlineData(false, -1)]
+    [InlineData(true, 1)]
+    [InlineData(true, -1)]
+    public void OptionalDailyWaveAwardCannotMaskLaterSiteOverflow(bool direct, int sign)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
-        var content = Content(cache, direct, sign);
+        var content = Content(direct, sign);
         var initial = Snapshot(content, direct, sign, safe: false);
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "UFO alien activity exceeds the supported range.");
     }
 
     [Theory]
-    [InlineData(false, false, 1)]
-    [InlineData(true, false, 1)]
-    [InlineData(false, false, -1)]
-    [InlineData(true, false, -1)]
-    [InlineData(false, true, 1)]
-    [InlineData(true, true, 1)]
-    [InlineData(false, true, -1)]
-    [InlineData(true, true, -1)]
-    public void SafeOptionalWaveAwardsMatchSelectedControlsAndReloadAtBothLimits(bool cache, bool direct, int sign)
+    [InlineData(false, 1)]
+    [InlineData(false, -1)]
+    [InlineData(true, 1)]
+    [InlineData(true, -1)]
+    public void SafeOptionalWaveAwardsMatchSelectedControlsAndReloadAtBothLimits(bool direct, int sign)
     {
-        var content = Content(cache, direct, sign);
-        var interruptedContent = Content(cache, direct, sign, "CORE");
-        var continuedContent = Content(cache, direct, sign, "");
+        var content = Content(direct, sign);
+        var interruptedContent = Content(direct, sign, "CORE");
+        var continuedContent = Content(direct, sign, "");
         var initial = Snapshot(content, direct, sign, safe: true);
         var interruptedSeen = false;
         var continuedSeen = false;
@@ -70,17 +62,13 @@ public sealed class StrategicWorldOptionalMissionActivityTests
     }
 
     [Theory]
-    [InlineData(false, false, 1)]
-    [InlineData(true, false, 1)]
-    [InlineData(false, false, -1)]
-    [InlineData(true, false, -1)]
-    [InlineData(false, true, 1)]
-    [InlineData(true, true, 1)]
-    [InlineData(false, true, -1)]
-    [InlineData(true, true, -1)]
-    public void OptionalEarthSourceInterruptionCannotMaskLaterSiteOverflow(bool cache, bool direct, int sign)
+    [InlineData(false, 1)]
+    [InlineData(false, -1)]
+    [InlineData(true, 1)]
+    [InlineData(true, -1)]
+    public void OptionalEarthSourceInterruptionCannotMaskLaterSiteOverflow(bool direct, int sign)
     {
-        var content = Content(cache, direct, sign, interrupt: "", source: true);
+        var content = Content(direct, sign, interrupt: "", source: true);
         var initial = Snapshot(content, direct, sign, safe: false);
         initial = initial with
         {
@@ -95,8 +83,8 @@ public sealed class StrategicWorldOptionalMissionActivityTests
             "UFO alien activity exceeds the supported range.");
     }
 
-    private static RuntimeContent Content(bool cache, bool direct, int sign, string interrupt = "BONUS", bool source = false) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+    private static RuntimeContent Content(bool direct, int sign, string interrupt = "BONUS", bool source = false) =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul"], $$$"""
         research:
           - {name: CORE, cost: 1, getOneFree: [BONUS, OTHER]}
           - {name: BONUS, cost: 1}

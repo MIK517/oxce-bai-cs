@@ -34,10 +34,8 @@ public sealed class StrategicWorldCompositionTests
             Assert.Equal(row.GetProperty("events").GetInt32() != 0, possible);
         }
     }
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ComposedSchedulingMatchesReferenceDependenciesAndPersists(bool fromCache)
+    [Fact]
+    public void ComposedSchedulingMatchesReferenceDependenciesAndPersists()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-composition");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows"))
@@ -53,7 +51,7 @@ public sealed class StrategicWorldCompositionTests
             };
             if (name != "missing-event") extra = "events: [{name: E, timer: 60}]\n" + extra;
             var content = StrategicReadinessTestContent.Load(
-                ["strategic-world.rul", "strategic-world-composition.rul"], fromCache, extra);
+                ["strategic-world.rul", "strategic-world-composition.rul"], extra);
             if (name == "missing-event") Assert.False(content.RuntimeRules.Events.TryGet("E", out _));
             var snapshot = CreateSnapshot(content, "Composed world scripts") with
             {
@@ -89,14 +87,11 @@ public sealed class StrategicWorldCompositionTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void FinalBasePhaseIsPreflightedBeforeResearchOrEventsAndSkippedAtMonthZero(bool fromCache)
+    [Fact]
+    public void FinalBasePhaseIsPreflightedBeforeResearchOrEventsAndSkippedAtMonthZero()
     {
         var content = StrategicReadinessTestContent.Load(
-            ["strategic-world.rul", "strategic-world-composition.rul"], fromCache,
-            "events: [{name: E, timer: 60}]\nalienDeployments: [{type: BAD_MONTHLY, markerName: BAD_MONTHLY, alienBase: true, alienBaseUpgrades: {99: {BAD_MONTHLY: 1}}}]");
+            ["strategic-world.rul", "strategic-world-composition.rul"], "events: [{name: E, timer: 60}]\nalienDeployments: [{type: BAD_MONTHLY, markerName: BAD_MONTHLY, alienBase: true, alienBaseUpgrades: {99: {BAD_MONTHLY: 1}}}]");
         var snapshot = CreateSnapshot(content, "Final base phase preflight") with { MonthsPassed = 1, RandomState = 17 };
         snapshot = snapshot with
         {
@@ -125,16 +120,13 @@ public sealed class StrategicWorldCompositionTests
         AssertTimeBlocked(campaign, "Monthly campaign simulation is not implemented yet; time stopped before the month boundary.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void InitialEntrySchedulesOnceAndChargesAfterSchedulingAcrossReload(bool fromCache)
+    [Fact]
+    public void InitialEntrySchedulesOnceAndChargesAfterSchedulingAcrossReload()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-composition");
         var row = TestFixtures.Rows(oracle.RootElement, "rows").Single(entry => entry.GetProperty("case").GetString() == "initial");
         var content = StrategicReadinessTestContent.Load(
-            ["strategic-world.rul", "strategic-world-composition.rul"], fromCache,
-            "events: [{name: E, timer: 60}]");
+            ["strategic-world.rul", "strategic-world-composition.rul"], "events: [{name: E, timer: 60}]");
         var snapshot = CreateSnapshot(content, "Initial world entry") with
         { MonthsPassed = -1, DaysPassed = 0, RandomState = 17, Funds = [1000], ResearchScores = [0] };
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
@@ -239,17 +231,14 @@ public sealed class StrategicWorldCompositionTests
         Assert.Equivalent(after, campaign.Capture(), strict: true);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void IsolatedMonthlyHandlerAdvancesMonthThenSchedulesBeforePurchaseReset(bool fromCache)
+    [Fact]
+    public void IsolatedMonthlyHandlerAdvancesMonthThenSchedulesBeforePurchaseReset()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-composition");
         var row = TestFixtures.Rows(oracle.RootElement, "rows")
             .Single(entry => entry.GetProperty("case").GetString() == "calendar-month");
         var content = StrategicReadinessTestContent.Load(
-            ["strategic-world.rul", "strategic-world-composition.rul"], fromCache,
-            "events: [{name: E, timer: 60}]");
+            ["strategic-world.rul", "strategic-world-composition.rul"], "events: [{name: E, timer: 60}]");
         var snapshot = CreateSnapshot(content, "Isolated monthly caller") with
         { RandomState = 17, MonthlyPurchaseLog = new Dictionary<string, int> { ["SUPPLY"] = 3 }, ResearchScores = [0] };
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));

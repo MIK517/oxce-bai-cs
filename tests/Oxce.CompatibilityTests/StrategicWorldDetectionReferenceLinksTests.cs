@@ -7,11 +7,9 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldDetectionReferenceLinksTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void DynamicModFamilyLookupsProveNativeNullBranches(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DynamicModFamilyLookupsProveNativeNullBranches(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "ruleLookup"))
@@ -30,16 +28,14 @@ public sealed class StrategicWorldDetectionReferenceLinksTests
                     $"if {(row[call.Item4].GetInt32() != 0 ? "eq" : "neq")} value{index} null; div detection_chance 0; end; ";
             }
             code += "return DETECTION_RADAR 100;";
-            AssertDetectionReadScript(code, fromCache, fromCraft, "skills: [{type: SKILL_LOOKUP}]");
+            AssertDetectionReadScript(code, fromCraft, "skills: [{type: SKILL_LOOKUP}]");
         }
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void UnitAndResearchLinksExcludeUnrelatedUnsafeDamageRules(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void UnitAndResearchLinksExcludeUnrelatedUnsafeDamageRules(bool fromCraft)
     {
         AssertDetectionReadScript("var text name \"UNIT_LINK\"; var ptr RuleUnit unit; var ptr RuleUnit spawned; " +
             "var ptr RuleItem item; var ptr RuleResearch research; var ptr RuleResearch lookup; " +
@@ -53,7 +49,7 @@ public sealed class StrategicWorldDetectionReferenceLinksTests
             "if neq value 19; return DETECTION_NONE 0; end; " +
             "set name \"MISSING\"; rules.getRuleUnit unit name; unit.getLiveAlienGeoscape item; " +
             "item.getDamageType damage; damage.getDamageToHealth value detection_chance; " +
-            "if neq value 0; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;", fromCache, fromCraft, """
+            "if neq value 0; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;", fromCraft, """
             items:
               - type: LINK_ITEM
                 damageAlter: {ToHealth: 0.5}
@@ -77,11 +73,9 @@ public sealed class StrategicWorldDetectionReferenceLinksTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void NullEntityRuleAndClockLinksStayNullThroughQueryComposition(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NullEntityRuleAndClockLinksStayNullThroughQueryComposition(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "nullMemberOutputs"))
@@ -101,7 +95,7 @@ public sealed class StrategicWorldDetectionReferenceLinksTests
             "if neq value 0; return DETECTION_NONE 0; end; if neq craftRule null; div detection_chance 0; end; " : "") +
             "absentGame.getTime time; time.getHour power; damage.getDamageToHealth value power; " +
             "if neq value 0; return DETECTION_NONE 0; end; if neq time null; div detection_chance 0; end; " +
-            "return DETECTION_RADAR 100;", fromCache, fromCraft,
+            "return DETECTION_RADAR 100;", fromCraft,
             "items: [{type: NULL_LINK_QUERY, damageAlter: {ToHealth: 1}}]");
     }
 }

@@ -10,16 +10,14 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldSourceChoiceResearchTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ExclusiveSourceChoicesKeepOrderedGrantsAndConditionalEvents(bool cache)
+    [Fact]
+    public void ExclusiveSourceChoicesKeepOrderedGrantsAndConditionalEvents()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
         for (var variant = 0; variant <= 2; variant++)
         {
-            var content = Content(cache, variant);
+            var content = Content(variant);
             var firstSeen = false;
             var otherSeen = false;
             for (ulong seed = 1; seed <= 32; seed++)
@@ -58,12 +56,10 @@ public sealed class StrategicWorldSourceChoiceResearchTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void UnchosenSourceResearchCannotSuppressDueEvents(bool cache)
+    [Fact]
+    public void UnchosenSourceResearchCannotSuppressDueEvents()
     {
-        var content = Content(cache);
+        var content = Content();
         var initial = StrategicWorldOptionalGenerationResearchTests.Snapshot(content);
         AssertTimeBlocked(CampaignState.Restore(initial with
         {
@@ -92,12 +88,10 @@ public sealed class StrategicWorldSourceChoiceResearchTests
         Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ExclusiveSequenceOutcomesRemainBoundedWithoutMutatingCampaign(bool cache)
+    [Fact]
+    public void ExclusiveSequenceOutcomesRemainBoundedWithoutMutatingCampaign()
     {
-        var content = Content(cache);
+        var content = Content();
         var campaign = CampaignState.Restore(StrategicWorldOptionalGenerationResearchTests.Snapshot(content), content, new SplitMix64RandomSource(17));
         var before = campaign.Capture();
         var forecast = campaign.MissionResearch.CreateForecast();
@@ -106,7 +100,7 @@ public sealed class StrategicWorldSourceChoiceResearchTests
         Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
-    internal static RuntimeContent Content(bool cache, int variant = 0) => StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+    internal static RuntimeContent Content(int variant = 0) => StrategicReadinessTestContent.Load(["strategic-world.rul"], $$$"""
         research:
           - {name: UNLOCK, cost: 1}
           - {name: CORE, cost: 1}

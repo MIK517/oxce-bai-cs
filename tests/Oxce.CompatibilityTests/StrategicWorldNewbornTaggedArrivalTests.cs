@@ -11,16 +11,14 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldNewbornTaggedArrivalTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ResearchTagsDoNotBlockBirthsWithoutARelevantLaterGrant(bool cache, bool unrelatedGrant)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ResearchTagsDoNotBlockBirthsWithoutARelevantLaterGrant(bool unrelatedGrant)
     {
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         TestFixtures.LoadVerifiedManifest("strategic-site-timer");
-        var content = Content(cache, "CORE", unrelatedGrant ? "OTHER" : "");
-        var controlContent = Content(cache, "", unrelatedGrant ? "OTHER" : "");
+        var content = Content("CORE", unrelatedGrant ? "OTHER" : "");
+        var controlContent = Content("", unrelatedGrant ? "OTHER" : "");
         for (ulong seed = 1; seed <= 8; seed++)
         {
             var initial = Snapshot(content, seed, unrelatedGrant);
@@ -46,26 +44,22 @@ public sealed class StrategicWorldNewbornTaggedArrivalTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void RelevantPostBirthGrantRetainsTheTerminalArrivalBoundary(bool cache, bool optional)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RelevantPostBirthGrantRetainsTheTerminalArrivalBoundary(bool optional)
     {
-        var content = Content(cache, optional ? "BONUS" : "CORE", "CORE");
+        var content = Content(optional ? "BONUS" : "CORE", "CORE");
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, 17, true), content, new SplitMix64RandomSource(17)),
             "Alien mission wave spawning requires world simulation.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DailyOptionalInterruptionEitherOmitsTheBirthOrPermitsItsOrdinaryArrival(bool cache)
+    [Fact]
+    public void DailyOptionalInterruptionEitherOmitsTheBirthOrPermitsItsOrdinaryArrival()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
-        var content = Content(cache, "BONUS", "");
-        var interruptedContent = Content(cache, "CORE", "");
-        var continuedContent = Content(cache, "", "");
+        var content = Content("BONUS", "");
+        var interruptedContent = Content("CORE", "");
+        var continuedContent = Content("", "");
         var interruptedSeen = false;
         var continuedSeen = false;
         for (ulong seed = 1; seed <= 32; seed++)
@@ -98,8 +92,8 @@ public sealed class StrategicWorldNewbornTaggedArrivalTests
         Assert.True(continuedSeen);
     }
 
-    private static RuntimeContent Content(bool cache, string interrupt, string grant) =>
-        StrategicWorldNewbornFirstArrivalTests.Content(cache, false, interrupt, extraRules: $$$"""
+    private static RuntimeContent Content(string interrupt, string grant) =>
+        StrategicWorldNewbornFirstArrivalTests.Content(false, interrupt, extraRules: $$$"""
             research:
               - {name: CORE, cost: 1, getOneFree: [BONUS, EXTRA]}
               - {name: OTHER, cost: 1}

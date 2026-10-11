@@ -12,15 +12,13 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldSiteResearchUfoTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ExplicitGrantInterruptsArrivalBeforeLandingEvenWhenCoreIsDisabled(bool cache, bool disabled)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ExplicitGrantInterruptsArrivalBeforeLandingEvenWhenCoreIsDisabled(bool disabled)
     {
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = Content(cache, 0, Deployment);
+        var content = Content(0, Deployment);
         var snapshot = Arrival(content) with { ResearchRuleStatus = disabled ? new Dictionary<string, int> { ["CORE"] = 2 } : new Dictionary<string, int>() };
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
         campaign = Reload(content, campaign, 17, "site-research-ufo-before.sav");
@@ -46,12 +44,10 @@ public sealed class StrategicWorldSiteResearchUfoTests
         Reload(content, campaign, 17, "site-research-ufo-deleted.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void AutomaticResearchDoesNotEnterImmediateExplicitMissionInterruption(bool cache)
+    [Fact]
+    public void AutomaticResearchDoesNotEnterImmediateExplicitMissionInterruption()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             research:
               - {name: UNLOCK, cost: 1}
               - {name: CORE, cost: 1}
@@ -73,7 +69,7 @@ public sealed class StrategicWorldSiteResearchUfoTests
     [Fact]
     public void PossibleUninterruptedLandingStillRejectsAnInvalidGroundTimer()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             research:
               - {name: UNLOCK, cost: 1}
               - {name: CORE, cost: 1, getOneFree: [BONUS, OTHER]}
@@ -92,12 +88,10 @@ public sealed class StrategicWorldSiteResearchUfoTests
             "UFO waypoint arrival requires mission simulation.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void EarlierDailyInterruptionSurvivesUncertainSiteDisablingAndReenabling(bool cache)
+    [Fact]
+    public void EarlierDailyInterruptionSurvivesUncertainSiteDisablingAndReenabling()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             research:
               - {name: UNLOCK, cost: 1}
               - {name: CORE, cost: 1, disables: [BONUS], reenables: [BONUS], getOneFree: [BONUS, OTHER]}

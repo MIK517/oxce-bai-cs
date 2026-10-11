@@ -11,21 +11,17 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldSiteResearchHuntingGenerationTests
 {
     [Theory]
-    [InlineData(false, "delayed")]
-    [InlineData(true, "delayed")]
-    [InlineData(false, "short")]
-    [InlineData(true, "short")]
-    [InlineData(false, "immediate")]
-    [InlineData(true, "immediate")]
-    [InlineData(false, "immediateZero")]
-    [InlineData(true, "immediateZero")]
-    public void HuntingGenerationFollowsSiteGrantAndDoesNotReceiveEarlierExplicitInterruption(bool cache, string name)
+    [InlineData("delayed")]
+    [InlineData("short")]
+    [InlineData("immediate")]
+    [InlineData("immediateZero")]
+    public void HuntingGenerationFollowsSiteGrantAndDoesNotReceiveEarlierExplicitInterruption(string name)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-hunt-generation");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
         var row = TestFixtures.Rows(oracle.RootElement, name.StartsWith("immediate", StringComparison.Ordinal) ? "immediateRows" : "rows")
             .Single(row => row[0].GetString() == name);
-        var content = Content(cache);
+        var content = Content();
         var initial = Snapshot(content, name);
         var expected = new SplitMix64RandomSource(initial.RandomState);
         var calls = row[2].EnumerateArray().ToArray();
@@ -57,14 +53,12 @@ public sealed class StrategicWorldSiteResearchHuntingGenerationTests
         else Assert.False(Assert.Single(campaign.Capture().World.Missions).Interrupted);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SameSourceDailyAndHuntingBirthsStraddleTheSiteGrant(bool cache)
+    [Fact]
+    public void SameSourceDailyAndHuntingBirthsStraddleTheSiteGrant()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             research:
               - {name: UNLOCK, cost: 1}
               - {name: CORE, cost: 1}
@@ -107,8 +101,8 @@ public sealed class StrategicWorldSiteResearchHuntingGenerationTests
         }
     }
 
-    internal static RuntimeContent Content(bool cache) => StrategicReadinessTestContent.Load(
-        ["strategic-world.rul", "strategic-alien-base-hunt-generation.rul"], cache, """
+    internal static RuntimeContent Content() => StrategicReadinessTestContent.Load(
+        ["strategic-world.rul", "strategic-alien-base-hunt-generation.rul"], """
         research:
           - {name: UNLOCK, cost: 1}
           - {name: CORE, cost: 1}

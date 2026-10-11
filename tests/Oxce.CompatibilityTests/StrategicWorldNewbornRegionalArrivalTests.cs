@@ -11,15 +11,13 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldNewbornRegionalArrivalTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void RectangleBirthsPreserveSelectedArrivalCoordinatesAndDiscardedWaypointDraws(bool cache, bool mixed)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RectangleBirthsPreserveSelectedArrivalCoordinatesAndDiscardedWaypointDraws(bool mixed)
     {
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         TestFixtures.LoadVerifiedManifest("strategic-wave-chain");
-        var content = Content(cache, mixed, 0);
+        var content = Content(mixed, 0);
         var region = content.RuntimeRules.Regions[content.RuntimeRules.Regions.GetRequired("FIRST_REGION")].Value;
         var arrivedSeen = false;
         var flyingSeen = false;
@@ -75,17 +73,14 @@ public sealed class StrategicWorldNewbornRegionalArrivalTests
     }
 
     [Theory]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    public void DailyAndHuntingGeneratorsUseTheSameFirstArrivalProof(bool cache, int generation)
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void DailyAndHuntingGeneratorsUseTheSameFirstArrivalProof(int generation)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
-        var content = Content(cache, false, generation);
+        var content = Content(false, generation);
         for (ulong seed = 1; seed <= 8; seed++)
         {
             var initial = Snapshot(content, seed, generation);
@@ -108,9 +103,9 @@ public sealed class StrategicWorldNewbornRegionalArrivalTests
         }
     }
 
-    internal static RuntimeContent Content(bool cache, bool mixed, int generation, int firstAltitude = 3, int groundTimer = 0,
+    internal static RuntimeContent Content(bool mixed, int generation, int firstAltitude = 3, int groundTimer = 0,
         int arrivalAltitude = 2) =>
-        StrategicWorldNewbornFirstArrivalTests.Content(cache, false, extraRules: $$$"""
+        StrategicWorldNewbornFirstArrivalTests.Content(false, extraRules: $$$"""
             regions:
               - type: FIRST_REGION
                 areas: [[0, 30, -20, 20]]
@@ -135,12 +130,10 @@ public sealed class StrategicWorldNewbornRegionalArrivalTests
             """, generationRegion: "FIRST_REGION", firstAltitude: firstAltitude, groundTimer: groundTimer,
             arrivalAltitude: arrivalAltitude);
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GeneratedFirstArrivalsComposeForSeventyTwoHoursAndHourlyReloads(bool cache)
+    [Fact]
+    public void GeneratedFirstArrivalsComposeForSeventyTwoHoursAndHourlyReloads()
     {
-        var content = Content(cache, false, 3);
+        var content = Content(false, 3);
         for (ulong seed = 1; seed <= 2; seed++)
         {
             var initial = Snapshot(content, seed, 3);
@@ -166,13 +159,11 @@ public sealed class StrategicWorldNewbornRegionalArrivalTests
     }
 
     [Theory]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    public void GeneratedCloseBirthsReserveFullIdentityEnvelope(bool cache, int generation)
+    [InlineData(1)]
+    [InlineData(2)]
+    public void GeneratedCloseBirthsReserveFullIdentityEnvelope(int generation)
     {
-        var content = Content(cache, false, generation);
+        var content = Content(false, generation);
         var initial = Snapshot(content, 17, generation).WithNextId("STR_UFO_UNIQUE", int.MaxValue - 2);
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "UFO unique IDs are exhausted or collide with a saved UFO.");

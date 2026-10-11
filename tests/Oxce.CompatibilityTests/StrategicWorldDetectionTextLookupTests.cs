@@ -10,11 +10,9 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldDetectionTextLookupTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void TextAssignmentsBranchesAndClearResolveOnlyNamedDamageRules(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TextAssignmentsBranchesAndClearResolveOnlyNamedDamageRules(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-damage");
         var native = TestFixtures.Rows(oracle.RootElement, "conversionRows")
@@ -32,33 +30,29 @@ public sealed class StrategicWorldDetectionTextLookupTests
             "if eq already_tracked 0; var text reused \"SAFE_TOO\"; rules.getRuleItem item reused; end; " +
             "item.getDamageType damage; damage.getDamageToHealth value 39; " +
             $"if neq value {native}; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
-            fromCache, fromCraft, Items);
+            fromCraft, Items);
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void CopiedInventoryNamesPermitNativeMovementCostQueries(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CopiedInventoryNamesPermitNativeMovementCostQueries(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-inventory-cost");
         var cost = TestFixtures.Rows(oracle.RootElement, "costs")[3][0].GetInt32();
         AssertDetectionReadScript("var text sourceId \"LEFT\"; var text original \"RIGHT\"; var text targetId original; " +
             "var ptr RuleInventory source; var ptr RuleInventory target; var int cost; " +
             "rules.getRuleInventory source sourceId; rules.getRuleInventory target targetId; source.getMoveToCost cost target; " +
-            $"if neq cost {cost}; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;", fromCache, fromCraft,
+            $"if neq cost {cost}; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;", fromCraft,
             "invs: [{id: LEFT, costs: {RIGHT: -2147483648}}, {id: RIGHT}, {id: UNRELATED}]");
     }
 
     [Theory]
-    [InlineData(false, "if eq already_tracked 0; set name \"UNSAFE\"; end;")]
-    [InlineData(true, "if eq already_tracked 0; set name \"UNSAFE\"; end;")]
-    [InlineData(false, "loop var count 2; rules.getRuleItem item name; set name \"UNSAFE\"; end;")]
-    [InlineData(true, "loop var count 2; rules.getRuleItem item name; set name \"UNSAFE\"; end;")]
-    public void TextJoinsRetainUnsafeBranchAndLoopNames(bool fromCache, string assignments)
+    [InlineData("if eq already_tracked 0; set name \"UNSAFE\"; end;")]
+    [InlineData("loop var count 2; rules.getRuleItem item name; set name \"UNSAFE\"; end;")]
+    public void TextJoinsRetainUnsafeBranchAndLoopNames(string assignments)
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, Items + $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], Items + $$"""
 
             ufos:
               - type: UFO_SCOUT
@@ -70,22 +64,18 @@ public sealed class StrategicWorldDetectionTextLookupTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void NullModDoesNotConsumeCopiedUnsafeName(bool fromCache, bool fromCraft) =>
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NullModDoesNotConsumeCopiedUnsafeName(bool fromCraft) =>
         AssertDetectionReadScript("var text original \"UNSAFE\"; var text name original; var ptr RuleMod absent null; " +
             "var ptr RuleItem item; var ptr RuleDamageType damage; var int value; " +
             "absent.getRuleItem item name; item.getDamageType damage; damage.getDamageToHealth value detection_chance; " +
-            "if neq value 0; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;", fromCache, fromCraft, Items);
+            "if neq value 0; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;", fromCraft, Items);
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void UnsafeHostIdentityOutputRetainsDamageGuard(bool fromCache)
+    [Fact]
+    public void UnsafeHostIdentityOutputRetainsDamageGuard()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, Items + """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], Items + """
 
             invs: [{id: UNSAFE}]
             ufos:
@@ -97,13 +87,11 @@ public sealed class StrategicWorldDetectionTextLookupTests
         AssertTimeBlocked(campaign, "Detection damage query exceeds the supported integer range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ForecastsMapListSeparatorParametersToRuntimeOperandSlots(bool fromCache)
+    [Fact]
+    public void ForecastsMapListSeparatorParametersToRuntimeOperandSlots()
     {
         TestFixtures.LoadVerifiedManifest("strategic-detection-scripts");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"]);
         var compiled = ScriptCompiler.Compile("var text name \"SUPPLY\"; var ptr RuleItem item; var int value; " +
             "rules.getRuleItem item name; loop var country geoscape_game.getCountries.list; " +
             "country.getPact value; end; rules.getRuleItem item name; return;",
@@ -129,7 +117,7 @@ public sealed class StrategicWorldDetectionTextLookupTests
     [Fact]
     public void TextNamesReserveWorkBeforeReferenceCandidateExpansion()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, Items);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], Items);
         var compiled = ScriptCompiler.Compile("var text name \"SAFE\"; var ptr RuleItem item; " +
             "rules.getRuleItem item name; return;", ScriptParserDefinition.FromCatalog("detectUfoFromBase"));
         Assert.True(compiled.Succeeded);
@@ -142,18 +130,16 @@ public sealed class StrategicWorldDetectionTextLookupTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ImmutableMetadataNamesExcludeUnrelatedItemFamilies(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ImmutableMetadataNamesExcludeUnrelatedItemFamilies(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         Assert.Equal("", TestFixtures.Rows(oracle.RootElement, "ruleMetadata")[4].GetString());
         AssertDetectionReadScript("var ptr RuleUnit unit; var ptr RuleItem item; var ptr RuleDamageType damage; " +
             "var text name; var int value; rules.getRuleUnit unit \"TYPE_CHAIN\"; unit.getType name; " +
             "rules.getRuleItem item name; item.getDamageType damage; damage.getDamageToHealth value 39; " +
-            "if neq value 19; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;", fromCache, fromCraft, Items + """
+            "if neq value 19; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;", fromCraft, Items + """
 
               - type: TYPE_CHAIN
                 damageAlter: {ToHealth: 0.5}
@@ -165,7 +151,7 @@ public sealed class StrategicWorldDetectionTextLookupTests
             AssertDetectionReadScript("var ptr RuleInventory inventory; var ptr RuleItem item; var ptr RuleDamageType damage; " +
                 $"var text name; var int value; rules.getRuleInventory inventory \"{id}\"; inventory.getId name; " +
                 "rules.getRuleItem item name; item.getDamageType damage; damage.getDamageToHealth value detection_chance; " +
-                "if neq value 0; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;", fromCache, fromCraft, Items + """
+                "if neq value 0; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;", fromCraft, Items + """
 
                 invs:
                   - id: STR_RIGHT_HAND
@@ -179,11 +165,9 @@ public sealed class StrategicWorldDetectionTextLookupTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void TextEqualityBranchesNarrowPossibleLookupNames(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TextEqualityBranchesNarrowPossibleLookupNames(bool fromCraft)
     {
         TestFixtures.LoadVerifiedManifest("strategic-detection-numeric");
         foreach (var condition in new[] { "eq name \"SAFE\"", "neq name \"UNSAFE\"", "and eq name \"SAFE\" neq name \"UNSAFE\"" })
@@ -191,10 +175,10 @@ public sealed class StrategicWorldDetectionTextLookupTests
                 "var int value; if eq already_tracked 0; set name \"SAFE\"; else; set name \"UNSAFE\"; end; " +
                 $"if {condition}; set copy name; rules.getRuleItem item copy; item.getDamageType damage; " +
                 "damage.getDamageToHealth value 39; if neq value 19; return DETECTION_NONE 0; end; end; return DETECTION_RADAR 100;",
-                fromCache, fromCraft, Items);
+                fromCraft, Items);
         AssertDetectionReadScript("var text name \"SAFE\"; if eq name \"UNSAFE\"; div detection_chance 0; end; " +
             "if or eq name \"UNSAFE\" eq name \"\"; div detection_chance 0; else; " +
-            "return DETECTION_RADAR 100; end; return;", fromCache, fromCraft);
+            "return DETECTION_RADAR 100; end; return;", fromCraft);
     }
 
     [Fact]
@@ -219,11 +203,9 @@ public sealed class StrategicWorldDetectionTextLookupTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void IdentityChainsUseExactReceiversAcrossSeveralLookupPasses(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void IdentityChainsUseExactReceiversAcrossSeveralLookupPasses(bool fromCraft)
     {
         TestFixtures.LoadVerifiedManifest("strategic-detection-scripts");
         var code = "var text name; var ptr RuleItem item; var ptr RuleDamageType damage; var int value; " +
@@ -231,15 +213,15 @@ public sealed class StrategicWorldDetectionTextLookupTests
         for (var index = 0; index < 4; index++) code += "item.getType name; rules.getRuleItem item name; ";
         code += "item.getDamageType damage; damage.getDamageToHealth value 39; " +
             "if neq value 19; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;";
-        AssertDetectionReadScript(code, fromCache, fromCraft, Items);
+        AssertDetectionReadScript(code, fromCraft, Items);
         AssertDetectionReadScript("var text name \"SAFE\"; var ptr RuleItem item; var ptr RuleDamageType damage; var int value; " +
             "loop var i 3; rules.getRuleItem item name; item.getType name; if neq name \"SAFE\"; return DETECTION_NONE 0; end; end; " +
             "item.getDamageType damage; damage.getDamageToHealth value 39; " +
-            "if neq value 19; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;", fromCache, fromCraft, Items);
+            "if neq value 19; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;", fromCraft, Items);
         AssertDetectionReadScript("var ptr RuleItem absent null; var ptr RuleItem item; var ptr RuleDamageType damage; var text name; " +
             "var int value; absent.getType name; rules.getRuleItem item name; item.getDamageType damage; " +
             "damage.getDamageToHealth value detection_chance; if neq value 0; return DETECTION_NONE 0; end; " +
-            "return DETECTION_RADAR 100;", fromCache, fromCraft, Items);
+            "return DETECTION_RADAR 100;", fromCraft, Items);
     }
 
     [Fact]

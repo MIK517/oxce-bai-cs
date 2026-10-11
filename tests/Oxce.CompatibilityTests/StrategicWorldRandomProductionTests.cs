@@ -10,12 +10,10 @@ namespace Oxce.CompatibilityTests;
 
 public sealed partial class StrategicWorldHuntingTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DelayedVariantReservationsUseActualTransferCardinality(bool cache)
+    [Fact]
+    public void DelayedVariantReservationsUseActualTransferCardinality()
     {
-        var content = Load(cache, VariantProductionRules(0, 2));
+        var content = Load(VariantProductionRules(0, 2));
         var initial = VariantProductionSnapshot(content, false);
         initial = initial with { NextIds = new Dictionary<string, int>(initial.NextIds) { ["oxcePortTransfer"] = int.MaxValue - 3 } };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
@@ -29,12 +27,10 @@ public sealed partial class StrategicWorldHuntingTests
             "Production arrivals exhaust the transfer identity range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DelayedVariantArrivalUpperBoundsIncludePendingStock(bool cache)
+    [Fact]
+    public void DelayedVariantArrivalUpperBoundsIncludePendingStock()
     {
-        var content = Load(cache, VariantProductionRules(0, 2));
+        var content = Load(VariantProductionRules(0, 2));
         var initial = VariantProductionSnapshot(content, false);
         initial = initial with
         {
@@ -45,24 +41,19 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, "fuel")]
-    [InlineData(true, "fuel")]
-    [InlineData(false, "material")]
-    [InlineData(true, "material")]
-    [InlineData(false, "reuse")]
-    [InlineData(true, "reuse")]
-    [InlineData(false, "captive")]
-    [InlineData(true, "captive")]
-    [InlineData(false, "overflow")]
-    [InlineData(true, "overflow")]
-    public void RelevantOrUnsafeRandomVariantsStopBeforeMutation(bool cache, string effect)
+    [InlineData("fuel")]
+    [InlineData("material")]
+    [InlineData("reuse")]
+    [InlineData("captive")]
+    [InlineData("overflow")]
+    public void RelevantOrUnsafeRandomVariantsStopBeforeMutation(string effect)
     {
         var overlay = VariantProductionRules(0, 0);
         if (effect == "fuel") overlay = overlay.Replace("refuelItem: SUPPLY", "refuelItem: INERT_A", StringComparison.Ordinal);
         if (effect == "reuse") overlay = overlay.Replace("type: INERT_A, battleType: 1", "type: INERT_A, battleType: 0", StringComparison.Ordinal);
         if (effect == "captive") overlay = overlay.Replace("type: INERT_A, battleType: 1", "type: INERT_A, liveAlien: true, battleType: 1", StringComparison.Ordinal);
         if (effect == "material") overlay = overlay.Replace("requiredItems: {SUPPLY: 2}", "requiredItems: {INERT_A: 1}", StringComparison.Ordinal);
-        var content = Load(cache, overlay);
+        var content = Load(overlay);
         var initial = VariantProductionSnapshot(content, false);
         if (effect == "overflow") initial = initial with
         {
@@ -74,17 +65,15 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    public void InertRandomOutputsPreserveNativeFuelAndRealHistory(bool cache, int delay)
+    [InlineData(0)]
+    [InlineData(2)]
+    public void InertRandomOutputsPreserveNativeFuelAndRealHistory(int delay)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         var rows = TestFixtures.Rows(oracle.RootElement, "productionVariantRows").Where(row => row[1].GetInt32() == delay).ToArray();
         foreach (var variant in rows.GroupBy(row => row[2].GetInt32()))
         {
-            var content = Load(cache, VariantProductionRules(variant.Key, delay));
+            var content = Load(VariantProductionRules(variant.Key, delay));
             foreach (var sell in new[] { false, true })
             {
                 HashSet<int> selected = [];

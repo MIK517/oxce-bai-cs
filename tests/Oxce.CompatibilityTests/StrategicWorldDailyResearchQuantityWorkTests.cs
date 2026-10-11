@@ -8,16 +8,14 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldDailyResearchQuantityWorkTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void FailedCachedWorldProjectionStillConsumesItsCallerWorkBudget(bool cache)
+    [Fact]
+    public void FailedCachedWorldProjectionStillConsumesItsCallerWorkBudget()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
         var labels = string.Join(", ", Enumerable.Range(0, 257).Select(index => "WORK_REWARD_" + index));
         var rewards = string.Join("\n", Enumerable.Range(0, 257).Select(index => $"  - {{name: WORK_REWARD_{index}, cost: 1, points: 0, spawnedItem: SUPPLY, spawnedItemCount: {1 + index % 2}}}"));
         var padding = string.Join("\n", Enumerable.Range(0, 800).Select(index => $"  - {{name: WORK_PADDING_{index}, cost: 1, points: 0}}"));
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             crafts: [{type: SHIP, fuelMax: 1000, refuelRate: 40, refuelItem: '', autoPatrol: true}]
             facilities: [{type: EQUIV_LAB, mapName: LOGISTICS, labs: 2}]
             ufos: [{type: UFO_HUNTER, radarRange: 20000}]

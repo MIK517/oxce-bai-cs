@@ -11,24 +11,20 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldSpawnPathTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void AirborneSpawnsChooseGroundDestinationsInReferenceOrder(bool cache)
+    [Fact]
+    public void AirborneSpawnsChooseGroundDestinationsInReferenceOrder()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
-        var content = Load(cache);
+        var content = Load();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "spawnPathRows").Where(row => row[1].GetInt32() == 0))
             AssertSpawn(content, row);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GroundedSpawnsInitializeTimersAndRejectUnsafeSupplyStarts(bool cache)
+    [Fact]
+    public void GroundedSpawnsInitializeTimersAndRejectUnsafeSupplyStarts()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
-        var content = Load(cache);
+        var content = Load();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "spawnPathRows").Where(row => row[1].GetInt32() == 1))
             AssertSpawn(content, row);
     }
@@ -38,7 +34,7 @@ public sealed class StrategicWorldSpawnPathTests
     [InlineData(true)]
     public void GroundedSpawnsReserveLandingMarkersAndDoubleActivityBeforeMutation(bool markerLimit)
     {
-        var content = Load(false);
+        var content = Load();
         var initial = CreateSnapshot(content, "Grounded spawn limits");
         var snapshot = initial with
         {
@@ -59,7 +55,7 @@ public sealed class StrategicWorldSpawnPathTests
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
         var lift = Assert.Single(TestFixtures.Rows(oracle.RootElement, "normalLiftRows"), row => row[0].GetInt32() == 0 && row[1].GetInt32() == 0);
-        var content = Load(false);
+        var content = Load();
         var initial = CreateSnapshot(content, "One tick ground start").WithFacility("RADAR_HYPER_TEST");
         var snapshot = initial with
         {
@@ -131,6 +127,6 @@ public sealed class StrategicWorldSpawnPathTests
         Reload(content, campaign, 17, "spawn-path.sav");
     }
 
-    private static RuntimeContent Load(bool cache) => StrategicReadinessTestContent.Load(
-        ["strategic-world.rul", "strategic-spawn-paths.rul"], cache);
+    private static RuntimeContent Load() => StrategicReadinessTestContent.Load(
+        ["strategic-world.rul", "strategic-spawn-paths.rul"]);
 }

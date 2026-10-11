@@ -10,15 +10,13 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldTerminalResearchTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void TerminalArrivalHasTheSameCleanupForBothExplicitResearchOutcomes(bool cache)
+    [Fact]
+    public void TerminalArrivalHasTheSameCleanupForBothExplicitResearchOutcomes()
     {
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = Content(cache);
-        var controlContent = Content(cache, interrupt: "");
+        var content = Content();
+        var controlContent = Content(interrupt: "");
         var interruptedSeen = false;
         var uninterruptedSeen = false;
         for (ulong seed = 1; seed <= 32; seed++)
@@ -58,12 +56,10 @@ public sealed class StrategicWorldTerminalResearchTests
         Assert.True(uninterruptedSeen);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void PossibleConversionStillRequiresMarkerCapacityBeforeResearchSelection(bool cache)
+    [Fact]
+    public void PossibleConversionStillRequiresMarkerCapacityBeforeResearchSelection()
     {
-        var content = Content(cache);
+        var content = Content();
         var rule = content.RuntimeRules.AlienMissions[content.RuntimeRules.AlienMissions.GetRequired("MISSION_CONVERSION")].Value;
         Assert.Equal(5, rule.SpawnZone);
         Assert.True(Assert.Single(rule.Waves).Objective);
@@ -77,8 +73,8 @@ public sealed class StrategicWorldTerminalResearchTests
             "Mission site marker IDs are exhausted or collide with a saved target.");
     }
 
-    private static RuntimeContent Content(bool cache, string interrupt = "BONUS") =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+    private static RuntimeContent Content(string interrupt = "BONUS") =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul"], $$$"""
         research:
           - {name: UNLOCK, cost: 1}
           - {name: CORE, cost: 1, getOneFree: [BONUS, OTHER]}

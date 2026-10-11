@@ -10,14 +10,12 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldNewbornRegionalGroundArrivalTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void RegionalOriginsUseLandSelectionBeforeConditionalFirstLanding(bool cache, bool mixed)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RegionalOriginsUseLandSelectionBeforeConditionalFirstLanding(bool mixed)
     {
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
-        var content = StrategicWorldNewbornRegionalArrivalTests.Content(cache, mixed, 0, groundTimer: 2, arrivalAltitude: 0);
+        var content = StrategicWorldNewbornRegionalArrivalTests.Content(mixed, 0, groundTimer: 2, arrivalAltitude: 0);
         var region = content.RuntimeRules.Regions[content.RuntimeRules.Regions.GetRequired("FIRST_REGION")].Value;
         var arrivedSeen = false;
         var flyingSeen = false;
@@ -80,20 +78,16 @@ public sealed class StrategicWorldNewbornRegionalGroundArrivalTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    public void PointTerrainDecidesTimerAndLandingIdWithoutResampling(bool cache, int terrain)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void PointTerrainDecidesTimerAndLandingIdWithoutResampling(int terrain)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "landRectangleOriginRows"), row => row[0].GetInt32() == 1);
         var allowed = terrain is 2 or 3;
-        var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false, groundTimer: allowed ? 2 : 0,
+        var content = StrategicWorldNewbornFirstArrivalTests.Content(false, groundTimer: allowed ? 2 : 0,
             arrivalAltitude: 0, fakeWaterLandingChance: terrain == 2 ? 100 : 0, extraRules: $$$"""
             globe:
               textures:
@@ -120,17 +114,14 @@ public sealed class StrategicWorldNewbornRegionalGroundArrivalTests
     }
 
     [Theory]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    public void BothGenerationCallersPreserveLandingDetectionOrder(bool cache, int generation)
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void BothGenerationCallersPreserveLandingDetectionOrder(int generation)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
-        var content = StrategicWorldNewbornRegionalArrivalTests.Content(cache, false, generation, groundTimer: 2, arrivalAltitude: 0);
+        var content = StrategicWorldNewbornRegionalArrivalTests.Content(false, generation, groundTimer: 2, arrivalAltitude: 0);
         var initial = StrategicWorldNewbornRegionalArrivalTests.Snapshot(content, 17, generation).WithFacility("RADAR_HYPER_TEST");
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         AdvanceUnblocked(campaign, 1);
@@ -159,12 +150,10 @@ public sealed class StrategicWorldNewbornRegionalGroundArrivalTests
                 new SplitMix64RandomSource(17)), "UFO landing marker IDs are exhausted or collide with a saved UFO.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void MaximumSafeLandingTimerSurvivesRepeatedRewrites(bool cache)
+    [Fact]
+    public void MaximumSafeLandingTimerSurvivesRepeatedRewrites()
     {
-        var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false, groundTimer: int.MaxValue / 5, arrivalAltitude: 0);
+        var content = StrategicWorldNewbornFirstArrivalTests.Content(false, groundTimer: int.MaxValue / 5, arrivalAltitude: 0);
         var campaign = CampaignState.Restore(StrategicWorldNewbornFirstArrivalTests.Snapshot(content, 17), content,
             new SplitMix64RandomSource(17));
         AdvanceUnblocked(campaign, 1);
@@ -179,13 +168,11 @@ public sealed class StrategicWorldNewbornRegionalGroundArrivalTests
         Assert.All(campaign.Capture().World.Ufos, ufo => Assert.Equal(2_147_483_640, ufo.SecondsRemaining));
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void NewbornLandingPolygonWorkIsBoundedBeforeMutation(bool cache)
+    [Fact]
+    public void NewbornLandingPolygonWorkIsBoundedBeforeMutation()
     {
         var polygons = string.Join("\n", Enumerable.Repeat("    - [10, 0, -10, 20, -10, 20, 10, 0, 10]", 5000));
-        var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false, groundTimer: 2, arrivalAltitude: 0,
+        var content = StrategicWorldNewbornFirstArrivalTests.Content(false, groundTimer: 2, arrivalAltitude: 0,
             extraRules: "globe:\n  polygons:\n" + polygons, extraRulesAfterOverlays: true);
         Assert.Equal(5000, content.RuntimeRules.Campaign.Globe.Polygons.Count);
         AssertTimeBlocked(CampaignState.Restore(StrategicWorldNewbornFirstArrivalTests.Snapshot(content, 17), content,

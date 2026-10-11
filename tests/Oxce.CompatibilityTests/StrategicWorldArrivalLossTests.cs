@@ -10,19 +10,15 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldArrivalLossTests
 {
     [Theory]
-    [InlineData(false, false, false)]
-    [InlineData(true, false, false)]
-    [InlineData(false, true, false)]
-    [InlineData(true, true, false)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, true)]
-    [InlineData(false, true, true)]
-    [InlineData(true, true, true)]
-    public void ArrivalLossPrecedesTerminalReturnAndNextTickPursuitRepair(bool cache, bool terminal, bool escortFollower)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ArrivalLossPrecedesTerminalReturnAndNextTickPursuitRepair(bool terminal, bool escortFollower)
     {
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = StrategicWorldAirborneResearchTests.Content(cache);
+        var content = StrategicWorldAirborneResearchTests.Content();
         var interruptedSeen = false;
         var continuedSeen = false;
         for (ulong seed = 1; seed <= 32; seed++)
@@ -73,15 +69,12 @@ public sealed class StrategicWorldArrivalLossTests
     }
 
     [Theory]
-    [InlineData(false, false, false)]
-    [InlineData(true, false, false)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, true)]
-    [InlineData(false, true, false)]
-    [InlineData(true, true, false)]
-    public void HiddenOrUnfollowedTerminalContactsDoNotReportArrivalLoss(bool cache, bool detected, bool followed)
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public void HiddenOrUnfollowedTerminalContactsDoNotReportArrivalLoss(bool detected, bool followed)
     {
-        var content = StrategicWorldAirborneResearchTests.Content(cache);
+        var content = StrategicWorldAirborneResearchTests.Content();
         var initial = StrategicWorldAirborneResearchTests.Snapshot(content, 17) with { Time = new(2, 2, 1, 1999, 0, 30, 5) };
         var ufo = initial.World.Ufos[0] with { Detected = detected, TrajectoryPoint = 2 };
         initial = initial with { World = initial.World with { Ufos = [ufo, initial.World.Ufos[1]] } };

@@ -12,18 +12,15 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldSiteResearchBaseTests
 {
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    public void QuietBasePermitsSiteResearchWithNativeActivityAndTimerOrder(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void QuietBasePermitsSiteResearchWithNativeActivityAndTimerOrder(int mode)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-activity");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-timer");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = Content(cache, 0, Deployment + "\n" + $$$"""
+        var content = Content(0, Deployment + "\n" + $$$"""
               - type: QUIET_BASE
                 markerName: QUIET
                 points: 11
@@ -65,14 +62,12 @@ public sealed class StrategicWorldSiteResearchBaseTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SiteResearchSelfDestructsBaseOnlyAtTheFollowingDailyPass(bool cache)
+    [Fact]
+    public void SiteResearchSelfDestructsBaseOnlyAtTheFollowingDailyPass()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = Content(cache, 0, Deployment + "\n  - {type: QUIET_BASE, markerName: QUIET, points: 11, baseSelfDestructCode: CORE}");
+        var content = Content(0, Deployment + "\n  - {type: QUIET_BASE, markerName: QUIET, points: 11, baseSelfDestructCode: CORE}");
         var snapshot = Snapshot(content);
         snapshot = snapshot with
         {

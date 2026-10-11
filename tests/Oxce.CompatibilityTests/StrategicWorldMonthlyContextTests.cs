@@ -27,14 +27,12 @@ public sealed class StrategicWorldMonthlyContextTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CampaignContextReadsLiveHistoriesAndFullBaseMaintenance(bool fromCache)
+    [Fact]
+    public void CampaignContextReadsLiveHistoriesAndFullBaseMaintenance()
     {
         TestFixtures.LoadVerifiedManifest("strategic-world-monthly-context");
         var content = StrategicReadinessTestContent.Load(
-            ["strategic-world.rul", "strategic-world-monthly-context.rul"], fromCache);
+            ["strategic-world.rul", "strategic-world-monthly-context.rul"]);
         Assert.Equal(0.5, content.RuntimeRules.Campaign.PerformanceBonusFactor);
         var snapshot = CreateSnapshot(content, "Monthly world context") with
         {

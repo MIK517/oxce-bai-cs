@@ -10,13 +10,11 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldEarthRectangleOriginTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void EarthBaseOverridesRectangularOriginAfterReferenceRegionalDraws(bool cache)
+    [Fact]
+    public void EarthBaseOverridesRectangularOriginAfterReferenceRegionalDraws()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-earth-rectangle-origins.rul"], cache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-earth-rectangle-origins.rul"]);
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "earthRectangleRows"))
         {
             var operation = row[0].GetInt32();

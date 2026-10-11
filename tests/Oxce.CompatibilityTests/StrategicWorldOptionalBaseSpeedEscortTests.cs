@@ -11,24 +11,20 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldOptionalBaseSpeedEscortTests
 {
     [Theory]
-    [InlineData(false, false, 0)]
-    [InlineData(true, false, 0)]
-    [InlineData(false, true, 0)]
-    [InlineData(true, true, 0)]
-    [InlineData(false, false, 5)]
-    [InlineData(true, false, 5)]
-    [InlineData(false, true, 5)]
-    [InlineData(true, true, 5)]
-    public void ItemFuelEscortsKeepTheirBurnAcrossOptionalLeaderSpeedChanges(bool cache, bool reverse, int takeoff)
-        => AssertEquivalentEscort(cache, reverse, takeoff, false);
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 5)]
+    [InlineData(true, 5)]
+    public void ItemFuelEscortsKeepTheirBurnAcrossOptionalLeaderSpeedChanges(bool reverse, int takeoff)
+        => AssertEquivalentEscort(reverse, takeoff, false);
 
-    internal static void AssertEquivalentEscort(bool cache, bool reverse, int takeoff, bool ordinary, bool parked = false)
+    internal static void AssertEquivalentEscort(bool reverse, int takeoff, bool ordinary, bool parked = false)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.NotEmpty(TestFixtures.Rows(oracle.RootElement, "escortFuelRows"));
-        var content = StrategicWorldOptionalBaseCraftTests.Content(cache, itemFuel: true);
-        var deletedContent = StrategicWorldOptionalBaseCraftTests.Content(cache, "CORE", true);
-        var survivedContent = StrategicWorldOptionalBaseCraftTests.Content(cache, "", true);
+        var content = StrategicWorldOptionalBaseCraftTests.Content(itemFuel: true);
+        var deletedContent = StrategicWorldOptionalBaseCraftTests.Content("CORE", true);
+        var survivedContent = StrategicWorldOptionalBaseCraftTests.Content("", true);
         HashSet<bool> outcomes = [];
         for (ulong seed = 1; seed <= 32; seed++)
         {
@@ -73,12 +69,10 @@ public sealed class StrategicWorldOptionalBaseSpeedEscortTests
         Assert.Equal(2, outcomes.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OrdinaryEscortBurnAlternativesStillStopBeforeResearch(bool cache)
+    [Fact]
+    public void OrdinaryEscortBurnAlternativesStillStopBeforeResearch()
     {
-        var content = StrategicWorldOptionalBaseCraftTests.Content(cache, itemFuel: true);
+        var content = StrategicWorldOptionalBaseCraftTests.Content(itemFuel: true);
         var initial = Snapshot(content, 17, false, 0);
         initial = initial with
         {

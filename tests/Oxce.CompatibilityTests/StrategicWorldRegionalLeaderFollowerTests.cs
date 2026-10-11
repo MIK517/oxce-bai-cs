@@ -11,19 +11,15 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldRegionalLeaderFollowerTests
 {
     [Theory]
-    [InlineData(false, false, false)]
-    [InlineData(true, false, false)]
-    [InlineData(false, true, false)]
-    [InlineData(true, true, false)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, true)]
-    [InlineData(false, true, true)]
-    [InlineData(true, true, true)]
-    public void FlyingFollowerChainsUseNativeSavedOrderAndRealRegionalLeader(bool cache, bool reverse, bool pursuit)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void FlyingFollowerChainsUseNativeSavedOrderAndRealRegionalLeader(bool reverse, bool pursuit)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world");
         Assert.Equal(6, TestFixtures.Rows(oracle.RootElement, "idleEscortFollowerMovement").Length);
-        var content = StrategicWorldRegionalNewLeaderTests.Content(cache, true,
+        var content = StrategicWorldRegionalNewLeaderTests.Content(true,
             "crafts: [{type: SHIP, radarRange: 20000, radarChance: 100}]\n");
         var region = content.RuntimeRules.Regions[content.RuntimeRules.Regions.GetRequired("LEADER_REGION")].Value;
         for (ulong seed = 1; seed <= 8; seed++)
@@ -96,12 +92,10 @@ public sealed class StrategicWorldRegionalLeaderFollowerTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void MalformedGroundedFollowerRefusesBeforeAnyBirth(bool cache)
+    [Fact]
+    public void MalformedGroundedFollowerRefusesBeforeAnyBirth()
     {
-        var content = StrategicWorldRegionalNewLeaderTests.Content(cache);
+        var content = StrategicWorldRegionalNewLeaderTests.Content();
         var initial = Snapshot(content, 17, false);
         initial = initial with
         {

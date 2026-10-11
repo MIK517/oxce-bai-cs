@@ -11,15 +11,13 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldSiteResearchCraftTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public void FollowerControlsResearchExpiryAndReturnBeforeFuelAndMovement(bool cache, bool forced)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FollowerControlsResearchExpiryAndReturnBeforeFuelAndMovement(bool forced)
     {
         using var oracle = Oxce.TestSupport.TestFixtures.ReadVerifiedExpected("strategic-site-timer");
         Oxce.TestSupport.TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = Content(cache, 0, Deployment, ["strategic-world.rul", "strategic-site-timer.rul"]);
+        var content = Content(0, Deployment, ["strategic-world.rul", "strategic-site-timer.rul"]);
         var snapshot = Snapshot(content);
         var site = snapshot.World.MissionSites[0] with
         {
@@ -76,7 +74,7 @@ public sealed class StrategicWorldSiteResearchCraftTests
     [InlineData(true)]
     public void UnrelatedSiteResearchCannotBypassCraftLandingGuard(bool forced)
     {
-        var content = Content(false, 0, Deployment, ["strategic-world.rul", "strategic-site-timer.rul"]);
+        var content = Content(0, Deployment, ["strategic-world.rul", "strategic-site-timer.rul"]);
         var snapshot = Snapshot(content);
         var first = snapshot.World.MissionSites[0];
         var landing = first with { Id = 2, DeploymentId = "SITE_TIMER", MissionRuleId = "MISSION_SITE", SecondsRemaining = 3600 };
@@ -99,14 +97,12 @@ public sealed class StrategicWorldSiteResearchCraftTests
             "Craft landing requires deployment (Phase 6 branch 5).");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SiteGrantAndPatrolComposeForSeventyTwoHoursAcrossDailyReloads(bool cache)
+    [Fact]
+    public void SiteGrantAndPatrolComposeForSeventyTwoHoursAcrossDailyReloads()
     {
         Oxce.TestSupport.TestFixtures.LoadVerifiedManifest("strategic-site-timer");
         Oxce.TestSupport.TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = Content(cache, 0, Deployment);
+        var content = Content(0, Deployment);
         var snapshot = Snapshot(content);
         var owner = snapshot.Bases[0];
         snapshot = snapshot with

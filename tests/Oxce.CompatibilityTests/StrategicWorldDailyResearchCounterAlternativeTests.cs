@@ -12,17 +12,15 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldDailyResearchCounterAlternativeTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void DifferentCounterNamesRetainTheirWorldBranchesAndNativeEffects(bool cache, bool withSite) =>
-        AssertNativeCounterAlternatives(cache, 0, withSite);
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DifferentCounterNamesRetainTheirWorldBranchesAndNativeEffects(bool withSite) =>
+        AssertNativeCounterAlternatives(0, withSite);
 
-    internal static void AssertNativeCounterAlternatives(bool cache, int mode, bool withSite)
+    internal static void AssertNativeCounterAlternatives(int mode, bool withSite)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Content(cache, mode, withSite);
+        var content = Content(mode, withSite);
         foreach (var start in new[] { 1, 20, int.MaxValue - 1 })
         {
             HashSet<int> seen = [];
@@ -59,19 +57,17 @@ public sealed class StrategicWorldDailyResearchCounterAlternativeTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void UnsafeCounterAlternativeRefusesWithoutSelectingAReward(bool cache)
+    [Fact]
+    public void UnsafeCounterAlternativeRefusesWithoutSelectingAReward()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = Content(cache, 0);
+        var content = Content(0);
         var initial = Snapshot(content, 17, int.MaxValue, false);
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), "Research custom counters exceed the supported range.");
     }
 
-    internal static RuntimeContent Content(bool cache, int mode, bool withSite = false) =>
-        StrategicWorldDailyResearchQuantityTests.Content(cache, withSite, extraResearch: mode == 0 ?
+    internal static RuntimeContent Content(int mode, bool withSite = false) =>
+        StrategicWorldDailyResearchQuantityTests.Content(withSite, extraResearch: mode == 0 ?
             "  - {name: EQUIV_A, increaseCounter: [LEFT_COUNTER]}\n  - {name: EQUIV_B, increaseCounter: [RIGHT_COUNTER]}" :
             "  - {name: CORE, decreaseCounter: [TRACE_COUNTER, TRACE_COUNTER]}\n  - {name: EQUIV_A, increaseCounter: [TRACE_COUNTER]}\n  - {name: EQUIV_B, increaseCounter: [TRACE_COUNTER, TRACE_COUNTER], decreaseCounter: [TRACE_COUNTER]}");
 

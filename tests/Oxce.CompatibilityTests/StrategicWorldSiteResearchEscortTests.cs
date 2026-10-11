@@ -14,15 +14,13 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldSiteResearchEscortTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void InterruptedMissionStillSelectsAnEscortLeaderWithStableIdentity(bool cache, bool stale)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void InterruptedMissionStillSelectsAnEscortLeaderWithStableIdentity(bool stale)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = Content(cache);
+        var content = Content();
         var initial = Snapshot(content);
         var leader = initial.World.Ufos[0] with { HunterKiller = false };
         var escort = leader with
@@ -62,14 +60,12 @@ public sealed class StrategicWorldSiteResearchEscortTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SiteResearchPreservesNativeEscortOrderAndTerminalFallthrough(bool cache)
+    [Fact]
+    public void SiteResearchPreservesNativeEscortOrderAndTerminalFallthrough()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = Content(cache);
+        var content = Content();
         int[][] orders = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]];
         foreach (var group in TestFixtures.Rows(oracle.RootElement, "escortMovement").GroupBy(row => (Shape: row[0].GetInt32(), Order: row[1].GetInt32())))
         {

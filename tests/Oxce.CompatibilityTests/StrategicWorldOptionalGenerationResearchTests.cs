@@ -11,14 +11,12 @@ public sealed class StrategicWorldOptionalGenerationResearchTests
 {
     private static readonly string[] Topics = ["CORE", "BONUS"];
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OptionalGenerationKeepsItsWholeOrderedGrantSequenceAndConditionalEvents(bool cache)
+    [Fact]
+    public void OptionalGenerationKeepsItsWholeOrderedGrantSequenceAndConditionalEvents()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
-        var content = Content(cache);
+        var content = Content();
         var generatedSeen = false;
         var skippedSeen = false;
         for (ulong seed = 1; seed <= 32; seed++)
@@ -49,12 +47,10 @@ public sealed class StrategicWorldOptionalGenerationResearchTests
         Assert.True(skippedSeen);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OptionalSequenceForecastPreservesCorrelationAndCampaignState(bool cache)
+    [Fact]
+    public void OptionalSequenceForecastPreservesCorrelationAndCampaignState()
     {
-        var content = Content(cache);
+        var content = Content();
         var campaign = CampaignState.Restore(Snapshot(content), content, new SplitMix64RandomSource(17));
         var before = campaign.Capture();
         var forecast = campaign.MissionResearch.CreateForecast();
@@ -74,12 +70,10 @@ public sealed class StrategicWorldOptionalGenerationResearchTests
         Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OptionalGenerationAndRandomDurationComposeWithoutInventingGrants(bool cache)
+    [Fact]
+    public void OptionalGenerationAndRandomDurationComposeWithoutInventingGrants()
     {
-        var content = StrategicWorldSiteResearchDirectBirthTests.Content(cache, duration: 0, maximumDuration: 1, generated: true,
+        var content = StrategicWorldSiteResearchDirectBirthTests.Content(duration: 0, maximumDuration: 1, generated: true,
             frequency: 50, interrupt: "BONUS", eventInterrupt: "BONUS");
         var generatedSeen = false;
         var skippedSeen = false;
@@ -109,7 +103,7 @@ public sealed class StrategicWorldOptionalGenerationResearchTests
         Assert.True(expiredSeen);
     }
 
-    internal static RuntimeContent Content(bool cache) => StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, """
+    internal static RuntimeContent Content() => StrategicReadinessTestContent.Load(["strategic-world.rul"], """
         research:
           - {name: UNLOCK, cost: 1}
           - {name: CORE, cost: 1}

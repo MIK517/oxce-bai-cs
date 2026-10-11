@@ -11,21 +11,18 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldOptionalSupplyEscortSourceTests
 {
     [Theory]
-    [InlineData(false, false, 0)]
-    [InlineData(true, false, 0)]
-    [InlineData(false, true, 0)]
-    [InlineData(true, true, 0)]
-    [InlineData(false, false, 2)]
-    [InlineData(true, false, 2)]
-    public void OptionalObjectiveLeadersPreserveBothSavedEscortFlightBranches(bool cache, bool arrival, int point)
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 2)]
+    public void OptionalObjectiveLeadersPreserveBothSavedEscortFlightBranches(bool arrival, int point)
     {
         TestFixtures.LoadVerifiedManifest("strategic-mission-origin");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
-        var content = StrategicWorldOptionalSupplySourceTests.Content(cache, 0);
-        var deletedContent = StrategicWorldOptionalSupplySourceTests.Content(cache, 0, "CORE");
-        var survivedContent = StrategicWorldOptionalSupplySourceTests.Content(cache, 0, "");
+        var content = StrategicWorldOptionalSupplySourceTests.Content(0);
+        var deletedContent = StrategicWorldOptionalSupplySourceTests.Content(0, "CORE");
+        var survivedContent = StrategicWorldOptionalSupplySourceTests.Content(0, "");
         HashSet<bool> outcomes = [];
         for (ulong seed = 1; seed <= 32; seed++)
         {
@@ -76,13 +73,11 @@ public sealed class StrategicWorldOptionalSupplyEscortSourceTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    public void OptionalAttachmentCannotHideConsumedNegativeIdleSpeed(bool cache, int point)
+    [InlineData(0)]
+    [InlineData(2)]
+    public void OptionalAttachmentCannotHideConsumedNegativeIdleSpeed(int point)
     {
-        var content = StrategicWorldOptionalSupplySourceTests.Content(cache, 0);
+        var content = StrategicWorldOptionalSupplySourceTests.Content(0);
         for (ulong seed = 1; seed <= 32; seed++)
         {
             var initial = Snapshot(content, seed, false);
@@ -111,14 +106,12 @@ public sealed class StrategicWorldOptionalSupplyEscortSourceTests
         };
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GuaranteedReplacementDoesNotConsumeNegativeOldSpeed(bool cache)
+    [Fact]
+    public void GuaranteedReplacementDoesNotConsumeNegativeOldSpeed()
     {
-        var content = StrategicWorldOptionalSupplySourceTests.Content(cache, 2);
-        var deletedContent = StrategicWorldOptionalSupplySourceTests.Content(cache, 2, "CORE");
-        var survivedContent = StrategicWorldOptionalSupplySourceTests.Content(cache, 2, "");
+        var content = StrategicWorldOptionalSupplySourceTests.Content(2);
+        var deletedContent = StrategicWorldOptionalSupplySourceTests.Content(2, "CORE");
+        var survivedContent = StrategicWorldOptionalSupplySourceTests.Content(2, "");
         HashSet<bool> outcomes = [];
         for (ulong seed = 1; seed <= 32; seed++)
         {

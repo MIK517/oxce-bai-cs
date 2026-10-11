@@ -13,23 +13,17 @@ public sealed class StrategicWorldDailyGuaranteedResearchTests
     private const string PayloadReason = "Strategic event consequences require campaign event execution (Phase 6 branch 6).";
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    [InlineData(false, 4)]
-    [InlineData(true, 4)]
-    [InlineData(false, 5)]
-    [InlineData(true, 5)]
-    public void ExactDailyRewardsAndAutomaticResearchInterruptRepeatedDueEvents(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    public void ExactDailyRewardsAndAutomaticResearchInterruptRepeatedDueEvents(int mode)
     {
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
         TestFixtures.LoadVerifiedManifest("strategic-event");
-        var content = Content(cache, mode);
+        var content = Content(mode);
         for (ulong seed = 1; seed <= 8; seed++)
         {
             var initial = Snapshot(content, mode, seed);
@@ -59,14 +53,12 @@ public sealed class StrategicWorldDailyGuaranteedResearchTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    public void ExactDailyDiscoveryDeletesLinkedBaseBeforeActivityAndReturnsCraft(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(2)]
+    public void ExactDailyDiscoveryDeletesLinkedBaseBeforeActivityAndReturnsCraft(int mode)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
-        var content = Content(cache, mode);
+        var content = Content(mode);
         var initial = Snapshot(content, mode, 17);
         var target = new WorldTargetReference(WorldTargetKind.AlienBase, "GUARANTEED_MARKER", 6, 0.2, 0.1);
         initial = initial with
@@ -98,28 +90,21 @@ public sealed class StrategicWorldDailyGuaranteedResearchTests
     }
 
     [Theory]
-    [InlineData(false, 6)]
-    [InlineData(true, 6)]
-    [InlineData(false, 7)]
-    [InlineData(true, 7)]
-    [InlineData(false, 8)]
-    [InlineData(true, 8)]
-    [InlineData(false, 9)]
-    [InlineData(true, 9)]
-    [InlineData(false, 10)]
-    [InlineData(true, 10)]
-    public void UncertainRepeatableDisabledIneligibleAndUnfinishedTopicsCannotAuthorizePayload(bool cache, int mode)
+    [InlineData(6)]
+    [InlineData(7)]
+    [InlineData(8)]
+    [InlineData(9)]
+    [InlineData(10)]
+    public void UncertainRepeatableDisabledIneligibleAndUnfinishedTopicsCannotAuthorizePayload(int mode)
     {
-        var content = Content(cache, mode);
+        var content = Content(mode);
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, mode, 17), content, new SplitMix64RandomSource(17)), PayloadReason);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void LaterSiteDisablerInvalidatesExactDailyEventInterruptionBeforeMutation(bool cache)
+    [Fact]
+    public void LaterSiteDisablerInvalidatesExactDailyEventInterruptionBeforeMutation()
     {
-        var content = Content(cache, 2);
+        var content = Content(2);
         var initial = Snapshot(content, 2, 17);
         initial = initial with
         {
@@ -131,7 +116,7 @@ public sealed class StrategicWorldDailyGuaranteedResearchTests
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), PayloadReason);
     }
 
-    private static RuntimeContent Content(bool cache, int mode)
+    private static RuntimeContent Content(int mode)
     {
         var daily = mode switch
         {
@@ -147,7 +132,7 @@ public sealed class StrategicWorldDailyGuaranteedResearchTests
         var stop = mode is 2 or 3 or 9 ? "cost: 0, dependencies: [DAY_GUARANTEED]" : "cost: 1";
         if (mode == 7) stop += ", repeatable: true";
         if (mode == 9) stop += ", needItem: true, neededItem: SUPPLY";
-        return StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+        return StrategicReadinessTestContent.Load(["strategic-world.rul"], $$$"""
             research:
               - {name: UNLOCK, cost: 1}
               - {name: DAY_GUARANTEED, cost: 1, {{{daily}}}}

@@ -12,21 +12,19 @@ namespace Oxce.CompatibilityTests;
 public sealed partial class StrategicWorldHuntingTests
 {
     [Theory]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 8)]
-    [InlineData(true, 8)]
-    public void PopulatedHunterRetargetingBoundsAllocationAndPreservesSelections(bool cache, int bases)
+    [InlineData(1)]
+    [InlineData(8)]
+    public void PopulatedHunterRetargetingBoundsAllocationAndPreservesSelections(int bases)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = Load(cache, "ufos: [{type: HUNTER, huntSpeed: 0}]\ncrafts: [{type: HUNT_SLOW, speedMax: 2000, damageMax: 100, fuelMax: 300}, {type: HUNT_FAST, speedMax: 6000, damageMax: 100, fuelMax: 300}]\n");
+        var content = Load("ufos: [{type: HUNTER, huntSpeed: 0}]\ncrafts: [{type: HUNT_SLOW, speedMax: 2000, damageMax: 100, fuelMax: 300}, {type: HUNT_FAST, speedMax: 6000, damageMax: 100, fuelMax: 300}]\n");
         const int ticks = 24;
         List<object> measurements = [];
         _ = Measure(8);
         var small = Measure(32);
         var large = Measure(128);
         var perHunter = (large - small) / (96.0 * ticks);
-        var path = TestFixtures.RepositoryPath("artifacts", $"hunter-selection-{bases}-{cache}.json");
+        var path = TestFixtures.RepositoryPath("artifacts", $"hunter-selection-{bases}.json");
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, JsonSerializer.Serialize(measurements));
         Assert.True(perHunter <= 1024, $"{bases} bases: {perHunter:F1} B per additional hunter/tick.");
@@ -90,13 +88,11 @@ public sealed partial class StrategicWorldHuntingTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void MixedHunterModesReplaceCandidatesBetweenActorsTicksAndReloads(bool cache)
+    [Fact]
+    public void MixedHunterModesReplaceCandidatesBetweenActorsTicksAndReloads()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = Load(cache, "crafts: [{type: HUNT_SLOW, speedMax: 2000, damageMax: 100, fuelMax: 300}, {type: HUNT_FAST, speedMax: 6000, damageMax: 100, fuelMax: 300}]\n");
+        var content = Load("crafts: [{type: HUNT_SLOW, speedMax: 2000, damageMax: 100, fuelMax: 300}, {type: HUNT_FAST, speedMax: 6000, damageMax: 100, fuelMax: 300}]\n");
         var initial = HuntingSnapshot(content);
         var owner = initial.Bases[0];
         var template = owner.Crafts.Single(craft => craft.RuleId == "SHIP");

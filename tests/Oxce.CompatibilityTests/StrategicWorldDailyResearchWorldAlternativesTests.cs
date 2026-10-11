@@ -11,15 +11,13 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldDailyResearchWorldAlternativesTests
 {
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    public void WorldResearchProjectionRetainsNativeExactStatesWithoutChoosingRewards(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(1)]
+    public void WorldResearchProjectionRetainsNativeExactStatesWithoutChoosingRewards(int mode)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         using var diary = TestFixtures.ReadVerifiedExpected("strategic-research-diary-execution");
-        var content = StrategicWorldResearchStockAlternativesTests.Content(cache, false, 2, otherPoints: mode == 0 ? 2 : 1, rewardLookup: mode == 1, extraResearch: "  - {name: UNLOCK, cost: 1}");
+        var content = StrategicWorldResearchStockAlternativesTests.Content(false, 2, otherPoints: mode == 0 ? 2 : 1, rewardLookup: mode == 1, extraResearch: "  - {name: UNLOCK, cost: 1}");
         HashSet<int> choices = [];
         for (ulong seed = 1; seed <= 12; seed++)
         {
@@ -66,16 +64,14 @@ public sealed class StrategicWorldDailyResearchWorldAlternativesTests
         Assert.Equal(2, choices.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void WorldResearchAlternativesRequireCommonArrivalShapeButRetainCounterTraces(bool cache)
+    [Fact]
+    public void WorldResearchAlternativesRequireCommonArrivalShapeButRetainCounterTraces()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
         foreach (var content in new[]
         {
-            StrategicWorldResearchStockAlternativesTests.Content(cache, false, 2, extraResearch: "  - {name: EQUIV_B, spawnedItemList: [SUPPLY]}"),
-            StrategicWorldResearchStockAlternativesTests.Content(cache, false, 2, otherCounter: "OTHER_COUNTER"),
+            StrategicWorldResearchStockAlternativesTests.Content(false, 2, extraResearch: "  - {name: EQUIV_B, spawnedItemList: [SUPPLY]}"),
+            StrategicWorldResearchStockAlternativesTests.Content(false, 2, otherCounter: "OTHER_COUNTER"),
         })
         {
             var campaign = CampaignState.Restore(StrategicWorldResearchStockAlternativesTests.Snapshot(content, 17), content, new SplitMix64RandomSource(17));
@@ -94,14 +90,12 @@ public sealed class StrategicWorldDailyResearchWorldAlternativesTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    public void DailyExactAlternativesComposeWithLaterSiteResearch(bool cache, int mode)
+    [InlineData(0)]
+    [InlineData(1)]
+    public void DailyExactAlternativesComposeWithLaterSiteResearch(int mode)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = SiteContent(cache, mode);
+        var content = SiteContent(mode);
         HashSet<int> choices = [];
         for (ulong seed = 1; seed <= 12; seed++)
         {
@@ -136,8 +130,8 @@ public sealed class StrategicWorldDailyResearchWorldAlternativesTests
         Assert.Equal(2, choices.Count);
     }
 
-    internal static Oxce.Mods.Rulesets.Content.RuntimeContent SiteContent(bool cache, int mode, string extra = "", string research = "") =>
-        StrategicWorldResearchStockAlternativesTests.Content(cache, false, 2, otherPoints: mode == 0 ? 2 : 1, rewardLookup: mode == 1,
+    internal static Oxce.Mods.Rulesets.Content.RuntimeContent SiteContent(int mode, string extra = "", string research = "") =>
+        StrategicWorldResearchStockAlternativesTests.Content(false, 2, otherPoints: mode == 0 ? 2 : 1, rewardLookup: mode == 1,
             extra: StrategicWorldSiteResearchTests.Deployment.Replace("unlockedResearchOnDespawn: CORE", "unlockedResearchOnDespawn: SITE", StringComparison.Ordinal) + "\n" + extra,
             extraResearch: "  - {name: UNLOCK, cost: 1}\n  - {name: SITE, cost: 1, points: 3}\n  - {name: SITE_AUTO, cost: 0, points: 0, dependencies: [SITE, EQUIV_A]}\n" + research);
 
@@ -155,7 +149,7 @@ public sealed class StrategicWorldDailyResearchWorldAlternativesTests
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
         var labels = string.Join(", ", Enumerable.Range(0, count).Select(index => "WORLD_REWARD_" + index));
         var definitions = string.Join("\n", Enumerable.Range(0, count).Select(index => $"  - {{name: WORLD_REWARD_{index}, cost: 1, points: 1, spawnedItem: SUPPLY, spawnedItemCount: 2, increaseCounter: [EQUIV_COUNTER]}}"));
-        var content = StrategicWorldResearchStockAlternativesTests.Content(false, false, 2, labels: labels, extraResearch: definitions);
+        var content = StrategicWorldResearchStockAlternativesTests.Content(false, 2, labels: labels, extraResearch: definitions);
         var campaign = CampaignState.Restore(StrategicWorldResearchStockAlternativesTests.Snapshot(content, 17), content, new SplitMix64RandomSource(17));
         var before = campaign.Capture();
         long work = 0;

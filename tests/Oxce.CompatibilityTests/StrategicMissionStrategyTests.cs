@@ -12,13 +12,11 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicMissionStrategyTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void StrategyMissionSelectionMatchesReferenceAndReload(bool cache)
+    [Fact]
+    public void StrategyMissionSelectionMatchesReferenceAndReload()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-mission-strategy");
-        var content = Load(cache);
+        var content = Load();
         var rows = new List<object[]>();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows").Where(row => row[0].GetString() != "refresh"))
         {
@@ -53,12 +51,10 @@ public sealed class StrategicMissionStrategyTests
             CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void BatchSelectionsUseLiveTableAndUseTableFalseRetainsHistory(bool cache)
+    [Fact]
+    public void BatchSelectionsUseLiveTableAndUseTableFalseRetainsHistory()
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Snapshot(content, 33, [new("MISSION_A", 3), new("MISSION_B", 1)]);
         var campaign = CampaignState.Restore(snapshot, content, new Choices());
         Assert.Empty(campaign.Execute(new ScheduleMonthlyWorldMissions(0, 0)).Events);
@@ -72,17 +68,13 @@ public sealed class StrategicMissionStrategyTests
     }
 
     [Theory]
-    [InlineData("missing", false)]
-    [InlineData("missing", true)]
-    [InlineData("invalid", false)]
-    [InlineData("invalid", true)]
-    [InlineData("depletion", false)]
-    [InlineData("depletion", true)]
-    [InlineData("emptyDepletion", false)]
-    [InlineData("emptyDepletion", true)]
-    public void InvalidAndPotentiallyDeletedTablesBlockWholeBatch(string kind, bool cache)
+    [InlineData("missing")]
+    [InlineData("invalid")]
+    [InlineData("depletion")]
+    [InlineData("emptyDepletion")]
+    public void InvalidAndPotentiallyDeletedTablesBlockWholeBatch(string kind)
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Snapshot(content, kind is "depletion" or "emptyDepletion" ? 32 : 30,
             [new(kind == "invalid" ? "MISSING_MISSION" : "MISSION_A", 1)]);
         if (kind == "emptyDepletion") snapshot = snapshot with
@@ -101,14 +93,12 @@ public sealed class StrategicMissionStrategyTests
         Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ExhaustedRegionsRefreshWithoutClearingRunHistoryAndComposeWithinBatch(bool cache)
+    [Fact]
+    public void ExhaustedRegionsRefreshWithoutClearingRunHistoryAndComposeWithinBatch()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-mission-strategy");
         var row = TestFixtures.Rows(oracle.RootElement, "rows").Single(row => row[0].GetString() == "refresh");
-        var content = Load(cache);
+        var content = Load();
         Assert.Equal(["MISSION_A", "MISSION_B"], content.RuntimeRules.Regions[content.RuntimeRules.Regions.GetRequired("REGION")].Value.MissionWeights.Keys);
         var snapshot = Snapshot(content, 34, []) with
         {
@@ -135,13 +125,11 @@ public sealed class StrategicMissionStrategyTests
         Reload(content, campaign, 17, "strategy-refresh-batch.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ImplicitBaseMissionSelectionPrunesMissingTablesAndMatchesReference(bool cache)
+    [Fact]
+    public void ImplicitBaseMissionSelectionPrunesMissingTablesAndMatchesReference()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-mission-base-target");
-        var content = Load(cache);
+        var content = Load();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows").Where(row => row[0].GetString()!.StartsWith("implicit", StringComparison.Ordinal)))
         {
             var name = row[0].GetString()!;
@@ -192,10 +180,10 @@ public sealed class StrategicMissionStrategyTests
             CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
     }
 
-    private static RuntimeContent Load(bool cache)
+    private static RuntimeContent Load()
     {
         TestFixtures.LoadVerifiedManifest("strategic-mission-strategy");
-        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-mission-strategy.rul", "strategic-a-strategy-reset.rul"], cache);
+        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-mission-strategy.rul", "strategic-a-strategy-reset.rul"]);
     }
 
     private static CampaignSnapshot Snapshot(RuntimeContent content, int month, IReadOnlyList<KeyValuePair<string, ulong>> missions)

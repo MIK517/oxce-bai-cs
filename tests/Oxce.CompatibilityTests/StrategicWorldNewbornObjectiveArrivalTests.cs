@@ -12,15 +12,11 @@ public sealed class StrategicWorldNewbornObjectiveArrivalTests
 {
     private static readonly int[] BirthWaveNumbers = [0, 1, 2];
     [Theory]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    [InlineData(false, 5)]
-    [InlineData(true, 5)]
-    public void FirstAirborneArrivalFollowsThinkTimeObjectivesAndPreservesWaveIdentity(bool cache, int objective)
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(5)]
+    public void FirstAirborneArrivalFollowsThinkTimeObjectivesAndPreservesWaveIdentity(int objective)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "transitionRows"), row =>
@@ -30,7 +26,7 @@ public sealed class StrategicWorldNewbornObjectiveArrivalTests
         TestFixtures.LoadVerifiedManifest("strategic-mission-origin");
         foreach (var earth in new[] { false, true })
         {
-            var content = Content(cache, objective, earth);
+            var content = Content(objective, earth);
             for (ulong seed = 1; seed <= 8; seed++)
             {
                 var initial = Snapshot(content, seed, objective);
@@ -73,21 +69,19 @@ public sealed class StrategicWorldNewbornObjectiveArrivalTests
     }
 
     [Theory]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    public void FirstArrivalCannotHideFinalObjectiveCapacity(bool cache, int objective)
+    [InlineData(1)]
+    [InlineData(2)]
+    public void FirstArrivalCannotHideFinalObjectiveCapacity(int objective)
     {
-        var content = Content(cache, objective, false);
+        var content = Content(objective, false);
         var initial = Snapshot(content, 17, objective);
         initial = initial with { World = initial.World with { AlienBaseBirthSequence = ulong.MaxValue } };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "Base objective birth sequence is exhausted.");
     }
 
-    internal static RuntimeContent Content(bool cache, int objective, bool earth, int hunterPercentage = 0, bool waveObjective = true) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+    internal static RuntimeContent Content(int objective, bool earth, int hunterPercentage = 0, bool waveObjective = true) =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul"], $$$"""
             alienDeployments:
               - {type: FIRST_OBJECTIVE_SOURCE, markerName: FIRST_SOURCE, points: 0, genMissionFreq: 0, huntMissionMaxFrequency: 0}
               - {type: FIRST_OBJECTIVE_BASE, markerName: FIRST_OBJECTIVE_BIRTH, points: 0, genMissionFreq: 0, huntMissionMaxFrequency: 0}

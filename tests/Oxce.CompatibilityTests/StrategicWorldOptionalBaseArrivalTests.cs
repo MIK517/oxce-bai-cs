@@ -11,19 +11,17 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldOptionalBaseArrivalTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OptionalArrivalComposesWithOrderedEscortsAndHunterCancellation(bool cache)
+    [Fact]
+    public void OptionalArrivalComposesWithOrderedEscortsAndHunterCancellation()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var takeoff in new[] { 0, 5 })
             foreach (var leaderFirst in new[] { false, true })
                 foreach (var itemFuel in new[] { false, true })
                 {
-                    var content = StrategicWorldOptionalBaseCraftTests.Content(cache, itemFuel: itemFuel, speedMaximum: 2100, escortSpeedMaximum: 2100);
-                    var deletedContent = StrategicWorldOptionalBaseCraftTests.Content(cache, "CORE", itemFuel, speedMaximum: 2100, escortSpeedMaximum: 2100);
-                    var survivedContent = StrategicWorldOptionalBaseCraftTests.Content(cache, "", itemFuel, speedMaximum: 2100, escortSpeedMaximum: 2100);
+                    var content = StrategicWorldOptionalBaseCraftTests.Content(itemFuel: itemFuel, speedMaximum: 2100, escortSpeedMaximum: 2100);
+                    var deletedContent = StrategicWorldOptionalBaseCraftTests.Content("CORE", itemFuel, speedMaximum: 2100, escortSpeedMaximum: 2100);
+                    var survivedContent = StrategicWorldOptionalBaseCraftTests.Content("", itemFuel, speedMaximum: 2100, escortSpeedMaximum: 2100);
                     HashSet<bool> outcomes = [];
                     for (ulong seed = 1; seed <= 32; seed++)
                     {
@@ -85,12 +83,10 @@ public sealed class StrategicWorldOptionalBaseArrivalTests
                 }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SurvivingSourceStillGuardsLandingBeforeResearch(bool cache)
+    [Fact]
+    public void SurvivingSourceStillGuardsLandingBeforeResearch()
     {
-        var content = StrategicWorldOptionalBaseCraftTests.Content(cache, speedMaximum: 2100);
+        var content = StrategicWorldOptionalBaseCraftTests.Content(speedMaximum: 2100);
         var initial = StrategicWorldOptionalBaseAirborneCraftTests.Snapshot(content, 17, 0, false, false)
             .WithCraft("SHIP", craft => craft with { Logistics = craft.Logistics! with { Longitude = 0.4, Latitude = 0.2, Speed = 1000 } });
         var owner = initial.Bases[0];

@@ -13,18 +13,14 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldReturnedCraftHuntingTests
 {
     [Theory]
-    [InlineData(false, false, 0)]
-    [InlineData(true, false, 0)]
-    [InlineData(false, true, 0)]
-    [InlineData(true, true, 0)]
-    [InlineData(false, false, 5)]
-    [InlineData(true, false, 5)]
-    [InlineData(false, true, 5)]
-    [InlineData(true, true, 5)]
-    public void ArrivalStopsOnlyMatchingHuntersWithoutWaitingForRetarget(bool cache, bool disableFast, int takeoff)
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 5)]
+    [InlineData(true, 5)]
+    public void ArrivalStopsOnlyMatchingHuntersWithoutWaitingForRetarget(bool disableFast, int takeoff)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Content(cache, disableFast);
+        var content = Content(disableFast);
         var initial = Snapshot(content, takeoff);
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
         var speed = disableFast ? CampaignTimeSpeed.FiveSeconds : CampaignTimeSpeed.FiveMinutes;
@@ -72,12 +68,10 @@ public sealed class StrategicWorldReturnedCraftHuntingTests
         Assert.Equivalent(uninterrupted.Capture(), campaign.Capture(), strict: true);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void NonArrivalRetainsHuntingAndCorruptOriginalRemainsAtomic(bool cache)
+    [Fact]
+    public void NonArrivalRetainsHuntingAndCorruptOriginalRemainsAtomic()
     {
-        var content = Content(cache, true);
+        var content = Content(true);
         var initial = Snapshot(content, 5);
         var ship = initial.Bases[0].Crafts[0];
         initial = initial with
@@ -105,9 +99,8 @@ public sealed class StrategicWorldReturnedCraftHuntingTests
             "UFO hunting or escort state requires a valid original waypoint.");
     }
 
-    internal static RuntimeContent Content(bool cache, bool disableFast) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache,
-            "crafts: [{type: SHIP, fuelMax: 1000}]\n" + (disableFast ? "hunterKillerFastRetarget: false\n" : ""), extraRulesAfterOverlays: true);
+    internal static RuntimeContent Content(bool disableFast) =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], "crafts: [{type: SHIP, fuelMax: 1000}]\n" + (disableFast ? "hunterKillerFastRetarget: false\n" : ""), extraRulesAfterOverlays: true);
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content, int takeoff)
     {

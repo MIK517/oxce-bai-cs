@@ -11,28 +11,21 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldOptionalBaseMissionTests
 {
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    [InlineData(false, 4)]
-    [InlineData(true, 4)]
-    [InlineData(false, 5)]
-    [InlineData(true, 5)]
-    [InlineData(false, 6)]
-    [InlineData(true, 6)]
-    public void OptionalSourceDeletionInterruptsEveryOrdinaryFlightPathAndPersists(bool cache, int path)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    [InlineData(6)]
+    public void OptionalSourceDeletionInterruptsEveryOrdinaryFlightPathAndPersists(int path)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         TestFixtures.LoadVerifiedManifest("strategic-objective-base-spawn");
-        var content = FlightContent(cache, path);
-        var deletedContent = FlightContent(cache, path, "CORE");
-        var survivedContent = FlightContent(cache, path, "");
+        var content = FlightContent(path);
+        var deletedContent = FlightContent(path, "CORE");
+        var survivedContent = FlightContent(path, "");
         var deletedSeen = false;
         var survivedSeen = false;
         for (ulong seed = 1; seed <= 32; seed++)
@@ -65,25 +58,19 @@ public sealed class StrategicWorldOptionalBaseMissionTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    [InlineData(false, 4)]
-    [InlineData(true, 4)]
-    [InlineData(false, 5)]
-    [InlineData(true, 5)]
-    public void OptionalSourceDeletionPrecedesDueWaveSchedulingAndZeroLiveCleanup(bool cache, int kind)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    public void OptionalSourceDeletionPrecedesDueWaveSchedulingAndZeroLiveCleanup(int kind)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
         TestFixtures.LoadVerifiedManifest("strategic-wave-chain");
-        var content = WaveContent(cache, kind);
-        var deletedContent = WaveContent(cache, kind, "CORE");
-        var survivedContent = WaveContent(cache, kind, "");
+        var content = WaveContent(kind);
+        var deletedContent = WaveContent(kind, "CORE");
+        var survivedContent = WaveContent(kind, "");
         var deletedSeen = false;
         var survivedSeen = false;
         for (ulong seed = 1; seed <= 32; seed++)
@@ -109,12 +96,10 @@ public sealed class StrategicWorldOptionalBaseMissionTests
         Assert.True(survivedSeen);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OptionalSourceCleanupCannotOrphanUfosOrInvalidRetaliationLinks(bool cache)
+    [Fact]
+    public void OptionalSourceCleanupCannotOrphanUfosOrInvalidRetaliationLinks()
     {
-        var content = FlightContent(cache, 0);
+        var content = FlightContent(0);
         var initial = Source(StrategicWorldDailyMissionResearchTests.Snapshot(content, 17, 0));
         initial = initial with { World = initial.World with { Missions = [initial.World.Missions[0] with { LiveUfos = 0, NextWave = 0 }] } };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), "Alien mission cannot expire while UFOs still reference it.");
@@ -127,22 +112,18 @@ public sealed class StrategicWorldOptionalBaseMissionTests
             "A non-retaliation mission cannot expire while a base links it as retaliation.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OptionalSourceSurvivalStillReservesCreationMarkers(bool cache)
+    [Fact]
+    public void OptionalSourceSurvivalStillReservesCreationMarkers()
     {
-        var content = FlightContent(cache, 5);
+        var content = FlightContent(5);
         var initial = Source(StrategicWorldDailyMissionResearchTests.Snapshot(content, 17, 5)).WithNextId("ARRIVAL_BASE", int.MaxValue);
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), "Base objective IDs are exhausted or collide.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OptionalSourceSurvivalKeepsInterceptionAtomic(bool cache)
+    [Fact]
+    public void OptionalSourceSurvivalKeepsInterceptionAtomic()
     {
-        var content = FlightContent(cache, 0);
+        var content = FlightContent(0);
         var initial = Source(StrategicWorldDailyMissionResearchTests.Snapshot(content, 17, 0)).WithCraft("SHIP", craft => craft with
         {
             Logistics = craft.Logistics! with { Longitude = Degrees(8), Latitude = Degrees(2), Speed = 6000, Takeoff = 0 },
@@ -162,12 +143,10 @@ public sealed class StrategicWorldOptionalBaseMissionTests
             "Craft interception requires strategic combat (Phase 6 branch 5).");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OptionalSpecialUfoSourceLinksUseEarthMissionInterruption(bool cache)
+    [Fact]
+    public void OptionalSpecialUfoSourceLinksUseEarthMissionInterruption()
     {
-        var content = FlightContent(cache, 0);
+        var content = FlightContent(0);
         var initial = Source(StrategicWorldDailyMissionResearchTests.Snapshot(content, 17, 0));
         initial = initial with { World = initial.World with { Ufos = [initial.World.Ufos[0] with { HunterKiller = true }, initial.World.Ufos[1]] } };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
@@ -177,15 +156,13 @@ public sealed class StrategicWorldOptionalBaseMissionTests
         Assert.True(after.World.Ufos[0].HunterKiller);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OptionalSourceDeletionRepairsRetaliationLinksAtZeroLiveCleanup(bool cache)
+    [Fact]
+    public void OptionalSourceDeletionRepairsRetaliationLinksAtZeroLiveCleanup()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
-        var content = RetaliationContent(cache, "BONUS");
-        var deletedContent = RetaliationContent(cache, "CORE");
-        var survivedContent = RetaliationContent(cache, "");
+        var content = RetaliationContent("BONUS");
+        var deletedContent = RetaliationContent("CORE");
+        var survivedContent = RetaliationContent("");
         for (ulong seed = 1; seed <= 32; seed++)
         {
             var initial = CreateSnapshot(content, "Optional base retaliation cleanup");
@@ -209,7 +186,7 @@ public sealed class StrategicWorldOptionalBaseMissionTests
         }
     }
 
-    private static RuntimeContent RetaliationContent(bool cache, string code) => StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+    private static RuntimeContent RetaliationContent(string code) => StrategicReadinessTestContent.Load(["strategic-world.rul"], $$$"""
         research:
           - {name: CORE, cost: 1, getOneFree: [BONUS, OTHER]}
           - {name: BONUS, cost: 1}
@@ -224,12 +201,12 @@ public sealed class StrategicWorldOptionalBaseMissionTests
             waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
         """);
 
-    private static RuntimeContent FlightContent(bool cache, int path, string sourceCode = "BONUS") =>
-        StrategicWorldConversionResearchTests.Content(cache, respawn: path == 4, interrupt: "", baseLanding: path == 5,
+    private static RuntimeContent FlightContent(int path, string sourceCode = "BONUS") =>
+        StrategicWorldConversionResearchTests.Content(respawn: path == 4, interrupt: "", baseLanding: path == 5,
             operation: path % 6 + 1, sourceCode: sourceCode);
 
-    private static RuntimeContent WaveContent(bool cache, int kind, string sourceCode = "BONUS") =>
-        StrategicWorldDailyWaveResearchTests.Content(cache, kind, interrupt: "", operation: kind + 1, sourceCode: sourceCode);
+    private static RuntimeContent WaveContent(int kind, string sourceCode = "BONUS") =>
+        StrategicWorldDailyWaveResearchTests.Content(kind, interrupt: "", operation: kind + 1, sourceCode: sourceCode);
 
     internal static CampaignSnapshot Source(CampaignSnapshot initial) => initial.WithNextId("OPTIONAL_SOURCE", 70) with
     {

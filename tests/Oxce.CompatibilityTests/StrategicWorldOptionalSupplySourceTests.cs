@@ -11,19 +11,13 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldOptionalSupplySourceTests
 {
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    [InlineData(false, 4)]
-    [InlineData(true, 4)]
-    [InlineData(false, 5)]
-    [InlineData(true, 5)]
-    public void SpaceSupplySourceLossSuppressesOnlyObjectiveUfosAndPersistsCounterCleanup(bool cache, int kind)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    public void SpaceSupplySourceLossSuppressesOnlyObjectiveUfosAndPersistsCounterCleanup(int kind)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-mission-origin");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "supplyRows"), row =>
@@ -31,9 +25,9 @@ public sealed class StrategicWorldOptionalSupplySourceTests
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
         TestFixtures.LoadVerifiedManifest("strategic-wave-chain");
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
-        var content = Content(cache, kind);
-        var deletedContent = Content(cache, kind, "CORE");
-        var survivedContent = Content(cache, kind, "");
+        var content = Content(kind);
+        var deletedContent = Content(kind, "CORE");
+        var survivedContent = Content(kind, "");
         var deletedSeen = false;
         var survivedSeen = false;
         for (ulong seed = 1; seed <= 32; seed++)
@@ -76,13 +70,11 @@ public sealed class StrategicWorldOptionalSupplySourceTests
     }
 
     [Theory]
-    [InlineData(false, -5)]
-    [InlineData(true, -5)]
-    [InlineData(false, 5)]
-    [InlineData(true, 5)]
-    public void SourceSuppressedSupplyCannotSupplySignedActivityHeadroom(bool cache, int score)
+    [InlineData(-5)]
+    [InlineData(5)]
+    public void SourceSuppressedSupplyCannotSupplySignedActivityHeadroom(int score)
     {
-        var content = Content(cache, 0, points: score < 0 ? 7 : -7, followingScore: score);
+        var content = Content(0, points: score < 0 ? 7 : -7, followingScore: score);
         var initial = ScoreSnapshot(content, score < 0 ? int.MinValue + 3 : int.MaxValue - 3);
         for (ulong seed = 1; seed <= 32; seed++)
             AssertTimeBlocked(CampaignState.Restore(initial with { RandomState = seed }, content, new SplitMix64RandomSource(seed)),
@@ -90,16 +82,14 @@ public sealed class StrategicWorldOptionalSupplySourceTests
     }
 
     [Theory]
-    [InlineData(false, -5)]
-    [InlineData(true, -5)]
-    [InlineData(false, 5)]
-    [InlineData(true, 5)]
-    public void SafeSupplyActivityLimitsMatchSelectedSourceControlsAndReloads(bool cache, int score)
+    [InlineData(-5)]
+    [InlineData(5)]
+    public void SafeSupplyActivityLimitsMatchSelectedSourceControlsAndReloads(int score)
     {
         var points = score < 0 ? 7 : -7;
-        var content = Content(cache, 0, points: points, followingScore: score);
-        var deletedContent = Content(cache, 0, "CORE", points, score);
-        var survivedContent = Content(cache, 0, "", points, score);
+        var content = Content(0, points: points, followingScore: score);
+        var deletedContent = Content(0, "CORE", points, score);
+        var survivedContent = Content(0, "", points, score);
         var initial = ScoreSnapshot(content, score < 0 ? int.MinValue + 5 : int.MaxValue - 5);
         var deletedSeen = false;
         var survivedSeen = false;
@@ -126,12 +116,10 @@ public sealed class StrategicWorldOptionalSupplySourceTests
         Assert.True(survivedSeen);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void PossibleSupplyBirthStillReservesIdentityAndEarlyCleanup(bool cache)
+    [Fact]
+    public void PossibleSupplyBirthStillReservesIdentityAndEarlyCleanup()
     {
-        var content = Content(cache, 0);
+        var content = Content(0);
         var initial = Snapshot(content, 17).WithNextId("STR_UFO_UNIQUE", int.MaxValue);
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "UFO unique IDs are exhausted or collide with a saved UFO.");
@@ -141,12 +129,10 @@ public sealed class StrategicWorldOptionalSupplySourceTests
             "A non-retaliation mission cannot expire while a base links it as retaliation.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ConditionalSupplyTerminalLeadersRetainTheirArrivalBoundary(bool cache)
+    [Fact]
+    public void ConditionalSupplyTerminalLeadersRetainTheirArrivalBoundary()
     {
-        var content = Content(cache, 0);
+        var content = Content(0);
         var initial = Snapshot(content, 17);
         initial = initial with
         {
@@ -161,14 +147,12 @@ public sealed class StrategicWorldOptionalSupplySourceTests
             "Loaded idle escorts require same-tick newborn waypoint forecasts.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DelayedSpaceSupplyUnlinkingDoesNotInventConditionalLeaderWork(bool cache)
+    [Fact]
+    public void DelayedSpaceSupplyUnlinkingDoesNotInventConditionalLeaderWork()
     {
-        var content = Content(cache, 4);
-        var deletedContent = Content(cache, 4, "CORE");
-        var survivedContent = Content(cache, 4, "");
+        var content = Content(4);
+        var deletedContent = Content(4, "CORE");
+        var survivedContent = Content(4, "");
         var deletedSeen = false;
         var survivedSeen = false;
         for (ulong seed = 1; seed <= 32; seed++)
@@ -209,12 +193,12 @@ public sealed class StrategicWorldOptionalSupplySourceTests
         Assert.True(survivedSeen);
     }
 
-    internal static RuntimeContent Content(bool cache, int kind, string code = "BONUS", int points = 3, int? followingScore = null, int radarRange = 0, int nonObjectiveHunterPercentage = 100, bool nonObjectiveEscort = false, bool nonObjectiveRegional = false, int craftRadarRange = 0)
+    internal static RuntimeContent Content(int kind, string code = "BONUS", int points = 3, int? followingScore = null, int radarRange = 0, int nonObjectiveHunterPercentage = 100, bool nonObjectiveEscort = false, bool nonObjectiveRegional = false, int craftRadarRange = 0)
     {
         var wave = kind == 3 ? "{ufo: OPTIONAL_SUPPLY_SITE, count: 1, trajectory: TRAJ_PATROL, timer: 0, objective: true}" :
             "{ufo: OPTIONAL_SUPPLY_UFO, count: 1, trajectory: OPTIONAL_SUPPLY_AIR, timer: " + (kind == 4 ? 9000 : 0) +
             ", objective: " + (kind is 1 or 7 ? "false" : "true") + (kind == 5 ? ", hunterKillerPercentage: 100, escort: true" : kind == 7 ? ", hunterKillerPercentage: " + nonObjectiveHunterPercentage + ", escort: true" : "") + "}";
-        return StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+        return StrategicReadinessTestContent.Load(["strategic-world.rul"], $$$"""
             {{{(craftRadarRange > 0 ? "crafts: [{type: SHIP, radarRange: " + craftRadarRange + ", radarChance: 100}]" : "")}}}
             research:
               - {name: UNLOCK, cost: 1}

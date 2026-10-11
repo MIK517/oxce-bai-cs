@@ -13,26 +13,18 @@ public sealed class StrategicWorldResearchStockCompositionTests
 {
     private static readonly int[] ExpectedEventCountdowns = [60, 90];
     [Theory]
-    [InlineData(false, 2, false, false)]
-    [InlineData(true, 2, false, false)]
-    [InlineData(false, 2, true, false)]
-    [InlineData(true, 2, true, false)]
-    [InlineData(false, 2, false, true)]
-    [InlineData(true, 2, false, true)]
-    [InlineData(false, 2, true, true)]
-    [InlineData(true, 2, true, true)]
-    [InlineData(false, 3, false, false)]
-    [InlineData(true, 3, false, false)]
-    [InlineData(false, 3, true, false)]
-    [InlineData(true, 3, true, false)]
-    [InlineData(false, 3, false, true)]
-    [InlineData(true, 3, false, true)]
-    [InlineData(false, 3, true, true)]
-    [InlineData(true, 3, true, true)]
-    public void NestedRewardsRetainSavedBaseOrderAndComposeWithIncomingStocks(bool cache, int count, bool reverse, bool incoming)
+    [InlineData(2, false, false)]
+    [InlineData(2, true, false)]
+    [InlineData(2, false, true)]
+    [InlineData(2, true, true)]
+    [InlineData(3, false, false)]
+    [InlineData(3, true, false)]
+    [InlineData(3, false, true)]
+    [InlineData(3, true, true)]
+    public void NestedRewardsRetainSavedBaseOrderAndComposeWithIncomingStocks(int count, bool reverse, bool incoming)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Content(cache);
+        var content = Content();
         HashSet<(int, int)> paths = [];
         for (ulong seed = 1; seed <= 32; seed++)
         {
@@ -90,13 +82,11 @@ public sealed class StrategicWorldResearchStockCompositionTests
         Assert.Equal(6, paths.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ComposedClosureCountsFutureEventsButKeepsTheirPayloadBoundary(bool cache)
+    [Fact]
+    public void ComposedClosureCountsFutureEventsButKeepsTheirPayloadBoundary()
     {
         TestFixtures.LoadVerifiedManifest("strategic-event");
-        var content = Content(cache, "events: [{name: EQUIV_EVENT, timer: 90}]");
+        var content = Content("events: [{name: EQUIV_EVENT, timer: 90}]");
         var initial = Snapshot(content, 17, 3, true, true);
         initial = initial with
         {
@@ -127,7 +117,7 @@ public sealed class StrategicWorldResearchStockCompositionTests
             "Strategic event consequences require campaign event execution (Phase 6 branch 6).");
     }
 
-    private static RuntimeContent Content(bool cache, string extra = "") => StrategicWorldResearchStockAlternativesTests.Content(cache, false, 2,
+    private static RuntimeContent Content(string extra = "") => StrategicWorldResearchStockAlternativesTests.Content(false, 2,
         labels: "EQUIV_A, EQUIV_B, EQUIV_C", extraResearch: """
           - {name: UNLOCK, cost: 1}
           - {name: EQUIV_C, cost: 1, points: 1, spawnedItem: SUPPLY, spawnedItemCount: 2, increaseCounter: [EQUIV_COUNTER]}

@@ -13,14 +13,12 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldAlienBaseArrivalTests
 {
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 5)]
-    [InlineData(true, 5)]
-    public void ArrivalUsesNativeDiscoveryAndLandingConditions(bool cache, int takeoff)
+    [InlineData(0)]
+    [InlineData(5)]
+    public void ArrivalUsesNativeDiscoveryAndLandingConditions(int takeoff)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var contents = new[] { Content(cache, false), Content(cache, true) };
+        var contents = new[] { Content(false), Content(true) };
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "alienBaseArrivalRows").Where(row => row[4].GetInt32() == takeoff))
         {
             var discovered = row[0].GetBoolean();
@@ -57,10 +55,8 @@ public sealed class StrategicWorldAlienBaseArrivalTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void EarlierDiscoveryReservesLandingWithoutConsumingTheTick(bool cache)
+    [Fact]
+    public void EarlierDiscoveryReservesLandingWithoutConsumingTheTick()
     {
         foreach (var (daily, facilityRange, buildTime, patrolRange, patrolFuel, blocked) in new[]
         {
@@ -74,7 +70,7 @@ public sealed class StrategicWorldAlienBaseArrivalTests
             (false, 0, 0, 0, 1000, false),
         })
         {
-            var content = Content(cache, true, $$"""
+            var content = Content(true, $$"""
                 facilities:
                   - {type: ARRIVAL_SIGHT, mapName: LOGISTICS, sightRange: {{facilityRange}}, sightChance: 100}
                 """, patrolRange);
@@ -112,15 +108,13 @@ public sealed class StrategicWorldAlienBaseArrivalTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ManufacturedPatrolRemovalPrecedesDiscoveryAndLanding(bool cache, bool removed)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ManufacturedPatrolRemovalPrecedesDiscoveryAndLanding(bool removed)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.NotEmpty(TestFixtures.Rows(oracle.RootElement, "deletedCraftFollowerRows"));
-        var content = Content(cache, true, """
+        var content = Content(true, """
             facilities: [{type: ARRIVAL_WORKSHOP, mapName: LOGISTICS, workshops: 2}]
             manufacture: [{name: ARRIVAL_DELETE_PATROL, time: 1, requiredItems: {ARRIVAL_PATROL: 0}, producedItems: {SUPPLY: 0}}]
             """, extraCrafts: "  - {type: ARRIVAL_PATROL, fuelMax: 1000, speedMax: 6000, sightRange: 10000}");
@@ -159,8 +153,8 @@ public sealed class StrategicWorldAlienBaseArrivalTests
         Assert.Equivalent(after, campaign.Capture(), strict: true);
     }
 
-    internal static RuntimeContent Content(bool cache, bool allow, string extra = "", int sightRange = 0, string extraCrafts = "") => StrategicReadinessTestContent.Load(
-        ["strategic-world.rul"], cache, $$"""
+    internal static RuntimeContent Content(bool allow, string extra = "", int sightRange = 0, string extraCrafts = "") => StrategicReadinessTestContent.Load(
+        ["strategic-world.rul"], $$"""
         crafts:
           - {type: SHIP, fuelMax: 1000, speedMax: 6000, sightRange: {{sightRange}}, allowLanding: {{(allow ? "true" : "false")}}}
         {{extraCrafts}}

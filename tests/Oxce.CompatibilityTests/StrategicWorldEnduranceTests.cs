@@ -14,20 +14,16 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldEnduranceTests
 {
     [Theory]
-    [InlineData(false, false, false)]
-    [InlineData(true, false, false)]
-    [InlineData(false, true, false)]
-    [InlineData(true, true, false)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, true)]
-    [InlineData(false, true, true)]
-    [InlineData(true, true, true)]
-    public void SeventyTwoHoursComposeFiniteMissionsCraftOperationsAndReloads(bool fromCache, bool initializeWorld, bool detectionQueries)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void SeventyTwoHoursComposeFiniteMissionsCraftOperationsAndReloads(bool initializeWorld, bool detectionQueries)
     {
         if (detectionQueries) VerifyQueryEvidence();
         if (initializeWorld) TestFixtures.LoadVerifiedManifest("strategic-world-composition");
         var content = StrategicReadinessTestContent.Load(initializeWorld
-            ? ["strategic-world.rul", "strategic-world-entry-endurance.rul"] : ["strategic-world.rul"], fromCache, detectionQueries ? QueryRules : null);
+            ? ["strategic-world.rul", "strategic-world-entry-endurance.rul"] : ["strategic-world.rul"], detectionQueries ? QueryRules : null);
         var snapshot = CreateLifecycleSnapshot(content);
         var owner = snapshot.Bases[0];
         var craft = owner.Crafts.Single(item => item.RuleId == "SHIP");

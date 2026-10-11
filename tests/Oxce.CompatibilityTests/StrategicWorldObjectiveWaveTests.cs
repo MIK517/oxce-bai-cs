@@ -10,14 +10,12 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldObjectiveWaveTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void AirborneSpawnFlagsUseSelectedSiteWaypointsOrOrdinaryRegionalSelection(bool cache)
+    [Fact]
+    public void AirborneSpawnFlagsUseSelectedSiteWaypointsOrOrdinaryRegionalSelection()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
         var content = StrategicReadinessTestContent.Load(
-            ["strategic-world.rul", "strategic-flagged-spawn.rul"], cache);
+            ["strategic-world.rul", "strategic-flagged-spawn.rul"]);
         foreach (var objective in new[] { 0, 1, 2, 3, 5 })
         {
             var baseline = Restore(content, new AlienMissionSnapshot(4, $"FLAG_SPAWN_{objective}_0", "REGION", "RACE_A", 0, 0, 0, 0, -1));
@@ -42,14 +40,12 @@ public sealed class StrategicWorldObjectiveWaveTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void UndefinedUfosAndNonSiteFlagsFollowReferenceNoObjectDecisions(bool cache)
+    [Fact]
+    public void UndefinedUfosAndNonSiteFlagsFollowReferenceNoObjectDecisions()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-wave-chain");
         var content = StrategicReadinessTestContent.Load(
-            ["strategic-world.rul", "strategic-no-object-waves.rul"], cache);
+            ["strategic-world.rul", "strategic-no-object-waves.rul"]);
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "siteRows"))
         {
             var deployment = row[0].GetInt32();
@@ -89,14 +85,12 @@ public sealed class StrategicWorldObjectiveWaveTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SupplySpawnSuppressionAndConstructorChoiceMatchReference(bool cache)
+    [Fact]
+    public void SupplySpawnSuppressionAndConstructorChoiceMatchReference()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-mission-origin");
         var content = StrategicReadinessTestContent.Load(
-            ["strategic-world.rul", "strategic-supply-decisions.rul"], cache);
+            ["strategic-world.rul", "strategic-supply-decisions.rul"]);
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "supplyRows"))
             foreach (var operation in new[] { 0, 1 })
             {
@@ -129,13 +123,11 @@ public sealed class StrategicWorldObjectiveWaveTests
             }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void NoObjectWavesAdvanceUntilTheCapturedObjectiveCompletionBoundary(bool cache)
+    [Fact]
+    public void NoObjectWavesAdvanceUntilTheCapturedObjectiveCompletionBoundary()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-wave-chain");
-        var content = Load(cache);
+        var content = Load();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "completionRows").Where(row => row[2].GetInt32() == 0))
         {
             var objective = row[0].GetInt32();
@@ -163,13 +155,11 @@ public sealed class StrategicWorldObjectiveWaveTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OrdinaryAirborneWavesShareSpawnAndDetectionBeforeObjectiveEffects(bool cache)
+    [Fact]
+    public void OrdinaryAirborneWavesShareSpawnAndDetectionBeforeObjectiveEffects()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-wave-chain");
-        var content = Load(cache);
+        var content = Load();
         var score = Restore(content, new AlienMissionSnapshot(4, "AIR_OBJECTIVE_0", "REGION", "RACE_A", 0, 0, 0, 0, -1));
         AdvanceOne(score);
         var baseline = score.Capture();
@@ -200,13 +190,11 @@ public sealed class StrategicWorldObjectiveWaveTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SourceBaseOriginsAndSupplyRandomOrderMatchReference(bool cache)
+    [Fact]
+    public void SourceBaseOriginsAndSupplyRandomOrderMatchReference()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-mission-origin");
-        var content = Load(cache);
+        var content = Load();
         var regions = content.RuntimeRules.Regions;
         var region = regions[regions.GetRequired("REGION")].Value;
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows"))
@@ -253,13 +241,11 @@ public sealed class StrategicWorldObjectiveWaveTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public void FinalNoObjectWaveChecksCleanupReferencesBeforeMutatingTheTick(bool cache, bool ufoLink)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FinalNoObjectWaveChecksCleanupReferencesBeforeMutatingTheTick(bool ufoLink)
     {
-        var content = Load(cache);
+        var content = Load();
         foreach (var ruleId in new[] { "EMPTY_OBJECTIVE_5", "CHAIN_zero" })
         {
             var campaign = Restore(content, new AlienMissionSnapshot(4, ruleId, "REGION", "RACE_A", ruleId == "CHAIN_zero" ? 0 : 1, 0, 0, 0, -1));
@@ -280,8 +266,8 @@ public sealed class StrategicWorldObjectiveWaveTests
         }
     }
 
-    private static RuntimeContent Load(bool cache) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-objective-waves.rul"], cache);
+    private static RuntimeContent Load() =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-objective-waves.rul"]);
 
     private static CampaignState Restore(RuntimeContent content, AlienMissionSnapshot mission)
     {

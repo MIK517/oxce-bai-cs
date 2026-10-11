@@ -12,18 +12,16 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicAdhocScriptTests
 {
-    private static Oxce.Mods.Rulesets.Content.RuntimeContent Load(bool fromCache)
+    private static Oxce.Mods.Rulesets.Content.RuntimeContent Load()
     {
         TestFixtures.LoadVerifiedManifest("strategic-adhoc-scripts");
-        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-adhoc-scripts.rul"], fromCache);
+        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-adhoc-scripts.rul"]);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void TaggedSelectionAndOrderMatchExtractedReference(bool fromCache)
+    [Fact]
+    public void TaggedSelectionAndOrderMatchExtractedReference()
     {
-        var content = Load(fromCache);
+        var content = Load();
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-adhoc-scripts");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows"))
         {
@@ -54,12 +52,10 @@ public sealed class StrategicAdhocScriptTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void EventTagsFilterOnFirstScriptTagAndPersistRunHistory(bool fromCache)
+    [Fact]
+    public void EventTagsFilterOnFirstScriptTagAndPersistRunHistory()
     {
-        var content = Load(fromCache);
+        var content = Load();
         var initial = CreateSnapshot(content, "Adhoc scripts") with { RandomState = 17 };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
 
@@ -78,12 +74,10 @@ public sealed class StrategicAdhocScriptTests
         Assert.Equal(4, campaign.Capture().World.Missions.Select(mission => mission.Id).Distinct().Count());
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void EmptyTagsAndMissingEventDoNotAdvanceWorld(bool fromCache)
+    [Fact]
+    public void EmptyTagsAndMissingEventDoNotAdvanceWorld()
     {
-        var content = Load(fromCache);
+        var content = Load();
         var initial = CreateSnapshot(content, "Adhoc empty") with { RandomState = 17 };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
 
@@ -94,12 +88,10 @@ public sealed class StrategicAdhocScriptTests
         Assert.Equivalent(initial, campaign.Capture(), strict: true);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void TaggedSiteMissionSchedulesAndPersistsWithoutExecutingEventPayload(bool fromCache)
+    [Fact]
+    public void TaggedSiteMissionSchedulesAndPersistsWithoutExecutingEventPayload()
     {
-        var content = Load(fromCache);
+        var content = Load();
         var initial = CreateSnapshot(content, "Adhoc site guard") with { RandomState = 17 };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         Assert.Empty(campaign.Execute(new ScheduleAdhocWorldMissions("EVENT_BAD", 0, 0)).Events);
@@ -108,12 +100,10 @@ public sealed class StrategicAdhocScriptTests
         Reload(content, campaign, 17, "adhoc-site-mission.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ScoreAndFundsCriteriaUseSuppliedCurrentContext(bool fromCache)
+    [Fact]
+    public void ScoreAndFundsCriteriaUseSuppliedCurrentContext()
     {
-        var content = Load(fromCache);
+        var content = Load();
         var initial = CreateSnapshot(content, "Adhoc eligibility") with { MonthsPassed = 1, RandomState = 17 };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
 

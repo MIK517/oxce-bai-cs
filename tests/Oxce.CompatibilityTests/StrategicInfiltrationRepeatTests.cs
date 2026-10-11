@@ -13,12 +13,10 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicInfiltrationRepeatTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void RestartAndCountdownMatchPinnedReference(bool cache)
+    [Fact]
+    public void RestartAndCountdownMatchPinnedReference()
     {
-        var content = Load(cache);
+        var content = Load();
         var template = content.RuntimeRules.AlienMissions[content.RuntimeRules.AlienMissions.GetRequired("INFILTRATE")].Value;
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-infiltration-repeat");
         foreach (var example in TestFixtures.Rows(oracle.RootElement, "cases"))
@@ -44,12 +42,10 @@ public sealed class StrategicInfiltrationRepeatTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void EndlessCompletionSignsAtMostOnePendingPactPerPassAndRestartsAfterSearch(bool cache)
+    [Fact]
+    public void EndlessCompletionSignsAtMostOnePendingPactPerPassAndRestartsAfterSearch()
     {
-        var content = Load(cache, """
+        var content = Load("""
             alienMissions:
               - type: INF_REPEAT
                 objective: 1
@@ -86,12 +82,10 @@ public sealed class StrategicInfiltrationRepeatTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void EndlessFiniteZeroTimerFollowupRestartsInReferenceOrderAndUnsafeCyclesStopAtomically(bool cache)
+    [Fact]
+    public void EndlessFiniteZeroTimerFollowupRestartsInReferenceOrderAndUnsafeCyclesStopAtomically()
     {
-        var content = Load(cache, """
+        var content = Load("""
             alienMissions:
               - type: INF_REPEAT
                 objective: 1
@@ -109,7 +103,7 @@ public sealed class StrategicInfiltrationRepeatTests
         Assert.Equal((1, countdown), (mission.NextWave, mission.SpawnCountdown));
         Assert.Equal(expected.State, campaign.Capture().RandomState);
         Reload(content, campaign, 17, "endless-zero-followup.sav");
-        content = Load(cache, """
+        content = Load("""
             alienMissions:
               - type: INF_REPEAT
                 objective: 1
@@ -120,12 +114,10 @@ public sealed class StrategicInfiltrationRepeatTests
             "Immediate mission waves exceed the supported work limit.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void EndlessLegacyUfoWaveInferenceUsesRestartCountersAndReservesSiteConversion(bool cache)
+    [Fact]
+    public void EndlessLegacyUfoWaveInferenceUsesRestartCountersAndReservesSiteConversion()
     {
-        var content = Load(cache, """
+        var content = Load("""
             ufoTrajectories:
               - id: INF_ARRIVAL
                 groundTimer: 60
@@ -182,6 +174,6 @@ public sealed class StrategicInfiltrationRepeatTests
         };
     }
 
-    private static RuntimeContent Load(bool cache, string extra = "") =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-infiltration.rul"], cache, extra);
+    private static RuntimeContent Load(string extra = "") =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-infiltration.rul"], extra);
 }

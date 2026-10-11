@@ -14,15 +14,15 @@ public sealed class StrategicWorldSiteResearchEventTests
     private const string PayloadReason = "Strategic event consequences require campaign event execution (Phase 6 branch 6).";
 
     [Theory]
-    [InlineData(false, 0, "CORE", false)]
-    [InlineData(true, 0, "CORE", true)]
-    [InlineData(false, 2, "AUTO", false)]
-    [InlineData(true, 2, "AUTO", true)]
-    public void SiteResearchInterruptsDueRepeatedEventsAfterAllSites(bool cache, int scenario, string interrupt, bool over)
+    [InlineData(0, "CORE", false)]
+    [InlineData(0, "CORE", true)]
+    [InlineData(2, "AUTO", false)]
+    [InlineData(2, "AUTO", true)]
+    public void SiteResearchInterruptsDueRepeatedEventsAfterAllSites(int scenario, string interrupt, bool over)
     {
         TestFixtures.LoadVerifiedManifest("strategic-event");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = Content(cache, scenario, Deployment + "\nevents:\n  - {name: EVENT_DESPAWN, interruptResearch: " + interrupt + "}\n");
+        var content = Content(scenario, Deployment + "\nevents:\n  - {name: EVENT_DESPAWN, interruptResearch: " + interrupt + "}\n");
         var snapshot = Snapshot(content);
         snapshot = snapshot with
         {
@@ -52,7 +52,7 @@ public sealed class StrategicWorldSiteResearchEventTests
     [InlineData(3)]
     public void RepeatableOrDisabledCoreCannotAuthorizeDueEventPayload(int scenario)
     {
-        var content = Content(false, scenario, Deployment + "\nevents:\n  - {name: EVENT_DESPAWN, interruptResearch: CORE}\n");
+        var content = Content(scenario, Deployment + "\nevents:\n  - {name: EVENT_DESPAWN, interruptResearch: CORE}\n");
         var snapshot = Snapshot(content);
         snapshot = snapshot with
         {
@@ -65,7 +65,7 @@ public sealed class StrategicWorldSiteResearchEventTests
     [Fact]
     public void SiteResearchRemovingExistingInterruptionStopsBeforeAnySiteOrEventMutation()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, Deployment + "\n" + """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], Deployment + "\n" + """
             research:
               - {name: UNLOCK, cost: 1}
               - {name: CORE, cost: 1, disables: [STOP_EVENT]}
@@ -85,7 +85,7 @@ public sealed class StrategicWorldSiteResearchEventTests
     [Fact]
     public void FutureEventRemainsAllowedWhenSiteDisablesItsInterruption()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, Deployment + "\n" + """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], Deployment + "\n" + """
             research:
               - {name: UNLOCK, cost: 1}
               - {name: CORE, cost: 1, disables: [STOP_EVENT]}

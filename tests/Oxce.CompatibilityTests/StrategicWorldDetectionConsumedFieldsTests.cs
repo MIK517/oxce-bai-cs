@@ -10,11 +10,9 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldDetectionConsumedFieldsTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void NullAndUnreachableQueriesDoNotConsumeLiveStatistics(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NullAndUnreachableQueriesDoNotConsumeLiveStatistics(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "nullMemberOutputs"))
@@ -29,7 +27,7 @@ public sealed class StrategicWorldDetectionConsumedFieldsTests
                 "text" => $"var text marker \"UNUSED\"; var int value; if eq marker \"LIVE\"; {receiver}.getDamagePercentage value; {receiver}.Stats.getArmor value; end; ",
                 _ => $"var ptr {type} absent null; var int value 73; absent.getDamagePercentage value; if neq value 0; return DETECTION_NONE 0; end; absent.Stats.getArmor value; if neq value 0; return DETECTION_NONE 0; end; ",
             };
-            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
                 crafts:
                   - type: CRAFT_UNUSED_FIELDS
                     speedMax: 6000
@@ -75,13 +73,11 @@ public sealed class StrategicWorldDetectionConsumedFieldsTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void PossibleLiveReceiverStillRequiresItsDamageDenominator(bool fromCache)
+    [Fact]
+    public void PossibleLiveReceiverStillRequiresItsDamageDenominator()
     {
         TestFixtures.LoadVerifiedManifest("strategic-detection-scripts");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             ufos:
               - type: UFO_NULLABLE_FIELDS
                 speedMax: 2200

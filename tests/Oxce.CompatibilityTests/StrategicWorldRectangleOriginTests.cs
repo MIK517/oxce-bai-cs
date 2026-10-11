@@ -12,14 +12,12 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldRectangleOriginTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ExistingPointOriginsRetainReferencePoleNormalization(bool cache)
+    [Fact]
+    public void ExistingPointOriginsRetainReferencePoleNormalization()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
         var row = Assert.Single(TestFixtures.Rows(oracle.RootElement, "polePointOriginRows"));
-        var content = Load(cache);
+        var content = Load();
         var campaign = CampaignState.Restore(Snapshot(content, "POLE_POINT_ORIGIN") with { RandomState = 0 },
             content, new FractionChoices(0));
         AdvanceOne(campaign);
@@ -39,13 +37,11 @@ public sealed class StrategicWorldRectangleOriginTests
         Reload(content, campaign, 17, "pole-point-origin.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void AirborneRectangleOriginsMatchReferenceDrawsAndWrappedRawBounds(bool cache)
+    [Fact]
+    public void AirborneRectangleOriginsMatchReferenceDrawsAndWrappedRawBounds()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
-        var content = Load(cache);
+        var content = Load();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "rectangleOriginRows"))
         {
             if (row[1].GetDouble() == 1) continue;
@@ -76,7 +72,7 @@ public sealed class StrategicWorldRectangleOriginTests
     [InlineData(0.75, 0)]
     public void CrossingRectangleScoresOnlyItsActualFirstContainingCountry(double fraction, int country)
     {
-        var content = Load(false);
+        var content = Load();
         var campaign = CampaignState.Restore(Snapshot(content, "RECT_ORIGIN_CROSSING") with { RandomState = 0 },
             content, new FractionChoices(fraction));
         AdvanceOne(campaign);
@@ -84,13 +80,11 @@ public sealed class StrategicWorldRectangleOriginTests
         Assert.Equal(0, campaign.Capture().Countries[1 - country].ActivityAlien[0]);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void LandTestedOriginsPreserveFakeWaterChoiceAndForcedHundredthCandidate(bool cache)
+    [Fact]
+    public void LandTestedOriginsPreserveFakeWaterChoiceAndForcedHundredthCandidate()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
-        var content = Load(cache);
+        var content = Load();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "landRectangleOriginRows"))
         {
             var mode = row[0].GetInt32();
@@ -120,7 +114,7 @@ public sealed class StrategicWorldRectangleOriginTests
     [Fact]
     public void PopulatedLandRetriesAreBoundedBeforeCreatingAnyUfo()
     {
-        var content = Load(false);
+        var content = Load();
         var snapshot = Snapshot(content, "RECT_ORIGIN_FAKE");
         var template = snapshot.World.Missions[0];
         snapshot = snapshot with
@@ -129,13 +123,11 @@ public sealed class StrategicWorldRectangleOriginTests
         AssertTimeBlocked(campaign, "Alien mission land selection exceeds the supported work limit.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SelectedRectangularOriginUsesFixedAreaAndIgnoresRegionContainment(bool cache)
+    [Fact]
+    public void SelectedRectangularOriginUsesFixedAreaAndIgnoresRegionContainment()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
-        var content = Load(cache);
+        var content = Load();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "selectedRectangleOriginRows"))
         {
             var landing = row[0].GetInt32() != 0;
@@ -174,7 +166,7 @@ public sealed class StrategicWorldRectangleOriginTests
     [InlineData(1, true)]
     public void PossiblePositiveAndNegativeAwardsBlockBeforeAnyDraw(int country, bool negative)
     {
-        var content = Load(false);
+        var content = Load();
         var snapshot = Snapshot(content, negative ? "RECT_ORIGIN_NEGATIVE" : "RECT_ORIGIN_CROSSING");
         var countries = snapshot.Countries.ToArray();
         countries[country] = countries[country] with { ActivityAlien = [negative ? int.MinValue + 2 : int.MaxValue - 2] };
@@ -182,19 +174,17 @@ public sealed class StrategicWorldRectangleOriginTests
         AssertTimeBlocked(campaign, "UFO alien activity exceeds the supported range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ReachableOriginRectanglesPreserveBothSelectedMovementPaths(bool cache)
+    [Fact]
+    public void ReachableOriginRectanglesPreserveBothSelectedMovementPaths()
     {
-        var content = Load(cache);
+        var content = Load();
         foreach (var fraction in new[] { 0.0, 0.5, 1.0 })
             Assert.Equal(fraction == 0.5, AssertSelectedNewbornArrival(content,
                 Snapshot(content, "RECT_ORIGIN_UNSAFE"), new FractionChoices(fraction), new FractionChoices(fraction)));
     }
 
-    private static RuntimeContent Load(bool cache) => StrategicReadinessTestContent.Load(
-        ["strategic-world.rul", "strategic-rectangle-origins.rul"], cache);
+    private static RuntimeContent Load() => StrategicReadinessTestContent.Load(
+        ["strategic-world.rul", "strategic-rectangle-origins.rul"]);
 
     private static CampaignSnapshot Snapshot(RuntimeContent content, string mission)
     {

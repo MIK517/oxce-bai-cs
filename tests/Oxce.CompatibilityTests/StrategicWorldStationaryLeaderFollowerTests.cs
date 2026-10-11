@@ -11,19 +11,15 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldStationaryLeaderFollowerTests
 {
     [Theory]
-    [InlineData(false, false, 10)]
-    [InlineData(true, false, 10)]
-    [InlineData(false, true, 10)]
-    [InlineData(true, true, 10)]
-    [InlineData(false, false, 5)]
-    [InlineData(true, false, 5)]
-    [InlineData(false, true, 5)]
-    [InlineData(true, true, 5)]
-    public void LandedFollowerCutsRegionalPositionDependencyWithoutMoving(bool cache, bool reverse, int timer)
+    [InlineData(false, 10)]
+    [InlineData(true, 10)]
+    [InlineData(false, 5)]
+    [InlineData(true, 5)]
+    public void LandedFollowerCutsRegionalPositionDependencyWithoutMoving(bool reverse, int timer)
     {
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         TestFixtures.LoadVerifiedManifest("strategic-world");
-        var content = StrategicWorldRegionalNewLeaderTests.Content(cache, true);
+        var content = StrategicWorldRegionalNewLeaderTests.Content(true);
         var region = content.RuntimeRules.Regions[content.RuntimeRules.Regions.GetRequired("LEADER_REGION")].Value;
         for (ulong seed = 1; seed <= 8; seed++)
         {
@@ -73,22 +69,16 @@ public sealed class StrategicWorldStationaryLeaderFollowerTests
     }
 
     [Theory]
-    [InlineData(false, 10, "ground-far")]
-    [InlineData(true, 10, "ground-far")]
-    [InlineData(false, 5, "ground-far")]
-    [InlineData(true, 5, "ground-far")]
-    [InlineData(false, 10, "chain-far")]
-    [InlineData(true, 10, "chain-far")]
-    [InlineData(false, 5, "chain-far")]
-    [InlineData(true, 5, "chain-far")]
-    [InlineData(false, 10, "ground-close")]
-    [InlineData(true, 10, "ground-close")]
-    [InlineData(false, 5, "ground-close")]
-    [InlineData(true, 5, "ground-close")]
-    public void StationaryAndLiftingLinksRetainCraftArrivalOwnership(bool cache, int timer, string kind)
+    [InlineData(10, "ground-far")]
+    [InlineData(5, "ground-far")]
+    [InlineData(10, "chain-far")]
+    [InlineData(5, "chain-far")]
+    [InlineData(10, "ground-close")]
+    [InlineData(5, "ground-close")]
+    public void StationaryAndLiftingLinksRetainCraftArrivalOwnership(int timer, string kind)
     {
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
-        var content = StrategicWorldRegionalNewLeaderTests.Content(cache, true,
+        var content = StrategicWorldRegionalNewLeaderTests.Content(true,
             "crafts: [{type: SHIP, allowLanding: true, radarRange: 20000, radarChance: 100}]\n");
         var initial = Snapshot(content, 41, false, timer);
         var target = initial.World.Ufos.Single(ufo => ufo.UniqueId == (kind == "chain-far" ? 11 : 10));

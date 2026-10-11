@@ -11,16 +11,14 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldConditionalLeaderSelectedAreaTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void SelectedAreaAirborneArrivalUsesTheNativeWavePredicate(bool cache, bool objectiveWave)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SelectedAreaAirborneArrivalUsesTheNativeWavePredicate(bool objectiveWave)
     {
         TestFixtures.LoadVerifiedManifest("strategic-mission-origin");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = Content(cache, objectiveWave);
+        var content = Content(objectiveWave);
         Assert.Equal(3, content.RuntimeRules.AlienMissions[content.RuntimeRules.AlienMissions.GetRequired("FIRST_ARRIVAL_MISSION")].Value.Waves.Count);
         var region = content.RuntimeRules.Regions[content.RuntimeRules.Regions.GetRequired("SELECTED_REGION")].Value;
         for (ulong seed = 1; seed <= 64; seed++)
@@ -86,8 +84,8 @@ public sealed class StrategicWorldConditionalLeaderSelectedAreaTests
         }
     }
 
-    internal static RuntimeContent Content(bool cache, bool objectiveWave, bool landingSite = false) =>
-        StrategicWorldNewbornFirstArrivalTests.Content(cache, false, hunterPercentage: 50,
+    internal static RuntimeContent Content(bool objectiveWave, bool landingSite = false) =>
+        StrategicWorldNewbornFirstArrivalTests.Content(false, hunterPercentage: 50,
             waveObjective: objectiveWave, objectiveOnLandingSite: landingSite, spawnZone: 5, extraRules: """
             regions:
               - type: SELECTED_REGION
@@ -101,12 +99,10 @@ public sealed class StrategicWorldConditionalLeaderSelectedAreaTests
                   - [[8, 8.005, 2, 2.005], [8.01, 8.015, 2.01, 2.015]]
             """);
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ConsumedMissingSelectedAreaFailsBeforeAnyMutation(bool cache)
+    [Fact]
+    public void ConsumedMissingSelectedAreaFailsBeforeAnyMutation()
     {
-        var content = Content(cache, true);
+        var content = Content(true);
         var initial = Snapshot(content, 17);
         initial = initial with
         { World = initial.World with { Missions = [initial.World.Missions[0] with { MissionSiteZoneArea = 2 }] } };

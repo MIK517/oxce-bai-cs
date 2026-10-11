@@ -14,12 +14,10 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicRetaliationSpawnTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void RetaliationTargetSelectionMatchesPinnedReference(bool cache)
+    [Fact]
+    public void RetaliationTargetSelectionMatchesPinnedReference()
     {
-        var content = Load(cache);
+        var content = Load();
         var region = content.RuntimeRules.Regions[content.RuntimeRules.Regions.GetRequired("REGION")].Value with { Areas = [new(0, 1, -0.5, 0.5)] };
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-retaliation-target");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows"))
@@ -39,12 +37,10 @@ public sealed class StrategicRetaliationSpawnTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void RetaliationWithoutDiscoveredBasesFallsThroughToOrdinaryScouting(bool cache)
+    [Fact]
+    public void RetaliationWithoutDiscoveredBasesFallsThroughToOrdinaryScouting()
     {
-        var content = Load(cache, """
+        var content = Load("""
             alienMissions:
               - type: RETAL_SCOUT
                 objective: 4
@@ -71,12 +67,10 @@ public sealed class StrategicRetaliationSpawnTests
         Reload(content, campaign, 17, "retaliation-empty-wave.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void NoRegionalBaseInterruptsInstantRetaliationAfterOneWaveAndPersistsWithLiveUfo(bool cache)
+    [Fact]
+    public void NoRegionalBaseInterruptsInstantRetaliationAfterOneWaveAndPersistsWithLiveUfo()
     {
-        var content = Load(cache, """
+        var content = Load("""
             regions:
               - type: RETAL_EMPTY_REGION
                 areas: [[100, 110, -10, 10]]
@@ -121,10 +115,8 @@ public sealed class StrategicRetaliationSpawnTests
             "A non-retaliation mission cannot expire while a base links it as retaliation.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SafeAssaultSpawningMatchesReferenceSourceTargetAndConstructor(bool cache)
+    [Fact]
+    public void SafeAssaultSpawningMatchesReferenceSourceTargetAndConstructor()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-retaliation-spawn");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows").Where(row =>
@@ -135,7 +127,7 @@ public sealed class StrategicRetaliationSpawnTests
             var mask = row[3].GetInt32();
             var linked = row[5].GetInt32() != 0;
             var replace = row[7].GetInt32() != 0;
-            var content = Load(cache, $$$"""
+            var content = Load($$$"""
                 regions:
                   - type: RETAL_REGION
                     areas: [[0, 57.29577951308232, -28, 28]]
@@ -202,14 +194,12 @@ public sealed class StrategicRetaliationSpawnTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GroundAssaultOriginUsesBoundedLandSearchAndIgnoresSelectedSiteFlags(bool cache)
+    [Fact]
+    public void GroundAssaultOriginUsesBoundedLandSearchAndIgnoresSelectedSiteFlags()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-retaliation-spawn");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "rows"), row => row[0].GetInt32() == 4 && row[6].GetInt32() == 1 && row[8].GetInt32() == 1);
-        var content = Load(cache, """
+        var content = Load("""
             regions:
               - type: RETAL_LAND_REGION
                 areas: [[0, 60, -30, 30]]
@@ -256,10 +246,8 @@ public sealed class StrategicRetaliationSpawnTests
         Reload(content, campaign, 17, "retaliation-ground-origin.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void RetaliationDeploymentFallbackFollowsSpawnAndSiteCallerOrdering(bool cache)
+    [Fact]
+    public void RetaliationDeploymentFallbackFollowsSpawnAndSiteCallerOrdering()
     {
         using var spawn = TestFixtures.ReadVerifiedExpected("strategic-retaliation-spawn");
         using var sites = TestFixtures.ReadVerifiedExpected("strategic-wave-chain");
@@ -268,7 +256,7 @@ public sealed class StrategicRetaliationSpawnTests
             {
                 Assert.Contains(TestFixtures.Rows(spawn.RootElement, "rows"), row => row[0].GetInt32() == objective && row[4].GetInt32() == 1 && row[8].GetInt32() == 0);
                 Assert.Contains(TestFixtures.Rows(sites.RootElement, "siteRows"), row => row[0].GetInt32() == 1 && row[1].GetInt32() == 1 && row[2].GetInt32() == objective && row[4].GetInt32() == 1);
-                var content = Load(cache, $$$"""
+                var content = Load($$$"""
                     regions:
                       - type: RETAL_SITE_REGION
                         areas: [[100, 110, -10, 10]]
@@ -321,6 +309,6 @@ public sealed class StrategicRetaliationSpawnTests
         };
     }
 
-    private static RuntimeContent Load(bool cache, string extra = "") =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, extra);
+    private static RuntimeContent Load(string extra = "") =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul"], extra);
 }

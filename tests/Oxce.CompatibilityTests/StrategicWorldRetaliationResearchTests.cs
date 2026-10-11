@@ -11,11 +11,9 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldRetaliationResearchTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void GeneratedRetaliationReceivesOnlyGrantsAfterItsOwnCreation(bool cache, bool hunting)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedRetaliationReceivesOnlyGrantsAfterItsOwnCreation(bool hunting)
     {
         TestFixtures.LoadVerifiedManifest("strategic-retaliation-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
@@ -26,7 +24,7 @@ public sealed class StrategicWorldRetaliationResearchTests
             {
                 var targeted = targetIndex == 1;
                 var replace = replaceIndex == 1;
-                var content = StrategicGeneratedRetaliationTests.Content(cache, hunting, replace,
+                var content = StrategicGeneratedRetaliationTests.Content(hunting, replace,
                     noOriginalUfo: targeted && replace, immediateChain: targeted && replace, interrupt: "CORE");
                 var initial = WithSite(StrategicGeneratedRetaliationTests.Initial(content, hunting, targeted));
                 var control = CampaignState.Restore(initial with { World = initial.World with { MissionSites = [] } }, content, new SplitMix64RandomSource(17));
@@ -58,13 +56,11 @@ public sealed class StrategicWorldRetaliationResearchTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void InstantRetaliationWithoutATargetCleansUpBeforeLaterResearch(bool cache, bool hunting)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void InstantRetaliationWithoutATargetCleansUpBeforeLaterResearch(bool hunting)
     {
-        var content = StrategicGeneratedRetaliationTests.Content(cache, hunting, false, instant: true, immediateChain: true, interrupt: "MISSING_RESEARCH");
+        var content = StrategicGeneratedRetaliationTests.Content(hunting, false, instant: true, immediateChain: true, interrupt: "MISSING_RESEARCH");
         var initial = WithSite(StrategicGeneratedRetaliationTests.Initial(content, hunting, false));
         initial = initial with { Bases = initial.Bases.Select(owner => owner with { Longitude = 2 }).ToArray() };
         // Moving the player base outside the source region must not recall the
@@ -85,17 +81,15 @@ public sealed class StrategicWorldRetaliationResearchTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void SiteResearchCannotBypassGeneratedBaseDefenseOrInvalidRetainedLinks(bool cache, bool hunting)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SiteResearchCannotBypassGeneratedBaseDefenseOrInvalidRetainedLinks(bool hunting)
     {
-        var content = StrategicGeneratedRetaliationTests.Content(cache, hunting, false, instant: true, interrupt: "CORE");
+        var content = StrategicGeneratedRetaliationTests.Content(hunting, false, instant: true, interrupt: "CORE");
         AssertTimeBlocked(CampaignState.Restore(WithSite(StrategicGeneratedRetaliationTests.Initial(content, hunting, true)), content, new SplitMix64RandomSource(17)),
             "Retaliation assault arrival requires base-defense simulation.");
         if (hunting) return;
-        content = StrategicGeneratedRetaliationTests.Content(cache, false, false, interrupt: "MISSING_RESEARCH");
+        content = StrategicGeneratedRetaliationTests.Content(false, false, interrupt: "MISSING_RESEARCH");
         AssertTimeBlocked(CampaignState.Restore(WithSite(StrategicGeneratedRetaliationTests.Initial(content, false, false)), content, new SplitMix64RandomSource(17)),
             "Alien mission interruption references undefined research.");
     }

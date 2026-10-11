@@ -11,13 +11,11 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicScriptRuleTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SchedulingRulesRetainOrderedLinkedDataAcrossCache(bool fromCache)
+    [Fact]
+    public void SchedulingRulesRetainOrderedLinkedDataAcrossCache()
     {
         TestFixtures.LoadVerifiedManifest("strategic-script-rules");
-        var rules = StrategicReadinessTestContent.Load("strategic-script-rules.rul", fromCache).RuntimeRules;
+        var rules = StrategicReadinessTestContent.Load("strategic-script-rules.rul").RuntimeRules;
         Assert.Equal(["Z_COMMAND", "A_DEFAULT", "SITE_COMMAND"], rules.MissionScripts.Rules.Select(rule => rule.Id));
         var mission = rules.MissionScripts[rules.MissionScripts.GetRequired("Z_COMMAND")].Value;
         Assert.Equal("history", mission.VariableName);
@@ -91,12 +89,10 @@ public sealed class StrategicScriptRuleTests
         Assert.False(rules.EventScripts[rules.EventScripts.GetRequired("EVENT_DEFAULT")].Value.AffectsGameProgression);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void TimelineSelectionMatchesExtractedReference(bool fromCache)
+    [Fact]
+    public void TimelineSelectionMatchesExtractedReference()
     {
-        var rules = StrategicReadinessTestContent.Load("strategic-script-rules.rul", fromCache).RuntimeRules;
+        var rules = StrategicReadinessTestContent.Load("strategic-script-rules.rul").RuntimeRules;
         var mission = rules.MissionScripts[rules.MissionScripts.GetRequired("Z_COMMAND")].Value;
         var events = rules.EventScripts[rules.EventScripts.GetRequired("EVENT")].Value;
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-script-rules");

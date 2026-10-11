@@ -12,14 +12,12 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldDailyResearchQuantityTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void VariableDailyQuantitiesComposeWithFuelAndLaterSiteResearch(bool cache, bool withSite)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void VariableDailyQuantitiesComposeWithFuelAndLaterSiteResearch(bool withSite)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Content(cache, withSite);
+        var content = Content(withSite);
         HashSet<int> seen = [];
         for (ulong seed = 1; seed <= 12; seed++)
         {
@@ -64,13 +62,11 @@ public sealed class StrategicWorldDailyResearchQuantityTests
         Assert.Equal(2, seen.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void VariableArrivalsStillRequireCommonOrderAndTransferPopulation(bool cache)
+    [Fact]
+    public void VariableArrivalsStillRequireCommonOrderAndTransferPopulation()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = Content(cache, false, extraResearch: "  - {name: EQUIV_B, spawnedItemList: [SUPPLY]}");
+        var content = Content(false, extraResearch: "  - {name: EQUIV_B, spawnedItemList: [SUPPLY]}");
         var campaign = CampaignState.Restore(Snapshot(content, 17, false), content, new SplitMix64RandomSource(17));
         var before = campaign.Capture();
         long work = 0;
@@ -79,8 +75,8 @@ public sealed class StrategicWorldDailyResearchQuantityTests
         AssertTimeBlocked(campaign, "UFO retargeting requires daily research fuel-stock forecasts.");
     }
 
-    internal static RuntimeContent Content(bool cache, bool withSite, int minimum = 2, int maximum = 3, string extra = "", string extraResearch = "") =>
-        StrategicWorldResearchStockAlternativesTests.Content(cache, false, minimum, otherCount: maximum,
+    internal static RuntimeContent Content(bool withSite, int minimum = 2, int maximum = 3, string extra = "", string extraResearch = "") =>
+        StrategicWorldResearchStockAlternativesTests.Content(false, minimum, otherCount: maximum,
             extra: (withSite ? StrategicWorldSiteResearchTests.Deployment.Replace("unlockedResearchOnDespawn: CORE", "unlockedResearchOnDespawn: SITE", StringComparison.Ordinal) : "") + "\n" + extra,
             extraResearch: "  - {name: UNLOCK, cost: 1}\n  - {name: SITE, cost: 1, points: 3}\n  - {name: SITE_AUTO, cost: 0, points: 0, dependencies: [SITE], needItem: true, neededItem: SUPPLY}\n" + extraResearch);
 

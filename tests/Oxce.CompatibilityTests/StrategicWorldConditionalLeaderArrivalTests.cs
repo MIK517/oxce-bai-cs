@@ -10,14 +10,12 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldConditionalLeaderArrivalTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void PossiblePointLeadersOrSafeOldAirborneArrivalPreserveNativeOrder(bool cache)
+    [Fact]
+    public void PossiblePointLeadersOrSafeOldAirborneArrivalPreserveNativeOrder()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
-        var content = Content(cache);
+        var content = Content();
         var region = content.RuntimeRules.Regions[content.RuntimeRules.Regions.GetRequired("REGION")].Value;
         HashSet<int> patterns = [];
         for (ulong seed = 1; seed <= 64; seed++)
@@ -88,16 +86,13 @@ public sealed class StrategicWorldConditionalLeaderArrivalTests
     }
 
     [Theory]
-    [InlineData(false, false, false)]
-    [InlineData(true, false, false)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, true)]
-    [InlineData(false, true, false)]
-    [InlineData(true, true, false)]
-    public void ConditionalAttachmentRetainsFarPursuitAndCloseCombatBoundaries(bool cache, bool close, bool takeoff)
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public void ConditionalAttachmentRetainsFarPursuitAndCloseCombatBoundaries(bool close, bool takeoff)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = Content(cache, "crafts: [{type: SHIP, radarRange: 20000, radarChance: 100}]\n");
+        var content = Content("crafts: [{type: SHIP, radarRange: 20000, radarChance: 100}]\n");
         for (ulong seed = 1; seed <= 64; seed++)
         {
             var initial = Snapshot(content, seed);
@@ -152,8 +147,8 @@ public sealed class StrategicWorldConditionalLeaderArrivalTests
         }
     }
 
-    internal static RuntimeContent Content(bool cache, string extraRules = "") =>
-        StrategicWorldNewbornFirstArrivalTests.Content(cache, false, hunterPercentage: 50, extraRules: extraRules,
+    internal static RuntimeContent Content(string extraRules = "") =>
+        StrategicWorldNewbornFirstArrivalTests.Content(false, hunterPercentage: 50, extraRules: extraRules,
             finalRules: "crafts: [{type: SHIP, fuelMax: 1000}]\n");
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content, ulong seed)

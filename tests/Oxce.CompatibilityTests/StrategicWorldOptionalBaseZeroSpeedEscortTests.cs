@@ -8,23 +8,17 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldOptionalBaseZeroSpeedEscortTests
 {
     [Theory]
-    [InlineData(false, false, 0)]
-    [InlineData(true, false, 0)]
-    [InlineData(false, true, 0)]
-    [InlineData(true, true, 0)]
-    [InlineData(false, false, 5)]
-    [InlineData(true, false, 5)]
-    [InlineData(false, true, 5)]
-    [InlineData(true, true, 5)]
-    public void AirborneOwnSpeedFallbackMatchesOptionalLeaderReturnCap(bool cache, bool reverse, int takeoff)
-        => StrategicWorldOptionalBaseSpeedEscortTests.AssertEquivalentEscort(cache, reverse, takeoff, true, true);
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 5)]
+    [InlineData(true, 5)]
+    public void AirborneOwnSpeedFallbackMatchesOptionalLeaderReturnCap(bool reverse, int takeoff)
+        => StrategicWorldOptionalBaseSpeedEscortTests.AssertEquivalentEscort(reverse, takeoff, true, true);
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DifferentOwnSpeedAndTransferInputsRetainTheirAtomicFuelBoundary(bool cache)
+    [Fact]
+    public void DifferentOwnSpeedAndTransferInputsRetainTheirAtomicFuelBoundary()
     {
-        var content = StrategicWorldOptionalBaseCraftTests.Content(cache, itemFuel: true);
+        var content = StrategicWorldOptionalBaseCraftTests.Content(itemFuel: true);
         var initial = StrategicWorldOptionalBaseSpeedEscortTests.NormalEscort(
             StrategicWorldOptionalBaseSpeedEscortTests.Snapshot(content, 17, false, 0))
             .WithCraft("SHIP", craft => craft with { Logistics = craft.Logistics! with { Speed = 0 } });

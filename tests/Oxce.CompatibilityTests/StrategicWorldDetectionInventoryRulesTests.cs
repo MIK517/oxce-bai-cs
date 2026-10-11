@@ -9,14 +9,12 @@ namespace Oxce.CompatibilityTests;
 /// <summary>Read-only Inventory rules from RuleInventory::ScriptRegister and Mod inventory wrappers.</summary>
 public sealed class StrategicWorldDetectionInventoryRulesTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void InventoryCostsProjectSignedValuesAndReplacementAcrossCache(bool fromCache)
+    [Fact]
+    public void InventoryCostsProjectSignedValuesAndReplacementAcrossCache()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-inventory-cost");
         var rows = TestFixtures.Rows(oracle.RootElement, "costs");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             invs:
               - id: RIGHT
                 refNode:
@@ -39,11 +37,9 @@ public sealed class StrategicWorldDetectionInventoryRulesTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void InventoryLookupAndIdentityMatchNativeBindings(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void InventoryLookupAndIdentityMatchNativeBindings(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var code = "var ptr RuleInventory inventory; var ptr RuleMod absent null; var text id; ";
@@ -54,9 +50,9 @@ public sealed class StrategicWorldDetectionInventoryRulesTests
             code += $"if neq id \"{row.GetProperty("id").GetString()}\"; return DETECTION_NONE 0; end; ";
         }
         code += "return DETECTION_RADAR 100;";
-        RunInventoryScript(code, fromCache, fromCraft);
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, InventoryRules);
-        var other = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, InventoryRules);
+        RunInventoryScript(code, fromCraft);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], InventoryRules);
+        var other = StrategicReadinessTestContent.Load(["strategic-world.rul"], InventoryRules);
         var handle = content.RuntimeRules.Inventories.GetRequired("STR_NONE");
         Assert.Equal("STR_NONE", content.RuntimeRules.Inventories[handle].Value.Id);
         Assert.Throws<InvalidOperationException>(() => content.RuntimeRules.Inventories.Validate(
@@ -64,11 +60,9 @@ public sealed class StrategicWorldDetectionInventoryRulesTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void InventoryTypeAndHandReadersMatchNativeBindings(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void InventoryTypeAndHandReadersMatchNativeBindings(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var code = "var ptr RuleInventory inventory; var ptr RuleInventory absent null; var int type; var int right; var int left; ";
@@ -80,15 +74,13 @@ public sealed class StrategicWorldDetectionInventoryRulesTests
             code += $"inventory.isLeftHand left; if neq left {(row.GetProperty("left").GetBoolean() ? 1 : 0)}; return DETECTION_NONE 0; end; ";
         }
         code += "absent.getType type; absent.isRightHand right; absent.isLeftHand left; if neq type 0; return DETECTION_NONE 0; end; if neq right 0; return DETECTION_NONE 0; end; if neq left 0; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;";
-        RunInventoryScript(code, fromCache, fromCraft);
+        RunInventoryScript(code, fromCraft);
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void ConventionalInventoryAccessorsMatchNativeAndNullReceivers(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ConventionalInventoryAccessorsMatchNativeAndNullReceivers(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var ids = TestFixtures.Rows(oracle.RootElement, "inventoryConventional");
@@ -103,14 +95,14 @@ public sealed class StrategicWorldDetectionInventoryRulesTests
             code += $"absent.getRuleInventory{methods[index]} inventory; if neq inventory null; return DETECTION_NONE 0; end; ";
         }
         code += "return DETECTION_RADAR 100;";
-        RunInventoryScript(code, fromCache, fromCraft);
+        RunInventoryScript(code, fromCraft);
 
         // The member binding returns null before consulting a missing role.
         code = "var ptr RuleInventory inventory; var ptr RuleMod absent; ";
         foreach (var method in methods)
             code += $"absent.getRuleInventory{method} inventory; if neq inventory null; return DETECTION_NONE 0; end; ";
         code += "return DETECTION_RADAR 100;";
-        RunInventoryScript(code, fromCache, fromCraft, MissingInventoryRules);
+        RunInventoryScript(code, fromCraft, MissingInventoryRules);
     }
 
     [Theory]
@@ -123,29 +115,28 @@ public sealed class StrategicWorldDetectionInventoryRulesTests
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         Assert.True(oracle.RootElement.GetProperty("missingInventoryThrows").GetBoolean());
-        foreach (var fromCache in new[] { false, true })
-            foreach (var global in new[] { false, true })
-            {
-                var code = $"var ptr RuleInventory inventory; rules.getRuleInventory{method} inventory; return DETECTION_RADAR 100;";
-                var script = global ? $$"""
-                    extended:
-                      scripts:
-                        detectUfoFromBase:
-                          - new: inventory-read
-                            offset: -1
-                            code: '{{code}}'
-                    """ : $$"""
-                    ufos:
-                      - type: UFO_SCOUT
-                        scripts:
-                          detectUfoFromBase: '{{code}}'
-                    """;
-                var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, MissingInventoryRules + "\n" + script);
-                var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55), "UFO_SCOUT", 2200);
-                AssertTimeBlocked(campaign, $"Detection script requires missing inventory {id}.");
-                campaign = Reload(content, campaign, 214, "missing-inventory-before.sav");
-                AssertTimeBlocked(campaign, $"Detection script requires missing inventory {id}.");
-            }
+        foreach (var global in new[] { false, true })
+        {
+            var code = $"var ptr RuleInventory inventory; rules.getRuleInventory{method} inventory; return DETECTION_RADAR 100;";
+            var script = global ? $$"""
+                extended:
+                  scripts:
+                    detectUfoFromBase:
+                      - new: inventory-read
+                        offset: -1
+                        code: '{{code}}'
+                """ : $$"""
+                ufos:
+                  - type: UFO_SCOUT
+                    scripts:
+                      detectUfoFromBase: '{{code}}'
+                """;
+            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], MissingInventoryRules + "\n" + script);
+            var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55), "UFO_SCOUT", 2200);
+            AssertTimeBlocked(campaign, $"Detection script requires missing inventory {id}.");
+            campaign = Reload(content, campaign, 214, "missing-inventory-before.sav");
+            AssertTimeBlocked(campaign, $"Detection script requires missing inventory {id}.");
+        }
     }
 
     private const string MissingInventoryRules = """
@@ -157,10 +148,8 @@ public sealed class StrategicWorldDetectionInventoryRulesTests
           - delete: STR_GROUND
         """;
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void InventoryTypeAndHandAreIndependent(bool fromCache)
+    [Fact]
+    public void InventoryTypeAndHandAreIndependent()
     {
         RunInventoryScript("""
             var ptr RuleInventory inventory; var int type; var int hand;
@@ -172,7 +161,7 @@ public sealed class StrategicWorldDetectionInventoryRulesTests
             inventory.isRightHand hand; if neq hand 0; return DETECTION_NONE 0; end;
             inventory.isLeftHand hand; if neq hand 0; return DETECTION_NONE 0; end;
             return DETECTION_RADAR 100;
-            """.ReplaceLineEndings(" "), fromCache, false, """
+            """.ReplaceLineEndings(" "), false, """
             invs:
               - id: STR_RIGHT_HAND
                 type: 0
@@ -181,12 +170,10 @@ public sealed class StrategicWorldDetectionInventoryRulesTests
             """);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void NonNullModAliasCannotBypassMissingInventoryGuard(bool fromCache)
+    [Fact]
+    public void NonNullModAliasCannotBypassMissingInventoryGuard()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, MissingInventoryRules + """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], MissingInventoryRules + """
 
             ufos:
               - type: UFO_SCOUT
@@ -200,7 +187,7 @@ public sealed class StrategicWorldDetectionInventoryRulesTests
     [Fact]
     public void InventoryMovementRemainsPreciselyGuarded()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, InventoryRules + """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], InventoryRules + """
 
             ufos:
               - type: UFO_SCOUT
@@ -212,11 +199,9 @@ public sealed class StrategicWorldDetectionInventoryRulesTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void InventoryMovementCostsMatchNativeIdentityNullAndSignedValues(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void InventoryMovementCostsMatchNativeIdentityNullAndSignedValues(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-inventory-cost");
         var rows = TestFixtures.Rows(oracle.RootElement, "costs");
@@ -229,15 +214,13 @@ public sealed class StrategicWorldDetectionInventoryRulesTests
                 $"rules.getRuleInventory target \"{pairs[index].Item2}\"; source.getMoveToCost cost target; " +
                 $"if neq cost {rows[index][0].GetInt32()}; return DETECTION_NONE 0; end; ";
         code += "return DETECTION_RADAR 100;";
-        RunInventoryScript(code, fromCache, fromCraft, MovementRules);
+        RunInventoryScript(code, fromCraft, MovementRules);
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void NativeMovementCostOutputsFeedCalculatedQueries(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NativeMovementCostOutputsFeedCalculatedQueries(bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-inventory-cost");
         var rows = TestFixtures.Rows(oracle.RootElement, "costs");
@@ -257,30 +240,26 @@ public sealed class StrategicWorldDetectionInventoryRulesTests
                 code += $"set quotient {expected}; div quotient cost; if neq quotient 1; return DETECTION_NONE 0; end; ";
         }
         code += "return DETECTION_RADAR 100;";
-        RunInventoryScript(code, fromCache, fromCraft, MovementRules + """
+        RunInventoryScript(code, fromCraft, MovementRules + """
 
             items: [{type: HALF_DAMAGE, damageAlter: {ToHealth: 0.5}}]
             """);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ConditionalSameRegisterMovementAlwaysPreservesIdentity(bool fromCache)
+    [Fact]
+    public void ConditionalSameRegisterMovementAlwaysPreservesIdentity()
     {
         RunInventoryScript("var ptr RuleInventory source; var int cost; " +
             "if eq already_tracked 0; rules.getRuleInventory source \"RIGHT\"; " +
             "else; rules.getRuleInventory source \"LEFT\"; end; source.getMoveToCost cost source; " +
             "if neq cost 0; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
-            fromCache, false, MovementRules);
+            false, MovementRules);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ConditionalMissingMovementCostStopsBeforeTick(bool fromCache)
+    [Fact]
+    public void ConditionalMissingMovementCostStopsBeforeTick()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, MovementRules + """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], MovementRules + """
 
             ufos:
               - type: UFO_SCOUT
@@ -292,36 +271,30 @@ public sealed class StrategicWorldDetectionInventoryRulesTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void NullCheckedMovementDestinationAndAliasAreForecastAtTheCall(bool fromCache, bool fromCraft)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NullCheckedMovementDestinationAndAliasAreForecastAtTheCall(bool fromCraft)
     {
         RunInventoryScript("var ptr RuleInventory source; var ptr RuleInventory target; var ptr RuleInventory alias; var int cost; " +
             "rules.getRuleInventory source \"RIGHT\"; " +
             "if eq already_tracked 0; rules.getRuleInventory target \"LEFT\"; else; rules.getRuleInventory target \"MISSING\"; end; " +
             "if neq target null; set alias target; source.getMoveToCost cost alias; " +
             "if neq cost -7; return DETECTION_NONE 0; end; end; return DETECTION_RADAR 100;",
-            fromCache, fromCraft, MovementRules);
+            fromCraft, MovementRules);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void NullModAliasesBypassMissingConventionalInventoryOnlyOnNullPath(bool fromCache)
+    [Fact]
+    public void NullModAliasesBypassMissingConventionalInventoryOnlyOnNullPath()
     {
         RunInventoryScript("var ptr RuleMod absent null; var ptr RuleMod alias; var ptr RuleInventory target; " +
             "set alias absent; alias.getRuleInventoryGround target; if neq target null; return DETECTION_NONE 0; end; " +
-            "return DETECTION_RADAR 100;", fromCache, false, MissingInventoryRules);
+            "return DETECTION_RADAR 100;", false, MissingInventoryRules);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void LoopCarriedNullDestinationsCannotEscapeMovementForecast(bool fromCache)
+    [Fact]
+    public void LoopCarriedNullDestinationsCannotEscapeMovementForecast()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, MovementRules + """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], MovementRules + """
 
             ufos:
               - type: UFO_SCOUT
@@ -332,23 +305,19 @@ public sealed class StrategicWorldDetectionInventoryRulesTests
         AssertTimeBlocked(campaign, "Detection inventory movement requires a nonnull destination forecast.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ExplicitNullModBranchDoesNotRequireMissingConventionalInventory(bool fromCache)
+    [Fact]
+    public void ExplicitNullModBranchDoesNotRequireMissingConventionalInventory()
     {
         RunInventoryScript("var ptr RuleMod absent null; var ptr RuleMod actual rules; var ptr RuleInventory target; " +
             "if eq already_tracked 0; set actual absent; end; if eq actual null; " +
             "actual.getRuleInventoryGround target; if neq target null; return DETECTION_NONE 0; end; end; " +
-            "return DETECTION_RADAR 100;", fromCache, false, MissingInventoryRules);
+            "return DETECTION_RADAR 100;", false, MissingInventoryRules);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ReferenceForecastBudgetRejectsBeforeStateExpansion(bool fromCache)
+    [Fact]
+    public void ReferenceForecastBudgetRejectsBeforeStateExpansion()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, MovementRules);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], MovementRules);
         var parser = Oxce.Scripting.Compilation.ScriptParserDefinition.FromCatalog("detectUfoFromBase");
         var program = Oxce.Scripting.Compilation.ScriptCompiler.Compile(
             "var ptr RuleInventory source; var ptr RuleInventory target; var int cost; " +
@@ -373,10 +342,10 @@ public sealed class StrategicWorldDetectionInventoryRulesTests
           - id: GROUND
         """;
 
-    private static void RunInventoryScript(string code, bool fromCache, bool fromCraft, string? inventoryRules = null)
+    private static void RunInventoryScript(string code, bool fromCraft, string? inventoryRules = null)
     {
         var parser = fromCraft ? "detectUfoFromCraft" : "detectUfoFromBase";
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             {{inventoryRules ?? InventoryRules}}
             ufos:
               - type: UFO_INVENTORY_READ

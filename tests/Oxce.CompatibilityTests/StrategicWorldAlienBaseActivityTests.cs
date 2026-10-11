@@ -14,13 +14,11 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldAlienBaseActivityTests
 {
     [Theory]
-    [InlineData(false, "BASE_MERGED_OVERRIDE")]
-    [InlineData(true, "BASE_MERGED_OVERRIDE")]
-    [InlineData(false, "BASE_MERGED_GENERATING")]
-    [InlineData(true, "BASE_MERGED_GENERATING")]
-    public void InheritedGeneratingChoiceCreatesMissionWhenSelected(bool cache, string deployment)
+    [InlineData("BASE_MERGED_OVERRIDE")]
+    [InlineData("BASE_MERGED_GENERATING")]
+    public void InheritedGeneratingChoiceCreatesMissionWhenSelected(string deployment)
     {
-        var content = Load(cache);
+        var content = Load();
         var rule = content.RuntimeRules.AlienDeployments[content.RuntimeRules.AlienDeployments.GetRequired(deployment)].Value;
         Assert.Equal(1UL, rule.GenMission["MISSION_SUPPLY"]);
         Assert.Equal(1UL, rule.GenMission[string.Empty]);
@@ -34,13 +32,11 @@ public sealed class StrategicWorldAlienBaseActivityTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void NearCoincidentBaseSightCompletesTheDayAndPersists(bool cache, bool sight)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NearCoincidentBaseSightCompletesTheDayAndPersists(bool sight)
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Snapshot(content, daily: true);
         snapshot = snapshot with
         {
@@ -104,13 +100,11 @@ public sealed class StrategicWorldAlienBaseActivityTests
         EqualRows(oracle.RootElement.GetProperty("craftRows"), crafts);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DailyActivityMatchesFirstRegionAndCountryReference(bool cache)
+    [Fact]
+    public void DailyActivityMatchesFirstRegionAndCountryReference()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-activity");
-        var content = Load(cache);
+        var content = Load();
         var rows = new List<object[]>();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "activityRows"))
         {
@@ -133,12 +127,10 @@ public sealed class StrategicWorldAlienBaseActivityTests
         EqualRows(oracle.RootElement.GetProperty("activityRows"), rows);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CompletingDisabledFacilitiesDiscoverAndContinueAllChecksAcrossReload(bool cache)
+    [Fact]
+    public void CompletingDisabledFacilitiesDiscoverAndContinueAllChecksAcrossReload()
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Snapshot(content, daily: true).WithFacility("SIGHT_ALWAYS", buildTime: 1, disabled: true);
         var owner = snapshot.Bases[0];
         snapshot = snapshot with
@@ -163,13 +155,12 @@ public sealed class StrategicWorldAlienBaseActivityTests
     }
 
     [Theory]
-    [InlineData(false, false, false)]
-    [InlineData(true, false, false)]
-    [InlineData(false, true, false)]
-    [InlineData(false, false, true)]
-    public void PatrolSightIncludesDisabledWeaponBonusAndRollsForKnownBases(bool known, bool bonus, bool cache)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public void PatrolSightIncludesDisabledWeaponBonusAndRollsForKnownBases(bool known, bool bonus)
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Patrol(Snapshot(content), bonus ? 150 : 0, fuel: 100, known);
         if (bonus) snapshot = snapshot.WithCraft("SHIP", craft => craft with
         {
@@ -269,24 +260,20 @@ public sealed class StrategicWorldAlienBaseActivityTests
         AssertTimeBlocked(Restore(content, snapshot), reason);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void HuntingRangeWithoutActiveCraftAdvancesTimerAndReloads(bool cache)
+    [Fact]
+    public void HuntingRangeWithoutActiveCraftAdvancesTimerAndReloads()
     {
-        var content = Load(cache);
+        var content = Load();
         var campaign = Restore(content, Snapshot(content, "BASE_HUNTING"));
         AdvanceOne(campaign);
         Assert.Equal(10, Assert.Single(campaign.Capture().World.AlienBases).MinutesSinceLastHuntMissionGeneration);
         Reload(content, campaign, 40, "inactive-hunting-base.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SightOverflowStopsBeforeFuelConsumption(bool cache)
+    [Fact]
+    public void SightOverflowStopsBeforeFuelConsumption()
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Patrol(Snapshot(content), 0, 100, false).WithCraft("SHIP", craft => craft with
         {
             Logistics = craft.Logistics! with { Weapons = [new("SIGHT_EXCESS", 0), null] },
@@ -360,10 +347,10 @@ public sealed class StrategicWorldAlienBaseActivityTests
             "Alien base activity and sight checks exceed the supported work limit.");
     }
 
-    private static RuntimeContent Load(bool cache = false)
+    private static RuntimeContent Load()
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-activity");
-        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-activity.rul"], cache);
+        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-activity.rul"]);
     }
 
     private static CampaignSnapshot Snapshot(RuntimeContent content, string deployment = "BASE_PASSIVE", bool daily = false)

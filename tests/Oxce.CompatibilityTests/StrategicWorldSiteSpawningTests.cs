@@ -15,13 +15,11 @@ public sealed class StrategicWorldSiteSpawningTests
 {
     private static readonly int[] ChainIds = [7, 8, 9];
     private static readonly int[] ChainTimers = [5400, 5400, 9000];
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ExplicitDeploymentAndSelectedAreaMatchCapturedCreation(bool cache)
+    [Fact]
+    public void ExplicitDeploymentAndSelectedAreaMatchCapturedCreation()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-site-spawn");
-        var content = Load(cache);
+        var content = Load();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "cases"))
         {
             var name = row.GetProperty("name").GetString();
@@ -52,12 +50,10 @@ public sealed class StrategicWorldSiteSpawningTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ImmediateSitesReserveSharedMarkersAndScoreInWaveOrder(bool cache)
+    [Fact]
+    public void ImmediateSitesReserveSharedMarkersAndScoreInWaveOrder()
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Snapshot(content, "DIRECT_CHAIN").WithNextId("DIRECT_MARKER", 7).WithNextId("RULE_MARKER", 9);
         var campaign = CampaignState.Restore(snapshot, content, new QuarterChoices());
         AdvanceOne(campaign);
@@ -70,14 +66,12 @@ public sealed class StrategicWorldSiteSpawningTests
         Reload(content, campaign, 17, "direct-site-chain.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void WhitespaceMarkerNameIsANonemptyIdNamespace(bool cache)
+    [Fact]
+    public void WhitespaceMarkerNameIsANonemptyIdNamespace()
     {
         // Native AlienMission::think tests markerName.empty(); SavedGame::getId keys keep
         // whitespace. Only an empty name lacks an ID namespace.
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], cache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], """
             alienDeployments:
               - {type: WHITESPACE_MARKER_SITE, markerName: ' ', duration: [2, 2]}
             alienMissions:
@@ -106,7 +100,7 @@ public sealed class StrategicWorldSiteSpawningTests
     [InlineData("DIRECT_OVERFLOW_DURATION")]
     public void UnsafeDurationsStopBeforeAnyTickMutation(string mission)
     {
-        var content = Load(false);
+        var content = Load();
         var campaign = CampaignState.Restore(Snapshot(content, mission), content, new QuarterChoices());
         AssertTimeBlocked(campaign, "Direct mission site duration is outside the supported range.");
     }
@@ -116,7 +110,7 @@ public sealed class StrategicWorldSiteSpawningTests
     [InlineData(true)]
     public void WholeChainMarkerAndActivityReservationsBlockAtomically(bool marker)
     {
-        var content = Load(false);
+        var content = Load();
         var snapshot = Snapshot(content, "DIRECT_CHAIN");
         if (marker) snapshot = snapshot.WithNextId("DIRECT_MARKER", int.MaxValue - 1);
         else snapshot = snapshot with { Regions = [snapshot.Regions[0] with { ActivityAlien = [int.MaxValue - 10] }] };
@@ -125,13 +119,11 @@ public sealed class StrategicWorldSiteSpawningTests
             "UFO alien activity exceeds the supported range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void RuleAndTerrainDeploymentChoicesMatchCapturedReference(bool cache)
+    [Fact]
+    public void RuleAndTerrainDeploymentChoicesMatchCapturedReference()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-site-spawn");
-        var content = Load(cache);
+        var content = Load();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "cases"))
         {
             var name = row.GetProperty("name").GetString();
@@ -155,13 +147,11 @@ public sealed class StrategicWorldSiteSpawningTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SingleZeroWeightStillSpawnsAndEmptyOrAllZeroTablesSuppressWithoutDraws(bool cache)
+    [Fact]
+    public void SingleZeroWeightStillSpawnsAndEmptyOrAllZeroTablesSuppressWithoutDraws()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-site-spawn");
-        var content = Load(cache);
+        var content = Load();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "cases"))
         {
             var name = row.GetProperty("name").GetString();
@@ -185,8 +175,8 @@ public sealed class StrategicWorldSiteSpawningTests
         }
     }
 
-    private static RuntimeContent Load(bool cache) => StrategicReadinessTestContent.Load(
-        ["strategic-world.rul", "strategic-site-spawn.rul"], cache);
+    private static RuntimeContent Load() => StrategicReadinessTestContent.Load(
+        ["strategic-world.rul", "strategic-site-spawn.rul"]);
 
     private static CampaignSnapshot Snapshot(RuntimeContent content, string mission, int area = -1, string region = "SITE_SPAWN_REGION")
     {
@@ -207,7 +197,7 @@ public sealed class StrategicWorldSiteSpawningTests
     [InlineData("SITE_OVERFLOW_WEIGHTS")]
     public void MalformedTerrainChoicesFailBeforeTickMutation(string region)
     {
-        var content = Load(false);
+        var content = Load();
         var campaign = CampaignState.Restore(Snapshot(content, "DIRECT_TERRAIN", region: region),
             content, new QuarterChoices());
         var before = campaign.Capture();
@@ -215,12 +205,10 @@ public sealed class StrategicWorldSiteSpawningTests
         Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ZeroWeightMissingChoiceIsUnreachableAndExplicitTypeIgnoresMissingTexture(bool cache)
+    [Fact]
+    public void ZeroWeightMissingChoiceIsUnreachableAndExplicitTypeIgnoresMissingTexture()
     {
-        var content = Load(cache);
+        var content = Load();
         foreach (var scenario in new[] { ("DIRECT_TERRAIN", "SITE_ZERO_MISSING", "DIRECT_DEPLOY"),
                      ("DIRECT_RULE", "SITE_MISSING_TEXTURE", "RULE_DEPLOY") })
         {
@@ -232,12 +220,10 @@ public sealed class StrategicWorldSiteSpawningTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void WeightedTailIsReachableAndItsScoreIsReservedBeforeAnyDraw(bool cache)
+    [Fact]
+    public void WeightedTailIsReachableAndItsScoreIsReservedBeforeAnyDraw()
     {
-        var content = Load(cache);
+        var content = Load();
         var campaign = CampaignState.Restore(Snapshot(content, "DIRECT_TERRAIN"), content, new QuarterChoices(true));
         AdvanceOne(campaign);
         var after = campaign.Capture();
@@ -258,13 +244,11 @@ public sealed class StrategicWorldSiteSpawningTests
         public double NextUnit() { State++; return 0.25; }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void PlayerBaseSitesMatchCapturedSingleMultipleAndSuppressedChoices(bool cache)
+    [Fact]
+    public void PlayerBaseSitesMatchCapturedSingleMultipleAndSuppressedChoices()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-site-spawn");
-        var content = Load(cache);
+        var content = Load();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "cases"))
         {
             var name = row.GetProperty("name").GetString();
@@ -295,12 +279,10 @@ public sealed class StrategicWorldSiteSpawningTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void MissingBaseSuppressesEvenInvalidDurationAndMultipleChoicesCanSelectLastBase(bool cache)
+    [Fact]
+    public void MissingBaseSuppressesEvenInvalidDurationAndMultipleChoicesCanSelectLastBase()
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Snapshot(content, "DIRECT_BASE_ZERO");
         snapshot = snapshot with { Bases = [snapshot.Bases[0] with { Longitude = 2 }] };
         var absent = CampaignState.Restore(snapshot, content, new QuarterChoices());
@@ -328,19 +310,17 @@ public sealed class StrategicWorldSiteSpawningTests
     [Fact]
     public void MaximumIntegerSiteScoreIsForecastAsARealChoice()
     {
-        var content = Load(false);
+        var content = Load();
         var snapshot = Snapshot(content, "DIRECT_BASE_MAX_SCORE");
         snapshot = snapshot with { Regions = [snapshot.Regions[0] with { ActivityAlien = [1] }] };
         var campaign = CampaignState.Restore(snapshot, content, new QuarterChoices());
         AssertTimeBlocked(campaign, "UFO alien activity exceeds the supported range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SiteCreatedAfterHourlyPassIsDetectedNextHourAcrossReload(bool cache)
+    [Fact]
+    public void SiteCreatedAfterHourlyPassIsDetectedNextHourAcrossReload()
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Snapshot(content, "DIRECT_OVERRIDE") with
         {
             Time = new CampaignTime(1, 1, 1, 1999, 1, 59, 55),
@@ -362,7 +342,7 @@ public sealed class StrategicWorldSiteSpawningTests
     [Fact]
     public void SuppressedTerrainChoiceCannotSupplyNegativeScoreHeadroomForLaterWave()
     {
-        var content = Load(false);
+        var content = Load();
         var snapshot = Snapshot(content, "DIRECT_NULL_CHAIN", region: "SITE_NULL_CHOICE") with
         {
             Regions = [Snapshot(content, "DIRECT_NULL_CHAIN").Regions[0] with { ActivityAlien = [int.MaxValue] }],
@@ -374,7 +354,7 @@ public sealed class StrategicWorldSiteSpawningTests
     [Fact]
     public void ExistingNegativeSiteScoresBeforeNewPositiveSites()
     {
-        var content = Load(false);
+        var content = Load();
         var snapshot = Snapshot(content, "DIRECT_CHAIN").WithNextId("DIRECT_MARKER", 7).WithNextId("RULE_MARKER", 9);
         snapshot = snapshot with
         {
@@ -417,14 +397,12 @@ public sealed class StrategicWorldSiteSpawningTests
         AssertTimeBlocked(campaign, "Direct mission site marker names require a nonempty ID namespace.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ZeroHourCreationConsumesCapturedDrawsThenExpiresWithoutDiscovery(bool cache)
+    [Fact]
+    public void ZeroHourCreationConsumesCapturedDrawsThenExpiresWithoutDiscovery()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-site-spawn");
         var row = TestFixtures.Rows(oracle.RootElement, "cases").Single(item => item.GetProperty("name").GetString() == "zero-duration");
-        var content = Load(cache);
+        var content = Load();
         var campaign = CampaignState.Restore(Snapshot(content, "DIRECT_ZERO_DURATION").WithNextId("DIRECT_MARKER", 7),
             content, new QuarterChoices());
         AdvanceOne(campaign);
@@ -437,12 +415,10 @@ public sealed class StrategicWorldSiteSpawningTests
         Reload(content, campaign, 17, "zero-hour-site-deleted.sav");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ZeroHourChainsAllocateAllIdsBeforeDespawnCountersAndUsePenalties(bool cache)
+    [Fact]
+    public void ZeroHourChainsAllocateAllIdsBeforeDespawnCountersAndUsePenalties()
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Snapshot(content, "DIRECT_ZERO_CHAIN");
         var campaign = CampaignState.Restore(snapshot, content, new QuarterChoices());
         AdvanceOne(campaign);
@@ -460,20 +436,18 @@ public sealed class StrategicWorldSiteSpawningTests
     [InlineData(false)]
     public void ZeroHourCounterReservationsIncludeBirthIdAllocation(bool markerNamespace)
     {
-        var content = Load(false);
+        var content = Load();
         var snapshot = Snapshot(content, "DIRECT_ZERO_COUNTERS")
             .WithNextId(markerNamespace ? "DIRECT_MARKER" : "shared", int.MaxValue - 1);
         var campaign = CampaignState.Restore(snapshot, content, new QuarterChoices());
         AssertTimeBlocked(campaign, "Mission site custom counter exceeds the supported range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ExclusiveZeroHourDeploymentsReserveLargestCounterMultiplicity(bool cache)
+    [Fact]
+    public void ExclusiveZeroHourDeploymentsReserveLargestCounterMultiplicity()
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], cache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], """
             globe:
               textures:
                 - {id: 200, deployments: {EXPIRY_TWO: 1, EXPIRY_ONE: 1}}
@@ -508,7 +482,7 @@ public sealed class StrategicWorldSiteSpawningTests
     [InlineData(true)]
     public void MixedDurationForecastReservesEitherExpiryPenaltyOrLivePoints(bool maximum)
     {
-        var content = Load(false);
+        var content = Load();
         var snapshot = Snapshot(content, "DIRECT_MIXED_DURATION");
         var campaign = CampaignState.Restore(snapshot, content, new QuarterChoices(maximum));
         AdvanceOne(campaign);

@@ -21,17 +21,15 @@ public sealed class StrategicWorldSiteResearchTests
             despawnPenalty: 7
         """;
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SiteExpiryExecutesNativeMissionResearchOrderingAndPersistsOnce(bool cache)
+    [Fact]
+    public void SiteExpiryExecutesNativeMissionResearchOrderingAndPersistsOnce()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-research-diary-execution");
         TestFixtures.LoadVerifiedManifest("strategic-site-timer");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "executionRows").Where(row => row.GetProperty("mission").GetBoolean()))
         {
             var scenario = row.GetProperty("scenario").GetInt32();
-            var content = Content(cache, scenario, Deployment);
+            var content = Content(scenario, Deployment);
             var snapshot = Snapshot(content) with
             {
                 DebugMode = row.GetProperty("debug").GetBoolean(),
@@ -62,7 +60,7 @@ public sealed class StrategicWorldSiteResearchTests
     [Fact]
     public void AllExpiringSitesShareDiaryCapacityBeforeWholeTickMutation()
     {
-        var content = Content(false, 2, Deployment);
+        var content = Content(2, Deployment);
         var snapshot = Snapshot(content);
         var first = snapshot.World.MissionSites[0];
         snapshot = snapshot with
@@ -80,7 +78,7 @@ public sealed class StrategicWorldSiteResearchTests
     public void SiteEventUsesItsOwnPostGrantStateAndBlocksUnavailablePayloadAtomically(bool interrupted)
     {
         var deployment = Deployment.Replace("despawnPenalty: 7", "despawnPenalty: 7\n    despawnEvents: {EVENT_DESPAWN: 1}", StringComparison.Ordinal);
-        var content = Content(false, 0, deployment + "\n" + $$$"""
+        var content = Content(0, deployment + "\n" + $$$"""
             events:
               - {name: EVENT_DESPAWN, interruptResearch: {{{(interrupted ? "CORE" : "AUTO")}}}}
             """);
@@ -99,7 +97,7 @@ public sealed class StrategicWorldSiteResearchTests
     [Fact]
     public void LaterSiteResearchCannotSuppressAnEarlierSiteEvent()
     {
-        var content = Content(false, 0, Deployment + "\n  - {type: EARLY_SITE, markerName: EARLY_MARKER, despawnEvents: {EVENT_DESPAWN: 1}}\n" +
+        var content = Content(0, Deployment + "\n  - {type: EARLY_SITE, markerName: EARLY_MARKER, despawnEvents: {EVENT_DESPAWN: 1}}\n" +
             "events:\n  - {name: EVENT_DESPAWN, interruptResearch: CORE}\n");
         var snapshot = Snapshot(content);
         snapshot = snapshot with
@@ -116,7 +114,7 @@ public sealed class StrategicWorldSiteResearchTests
     [Fact]
     public void SiteResearchCannotBypassAnActiveHunterCombatBoundary()
     {
-        var content = Content(false, 0, Deployment);
+        var content = Content(0, Deployment);
         var existing = CreateUfoTransitCampaign(content, new(2, 2, 1, 1999, 0, 29, 55)).Capture();
         existing = existing with
         {

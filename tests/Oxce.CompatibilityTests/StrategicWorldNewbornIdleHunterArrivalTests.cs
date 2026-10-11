@@ -10,18 +10,16 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldNewbornIdleHunterArrivalTests
 {
     [Theory]
-    [InlineData(false, 50)]
-    [InlineData(true, 50)]
-    [InlineData(false, 100)]
-    [InlineData(true, 100)]
-    public void NoTargetConstructorsPreserveRandomChoicesAndFirstArrival(bool cache, int percentage)
+    [InlineData(50)]
+    [InlineData(100)]
+    public void NoTargetConstructorsPreserveRandomChoicesAndFirstArrival(int percentage)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         HashSet<(bool Hunter, int Mode, int Behavior)> outcomes = [];
         for (var craftKind = 0; craftKind < 6; craftKind++)
         {
-            var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false,
+            var content = StrategicWorldNewbornFirstArrivalTests.Content(false,
                 hunterPercentage: percentage, extraRules: craftKind == 2 ? "crafts: [{type: SHIP, undetectable: true}]" : "",
                 radarRange: craftKind == 4 ? 300 : craftKind == 5 ? int.MinValue : 0);
             for (ulong seed = 1; seed <= 32; seed++)
@@ -93,13 +91,11 @@ public sealed class StrategicWorldNewbornIdleHunterArrivalTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void CombatAndEscortCapacityRetainAtomicBoundaries(bool cache, bool escort)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CombatAndEscortCapacityRetainAtomicBoundaries(bool escort)
     {
-        var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false, hunterPercentage: 50, escort: escort, radarRange: 2000);
+        var content = StrategicWorldNewbornFirstArrivalTests.Content(false, hunterPercentage: 50, escort: escort, radarRange: 2000);
         var initial = StrategicWorldNewbornFirstArrivalTests.Snapshot(content, 17);
         if (escort)
             initial = (initial with { Bases = [initial.Bases[0] with { Crafts = [], Soldiers = [] }] })
@@ -122,12 +118,10 @@ public sealed class StrategicWorldNewbornIdleHunterArrivalTests
                 "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void NoTargetArrivalCannotHideInvalidCraftAttraction(bool cache)
+    [Fact]
+    public void NoTargetArrivalCannotHideInvalidCraftAttraction()
     {
-        var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false, hunterPercentage: 100,
+        var content = StrategicWorldNewbornFirstArrivalTests.Content(false, hunterPercentage: 100,
             extraRules: "crafts: [{type: SHIP, soldiers: 2147483647}]");
         var initial = StrategicWorldNewbornFirstArrivalTests.Snapshot(content, 17).WithCraft("SHIP", craft => craft with
         {

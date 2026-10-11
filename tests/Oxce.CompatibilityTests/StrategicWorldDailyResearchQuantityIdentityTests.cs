@@ -12,14 +12,12 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldDailyResearchQuantityIdentityTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void CommonDailyCountersAllocateNativeCraftAndSoldierBirthsDespiteVariableStocks(bool cache, bool person)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CommonDailyCountersAllocateNativeCraftAndSoldierBirthsDespiteVariableStocks(bool person)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Content(cache, person);
+        var content = Content(person);
         var counter = person ? "STR_SOLDIER" : "PRODUCED_CRAFT";
         foreach (var start in new[] { 1, 20, int.MaxValue - 1 })
         {
@@ -63,14 +61,12 @@ public sealed class StrategicWorldDailyResearchQuantityIdentityTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void CommonCountersStillRefuseOverflowAndInsufficientBirthCapacityAtomically(bool cache, bool person)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CommonCountersStillRefuseOverflowAndInsufficientBirthCapacityAtomically(bool person)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = Content(cache, person);
+        var content = Content(person);
         var counter = person ? "STR_SOLDIER" : "PRODUCED_CRAFT";
         var initial = Snapshot(content, 17, counter, int.MaxValue);
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
@@ -87,22 +83,20 @@ public sealed class StrategicWorldDailyResearchQuantityIdentityTests
             person ? "Soldier production exhausts the soldier identity range." : "Craft production exhausts the craft identity range.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void UpperDailyArrivalQuantityCannotOverflowSharedStock(bool cache)
+    [Fact]
+    public void UpperDailyArrivalQuantityCannotOverflowSharedStock()
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = StrategicWorldDailyResearchQuantityTests.Content(cache, false, int.MaxValue - 1, int.MaxValue);
+        var content = StrategicWorldDailyResearchQuantityTests.Content(false, int.MaxValue - 1, int.MaxValue);
         var initial = StrategicWorldDailyResearchQuantityTests.Snapshot(content, 17, false);
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "Research arrivals exceed the supported stock range.");
     }
 
-    internal static RuntimeContent Content(bool cache, bool person, bool floorRewardTrace = false, bool differentFinalCounters = false)
+    internal static RuntimeContent Content(bool person, bool floorRewardTrace = false, bool differentFinalCounters = false)
     {
         var counter = person ? "STR_SOLDIER" : "PRODUCED_CRAFT";
-        return StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$"""
+        return StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""
             crafts:
               - {type: SHIP, fuelMax: 1000, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}
               - {type: PRODUCED_CRAFT, fuelMax: 0}

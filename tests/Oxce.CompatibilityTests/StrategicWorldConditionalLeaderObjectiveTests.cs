@@ -10,15 +10,11 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldConditionalLeaderObjectiveTests
 {
     [Theory]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    [InlineData(false, 5)]
-    [InlineData(true, 5)]
-    public void ConditionalAirborneArrivalPreservesThinkTimeObjectives(bool cache, int objective)
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(5)]
+    public void ConditionalAirborneArrivalPreservesThinkTimeObjectives(int objective)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "transitionRows"), row =>
@@ -28,7 +24,7 @@ public sealed class StrategicWorldConditionalLeaderObjectiveTests
         TestFixtures.LoadVerifiedManifest("strategic-infiltration-region");
         foreach (var earth in new[] { false, true })
         {
-            var content = StrategicWorldNewbornObjectiveArrivalTests.Content(cache, objective, earth,
+            var content = StrategicWorldNewbornObjectiveArrivalTests.Content(objective, earth,
                 hunterPercentage: 50, waveObjective: objective != 5);
             HashSet<int> patterns = [];
             for (ulong seed = 1; seed <= 64; seed++)

@@ -11,13 +11,11 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldSiteExpiryTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SuppressedInstantEventsExpireWithoutSchedulingOrHistoryMutation(bool cache)
+    [Fact]
+    public void SuppressedInstantEventsExpireWithoutSchedulingOrHistoryMutation()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-event");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-expiry.rul"], cache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-expiry.rul"]);
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "despawnChoices"))
         {
             var name = row[0].GetString()!;
@@ -151,13 +149,11 @@ public sealed class StrategicWorldSiteExpiryTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ForcedSiteExpiryRestoresUfoWaypointBeforeMovementAndReload(bool cache)
+    [Fact]
+    public void ForcedSiteExpiryRestoresUfoWaypointBeforeMovementAndReload()
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-timer");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-timer.rul", "strategic-site-expiry.rul"], cache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-timer.rul", "strategic-site-expiry.rul"]);
         var snapshot = CreateSnapshot(content, "UFO follows site") with { Time = new(1, 1, 1, 1999, 1, 29, 55) };
         var ufo = new UfoSnapshot(9, "UFO_SCOUT", 4, "TRAJ_PATROL", 0, 0.4, 0.2, UfoStatus.Flying, WorldAltitudes.High)
         {

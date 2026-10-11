@@ -31,12 +31,10 @@ public sealed class StrategicWorldCrashedUfoTests
             CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GameplayCrashTransitionsAndMissionReleaseMatchOracleAcrossReload(bool cache)
+    [Fact]
+    public void GameplayCrashTransitionsAndMissionReleaseMatchOracleAcrossReload()
     {
-        var content = Load(cache);
+        var content = Load();
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-crashed-ufo");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows"))
         {
@@ -65,12 +63,10 @@ public sealed class StrategicWorldCrashedUfoTests
         }
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ExpiredCrashReturnsCraftBeforeLandingAndSurvivesTransitionReload(bool cache)
+    [Fact]
+    public void ExpiredCrashReturnsCraftBeforeLandingAndSurvivesTransitionReload()
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Snapshot(content, 1800, half: true);
         var ufo = snapshot.World.Ufos[0];
         snapshot = snapshot.WithCraft("SHIP", craft => craft with
@@ -189,12 +185,10 @@ public sealed class StrategicWorldCrashedUfoTests
         AssertTimeBlocked(Restore(content, snapshot), "Crashed UFO cannot expire while a mission site references it.");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CrashExpiryComposesWithMissionCleanupForSeventyTwoHours(bool cache)
+    [Fact]
+    public void CrashExpiryComposesWithMissionCleanupForSeventyTwoHours()
     {
-        var content = Load(cache);
+        var content = Load();
         var snapshot = Snapshot(content, 5400) with { Time = new(1, 1, 1, 1999, 0, 0, 0) };
         snapshot = snapshot with
         {
@@ -215,10 +209,10 @@ public sealed class StrategicWorldCrashedUfoTests
         Reload(content, campaign, 40, "after-composed-crash-cleanup.sav");
     }
 
-    private static RuntimeContent Load(bool cache = false)
+    private static RuntimeContent Load()
     {
         TestFixtures.LoadVerifiedManifest("strategic-crashed-ufo");
-        return StrategicReadinessTestContent.Load("strategic-world.rul", cache);
+        return StrategicReadinessTestContent.Load("strategic-world.rul");
     }
     private static CampaignSnapshot Snapshot(RuntimeContent content, int seconds, bool half = false, bool detected = true)
     {

@@ -10,15 +10,13 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldSiteResearchDetectionTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SafeTransitCommitsRandomInterruptionAndDetectionReadsPreSiteResearch(bool cache)
+    [Fact]
+    public void SafeTransitCommitsRandomInterruptionAndDetectionReadsPreSiteResearch()
     {
         TestFixtures.LoadVerifiedManifest("strategic-detection-scripts");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
             facilities:
               - {type: STORES, radarRange: 5000, radarChance: 100}
             research:

@@ -10,13 +10,11 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldPointDestinationTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OrderedPointDestinationsConsumeReferenceDrawsAcrossReloads(bool cache)
+    [Fact]
+    public void OrderedPointDestinationsConsumeReferenceDrawsAcrossReloads()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-point-destinations.rul"], cache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-point-destinations.rul"]);
         var seen = new HashSet<int>();
         foreach (var seed in new ulong[] { 1, 17, 42, 84 })
         {
@@ -52,12 +50,10 @@ public sealed class StrategicWorldPointDestinationTests
         Assert.Equal(2, seen.Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void MixedPointCandidatesPreserveSelectedFirstArrivalAndContinuingFlight(bool cache)
+    [Fact]
+    public void MixedPointCandidatesPreserveSelectedFirstArrivalAndContinuingFlight()
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-point-destinations.rul"], cache);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-point-destinations.rul"]);
         var initial = CreateSnapshot(content, "Mixed first-arrival candidates");
         var arrivedSeen = false;
         var continuingSeen = false;

@@ -10,32 +10,22 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldPassiveLeaderFollowerTests
 {
     [Theory]
-    [InlineData(false, false, "ignored")]
-    [InlineData(true, false, "ignored")]
-    [InlineData(false, true, "ignored")]
-    [InlineData(true, true, "ignored")]
-    [InlineData(false, false, "crashed")]
-    [InlineData(true, false, "crashed")]
-    [InlineData(false, true, "crashed")]
-    [InlineData(true, true, "crashed")]
-    [InlineData(false, false, "expired")]
-    [InlineData(true, false, "expired")]
-    [InlineData(false, true, "expired")]
-    [InlineData(true, true, "expired")]
-    [InlineData(false, false, "destroyed")]
-    [InlineData(true, false, "destroyed")]
-    [InlineData(false, true, "destroyed")]
-    [InlineData(true, true, "destroyed")]
-    [InlineData(false, false, "reactivated")]
-    [InlineData(true, false, "reactivated")]
-    [InlineData(false, true, "reactivated")]
-    [InlineData(true, true, "reactivated")]
-    public void PassiveFollowersCutPositionDependenceAfterTimedTransitions(bool cache, bool reverse, string kind)
+    [InlineData(false, "ignored")]
+    [InlineData(true, "ignored")]
+    [InlineData(false, "crashed")]
+    [InlineData(true, "crashed")]
+    [InlineData(false, "expired")]
+    [InlineData(true, "expired")]
+    [InlineData(false, "destroyed")]
+    [InlineData(true, "destroyed")]
+    [InlineData(false, "reactivated")]
+    [InlineData(true, "reactivated")]
+    public void PassiveFollowersCutPositionDependenceAfterTimedTransitions(bool reverse, string kind)
     {
         TestFixtures.LoadVerifiedManifest("strategic-crashed-ufo");
         TestFixtures.LoadVerifiedManifest("strategic-world");
         TestFixtures.LoadVerifiedManifest("strategic-site-timer");
-        var content = StrategicWorldRegionalNewLeaderTests.Content(cache, true, """
+        var content = StrategicWorldRegionalNewLeaderTests.Content(true, """
             alienDeployments:
               - {type: PASSIVE_SITE, markerName: PASSIVE_SITE, duration: [1, 1], points: 0, despawnPenalty: 0}
             """);
