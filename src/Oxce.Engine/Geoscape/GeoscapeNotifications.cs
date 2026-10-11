@@ -63,9 +63,10 @@ public static class GeoscapeNotifications
         GeoscapePopupAction OkCancelOnly() => new(tr("STR_OK"), CancelKey: true);
         GeoscapePopupAction OkFiveSeconds() => new(tr("STR_OK_5_SECONDS"), ResetSpeed: true, OkKey: true);
         GeoscapePopupAction Cancel() => new(tr("STR_CANCEL_UC"), CancelKey: true);
-        // ItemsArrivingState and ProductionCompleteState: the base button resets the speed and is bound to Enter.
-        GeoscapePopupAction GoToBase(int baseId, string label = "STR_GO_TO_BASE") =>
-            new(tr(label), ResetSpeed: true, OkKey: true) { Intent = new BaseIntent(baseId) };
+        // ItemsArrivingState and ProductionCompleteState: the base button resets the speed; only
+        // ItemsArrivingState binds it to Enter.
+        GeoscapePopupAction GoToBase(int baseId, string label = "STR_GO_TO_BASE", bool okKey = false) =>
+            new(tr(label), ResetSpeed: true, OkKey: okKey) { Intent = new BaseIntent(baseId) };
         switch (notification)
         {
             case UfoContactDetected detected:
@@ -130,10 +131,10 @@ public static class GeoscapeNotifications
                     Format(tr(WorldTargetReference.WaypointType), arrived.WaypointId)), [tr("STR_NOW_PATROLLING")],
                     [
                         OkCancelOnly(),
-                        // CraftPatrolState::btnRedirectClick opens SelectDestinationState without a timer reset.
+                        // CraftPatrolState::btnRedirectClick opens GeoscapeCraftState without a timer reset.
                         new(tr("STR_REDIRECT_CRAFT"), OkKey: true)
                         {
-                            Intent = new SelectDestinationIntent([new(arrived.BaseId, arrived.CraftTypeId, arrived.CraftId)]),
+                            Intent = new CraftIntent(new(arrived.BaseId, arrived.CraftTypeId, arrived.CraftId)),
                         },
                     ]);
             case CraftTargetLost lostTarget:
@@ -141,7 +142,7 @@ public static class GeoscapeNotifications
                     [tr("STR_TRACKING_LOST"), lostTarget.ReturningToBase ? tr("STR_RETURNING_TO_BASE") : tr("STR_NOW_PATROLLING")],
                     [Ok()]);
             case SuppliesArrived supplies:
-                return new(tr("STR_ITEMS_ARRIVING"), [BaseName(supplies.BaseId)], [OkCancelOnly(), GoToBase(supplies.BaseId)]);
+                return new(tr("STR_ITEMS_ARRIVING"), [BaseName(supplies.BaseId)], [OkCancelOnly(), GoToBase(supplies.BaseId, okKey: true)]);
             case CampaignConstructionCompleted construction:
                 return new(Format(tr("STR_CONSTRUCTION_OF_FACILITY_AT_BASE_IS_COMPLETE"), tr(construction.RuleId),
                     BaseName(construction.BaseId)), [], [OkCancelOnly(), GoToBase(construction.BaseId)]);
@@ -176,7 +177,7 @@ public static class GeoscapeNotifications
             world.Crafts.FirstOrDefault(craft => (baseId is null || craft.BaseId == baseId) && craft.TypeId == typeId &&
                 craft.Id == craftId) is { Name.Length: > 0 } craft
                 ? craft.Name
-                : tr(typeId) + "-" + craftId.ToString(CultureInfo.InvariantCulture);
+                : GeoscapeScreens.DefaultCraftName(typeId, craftId, tr);
 
         string BaseName(int baseId) =>
             world.Bases.FirstOrDefault(owner => owner.Id == baseId)?.Name ?? "#" + baseId.ToString(CultureInfo.InvariantCulture);

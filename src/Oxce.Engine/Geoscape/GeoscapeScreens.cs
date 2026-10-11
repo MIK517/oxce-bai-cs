@@ -17,7 +17,9 @@ public sealed record FollowLeaderIntent : GeoscapeIntent;
 /// <summary>Where a wing is sent: a globe target or a new waypoint.</summary>
 public sealed record GeoscapeDestination(WorldTargetReference? Target, WorldPosition? Waypoint, string Label)
 {
-    public WorldPosition Position => Waypoint ?? new WorldPosition(Target!.Longitude, Target.Latitude);
+    public WorldPosition Position => Waypoint ?? (Target is { } target
+        ? new WorldPosition(target.Longitude, target.Latitude)
+        : throw new InvalidOperationException("A destination needs a target or a waypoint."));
 }
 
 /// <summary>
@@ -40,7 +42,15 @@ public static class GeoscapeScreens
     }
 
     public static string CraftName(CampaignWorldCraft craft, Func<string, string> tr) =>
-        craft.Name.Length != 0 ? craft.Name : tr(craft.TypeId) + "-" + craft.Id.ToString(CultureInfo.InvariantCulture);
+        craft.Name.Length != 0 ? craft.Name : DefaultCraftName(craft.TypeId, craft.Id, tr);
+
+    /// <summary>Craft::getDefaultName: STR_CRAFTNAME with the craft type and id ("{0}-{1}" without the string).</summary>
+    public static string DefaultCraftName(string typeId, int id, Func<string, string> tr)
+    {
+        var pattern = tr("STR_CRAFTNAME");
+        if (pattern == "STR_CRAFTNAME") pattern = "{0}-{1}";
+        return Format(pattern, tr(typeId), id);
+    }
 
     /// <summary>InterceptState::lstCraftsLeftClick allowStart.</summary>
     public static bool CanStart(CampaignWorldCraft craft) =>
@@ -48,7 +58,7 @@ public static class GeoscapeScreens
 
     /// <summary>GeoscapeCraftState for an airborne craft.</summary>
     public static GeoscapePopup Craft(CampaignWorldCraft craft, CampaignWorldOverview world, RuntimeRuleCatalog rules,
-        Func<string, string> tr)
+        Func<string, string> tr, int etaMode = 0)
     {
         ArgumentNullException.ThrowIfNull(craft);
         ArgumentNullException.ThrowIfNull(world);
@@ -65,7 +75,8 @@ public static class GeoscapeScreens
         };
         if (craft.ShieldMaximum != 0)
             lines.Add(Format(tr("STR_SHIELD"), Percent(craft.Shield * 100 / craft.ShieldMaximum)));
-        var slotLabels = rules.Crafts.TryGet(craft.TypeId, out var handle) ? rules.Crafts[handle].Value.WeaponStrings : [];
+        var rule = rules.Crafts.TryGet(craft.TypeId, out var handle) ? rules.Crafts[handle].Value : null;
+        var slotLabels = rule?.WeaponStrings ?? [];
         for (var slot = 0; slot < craft.Weapons.Count; slot++)
         {
             var label = slot < slotLabels.Count ? slotLabels[slot] : "";
@@ -75,8 +86,12 @@ public static class GeoscapeScreens
             if (weapon is { AmmoMaximum: > 0 }) text += "  " + Format(tr("STR_ROUNDS_"), weapon.Ammo);
             lines.Add(text);
         }
-        lines.Add(tr("STR_SOLDIERS_UC") + " " + Number(craft.Soldiers) + "  " + tr("STR_HWPS") + " " + Number(craft.Vehicles));
-        if (craft.Destination is { } destination && Eta(craft, destination, world, tr) is { } eta) lines.Add(eta);
+        // The crew lines are hidden for craft that cannot carry soldiers or vehicles.
+        var crew = new List<string>(2);
+        if (rule is not { EffectiveMaximumUnits: 0 }) crew.Add(tr("STR_SOLDIERS_UC") + " " + Number(craft.Soldiers));
+        if (rule is not { EffectiveMaximumVehiclesAndLargeSoldiers: 0 }) crew.Add(tr("STR_HWPS") + " " + Number(craft.Vehicles));
+        if (crew.Count != 0) lines.Add(string.Join("  ", crew));
+        if (craft.Destination is { } destination && Eta(craft, destination, world, tr, etaMode) is { } eta) lines.Add(eta);
         var actions = new List<GeoscapePopupAction>();
         // GeoscapeCraftState hides its commands for a craft returning on low fuel or after its mission.
         if (!craft.LowFuel && !craft.MissionComplete)
@@ -134,13 +149,15 @@ public static class GeoscapeScreens
             {
                 Intent = new InterceptPageIntent((page + 1) % pages),
             });
+        // InterceptState opened from a base offers that base's screens.
+        if (baseId is { } owner) actions.Add(new(tr("STR_GO_TO_BASE")) { Intent = new BaseIntent(owner) });
         actions.Add(new(tr("STR_CANCEL_UC"), CancelKey: true));
         return new(tr("STR_LAUNCH_INTERCEPTION"), lines, actions);
     }
 
     /// <summary>ConfirmDestinationState: the target, the leader's ETA and the follow-leader toggle.</summary>
     public static GeoscapePopup Confirm(CampaignWorldOverview world, IReadOnlyList<CraftKey> wing,
-        GeoscapeDestination destination, bool followLeader, Func<string, string> tr)
+        GeoscapeDestination destination, bool followLeader, Func<string, string> tr, int etaMode = 0)
     {
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(wing);
@@ -149,7 +166,8 @@ public static class GeoscapeScreens
         if (wing.Count == 0) throw new ArgumentException("A wing needs a leader.", nameof(wing));
         var lines = new List<string>();
         var leader = world.Crafts.FirstOrDefault(craft => Key(craft) == wing[0]);
-        if (leader is not null && EtaTo(leader, destination.Target, destination.Position, world, tr) is { } eta) lines.Add(eta);
+        if (leader is not null && EtaTo(leader, destination.Target, destination.Position, world, tr, etaMode) is { } eta)
+            lines.Add(eta);
         var actions = new List<GeoscapePopupAction>
         {
             new(tr("STR_OK"), OkKey: true)
@@ -195,19 +213,19 @@ public static class GeoscapeScreens
         ]);
     }
 
-    /// <summary>GeoscapeCraftState/ConfirmDestinationState ETA: whole hours at maximum speed.</summary>
+    /// <summary>
+    /// GeoscapeCraftState/ConfirmDestinationState ETA: whole hours at maximum speed, shown as
+    /// Options::oxceShowETAMode asks (0, the default: never; 1: not for moving targets; 2: always).
+    /// </summary>
     public static string? Eta(CampaignWorldCraft craft, WorldTargetReference destination, CampaignWorldOverview world,
-        Func<string, string> tr) =>
-        EtaTo(craft, destination, new WorldPosition(destination.Longitude, destination.Latitude), world, tr);
+        Func<string, string> tr, int etaMode) =>
+        EtaTo(craft, destination, new WorldPosition(destination.Longitude, destination.Latitude), world, tr, etaMode);
 
     private static string? EtaTo(CampaignWorldCraft craft, WorldTargetReference? target, WorldPosition position,
-        CampaignWorldOverview world, Func<string, string> tr)
+        CampaignWorldOverview world, Func<string, string> tr, int etaMode)
     {
-        // oxceShowETAMode 1 (the default): no ETA for moving targets.
-        if (target is { Kind: WorldTargetKind.Craft }) return null;
-        if (target is { Kind: WorldTargetKind.Ufo } &&
-            world.Targets.FirstOrDefault(entry => entry.Kind == WorldTargetKind.Ufo && entry.Reference.UniqueId == target.UniqueId)
-                is not { Altitude: "STR_GROUND" }) return null;
+        if (etaMode <= 0) return null;
+        if (etaMode == 1 && IsMoving(target, world)) return null;
         if (craft.SpeedMaximum <= 0) return null;
         var radians = WorldGeometry.Distance(new WorldPosition(craft.Longitude, craft.Latitude), position);
         var distance = (long)(radians * 60.0 * (180.0 / Math.PI));
@@ -218,6 +236,16 @@ public static class GeoscapeScreens
         if (hours > 0 || days == 0) text += (days > 0 ? "/" : "") + Format(tr("STR_HOUR_SHORT"), hours);
         return Format(tr("STR_ETA"), text);
     }
+
+    /// <summary>A moving target (MovingTarget with a speed): an airborne UFO or a craft in flight.</summary>
+    private static bool IsMoving(WorldTargetReference? target, CampaignWorldOverview world) => target?.Kind switch
+    {
+        WorldTargetKind.Craft => world.Crafts.FirstOrDefault(craft => craft.TypeId == target.TypeId && craft.Id == target.Id)
+            is { Speed: > 0 },
+        WorldTargetKind.Ufo => world.Targets.FirstOrDefault(entry => entry.Kind == WorldTargetKind.Ufo &&
+            entry.Reference.UniqueId == target.UniqueId) is { Altitude: not "STR_GROUND" },
+        _ => false,
+    };
 
     /// <summary>GeoscapeCraftState status text.</summary>
     public static string CraftStatus(CampaignWorldCraft craft, CampaignWorldOverview world, Func<string, string> tr)
@@ -250,7 +278,8 @@ public static class GeoscapeScreens
                 ? tr("STR_PILOT_MISSING")
                 : tr(craft.Status);
         if (craft.Destination is null) return tr("STR_PATROLLING");
-        if (craft.LowFuel || craft.MissionComplete || craft.Destination is { Kind: WorldTargetKind.Base })
+        if (craft.LowFuel || craft.MissionComplete ||
+            craft.Destination is { Kind: WorldTargetKind.Base } home && home.Id == craft.BaseId)
             return tr("STR_RETURNING");
         return craft.Destination.Kind switch
         {
