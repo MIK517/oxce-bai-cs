@@ -56,6 +56,12 @@ public readonly record struct ResourceHandle
     public ResourceKind Kind { get; }
 }
 
+/// <summary>
+/// The frame a subdivided extra sprite takes from its image: ExtraSprites::loadSurfaceSet loads
+/// the image into a surface of the declared size and copies <c>subX</c> by <c>subY</c> cells.
+/// </summary>
+public readonly record struct ResourceSubFrame(int X, int Y, int Width, int Height, int SourceWidth, int SourceHeight);
+
 public sealed record ResolvedResourceDescriptor(
     ResourceHandle Handle,
     string Id,
@@ -68,7 +74,11 @@ public sealed record ResolvedResourceDescriptor(
     int Width,
     int Height,
     string OwnerSection,
-    string OwnerId);
+    string OwnerId)
+{
+    /// <summary>Set for one cell of a subdivided image; the descriptor size is then the cell size.</summary>
+    public ResourceSubFrame? SubFrame { get; init; }
+}
 
 public sealed record ResolvedResourceIndex(
     ResourceKind Kind,
