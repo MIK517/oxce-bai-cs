@@ -7,7 +7,8 @@ namespace Oxce.Engine.Geoscape;
 /// <summary>
 /// Draws the globe into an indexed surface in Globe::draw order: ocean, textured land, the
 /// day/night shadow over every globe pixel, then markers. Projected polygons are cached until the
-/// view moves; drawing allocates nothing.
+/// view moves; drawing allocates nothing. Radar circles, flight paths and the detail layer
+/// (borders, labels, cities) are not drawn yet.
 /// </summary>
 public sealed class GlobeRenderer
 {
@@ -156,8 +157,10 @@ public sealed class GlobeRenderer
             for (var column = 0; column < frame.Width * scale; column++)
             {
                 var targetX = left + column;
+                // Markers draw onto a colour-keyed layer: a shade that wraps to 0 leaves the globe visible.
                 var color = source[column / scale];
-                if (color != 0 && (uint)targetX < (uint)target.Length) target[targetX] = (byte)(color + shift);
+                var shaded = (byte)(color + shift);
+                if (color != 0 && shaded != 0 && (uint)targetX < (uint)target.Length) target[targetX] = shaded;
             }
         }
     }
