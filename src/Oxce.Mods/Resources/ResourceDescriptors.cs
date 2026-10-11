@@ -206,7 +206,12 @@ public sealed class ResolvedResourceCatalog
 
 public sealed record ResourceResolutionOptions
 {
-    public const int DefaultMaximumDescriptors = 250_000;
+    /// <summary>
+    /// A guard against runaway rulesets, not a content limit: every cell of a subdivided extra
+    /// sprite is its own descriptor (ExtraSprites::loadSurfaceSet makes a surface per frame), and
+    /// large mods reach about 300,000 (40k with ROSIGMA).
+    /// </summary>
+    public const int DefaultMaximumDescriptors = 1_000_000;
     public const int DefaultMaximumDimension = 32_768;
 
     public int MaximumDescriptors { get; init; } = DefaultMaximumDescriptors;
