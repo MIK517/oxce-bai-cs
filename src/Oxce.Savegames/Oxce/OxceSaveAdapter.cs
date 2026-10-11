@@ -76,7 +76,7 @@ public static partial class OxceSaveAdapter
         ArgumentNullException.ThrowIfNull(snapshot);
         options ??= new OxceSaveWriteOptions();
         var header = BuildHeader(snapshot, source, options);
-        var body = BuildBody(snapshot, source);
+        var body = BuildBody(snapshot, source, options.GlobeView);
         return YamlCompatibilityWriter.Emit(new YamlDocumentSet(
             "(generated OXCE save)",
             [new YamlDocument(header, GeneratedSpan), new YamlDocument(body, GeneratedSpan)]),
@@ -228,7 +228,8 @@ public static partial class OxceSaveAdapter
         };
         var campaign = CampaignState.Restore(snapshot, content, random);
         return new LoadedOxceCampaign(campaign,
-            new OxceSaveDocument(header, body, Array.AsReadOnly(modLabels)));
+            new OxceSaveDocument(header, body, Array.AsReadOnly(modLabels), new OxceGlobeView(
+                Double(body, "globeLon", 0), Double(body, "globeLat", 0), Integer(body, "globeZoom", 0))));
     }
 
     private static ReadOnlyCollection<CampaignRestriction> ReadRestrictions(YamlMappingNode body)
@@ -410,8 +411,12 @@ public static partial class OxceSaveAdapter
         ]);
     }
 
-    private static YamlMappingNode BuildBody(CampaignSnapshot snapshot, OxceSaveDocument? source)
+    private static YamlMappingNode BuildBody(CampaignSnapshot snapshot, OxceSaveDocument? source, OxceGlobeView? globeView)
     {
+        // SavedGame::save always writes the globe view; a rewrite without a new view keeps the loaded one.
+        var view = globeView ?? (source is null ? new OxceGlobeView(0, 0, 0) : null);
+        if (view is not null && (!double.IsFinite(view.Longitude) || !double.IsFinite(view.Latitude)))
+            throw new InvalidDataException("The globe view is not a finite position.");
         var originalCountries = Maps(source?.Body, "countries").ToDictionary(
             map => String(map, "type", string.Empty), StringComparer.Ordinal);
         var originalRegions = Maps(source?.Body, "regions").ToDictionary(
@@ -455,6 +460,12 @@ public static partial class OxceSaveAdapter
             Pair("incomes", Sequence(snapshot.Incomes.Select(Long))),
             Pair("expenditures", Sequence(snapshot.Expenditures.Select(Long))),
             Pair("researchScores", Sequence(snapshot.ResearchScores.Select(Integer))),
+            .. (view is null ? [] : new[]
+            {
+                Pair("globeLon", Real(view.Longitude)),
+                Pair("globeLat", Real(view.Latitude)),
+                Pair("globeZoom", Integer(view.Zoom)),
+            }),
             Pair("ids", IntMapping(snapshot.NextIds)),
             Pair("countries", Sequence(countries)),
             Pair("regions", Sequence(regions)),

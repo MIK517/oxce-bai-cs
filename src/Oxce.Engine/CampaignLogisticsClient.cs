@@ -18,6 +18,8 @@ public sealed record CampaignUiSession(ICampaignQuery Queries, ICampaignCommandT
     public ICampaignResearchProductionQuery? ResearchProduction { get; init; } =
         Queries as ICampaignResearchProductionQuery;
     public ICampaignWorldQuery? World { get; init; } = Queries as ICampaignWorldQuery;
+    /// <summary>Where the geoscape globe looked when the campaign was saved (SavedGame globe fields).</summary>
+    public Geoscape.GlobeViewState? GlobeView { get; init; }
 
     /// <summary>Reads every typed query from the campaign while commands use <paramref name="commands"/>.</summary>
     public static CampaignUiSession ForCampaign(CampaignState campaign, ICampaignQuery queries,

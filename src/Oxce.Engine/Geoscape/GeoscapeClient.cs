@@ -91,9 +91,22 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
         _time = new GeoscapeTimeController(stopwatch);
         _world = _session.World.QueryWorld();
         _overview = _session.Queries.QueryOverview();
+        ApplyView(_session.GlobeView);
         EnterWorld();
         Refresh();
         Redraw();
+    }
+
+    /// <summary>The globe's centre and zoom, for SavedGame's globeLon/globeLat/globeZoom.</summary>
+    public GlobeViewState CurrentView => new(View.CenterLongitude, View.CenterLatitude, View.Zoom);
+
+    /// <summary>Globe's constructor: centre and zoom from the save (a zoom outside the levels is clamped).</summary>
+    private void ApplyView(GlobeViewState? view)
+    {
+        if (view is null) return;
+        if (double.IsFinite(view.Longitude) && double.IsFinite(view.Latitude)) View.Center(view.Longitude, view.Latitude);
+        View.SetZoom(view.Zoom);
+        _globeDirty = true;
     }
 
     public IndexedSurface Frame => _bases?.Frame ?? _frame;
@@ -290,6 +303,8 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
                 if (_setup.Save is null) _status = "Save is unavailable for this session.";
                 else Guard(() =>
                 {
+                    // The reference saves between time steps: a step still owed is dropped, as a pause would.
+                    _time.Interrupt();
                     _setup.Save();
                     _status = "Campaign saved.";
                 });
@@ -514,6 +529,8 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     {
         if (session.World is null) throw new InvalidOperationException("The loaded session has no world query.");
         _session = session;
+        // Nothing owed by the old campaign's clock may run on the loaded one.
+        _time.Interrupt();
         _popups.Clear();
         _selected = null;
         _selecting = null;
@@ -522,7 +539,12 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
         _placing = null;
         _naming = null;
         _hover = _pendingHover = null;
+        _rotateLongitude = _rotateLatitude = 0;
+        _dragging = false;
+        _buildNewBase = false;
+        _suppressText = null;
         _time.Select(CampaignTimeSpeed.FiveSeconds);
+        ApplyView(session.GlobeView);
         EnterWorld();
         Refresh();
     }
