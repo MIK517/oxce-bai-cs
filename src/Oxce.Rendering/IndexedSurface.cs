@@ -187,8 +187,9 @@ public sealed class IndexedSurface
 
     /// <summary>
     /// SDL_gfx texturedPolygonMT, as Surface::drawTexturedPolygon uses it: scanlines from the
-    /// polygon's top to bottom take 16.16 fixed-point edge intersections, and each span copies the
-    /// texture tiled in screen space at <c>((x - dx) mod w, (y + dy) mod h)</c>, including colour 0.
+    /// polygon's top to bottom take 16.16 fixed-point edge intersections, and each span (its ends
+    /// swapped when reversed) copies the texture tiled in screen space at
+    /// <c>((x - dx) mod w, (y + dy) mod h)</c>. Colour 0 is the texture's colour key and is skipped.
     /// </summary>
     /// <param name="scratch">At least one element per point.</param>
     public void FillTexturedPolygon(ReadOnlySpan<IndexedPoint> points, IndexedSurface texture, int textureDx,
@@ -228,9 +229,14 @@ public sealed class IndexedSurface
                 left = (left >> 16) + ((left & 32768) >> 15);
                 var right = scratch[index + 1] - 1;
                 right = (right >> 16) + ((right & 32768) >> 15);
+                if (left > right) (left, right) = (right, left);
                 left = Math.Max(left, 0);
                 right = Math.Min(right, Width - 1);
-                for (var x = left; x <= right; x++) row[x] = textureRow[Modulo(x - textureDx, texture.Width)];
+                for (var x = left; x <= right; x++)
+                {
+                    var color = textureRow[Modulo(x - textureDx, texture.Width)];
+                    if (color != 0) row[x] = color;
+                }
             }
         }
 

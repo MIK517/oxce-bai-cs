@@ -73,6 +73,10 @@ public static class GlobeShading
         return shade;
     }
 
+    /// <summary>The terminator gradient, its step and its sequence at a gradient index (0-255).</summary>
+    public static (short Gradient, short Step, short Sequence) Table(int index) =>
+        (Gradient[index], Step[index], Sequence[index]);
+
     public static short NoiseAt(int x, int y) =>
         Noise[(y % NoiseSize + NoiseSize) % NoiseSize * NoiseSize + (x % NoiseSize + NoiseSize) % NoiseSize];
 

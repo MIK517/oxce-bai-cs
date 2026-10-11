@@ -31,6 +31,29 @@ public sealed class GlobeRendererTests
             for (var x = 0; x < 6; x++)
                 Assert.Equal(x <= 3 && y <= 3 ? texture.GetPixel((x + 1) % 2, y % 2) : (byte)0, surface.GetPixel(x, y));
         Assert.Throws<ArgumentException>(() => surface.FillTexturedPolygon(square, texture, 0, 0, new int[3]));
+
+        // Colour 0 is the texture's colour key: the surface underneath shows through.
+        surface.Clear(9);
+        texture.Pixels[0] = 0;
+        surface.FillTexturedPolygon(square, texture, 0, 0, new int[4]);
+        Assert.Equal(9, surface.GetPixel(0, 0));
+        Assert.Equal(2, surface.GetPixel(1, 0));
+    }
+
+    [Fact]
+    public void MarkerShadesWrappingToZeroLeaveTheGlobeVisible()
+    {
+        var view = new GlobeView(64, 64);
+        var marker = new IndexedSurface(3, 3);
+        marker.Clear(255);
+        var renderer = new GlobeRenderer(view, new GeoscapeAssets(IndexedPalette.CreateGrayscale(),
+            new Dictionary<int, IndexedSurface>(), new Dictionary<int, IndexedSurface> { [0] = marker },
+            RuntimeGlobeColors.Default), Globe());
+        renderer.Surface.Clear(7);
+        renderer.DrawMarker(new GlobeMarker(0, 0, 0), blinkOn: false);
+        Assert.Equal(7, renderer.Surface.GetPixel(32, 32));
+        renderer.DrawMarker(new GlobeMarker(0, 0, 0), blinkOn: true);
+        Assert.Equal(255, renderer.Surface.GetPixel(32, 32));
     }
 
     [Fact]
@@ -43,6 +66,17 @@ public sealed class GlobeRendererTests
             Assert.Equal(31, GlobeShading.ShadowValue(-1, 0, 0, sun, noise));
             Assert.InRange(GlobeShading.ShadowValue(0, 0, 1, sun, noise), 1, 30);
         }
+        // Golden values from the C++ GlobeStaticData and getShadowValue formulas.
+        Assert.Equal(((short)-1, (short)32, (short)0), GlobeShading.Table(0));
+        Assert.Equal(((short)11, (short)10, (short)21), GlobeShading.Table(120));
+        Assert.Equal(((short)14, (short)16, (short)16), GlobeShading.Table(127));
+        Assert.Equal(((short)17, (short)16, (short)0), GlobeShading.Table(128));
+        Assert.Equal(((short)29, (short)2, (short)22), GlobeShading.Table(200));
+        Assert.Equal(((short)32, (short)32, (short)0), GlobeShading.Table(255));
+        Assert.Equal(17, GlobeShading.ShadowValue(0, 0, 1, sun, 0));
+        Assert.Equal(11, GlobeShading.ShadowValue(0, 0, 1, sun, 0xFFF));
+        Assert.Equal(17, GlobeShading.ShadowValue(0, 0, 1, sun, 0x123));
+        Assert.Equal(1, GlobeShading.ShadowValue(0.3, 0.2, Math.Sqrt(1 - 0.13), sun, 0x7A5));
         Assert.Equal(0x2D, GlobeShading.LandShadow(0x23, 30));
         Assert.Equal(0x2F, GlobeShading.LandShadow(0x2E, 31));
         Assert.Equal(0x2E, GlobeShading.LandShadow(0x2E, 0));

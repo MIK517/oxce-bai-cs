@@ -66,7 +66,8 @@ Longitude normalisation keeps the reference loops for ordinary values and reduce
 `GlobeRenderer` draws in `Globe::draw` order: the ocean disc (`radius + 20`, offset one
 reference pixel), land polygons culled and projected as `Globe::cache` does (re-projected only
 when the view moves) and filled with `IndexedSurface.FillTexturedPolygon`, a port of SDL_gfx
-`texturedPolygonMT` (16.16 scanline spans, screen-space texture tiling, colour 0 copied), the
+`texturedPolygonMT` (16.16 scanline spans, reversed spans swapped, screen-space texture tiling,
+colour 0 skipped as the surface colour key, so ocean shows through), the
 texture detail level `polygon texture + Globe::_zoomTexture`, then `CreateShadow` over every
 pixel and the markers. `GlobeShading` ports `GlobeStaticData`'s terminator gradient and noise
 decomposition, `getShadowValue`, ocean and land shading (`isOcean` honours `oceanShading`) and
@@ -75,5 +76,7 @@ fixed local seed (the reference seeds it from the clock), so only its distributi
 Markers follow `Target::getMarker` and `Globe::drawMarkers` order (bases except one at (0, 0),
 waypoints, sites with default frame 5, alien bases only with a marker icon, UFOs by status with
 defaults 2/3/4, airborne craft with default 1), are centred, scaled to the frame, and shift one
-colour while the 100 ms blink is off (cities excepted). Repeat frames allocate nothing.
+colour while the 100 ms blink is off (cities excepted; a shade wrapping to 0 is not drawn, as
+on the reference's colour-keyed marker layer). Repeat frames allocate nothing. Radar circles,
+flight paths and the detail layer follow in S4b.
 Tests: `GlobeRendererTests`, `GlobeSceneTests`.
