@@ -2,11 +2,36 @@ using System.Globalization;
 using Oxce.Core.Graphics;
 using Oxce.Engine.Input;
 using Oxce.Gameplay.Campaigns;
+using Oxce.Gameplay.Campaigns.World;
 using Oxce.Rendering;
 
 namespace Oxce.Engine;
 
-public sealed record CampaignUiSession(ICampaignQuery Queries, ICampaignCommandTarget Commands);
+/// <summary>
+/// The queries and command target a campaign client operates. Commands may be routed through
+/// a wrapper such as an extension session; typed queries default to the query object's own
+/// interfaces and are supplied explicitly when that wrapper does not implement them.
+/// </summary>
+public sealed record CampaignUiSession(ICampaignQuery Queries, ICampaignCommandTarget Commands)
+{
+    public ICampaignReadinessQuery? Readiness { get; init; } = Queries as ICampaignReadinessQuery;
+    public ICampaignResearchProductionQuery? ResearchProduction { get; init; } =
+        Queries as ICampaignResearchProductionQuery;
+    public ICampaignWorldQuery? World { get; init; } = Queries as ICampaignWorldQuery;
+
+    /// <summary>Reads every typed query from the campaign while commands use <paramref name="commands"/>.</summary>
+    public static CampaignUiSession ForCampaign(CampaignState campaign, ICampaignQuery queries,
+        ICampaignCommandTarget commands)
+    {
+        ArgumentNullException.ThrowIfNull(campaign);
+        return new(queries, commands)
+        {
+            Readiness = campaign,
+            ResearchProduction = campaign,
+            World = campaign.GetQuery<ICampaignWorldQuery>(),
+        };
+    }
+}
 
 /// <summary>Keyboard-operated indexed logistics UI; persistence is supplied by App.</summary>
 public sealed class CampaignLogisticsClient : IIndexedLoopClient
@@ -78,6 +103,7 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
                     _chooseDestination = false;
                     _message = "Campaign loaded.";
                     _loadConfirmation = false;
+                    EnterWorld();
                 }
                 else if (key == 27) { _loadConfirmation = false; _message = "Load cancelled."; }
             }
@@ -136,15 +162,15 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
                 _screen = null;
                 _row = 0;
             }
-            else if (key == 'a' && _view != CampaignView.Management && _session.Queries is ICampaignReadinessQuery)
+            else if (key == 'a' && _view != CampaignView.Management && _session.Readiness is not null)
             {
                 _view = CampaignView.Management; _screen = null; _choice = 0;
             }
-            else if (key == 'u' && _session.Queries is ICampaignReadinessQuery)
+            else if (key == 'u' && _session.Readiness is not null)
             {
                 _view = CampaignView.Personnel; _screen = null; _row = 0;
             }
-            else if (key is (uint)'h' or (uint)'m' && _session.Queries is ICampaignResearchProductionQuery)
+            else if (key is (uint)'h' or (uint)'m' && _session.ResearchProduction is not null)
             {
                 _view = key == 'm' ? CampaignView.Production : CampaignView.Research;
                 _screen = null; _row = 0;
@@ -169,13 +195,17 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
                     _destinationIndex = (_baseIndex + 1) % overview.Bases.Count;
                 }
             }
-            else if (key == 'p' && !overview.Bases[_baseIndex].IsPlaced && _session.Queries is ICampaignReadinessQuery placement)
+            else if (key == 'p' && !overview.Bases[_baseIndex].IsPlaced && _session.Readiness is { } placement)
             {
                 var sites = placement.QueryBaseSites(true);
                 if (sites.Count == 0) _message = "No legal starting-base site is available.";
-                else Feedback(_session.Commands.Execute(new PlaceStartingBase(_baseIndex, "First Base", sites[0].Longitude, sites[0].Latitude)));
+                else
+                {
+                    Feedback(_session.Commands.Execute(new PlaceStartingBase(_baseIndex, "First Base", sites[0].Longitude, sites[0].Latitude)));
+                    EnterWorld();
+                }
             }
-            else if (key == 'n' && _session.Queries is ICampaignReadinessQuery newBase)
+            else if (key == 'n' && _session.Readiness is { } newBase)
             {
                 var sites = newBase.QueryBaseSites(false);
                 var site = sites.Count == 0 ? null : sites[0];
@@ -186,7 +216,7 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
                     site!.Longitude, site.Latitude, lift.RuleId, 2, 2)));
             }
             else if (_view is CampaignView.Research or CampaignView.Production &&
-                _session.Queries is ICampaignResearchProductionQuery economy)
+                _session.ResearchProduction is { } economy)
             {
                 var production = _view == CampaignView.Production;
                 var baseId = overview.Bases[_baseIndex].Id;
@@ -231,7 +261,7 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
                     }
                 }
             }
-            else if (_view == CampaignView.Management && _session.Queries is ICampaignReadinessQuery management)
+            else if (_view == CampaignView.Management && _session.Readiness is { } management)
             {
                 var state = management.QueryBaseManagement(overview.Bases[_baseIndex].Id);
                 if (key is 0x40000051 or 0x40000052 && state.Facilities.Count > 0)
@@ -246,7 +276,7 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
                 else if (key == 'x') Feedback(_session.Commands.Execute(new DismantleCampaignFacility(
                     overview.Bases[_baseIndex].Id, _gridX, _gridY)));
             }
-            else if (_view == CampaignView.Personnel && _session.Queries is ICampaignReadinessQuery personnel)
+            else if (_view == CampaignView.Personnel && _session.Readiness is { } personnel)
             {
                 var state = personnel.QueryBaseManagement(overview.Bases[_baseIndex].Id);
                 if (key is 0x40000051 or 0x40000052)
@@ -273,7 +303,7 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
                     }
                 }
             }
-            else if (_view == CampaignView.Readiness && key == 'e' && _session.Queries is ICampaignReadinessQuery equipment)
+            else if (_view == CampaignView.Readiness && key == 'e' && _session.Readiness is { } equipment)
             {
                 var readiness = equipment.QueryReadiness(overview.Bases[_baseIndex].Id);
                 var choices = equipment.QueryBaseManagement(overview.Bases[_baseIndex].Id).CraftWeapons;
@@ -288,7 +318,7 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
                         readiness.Crafts[0].RuleId, readiness.Crafts[0].Id, slot, next == 0 ? "" : choices[next - 1])));
                 }
             }
-            else if (_view == CampaignView.Readiness && key == 'v' && _session.Queries is ICampaignReadinessQuery vehicleEquipment)
+            else if (_view == CampaignView.Readiness && key == 'v' && _session.Readiness is { } vehicleEquipment)
             {
                 var readiness = vehicleEquipment.QueryReadiness(overview.Bases[_baseIndex].Id);
                 var choices = vehicleEquipment.QueryBaseManagement(overview.Bases[_baseIndex].Id).Vehicles;
@@ -314,6 +344,20 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
     }
 
     public void Tick(TimeSpan fixedInterval) => ArgumentOutOfRangeException.ThrowIfLessThan(fixedInterval, TimeSpan.Zero);
+
+    /// <summary>
+    /// GeoscapeState::init runs the initial world block once the first base exists; the
+    /// command does nothing for a campaign that has already entered its world.
+    /// </summary>
+    private void EnterWorld()
+    {
+        var result = _session.Commands.Execute(new EnterCampaignWorld());
+        if (result.Events.Count == 0) return;
+        var message = _message;
+        Feedback(result);
+        if (_message.Length == 0) _message = message;
+        else if (message.Length != 0) _message = message + " / " + _message;
+    }
 
     private void Feedback(CampaignCommandResult result)
     {
@@ -353,7 +397,7 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
         Text("Space: Minute  Shift+Space: Hour  F5: Save  F9: Load  Esc: Back/quit", 12, 64);
         if (_screen is null && selectedBase is { IsPlaced: false }) Text("P: Place starting base at 0,0", 12, 86, 3);
         if (_view is CampaignView.Research or CampaignView.Production && selectedBase is not null &&
-            _session.Queries is ICampaignResearchProductionQuery economy)
+            _session.ResearchProduction is { } economy)
         {
             var production = _view == CampaignView.Production;
             var state = economySnapshot is { } snapshot && snapshot.BaseId == selectedBase.Id
@@ -384,7 +428,7 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
             Text("Active: " + string.Join("; ", active), 12, 315, 2);
         }
         else if (_view == CampaignView.Management && selectedBase is not null &&
-            _session.Queries is ICampaignReadinessQuery management)
+            _session.Readiness is { } management)
         {
             var state = management.QueryBaseManagement(selectedBase.Id);
             Text($"Base layout cursor ({_gridX},{_gridY})  WASD: Move  Enter: Build  X: Dismantle", 12, 88);
@@ -401,7 +445,7 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
                 Text($"{facility.X},{facility.Y} {facility.SizeX}x{facility.SizeY} {facility.BuildTime}d", 30 + facility.X * 95, 180 + facility.Y * 28);
         }
         else if (_view == CampaignView.Personnel && selectedBase is not null &&
-            _session.Queries is ICampaignReadinessQuery personnel)
+            _session.Readiness is { } personnel)
         {
             var state = personnel.QueryBaseManagement(selectedBase.Id);
             _row = Math.Min(_row, Math.Max(0, state.Soldiers.Count - 1));
@@ -416,7 +460,7 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
         }
         else if (_view == CampaignView.Readiness && selectedBase is not null)
         {
-            if (_session.Queries is ICampaignReadinessQuery query)
+            if (_session.Readiness is { } query)
             {
                 var readiness = query.QueryReadiness(selectedBase.Id);
                 var lines = readiness.Crafts.SelectMany(c => new[]

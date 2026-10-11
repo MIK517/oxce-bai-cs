@@ -106,7 +106,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ### `Oxce.Engine`
 
-- `CampaignUiSession` (record) [CampaignLogisticsClient.cs](../src/Oxce.Engine/CampaignLogisticsClient.cs)
+- `CampaignUiSession` (record) [CampaignLogisticsClient.cs](../src/Oxce.Engine/CampaignLogisticsClient.cs) - The queries and command target a campaign client operates.
 - `CampaignLogisticsClient` (class) [CampaignLogisticsClient.cs](../src/Oxce.Engine/CampaignLogisticsClient.cs) - Keyboard-operated indexed logistics UI; persistence is supplied by App.
 - `CampaignLogisticsScreen` (class) [CampaignLogisticsScreen.cs](../src/Oxce.Engine/CampaignLogisticsScreen.cs) - Paused logistics interaction.
 - `CampaignOverviewClient` (class) [CampaignOverviewClient.cs](../src/Oxce.Engine/CampaignOverviewClient.cs) - Minimal indexed campaign view used to operate the headless foundation without making SDL or persistence part of gameplay.

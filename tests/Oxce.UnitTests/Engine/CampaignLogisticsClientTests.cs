@@ -1,7 +1,10 @@
 using Oxce.Core.Random;
 using Oxce.Engine;
 using Oxce.Engine.Input;
+using Oxce.Extensions;
+using Oxce.Core.Diagnostics;
 using Oxce.Gameplay.Campaigns;
+using Oxce.Gameplay.Campaigns.World;
 using Oxce.Savegames.Oxce;
 using Oxce.TestSupport;
 using Oxce.UnitTests.Gameplay;
@@ -133,6 +136,78 @@ public sealed class CampaignLogisticsClientTests
         Key(13);
 
         Assert.Null(client.Screen);
+
+        void Key(uint code) => client.HandleInput(GameInputEvent.Key(
+            GameInputEventKind.KeyPressed, 0, 0, 0, code, InputKeyModifiers.None));
+    }
+
+    [Fact]
+    public void ExtensionWrappedSessionStillReachesTypedCampaignViews()
+    {
+        var content = CampaignLogisticsTests.LoadFixture();
+        var campaign = TestFixtures.CreateLogisticsCampaign(content, "UI");
+        using var host = ManagedExtensionHost.LoadFromDirectory(
+            Path.Combine(Path.GetTempPath(), "oxce-no-extensions-" + nameof(ExtensionWrappedSessionStillReachesTypedCampaignViews)),
+            new DiagnosticCollector(), cancellationToken: TestContext.Current.CancellationToken);
+        using var session = host.AttachCampaign(campaign, campaign, TestContext.Current.CancellationToken);
+
+        var wrapped = new CampaignUiSession(session, session);
+        Assert.Null(wrapped.Readiness);
+        Assert.Null(wrapped.ResearchProduction);
+        Assert.Null(wrapped.World);
+
+        var typed = CampaignUiSession.ForCampaign(campaign, session, session);
+        Assert.Same(campaign, typed.Readiness);
+        Assert.Same(campaign, typed.ResearchProduction);
+        Assert.NotNull(typed.World);
+        Assert.Same(session, typed.Commands);
+
+        var direct = new CampaignUiSession(campaign, campaign);
+        Assert.Same(campaign, direct.Readiness);
+        Assert.Same(campaign, direct.ResearchProduction);
+        Assert.Null(direct.World);
+
+        var labels = new List<string>();
+        var client = new CampaignLogisticsClient(typed, localize: text => { labels.Add(text); return text; });
+        Key('p');
+        Key('u');
+        Assert.Contains(labels, text => text.Contains("Soldier", StringComparison.Ordinal));
+
+        void Key(uint code) => client.HandleInput(GameInputEvent.Key(
+            GameInputEventKind.KeyPressed, 0, 0, 0, code, InputKeyModifiers.None));
+    }
+
+    [Fact]
+    public void StartingBasePlacementAndLoadEnterTheCampaignWorldOnce()
+    {
+        var content = CampaignLogisticsTests.LoadFixture();
+        var campaign = TestFixtures.CreateLogisticsCampaign(content, "UI");
+        Assert.Equal(-1, campaign.MonthsPassed);
+        var client = new CampaignLogisticsClient(new(campaign, campaign));
+        Assert.Equal(-1, campaign.MonthsPassed);
+        Key('p');
+        Assert.True(campaign.QueryOverview().Bases[0].IsPlaced);
+        Assert.Equal(0, campaign.MonthsPassed);
+        var entered = campaign.Capture();
+        Assert.Empty(campaign.Execute(new EnterCampaignWorld()).Events);
+        Assert.Equivalent(entered, campaign.Capture(), strict: true);
+
+        // A save taken after placement but before world entry enters it when loaded.
+        var pending = TestFixtures.CreateLogisticsCampaign(content, "UI");
+        var site = pending.QueryBaseSites(true)[0];
+        pending.Execute(new PlaceStartingBase(0, "First Base", site.Longitude, site.Latitude));
+        Assert.Equal(-1, pending.MonthsPassed);
+        var saved = OxceSaveAdapter.EmitNewCampaign(pending.Capture());
+        CampaignState? loaded = null;
+        client = new CampaignLogisticsClient(new(campaign, campaign), load: () =>
+        {
+            loaded = TestFixtures.LoadLogisticsSave(saved, content, seed: 0, name: "pending.sav").Campaign;
+            return new(loaded, loaded);
+        });
+        Key(0x40000042);
+        Key('y');
+        Assert.NotNull(loaded);
+        Assert.Equal(0, loaded!.MonthsPassed);
 
         void Key(uint code) => client.HandleInput(GameInputEvent.Key(
             GameInputEventKind.KeyPressed, 0, 0, 0, code, InputKeyModifiers.None));
