@@ -2,6 +2,7 @@ using Oxce.Core.Compatibility;
 using Oxce.Core.Diagnostics;
 using Oxce.Core.Random;
 using Oxce.Engine;
+using Oxce.Engine.Geoscape;
 using Oxce.Extensions;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Bootstrap;
@@ -22,6 +23,7 @@ internal static class CampaignSdlCommand
         var startupDiagnostics = new DiagnosticCollector();
         foreach (var diagnostic in loaded.Diagnostics) startupDiagnostics.Report(diagnostic);
         var assets = CampaignUiAssets.Load(loaded.VirtualFiles!, content.Presentation, startupDiagnostics);
+        var geoscapeAssets = GeoscapeAssets.Load(loaded.VirtualFiles!, content.Resources, content.RuntimeRules.Campaign.Globe);
         PrintWarnings(startupDiagnostics);
         loaded = null!;
         var activeMods = request.ActiveMods;
@@ -38,10 +40,17 @@ internal static class CampaignSdlCommand
         var extensionSession = extensions.AttachCampaign(campaign, campaign);
         OxceSaveDocument? source = null;
         var savePath = destination == "-" ? null : Path.GetFullPath(destination);
-        var client = new CampaignLogisticsClient(CampaignUiSession.ForCampaign(campaign, extensionSession, extensionSession), assets.Font, assets.Localize,
-            savePath is null ? null : Save, savePath is null ? null : Load);
-        Console.WriteLine("I: stores; B/S/T: buy/sell/transfer; arrows and +/-: quantities; Enter then Y: confirm. F5/F9: save/load.");
-        var host = new SdlIndexedWindowHost(client, new SdlWindowOptions("OXCE .NET strategic logistics")
+        var client = new GeoscapeClient(new GeoscapeClientSetup(
+            CampaignUiSession.ForCampaign(campaign, extensionSession, extensionSession), content.RuntimeRules,
+            geoscapeAssets, assets.Font, assets.Localize)
+        {
+            Save = savePath is null ? null : Save,
+            Load = savePath is null ? null : Load,
+        });
+        Console.WriteLine("Geoscape: 1-6 speed, arrows rotate, +/- zoom, wheel zoom, right click centre, middle drag scroll,");
+        Console.WriteLine("Tab detail, R radar, ./, select target, Enter target info, B bases, F5/F9 save/load, Esc quit.");
+        Console.WriteLine("Bases: I stores; B/S/T buy/sell/transfer; arrows and +/- quantities; Enter then Y confirm; Esc back.");
+        var host = new SdlIndexedWindowHost(client, new SdlWindowOptions("OXCE .NET geoscape")
         {
             Scale = 2,
             ExitOnEscape = false,
