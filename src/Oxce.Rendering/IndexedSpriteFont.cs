@@ -113,6 +113,40 @@ public sealed class IndexedSpriteFont
         }
     }
 
+    /// <summary>
+    /// Text::draw's PaletteShift: each glyph pixel becomes <paramref name="color"/> plus its value,
+    /// as OXCE text coloured with <c>setColor</c> renders.
+    /// </summary>
+    public void DrawTextShifted(IndexedSurface destination, string text, int x, int y, byte color)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+        ArgumentNullException.ThrowIfNull(text);
+        var cursor = x;
+        foreach (var rune in text.EnumerateRunes())
+        {
+            var size = GetCharacterSize(rune);
+            if (!Rune.IsControl(rune) && !Rune.IsWhiteSpace(rune) && GetGlyph(rune) is { X: >= 0 } glyph)
+            {
+                var source = _images[glyph.ImageIndex].Surface;
+                for (var row = 0; row < glyph.Height; row++)
+                {
+                    var targetY = y + row;
+                    if ((uint)targetY >= (uint)destination.Height) continue;
+                    var sourceRow = source.GetRow(glyph.Y + row);
+                    var targetRow = destination.GetRow(targetY);
+                    for (var column = 0; column < glyph.Width; column++)
+                    {
+                        var targetX = cursor + column;
+                        var pixel = sourceRow[glyph.X + column];
+                        if (pixel != 0 && (uint)targetX < (uint)targetRow.Length)
+                            targetRow[targetX] = unchecked((byte)(color + pixel));
+                    }
+                }
+            }
+            cursor = checked(cursor + size.Width);
+        }
+    }
+
     private void AddImageGlyphs(int imageIndex, IndexedSpriteFontImage image)
     {
         var cellsPerRow = image.Surface.Width / image.CellWidth;

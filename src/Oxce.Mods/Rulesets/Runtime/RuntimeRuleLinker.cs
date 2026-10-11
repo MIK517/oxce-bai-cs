@@ -347,6 +347,9 @@ public static class RuntimeRuleLinker
             ManaWoundThreshold = content.CampaignStart.Settings.ManaWoundThreshold,
             HealthWoundThreshold = content.CampaignStart.Settings.HealthWoundThreshold,
             EscortRange = content.CampaignStart.Settings.EscortRange,
+            DrawEnemyRadarCircles = content.CampaignStart.Settings.DrawEnemyRadarCircles,
+            GlobeLabels = Array.AsReadOnly(content.CampaignStart.GlobeLabels.Rules.Select(static rule => new RuntimeGlobeLabel(
+                rule.Id, rule.Value.LabelLongitude, rule.Value.LabelLatitude, rule.Value.LabelColor, rule.Value.ZoomLevel)).ToArray()),
             MaximumViewDistance = content.CampaignStart.Settings.MaximumViewDistance,
             MaximumDarknessToSeeUnits = content.CampaignStart.Settings.MaximumDarknessToSeeUnits,
             HunterKillerFastRetarget = content.CampaignStart.Settings.HunterKillerFastRetarget,

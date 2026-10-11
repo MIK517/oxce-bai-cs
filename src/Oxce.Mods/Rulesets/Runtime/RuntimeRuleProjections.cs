@@ -80,6 +80,9 @@ public sealed record RuntimePurchaseRequirements(
     int MonthlyLimit, string MonthlyLimitMessage, string AlliedCountry,
     IReadOnlyList<string> BaseFunctions, IReadOnlyList<string> BuyResearch);
 
+public sealed record RuntimeGlobeLabel(string Type, double LabelLongitude, double LabelLatitude, int LabelColor,
+    int ZoomLevel);
+
 public sealed record RuntimeCountryRule(
     int FundingBase,
     int FundingCap,
@@ -446,6 +449,10 @@ public sealed record RuntimeCampaignSettings(
     public int ManaWoundThreshold { get; init; } = 200;
     public int HealthWoundThreshold { get; init; } = 100;
     public int EscortRange { get; init; } = 20;
+    /// <summary>Mod::_drawEnemyRadarCircles: 0 none, 1 hyper-detected hunter-killers, above 1 all.</summary>
+    public int DrawEnemyRadarCircles { get; init; } = 1;
+    /// <summary><c>extraGlobeLabels</c> in load order; Globe::drawDetail shows each from its zoom level.</summary>
+    public IReadOnlyList<RuntimeGlobeLabel> GlobeLabels { get; init; } = [];
     public int MaximumViewDistance { get; init; } = 20;
     public int MaximumDarknessToSeeUnits { get; init; } = 9;
     public bool HunterKillerFastRetarget { get; init; } = true;
