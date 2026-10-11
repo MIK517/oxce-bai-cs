@@ -19,7 +19,28 @@ public sealed record PlaceStartingBase(int BaseIndex, string Name, double Longit
 
 public interface ICampaignEvent;
 
-public sealed record CampaignActionBlocked(string Reason) : ICampaignEvent;
+/// <summary>
+/// A refused command or tick. <see cref="Code"/> is a stable classification and
+/// <see cref="TextKey"/> the reference language key when the reference shows this refusal.
+/// </summary>
+public sealed record CampaignActionBlocked(string Reason) : ICampaignEvent
+{
+    public string Code { get; init; } = CampaignReason.Unclassified;
+    public string? TextKey { get; init; }
+
+    public static CampaignActionBlocked From(CampaignReason reason)
+    {
+        ArgumentNullException.ThrowIfNull(reason);
+        return new(reason.Text) { Code = reason.Code, TextKey = reason.TextKey };
+    }
+}
+
+/// <summary>Why an action is unavailable: a stable code, English text and, where one exists, the reference text key.</summary>
+public sealed record CampaignReason(string Code, string Text)
+{
+    public const string Unclassified = "unclassified";
+    public string? TextKey { get; init; }
+}
 
 /// <summary>A newly detected UFO contact; the reference pauses for its alert.</summary>
 public sealed record UfoContactDetected(int UniqueId, bool Hyperwave) : ICampaignEvent;

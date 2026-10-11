@@ -137,3 +137,20 @@ confirmation, Esc quit; right click centres, middle drag scrolls (`geoDragScroll
 click selects one target or lists several (`MultipleTargetsState`). Interception, destination and
 craft screens follow in S6; the popups' Intercept, Redirect and Go-to-base buttons with them.
 Tests: `GeoscapeTimeControllerTests`, `GeoscapeClientTests`.
+
+## S6a — Wing dispatch and classified refusals (2026-10-11)
+
+`DispatchCraftWing` launches one to four craft at a target or a new waypoint as one command, as
+`InterceptState` and `ConfirmDestinationState::btnOkClick` do: the first craft leads and the
+others follow the leader or fly to the same destination. Every check runs before any craft
+changes, in the reference order: launch readiness, armor of every craft, the destination, cargo
+of every craft, pilots of every craft and waypoint ids. A leader that is its own target (only
+possible while it is airborne, since grounded craft are not globe targets) goes on patrol and the
+wing follows it. Refusals (`CampaignActionBlocked`) now carry a stable `Code` and, where the
+reference has one, a `TextKey` (for example `STR_ARMOR_NOT_ALLOWED_ONBOARD`,
+`STR_TOO_MANY_ITEMS_ONBOARD`, `STR_NOT_ENOUGH_PILOTS`), classified by `WorldCommandReasons`; the
+single-craft commands use the same table. The world query now describes craft for the craft
+screen (fuel, damage, shield, speed, weapons with ammunition, crew, low fuel, mission complete,
+auto-patrol, the refusal reasons for dispatch and patrol recall) and targets for the target info
+screen (hunter-killer, hyper-detection, radar range, hunting, destination).
+Tests: `StrategicWorldWingTests`.

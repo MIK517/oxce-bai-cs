@@ -25,7 +25,12 @@ public sealed record CampaignWorldTarget(
     /// <summary>A hunting UFO's current destination, for its flight path (Globe::drawFlights).</summary>
     public bool Hunting { get; init; }
     public WorldPosition? Destination { get; init; }
+    /// <summary>The classified <see cref="UnavailableActionReason"/>.</summary>
+    public CampaignReason? ActionUnavailable { get; init; }
 }
+
+/// <summary>A craft weapon slot for the craft screen: weapon rule and rounds.</summary>
+public sealed record CampaignWorldCraftWeapon(string RuleId, int Ammo, int AmmoMaximum);
 
 public sealed record CampaignWorldBase(int Id, string Name, double Longitude, double Latitude)
 {
@@ -39,6 +44,23 @@ public sealed record CampaignWorldCraft(int BaseId, string TypeId, int Id, strin
 {
     /// <summary>Craft::getCraftStats().radarRange in nautical miles, including weapon bonuses.</summary>
     public int RadarRange { get; init; }
+    public CampaignReason? DispatchUnavailable { get; init; }
+    public CampaignReason? PatrolRecallUnavailable { get; init; }
+    /// <summary>GeoscapeCraftState details: condition, performance, armament and crew.</summary>
+    public int FuelMaximum { get; init; }
+    public int Damage { get; init; }
+    public int DamageMaximum { get; init; }
+    public int Shield { get; init; }
+    public int ShieldMaximum { get; init; }
+    public int Speed { get; init; }
+    public int SpeedMaximum { get; init; }
+    public IReadOnlyList<CampaignWorldCraftWeapon?> Weapons { get; init; } = [];
+    public int Soldiers { get; init; }
+    public int Vehicles { get; init; }
+    public bool LowFuel { get; init; }
+    public bool MissionComplete { get; init; }
+    /// <summary>RuleCraft::canAutoPatrol: Patrol becomes auto-patrol.</summary>
+    public bool CanAutoPatrol { get; init; }
 }
 
 /// <summary>The alien activity the player can act on plus the scheduled work behind it.</summary>
