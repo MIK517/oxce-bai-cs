@@ -38,7 +38,7 @@ internal static class CampaignSdlCommand
         var extensionSession = extensions.AttachCampaign(campaign, campaign);
         OxceSaveDocument? source = null;
         var savePath = destination == "-" ? null : Path.GetFullPath(destination);
-        var client = new CampaignLogisticsClient(new(extensionSession, extensionSession), assets.Font, assets.Localize,
+        var client = new CampaignLogisticsClient(CampaignUiSession.ForCampaign(campaign, extensionSession, extensionSession), assets.Font, assets.Localize,
             savePath is null ? null : Save, savePath is null ? null : Load);
         Console.WriteLine("I: stores; B/S/T: buy/sell/transfer; arrows and +/-: quantities; Enter then Y: confirm. F5/F9: save/load.");
         var host = new SdlIndexedWindowHost(client, new SdlWindowOptions("OXCE .NET strategic logistics")
@@ -79,7 +79,7 @@ internal static class CampaignSdlCommand
             campaign = restored.Campaign;
             source = restored.Source;
             extensionSession = extensions.AttachCampaign(campaign, campaign);
-            return new(extensionSession, extensionSession);
+            return CampaignUiSession.ForCampaign(campaign, extensionSession, extensionSession);
         }
     }
 }
