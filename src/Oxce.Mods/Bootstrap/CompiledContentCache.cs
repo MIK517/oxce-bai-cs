@@ -588,7 +588,8 @@ internal sealed record CachedRuntimeContent(
     IReadOnlyList<ContentInitialScriptValue> InitialValues,
     IReadOnlyList<CachedResourceDescriptor> Resources,
     IReadOnlyList<CachedResourceIndex> ResourceIndexes,
-    IReadOnlyDictionary<string, IReadOnlyList<RuntimeSoldierNamePool>> SoldierNamePools)
+    IReadOnlyDictionary<string, IReadOnlyList<RuntimeSoldierNamePool>> SoldierNamePools,
+    IReadOnlyDictionary<string, int>? ModOffsets = null)
 {
     public static CachedRuntimeContent Capture(ContentSnapshot snapshot) => new(
         snapshot.CompatibilityData.Catalog,
@@ -618,7 +619,8 @@ internal sealed record CachedRuntimeContent(
             index.DeclaredIndex,
             index.RuntimeIndex,
             index.Handle.Index)).ToArray(),
-        snapshot.Content.RuntimeRules.Soldiers.Rules.ToDictionary(r => r.Id, r => r.Value.NamePools, StringComparer.Ordinal));
+        snapshot.Content.RuntimeRules.Soldiers.Rules.ToDictionary(r => r.Id, r => r.Value.NamePools, StringComparer.Ordinal),
+        snapshot.Content.Resources.ModOffsets);
 
     public CachedRuntimeContentRestore Restore(
         ContentSnapshotOptions options,
@@ -672,7 +674,7 @@ internal sealed record CachedRuntimeContent(
                 index.RuntimeIndex,
                 descriptors[index.DescriptorIndex].Handle);
         }).ToArray();
-        var resources = new ResolvedResourceCatalog(generation, descriptors, indexes);
+        var resources = new ResolvedResourceCatalog(generation, descriptors, indexes, ModOffsets);
         resourceMeasurement.Dispose();
         using var linkingMeasurement = measurements.Measure(InstallationStartupStage.RuntimeRuleLinking);
         var runtimeRules = RuntimeRuleLinker.Link(

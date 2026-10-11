@@ -20,21 +20,27 @@ block (`monthsPassed == -1` with a named first base); the command is idempotent.
 - Subdivided extra sprites (`subX`/`subY`) now resolve one descriptor per cell in
   `ExtraSprites::loadSurfaceSet` order, with the cell rectangle in
   `ResolvedResourceDescriptor.SubFrame`; before, only the first cell resolved. This makes
-  the standard mods' 27×3 `GlobeMarkers` strip usable. Compiler/cache revision 56.
+  the standard mods' 27×3 `GlobeMarkers` strip usable. A run of cells outside the mod's
+  reserved range, or a missing image, is reported once for the declaration (the reference
+  stops at the first bad frame). The catalog also records each mod's sprite offset
+  (`ModData::offset`). Compiler/cache revision 56.
 - `RuntimeGlobe` projects `polylines` (`Mod/Polyline.cpp`) and the globe colours
   (`countryColor`, `cityColor`, `baseColor`, `lineColor`, `oceanPalette` as a block,
   `oceanShading`) with `Mod::Mod` defaults; later layers override named fields. Malformed
   polylines or colours fail like malformed polygons (strict: even coordinate count, range
   checks, colour 0–255, ocean block 0–15).
-- Craft `marker` is projected; craft and UFO markers above the nine shared frames resolve
-  through the declaring mod's `GlobeMarkers` extra sprites (`Mod::getOffset(marker, 8)`).
+- Craft `marker` is projected; craft and UFO markers above the nine shared frames are offset
+  into the declaring mod's range (`Mod::getOffset(marker, 8)`), declared or not.
   Deployment `markerIcon` keeps its declared number: the typed rule has no declaring mod, so
   a non-master mod's custom site/alien-base marker above 8 is a named restriction.
 - Cities are not projected separately: `RuleRegion::getCities` derives them from named
   point mission areas, which the runtime regions already carry.
 - `GeoscapeAssets` loads `PAL_GEOSCAPE`, `GEOGRAPH/TEXTURE.DAT` (32×32 frames) and the mod
-  `TEXTURE.DAT`/`GlobeMarkers` frames through the resource service.
+  `TEXTURE.DAT`/`GlobeMarkers` frames through the resource service. A whole-image frame takes
+  the image's own size (`Surface::loadImage`); a cell copies from the image and leaves pixels
+  outside it transparent.
 
-Tests: `ResourceDescriptorResolverTests.SubdividedSpritesResolveEveryCellAndGlobeMarkersUseModOffsets`,
+Tests: `ResourceDescriptorResolverTests` (cells, offsets, one report for an invalid run),
+`InstallationContentLoaderTests.SubdividedSpriteCellsAndModOffsetsSurviveCompiledCache`,
 `RuntimeGlobeProjectionTests`, `GeoscapeAssetsTests`; the owned-installation check
 `PrivateGeoscapeAssetsTests` (UFO, TFTD, Rosigma) runs with the private corpus.

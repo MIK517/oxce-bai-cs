@@ -113,8 +113,8 @@ public sealed class ResourceDescriptorResolverTests
             .ToArray();
         Assert.Equal([0, 1, 2, 3, 4, 5, 6, 7, 8, 1009, 1010], markers.Select(static descriptor => descriptor.RuntimeIndex));
         Assert.All(markers, static descriptor => Assert.Equal((3, 3), (descriptor.Width, descriptor.Height)));
-        Assert.Equal(new ResourceSubFrame(24, 0, 3, 3, 27, 3), markers[8].SubFrame);
-        Assert.Equal(new ResourceSubFrame(3, 0, 3, 3, 6, 3), markers[10].SubFrame);
+        Assert.Equal(new ResourceSubFrame(24, 0, 3, 3), markers[8].SubFrame);
+        Assert.Equal(new ResourceSubFrame(3, 0, 3, 3), markers[10].SubFrame);
         Assert.Equal("Resources/extra.png", markers[10].CanonicalPath, ignoreCase: true);
         Assert.True(snapshot.Content.Resources.TryResolveIndex(ResourceKind.Sprite, "GlobeMarkers", "resource-addon", 10,
             out var resolved));
@@ -124,8 +124,25 @@ public sealed class ResourceDescriptorResolverTests
         Assert.Equal(1009, rules.Crafts[rules.Crafts.GetRequired("CRAFT")].Value.Marker);
         Assert.Equal(-1, rules.Crafts[rules.Crafts.GetRequired("PLAIN")].Value.Marker);
         var ufo = rules.Ufos[rules.Ufos.GetRequired("UFO")].Value;
-        // A shared frame keeps its number; an undeclared mod frame keeps its declared number.
-        Assert.Equal((1010, 2, 11), (ufo.Marker, ufo.LandedMarker, ufo.CrashedMarker));
+        // Mod::getOffset(marker, 8): shared frames keep their number; any frame above them is offset,
+        // even one the mod does not declare.
+        Assert.Equal((1010, 2, 1011), (ufo.Marker, ufo.LandedMarker, ufo.CrashedMarker));
+    }
+
+    [Theory]
+    [InlineData("width: 32768\n    height: 32768\n    subX: 1\n    subY: 1", "Resources/cells.png")]
+    [InlineData("width: 6\n    height: 3\n    subX: 3\n    subY: 3", "Resources/missing.png")]
+    public void InvalidSubdividedDeclarationsReportOnceInsteadOfPerCell(string size, string file)
+    {
+        using var fixture = ResourceModFixture.Create(
+            "extraSprites:\n  - type: CELLS\n    " + size + "\n    files: {0: " + file + "}\n", "");
+        fixture.WriteMaster("Resources/cells.png", "cells");
+
+        var snapshot = ContentSnapshotBuilder.Build(fixture.CreatePlan());
+
+        Assert.False(snapshot.Capabilities.Has(ContentLoadStage.ResourcesResolved));
+        Assert.Single(snapshot.Diagnostics, diagnostic => diagnostic.Context.RuleType == "extraSprites");
+        Assert.DoesNotContain(snapshot.Content.Resources.Descriptors, descriptor => descriptor.OwnerId == "CELLS");
     }
 
     [Fact]

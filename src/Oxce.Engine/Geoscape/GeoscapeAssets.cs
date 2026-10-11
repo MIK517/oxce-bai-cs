@@ -70,8 +70,8 @@ public sealed class GeoscapeAssets
         if (vanilla.TryGet("textures", out var textureHandle))
             ReadDatFrames(vanillaRuntime.LoadBytes(textureHandle).Span, TextureSize, TextureSize, textures);
         var markers = new Dictionary<int, IndexedSurface>();
-        AddExtraFrames(modRuntime, resources, TextureSet, TextureSize, TextureSize, textures);
-        AddExtraFrames(modRuntime, resources, MarkerSet, MarkerSize, MarkerSize, markers);
+        AddExtraFrames(modRuntime, resources, TextureSet, textures);
+        AddExtraFrames(modRuntime, resources, MarkerSet, markers);
         return new GeoscapeAssets(palette, textures, markers, globe.Colors);
     }
 
@@ -88,31 +88,27 @@ public sealed class GeoscapeAssets
     }
 
     private static void AddExtraFrames(ResourceRuntime runtime, ResolvedResourceCatalog resources, string set,
-        int defaultWidth, int defaultHeight, Dictionary<int, IndexedSurface> frames)
+        Dictionary<int, IndexedSurface> frames)
     {
         foreach (var descriptor in resources.Descriptors)
         {
             if (descriptor.Kind != ResourceKind.Sprite || descriptor.RuntimeIndex is not { } index ||
                 descriptor.OwnerSection != "extraSprites" || descriptor.OwnerId != set) continue;
             var image = runtime.LoadIndexedImage(descriptor.Handle);
+            // Surface::loadImage replaces a whole frame with the image at its own size.
             frames[index] = descriptor.SubFrame is { } cell
-                ? Copy(image.Pixels.Span, image.Width, image.Height, cell.X, cell.Y, cell.Width, cell.Height,
-                    cell.SourceWidth, cell.SourceHeight)
-                : Copy(image.Pixels.Span, image.Width, image.Height, 0, 0, descriptor.Width > 0 ? descriptor.Width : defaultWidth,
-                    descriptor.Height > 0 ? descriptor.Height : defaultHeight, int.MaxValue, int.MaxValue);
+                ? Copy(image.Pixels.Span, image.Width, image.Height, cell.X, cell.Y, cell.Width, cell.Height)
+                : Copy(image.Pixels.Span, image.Width, image.Height, 0, 0, image.Width, image.Height);
         }
     }
 
-    /// <summary>
-    /// Copies a cell of the image as loaded into a <paramref name="sourceWidth"/> by
-    /// <paramref name="sourceHeight"/> surface; pixels outside the image stay transparent.
-    /// </summary>
+    /// <summary>Copies a cell of an image; cell pixels outside the image stay transparent.</summary>
     public static IndexedSurface Copy(ReadOnlySpan<byte> pixels, int imageWidth, int imageHeight,
-        int x, int y, int width, int height, int sourceWidth, int sourceHeight)
+        int x, int y, int width, int height)
     {
         var surface = new IndexedSurface(width, height);
-        var columns = Math.Min(Math.Min(imageWidth, sourceWidth) - x, width);
-        var rows = Math.Min(Math.Min(imageHeight, sourceHeight) - y, height);
+        var columns = Math.Min(imageWidth - x, width);
+        var rows = Math.Min(imageHeight - y, height);
         for (var row = 0; row < rows; row++)
         {
             if (columns <= 0) break;
