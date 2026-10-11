@@ -45,6 +45,11 @@ Tests: `ResourceDescriptorResolverTests` (cells, offsets, one report for an inva
 `RuntimeGlobeProjectionTests`, `GeoscapeAssetsTests`; the owned-installation check
 `PrivateGeoscapeAssetsTests` (UFO, TFTD, Rosigma) runs with the private corpus.
 
+Follow-up (2026-10-12): per-cell descriptors took 40k with ROSIGMA (about 220,000 subdivided cells,
+around 300,000 descriptors) past the 250,000-descriptor guard (`OXCE-MOD-0029`), found by the
+private geoscape tests. The default guard is now 1,000,000; the reference also keeps one surface
+per frame.
+
 ## S3 — Globe geometry and targets (2026-10-11)
 
 `GlobeView` ports `Globe.cpp`'s orthographic projection (`polarToCart` with its flooring,
