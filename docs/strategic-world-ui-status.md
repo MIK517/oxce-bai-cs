@@ -121,8 +121,9 @@ notification to the reference popup text (formatted with its arguments, for exam
 craft and base of a refuel or rearm shortage, which the service events now carry), its buttons
 with their `keyOk`/`keyCancel` bindings and its `timerReset` behaviour (UFO and site detection
 reset on Centre, alien base discovery on OK, low fuel, craft errors, UFO landing and hunting
-alerts on "OK – 5 seconds" bound to Enter, research completion and instant events when queued;
-others never). Production pops up only when a project ends, as `time1Hour` does. A timer reset
+alerts on "OK – 5 seconds" bound to Enter, research completion when queued;
+others never). Production pops up only when a project ends, as `time1Hour` does. Scheduling a
+strategic event (`SavedGame::spawnEvent`) shows nothing; its popup belongs to the event firing. A timer reset
 changes only the speed: a halted clock stays halted until a speed is chosen. Save, load and
 unexpected time failures report in the status line (the clock halts after a time failure) instead
 of ending the session; the base screens cannot advance time while the geoscape hosts them.

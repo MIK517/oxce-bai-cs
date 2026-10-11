@@ -82,5 +82,8 @@ public sealed class GeoscapeNotificationsTests
         Assert.True(lost.Actions[0].OkKey && lost.Actions[0].CancelKey);
         Assert.Null(Describe(new CraftDestinationChanged(1, "STR_INTERCEPTOR", 2, null)));
         Assert.Null(Describe(new CampaignArcUnlocked("STR_ARC", "STR_ARTICLE")));
+        // SavedGame::spawnEvent only schedules: the popup and reset come when the event fires.
+        Assert.Null(Describe(new CampaignStrategicEventRequested("STR_EVENT", "research")));
+        Assert.Null(Describe(new CampaignTransformationEventSelected("STR_EVENT")));
     }
 }

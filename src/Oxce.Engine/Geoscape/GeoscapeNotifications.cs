@@ -111,11 +111,6 @@ public static class GeoscapeNotifications
             case CampaignTrainingCompleted training:
                 return new(tr(training.Psi ? "STR_PSI_TRAINING" : "STR_TRAINING"),
                     [BaseName(training.BaseId), "#" + training.SoldierId.ToString(CultureInfo.InvariantCulture)], [OkCancelOnly()]);
-            case CampaignStrategicEventRequested request:
-                // An instant event pops GeoscapeEventState with a timer reset; its payload is branch 6.
-                return new(tr(request.RuleId), [], [Ok()]) { ResetsSpeedWhenShown = true };
-            case CampaignTransformationEventSelected transformation:
-                return new(tr(transformation.RuleId), [], [Ok()]) { ResetsSpeedWhenShown = true };
             case CampaignActionBlocked blocked:
                 return new("Time cannot advance", [blocked.Reason], [Ok()]);
             default:
