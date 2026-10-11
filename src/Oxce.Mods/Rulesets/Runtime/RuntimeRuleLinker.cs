@@ -959,14 +959,12 @@ public static class RuntimeRuleLinker
     }
 
     /// <summary>
-    /// Mod::getOffset(marker, 8): frames above the nine shared globe markers belong to the declaring
-    /// mod. They resolve through that mod's <c>GlobeMarkers</c> extra sprites; an undeclared frame keeps
-    /// its declared number, like other unresolved sprite references.
+    /// Mod::getOffset(marker, 8): a frame above the nine shared globe markers is offset into the
+    /// declaring mod's range whether or not that mod supplies the frame.
     /// </summary>
     private static int GlobeMarker(RuleIndexReference reference, ResolvedResourceCatalog resources) =>
         reference.Index <= 8 ? reference.Index
-            : resources.TryResolveIndex(ResourceKind.Sprite, "GlobeMarkers", reference.ModId, reference.Index,
-                out var resolved) ? resolved!.RuntimeIndex : reference.Index;
+            : checked(reference.Index + resources.ModOffsets.GetValueOrDefault(reference.ModId));
 
     private static RuntimeIndexedResourceReference Resource(
         RuleIndexReference reference,

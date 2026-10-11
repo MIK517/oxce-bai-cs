@@ -589,7 +589,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `ResourceKind` (enum) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs)
 - `ResourceLoadPolicy` (enum) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs)
 - `ResourceHandle` (record struct) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs)
-- `ResourceSubFrame` (record struct) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs) - The frame a subdivided extra sprite takes from its image: ExtraSprites::loadSurfaceSet loads the image into a surface of the declared siz...
+- `ResourceSubFrame` (record struct) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs) - The cell a subdivided extra sprite takes from its image.
 - `ResolvedResourceDescriptor` (record) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs)
 - `ResolvedResourceIndex` (record) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs)
 - `ResolvedResourceCatalog` (class) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs)
