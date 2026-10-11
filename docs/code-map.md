@@ -520,7 +520,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CraftLowFuel` (record) [CampaignWorldCrafts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldCrafts.cs)
 - `CraftTargetLost` (record) [CampaignWorldCrafts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldCrafts.cs) - The craft stopped pursuit; the last position can be confirmed as a new waypoint.
 - `UfoStartedHunting` (record) [CampaignWorldHunting.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldHunting.cs)
-- `CampaignWorldTarget` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs) - A globe target as the player sees it.
+- `CampaignWorldTarget` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs) - A globe target as the player sees it; detection state decides visibility.
 - `CampaignWorldCraftWeapon` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs) - A craft weapon slot for the craft screen: weapon rule and rounds.
 - `CampaignWorldBase` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs)
 - `CampaignWorldCraft` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs)

@@ -355,7 +355,7 @@ public static class GeoscapeScreens
     {
         ArgumentNullException.ThrowIfNull(target);
         ArgumentNullException.ThrowIfNull(tr);
-        return Format(tr(target.Label), target.Id);
+        return target.HasCustomName ? target.Label : Format(tr(target.Label), target.Id);
     }
 
     public static string TargetName(CampaignWorldOverview world, WorldTargetReference target, Func<string, string> tr)
@@ -374,9 +374,12 @@ public static class GeoscapeScreens
                 return world.Targets.FirstOrDefault(entry => entry.Kind == WorldTargetKind.Ufo &&
                     entry.Reference.UniqueId == target.UniqueId) is { } ufo ? TargetLabel(ufo, tr) : tr(target.TypeId);
             default:
-                return world.Targets.FirstOrDefault(entry => entry.Kind == target.Kind && entry.Id == target.Id) is { } found
+                // Site and alien base ids are counted per marker, so the marker type must match too.
+                return world.Targets.FirstOrDefault(entry => entry.Kind == target.Kind && entry.Id == target.Id &&
+                        string.Equals(entry.Reference.TypeId, target.TypeId, StringComparison.Ordinal)) is { } found
                     ? TargetLabel(found, tr)
-                    : Format(tr(target.TypeId), target.Id);
+                    : Format(tr(target.Kind is WorldTargetKind.AlienBase or WorldTargetKind.Waypoint
+                        ? target.TypeId + "_" : target.TypeId), target.Id);
         }
     }
 

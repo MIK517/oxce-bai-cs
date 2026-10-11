@@ -96,6 +96,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
             targets.Add(new CampaignWorldTarget(WorldTargetKind.MissionSite, site.Id, site.DeploymentId,
                 site.Name.Length != 0 ? site.Name : MarkerName(site.DeploymentId), site.Longitude, site.Latitude)
             {
+                HasCustomName = site.Name.Length != 0,
                 Detected = site.Detected,
                 SecondsRemaining = site.SecondsRemaining,
                 Status = site.City,
@@ -109,6 +110,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
                 alienBase.Name.Length != 0 ? alienBase.Name : MarkerName(alienBase.DeploymentId) + "_",
                 alienBase.Longitude, alienBase.Latitude)
             {
+                HasCustomName = alienBase.Name.Length != 0,
                 Detected = alienBase.Discovered,
                 Reference = new(WorldTargetKind.AlienBase, MarkerName(alienBase.DeploymentId), alienBase.Id,
                     alienBase.Longitude, alienBase.Latitude),
@@ -125,7 +127,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
                 WorldTargetReference.WaypointType,
                 waypoint.Name.Length != 0 ? waypoint.Name : WorldTargetReference.WaypointType + "_",
                 waypoint.Longitude, waypoint.Latitude)
-            { Detected = true });
+            { Detected = true, HasCustomName = waypoint.Name.Length != 0 });
         return new CampaignWorldOverview(CampaignSnapshot.ReadOnly(targets), _missions.Count, _events.Count)
         {
             CountryIds = CampaignSnapshot.ReadOnly(campaign.CountryStates.Select(country =>
