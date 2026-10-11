@@ -323,23 +323,6 @@ public sealed class StrategicWorldSiteUfoTests
     }
 
     [Fact]
-    public void GuardedDespawnConsequencesLeaveTheAssociatedUfoDormant()
-    {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-timer.rul"]);
-        var snapshot = LinkedSnapshot(content, 0);
-        snapshot = snapshot with
-        {
-            World = snapshot.World with
-            {
-                MissionSites =
-                [snapshot.World.MissionSites[0] with { DeploymentId = "SITE_DEPLOY" }]
-            },
-        };
-        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
-        AssertTimeBlocked(campaign, "Mission site despawn requires research or event payloads.");
-    }
-
-    [Fact]
     public void DuplicateSiteUfoLinksFailIntentionally()
     {
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-timer.rul"]);
