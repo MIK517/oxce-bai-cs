@@ -64,9 +64,9 @@ internal static class ContentStateDump
 
         private void WriteBody(object value, Type runtimeType, int depth)
         {
-            // Framework collection types are not part of the contract (restored content may use another
-            // read-only wrapper); only own types are named.
-            if (IsOwnType(runtimeType) || value is not IEnumerable) _text.Append(runtimeType.Name);
+            // Concrete collection types are part of the contract: restored content must not expose mutable
+            // collections where the fresh build publishes read-only wrappers.
+            _text.Append(runtimeType.Name);
             if (value is IDictionary dictionary)
             {
                 var entries = new List<(string Key, object? Value)>();

@@ -404,6 +404,7 @@ internal static class CompiledContentCache
         {
             TypeInfoResolver = CompiledContentCacheJsonContext.Default,
         };
+        options.Converters.Add(new ReadOnlyCollectionJsonConverterFactory());
         options.Converters.Add(new YamlMappingNodeJsonConverter());
         options.Converters.Add(new YamlNodeJsonConverter());
         options.Converters.Add(new ScriptOperandJsonConverter());

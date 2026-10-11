@@ -19,7 +19,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
 | [Oxce.Gameplay](#oxcegameplay) | 166 | Core, Mods, Scripting |
-| [Oxce.Mods](#oxcemods) | 92 | Core, Formats, Scripting |
+| [Oxce.Mods](#oxcemods) | 93 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
@@ -518,7 +518,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Mods
 
-`src/Oxce.Mods` - 92 files.
+`src/Oxce.Mods` - 93 files.
 
 ### `Oxce.Mods`
 
