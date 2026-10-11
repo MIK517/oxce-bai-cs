@@ -1,0 +1,977 @@
+# UFO hunting and escort integration
+
+Branch 4c. Pinned reference: 4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15.
+
+## Production material uncertainty (2026-10-07)
+
+The hunting forecast now passes hourly ammunition-stock uncertainty to its
+production-owned operation. Material uncertainty is consumed only when native
+`Production::step` actually attempts another unit: idle projects, final units,
+money/quarters stops and zero positive material requirements do not read it.
+The existing precise restriction remains at a reached material check. The native
+`strategic-hunting` capture adds 96 controlled-saving/production rows, retaining
+all earlier fields. Fresh/cache idle/final scenarios execute the VM hunting
+caller and reload both transitions. Reference: `CraftWeapon::rearm`,
+`Craft::rearm`, `Production::step/haveEnoughMaterialsForOneMoreUnit/startItem`
+and the `GeoscapeState` hourly-before-half-hour fallthrough.
+
+Reached material checks now use monotone stock bounds. An upper-bound shortage
+stops every outcome; a successful upper plan executes only when its item inputs
+also exist at the lower bound. Fixed outputs, item subtraction and craft unloads
+preserve the saving difference in saved project order. No saving roll is chosen
+by preflight. All 96 new native rows classify equal progress/results separately
+from divergent material eligibility; fresh/cache interval and retained-guard
+cases pass with transition reloads. Divergent inputs still stop the entire tick.
+
+Ordered acceptance adds 32 two-project native traces and checks unit counts,
+completion/shortage notifications and surviving project progress as well as
+weapons and stocks. Every preceding oracle field is unchanged. Nine focused
+fresh/cache cases pass, including atomic divergent sequences, both transition
+reloads and exhausted-work purity. Native probes and their captured output stay
+project-local; the reference checkout remains unchanged.
+
+The batch audit reproduced an uncharged idle-rule validation scan using 128
+zero-quantity material edges near the shared work limit. The additional fix
+reserves required/produced material validation, random output sets and their
+items, and event weight scans before the common validator. All ten focused cases
+pass without changing state or RNG on rejection. Formatting/code-map/diff checks
+pass. The first root run passed 3,225 of 3,226 tests; its stationary patrol
+allocation case reported a 256-byte population differential and passed in an
+isolated rerun with its original threshold. The unchanged full root recheck
+passed all 3,226 tests with no failures or skips.
+
+## Future country activity prices (2026-10-07)
+
+Consumed hourly country alien-activity queries now read the existing history:
+`GeoscapeState::time1Hour` production prices precede `time30Minutes` UFO/site
+scoring, and no non-daily handler changes that history before production.
+Native `strategic-detection-scripts` country getter rows and the `strategic-world`
+score evidence feed fresh/cache item/global price calls, current quote purity,
+transition reloads and explicit before/after half-hour values. Reference:
+`GeoscapeState::timeAdvance/time1Day/time1Hour/time30Minutes`,
+`Production::step`, `RuleItem::getSellCostAdjusted` and Country history getters.
+
+A registered internal world operation now projects daily deployment points for
+the consumed country before production. It preserves first matching saved-country
+order, signed points and intermediate overflow checks, and charges containment
+work to the shared price budget. Successful values are reused only inside the
+price forecast context; no RNG, live history or persistence field is changed.
+Verified `strategic-alien-base-activity` rows exercise positive/negative points,
+overlapping countries, daily-before-hourly-before-half-hour values and reloads.
+The focused activity cases include pure work-exhaustion validation.
+
+Daily projection now shares the existing bounded research forecast with price
+`isResearched` queries. Completed, directly completed and lookup research remove
+an alien base before its daily points; incomplete research preserves it. Uncertain
+deletion retains a consumed-country restriction before mutation. Fresh/cache
+item/global calls compare those four transitions with the verified
+`strategic-alien-base-cleanup` caller order, then reload before and after the tick.
+Half-hour UFO points remain later than production in every case. No research,
+world state or RNG is changed by the projection itself.
+
+The three-slice batch audit found no additional confirmed defect. It checked
+native trigger fallthrough, consumed-only/null queries, signed intermediate
+activity bounds, exact versus uncertain research, context-local cache lifetime
+and shared work charges. Root `dotnet test` passes 3,216 tests without failures
+or skips, including fixture checksums, private corpus and allocation gates.
+Formatting, regenerated code-map and diff verification pass. The owning internal
+operation adds no save/cache schema and leaves event, combat and month guards intact.
+
+## Candidate storage and craft fact reuse (2026-10-07)
+
+Retarget selection reuses separate preflight and execution candidate buffers.
+Each hunter replaces the saved-order contents, and selection releases its
+references immediately. Existing native `strategic-hunting` selection/attraction
+rows and fresh/cache mixed-mode, recall and reload scenarios verify the boundary.
+Reference: `GeoscapeState::ufoHuntingAndEscorting/updateActiveCrafts`,
+`Craft::getHunterKillerAttraction` and `Ufo::insideRadarRange` at the pinned commit.
+All 456 focused cases pass (454 existing cases plus two corrected fresh/cache
+transition cases).
+
+Damage maximum, speed, unit capacity and target reference now reuse immutable
+craft-source facts across hunters within a caller. Speed and capacity remain
+lazy at the original consumed-input checks; attraction, original-target status
+and range still depend on each hunter. Preflight resets at hunting start and
+checks source identity; live execution uses a separate cache cleared in `finally`
+after each retarget invocation. Both ten-minute and five-second calls rebuild
+their live view after preceding handlers. Saved order and every logical work
+charge remain unchanged. The mixed-mode case also steps multiple ticks without
+reload on each side of its persistence boundary.
+
+Populated 8/32/128-hunter checks now run at one/eight bases with sixteen craft per
+base, fresh/cache content, mixed hunt modes and transition reloads. Their initial
+measurement exposed 2,472 bytes per additional hunter/tick from repeated target
+projections. Returning the existing snapshot when target coordinate bits are
+unchanged reduces the measured warm differential to 680 bytes; the new 1 KB gate
+passes without changing ordinary-flight or escort bounds. Bitwise coordinate
+comparison preserves signed zero. Cold and warm costs are recorded in
+`artifacts/hunter-selection-*.json`; timings remain informational.
+
+The Release benchmark adds sustained selection by 32 hunters against sixteen
+craft, with explicit five-second/one-day context and end-state assertions.
+All twelve in-process Dry time-advance smoke cases pass. BenchmarkDotNet's optional
+CPU metadata query reported a sandbox CIM denial during export; benchmark
+execution and allocation reporting completed, and no host changes were made.
+
+Batch audit reviewed source identity, consumed-only lazy fields, original-target
+exceptions, mixed modes, saved order, work charges, both live retarget positions
+in the tick, cache release and exact coordinate bits. No additional confirmed
+defect was found. All 3,201 root tests pass with zero failures/skips, including
+native checksums, private classifications, endurance and existing allocation
+gates. Full formatting, code-map and diff checks pass; the Release benchmark
+build has no warnings. Useful measurement files and benchmark reports remain;
+no native probe or host configuration changes were made.
+
+Current maintenance composition supports repairs, deterministic craft/facility ammunition,
+ordered transfers, item reuse, shared refuelling and escort fuel. Research-owned
+forecasts cover stock-free completions, held-item refunds, global obsolete
+and disabled-project cancellation, fixed spawned item arrivals, lookup and automatic
+discoveries, disablers/re-enablers and deterministic free/protected-free rewards. Non-fallback
+production without a completing unit, scored fixed/sold item output, deterministic and proven-inert random
+output, scientist/engineer transfers, recurring paid/item-input units and fallback staffing
+participate in hunter forecasts. Research forecasts also include native corpse recovery.
+Production price scripts use the future hourly context, exact deterministic daily
+discoveries, supported immutable rule metadata/tags, Mod settings and deterministic
+damage queries, with native pointer identity. Current buy/sell callers share the same
+bounded execution; random damage is limited to native null short circuits.
+Remaining projections cover uncertain research-dependent sale prices and future alien activity,
+relevant random output, divergent shared-ammunition servicing/refuelling/material outcomes,
+uncertain actor identity counters and random research reward choices. Soldier production is composed with nationality, pending-name retries,
+transfers, shared counters and hunting. Deterministic craft manufacture is composed through
+initialization, delayed/immediate output, servicing and further craft consumption.
+The progress notes below record earlier guards and their later replacements.
+
+The strategic-hunting capture inserts Craft::getHunterKillerAttraction,
+Ufo::insideRadarRange and GeoscapeState::ufoHuntingAndEscorting's selection
+fragment verbatim. Controlled collaborators supply effective capacities, craft
+eligibility and distances. Ninety-six attraction rows and eighteen selection
+rows pin both hunt modes, strict saved-order comparisons, original-target ties,
+ignored/undetectable exclusions, zero radar and inclusive range.
+
+The gameplay-owned selection operation preserves those rules. Arithmetic outside
+signed 32-bit range and zero divisors fail intentionally. Captured outputs and
+malformed inputs have focused compatibility tests. The retarget and integration slices below connect the operation to loaded actors.
+Combat remains branch 5; branch 4d is untouched and the headless gate remains open.
+
+The retarget slice adds reference destination backup, hunt speed, escort speed and
+waypoint restoration operations. Captured transitions retain the original waypoint
+across hunt-to-escort changes and leave speed unchanged on restoration. Explicit
+selected speed controls the five-second/one-minute fast path; ten-minute retargeting
+is always due. Mod::hunterKillerFastRetarget defaults true and survives fresh/cache
+projection. The redundant-HK-alert option defaults true, honors fixed user options
+and persists through the save adapter. Compiler revision 33 invalidates stale caches.
+The option and transition fixtures cover fresh/cache projection and reload;
+the live integration is described below.
+
+Live imported hunters and escorts now use registered ten-minute retargeting after
+base hunting, plus the explicit slow-speed fast path before five-second movement.
+Retargeting honors projected fuel returns, preserves original waypoints, allocates
+contact markers and publishes gameplay-owned hunt notifications. Alert suppression
+does not prevent revelation or targeting. Movement follows craft/UFO positions in
+reference list order; snapshot capture resolves final target coordinates without
+changing movement. Deleted escort targets restore their original waypoint.
+
+Combat arrivals stop atomically before mutation. Retargeting involving same-tick
+grounded auto-patrol relaunches or airborne craft transfers retains specific
+forecast guards. Escort chains/cycles and malformed originals fail intentionally.
+Deletion scans are bounded before nested work. Grounded non-escort waves and
+airborne non-escort waves with no possible craft target execute through the
+constructor/spawn slices below. Creation-time escorts and candidate-bearing
+airborne waves retain their atomic forecast boundary.
+The headless gate remains open and branch 4d is untouched.
+
+The three-slice batch audit reproduced a same-tick boundary bypass: a hunter's
+new revelation was absent from an imported pursuer's craft-arrival forecast.
+Craft interception checks now use the retarget projection before any mutation.
+Regression tests also reject signed 32-bit intermediate attraction overflow even
+when later terms would produce an in-range result; each C++ operation is bounded.
+The root allocation gate caught eager closure allocation in the escort forecast
+on ordinary flight. An explicit identity scan removes that allocation, preserving
+the existing 8/32/128-UFO budgets. Handler-order assertions include both registered
+retarget callers without weakening their exact ordering.
+
+Final cycle validation passes all 1,692 root tests with no failures or skips,
+including fixture checksums, all 19 staged-save classifications, 72-hour composed
+scenarios and populated allocation budgets. Formatting verification, code-map
+validation and diff checks pass. The pinned C++ checkout remains clean; obsolete
+probe object output was removed. Branch 4c remains incomplete and 4d is untouched.
+
+Hunter constructor initialization is now an executable gameplay operation.
+The pinned Ufo constructor capture has 192 rows covering nonpositive percentages,
+failed/successful rolls, percentages above 100, literal modes/behaviors and the
+ordered optional random selections. Failed rolls consume no mode/behavior draws;
+nonpositive percentages consume no RNG. Supply objective callers retain the
+reference constructor defaults. Positive hunter spawning remains guarded until
+the following slices connect safe wave contexts.
+
+Grounded non-escort hunter waves now use the captured constructor operation
+before geometry selection. Wave values inherit rule defaults only at -1.
+Initial ground timers above one keep retargeting outside the creation tick;
+fresh/cache tests cover constructor metadata, ground countdown, lift and reload.
+Airborne hunter creation and spawn escorts remain precisely guarded.
+
+Airborne non-escort hunter waves now execute when existing craft and undelivered
+craft transfers cannot supply a current or auto-patrol target. That structural
+proof keeps the creation-tick path ordinary; later dispatch uses the loaded
+hunter retarget capability. Rule-derived hunter percentage/mode/behavior and
+fresh/cache creation/targeting reloads are covered. Candidate-bearing airborne
+spawns and creation-time escorts retain the existing atomic wave boundary.
+
+The constructor/spawn batch audit confirmed an empty hunter trajectory could
+index its first waypoint before the existing minimum-length guard. Length and
+altitude validation now precede hunter context checks. Empty/one-point regressions
+assert an unchanged campaign and RNG, and a separate auto-patrol regression
+checks that a possible same-tick relaunch cannot enter the no-candidate path.
+
+The previous supply constructor-choice fixture now executes its formerly guarded
+no-candidate hunter cases and asserts captured hunter flags, counts, live links
+and reload. Objective supply ships still assert the default non-hunter
+constructor. Mode/behavior capture draws now alternate so swapped draw order
+cannot pass the shared canonical oracle comparison.
+
+Final constructor/spawn cycle validation passes all 1,701 root tests with no
+failures or skips, including checksums, private classifications, endurance and
+populated allocation checks. Formatting verification, code-map validation and
+diff checks pass. The reference checkout is clean and obsolete probe object
+output was removed. The remaining 4c headless gate is open; 4d is untouched.
+
+Airborne hunter waves now accept existing airborne craft ignored by the pinned Craft::isIgnoredByHK rule (low fuel or mission complete). Four captured truth-table rows and fresh/cache spawn reloads cover this extension; active targets remain guarded.
+
+New airborne hunters also accept undetectable existing craft, which the pinned saved-order selection trace excludes before attraction evaluation. Fresh/cache tests assert the effective rule, non-hunting spawn and reload. Original targets retain their separate reference semantics; transferred craft remain conservative.
+
+New flying hunter waves reserve their aggregate craft-scan work together with loaded retarget actors before the creation tick. A reproduced 1001-by-1001 workload previously threw after creation; it now blocks without state or RNG changes. The no-target structural scan is cached only for the current preflight/tick, keeping immediate chains bounded.
+
+The fourth batch audit checks returning/undetectable exclusions and per-tick cache lifetime. An hourly-production reservation test covers the finite queue upper bound. Suspected multi-craft output undercount was rejected: runtime linking already enforces exactly one craft per production unit. No additional gameplay defect was confirmed in these three slices.
+
+Final fourth-cycle validation passes all 1,710 root tests with zero failures or
+skips. Fixture checksums, private-corpus classifications, 72-hour scenarios,
+allocation budgets, formatting verification, code-map and diff checks pass.
+The pinned C++ checkout remains clean, and obsolete capture object output was
+removed. Branch 4c remains incomplete; branch 4d has not started.
+
+Creation-time escort initialization now has pinned executable evidence from
+AlienMission::spawnUfo and Ufo::setEscortedUfo/backupOriginalDestination.
+Eighty captured rows cover successful/failed hunter status, the escort flag,
+missing leaders, mission filtering, hunter exclusions, first saved-order leader,
+all leader statuses, origin relocation, original destination and full speed.
+The owning gameplay operation reproduces those rows; live wave callers are the
+next two slices. Combat and deployment remain branch 5.
+
+### Creation-time escorts: live single waves
+
+Airborne escort waves now run AlienMission::spawnUfo's constructor and initial
+leader attachment through gameplay-owned mission spawning. The saved-order leader
+may be flying, landed, ignored, crashed or destroyed. Timer-driven deletion repairs
+the new follower's original waypoint and mission live count; no-leader waves retain
+the escort request without changing their trajectory speed. Fresh/cache cases and
+save/reload on both sides of the transition are covered.
+
+Preflight reserves creation/retarget scans and cleanup over the final UFO population,
+validates the effective full escort speed, and stops before craft retargeting or
+grounded escort takeoff needs further forecasts. Multiple same-tick births remain
+guarded for the immediate-wave slice. Reference: AlienMission::spawnUfo,
+Ufo::setEscortedUfo/resetOriginalDestination and GeoscapeState::time5Seconds.
+
+### Creation-time escorts: immediate wave chains
+
+Finite immediate waves now preserve the live saved-list order when leaders and
+escorts are created in the same half-hour tick. The reference capture adds four
+sequence rows from AlienMission::spawnUfo and the idle escort fragment of
+GeoscapeState::ufoHuntingAndEscorting. Earlier leaders relocate the initial escort
+origin; later leaders attach during retargeting without relocating it. Multiple
+escorts skip other hunters, follow the first ordinary leader and keep their own
+original waypoints.
+
+Fresh/cache integration advances both ordering variants, saves before and after
+subsequent movement, and preserves references to a leader whose contact ID is
+still zero using its positive STR_UFO_UNIQUE identity. Scheduling reserves newborn
+and existing escort scans over the final population. Excessive immediate escort
+work stops before any birth or RNG draw. Loaded idle escorts attaching to newborn
+leaders still stop at a specific pursuit-forecast boundary; grounded escorts and
+creation-time craft hunting remain explicit future 4c work.
+
+### Escort batch audit
+
+The three-slice audit reproduced a relocation scoring defect: newborn escort
+activity was forecast at its ordinary origin even though AlienMission::spawnUfo
+moved it to a leader before GeoscapeState::time30Minutes scored it. Overflow or
+underflow in the leader's region/country therefore threw after mutation.
+
+Activity preflight now tracks saved leader positions and all possible earlier
+ordinary births in list order, including probabilistic hunter constructor outcomes.
+A certain hunter escort with a certain leader scores only at the candidate leader
+origins; otherwise the original birth point remains a possible outcome. Geography
+work and candidate storage stay bounded and no forecast draws RNG.
+
+Sixteen region/country boundary regressions cover saved and newly born leaders,
+positive/negative scores, atomic refusal and exact-fit success with reload.
+A terminal-leader regression also saves after the reference's early return,
+then verifies next-tick follower restoration and mission live-count release.
+
+Final escort-cycle validation passes all 1,745 root tests with no failures or
+skips, including private classifications, endurance, checksums and allocation
+checks. Formatting verification, code-map and diff validation pass. The pinned reference checkout remains
+clean; obsolete probe object output was removed. Branch 4c's headless gate remains
+open and branch 4d has not started.
+
+### Grounded escort births
+
+Grounded escort waves with a timer above one now initialize beside a saved
+ordinary leader, or keep their request and trajectory speed without a leader.
+The extended pinned spawn capture has 160 rows and confirms that escort
+initialization retains the source status. Active craft do not block a grounded
+birth because GeoscapeState skips landed UFOs in the retarget pass.
+
+Fresh/cache scenarios assert ordered detection notifications, stationary ground
+timers, untouched shields, preserved original waypoints, takeoff at trajectory
+speed and save/reload before and after flight. Reference: AlienMission::spawnUfo,
+GeoscapeState::ufoHuntingAndEscorting/time5Seconds and AlienMission::ufoLifting
+(the existing lift oracle). Creation-tick takeoff is the next slice.
+
+### Creation-tick grounded escort takeoff
+
+Ground timer one now permits grounded hunter and escort births with active
+craft. The reference retarget pass skips these landed actors, then
+AlienMission::ufoLifting takes off at the current trajectory speed without
+movement, shield recharge or a new craft hunt. Existing lift fixtures and the
+pinned grounded spawn rows establish the two operations.
+
+Activity preflight reserves newborn takeoff points after site processing and
+earlier UFO movement. A terminal earlier arrival skips both the newborn takeoff
+and its award. Fresh/cache takeoff, next-tick interception refusal, site
+underflow, exact-fit terminal scoring and transition reloads pass in the
+138-case focused suite. Combat remains guarded before the next affected tick.
+
+### Saved idle escort and newborn leader composition
+
+Saved idle escorts can now see ordinary UFOs appended by same-tick waves,
+using the pinned GeoscapeState::ufoHuntingAndEscorting attachment fragment and
+existing sequence oracle. They back up the old destination, use full effective
+speed and follow the later leader's current coordinates without creation-time
+relocation.
+
+The structural preflight proof permits this composition only when no current
+or potential airborne craft can depend on pursuit, the old waypoint would not
+be reached in this tick, and no existing UFO escort follows the saved source.
+Hidden/ignored craft still require pursuit forecasts. Scans and final-population
+movement work are bounded. Fresh/cache early/late leader ordering, unmarked
+unique references, transition reloads, three precise atomic boundaries and a
+resource-limit regression pass in 146 focused cases. Broader pursuit forecasts
+remain 4c work; this does not close the headless gate.
+
+- Grounded/saved-escort batch audit: reviewed creation, landed/takeoff scoring,
+  retarget ordering, terminal fallthrough, follower repair and aggregate work
+  limits against the pinned C++ methods. No confirmed defect was found. All
+  1,761 root tests pass with zero failures/skips, including private corpus,
+  endurance, checksums and allocation checks. Formatting verification, code-map
+  and diff checks pass. The reference checkout is clean and obsolete probe
+  object output was removed. Branch 4c remains open; 4d has not started.
+
+### Maintenance before hunter selection
+
+Half-hour forecasts apply ordinary and item refuelling and auto-patrol relaunch
+in saved craft order before fuel use and hunter selection. Private fuel-stock
+copies include grounded consumers and native fuel refunds. Missing-fuel messages
+prevent that craft's relaunch but preserve the current tick's fallthrough. Hourly
+repair and empty-rearming transitions preserve the native extra service hour.
+Preflight allocates no identity, draws no RNG and mutates no campaign state.
+
+The pinned capture now includes Craft::setFuel/refuel/setDestination/repair/rearm
+and the GeoscapeState::time30Minutes auto-patrol fragment: 48 single-craft,
+18 shared-stock and 24 hourly rows retain all earlier traces. Fresh/cache cases
+compare canonical native rows and reload before/after the transitions.
+
+The batch audit confirmed missing incoming-craft and escort-speed compositions.
+Due grounded auto-patrol arrivals and escorts of potential relaunching leaders
+now stop atomically with precise reasons until their forecasts are implemented.
+Hourly item stocks and production ammunition reuse also remain explicit guards.
+Craft-reference fuel scans are reserved against the shared work bound. Negative
+fuel capacity and overflowing service rates refuse the tick intentionally.
+Combat, deployment, event payloads and campaign month progression remain deferred.
+
+Branch 4c composed escort fuel: hunter preflight now builds one pure ordered craft projection, applies all maintenance/relaunches, then fuel use in saved base/craft order. The shared AdvanceCraftFuel transition accepts projected leader states, so a relaunch or an earlier low-fuel return supplies the speed consumed by later escorts. This removes the audit-added relaunch-leader guard. Four new native strategic-hunting rows insert getFuelConsumption/consumeFuel/returnToBase and the exact time10Minutes escort/fuel-return caller; all older traces remain unchanged. Eighty-eight focused hunting/craft-operation tests pass, including fresh/cache canonical order comparisons, notification fallthrough and reload. Incoming craft and hourly stock/ammunition effects remain precise subsequent work; 4d and combat/event/month boundaries are unchanged.
+
+Branch 4c incoming hunter targets: due craft transfers now append in native base/transfer order to the pure projection, apply setBase/checkup and half-hour maintenance without receiving the earlier hourly service pass. Projected coordinates and live craft health participate in UFO arrival/combat preflight. The prior arriving-craft guard is removed for these supported transitions. Forty-eight native transfer/checkup rows retain all older hunting traces; fresh/cache canonical tests cover due/pending transfers, imported status, damage, full tanks, relaunch delays and reload. A close incoming target refuses combat before delivery. Hourly item-stock and ammunition-reuse composition remain explicit subsequent work; later-branch boundaries and 4d remain unchanged.
+
+Branch 4c supplied hunting stocks: hourly projections now separate servicing, all transfer deliveries/item reuse, half-hour refuelling and ordered fuel use. Item arrivals feed shared fuel stocks and existing/new craft reuse without selecting RNG. The reference ItemsArrivingState batch ordering is now explicit in the transfer handler, with bounded all-arrival reuse work even when no UFO exists. Seventy-two supplied fuel/ammunition rows and twelve combined item/craft order rows retain all earlier native traces. Focused tests cover fresh/cache canonical outcomes, pending transfers, scarce hourly stocks, transition reloads and malformed work limits. Facility/craft ammunition consumption, production stock/craft consumption and finishing daily research stocks retain precise pre-tick composition checks. Reference: Transfer::advance, ItemsArrivingState constructor, Craft::reuseItem/refuel/rearm and GeoscapeState hourly fallthrough. Later-branch boundaries and 4d remain unchanged.
+
+The maintenance/arrival audit also pins the malformed zero/negative-hour transfer boundary. Native Transfer::advance delivers these payloads after decrementing below zero, while ItemsArrivingState only removes/reuses transfers at exactly zero hours. Both gameplay transfer preflight and the hunter projection therefore refuse undelivered non-positive-hour arrivals before mutation. Reload preserves the imported state for inspection. This intentionally avoids native repeated-delivery behavior; normal positive-hour arrivals retain their reference timing.
+
+Branch 4c facility ammunition stocks: execution and hunter forecasts now share the pure BaseFacility::rearm transition, preserving alert suppression, full-ammo reset, build-time eligibility and disabled-facility behavior. Facility consumption runs after craft servicing and before transfers/refuelling, removing the prior facility-stock composition guard. Thirty-six native facility/fuel rows retain all earlier traces and compare fresh/cache outcomes with transition reloads. All 117 focused hunting/readiness tests pass; malformed consumed fields and int-max rates have focused unit coverage. Reference: BaseFacility.cpp rearm and GeoscapeState time1Hour facility loop. No host/native dependency, new save field or later-branch transition is introduced; 4d remains untouched.
+
+Branch 4c deterministic craft ammunition stocks: hunter preflight now reuses CraftServicing.Rearm with a refusing random provider, applying deterministic stock consumption in native craft order. It never selects a bullet-saving draw or touches campaign RNG. A draw sharing the fuel item retains a precise atomic stochastic-stock guard; unrelated ammunition cannot change the craft's service status during that hour. Forty-eight native CraftWeapon::rearm/Craft::rearm shared ammunition/fuel rows retain all older traces, covering missing stock, clip rounding, completion delay and stochastic boundaries. Fresh/cache cases reload before and after supported transitions; blocked cases preserve the entire snapshot. All 100 focused hunting/readiness and 17 servicing tests pass. Production and daily research stock composition remain subsequent 4c work; later branch boundaries and 4d remain unchanged.
+
+Branch 4c incomplete production composition: execution and hunter preflight share the pure ProductionProgress completion count. Existing non-fallback units paid at start cannot consume or deliver stocks/craft until a completion, so their unrelated pending work no longer blocks hunting. Fallback staff assignment and completing production retain precise composition guards. The pinned capture adds 96 Production::getAmountProduced/step rows; fresh/cache cases cover pending fuel, craft-consumption and ammunition projects, fallback refusal, progress overflow and transition reload. Focused native hunting/economy and pure progress tests pass. Reference: Production.cpp completion-count prefix and getAmountProduced; no event payload, combat, month guard or 4d behavior changes.
+
+The facility/ammunition/production batch audit closes with two confirmed fixes: unchanged facility-service results retain their existing records (the idle-campaign allocation test caught the unconditional hourly copy), and daily research composition checks cover ammunition reuse without item fuel plus cross-base held-item refunds. The latter has fresh/cache reload regressions and a non-hunter control showing cancellation/refund followed by same-tick relaunch. Research scanning is bounded and shared once per hunting forecast. Reference: Base::removeResearch, GeoscapeState::time1Day and SavedGame primary research side effects before hourly servicing/transfers. Final root dotnet test passes 2,477 tests with zero failures/skips; native checksums, private corpus, populated measurements and code-map checks pass. One initial query allocation sample exceeded its original 448 B/UFO limit; focused endurance and both subsequent root runs passed without changing any threshold. Useful captures/executables remain; the obsolete hunting object was removed and the pinned reference remains clean. Completing production, stochastic shared ammunition, research stock forecasts and branch-wide closure remain open 4c work; later branches and 4d remain unchanged.
+
+Branch 4c stock-neutral daily research: the research capability now supplies a pure bounded proof that daily item stocks and incoming item deliveries remain unchanged. It includes direct completions and every possible free/protected-free topic, preserves global cancellation uncertainty when any project holds an item, and distinguishes lookup/automatic addFinishedResearch from primary item side effects. Stock-free completions no longer trigger hunter fuel/ammunition guards. Fresh/cache loaded fixtures complete research plus a free topic, launch fuel/ammunition craft and reload both sides; guarded stock-changing fixtures remain intact. Reference: GeoscapeState::time1Day, SavedGame::handlePrimaryResearchSideEffects and Base::removeResearch. Event scheduling remains gameplay-owned; due payloads and later branch boundaries remain guarded. Branch 4c closure is still open and 4d is untouched.
+
+Branch 4c deterministic research refunds: the research capability now projects simple daily completions and global obsolete-project cancellation in saved base order, returning immutable per-base stock changes before hourly servicing. Choices involving rewards, lookups, protected unlocks, disablers and matching corpse units remain explicit uncertainties. The pinned Base::removeResearch fragment contributes sixteen native held/finished/return/stock rows; cancellation now correctly avoids refunding the needed item for an already-finished destroying project. Fresh/cache fixtures compare every native row and reload cancellations, direct refunds and cross-base refund/relaunch transitions. Stock overflow stops atomically. No campaign RNG, identity or state is changed by this forecast. Spawned item deliveries are the next slice; branch 4c and later transition boundaries remain open/guarded, and 4d is untouched.
+
+Branch 4c fixed research item deliveries: deterministic daily research projections now append the direct spawned item and every list entry as one-hour arrivals, preserving native count minimums, list order, duplicate entries and missing-item behavior. Hunter forecasts apply refunds before hourly service, then existing plus research arrivals as one batch before refuelling/reuse. Seventy-two pinned primary research/transfer/refuel rows compare canonical fresh/cache output and reload both sides. Fixed ammunition delivery now prevents a no-item-fuel craft's same-tick relaunch correctly. Transfer identity and stock overflow refuse before research, RNG, clock or inventory changes. Reward/disabler/lookup/protected-unlock and corpse uncertainties remain precise research composition boundaries. Reference: SavedGame::handlePrimaryResearchSideEffects spawned-item fragment, Transfer::advance and ItemsArrivingState batch reuse. Branch 4c closure is still open; due event payloads, combat/month progression and 4d remain deferred.
+
+The research-stock batch audit closes with a confirmed end-of-day guard fix: already-disabled held projects can cancel/refund without any fresh research completion. A bounded research capability query now identifies this case, and the projection applies disabled cleanup after all daily base loops. The regression first reproduced a close hunter consuming an unavailable combat tick, then passes atomically with the fix; fresh/cache cases also verify the safe refund/relaunch and reload. Reviewed deterministic source ordering, global cancellation, finished-item semantics, duplicate/missing spawned items, all-arrival reuse, ID/stock limits and pure RNG/identity handling. Root dotnet test passes 2,497 tests with zero failures/skips, including native checksums, 19 staged save classifications and populated performance gates with unchanged limits. The corpus retains ten executable 360-tick horizons, one 125-tick guard stop and eight tactical preservation cases. Code-map/diff checks pass; useful captures/executables remain, the obsolete hunting object is removed and the pinned reference is clean. Compound research stock consequences, completing/fallback production, stochastic shared ammunition, remaining hunter/escort births, detection reconciliation and branch-wide headless closure remain 4c work. Branch 4d is untouched; due event payloads, combat/deployment and unrestricted month progression remain later-branch boundaries.
+
+Branch 4c lookup stock composition: daily stock forecasts accept status-neutral lookup discovery while preserving its addFinishedResearch-only semantics. Lookup item payloads and matching projects remain untouched by primary side effects; lookup disablers/re-enablers and automatic disablers retain precise uncertainty guards. Four captured native primary-topic rows pin direct/free membership with lookups excluded. Fresh/cache scenarios exercise held lookup projects, direct fuel arrivals, unchanged lookup stocks and reloads before/after hunter selection. Reference: GeoscapeState::time1Day primary topic collection, SavedGame::handlePrimaryResearchSideEffects and Base::removeResearch. No RNG, identity or campaign state is changed during the forecast; later branch boundaries and 4d are unchanged.
+
+Branch 4c research discovery stock composition: execution and preflight now share the addFinishedResearch discovery transition over live or copied completion/status sets. Direct and lookup disablers, re-enablers, automatic zero-cost chains and protected-unlock cancellation eligibility now participate in ordered daily stock refunds. Forecasts account for completing facility functions, active projects and refunded needed items before automatic discovery; work stays bounded and no RNG/state is consumed. Sixteen pinned native discovery/disabled-refund rows compare fresh/cache daily results and transition reloads, including already-complete sources and already-finished held projects. Reward choices and corpse item projections remain for subsequent slices. Reference: SavedGame::addFinishedResearch/hasUndiscoveredProtectedUnlock and GeoscapeState::time1Day construction/research ordering. Branch 4c closure and later-branch guards remain open; 4d is unchanged.
+
+Branch 4c deterministic daily research rewards: stock forecasts now select sequential free topics and unambiguous eligible outcomes without consuming RNG, including duplicate candidates and prerequisite-gated protected rewards. Shared discovery runs the bonus and its lookup before the direct topic, then catalogue-ordered primary item arrivals and global obsolete-project cancellation. Seventy-two pinned selectGetOneFree/remaining-reward rows cover completed/disabled candidates, gated groups and duplicates; fresh/cache fixtures verify fuel, retained/cancelled cross-base held projects, reloads and atomic refusal of distinct random outcomes. Focused hunting/research compatibility passes 148 tests. Reference: SavedGame::selectGetOneFree/hasUndiscoveredGetOneFree and GeoscapeState::time1Day bonus-before-core ordering. Completing production, stochastic stock choices, corpse projections and final headless closure remain open 4c work; later branch boundaries and 4d are unchanged.
+
+The research-composition batch audit confirms and fixes automatic discovery ordering: SavedGame::getAvailableResearchProjects iterates the research std::map in UTF-8 name order, independently of ruleset insertion and listOrder. Runtime catalogs now derive that immutable order on both fresh and cache construction; execution and forecast share it. Native competing-disabler and BMP/supplementary-name traces pin queued topics that become disabled after queueing, and fresh/cache reload scenarios verify safe hunter selection plus atomic combat stops. Protected-unlock membership scans are now charged at their actual nested cost; an 1,100-topic malformed-work scenario refuses before any tick mutation. Reviewed live/projected discovery semantics, global cancellations, reward eligibility, duplicate/missing arrivals and RNG/identity purity. Branch 4c remains open; 4d and later-branch boundaries remain unchanged.
+
+Cycle validation: root dotnet test passes 2,511 tests with no failures/skips, including checksum verification, 19 staged-save classifications and populated 8/32/128-UFO measurements under unchanged limits. The corpus retains ten executable 360-tick horizons, one 125-tick stop and eight tactical preservation-only cases. Code-map/diff checks and reference-checkout cleanliness pass. Useful probe captures/executables remain; the obsolete compiled hunting object is removed at this milestone.
+
+Branch 4c zero-quantity production delivery: the pinned Production::step item fragment retains zero-valued outputs as observable delivery/reuse operations. Immediate zero outputs now interrupt eligible craft ammunition servicing exactly like nonzero outputs; delayed zero item transfers retain their identity, hours and payload through save rewrites and arrive/clean up once. Snapshot validation permits zero only for item transfers and still rejects negative quantities and empty staff transfers. Seventy-two native delivery/refuel/reuse rows include zero quantities; fresh/cache tests compare zero rows and reload both sides, plus incoming-zero cleanup regressions. Reference: Production.cpp fixed item delivery, Transfer::advance/save, Craft::reuseItem and Geoscape hourly ordering. This fixes delivery semantics without enabling speculative production forecasts; branch 4c and later transition gates remain open, and 4d is unchanged.
+
+Branch 4c final prepaid production forecasts: registered production-owned operations now project final fixed item outputs before hunter retargeting, after servicing/transfers and before every base refuels. Final units never charge inputs again, including paid materials/craft with insufficient current funds. Immediate outputs preserve native zero-quantity reuse; delayed outputs stay future arrivals and consume bounded transfer identity headroom, coordinated with earlier daily research arrivals and same-hour cleanup. Seventy-two native fixed-delivery rows compare fresh/cache hunting outcomes and both transition reloads; stock/identity overflow stops atomically. Ongoing/fallback, sold, random, craft and person production remain precise stock composition boundaries. Reference: Production::step final-unit break and item delivery, GeoscapeState::time1Hour ordering. Focused hunting/economy tests pass 169 cases; later branches and 4d are unchanged.
+
+Branch 4c recurring free production forecasts: non-fallback zero-cost/no-input projects now project every fixed item completion in native order, honoring finite caps and infinite production. Native completion-count and delivery fragments contribute 192 composed rows for zero/multiple units, zero/two outputs, delayed transfers, shared fuel and ammunition reuse. Fresh/cache scenarios reload before/after and preserve negative funds for free unit starts. Work, cumulative future item quantities, identity slots and captive populations are bounded before any campaign mutation. Sold, funded/material-consuming, fallback, random/craft/person outputs and nonzero research-score effects retain explicit composition guards pending their projections. Focused hunting/economy tests pass 181 cases. Reference: Production::step, getAmountProduced, haveEnoughMoneyForOneMoreUnit and fixed delivery/reuse. Branch 4c closure remains open; later boundaries and 4d are unchanged.
+
+The production batch audit fixes a confirmed mixed-producer identity hole: an unsupported random producer could allocate transfers omitted from the fixed-producer budget, overflowing only after tick mutation began. A precise capability guard now blocks that mixed future stream before clock/RNG/inventory changes; fresh/cache regressions reproduced the overflow before the fix and pass after it. Cross-handler cases also verify daily research consuming the final identity slot and same-hour cleanup releasing an imported highest ID. A production-funded relaunch remains atomically blocked at same-tick hunter interception. Reviewed prepaid/recurring unit counts, all-base ordering, zero quantity reuse and persistence, aggregate incoming/captive quantities, resource limits and remaining score/accounting/fallback uncertainty. Branch 4c remains open; 4d and later-branch boundaries are unchanged.
+
+Cycle validation: all 2,544 root tests pass with zero failures/skips, including native checksums, private save horizons and original populated performance gates. Code-map/diff checks and pinned-reference cleanliness pass. Useful captures/executables remain; the regenerated hunting object is removed at this milestone.
+
+Branch 4c funded production composition: non-fallback fixed item projects without consumed inputs now forecast paid continuation in saved base/project order. The current unit is prepaid; later starts use the same checked accounting operation as execution, stop on insufficient money, and avoid charging after the finite last unit. Unknown earlier sale/cost effects retain a precise shared-accounting guard. Sixty-four native Production::step continuation/startItem/money rows compare fresh/cache unit counts, funds, stop reasons, stock and hunter targets with both transition reloads. Focused hunting/research compatibility passes 193 tests. Material consumption and fallback staffing remain subsequent slices; later-branch boundaries and 4d are unchanged.
+
+Branch 4c consumed production materials: fixed item completions now apply immediate output/reuse before each continuation input check. Delayed outputs stay unavailable to the next unit, and failed input checks leave funds unchanged. The production-owned forecast consumes only projected stocks and preserves saved project order; unknown earlier material effects retain a precise shared-material guard. Seventy-two native money/material/startItem rows compare unit counts, stop reasons, stocks, future arrivals and hunter outcomes with fresh/cache reloads. Craft input consumption and fallback staffing remain subsequent work; branch 4d and later-branch transitions are unchanged.
+
+Branch 4c fallback production composition: execution and forecasts share the queued-space/engineer assignment transition. Forecasts include due engineer arrivals and workshop construction completed at the preceding daily hook, then preserve project order and ongoing occupancy. The exact hourly reference caller confirmed that project removal and staff release occur after every production step in a base; execution now retains completed/stopped projects until that pass, so later fallback work cannot borrow their engineers early. Seventy-two native staffing rows and four deferred-release rows compare fresh/cache counts, stocks, funds-independent stops and hunter results with transition reloads. Focused hunting/research compatibility passes 203 cases. Capture inserts the native progress enum instead of synthesized values. Sold, craft-consuming, random/craft/person outputs and score effects remain explicit subsequent 4c work; later-branch guards and 4d are unchanged.
+
+The paid/material/fallback production batch audit fixes two confirmed issues. A fallback project could acquire staff after ordinary preflight and overflow its spent time after the tick began when no hunter existed; fresh/cache regressions reproduced the exception. A shared bounded staffing forecast now validates every hourly production pass and supplies the hunter projection, preserving due transfers, daily construction and deferred project removal. Idle bases also bypass empty removal-list allocation; the unchanged 16,384-byte summary test caught that regression and now passes. Reviewed prepaid units, money-before-material checks, output-before-input reuse, saved project/base order, future quantity/identity bounds and transition reloads. Focused compatibility/endurance passes 215 tests and foundation/progress passes 22. One initial populated query sample exceeded its existing limit; the focused rerun passes without changing it. Branch 4c remains open; 4d and later-branch boundaries are unchanged.
+
+Cycle validation: all 2,563 root tests pass with zero failures/skips, including reference checksums, 19 private save classifications and unchanged populated performance limits. Code-map/diff checks pass. Useful captures/executables remain; the obsolete compiled hunting object is removed at this milestone. The pinned reference checkout is unchanged.
+
+Branch 4c native craft inputs: Production::haveEnoughMaterialsForOneMoreUnit uses the required quantity only to count grounded craft, while startItem removes one first matching craft per listed type, including zero-valued entries and airborne first matches. Twenty-four native eligibility/selection traces reproduced the zero-input mismatch before the fix and now compare fresh/cache results with empty unload payloads and reloads. Execution preserves that split; counter lower bounds treat zero craft inputs as possible consumption. The hunter forecast retains a precise consumption guard for these now-correct transitions until the next slice. Existing hunting/research compatibility passes 207 tests. Reference: Production::startItem, Base::getCraftCountForProduction/removeCraft and Craft::unload. Branch 4d and later-branch boundaries are unchanged.
+
+Branch 4c craft consumption forecasts: execution and preflight share material eligibility and first-craft selection. Each projected start removes item inputs before craft unloading, adds inventory/weapons/vehicle ammunition through the existing unload operation, and removes consumed actors before refuelling/retargeting. Twenty-eight pinned item-unload/refuel rows cover missing input, payload-driven relaunch and a valid int-max inventory that requires item-first ordering. Fresh/cache cases reload both sides; unsafe unload stock/quantity arithmetic refuses atomically. The prior ordinary craft-consumption stock guard is removed for fixed zero-score item producers. Focused hunting/research/counter tests pass 223 cases. Reference: Production::startItem, Craft::unload and Base::getCraftCountForProduction. Deleted-target pursuit composition is the next slice; later branches and 4d remain unchanged.
+
+Branch 4c consumed target repair: a registered world-owned operation now applies Target::~Target follower consequences when production removes a craft. Craft return destinations/speeds change before later hourly, refuel and fuel hooks; hunted UFOs restore the original waypoint without changing speed. Forecast sources share the craft return operation, and absent projected identities remain absent even for imported hunting UFOs with the hunter-killer flag clear. Four native destructor/fuel rows compare initial production commands and same-hour removal with fresh/cache reloads. Work bounds include repeated removals, arrivals and possible production births before any tick mutation; a 1,001-by-1,001 follower workload refuses atomically. Focused hunting/research/counter tests pass 229 cases. Reference: Target::~Target, Craft::returnToBase/setDestination and Ufo::resetOriginalDestination. No notification performs mutation; command/tick operations retain the single writer. Branch 4c remains open; later-branch transitions and 4d are unchanged.
+
+The craft-input/unload/pursuit batch audit fixes a confirmed late-validation boundary. An invalid grounded craft follower at an unplaced base could cause a production stop only after its prepaid output and clock were mutated; fresh/cache regressions reproduced this for current and same-hour arriving followers. Production preflight now supplies bounded possible removal types, and world preflight validates existing plus due follower payloads before the tick. The exact registry-order assertion includes the new preflight without reducing strictness. Reviewed zero/multiple craft quantities, first-craft selection, item-before-unload overflow, identity lower bounds, synchronous return/restoration, future arrivals/birth work budgets and deleted-target reloads. Focused existing/arriving follower, native removal and populated performance checks pass with unchanged limits. The first full query allocation sample exceeded its original bound; both focused populated reruns pass without relaxing it. Branch 4c remains open; sold/random/craft/person production, score effects, stochastic/corpse projections and final headless reconciliation remain subsequent work. Later-branch boundaries and 4d are unchanged.
+
+The final ordering check also reproduced an unstable material partition: sorting equal craft entries reordered an 18-craft native input list and its follower notifications. Material planning now appends craft inputs after items while retaining the reference order within each group, without allocating a craft list for item-only projects. The pinned startItem trace and fresh/cache transition-reload regression cover the complete deletion and feedback sequence.
+
+Two default-runtime root runs exceeded the unchanged query boundary allocation gate (501.8 and 450.1 B per additional UFO); isolated default and process-local non-tiered runs passed. Inspection found interface enumeration in WorldGeometry.InsideRegion. Indexed traversal preserves the existing ordered geographic predicate and removes that enumeration allocation regardless of JIT optimization. The original populated measurements fall from approximately 369 to 208 B per additional UFO for eight-base query boundaries; warm-boundary costs fall by 160 B/UFO. Existing native geography fixtures and allocation thresholds remain unchanged. This addresses the concrete allocation source without claiming a proven explanation for runtime-dependent sample variation.
+
+Cycle validation: all 2,583 root tests pass with zero failures/skips after the fixes, including native checksums, 72-hour scenarios, all 19 private save classifications and the original populated allocation gates. No test or threshold was relaxed. Code-map/diff checks pass; the pinned reference is clean. Useful captures/executables remain, and the compiled hunting object was removed. Branch 4c headless closure remains open and branch 4d is untouched.
+
+Branch 4c fixed production sales: hunter projections now apply unscripted, fixed item sales before each continuation money/material check in saved base/project order. Sold outputs create neither stock/reuse nor delayed transfers, and sale coefficients truncate before quantity multiplication. The pinned Production::step, RuleItem::getSellCostAdjusted and SavedGame::setFunds fragments add 128 continuation rows plus two mixed-sign ledger rows, with fresh/cache same-base and cross-base reload coverage. The audit reproduced and fixed netting mixed sale signs in live execution, which previously lost separate income/expenditure entries, and a no-hunter accounting exception after tick mutation. Production-owned preflight now reserves signed capacity for every potential completion/start, bounding scripted prices by their int range without executing a future-context VM. These conservative capacity bounds intentionally refuse extreme imported ledgers without relying on later opposite-sign offsets or uncertain production stops. Local capacity tests cover signed headroom, independent ledgers, large counts and malformed bounds. Direct/global time-reading sale scripts retain a precise hunter forecast guard while ordinary execution still runs the real VM at the advanced clock. Random/craft/person production, score effects and price-script projections remain subsequent 4c work; later-branch boundaries and 4d are unchanged. Reference checkout remains read-only.
+
+Slice validation: all 2,617 root tests pass with zero failures/skips, including native fixture checksums, private save classifications, 72-hour scenarios and populated allocation gates. Full formatting verification and code-map/diff checks pass. No test or threshold was relaxed. The pinned reference checkout is clean; useful captures remain and the compiled probe object was removed. Branch 4c remains open and branch 4d is untouched.
+
+Branch 4c scored production: fixed item and sale output with positive/negative manufacture points now participates in hunter stock/funding forecasts. Twenty-four pinned Production::step / SavedGame::addResearchScore rows cover per-unit points before continuation, finite/infinite caps, material stops and subsequent refuel/hunting. A shared signed-capacity preflight bounds daily primary/reward/lookup/automatic discoveries plus hourly output before tick mutation, without selecting random rewards. Extreme score histories are conservatively refused rather than relying on cancellation or uncertain stops. Fresh/cache fixtures and transition reloads pass; later-branch boundaries and 4d remain unchanged.
+
+Branch 4c deterministic random manufacture: positive-weight choices with identical ordered item outputs now compose with fixed output, sales, continuation materials, reuse/refuel and hunting without speculative RNG. Sixty-four pinned random-delivery traces cover one/two identical choices, zero quantities, auto-sale, delayed output and finite/infinite continuation. Random output is delivered even when fixed output is sold, and every queued zero-quantity entry reserves its transfer identity. Per-project history preflight bounds all reachable positive-weight item increments plus unsold fixed output, preventing overflow before mutation even without hunters. Fresh/cache and history-limit reload tests pass. Genuinely different outcomes keep precise composition guards; the mixed uncertain-transfer fixture now contains distinct choices. Later-branch boundaries and 4d are unchanged.
+
+Branch 4c scientist/engineer production: delayed staff output now composes with fixed/deterministic-random item output, funding, reuse and hunter selection. Forty-eight pinned Production::step / Base::getUsedQuarters rows cover default/minimum personnel delay, finite/infinite completion, intermediate living-space fallthrough and final continuation checks. Inspection found and corrected the missing one-quarter reservation for each person-producing project, including queued projects; deferred removal/cancellation releases that reservation. Production-owned preflight bounds possible transfer creation and personnel headroom before mutation, including ordinary worlds with no hunters. Fresh/cache native rows, queued cancellation/reloads, transfer exhaustion and population limits pass. Soldier generation and genuinely uncertain outputs remain guarded in hunter composition; later-branch boundaries and 4d are unchanged.
+
+The score/random/personnel batch audit bounds empty protected-reward groups, accounts for the existing saved transfer population before production creates more, and rejects imported personnel totals that overflow after adding project reservations. Regression fixtures cover 1,001-by-1,001 empty groups, 100,000 existing transfers and signed personnel limits. Twenty-four additional native rows pin omitted personnel transfer delay at 24 hours while preserving the original 48 rows. No speculative VM/RNG, fixture strictness or allocation threshold was weakened.
+
+Cycle validation: all 2,647 root tests pass with zero failures/skips after the batch audit fixes, including fixture checksums, the 19 private save classifications, composed 72-hour scenarios and unchanged population/allocation checks. Full formatting and regenerated code-map/diff verification pass. The reference checkout remains clean; useful native captures remain and the compiled object was removed. Branch 4c remains open; branch 4d is untouched.
+
+Branch 4c corpse evidence and projections: 512 pinned removal/daily-interrogation traces distinguish held-item return from corpse recovery across finished/cancelled research, retainCorpses, unit lookup and both recovery flags. Runtime units link armor, armor links its geoscape corpse, and items retain recover/recoverCorpse defaults; fresh/cache tests pass with compiler revision 53. Campaign retainCorpses defaults false per Options.cpp, honors fixedUserOptions and survives the save adapter/reference option snapshot. The separate native callers can award two corpses on completion; gameplay application and forecasting follow in the next slices. Reference: Base::removeResearch, GeoscapeState::time1Day, RuleResearch::isHoldingNeededItem, Armor::getCorpseGeoscape and RuleItem recovery getters. Later-branch boundaries and 4d remain unchanged.
+
+Branch 4c live research recovery: completion applies the Base::removeResearch held/corpse effect and the separate daily interrogation corpse effect before discoveries. Cancellation applies only the removal effect, looking up the unit by research name even when neededItem differs. All 512 native rows pass fresh/cache and before/after reloads; the shared local lifecycle rule uses the same verified oracle. Command/daily preflight bounds recovered stocks, including possible earlier cross-base cancellations, so corpse overflow refuses before staff/project/time mutation. Completed projects remain deleted after rewriting saves. Hunter corpse stock composition follows in the next slice; later-branch boundaries and 4d are unchanged.
+
+Branch 4c corpse composition: daily stock projection now uses the same removal/daily recovery operation as execution before automatic discoveries and hourly inputs, including earlier-base cancellations and final disabled-project cleanup. The old unit/corpse forecast guard is removed. Another 128 pinned recovery/refuel/hunting rows pass fresh/cache plus transition reloads; cross-base fixtures prove a cancelled finished project receives only the removal corpse and cannot run its later daily caller. Recovery changes retain exact item identities and do not invoke item reuse for direct corpse addition. Random reward choices and other uncertain compositions retain their specific guards. Later-branch boundaries and 4d remain unchanged.
+
+The corpse batch audit removes empty-research preflight allocations and avoids duplicate unit-armor runtime diagnostics: typed validation still rejects absent/missing armor, with two focused regressions. All 2,669 root tests pass with zero failures/skips, including the unchanged allocation gates and private corpus classifications. Native checksums and code-map/diff verification pass; no fixture expectations or limits were relaxed. Branch 4c remains open and 4d is untouched.
+
+Branch 4c native craft manufacture: runtime STR_CRAFT projections now retain only the first producedItems entry, matching RuleManufacture::afterLoad; later undefined names are ignored. Production creates fixed weapons, moves to its base and runs checkup before immediate insertion or delayed transfer, sharing existing craft operations. Thirty-two pinned Production::step / Craft::setBase/checkup rows cover weapon rearming, zero/nonzero fuel, negative/zero/positive craft delays and coordinates; fresh/cache transition reloads plus local first-output tests pass. Compiler revision 54 invalidates old projections. Hunter birth composition follows in subsequent slices; later-branch boundaries and 4d are unchanged.
+
+Branch 4c delayed craft composition: deterministic delayed craft manufacture now participates in ordered funding/material continuation and transfer-identity forecasts without inserting a future craft into current hunter candidates. Native birth fixtures now run alongside an existing item-fuel auto-patrol craft through fresh/cache reloads. Shared production preflight bounds produced craft IDs against saved counters, existing craft and transfer payloads, total craft population, transfer births and malformed service capacities before ordinary or hunter ticks mutate. Twelve focused failure cases plus the existing native initialization rows pass with unchanged atomicity assertions. Immediate craft births remain the next slice; later-branch boundaries and 4d are unchanged.
+
+Branch 4c immediate craft composition: deterministic craft completions now append in reference base/project order before continuation, random item reuse, half-hour shared refuelling and hunting. A pure identity allocator includes due/remaining transfers, saved craft floors and prior delayed births; uncertain daily research or other production identities retain precise guards. Another 256 pinned craft-birth/continuation/fuel/hunting traces pass fresh/cache and reloads, covering funds/material stops, fixed weapons and immediate/delayed output. A same-hour newborn input fixture verifies later craft consumption and deleted-actor reloads. All 285 hunting cases pass before the added chain cases. Later-branch boundaries and 4d are unchanged.
+
+The three-slice craft audit reproduced two missing preflight bounds: daily research could increment the craft counter into exhaustion before production, and repeated identity scans did not charge empty bases. Shared production capacity now uses bounded post-research counter ranges and charges base visits plus research/reward/counter scans. Four fresh/cache regressions reproduce the prior overflow/affected-tick mutation and now refuse atomically, including a 1,001-base by 1,001-type workload. Reviewed first-output selection, fixed weapon/checkup ordering, delayed transfer timing, continuation stops, shared fuel, same-hour newborn consumption and deleted-actor reloads. No expectations or allocation/work limits were relaxed.
+
+Cycle validation: all 2,696 root tests pass with zero failures/skips after the confirmed craft audit fixes, including native checksums, 19 private save classifications, composed 72-hour scenarios and unchanged population/allocation gates. Full formatting verification and code-map/diff checks pass, the reference checkout remains clean, and the compiled hunting object was removed while useful captures remain. Branch 4c headless closure remains open; 4d is untouched.
+
+Branch 4c ordered research counter projection: the daily research forecast now records primary/reward counter changes in reference catalog order after discovery and cross-base cancellation, with duplicate side effects suppressed. Counter-only completions no longer take the unchanged-stock shortcut. Sixteen native SavedGame primary-counter/default/clamp traces pass local arithmetic and fresh/cache forecast-vs-execution/reload fixtures, including earlier-base cancellation without duplicate effects. The forecast remains pure and work-bounded; the following slices connect its exact changes to craft identity allocation and capacity. Later-branch boundaries and 4d are unchanged.
+
+Branch 4c exact research-to-craft identities: the world passes the pure ordered daily counter stream into production forecasting, removing the ambiguous-ID guard for single, sequential and repeated-identical free rewards. Eight additional native traces pin one/two-base sequential completion: a later base keeps its project while another free reward remains. Fresh/cache craft identities match both counter oracles with before/after reloads and no speculative RNG. Genuinely different random outcomes retain their precise forecast guard. The next slice shares exact counter bounds with ordinary production preflight; later-branch boundaries and 4d are unchanged.
+
+Branch 4c exact ordinary craft capacity: production preflight now uses the same deterministic daily counter stream as hunter identity projection. Valid ordered decreases can free counter headroom, while existing craft/transfer payloads remain identity floors independently of the persisted counter. Six additional native near-limit traces preserve all earlier rows; fresh/cache single/sequential/identical reward births pass at int-max-minus-one. Saved actor floors and genuinely different reward choices still refuse atomically, preserving RNG and the affected tick. Unknown outcomes retain conservative bounded ranges. Later-branch boundaries and 4d are unchanged.
+
+The counter batch audit reproduced research-only counter overflow with no production or world sites. Research-owned daily preflight now validates every deterministic primary counter transition and reserves positive bounds for unknown reward paths without crediting unselected decreases/cancellation. It also bounds potential cross-base counter work; a 1,001-base by 1,001-counter fixture refuses on repeated attempts without clock/RNG/project mutation. Presence caching is published only after a completed scan. Six fresh/cache audit regressions pass. Native near-limit ordered decreases remain enabled; later-branch boundaries and 4d are unchanged.
+
+The final counter audit restricts uncertain bounds to direct completions and possible free rewards: lookup and automatic addFinishedResearch discoveries do not execute primary counter effects. A near-limit lookup-only counter regression passes fresh/cache and reloads without a false refusal. All prior bounds and RNG-preservation assertions remain unchanged.
+
+Cycle validation: all 2,717 root tests pass with zero failures/skips after the counter batch audit fixes, including native fixture checksums, all 19 private save classifications, composed 72-hour scenarios and unchanged population/allocation gates. Full formatting verification and regenerated code-map/diff checks pass. The pinned reference checkout remains clean; useful captures remain and the compiled hunting object was removed. Branch 4c headless closure remains open; branch 4d is untouched.
+
+Branch 4c soldier production preflight: full pinned Production::step personnel delivery and Mod::genSoldier duplicate retry traces establish one transfer/identity per birth, minimum/default delay, template/name ordering and the ten-attempt pending-name limit with controlled constructor/name/nationality collaborators. Production-owned preflight bounds generation/template work, malformed stats, possible bonus overflow, soldier population and post-research identities including pending actors and craft types sharing STR_SOLDIER. Twelve fresh/cache atomic-refusal fixtures pass, with save/reload identity coverage. The next slices apply nationality/pending-name semantics and compose soldier births with hunting; branch 4d and later-branch boundaries are unchanged.
+
+Branch 4c manufactured soldier caller semantics: production now uses the shared base-location nationality selector and includes pending-transfer names in Mod::genSoldier's duplicate check. All 24 pinned personnel/duplicate traces pass fresh/cache, with generated identity, minimum/default delay, template-before-final-name ordering, RNG retry counts and reloads before birth, after birth and after arrival. A two-name-pool country fixture selects the first country match. Generation remains inside live execution; forecasts do not consume its draws. Reference: Production::step, Mod::genSoldier, SavedGame::selectSoldierNationalityByLocation and Soldier::genName. Fourteen combined focused cases pass; branch 4d and later-branch boundaries remain unchanged.
+
+Branch 4c soldier production composition: deterministic strategic outputs now compose soldier births with continuation accounting/materials, living quarters, item reuse/refuelling and hunting without speculative soldier generation or RNG. Thirty-six new native soldier/quarters/hunting rows pass fresh/cache and transition reloads. Production uses a shared pure counter stream for person-before-craft, craft-before-person and same-project births when a craft is named STR_SOLDIER; three native ordering traces and reloads pin both identities. Unknown prior production/research identities retain precise guards. Soldier transfers remain delayed by at least one hour. The six composed cases pass; branch 4d and later-branch boundaries remain unchanged.
+
+The soldier production batch audit reproduced and fixed three gaps: growing pending-name scans now charge births across all projects/bases and transfers from other production; world marker forecasts include soldier births and preserve conservative bounds for mixed craft/soldier allocator floors; site-expiry counter capacity includes preceding actor production. The expiry fixture also reproduced the existing craft variant as an overflow after tick mutation. Fourteen fresh/cache regressions now refuse atomically, and safe marker births retain reload coverage. Generation work arithmetic is checked before multiplication; production identity scans charge soldiers, bases and cleanup. No native expectations, fixture strictness or allocation/work thresholds were relaxed. Branch 4c remains open; branch 4d and later-branch boundaries are unchanged.
+
+Cycle validation: all 2,749 root tests pass with zero failures/skips after the soldier production batch audit fixes, including native fixture checksums, all 19 private save classifications, composed 72-hour scenarios and unchanged population/allocation gates. Full formatting verification and regenerated code-map/diff checks pass. The reference checkout is clean at the pinned revision; useful captures remain and the compiled probe object was removed. No unexpected access denials occurred. Branch 4c headless closure remains open; branch 4d is untouched.
+
+Branch 4c ordered UFO escort movement: pinned Ufo::think/MovingTarget::move traces now cover 54 chain, ring and self-target steps across all six saved list orders. Movement preflight uses an iterative per-tick position prefix, following earlier actors after movement and later actors before movement; no recursive graph traversal or speculative RNG is needed. Saved-chain guards are removed, while craft combat/deployment guards remain. Fresh/cache fixtures reload before and between every step, and large escort graphs refuse atomically at the existing work limit. Reference: GeoscapeState::time5Seconds and ufoHuntingAndEscorting, Ufo::think, MovingTarget::move. Newborn escort composition and terminal-arrival fallthrough are subsequent slices. Branch 4d is untouched.
+
+Branch 4c newborn escort chains: the ordinary-wave guard for imported hunting/escort leaders is removed. Eight new pinned AlienMission::spawnUfo traces establish that leader flags never change first-non-hunter selection, relocation, original waypoint backup or full-speed attachment, including grounded sources. Four fresh/cache composed cases cover ordinary, hunting, chained and self-target leaders with reloads before birth, after birth and after the following movement tick. Existing no-potential-craft and newborn resource/pursuit guards remain until those contexts can be projected. Branch 4d and later-branch boundaries are unchanged.
+
+Branch 4c terminal escort forecasts: the ordered position prefix now stops after a native terminal arrival, retaining later actors at their old coordinates. Site-conversion suppression invalidates the prefix because it can change dormancy into destruction. Six new pinned list-order traces preserve every prior oracle row. The combat capability check now follows the same saved-order terminal fallthrough: a skipped later hunter remains unchanged, then refuses atomically on the following tick; an earlier hunter still blocks the entire tick. Four fresh/cache boundary fixtures and six combined focused cases pass with transition reloads. Unsupported crash-state validation remains intact. Reference: GeoscapeState::time5Seconds destroyed-UFO return, Ufo::think and MovingTarget::move. Branch 4d and later-branch ownership are unchanged.
+
+The escort batch audit reproduced and fixed two gaps: the lifecycle fixture also owns a checksum for the shared world probe (a fresh native recapture proves its oracle is unchanged), and ordered escort prefixes must charge linear mission lookups for takeoff forecasts. Two fresh/cache resource regressions previously advanced a tick and now refuse atomically at the unchanged work limit. No native oracle rows, malformed-state checks or performance limits were weakened. Branch 4c remains open; 4d is untouched.
+
+Escort cycle validation: all 2,763 root tests pass with zero failures/skips after the audit fixes, including native fixture checksums, all 19 private save classifications, composed 72-hour scenarios and the unchanged population/allocation gates. Full formatting verification, code-map and diff checks pass. The pinned C++ checkout is clean. Useful captures remain; the three compiled probe objects were removed. No unexpected access denials occurred. Branch 4c remains open; branch 4d is untouched.
+
+Branch 4c hourly hunter population forecasts: a production-owned internal operation bounds craft births with the pinned Production::step/getAmountProduced completion count and shared fallback staffing. Infinite queues now reserve only possible births in the current hour instead of triggering a blanket finite-queue guard; finite queues also stop reserving their lifetime quantity. Existing and due incoming craft participate without predicting random continuation or generating actors. The existing native production-progress rows cover both valid time values, spent/assigned combinations and finite/infinite queues, with fresh/cache reloads around the creation tick. Large birth/retarget combinations retain the unchanged work-limit refusal. Branch 4d is untouched.
+
+Branch 4c delayed craft population boundary: positive manufacture transfer delays keep births out of the current tick's hunter candidate population, because hourly arrivals have already run. The native productionCraftBirthRows establish immediate versus delayed delivery; six fresh/cache composed cases pair 1,001 possible craft births with 1,001 new hunters. Immediate births retain an atomic work-limit refusal; one/three-hour births remain pending, permit the creation tick and survive reload with unchanged timers and craft identities. Production's own total-population/transfer guards remain in force. No RNG or actors are generated by the forecast. Branch 4d is untouched.
+
+Branch 4c shared hunter forecasts and candidate work: common servicing/transfer/production inputs are projected and charged once per tick, while each hunter charges actual craft candidates plus base and mission scans. Four delayed-birth continuation fixtures reproduced false following-tick refusals and now advance after reload with pending transfers unchanged. Empty-base scans also reproduced a missing work bound; saved and newborn hunter populations now refuse atomically, including the creation tick. Native selection/order semantics and all existing work/allocation limits remain unchanged. Newborn work reserves both actor and base/mission visits. Reference: GeoscapeState::ufoHuntingAndEscorting and existing strategic-hunting traces. Branch 4d is untouched.
+
+Hunter population cycle validation: all 2,775 root tests pass with zero failures/skips, including pinned fixture checksums, 19 private save classifications, composed 72-hour scenarios and the unchanged allocation gates. The batch audit checked hourly completion bounds, fallback staffing, transfer arrival order, common-input charging and candidate scans; no additional confirmed defect was found after the three slice fixes. Full formatting verification and code-map/diff checks pass. Branch 4c remains open and 4d is untouched.
+
+Branch 4c escort ring endurance: four fresh/cache cases compare 72 hours of single-step, batched and hourly-reloaded simulation in forward/reverse saved order. Opening positions match the pinned Ufo::think/MovingTarget movement rows; every hourly checkpoint validates live counts and stable target links. No actors are deleted or duplicated across reload. Reference: GeoscapeState::time5Seconds, Ufo::think and the strategic-world escortMovement fixture. All four checks pass; branch 4d and later-branch boundaries are unchanged.
+
+Branch 4c populated escort allocation: 8/32/128-actor forward/reverse rings now record cold and warm ticks plus transition reloads. Measurement reproduced 2.47 KB per additional UFO/tick from repeated immutable preflight projections. Tick-local source-identity memoization and reusable prefix buffers reduce this to at most 883 B in the measured cases, guarded by a new 1 KB actor/tick budget. Site-suppression and each new preflight clear both caches. All eleven native movement, terminal, endurance and allocation checks pass; no existing ordinary-flight limits changed. Reference: Ufo::think/MovingTarget::move and GeoscapeState saved-order flight. Branch 4d is untouched.
+
+Branch 4c successive escort cleanup: three new pinned Target::~Target/resetOriginalDestination chain traces distinguish direct repair from transitive links and preserve original waypoints and escort speeds. Four fresh/cache forward/reverse cases follow terminal arrival, retained dead actors, next-tick cleanup, all subsequent deletions and reloads around every transition; no deleted actor or dangling link returns. The deletion oracle compares stable links and waypoint coordinates, since live UFO target coordinates depend on the separate movement pass. All four checks pass. Reference: Ufo::~Ufo, Target::~Target, Ufo::resetOriginalDestination and GeoscapeState::time5Seconds. Branch 4d and later-branch boundaries remain unchanged.
+
+Escort closure batch validation: all 2,784 root tests pass with zero failures/skips, including native checksums, all 19 private save classifications, ordinary and escort 72-hour runs and populated allocation checks. The audit reviewed memo source identity, per-tick/site-suppression invalidation, terminal fallthrough, direct follower repair and saved-order persistence; no further confirmed defect was found. Full formatting and code-map/diff checks pass. The pinned reference remains clean. Useful captures and measurements remain; the compiled hunting object was removed. Branch 4c remains open; branch 4d is untouched.
+
+Branch 4c saved idle escorts with UFO followers: the newborn leader guard now permits this formation when ordinary-arrival and craft-pursuit dependencies are absent. Six new pinned movement rows compose native idle attachment with an appended leader and an existing follower in both saved orders. Four fresh/cache cases compare exact positions, speeds and stable links with reload after every step. All 68 escort spawn/endurance checks pass, including unchanged affected-tick atomicity and movement work limits. The obsolete follower scan is removed; craft pursuit and original-waypoint arrival guards remain. The shared lifecycle probe was recaptured with unchanged oracle and refreshed input checksum. Branch 4d is untouched.
+
+Branch 4c escort detection VM acceptance: four fresh/cache forward/reverse rings execute native-bound isEscorting/isHunting/isHunterKiller reads and persisted instance tags through the real detection VM. Four successive half-hour boundaries and double save rewrites preserve flags, tags, hyperwave detection and live mission counts. Native strategic-detection-scripts tag rows and Ufo detection bindings provide evidence; all four cases pass. No script is executed speculatively by preflight. Branch 4d and later-branch boundaries are unchanged.
+
+Branch 4c craft/escort endurance composition: fresh/cache cases compare 72 hours of stepped, batched and reloaded escort rings with real post-takeoff craft pursuit, patrol, recall, automatic fuel return and servicing. Stable UFO identity survives commands and save rewrites; live counts remain exact while detection runs through the real VM. Native checkup clears LowFuel on same-tick return, so the fixture proves later automatic fuel return through post-patrol servicing with depleted fuel. Both composed cases pass. Existing native pursuit, movement, fuel and detection fixtures back the participating operations. Branch 4d and later-branch guards remain unchanged.
+
+The newborn-follower batch audit confirmed a portability defect in the hunting input manifest: it hashed a CRLF worktree template while Git committed LF according to .gitattributes. The template is now LF and a fresh native recapture proves every oracle field unchanged; its manifest hashes the committed bytes. An inventory of all manifest-owned text inputs found no other worktree/index size mismatch. Arrival/pursuit guards, follower ordering, VM execution and 72-hour craft composition were also reviewed without another confirmed gameplay defect. Branch 4d is untouched.
+
+Newborn-follower batch validation: all 2,793 root tests pass with zero failures/skips after the committed-byte checksum fix, including all manifests, all 19 private save classifications, ordinary/escort/craft 72-hour runs and unchanged population/allocation gates. Full formatting and code-map/diff checks pass; the pinned reference checkout is clean. Useful native captures and measurements remain; compiled probe objects were removed. No unexpected access denials occurred. Branch 4c remains open; branch 4d is untouched.
+
+Branch 4c zero-radar newborn hunters: native Ufo::insideRadarRange cannot select a craft at range zero, but GeoscapeState::ufoHuntingAndEscorting evaluates attraction first. Mission preflight now validates candidates through the existing pure craft forecast before permitting these births alongside active craft. Random constructor modes validate both outcomes without RNG; proofs are tick-local and include mission, UFO type and mode. Twelve fresh/cache cases cover ordinary/escort births, exact links, reloads and atomic malformed-attraction refusal. All 71 focused newborn/escort checks pass. Reference: Ufo.cpp, Craft::getHunterKillerAttraction, GeoscapeState.cpp and strategic-hunting selectionRows. Positive-radar retarget and later-branch guards remain; branch 4d is untouched.
+
+Branch 4c newborn hunter transfer timing: the no-target proof now includes pending craft only on an hourly tick when their remaining timer is at most one hour. Six fresh/cache cases exercise ordinary and escort births before the hour, with two-hour transfers and with due one-hour arrivals. Previously blocked safe births advance, pending timers and identities survive reload, and due arrivals still refuse atomically before mutation. All 77 focused newborn/escort tests pass. Native evidence: Transfer::advance, GeoscapeState::time1Hour and strategic-hunting incomingCraftRows. No scheduling or later-branch boundary changes; branch 4d is untouched.
+
+Branch 4c incoming craft pursuit timing: saved idle escorts can attach to newborn leaders while potential craft pursuers remain in transit beyond this tick. Six fresh/cache cases compose early/late leader creation with pre-hour and two-hour transfers, exact native-backed movement, stable targets and transition reloads. Due one-hour arrivals retain the atomic pursuit forecast refusal, including automatic patrol craft. All 83 focused newborn/escort tests pass. Reference: Transfer::advance, GeoscapeState::time1Hour/ufoHuntingAndEscorting and existing incoming/movement rows. Craft pursuit and waypoint dependencies still guard affected transitions; branch 4d is untouched.
+
+The zero-radar/transfer batch audit checked native candidate arithmetic before radar selection, random and negative constructor modes, mode-specific proof keys across immediate waves, tick-local invalidation, hourly delivery/checkup ordering and loaded-escort pursuit dependencies. Ten additional fresh/cache cases cover valid mode zero, overflow in mode one/negative modes, both random outcomes and a later immediate wave with a different mode. All 28 newborn checks pass; no further confirmed gameplay defect was found. Due-arrival, craft pursuit, waypoint, work-limit and later-branch guards remain. Branch 4c remains open; branch 4d is untouched.
+
+Zero-radar/transfer cycle validation: all 2,827 root tests pass with zero failures/skips, including fixture checksums, all 19 private save classifications, composed 72-hour runs and unchanged population/allocation gates. Full formatting verification and code-map/diff checks pass. The pinned C++ reference remains clean; no new native artifacts need cleanup in this batch and useful earlier captures remain. No unexpected access denials occurred. Branch 4c remains open; branch 4d is untouched.
+
+Branch 4c grounded auto-patrol newborn proofs: existing pure servicing/fuel forecasts now establish that a positive-radar newborn has no eligible craft when auto-patrol craft remain grounded this tick. Native maintenanceRows back four fresh/cache ordinary/escort cases; refuelling that actually launches a craft retains the retarget refusal. Forecast candidate scans are bounded and shared; zero-radar arithmetic validation remains unchanged. Guard fixtures explicitly distinguish native ready-at-arrival craft from refuel-triggered relaunch. All 97 focused newborn/escort checks pass. Reference: Craft::checkup/refuel, GeoscapeState half-hour servicing and ufoHuntingAndEscorting. Branch 4d is untouched.
+
+Branch 4c grounded craft pursuit proofs: saved idle escorts can attach to newborn leaders when the shared servicing forecast leaves every potential pursuer grounded. Two fresh/cache native maintenance cases preserve exact source movement and stable links through reload; refuel-triggered launches retain atomic pursuit refusal. Hidden, ignored and damaged airborne craft still count as pursuers. Incoming guard fixtures use native arrival/refuel semantics explicitly. All 99 focused newborn/escort checks pass. Reference: Craft::checkup/refuel, Transfer::advance, GeoscapeState::ufoHuntingAndEscorting and maintenance/movement rows. Branch 4d is untouched.
+
+Branch 4c shared-stock newborn acceptance: four fresh/cache ordinary/escort cases compose all 18 pinned sharedFuelRows with future hunter births. Exact fuel, statuses and remaining item stocks match native ordered servicing whenever both craft stay grounded; any actual launch retains an atomic retarget refusal. Reloads before/after birth and following ticks preserve actor identities and avoid duplicate effects. All four checks pass, and the broader hunting run passed its other 457 cases; its four shared fixture failures were corrected to represent zero stock by absence, retaining strict input validation. Reference: Craft::refuel, GeoscapeState ordered servicing and strategic-hunting sharedFuelRows. Branch 4d is untouched.
+
+Grounded-craft batch audit: reviewed forecast ownership, candidate versus pursuer eligibility, native checkup/refuel launch ordering, shared stock consumption, tick-local proof invalidation, constructor-mode keys and unchanged work limits. No additional gameplay defect was confirmed. The first root run reported a patrol allocation-gate failure in a path without mission births; three isolated reruns, all 23 craft-operation tests and the unchanged full root rerun passed. The allocation threshold and measurement code remain unchanged, and the non-reproduced observation is retained here for future audits. All 2,837 root tests pass with zero failures/skips, including fixture checksums, 19 private save classifications, 72-hour scenarios and population/allocation gates. Branch 4c remains open; branch 4d is untouched.
+
+Grounded-craft cycle closure: full formatting verification and code-map/diff checks pass. The pinned reference checkout remains clean. Useful previous native captures remain; this batch generated no additional native probes requiring cleanup. No unexpected access denials occurred. All three slices and their batch audit are committed; branch 4c remains open and 4d is untouched.
+
+Branch 4c existing-base grounded craft forecasts: alien-base hunting now uses the shared pure servicing/fuel forecast before treating a grounded automatic patrol craft as airborne. Native strategic-hunting maintenanceRows back fresh/cache cases for incomplete refuelling and actual launches, with exact fuel/status, timer persistence and atomic immediate-mission refusal. All 27 focused base-hunting tests pass. Reference: GeoscapeState::baseHunting/time30Minutes, Craft::refuel/checkup. Branch 4d remains untouched.
+
+Branch 4c incoming base-hunting craft forecasts: due hourly arrivals now use native checkup plus shared half-hour refuelling before hunting eligibility. Fresh/cache cases cover partial fuel, refuel-triggered launches, ready-at-arrival craft and future transfers; safe arrivals persist while unsupported immediate hunting remains atomic. All 29 focused base-hunting tests pass. Reference: Transfer::advance, Craft::checkup/refuel, GeoscapeState::time1Hour/baseHunting and strategic-hunting incomingCraftRows. Branch 4d remains untouched.
+
+Branch 4c newborn objective-base hunting forecasts: creation-tick hunting now applies shared servicing and due-arrival eligibility instead of assuming any automatic patrol flag launches a craft. Fresh/cache native maintenance cases cover existing and incoming craft, safe base births, exact fuel/status/timer reloads and retained live-supply-source refusal after an actual launch. All 40 objective-base tests pass. Reference: GeoscapeState::baseHunting/time30Minutes, Craft::checkup/refuel, Transfer::advance and maintenanceRows. Branch 4d remains untouched.
+
+Base-hunting craft batch audit: reviewed all three slices against native caller order, eligibility, due-transfer boundaries, shared-stock ownership, tick-local forecast reset and work limits. No confirmed defect found. All 2,843 root tests pass with zero failures/skips, including manifests, private save classifications and existing endurance/allocation gates. Branch 4c remains open and 4d untouched.
+
+Branch 4c spatial newborn hunter proofs: ordinary positive-radar births may proceed when every eligible forecast craft is outside every bounded spawn origin. Inclusive native radar edges remain guarded, uncertain areas use conservative radii and checked work, and proofs include the wave index. Native capture adds distant and negative-range selection cases with all prior properties unchanged. Six focused checks pass for native selection, point/regional fresh/cache births, transition reloads and nearby refusal; fixtures assert their distinct compiled regions. Reference: Ufo::insideRadarRange, GeoscapeState::ufoHuntingAndEscorting, AlienMission::spawnUfo/getWaypoint. Branch 4d untouched.
+
+Branch 4c spatial newborn escort proofs: positive-radar escorts use the native first saved non-hunter leader origin before testing craft separation. With no saved leader, prior immediate-wave births retain a source forecast guard. Fresh/cache cases place craft near nominal spawn origins but far from the stationary saved leader, verify stable escort identity and transition reloads, and retain atomic refusal near the actual leader. Guard fixtures now explicitly colocate eligible craft and leaders. Reference: AlienMission::spawnUfo and strategic-hunting spawnEscortRows/selectionRows. Branch 4d untouched.
+
+Branch 4c negative-radar newborns: native negative ranges cannot select any craft, including colocated targets. Preflight now permits these ordinary/escort births while validating attraction for every possible constructor mode and retaining signed stat range checks. Fresh/cache cases cover minus one and int-min ranges, stable links/reloads and atomic attraction overflow; all 115 newborn/escort checks pass. Reference: Ufo::insideRadarRange and newly captured strategic-hunting selectionRows variant eight. Branch 4d untouched.
+
+Spatial radar batch audit: reviewed inclusive radar boundaries, conservative region radii, actual saved leader relocation, prior-wave leader guards, signed range/mode validation, wave-specific proof keys, reset and bounded scans. No confirmed issue found in these three slices. All 2,855 root tests pass with zero failures/skips; committed fixture bytes match manifest hashes and prior native rows remain unchanged. Code-map/diff checks pass. An older base-hunting escort-fuel forecast risk is queued for a deterministic reproduction in the next cycle. Branch 4c remains open; 4d untouched.
+
+Branch 4c existing-base ordered escort fuel: reproduced a preflight bypass with an undetectable leader refuelling/relaunching before its visible escort consumes fuel. The old saved-speed projection marked the escort low-fuel, then runtime entered unavailable immediate hunting after mutation. Escort candidates now use the shared ordered forecast; both fresh/cache reproductions stop atomically and all 31 base-hunting tests pass. Native evidence: Craft::getFuelConsumption/consumeFuel, GeoscapeState::time10Minutes/baseHunting and strategic-hunting escortFuelRows. Branch 4d untouched.
+
+Branch 4c newborn base ordered escort fuel: reproduced the same hidden-leader relaunch mismatch during objective-base creation, where runtime reached unsupported live-source supply hunting after the base birth. Active escorts now use the shared ordered craft forecast for newborn-base eligibility as well. Both fresh/cache reproductions stop before mutation; all 73 existing/newborn base-hunting tests pass. Reference: GeoscapeState::baseHunting/time10Minutes, Craft fuel methods and strategic-hunting escortFuelRows. Branch 4d untouched.
+
+Branch 4c zero-chance hunting compositions: existing and newborn bases skip speculative craft/stock forecasts when detection chance cannot generate a mission, retaining timer range checks and live native percent-zero draws. Fresh/cache cases reproduce the former false production-stock guard, compare actual servicing/production with an independent world-free control, verify persisted timers and keep positive-chance stochastic guards. All 77 base-hunting/objective-base tests pass. Reference: GeoscapeState::baseHunting, native RNG::percent behavior and strategic-alien-base-hunt-timer zeroChance row. Branch 4d untouched.
+
+Ordered-fuel/zero-chance batch audit: confirmed and reproduced absent forecast entries when native zero-quantity production inputs remove an airborne escort before hunting. Existing/newborn base consumers now skip removed actors, including grounded entries, rather than throwing or falling back to deleted state. The audit also restored bounded craft-population accounting for zero-chance runtime scans, with a tick-local shared population bound. Fresh/cache removal/reload cases and positive/zero-chance work-limit cases pass; all 82 focused tests pass. Native evidence: Production::startItem, Target destructor/follower repairs, GeoscapeState::baseHunting and deletedCraftFollowerRows. These fixes are an additional audit commit. Branch 4c remains open; 4d untouched.
+
+Three-cycle closure: all nine 4c slices and three batch audits are committed, including an additional commit for confirmed deleted-candidate and work-bound findings. All 2,868 root tests pass with zero failures/skips, including checksums, all 19 private save classifications, 72-hour scenarios and population/allocation gates. Full formatting verification and regenerated code-map/diff checks pass. The pinned C++ checkout is clean. Useful native source/executable/capture outputs remain; the rebuilt hunting object was removed. A self-caused overlapping test/build executable lock was reported and resolved by waiting; no sandbox access failure or host configuration/ACL change occurred. Branch 4c remains open; in-range newborn hunting and immediate UFO-generating base missions remain guarded. Branch 4d is untouched.
+
+Branch 4c creation-time ordinary hunter pursuit: airborne births now use the shared servicing/production/fuel forecast and bounded spawn regions to prove that every possible eligible target remains beyond the first movement step. Runtime retains native saved-order attraction selection, random constructor modes, hunt speed, waypoint backup, revelation and alerts; preflight draws no RNG and allocates no actor identity. Fresh/cache fixtures compare pinned selectionRows/retargetRows, transition reloads, due craft arrivals and shared fuel relaunches. Colocated births retain the precise branch 5 combat refusal, and noAlert hunters reserve contact markers because hunting still reveals them. All 481 hunting/newborn/escort checks pass. Reference: AlienMission::spawnUfo, GeoscapeState::time30Minutes/time10Minutes/ufoHuntingAndEscorting/time5Seconds, Ufo hunting destination methods and Craft fuel/attraction. Escort candidate births and branch-wide closure remain subsequent work; 4d is untouched.
+
+Branch 4c creation-time escort hunter pursuit: candidate-bearing escort births use the native first saved ordinary leader origin, then may switch to craft hunting while retaining their original trajectory waypoint. Combat reach uses initialized escort speed when huntSpeed is nonpositive, rather than the nominal trajectory speed. The pinned capture adds the negative hunt-speed transition with all previous rows/properties unchanged. Ten fresh/cache constructor-mode and retained-speed cases reproduce the old guard and verify targeting, movement, reloads and atomic combat refusal. Colocated servicing/arrival fixtures now retain the branch 5 reason. Prior immediate waves without a saved leader remain a specific source-forecast boundary. Reference: AlienMission::spawnUfo escort initialization, Ufo::setTargetedXcomCraft/setEscortedUfo and GeoscapeState retarget/movement ordering. Branch 4d remains untouched.
+
+Branch 4c loaded escort craft dependencies: attaching a saved idle escort to a newborn leader no longer blocks unrelated airborne, ignored/hidden, incoming or refuel-relaunched craft. A bounded iterative walk identifies direct and transitive UFO escort dependencies, including cycles, before applying the existing pure production/fuel forecast to affected pursuers. Deleted or returning actors cannot resurrect a dependency; actual active pursuit retains its specific creation-tick boundary. Eight fresh/cache chain/cycle/patrol fixtures reproduce the false guard; existing hidden/ignored and hourly/refuel cases now verify both permitted independence and atomic dependent refusals. All 77 escort compatibility checks pass with transition reloads. Reference: GeoscapeState::ufoHuntingAndEscorting/time5Seconds, Craft::think and existing spawnEscortSequenceRows/movement fixtures. Ordinary waypoint arrival and affected craft pursuit forecasts remain subsequent work; 4d is untouched.
+
+Creation-time hunting batch audit: confirmed and reproduced proof reuse across two immediate births in the same wave. The first possible ordinary birth can initialize a later escort at full speed; its predecessor's no-leader trajectory-speed proof is insufficient. Tick-local proofs now include the within-wave UFO counter as well as mission, wave, type and mode, and both fresh/cache regressions refuse before mutation. Reviewed conservative spherical bounds, inclusive radar versus combat reach, nonpositive hunt-speed preservation, all constructor modes, noAlert marker capacity, saved-order targeting, follower chains/cycles and forecast purity. All 2,898 root tests pass with zero failures/skips after the fix, including native checksums, all 19 private save classifications, endurance and populated allocation gates. Code-map and diff checks pass; committed fixture bytes match the manifest. The native object was removed, while useful capture/source/executable artifacts remain and the pinned reference is clean. Branch 4c remains open; 4d untouched.
+
+Branch 4c immediate escort source envelopes: creation-time hunting now includes first possible ordinary leaders from earlier validated waves and births in the same wave. Saved-order selection retains earlier stochastic origins until the first guaranteed ordinary birth; the no-leader outcome preserves nominal position/speed. Bounded region envelopes and both initialization-speed outcomes are proved without RNG or identities. Eight fresh/cache point/regional cases verify retargeting from a prior leader beyond the nominal radar footprint; 32 deterministic seeds in each cache case cover all four two-birth constructor outcomes, marker capacity and reloads. The previous audit regression still refuses atomically, now with the precise combat reason. All 155 newborn/escort checks pass. Reference: AlienMission::spawnUfo, Ufo initialization/retarget methods and pinned spawnEscortSequenceRows/constructorRows. Branch 4d untouched.
+
+Branch 4c newborn leader pursuit: direct and transitive craft pursuers may advance when conservative movement envelopes prove they cannot reach a saved escort after its creation-tick attachment. The proof includes both idle/full-speed outcomes and bounds the reference latitude/longitude Euler step, falling back to the whole globe near a pole; it draws no RNG or identities. Four fresh/cache distant-pursuit cases verify actual craft movement, stable target coordinates and transition reloads, while colocated dependencies remain atomic refusals. All 81 escort compatibility checks and 12 focused pursuit cases pass. Reference: GeoscapeState::time5Seconds/ufoHuntingAndEscorting, Craft::think, MovingTarget::move and pinned escort spawn/movement traces. Branch 4d untouched.
+
+Branch 4c cancelled idle-escort arrivals: a bounded flight-only projection identifies the first guaranteed ordinary point leader in a due score/space mission. Saved escorts that would otherwise reach an ordinary, terminal or landing waypoint now forecast the native attachment before all arrival, follower and craft checks, without allocating future identities or changing radar script inputs. Six fresh/cache arrival cases and four added ordered-follower cases match existing pinned attachment/movement evidence with transition reloads. Uncertain constructor/area cases retain precise guards, and a cancelled terminal arrival cannot hide same-tick craft interception. All 96 escort checks pass. Reference: AlienMission::think/spawnUfo, GeoscapeState::ufoHuntingAndEscorting/time5Seconds, Ufo::setEscortedUfo and MovingTarget movement. Branch 4d untouched.
+
+Escort-source/pursuit/arrival batch audit: reviewed first-leader constructor/order outcomes, flight-only projection lifetime, radar script separation, original waypoint backup, terminal fallthrough, craft interception and conservative Euler/pole bounds. A suspected prior-birth overflow was disproved: centralized mission-counter preflight already refuses it before mutation; two fresh/cache regressions record that boundary. No confirmed gameplay defect remained. All 2,929 root tests pass with zero failures/skips, including native checksums, all 19 private-save classifications, endurance and populated allocation gates. Committed hunting fixture bytes match their manifest; code-map/diff checks pass and the pinned C++ checkout is clean. Branch 4c remains open; 4d untouched.
+
+Branch 4c deterministic point-leader pursuit: the flight-only attachment projection now applies to every eligible saved idle escort, beyond cancelled waypoint arrivals. Direct/transitive stationary pursuers remain safely separated from the moved target; nearby fast craft use the precise branch 5 interception guard. Hidden/ignored pursuers retain live links, and radar loss reports the actual moved source before switching the craft to patrol. Eight new fresh/cache cases cover stationary pursuit, contact-loss reloads and uncertain-leader atomic refusal. All 106 escort checks pass; the unchanged work limit now refuses a large future formation in the earlier escort-position preflight. Reference: native retarget/list-order movement and Craft contact-loss handling at the pinned commit. Branch 4d untouched.
+
+Branch 4c base-origin leader forecasts: guaranteed ordinary leaders now project linked alien-base position overrides for regional and Earth operations. The shared origin helper retains native first-leader order and race-specific escort speed. Four fresh/cache fixtures exercise both operation modes with both races, actual pursuit coordinates and reloads; the same cases verify daily source self-destruction interrupts the mission, consumes no future UFO identity and creates no phantom leader. All 139 escort/operation-base checks and four expanded transition cases pass. Evidence: strategic-mission-origin rows and AlienMission::spawnUfo ordinary base override at the pinned reference. Branch 4d untouched.
+
+Branch 4c objective-aware first leaders: flight projections now cover ordinary births in infiltration, base, site and supply missions as well as score missions. Suppressed no-object supply waves are skipped, and objective supply constructors force the ordinary-leader outcome even with a 100-percent hunter rule. Retaliation remains outside this proof. Twelve new fresh/cache cases exercise all four objectives, suppressed versus immediate later supply leaders, stable links, untouched site/base state and transition reloads. The 134 escort/objective checks and four added suppression cases pass. Evidence: AlienMission::spawnUfo/think, strategic-mission-origin supplyRows and existing constructor/escort movement traces. Branch 4d untouched.
+
+Point/base/objective leader batch audit: reviewed deterministic versus uncertain constructors, first-leader order, source overrides and daily deletion, forced/suppressed supply births, terminal fallthrough, craft interception and bounded work. Two added fresh/cache VM regressions verify half-hour detection reads idle state before attachment and later reads persisted escort state; future flight proofs never appear in script inputs or saves. No confirmed gameplay defect was found. All 2,953 root tests pass with zero failures/skips, followed by both added VM cases, including existing private corpus/endurance/allocation/checksum gates. Code-map/diff checks pass and the pinned reference is clean. Branch 4c remains open; 4d untouched.
+
+Branch 4c production price time forecasts: the existing read-only price VM now runs in hourly production preflight with the next tick's time and day count, unchanged campaign difficulty/month count and native before/current/after script order. VM instructions share the one-million-work budget with production, and event counts retain the existing cap. Eight fresh/cache item/global VM cases compare controlled native caller-context accounting traces at hourly/daily boundaries and reload before/after delivery. Daily research queries retain a precise refusal pending the next slice. Evidence: RuleItem::getSellCostAdjusted, Production::step and SavedGame time/day/month/difficulty bindings at the pinned reference; the native fixture explicitly uses controlled pure script callbacks rather than claiming C++ VM execution. Branch 4d untouched.
+Branch 4c production price research forecasts: actually executed isResearched queries now use bounded guaranteed/possible post-daily research sets. Known completions and unchanged answers execute; consumed uncertain random-reward answers refuse before mutation. Null references and unexecuted query branches keep native false/control-flow behavior. The native context fixture now covers research with actual C# VM execution for item/global events, debug-mode exclusion and daily completion ordering; eight further fresh/cache cases verify uncertainty, unrelated/dead/null queries, transition reloads and RNG equivalence against the same world with a constant callback. Evidence: SavedGame::isResearchedScript and GeoscapeState daily research before Production::step at the pinned reference. Branch 4d untouched.
+Branch 4c shared scripted-sale acceptance: ordinary production now validates prices in the future hourly/daily context before mutation, reserves exact read-only scripted accounting values and bounds repeated VM delivery work across requested units. This closes a reproduced world-free divide-by-zero after time/progress mutation and a repeated-script budget gap. Ordered global before/current/after price callbacks now compose with paid continuation, shared/cross-base funds, delivery delays, refuelling and hunter targeting against the existing native sale traces. Eight failure/work-limit cases and four near-64-bit accounting cases cover fresh/cache hunting and ordinary campaigns; existing 14 overflow refusals remain intact. Evidence: RuleItem::getSellCostAdjusted, Production::step and SavedGame::setFunds at the pinned reference. Branch 4d untouched.
+Production price batch audit: reviewed native price inputs, null/debug research semantics, daily/hourly fallthrough, before/current/after event order, shared accounting, scalar widths and aggregate VM/research work. Four additional fresh/cache regressions prove inactive projects never invoke their price script and a due midnight caller uses the valid future branch rather than today's failing branch. No further confirmed defect was found. All 2,983 root tests pass with zero failures/skips, plus four added audit cases; committed native fixture checksums and captured output match, code-map/diff checks pass and the pinned C++ checkout remains clean. The disposable native object was removed while the useful capture/executable were retained. Branch 4c remains open; 4d untouched.
+Branch 4c ordinary craft consumption before base hunting: loaded alien-base preflight now consults bounded production removal types and the shared post-production craft forecast for affected independent airborne craft. Deleted craft no longer trigger an unavailable hunting-mission guard; surviving craft retain it. Four new fresh/cache independent-craft variants reproduce the stale actor and verify consumed/surviving outcomes, native hunt timer progression and transition reloads; all 40 alien-base hunting checks pass. Evidence: Production::startItem craft removal followed by GeoscapeState::baseHunting/updateActiveCrafts, pinned production input/deletion and alien-base hunt timer traces. Unrelated types keep the local fuel path. Branch 4d untouched.
+Branch 4c newborn-base craft consumption: creation-tick base hunting now shares the bounded production removal-type proof used by loaded bases. Independent airborne craft removed by an earlier production continuation cannot generate phantom hunting missions or reserve their counters; surviving craft retain precise supply/source boundaries. Four new fresh/cache variants reproduce and close the stale ordinary-craft guard, verify the newborn timer and transition reloads, and pass with all 90 loaded/newborn base hunting checks. Evidence: GeoscapeState::time1Hour production precedes time30Minutes base creation and time10Minutes::baseHunting; pinned base-objective, craft consumption and hunting timer fixtures. Branch 4d untouched.
+Branch 4c correlated first-leader origins: a saved idle escort may now use a flight-only proof when stochastic earlier ordinary constructors and the first guaranteed later ordinary birth all share one exact point. The proof preserves native first-leader order without choosing identities or drawing RNG; differing points and a chain without a guaranteed leader retain precise guards. Four new native retarget traces pin same/different origins and both earlier constructor outcomes. Four fresh/cache composed cases use 32 persisted seeds, verify both outcomes, stationary pursuit coordinates and reloads; all 128 escort checks pass. Evidence: AlienMission::spawnUfo, constructor flags, GeoscapeState::ufoHuntingAndEscorting and existing ordered movement fixtures at the pinned reference. Branch 4d untouched.
+Craft consumption/correlated leader batch audit: reviewed native production-before-hunting order, affected-type scoping, shared forecast lifetime, surviving and deleted candidates, newborn timer/counter reservations, stochastic first-leader ordering and guaranteed point proofs. Two additional fresh/cache cases exercise all 32 seeds with a fast pursuer and retain the precise atomic branch 5 interception guard. No additional confirmed defect was found. All 3,001 root tests pass with zero failures/skips, including private classifications, endurance/allocation and checksum gates. Committed native inputs match their manifest and capture; code-map/diff checks pass, the pinned reference is clean and the disposable native object was removed. Branch 4c remains open; 4d untouched.
+Branch 4c exact daily research discoveries: the shared research preflight can now return an immutable completed-topic set while bypassing its stock-only shortcut when discoveries are requested. It preserves ordered deterministic bonuses, protected/sequential rewards, lookup and automatic discovery, disabling/re-enabling and cross-base cancellation without RNG or campaign mutation. Six fresh/cache fixture cases cover all pinned reward/discovery rows plus a stock-free completion, compare projected sets with actual daily progression and reload transitions; all pass. Evidence: GeoscapeState::time1Day and SavedGame::selectGetOneFree/addFinishedResearch at 4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15, strategic-hunting researchRewardRows/researchDiscoveryRows. Price callers are connected in the next slice; genuine random alternatives retain the existing refusal. Branch 4d untouched.
+
+Branch 4c exact research-dependent prices: consumed daily isResearched queries now use the shared exact completed-topic projection before the existing guaranteed/possible fallback. Deterministic free/protected/sequential rewards, duplicate candidates, automatic/lookup discoveries and disabling/re-enabling execute in actual post-daily order; genuine alternatives still refuse atomically. Projection work and immutable-set creation share the production budget, and repeated queries reuse the result. Six new fresh/cache item/global price cases compose all native reward and discovery rows, verify accounting, unchanged RNG against constant callbacks and transition reloads; all 16 focused price/discovery/uncertainty checks pass. Evidence: SavedGame::isResearchedScript/selectGetOneFree/addFinishedResearch, GeoscapeState daily-before-hourly ordering and the pinned strategic-hunting research fixtures. Branch 4d untouched.
+
+Branch 4c research metadata price providers: buy/sell price VMs now expose the four reference-registered RuleResearch getters for cost, points, lookup and needed item. Immutable linked metadata retains null outputs and signed scalar widths; item and research pointers are canonical across lookups and item inputs, fixing a reproduced pointer-comparison failure. Twenty-four newly captured native getter traces import the pinned methods with collaborator field renaming and explicitly exclude the C++ VM; prior oracle rows are unchanged. Four fresh/cache item/global VM cases exercise every trace, pointer identity, hourly hunting composition and transition reloads; all 20 focused getter/research price checks pass. Evidence: RuleResearch.cpp/h ScriptRegister/getters, RuleResearch::afterLoad, Mod rule readers and the verified script API catalog at the pinned reference. Branch 4d untouched.
+
+Research-price batch audit: reviewed ordered daily discoveries/rewards, exact and conservative research answers, forecast purity and work limits, linked metadata, native null/default/sentinel rules, pointer identity and before/current/after price execution. Confirmed and reproduced two additional provider defects: repeated getTime calls boxed different pointers and getRuleItem returned a defined STR_NONE item. A shared per-invocation clock reference and native sentinel exclusion fix both; eight fresh/cache item/global regressions and two extended atomic budget cases pass. Two new pinned clock-pointer traces preserve all earlier oracle rows. All 3,021 root tests pass with zero failures/skips, including private classifications, endurance/allocation and checksum gates; full formatting, code-map/diff and native input/output checks pass. The pinned C++ checkout is clean and the disposable native object was removed. The original timed window elapsed during interruption; this finishes the announced sixth cycle and stops. Branch 4c remains open; 4d untouched.
+
+Branch 4c price item metadata: production and current price VMs now share the existing immutable RuleItem scalar readers and ordered category queries, including native signed values, defaults and nulls. Current-price callers use the same bounded before/current/after execution as future callers, and category scans charge the common work budget. Eight fresh/cache item/global VM scenarios exercise pinned itemReaders/category replacement fixtures, actual hunting and save transitions. Evidence: RuleItem.cpp ScriptRegister/readers/hasCategoryScript and strategic-detection-scripts at the pinned reference. Branch 4d untouched.
+
+Branch 4c price tags: read-only price providers now expose typed RuleItem, RuleResearch, RuleMod and saved GeoscapeGame values, including null/missing values and native text/tag declaration copies. Lazy tag initialization and metadata registration charge the shared price work budget; no world state or RNG is mutated. Four fresh/cache item/global VM scenarios use verified native tag/value-copy fixtures and saved campaign tags through hunting and transition reloads; all 12 metadata checks pass. Evidence: ScriptValuesBase::getBase and RuleItem/RuleResearch/Mod/SavedGame ScriptRegister at the pinned reference. Branch 4d untouched.
+
+- Phase 6 / 4c: price scripts now read native Mod view/darkness settings and signed smoke reduction through immutable settings. Null member getters return zero; only consumed static smoke calls with a null Mod stop before mutation. Pinned Mod.cpp and strategic-detection-scripts modSettings/smokeReduction fixtures cover fresh/cache, item/global events and reloads.
+
+- Phase 6 / 4c: bounded price scripts now resolve armor/skill rules, preserve native text identity (including RuleSoldier.getType's skill receiver), armor vision/stat defaults, canonical pointers and typed rule tags. Evidence: pinned Mod.cpp, Armor.cpp, RuleSkill.cpp and RuleSoldier.cpp; strategic-detection-scripts/value-copy traces; fresh/cache item/global price execution with transition reloads.
+
+- Phase 6 / 4c: price scripts now resolve native Unit and Soldier lookups, spawn/live-alien/civilian-recovery links, all immutable soldier/armor stat groups and Soldier tags. Linked items retain the same pointer identity as Mod lookups; special recovery sentinels and signed stat widths follow pinned Unit.cpp/RuleSoldier.cpp/Mod.cpp and strategic-detection-scripts traces. Fresh/cache item/global cases reload before and after production.
+
+- Phase 6 / 4c: price scripts now execute generic/conventional Inventory lookups, id/type/hand readers and movement costs. Native null-source/self-move short circuits, signed costs and pointer identity are preserved; consumed missing roles/costs or null destinations block transactionally. Evidence: pinned Mod.cpp/Mod.h/RuleInventory.cpp plus strategic-detection-scripts/inventory-cost traces, fresh/cache item/global runs and reload guards.
+
+- Phase 6 / 4c: price scripts now expose native Item damage/melee profile pointers and five damage classification readers, preserving separate profile identity, null defaults and single-target semantics. Evidence: pinned RuleItem.cpp ScriptRegister/wrappers and all strategic-detection-damage classification rows; fresh/cache item/global VMs with hunting and reloads. The first two batches passed 3,045 and 3,077 root tests respectively, full formatting and code-map/checksum gates; their audits found no confirmed defects. No host/access issue occurred; 4d remains untouched.
+
+- Phase 6 / 4c: bounded price VMs now execute eleven deterministic damage conversions and armor percentage reads using shared native float semantics. All 65 conversion rows, rounding/boundary rows, null defaults and consumed-only unsafe conversions are covered across fresh/cache item/global scripts and save transitions. Evidence: pinned RuleItem.cpp getDamageToScript/getArmorEffectivenessScript and strategic-detection-damage; no random draws or tactical effects are enabled.
+
+- Phase 6 / 4c: native random damage calls now short-circuit safely when the profile or RandomState is null, without reading unsafe power/multipliers or consuming RNG; nonnull random execution remains precisely unavailable. Four fresh/cache item/global cases cover typed state aliases, current sale quotes, production, RNG equivalence and reloads. Four more cases prove current and forecast price execution is bounded across before/current/after programs (each individually fits), refusing atomically on aggregate exhaustion. Evidence: pinned RuleItem.cpp getRandomDamageScript and verified nullRandomDamage/unusedRandomCalls traces.
+
+Three-cycle price-provider batch audit: nine implementation slices completed and committed. Reviewed immutable/null metadata, typed tags and saved values, canonical pointers, event order/current/future context, signed smoke arithmetic, float conversion bounds, RNG purity and aggregate VM work. No confirmed implementation defect was found. Four additional fresh/cache item/global purchase cases close current buy-price coverage, including before/current/after ordering and snapshot purity. All 3,105 root tests pass with zero failures/skips, including native fixture checksums, private classifications, endurance and allocation gates. Full formatting, code-map and diff checks pass; the pinned reference checkout is clean. Generated artifacts were reviewed; reusable build output and existing captures remain useful. No unexpected access denial occurred. Branch 4c remains open for remaining mission-generation/uncertainty projections and final headless acceptance; branch 4d is untouched.
+
+Branch 4c random-production envelopes: pinned Production::step now has 48 inert-variant traces covering shared fuel, weighted selection, zero quantities, sales, delayed/immediate delivery and history. A bounded pure quantity/presence envelope reserves possible output without RNG and permits only caller-approved variations; missing zero keys remain distinct effects. Focused unit fixtures cover common quantities, reordering, zero-weight exclusion and shared work exhaustion. Live forecast integration follows in this cycle; 4d untouched.
+
+Branch 4c immediate inert random production: hunting forecasts now accept unequal weighted output sets when differing items cannot affect fuel, reuse, captive counts or any active manufacturing input. Common fuel/material quantities remain exact; inert quantities are shadow-only upper bounds. Actual RNG, chosen stock and history remain untouched by preflight. Forty-eight pinned Production::step traces, fresh/cache seeded outcome coverage, transition reloads and atomic sensitive/overflow guards back the change. Delayed variants follow next; 4d untouched.
+
+Branch 4c delayed inert random production: equal-cardinality weighted variants now participate in hunting forecasts, with per-item arrival ceilings and actual transfer counts rather than union-key counts. Pending arrivals, zero quantities and transfer-id exhaustion are validated before mutation; varying delivery cardinality stays precisely guarded. All 48 pinned native variants run through fresh/cache scenarios and transition reloads. Evidence: Production::step weighted delivery and Transfer::advance at the pinned reference; 4d untouched.
+
+Random-production batch audit: all 3,128 root tests passed with zero failures/skips, including checksums, private classifications, endurance and allocation gates. The new envelope helper accepted equal quantities with reordered protected effects; its boundary now explicitly retains effect order, with a focused regression. Loaded rules canonicalize map order, so an attempted live reproduction did not establish a current campaign defect; the invalid reproduction was removed rather than weakening its assertion. Existing 48 native variants still pass. Further validation is recorded at the following cycle close; 4d untouched.
+
+Branch 4c price country funding: bounded current/future price VMs now execute native saved-order Country lists, null/empty/nested lists, canonical Country-to-RuleCountry links, current funding and signed funding caps. Funding remains stable before the existing integrated month guard. Verified strategic-detection-scripts countryList/countryRules traces plus fresh/cache item/global scripts and transition reloads provide executable evidence. Reference: SavedGame::ScriptRegister/filterCountryConstScript and BindListInitImpl/BindListLoopImpl, Country::ScriptRegister/getCurrentFunding/getRules and RuleCountry::getFundingCap. 4d untouched.
+
+Branch 4c price country tags: Country and RuleCountry typed reads now preserve saved versus immutable rule ownership, null/missing defaults and native value-copy semantics. Canonical country-rule identity is indexed without repeated rule scans; existing price tag initialization charges the shared budget. Verified tag/country/value-copy traces, fresh/cache item/global VM execution and transition reloads cover the slice. Reference: Country::ScriptRegister, RuleCountry::ScriptRegister and ScriptValuesBase::getBase at 4df3a5e; 4d untouched.
+
+Branch 4c country price state: native signed-pact and current XCOM-history readers now execute in future/current price scripts, preserving pending NewPact/CancelPact distinctions before guarded month rollover. Current alien-activity quotes execute without snapshot/RNG mutation; only consumed nonnull future alien-activity reads require the remaining world-score projection. Null and unreachable queries remain executable. Twenty fresh/cache item/global country scenarios pass with verified native countryList traces and transition reloads. Reference: Country::getPact and Country.h current-history getters; 4d untouched.
+
+Country-price batch audit: no confirmed implementation defect was found. Reviewed list/null ABI, canonical rule links, typed saved/rule tags, stable funding/pacts/XCOM histories, quote snapshot/RNG purity, and consumed future alien-activity guards. All 3,152 root tests pass without failures/skips, including the prior envelope order correction, native checksums, private classifications and populated/endurance gates. The country changes close their bounded provider slices; mutable alien-activity forecasts and other world guards remain open. 4d untouched.
+
+Branch 4c ammunition range operation: CraftServicing now derives exact native weapon transitions and minimum/maximum clip consumption from both statistical-saving endpoints, without a campaign random source. The existing execution operation supplies all arithmetic, clamping and missing-ammo semantics. All strategic-hunting ammunitionFuelRows bound the range across fresh/cache rules; malformed consumed ammo fails without changing inputs. Reference: CraftWeapon::rearm and Craft::rearm at 4df3a5e. Live shared-stock integration follows; 4d untouched.
+
+Branch 4c live ammunition intervals: hourly hunting forecasts now retain exact craft/weapon states while carrying bounded nonfuel clip stocks through saved-order shared rearming, facility use, transfers and production validation. Actual stock and RNG remain live-execution decisions. Ambiguous craft/facility transitions, positive manufacturing inputs that consume uncertain clips, and possible stock overflow stop before mutation. Twelve fresh/cache seeded shared/nonshared cases and atomic effect guards pass with before/after reloads. Reference: Craft::rearm, CraftWeapon::rearm, BaseFacility::rearm, Transfer::advance and Production::step; fuel intervals follow next; 4d untouched.
+
+Branch 4c stochastic fuel convergence: hunting forecasts now advance lower and upper shared clip stocks in saved craft order and admit the tick only when both produce the same complete craft state. Fixed arrivals/output and exact facility use preserve those bounds. Actual random savings, stock, notifications and RNG remain execution-owned. Native ammunitionFuelRows now execute their sufficient-stock stochastic cases; twelve fresh/cache refill/order cases cover transfers, production, facilities, two consumers and atomic scarcity. Positive uncertain manufacturing inputs and divergent servicing remain precise guards. Reference: Craft::rearm/refuel, GeoscapeState hourly-to-half-hour fallthrough and Production::step; 4d untouched.
+
+Three-cycle 4c close: nine implementation slices and three batch audits completed. The final ammunition audit reviewed saving endpoints, saved-order shared stocks, exact craft/facility states, transfer/output ceilings, manufacturing dependencies, lower/upper refuelling convergence, RNG purity, transition reloads and shared work bounds. No additional confirmed defect was found; the first batch retained an explicit protected-delivery-order safeguard at the pure envelope boundary. All 3,179 root tests pass with zero failures/skips, including native fixture checksums, all staged-save classifications, endurance and 8/32/128-UFO allocation gates. Full formatting, regenerated code-map and diff checks pass. Reusable native capture/source/executable remain; the disposable native object was removed and the pinned C++ checkout is clean. No unexpected access denial occurred. Branch 4c remains open for wider mission-generation/uncertainty projections and final headless acceptance; branch 4d is untouched.
+
+
+## Returned craft hunting cancellation (2026-10-10)
+
+Craft arrival now runs the native stop-hunting consequence within the same
+five-second pass. Matching craft identity restores each UFO's original anonymous
+waypoint, clears hunting/escort flags and retains its current speed. Movement
+vectors are recalculated at the UFO's already-moved position, as in native
+MovingTarget::setDestination. Unrelated craft targets remain untouched.
+
+Returned identities use a reusable set and one UFO scan before cleanup. This is
+equivalent within the owned craft pass: native restoration changes no UFO position
+or speed, and later craft pursuit reads only those fields. Preflight separately
+rejects a missing original waypoint on a potentially returning craft target,
+including dormant contacts. Execution does not consume
+preflight scratch state. The terminal UFO fallthrough still skips the craft pass.
+
+Reference: GeoscapeState::time5Seconds after Craft::think,
+SavedGame::stopHuntingXcomCraft, Ufo::getTargetedXcomCraft/resetOriginalDestination,
+and MovingTarget::setDestination. Four native returnedCraftHuntRows cover matching
+and unrelated identities with present/missing original waypoints, keeping all
+previous hunting rows unchanged. Eight fresh/cache execution cases reproduce the
+late-cancellation defect, then cover disabled fast retarget and explicit five-minute
+context, takeoff, native canonical flags/speed, ordered movement/vector repair,
+three save rewrites and continuation. Two cases preserve non-arrival hunting and
+atomic corrupt/dormant-original refusal. This is cycle 27 slice one.
+
+Validation: all 10 new arrival tests, 470 existing hunting tests and 214 optional-base tests pass. Full solution formatting verification, regenerated code-map and diff checks pass. Batch/root acceptance follows the remaining two cycle slices.
+
+## Undiscovered alien-base craft arrival (2026-10-10)
+
+GeoscapeState::time5Seconds checks AlienBase::isDiscovered before requesting
+landing or returning a craft home. Undiscovered saved targets now retain their
+destination and speed, including arrivals during takeoff. Discovered targets
+still return crafts lacking landing eligibility; eligible landing stops before
+the affected tick mutates state (branch 5).
+
+The pinned native complete alien-base arrival block, with a popup observer and
+controlled movement after Craft::think, adds 32 alienBaseArrivalRows. Four fresh/
+cache matrix tests reproduced the prior mismatch and cover discovery, units,
+allowLanding, equipment suppression, takeoff, three rewrites and continuation.
+Two further fresh/cache cases cover eight earlier discovery combinations:
+daily facility sight after construction completion and ten-minute patrol sight
+after fuel return. Their shared geometry/chance helpers retain existing native
+sight evidence. Positive potential discovery retains the landing guard without
+RNG consumption; inactive or unfinished facilities and fuel-returning patrols do
+not create a landing hazard. Per-target discovery results reuse a cache; shared
+scan and weapon work is bounded before evaluation. This is cycle 27 slice two.
+
+Validation: all six arrival/discovery tests and all 26 existing pursuit tests pass. Full solution formatting, regenerated code-map and diff checks pass; prior hunting capture rows are unchanged.
+
+## Optional source craft arrival and ordered escorts (2026-10-10)
+
+Optional alien-base self-destruction no longer blocks an otherwise owned craft
+arrival near its home base. After equal low-fuel eligibility and escort fuel
+consumer proofs, each actual research outcome runs the existing craft movement,
+checkup and same-tick hunter cancellation. Later saved-order craft escorts see
+the leader's resulting status. The surviving source still reserves any branch 5
+landing before research or tick mutation. Signed-speed and unequal low-fuel
+eligibility boundaries remain unchanged.
+
+Sixteen optionalCraftArrivalRows capture native ordered fuel, Craft::think,
+alien-base and craft-escort arrival branches, and stopHuntingXcomCraft, with
+controlled equal arrival coordinates, takeoff, item/ordinary fuel and leader/
+escort order. Mission-complete escorts are excluded from hunting so both captures
+and runtime execute the same leader target. Fresh/cache execution covers 32 seeds
+per combination, both research outcomes, deterministic controls, three rewrites
+and continuation. Former near-home refusal fixtures now assert the actual owned
+arrival outcome, retaining malformed takeoff and fuel ambiguity checks. A new
+fresh/cache landing regression proves that surviving eligible targets still stop
+atomically. This is cycle 27 slice three.
+
+Validation: all 218 optional-base composition tests pass, including four new arrival/landing cases. Full formatting, regenerated code-map and diff checks pass. Batch audit/root validation follows this slice.
+
+## Arrival-cycle batch audit correction (2026-10-10)
+
+The combined three-slice audit confirmed that an hourly manufactured patrol
+removal could reserve landing unnecessarily when no hunter requested the craft
+forecast. Positive patrol discovery candidates now request the existing ordered
+servicing/delivery/production/fuel projection when their owner has production.
+Removed patrols contribute no discovery hazard; surviving patrols still reserve
+landing before the tick mutates state. Four fresh/cache regressions cover both
+cases, using existing native zero-quantity craft-input/removal evidence and save
+reloads. The two removed-patrol cases reproduced the defect before the fix.
+
+Review also checked native caller/fallthrough order, stable identities, post-move
+vector repair, takeoff/home checkup, resource bounds, RNG purity, target deletion,
+ordered escorts and remaining later-phase guards. No further confirmed defect
+was found. Full root acceptance is recorded after validation completes.
+
+The ten focused arrival/discovery cases and full formatting verification pass after the correction.
+
+Root acceptance exposed a second confirmed arrival-cycle regression: capturing
+an alien-base destination in the new lookup lambda allocated a display class
+before CraftArrivalReason's early return. Patrol allocation grew by exactly
+32 bytes per extra craft per tick. Both arrival lookups now use a direct stable
+identity scan. All 23 craft-operation tests, including the unchanged two-versus-
+thirty-two patrol allocation assertion, pass after the fix. The initial root's
+other failure was a 176-byte polygon allocation measurement in unchanged
+rendering code; all 15 rendering tests pass in isolation without edits. Root
+acceptance is rerun rather than weakening either performance assertion.
+
+Final arrival-cycle acceptance: all 4,782 root tests pass, zero failures/skips,
+in 6m 16s. Full solution formatting, regenerated code-map and diff checks pass.
+Fixture checksum, all staged-save classifications, endurance and populated
+allocation gates pass with the root suite. Both performance assertions retain
+their original limits. The reference checkout remains clean; useful capture
+source/executable/output remain, disposable native objects were removed. No
+unexpected access denial occurred. Wider daily stock/research alternatives,
+transfer composition and final guard reconciliation keep branch 4c open.
+
+## Random production fuel sensitivity by base (2026-10-10)
+
+Random output envelopes now collect fuel-sensitive items from this base's projected
+craft sources, including due incoming craft and earlier production births, rather
+than every craft rule in the catalog. Potential craft products from all this base's
+projects remain sensitive, including conservatively delayed products. Required
+production materials, BT_NONE reuse, alien quantities, transfer cardinality and
+quantity/history capacity checks retain their existing restrictions. No outcome is
+selected in preflight; execution and persisted random history remain unchanged.
+
+Reference: Production::step/startItem, Transfer::advance, Craft::refuel and the
+GeoscapeState hourly/half-hour ordering at the pinned revision. Existing verified
+strategic-hunting productionVariantRows supply the observable native stock,
+progress, history, fuel and target output. Six fresh/cache cases first reproduced
+false fuel guards for an unused craft rule, a craft at another base and a future
+craft transfer. They now match both native outcomes across twelve saved seeds,
+conserve the other base/future transfer and survive three rewrites. Four guard
+cases retain atomic refusal for due incoming and potential produced craft.
+
+The affected 480-case hunting class passed 478 cases; the two new craft-production
+setups needed category STR_CRAFT rather than item production. All four corrected
+due/produced guard cases pass. The initial overlay also needed definitions in the
+same YAML family lists rather than duplicate top-level keys; native expectations
+and existing guard assertions were retained. Cycle 31 slice one; batch pending.
+
+Slice verification/interim review: corrected guard cases and full formatting pass;
+regenerated code-map/diff checks pass and the reference remains clean. No confirmed
+issue. The batch root gate follows the remaining two implementation slices.
+
+## Random production material sensitivity at reached continuations (2026-10-10)
+
+Random-output sensitivity now reads this hour's bounded fallback assignments and
+marks required materials only for projects that can reach another unit start.
+No-completion projects and a single finite final completion were paid previously
+and do not consume their declared inputs in Production::step. Multiple completions
+or an infinite/unfinished continuation retain sensitivity. All input lists remain
+charged; negative rule time returns an unsupported proof rather than throwing.
+The material/accounting validators remain in their existing owners.
+
+Reference: Production::step/getAmountProduced/startItem, fallback staffing and
+hourly deferred removal. Ten new strategic-hunting productionScopedMaterialRows
+capture final primary units, idle/final other projects, ordinary continuations and
+fallback activations, both controlled random choices, stock, progress/stop, staff,
+fuel and target. All previous native rows are unchanged. Six fresh/cache cases
+first reproduced the false restriction and now match native outputs across twelve
+saved seeds and three rewrites. Four cases preserve the ordinary/fallback guards
+where native stop reasons differ across outcomes. All ten scoped-material tests
+pass. Cycle 31 slice two; inactive/delayed craft-product composition is next.
+
+Slice verification/interim review: all ten scoped-material cases, full formatting,
+regenerated code-map and diff checks pass. Native old rows remain unchanged and
+the reference is clean. No confirmed issue; the third slice and batch are pending.
+
+## Random production fuel sensitivity for reached craft births (2026-10-10)
+
+Potential product fuel is now sensitive only when the bounded hourly assignments
+can complete a craft and its native transfer time permits immediate delivery.
+An idle or still-incomplete fallback project cannot create a craft this hour;
+a delayed birth remains outside the base craft list until a later transfer tick.
+Due existing transfers still enter projected sources, and reached immediate births
+retain sensitivity. Work charges every project/material list before the proof.
+
+Reference: Production::step craft construction/checkup and transfer-time branch,
+getAmountProduced and fallback staffing. Six new strategic-hunting
+productionScopedCraftRows compose random item outputs with idle, delayed and
+still-incomplete fallback craft projects, retaining all earlier native rows.
+Six fresh/cache cases first reproduced the guard and now match native progress,
+stock, staff, birth/transfer count/hours, fuel and hunter target across twelve saved
+seeds. Pending craft identity/status/fuel survive three rewrites. A separate due
+snapshot aligns arrival with the next actual random completion and a fresh hunter,
+then verifies atomic refusal. The intervening hour has no completion, and an
+existing hunter can retain its current target without requesting this forecast;
+the initial boundary test setup did not exercise the intended consumed guard.
+
+All six craft-scope cases pass. Cycle 31's three slices are implemented; full
+formatting, combined batch audit and root acceptance follow. No execution/RNG,
+save/cache schema or later-branch transition was changed.
+
+Slice verification/interim review: all six craft-scope cases, full formatting,
+regenerated code-map and diff checks pass. Native prior rows remain unchanged;
+reference clean and obsolete probe object removed. Batch root acceptance pending.
+
+## Random production sensitivity cycle batch acceptance (2026-10-10)
+
+The cycle 31 batch audit found no additional confirmed runtime defect. Root dotnet
+test passes all 4,874 tests with zero failures/skips in 6m32s074ms. Full formatting,
+regenerated code-map, diff, native fixture checksums, private corpus and existing
+allocation/endurance gates pass with their original limits. Reviewed base-local
+stocks, due/earlier craft sources, reached immediate births, native final-payment
+and continuation semantics, bounded fallback staffing before deferred removal,
+item presence/order, transfer counts, range/history checks and three save rewrites.
+Useful captures remain; the obsolete object was removed and reference is clean.
+No unexpected access denial occurred. Variable consumed quantities, wider research/
+site compositions and final guard reconciliation still keep branch 4c open.
+
+## Present-item random quantity envelopes (2026-10-10)
+
+Random production now supports opt-in lower/upper quantities for protected items
+that occur in every positive-weight choice and retain native non-inert delivery
+order. Presence changes, reordered reuse and alien quantities keep their existing
+restrictions. The old inert upper-only envelope and its work contract remain
+unchanged. Immediate quantities accumulate max-minus-min in caller-owned sparse
+stock uncertainty; existing lower material checks and paired servicing forecasts
+must agree on consumed craft behavior. No random outcome or history is fabricated.
+The internal production capability explicitly owns mutable scratch uncertainty;
+empty base maps may be added when a quantity range first appears.
+
+Reference: Production::step random delivery/history, Craft::reuseItem/refuel,
+GeoscapeState hourly/half-hour order and fuel consumption. Eight new
+strategic-hunting productionFuelQuantityRows capture quantities 0/1 versus 2,
+zero/one initial item, native stock/history and actual relaunch/target outcomes;
+all older rows remain identical. Six fresh/cache cases first reproduced the guard
+and now observe both actual quantities across twelve saved seeds, canonical native
+outputs, three rewrites and continued pursuit equality. Two threshold cases keep
+atomic refusal when native launch outcomes differ. A sparse projection case checks
+upper/lower stock, pure campaign/RNG state and work exhaustion. Zero initial stock
+is represented by an absent item, preserving save validation against zero entries.
+
+All eight envelope unit tests pass, including zero-weight extremes, zero-quantity
+presence, order and work limits; the original 19-step assertion remains unchanged.
+All nine new hunting quantity cases and all 505 hunting cases pass. Full formatting,
+regenerated code-map and diff checks pass; native prior rows remain unchanged and
+the reference checkout is clean.
+This is cycle 32 slice one; delayed/shared quantity composition and batch are pending.
+
+## Delayed random fuel quantity acceptance (2026-10-10)
+
+Cycle 32 slice two closes delayed acceptance for the quantity envelope introduced
+above; it requires no additional runtime relaxation. Production::step creates both
+fixed zero-quantity and selected random transfers before refuelling, and
+Transfer::advance delivers them after two hourly boundaries. Eight pinned
+productionDelayedFuelQuantityRows record quantities 0/1 versus 2, one/two initial
+fuel items, actual history, native launch/target, ordered transfer quantities and
+intermediate/final stocks. Previous native rows remain unchanged.
+
+Eight fresh/cache cases observe both draws across twelve saved seeds, preserve
+actual transfer identities/quantities through three rewrites at creation and each
+arrival boundary, and compare continued execution after reload. Further production
+is paused in those isolated arrival fixtures. Zero-quantity transfers still count
+and disappear at arrival. Two capacity cases allow exactly two remaining IDs and
+atomically reject one-ID headroom or excessive pending quantity. A pure projection
+case verifies delayed quantities create neither current stock nor uncertainty and
+consume no campaign/RNG state. All eleven cases, full formatting, code-map and diff checks pass. Shared quantity
+consumption and root batch acceptance remain pending.
+
+## Shared random fuel/material quantity acceptance (2026-10-10)
+
+Cycle 32 slice three verifies the quantity envelope through ordered consumers,
+without another runtime relaxation. Eight native productionSharedFuelQuantityRows
+compose quantities one/two with two craft, zero/one initial item and both saved
+craft orders. Twelve productionSharedMaterialQuantityRows compose those quantities
+with a later paid unit, a reached one/two-item continuation and zero/one/two initial
+items, then refuelling and hunter selection. Exact reference callers are
+Production::step/haveEnoughMaterialsForOneMoreUnit/startItem, Craft::refuel,
+GeoscapeState ordered hourly production and half-hour service, and hunter selection.
+All prior native rows are unchanged.
+
+Ten fresh/cache execution cases observe both quantities across twelve saved seeds,
+compare canonical native progress/stocks/history/craft/target, and preserve state
+through three rewrites plus subsequent pursuit. Both craft orders select the first
+matching native target. Ten threshold cases retain atomic refusal when a second
+craft launch, later material eligibility or subsequent fuel eligibility differs.
+The material threshold explicitly distinguishes the native continuation stop.
+All twenty new cases, the broader 83 shared regressions, full formatting, code-map
+and diff checks pass. Batch audit and root acceptance follow. Execution/RNG and save/cache schemas stay
+unchanged; variable quantities still require a common consumed-consequence proof.
+
+## Random quantity batch audit: later item research (2026-10-10)
+
+The cycle 32 audit confirmed that an item inert for craft servicing can still
+control automatic site research. Its prior upper-only production envelope falsely
+guaranteed a needItem grant and event interruption. Four fresh/cache reproductions
+reached an unavailable site payload after execution had begun. The quantity API now
+retains lower bounds for all varying items, using zero when a positive-weight choice
+omits an inert item; protected presence/reuse-order restrictions remain unchanged.
+The old upper-only API and its 19-step work assertion retain their contract.
+
+Eight native productionInertSiteResearchRows compose Production::step outputs with
+SavedGame::addFinishedResearch dependency closure. The probe inserts the exact
+getAvailableResearchProjects needed-item condition; its remaining availability
+collaborators stay controlled. All old rows remain identical. Sixteen fresh/cache
+cases cover both optional presence and zero/two quantities: unsafe event suppression
+stops atomically, while safe outcomes execute actual research/diary/history and
+survive three rewrites plus continued execution. All 4,933 root tests pass with zero failures/skips in 6m52s977ms. Full formatting,
+code-map, diff, native checksums, private corpus and original allocation/endurance
+gates pass. No further confirmed issue or unexpected access denial occurred; the
+reference remains clean. The correction is a separate audit-fix commit. Wider daily
+research/site alternatives and final guard reconciliation still keep 4c open.

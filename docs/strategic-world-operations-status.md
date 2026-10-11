@@ -2,10 +2,10 @@
 
 The `codex/strategic-world-operations` branch implements bounded craft and UFO
 waypoint flight, ordinary UFO landing/takeoff, mission countdowns, activity scoring and
-base/craft radar detection. The bounded 4b closure gate is satisfied locally; this is
-not a merge or full world-simulation acceptance claim. The 2026-09-26 scope revision
+base/craft radar detection. Its bounded closure gate passed and 4b merged in `e10d96f`;
+full world-simulation acceptance remains separate. The 2026-09-26 scope revision
 closes 4b after ordinary UFO lifecycle completion; branch 4c owns remaining world generation, special behavior, scripts,
-pursuit and globe UI. See [the revised Phase 6 plan](phase-6-plan.md#branch-4b--ordinary-ufo-and-craft-operations).
+pursuit; 4d owns globe UI. See [the revised Phase 6 plan](phase-6-plan.md#branch-4b--ordinary-ufo-and-craft-operations).
 
 ## Implemented
 
@@ -282,16 +282,16 @@ between fresh and cached content.
 
 | Corpus | Executable | Blocked | Preservation only |
 |---|---:|---:|---:|
-| UFO (7 saves) | 3 | 1 | 3 |
+| UFO (7 saves) | 4 | 0 | 3 |
 | TFTD (5 saves) | 3 | 0 | 2 |
-| Rosigma (7 saves) | 0 | 4 | 3 |
-| Total | 6 | 5 | 8 |
+| Rosigma (7 saves) | 4 | 0 | 3 |
+| Total | 11 | 0 | 8 |
 
-UFO `early/Begining.sav` advances 125 ticks, then stops before unsupported wave
-spawning. Rosigma `early/Begining.sav` stops on strategic event scheduling; its
-`Early.sav`, `Middle.sav` and `_autogeo_.asav` stop on UFO shield handling. These four
-stop without advancing. All eight tactical saves retain their battle data and stop
-without advancing. Exact reasons/tick counts are regression assertions. The ignored
+All eleven strategic saves complete 360 ticks. Cycle 14's first-airborne site
+objective proof lets UFO `early/Begining.sav` pass its former tick-125 wave boundary;
+the regression also requires the expected terror-mission wave to exist afterward.
+All eight tactical saves retain their battle data and stop without advancing.
+Exact reasons/tick counts remain regression assertions. The ignored
 `artifacts/world-closure-corpus.json` records the per-save results. This is C# adapter
 continuation evidence; emitted ordinary saves were not loaded into the complete C++
 engine as part of this closure run.
@@ -330,6 +330,11 @@ stationary-craft allocation checks remain stricter than these moving-population 
 
 ## Assigned to branch 4c
 
+Subsequent scope revision: branch 4b merged in `e10d96f`; the approved
+[4c/4d delivery plan](phase-6-world-integration-plan.md) assigns headless work to 4c
+and globe/UI plus combined acceptance to 4d. The event and UFO shield slices have
+begun 4c; the historical closure evidence above describes the 4b baseline.
+
 - Alien strategy, mission/arc/event projection, selection and daily/monthly scheduling.
 - General regional UFO/deployment waves, deployment-only and zero-timer follow-up waves,
   broader mission objectives and their immediate consequences.
@@ -347,3 +352,927 @@ remain explicitly guarded. Branch 5 still owns interception/deployment, branch 6
 full monthly evaluation and campaign-wide event consequences, and Phase 7 owns tactical
 execution. The original combined branch 4 acceptance gates 4c closure; the revised 4b
 gate does not establish full world simulation or remove the playable month-boundary guard.
+
+## Detection script caller projections (2026-10-04)
+
+Base::detect and Craft::detect caller inputs now have an immutable allocation-free
+projection. The pinned strategic-detection-scripts probe inserts both methods
+verbatim and records the worker's initial outputs, scalar inputs, radar boundary
+and hyperwave/final-roll order. Completed facilities contribute maximum ranges
+even outside coverage; unfinished facilities are excluded by the owning caller.
+The live detection VM remains the next slice.
+
+## Bounded live detection VM (2026-10-04)
+
+Base and active-craft callers execute compiled UFO detection programs after radar
+arithmetic and before the final roll, including global before/after events with an
+identity main fallback. Reusable frames and scalar buffers avoid per-contact VM
+allocations after preparation. Saved and newborn UFO preflights replace blanket
+script guards with precise unsupported binding, loop, divisor and wave-period
+checks. Forward-only scalar programs with safe literal divisors are enabled;
+unproven loops, input-dependent divisors and host providers remain guarded.
+Fresh/cache cases cover scalar input branches, out-of-range detection, event
+ordering, unchanged-state refusal and save reloads.
+
+## Read-only live detection providers (2026-10-04)
+
+Detection VM providers now expose UFO altitude/status/visibility/damage, detection
+flags, race-adjusted shields, hunting/escort state and rules; craft damage/shield,
+effective radar and rule capacities; and campaign difficulty, day/month and clock.
+Providers preserve null-receiver defaults. The getter oracle extracts ten Ufo.cpp
+methods verbatim; fresh/cache tests execute them through real detection scripts
+before and after save reloads, including race bonuses, installed radar and current
+tick time. Reusable input-name arrays, binding tables and a stable clock receiver
+avoid rebuilding providers or boxing the clock per contact. Percentage-of-damage
+and remaining bindings retain explicit capability refusals.
+
+Batch audit: reproduced and fixed an allocation regression from cached-lookup
+closures, and an aggregate execution-work gap. Program construction is separate
+from allocation-free lookup. A shared half-hour budget includes saved/newborn
+contacts, before/main/after programs, possible craft arrivals and installed-radar
+query scans. Shield capacity is prepared once per script call. Fresh/cache
+oversized contact/event regressions now stop with unchanged snapshots; existing
+8/32/128-UFO allocation limits remain unchanged.
+
+## Persisted entity detection tags (2026-10-04)
+
+Detection scripts read typed UFO and craft instance tags, with zero defaults for
+missing slots and null receivers. The native fixture now extracts
+ScriptValuesBase::setBase/getBase as well as detection workers. Craft tags enter
+save-neutral snapshots, restored live state and the save adapter, including
+transfers and tag removal during source-preserving rewrites. Craft restoration
+validates tag ownership, duplicates and value types transactionally. Fresh/cache
+tests execute saved tag branches before/after reload and reject malformed state.
+
+## Rule and global detection tags (2026-10-04)
+
+Read-only detection providers now resolve the typed rule-tag overloads on UFO and
+craft receivers as well as direct RuleUfo/RuleCraft receivers, RuleMod globals and
+saved GeoscapeGame tags. Immutable content initial values supply rule/global slots;
+instance slots remain separate even when their indexes coincide. RuleList values,
+null receivers and absent slots preserve scalar semantics. Lookup tables are
+prepared in preflight and keyed by exact rule identity. Fresh/cache scripts read
+every owner through the actual VM and retain transition reload coverage.
+Reference: ScriptBind.h::addScriptValue/BindPropCustomGet, Ufo/Craft/RuleUfo/
+RuleCraft/SavedGame/Mod ScriptRegister and ScriptValuesBase::getBase.
+
+## Research-aware detection providers (2026-10-04)
+
+Detection scripts resolve RuleMod research pointers, read cost/points/lookup and
+query completed research through the reference isResearchedScript semantics:
+debug mode is explicitly ignored. Missing names and null mod/research receivers
+return null/zero; canonical rule identities make repeated pointer comparisons
+stable. The native probe extracts lookup helpers and the SavedGame wrapper for
+completed/debug/null combinations. Fresh/cache live scripts match those rows
+and observe research completed in the preceding daily handler, with save reloads.
+
+The same slice fixes VM null equality: host null references now compare equal to
+script null literals in either operand order, while non-null references retain
+identity semantics. A failing-before-fix VM regression covers both orders and a
+boxed zero reference, alongside the research fixture's missing-pointer branches.
+
+## Detection tags and research cycle audit (2026-10-04)
+
+Three slices add craft instance tag persistence, typed rule/mod/campaign tag
+providers and research-aware detection. SavedGame::isResearchedScript explicitly
+ignores debug mode; rule lookup preserves canonical pointer identity and null
+defaults. The research fixtures exposed host-null/literal-null VM equality,
+which is fixed with failing-before-fix regressions in both operand orders.
+
+Batch audit reproduced an uncharged UFO tag-list scan; saved tag reads now share
+the half-hour execution budget. Fresh/cache regressions stop before mutation.
+Actual craft transfer orders, hourly arrivals and repeated source-preserving
+rewrites retain tags and opaque fields, while deleted tags stay deleted.
+All 1,966 root tests pass with zero failures/skips, including private corpus and
+oracle checksum tests. The 4c headless gate remains open; 4d is untouched.
+
+## Literal detection loop forecasts (2026-10-04)
+
+Detection callers accept compiler-owned scalar counted loops with literal limits,
+including nested loops, break/continue and changes to the exposed loop variable.
+The forecast recognizes exact hidden-register initialization/check/increment/back
+edges and rejects any body access to control registers. Per-instruction visit
+bounds feed both VM step limits and aggregate contact/radar/tag work reservations.
+Pinned script-core counted-loop/control fixtures run at the live detection call
+site; zero/negative bounds, nesting and oversized inputs have focused coverage.
+Input-dependent/list loops retain explicit bounded-forecast capability refusals.
+Reference: Engine/Script.cpp::parseLoop/parseBreak/parseContinue.
+
+## UFO damage detection providers (2026-10-04)
+
+Ufo.getDamageMax and getDamagePercentage use mission-race damage stats and the
+reference double division followed by floor. Native rows cover fractional
+rounding, large representable values and signed maxima. Numeric forecasts stop
+before zero denominators, undefined conversions or race-adjusted overflow can
+mutate a tick. Null receivers retain zero defaults; fresh/cache cases reload
+before and after detection. The probe now inserts Mod.h::isEmptyRuleName verbatim,
+correcting an escaped-character stub and distinguishing empty/NUL names from
+the valid research name "0". Reference: Ufo.cpp::getDamageMaxScript/
+getDamagePercentage, Mod.h::isEmptyRuleName.
+
+## Complete UFO statistic detection reads (2026-10-04)
+
+Immutable runtime UFO statistics now retain all nineteen scalar fields exposed
+by RuleCraftStats::addGetStatsScript, including fuel, combat bonuses, armor,
+shield bleed-through and cargo/unit capacities. The compiler/cache revision
+advances to 36. Read-only RuleUfo getters expose raw values; Ufo.Stats getters
+add the mission race bonus without constructing per-contact stat objects.
+Consumed sums are preflighted before mutation. The native probe inserts field
+registration and operator+= verbatim and records raw/adjusted rows. Fresh/cache
+VM tests read every field, null defaults and transition reloads; queried overflow
+retains a precise unchanged-state refusal. Stats remain data, not combat execution.
+Reference: RuleCraft.h::addGetStatsScript/operator+=, RuleUfo.cpp::ScriptRegister,
+Ufo.cpp::setMissionInfo/ScriptRegister.
+
+## Detection loops and complete UFO statistics cycle audit (2026-10-04)
+
+Three slices add compiler-owned literal loop forecasts, exact UFO damage percentage
+providers and all nineteen raw/race-adjusted UFO stat getters. Native captures,
+fresh/cache VM execution, null defaults and transition reloads cover the change.
+The cache/compiler revision is 36. No combat behavior is enabled by stat projection.
+
+The batch audit reproduced skipped-loop overblocking: a zero/negative outer loop
+was charged for an unreachable oversized inner loop. Forecasts now apply outer
+loops first in explicit instruction order and count final header checks separately
+from body visits. Unreachable host calls do not reserve numeric inputs. Active
+nested tag reads retain aggregate work limits. All 1,985 root tests pass without
+failures/skips, including private corpus, checksums and unchanged allocation bounds.
+The 4c headless gate remains open; branch 4d is untouched.
+
+## Rule lookup and linked research detection reads (2026-10-04)
+
+Detection scripts resolve item, armor, soldier and skill pointers through the
+reference Mod wrappers. Canonical immutable rule objects preserve pointer identity;
+missing/empty/NUL names and null mod receivers return null, and item STR_NONE stays
+null even if that name exists in the item table. Research providers expose typed
+rule tags and linked needed items: needItem=false retains a null pointer, explicit
+items and same-name fallback preserve identity, and legacy missing items stay null.
+Native Mod getter/wrapper captures and fresh/cache VM/reload tests cover the slice.
+Reference: Mod.cpp::getItem/getArmor/getSoldier/getSkill and script wrappers,
+RuleResearch.cpp::afterLoad/ScriptRegister, RuleResearch.h::getNeededItem.
+
+## Ordered country detection iteration (2026-10-04)
+
+Detection scripts execute SavedGame's ordered, unfiltered country list through
+bounded compiler-owned list loops, including null/empty lists, nesting and
+continue. Country providers expose current funding/activity histories and the
+signed pact flag. Loop forecasts use the immutable campaign country population;
+manual iterator calls retain an explicit guard. Native captures insert the
+reference list init/step templates, filter and country getters verbatim.
+Fresh/cache base and craft callers preserve country order through save reloads.
+
+This slice reproduces and fixes packed-program separator loss on reconstruction:
+the constructor distinguishes source calls from already packed calls and rejects
+malformed arities intentionally. A failing-before-fix VM regression and actual
+cached country-loop execution cover the repair. Compiler/cache revision is 37.
+Reference: ScriptBind.h::BindListInitImpl/BindListLoopImpl,
+SavedGame.cpp::filterCountryConstScript/ScriptRegister, Country.cpp/h getters.
+
+## Country and country-rule detection tags (2026-10-04)
+
+Read-only detection providers expose Country.getRuleCountry and RuleCountry's
+funding cap in its original thousands-of-currency units. Typed Country instance
+tags and RuleCountry initial rule tags retain separate owners even when their
+indexes coincide. Stable country/rule identities, absent slots and null receivers
+preserve pointer/scalar defaults. The native probe captures getRules and
+getFundingCap verbatim across signed/zero/large caps. Fresh/cache live list-loop
+scripts validate every owner and reload before and after execution.
+Reference: Country.cpp::getRules/ScriptRegister, RuleCountry.cpp::getFundingCap/
+ScriptRegister, ScriptValuesBase::getBase and BindPropCustomGet.
+
+## Rule lookup and country detection cycle audit (2026-10-04)
+
+Three slices complete read-only item/armor/soldier/skill lookup and linked research
+reads, ordered country iteration, and country/rule tags with funding-cap reads.
+Native captures and fresh/cache execution cover both base and craft callers.
+Packed host-call reconstruction now preserves separator-free cached arguments;
+the compiler/cache revision is 37.
+
+The batch audit found no additional confirmed defect. Added regressions prove
+country-loop work is shared across detection callers and explicit unsafe iterator
+calls stop before mutation. All 2,002 root tests pass with zero failures/skips,
+including private corpus and checksum tests. Formatting, code-map validation and
+diff checks pass. The 4c headless gate remains open; branch 4d is untouched.
+
+## Complete UFO rule scalar detection getters (2026-10-04)
+
+Immutable UFO projections and read-only detection providers expose radius and
+weapon range/power/reload, alongside all nineteen stat getters. Native methods
+cover the five size defaults, unknown sizes, negative radius fallback and explicit
+zero/large radii; signed weapon fields retain their original keys and values.
+A failing-before-fix regression corrects the typed unknown-size radius from two
+to the reference zero. Fresh/cache VM execution and transition reloads cover all
+rows and null receivers. Cache/compiler revision is 38.
+Reference: RuleUfo.cpp::load/getRadius/getWeaponRange/getWeaponPower/getWeaponReload/
+ScriptRegister. This adds read access only; interception remains in branch 5.
+
+## Immutable mod detection constants (2026-10-04)
+
+Detection providers expose Mod's maximum view distance and maximum darkness to
+see units, preserving constructor defaults 20/9, ordered global overrides and
+signed values. Typed settings, immutable runtime projection and cache restoration
+retain both fields. Native inline getter captures, null receivers, malformed
+schema tests and fresh/cache live VM/reload tests cover the slice. Compiler/cache
+revision is 39. Smoke reduction remains guarded until its receiver and arithmetic
+can be proved safe before mutation.
+Reference: Mod.cpp constructor/load/ScriptRegister and Mod.h getters.
+
+## Complete raw craft-rule detection statistics (2026-10-04)
+
+All nineteen RuleCraft.Stats getters use immutable default statistics, preserving
+the reference Stats prefix. Installed weapon bonuses and maximum-unit limit
+overrides do not alter raw rule reads. The native addGetStatsScript capture now
+pins the craft namespace separately; fresh/cache live craft detection and reloads
+verify every field and null default while a radar weapon is installed.
+Compiler/cache revision is 40.
+Reference: RuleCraft.cpp::ScriptRegister, RuleCraft.h::RuleCraftStats/
+addGetStatsScript and RuleCraft loading. Effective instance statistics beyond
+radar remain precisely guarded until their mutation and numeric forecasts exist.
+
+## Rule and mod detection scalar cycle audit (2026-10-04)
+
+Three slices complete UFO rule radius/weapon getters, immutable mod view/darkness
+constants, and all nineteen raw craft-rule stat getters. Native traces pin field
+names and defaults; fresh/cache live execution and reloads cover each provider.
+The radius slice reproduced and corrected the unknown-size fallback from two to
+the reference zero. Compiler/cache revision is 40.
+
+The batch audit removed an unintended craft-stat field from the facility
+projection, avoiding a public API and allocation outside its owner. The existing
+unsupported-provider regression now checks still-guarded smoke reduction; newly
+supported view-distance reads have dedicated positive coverage. Effective craft
+instance statistics beyond radar, additional VM providers/forecasts, actual
+initial/monthly caller composition and final composed acceptance remain open.
+Branch 4d is untouched.
+
+Validation: all 2,016 root tests pass with zero failures/skips, including private
+corpus, checksum and existing allocation checks. Formatting verification, code-map
+validation and diff checks pass. The reference checkout remains clean.
+
+## Item and armor detection rule tags (2026-10-04)
+
+Detection scripts read RuleItem and RuleArmor initial tags through canonical rule
+pointers. Typed tag owners retain separate indexes, missing slots and null
+receivers return zero, and tag-free rules do not inherit another rule's values.
+The existing pinned ScriptValuesBase oracle supplies positive/negative slot
+values; new fresh/cache VM and before/after reload fixtures cover both families.
+Reference: RuleItem.cpp::ScriptRegister and Armor.cpp::ScriptRegister (OnlyGet
+script values), Engine/Script.cpp::ScriptValuesBase::getBase.
+
+## Soldier and skill detection rule tags (2026-10-04)
+
+Detection scripts read RuleSoldier and RuleSkill initial tags through canonical
+rule pointers, including the skill identity projection. Read-only providers keep
+typed owners and tag-free rule identity separate; absent slots/null pointers
+return zero. Shared pinned ScriptValuesBase slot traces and fresh/cache VM/reload
+fixtures cover signed values and rule switching. Setters remain unavailable.
+Reference: RuleSoldier.cpp::ScriptRegister (OnlyGet), RuleSkill.cpp::ScriptRegister
+and Engine/Script.cpp::ScriptValuesBase::getBase.
+
+## Rule text and simple scalar detection metadata (2026-10-04)
+
+Read-only providers expose item weight/battle type, armor size, and type-name text
+for item, armor, skill and craft rule pointers. Canonical immutable projections
+carry external type IDs without per-call reverse lookups. The exact native
+getTypeScript wrappers preserve empty text for null, and getBattleTypeScript
+preserves BT_NONE. Verbatim getter captures, actual text VM comparisons and
+fresh/cache craft detection/reload tests cover signed weights and null receivers.
+Compiler/cache revision is 41.
+Reference: RuleItem.cpp::getTypeScript/getWeight/getBattleType/getBattleTypeScript,
+Armor.cpp::getTypeScript/getSize, RuleSkill.cpp/RuleCraft.cpp::getTypeScript and
+their ScriptRegister bindings. Soldier type-name binding retains its existing
+guard: the pinned wrapper has a different declared receiver type.
+
+## Linked rule tags and text metadata cycle audit (2026-10-04)
+
+Three slices add item/armor rule tags, soldier/skill rule tags, and type-name text
+with simple item/armor scalar metadata. Canonical immutable rule objects preserve
+tag owner identity; native ScriptValuesBase and exact getTypeScript/getter captures
+pin signed values and null defaults. Actual fresh/cache VM execution and transition
+reloads cover every newly owned provider. Compiler/cache revision is 41.
+
+The batch audit found no additional confirmed defect. An added guard regression
+proves unsupported RuleItem providers still stop before mutation even though
+other reads on that receiver are available. The soldier type-name binding remains
+guarded because the pinned wrapper declares a RuleSkill receiver. Unavailable
+providers are explicit; combat, deployment and event payload boundaries remain
+unchanged. Effective craft instance statistics, wider VM providers/forecasts,
+actual initial/monthly caller composition and final composed acceptance remain
+4c work. Branch 4d is untouched.
+
+Validation: all 2,024 root tests pass with zero failures/skips, including private
+corpus, checksum and existing allocation checks. Formatting verification, code-map
+validation and diff checks pass. The reference remains clean at the pinned commit.
+
+## Complete soldier rule statistic detection reads (2026-10-04)
+
+Detection providers expose all twelve UnitStats fields under StatsMin, StatsMax
+and StatsCap (36 getters). Immutable rule dictionaries preserve signed 16-bit
+values widened to script integers, including both extrema and mana. Native
+getMaxStatScript/addGetStatsScript captures pin names, prefixes and null zeroes;
+fresh/cache live scripts and transition reloads cover every getter. No personnel
+or tactical statistic mutation is enabled.
+Reference: Unit.h::getMaxStatScript/addGetStatsScript and
+RuleSoldier.cpp::ScriptRegister.
+
+## Complete armor statistic detection reads (2026-10-04)
+
+All twelve Armor UnitStats getters execute under RuleArmor.Stats, preserving
+signed 16-bit stat values and mana. Canonical armor projections already own these
+immutable fields. The pinned UnitStats wrapper captures the exact Stats prefix
+and null defaults; fresh/cache detection and before/after reload tests cover every
+getter. No per-contact allocation or tactical stat mutation is introduced.
+Reference: Unit.h::getMaxStatScript/addGetStatsScript and Armor.cpp::ScriptRegister.
+
+## Immutable armor vision detection metadata (2026-10-04)
+
+Detection scripts read eleven armor visibility, camouflage, heat vision and
+personal-light fields. Immutable projections preserve external heatVision and
+personalLight keys, signed integer values and the reference defaults (friendly
+light 15, fire visibility 100, remaining fields zero). Exact native methods and
+fresh/cache live/reload fixtures cover defaults, overrides and null zeroes.
+Compiler/cache revision is 42. Tactical visibility calculations remain outside
+this read-only world caller.
+Reference: Armor.cpp constructor/load/vision getters/ScriptRegister and Armor.h
+getVisibilityThroughSmoke/getVisibilityThroughFire.
+
+## Soldier and armor statistics cycle audit (2026-10-04)
+
+Three slices add all 36 RuleSoldier minimum/maximum/cap stat getters, all twelve
+RuleArmor stat getters and eleven immutable armor vision/light metadata getters.
+Verbatim UnitStats wrappers and Armor getter captures pin namespaces, signed
+widths, defaults and null behavior. Fresh/cache live scripts and transition reloads
+cover every field. Compiler/cache revision is 42.
+
+The batch audit found no additional confirmed defect. Providers read immutable
+data without contact-loop allocation or tactical mutation. The 4c headless gate
+remains open: effective craft instance statistics, remaining detection providers
+and dynamic forecasts, actual initial/monthly caller composition, wider generated
+object/newborn forecasts and final composed acceptance/classification remain.
+Combat/deployment and due event payloads retain their later-branch boundaries.
+Branch 4d is untouched.
+
+Validation: all 2,032 root tests pass with zero failures/skips, including private
+corpus, checksum and existing allocation checks. Formatting verification,
+code-map validation and diff checks pass. The reference remains clean at the
+pinned commit. This timed run completes seven three-slice cycles and seven batch
+audits, with confirmed issues repaired in their owning slices or audit commits.
+
+## Newborn first airborne arrivals (2026-10-09)
+
+Ordinary score/supply point births can now reach their first airborne destination
+in the creation tick. The existing movement owner advances exactly one waypoint;
+preflight validates its replacement altitude/speed and bounded double waypoint/
+source lookup work. Ground transitions, land retry, research interruption and
+special hunters/escorts retain their existing boundaries. Native references are
+AlienMission::spawnUfo/ufoReachedWaypoint and GeoscapeState::time5Seconds at the
+pinned commit; verified lifecycle transition and immediate-wave captures back
+fresh/cache coincident/nearby origins, three-wave chains and transition rewrites.
+
+Six new execution/capacity cases reproduce the old distance guard before the fix;
+four further cases preserve later-ground and interruption refusal. Exact RNG
+assertions include both waypoint draws, zero timers and zero-chance base detection.
+All 186 affected tests pass, with targeted formatting, code-map and diff checks.
+This is cycle 13's first slice; variable/generated origins, ground starts and the
+batch audit remain. No native objects/downloads were generated; useful existing
+captures remain. 4c is open and 4d has not started.
+
+## Regional and generated first arrivals (2026-10-09)
+
+The safe airborne proof now accepts bounded regional areas, including a mix of
+reachable and distant first destinations. Both possible movement paths use the
+existing owner; no RNG or future actor identity is consumed in preflight. Native
+lifecycle rectangle/transition and daily/hunting generation captures back exact
+selected coordinates/RNG, altitude/speed, three rewrites and subsequent ticks.
+Daily births score before detection; hunting births follow that pass. Fresh/cache
+fixtures include both callers together, full identity envelopes and 72 hours of
+day batching versus hourly advancement/reloads with bounded populations.
+
+All ten new regional/caller cases reproduce the point-only restriction before
+the change. All 142 affected tests pass, including six further capacity/endurance
+cases. Targeted formatting, regenerated code-map and diff checks pass. This is
+cycle 13's second slice; overlapping ground starts and batch audit remain.
+
+## Overlapping newborn ground starts (2026-10-09)
+
+A grounded birth no longer requires its first destination to be farther than one
+flight step. Native GeoscapeState::time5Seconds enters LANDED, consumes five
+seconds and may lift without moving or recharging; subsequent ticks use the saved
+UFO arrival owner. Existing ground-supply and assault starts retain their precise
+checks. Lifecycle spawn/lift captures back one-, two- and ten-tick stays, exact
+creation/detection RNG, double landed activity, lift points and initial shields.
+Fresh/cache fixtures preserve detection/landing markers through lift, clear them
+on the next airborne arrival, reserve combined activity and marker capacity,
+rewrite saves three times and compose both regional generation callers.
+
+All 16 new cases reproduce the distance refusal before the change. All 72 affected
+tests pass; targeted formatting, code-map and diff checks pass. This completes
+cycle 13's execution slices; their batch audit and full validation follow. 4c and
+its later-branch boundaries remain open; 4d is untouched.
+
+Cycle 13 batch audit reproduced replacement-speed overflow in both fresh/cache
+content: calling the checked speed helper during proof threw instead of refusing
+the tick. The proof now validates the wide product before narrowing. Both overflow
+regressions refuse atomically; the maximum safe result still executes/reloads.
+Three older blanket-arrival refusal tests were replaced with stronger fresh/cache
+selected coordinate, discarded RNG, speed and three-rewrite checks for both
+reachable and distant point/rectangle outcomes. All 71 affected cases pass.
+Reviewed caller order, constructor/landed branch, counter/wave identity, pure
+forecast work and precise interruption/special/ground boundaries. Full final
+root/format validation follows the separately committed correction.
+
+Cycle 13 closes with all 4,260 root tests passing without failures/skips, including
+native checksums, private classifications and populated allocation gates. Full
+formatting, code-map and diff checks pass; the pinned reference is unchanged.
+The replacement-speed defect is fixed in its separate audit commit. Remaining
+ordinary objective/interrupt/hunter first arrivals, newborn ground/conversion
+consequences, linked deletion, ordered research/maintenance alternatives and final
+acceptance reconciliation keep 4c open; branch 4d is untouched. Useful captures
+and validation logs remain; no native probe objects were generated this cycle.
+
+## First airborne arrivals across objectives (2026-10-09)
+
+Site/base/infiltration births now use the same bounded first-airborne proof as
+score/supply. Existing think-time owners reserve final objectives before movement;
+no landing/conversion effect is enabled. Pinned AlienMission::think/spawnUfo/
+ufoReachedWaypoint and verified lifecycle, objective-base, infiltration and
+mission-origin captures back Space/Earth source variants. Fresh/cache seed cases
+preserve three-wave identity, one-step altitude/speed/position, final base/pact
+state, native revelation, activity, three rewrites and following flight. Base
+birth-sequence exhaustion still refuses before any wave/research mutation.
+
+Ten cases fail at the old objective restriction before the change; supply's two
+already-supported cases pass. All 79 affected cases pass with targeted formatting,
+code-map and diff checks. This is cycle 14's first slice; harmless research tags,
+no-target hunter arrivals and their batch audit remain. 4d is unchanged.
+
+## Research-tagged first airborne arrivals (2026-10-09)
+
+A birth's interrupt tag now blocks first-airborne advancement only when the ordered
+site-research forecast can explicitly grant that topic after spawning. Daily
+research interruption occurs before spawning; harmless tags and unrelated later
+grants use the existing ordinary movement owner. A relevant possible post-birth
+grant retains an atomic terminal-arrival boundary. Pinned GeoscapeState daily/site
+caller order and AlienMission interruption/arrival handling, with verified lifecycle,
+site-timer and daily-generation evidence, back fresh/cache selected interruption
+outcomes, complete-state/RNG controls and three save rewrites.
+
+All 61 affected tests pass; targeted formatting, regenerated code-map and diff
+checks pass. Cycle 14's second slice is complete; no-target hunter constructors
+and the batch audit remain. No event payload or combat boundary is removed.
+
+## No-target hunter first airborne arrivals (2026-10-09)
+
+Hunter constructors can use the ordinary first-airborne arrival when the existing
+bounded craft/transfer scan proves no selectable craft and the wave cannot escort.
+The proof consumes no RNG; runtime keeps native percentage, randomized mode and
+behavior choices before waypoint selections. Pinned Ufo constructor, AlienMission
+spawnUfo and GeoscapeState hunting/detection callers, with verified hunting and
+lifecycle captures, back fresh/cache 50/100-percent three-wave cases. Missing,
+grounded and undetectable outbound craft preserve exact constructor/detection/
+arrival RNG, all five stochastic outcomes, wave identity, shields, three rewrites
+and following flight. Outbound craft still participate in detection even when
+undetectable to hunters. Possible craft hunts and conditional escort leaders keep
+atomic arrival boundaries.
+
+Four positive cases reproduce the old restriction; four boundary cases already
+pass. All 150 affected tests pass; regenerated code-map and diff checks pass.
+Formatting reported test initializer whitespace, corrected during the batch audit.
+This completes cycle 14's execution slices; their batch audit and full validation
+follow. No combat or landing transition is enabled.
+
+Cycle 14 batch review finds no additional confirmed runtime defect. Final wave
+proofs see the completed site forecast; its possible explicit topics include
+optional free-research outcomes. Two additional fresh/cache regressions preserve
+atomic refusal for a possible later grant. Reviewed objective completion order,
+constructor/escort exceptions, bounded no-target craft/transfer scans, source
+geometry, single-step movement, counters and remaining combat/event boundaries.
+All 30 focused audit cases pass and full formatting passes after correcting test
+initializer whitespace. Root validation follows before the audit closes.
+
+Cycle 14 closes with all 4,288 root tests passing without failures/skips, including
+checksums, private fresh/cache/rewrite classifications and population gates. The
+corpus expectation now requires eleven strategic saves to complete the fixed
+horizon and the formerly blocked UFO save's terror wave to exist; eight tactical
+saves still stop at zero ticks. Full formatting, map/diff and unchanged reference
+checks pass. The quota interruption left this classification update pending; its
+morning validation closes that checkpoint. Remaining conditional newborn flight/
+pursuit, linked deletion, research/maintenance alternatives and final acceptance
+keep 4c open. Branch 4d remains untouched; no native objects were generated.
+
+## Forecasted no-target first arrivals (2026-10-09)
+
+The first-airborne proof now accepts a mission/wave/mode-specific no-target result
+from the existing newborn hunting owner. Active craft can be present when native
+radar eligibility, bounded geometry or projected craft state excludes every target;
+preflight still validates attraction before the radar test. No constructor RNG or
+future identity is consumed. Pinned GeoscapeState::ufoHuntingAndEscorting, Ufo
+constructor and AlienMission arrival caller, with verified hunting/lifecycle
+captures, back zero, negative and separated positive-radar cases through fresh/
+cache content. Exact constructor/detection/arrival RNG, every mode/behavior outcome,
+three rewrites and following flight remain asserted; malformed attraction, possible
+hunts and escort-leader boundaries remain atomic.
+
+Four positive cases reproduce the prior coarse craft exclusion. All 132 affected
+tests pass. This is cycle 15's first slice; safe hunt alternatives, research/escort
+composition and the batch audit remain. Branch 4d and later-branch gates are unchanged.
+
+## Safe hunt and ordinary-arrival alternatives (2026-10-09)
+
+The first-airborne proof also consumes the existing bounded safe-hunt result for
+nonescort births. A successful constructor may target a distant craft; its ordinary
+alternative can advance one airborne waypoint. Pinned GeoscapeState retarget/move
+ordering and Ufo/AlienMission constructor/arrival callers, with verified hunting/
+lifecycle traces, back all eight three-wave constructor patterns, both native mode/
+behavior choices and unchanged versus 150-percent hunt speed. Fresh/cache fixtures
+pass explicit slow/day speed context, preserve original waypoints, live movement,
+contact markers and notifications, exact RNG, three rewrites and following ticks.
+A reachable craft retains the precise precombat refusal before any random choice.
+
+Four cases reproduce the former no-target-only boundary. All 124 affected tests
+pass. This is cycle 15's second slice; research/escort composition and the batch
+audit remain. Branch 4d and unavailable combat/landing/event consequences are unchanged.
+
+## Escort and site-research first-arrival composition (2026-10-09)
+
+The ordinary first-airborne owner now composes existing safe-hunt and no-target
+proofs with escort constructors. Native initialization can attach an earlier leader;
+retargeting can attach a later appended ordinary leader. All-hunter chains without
+a leader retain ordinary waypoint advancement. Early read-only site projection
+defers hunting proof to final mission preflight; runtime spawning always requires
+that proof after the complete site forecast. Relevant later interrupt topics and
+invalid attraction still refuse before research or wave mutation.
+
+Pinned AlienMission::spawnUfo, GeoscapeState::ufoHuntingAndEscorting/time30Minutes/
+time5Seconds and mission-site research callers, with verified hunting/lifecycle/
+site captures, back fresh/cache saved/later/no-leader alternatives, all eight
+constructor patterns, exact RNG and stable unique targets through three rewrites.
+Active craft combine separated or safe hunts with site grants; control worlds
+preserve UFO/RNG state, including automatic CORE/UNLOCK diary order and sources.
+Capacity and precombat refusals remain precise. Twenty new cases and two stronger
+capacity assertions reproduce the previous boundaries; all 150 affected tests pass.
+This completes cycle 15's execution slices; their batch audit and full validation
+follow. Branch 4d and unavailable landing/combat/event effects are unchanged.
+
+Cycle 15 audit reproduced initial trajectory-speed overflow in fresh/cache ordinary
+and hunter births: preflight called the checked speed helper before validating the
+quotient. The shared pure initial-speed check now prevents narrowing in both spawn
+and newborn-hunt owners. Four atomic regressions reproduce/fix the exception; four
+ceiling cases still execute and reload. Reference UfoTrajectory.h uses a size_t
+percentage and wide multiplication before returning signed speed; out-of-range
+narrowing remains intentionally unsupported. All 164 affected cases pass. Reviewed
+proof keys/reset, read-only early site deferral versus final owning checks, native
+constructor/retarget/movement order, escort fallback and source geometry, marker/
+work reservations and unchanged combat/landing/event gates. Full validation follows
+the separately committed audit correction; no further confirmed defect was found.
+
+Cycle 15 closes with all 4,322 root tests passing without failures or skips. Full
+formatting, regenerated code-map and diff checks pass. Private fresh/cache/rewrite
+classifications and population checks remain green; the pinned reference is unchanged.
+No additional confirmed issue remains from this batch audit. First ground arrivals,
+linked deletion, ordered research/maintenance alternatives and final acceptance
+remain open for 4c. Useful captures/logs are retained; no probe objects were added.
+
+## Newborn point landing arrivals (2026-10-09)
+
+Ordinary airborne births can land at their first point destination through the
+existing UFO movement owner. The flying pass initializes shields and the complete
+ground timer; only later landed passes consume it and lift without movement.
+Half-hour activity remains airborne. A silent detected contact still receives
+a landing ID on arrival, so its capacity is reserved independently of noAlert.
+Conversion, landing-base creation, assault and later land-retry paths remain scoped
+boundaries. Positive timer, damage, speed, marker and geometry checks run before
+mutation. Reference AlienMission::ufoReachedWaypoint/getWaypoint/ufoLifting,
+Ufo::setAltitude and GeoscapeState::time30Minutes/time5Seconds, with verified
+world-lifecycle/wave-chain captures, back exact RNG, fresh/cache timers, silent/
+alerted detection, three rewrites, lift and following flight. Ten positive cases
+reproduce the prior guard; six malformed timer cases already refuse atomically.
+All 76 affected cases pass. This is cycle 16 slice one; regional/generated landing
+and hunt/escort/research composition plus their batch audit remain. 4d is untouched.
+
+## Regional and generated first landings (2026-10-09)
+
+The first-ground proof now covers bounded regional rectangles and both daily and
+late hunting creation callers. Origins preserve native land selection; replacement
+waypoint selection still occurs twice. Point terrain determines whether a real
+landing is possible: cosmetic ocean and forbidden fake water retain the native
+five-second fallback without a landing ID, even with an exhausted landing namespace.
+Rectangles conservatively admit land. Timer validation and landing reservations
+follow that possibility; known water does not require a usable groundTimer.
+
+Pinned AlienMission land/waypoint/arrival callers, Globe terrain semantics and
+GeoscapeState generation/detection order, with verified lifecycle and generation
+captures, back fresh/cache exact RNG, mixed arrivals, ocean/fake-water variants,
+three rewrites, control continuation and the maximum safe timer. Polygon work is
+bounded across the early generated/site and final mission proofs before mutation.
+The shared content helper offers an explicit later ruleset layer because filenames
+load in descending order; a verified 5,000-polygon test exercises the refusal.
+Fourteen cases reproduce prior boundaries. All 376 affected cases pass. This is
+cycle 16 slice two; composed hunts/escorts/research and the batch audit remain.
+
+## Bounded newborn replacement land selection (2026-10-09)
+
+A first arrival now permits the reference's two replacement land selections for
+a later ground waypoint. Ordinary regional and selected-site retry work is bounded
+without drawing RNG; immutable globe query cost is cached for candidate waves.
+Selected mission areas retain their native priority and validation. Pinned
+AlienMission::getWaypoint/getLandPoint/ufoReachedWaypoint and verified lifecycle
+land-retry captures back fresh/cache permitted and forced hundredth fake-water
+choices, exact RNG/coordinates, repeated rewrites and the following ground arrival.
+Six cases reproduce the former restriction. Ground arrivals also compose with
+all eight hunter constructor patterns, earlier/later/no escort leaders and ordered
+site CORE/UNLOCK grants; ordinary ships land while active hunts/escorts stay flying.
+All 594 affected cases pass. This completes cycle 16's three implementation slices;
+the batch audit will review initial destination as well as replacement work and run
+full validation. Event payload, conversion/base-assault and combat gates remain.
+
+Cycle 16 batch audit confirms an initial-destination work-limit gap: distant
+ordinary and nonobjective supply births could execute land retries without charging
+the spawn budget. Four fresh/cache regressions reproduce a mutated tick. Shared
+destination accounting now charges ordinary getWaypoint(1) or supply's distinct
+altitude(1) getLandPoint caller at birth, and both ordinary calls at arrival. City
+bypass remains executable with the same large globe; both positive cases reload.
+Two obsolete patrol-wave boundaries now require exact wave/live counters, created
+UFO identity and rewrite/continuation. All 635 affected cases pass. Reviewed native
+origin/destination exceptions, selected-area priority, predicate caller order,
+ground status/timer/shields, silent marker reservation, generated alternatives,
+work aggregation and retained conversion/base-assault/event/combat guards. Full
+formatting and root validation follow before the audit correction closes.
+
+The first root run exposed seventeen obsolete expectations around newly supported
+land selection. Space rectangular origins now assert exact position/RNG and reload.
+Immediate patrol generation covers both rounded delay/birth outcomes, live counters,
+zero-default base activity and control continuation. Existing hunting/site guard
+fixtures now use genuine first-arrival conversion (current zone equals spawnZone),
+preserving atomic refusal instead of accidentally testing an ordinary landing.
+The 309 remaining affected cases and both new patrol cases pass; the throwing
+no-RNG sentinel remains in invalid/unsupported tests. No additional runtime defect
+was confirmed. Root validation is rerun after these fixture corrections.
+
+Cycle 16 audit closes with all 4,387 root tests passing, zero failures/skips,
+full formatting verification and regenerated code-map/diff checks. The initial
+destination work-limit correction is committed separately from the three slices.
+Useful captures and logs remain; the pinned reference is clean. No other confirmed
+runtime defect was found; remaining linked/newborn composition keeps 4c open.
+
+## Regional newborn leaders for loaded escorts (2026-10-09)
+
+Loaded idle escorts now attach to guaranteed ordinary births with regional or
+mixed origins when no other actor consumes their future position. The bounded
+proof publishes status and full speed only, retaining random position and identity
+for execution. Possible daily interruption/source loss cannot establish regional
+attachment. Four fresh/cache regressions reproduce the old refusal; sixteen seeds
+per case assert native ordered movement, exact RNG, wave/activity counters, three
+rewrites and control continuation. The former regional guard now asserts attachment
+while probabilistic all-hunter births remain atomic. All 170 affected tests pass.
+Reference: pinned GeoscapeState::ufoHuntingAndEscorting/time5Seconds,
+Ufo::setEscortedUfo/backupOriginalDestination and MovingTarget::move; verified
+strategic-hunting and strategic-world-lifecycle captures. This is cycle 17 slice
+one; player pursuit, transitive followers and its batch audit remain.
+
+Regional leader attachment now composes with player craft pursuit through a
+bounded movement envelope. The proof includes projected servicing, takeoff and
+fuel-return state, preserving target identity and actual runtime coordinates.
+Exact arrival code cannot consume the regional status-only stand-in. Four cases
+reproduce far/takeoff refusal; eight seeds per fresh/cache case assert movement,
+three rewrites and continuation, while both close cases remain atomic. All 636
+affected hunting, escort and pursuit cases pass. Reference: GeoscapeState craft
+movement, MovingTarget::calculateSpeed/move and existing strategic-hunting traces.
+This is cycle 17 slice two; transitive UFO followers and batch audit remain.
+
+Regional leader proofs now propagate inexact flight positions through bounded
+saved UFO escort chains. Only flying escorts with valid original waypoints qualify;
+ordered position caches cannot treat a regional stand-in as an exact coordinate.
+Every pursuing craft is checked against its target's whole movement envelope.
+Eight fresh/cache regressions cover two-level chains in both saved orders, with
+and without pursuit; independent geometry pins movement toward the actual random
+leader origin and earlier/later pointer positions. Counters, activity, identities,
+three rewrites and continuation remain exact. Two grounded cases refuse before
+birth. All 201 affected cases pass, including escort endurance. Reference: pinned
+GeoscapeState::time5Seconds, Ufo::think/setEscortedUfo and MovingTarget::move,
+with verified strategic-world idleEscortFollowerMovement rows. This completes
+cycle 17's three slices; daily alternatives and dependent consumers are audited next.
+
+Cycle 17 batch audit confirms an earlier point-origin availability gap: optional
+daily research interruption may suppress every otherwise ordinary birth. Both
+fresh/cache regressions reproduce tick mutation with an unproved attachment;
+exact and regional forecasts now share the pre-publication availability check.
+All 178 affected daily/source/escort tests pass. Reviewed native constructor/order,
+waypoint backup, full speed, inexact propagation, every flight/site/base/craft
+consumer, bounded dependency scans and per-pass reset. Test initializer formatting
+was corrected. Full formatting and regenerated code-map/diff checks pass; root
+validation is running before committing this audit correction.
+
+Cycle 17 audit closes with all 4,409 root tests passing, zero failures/skips,
+full formatting and code-map/diff verification. The availability correction is
+committed separately. No other confirmed defect was found; useful artifacts remain
+and the pinned reference is clean. Non-flying follower and uncertainty composition
+remain 4c work; later-branch effects and 4d are unchanged.
+
+## Stationary follower cuts through newborn escort chains (2026-10-09)
+
+Valid landed followers with more than five seconds remaining now cut regional
+position dependence. They consume their timer without moving; indirect flying
+escorts use that exact position, and craft arrival checks retain their normal
+owner. Four fresh/cache regressions reproduce the old refusal in both saved
+orders; eight seeds pin actual regional source movement, stationary/indirect
+positions, linked coordinates, shields, activity/live counters, three rewrites
+and control continuation. The old grounded guard now uses malformed zero time.
+All 169 affected cases pass. Reference: pinned Ufo::think's LANDED branch and
+GeoscapeState::time5Seconds, with verified strategic-world/lifecycle captures.
+This is cycle 18 slice one; lift boundaries, passive followers and audit remain.
+
+Final five-second landed timers also cut position dependence: native ufoLifting
+changes altitude/speed without movement. Ordered vector fixtures expose an existing
+execution defect: an earlier moving UFO's saved destination coordinates were used
+at takeoff. Lift now resolves the live UFO/craft pointer before calculating speed;
+both normal and site-reactivation callers bound that lookup, including projected
+craft births. Ten prior refusals and two vector mismatches reproduce before the
+fix. Fresh/cache and both saved orders pin vectors/direction, three rewrites and
+continuation; direct/transitive far craft pursue normally, close stay/lift paths
+retain deployment/combat guards. All 208 affected cases pass. Reference:
+AlienMission::ufoLifting, Ufo::think and MovingTarget::setSpeed/calculateSpeed,
+with verified lifecycle and site-timer traces. This is cycle 18 slice two.
+
+Crashed, destroyed and dormant followers now cut position dependence after timed
+transitions. Existing cleanup and target-loss operations keep ownership; a dormant
+UFO reactivated by an expiring site is already flying and remains in the active
+regional proof. Sixteen regressions reproduce passive refusal; four reactivation
+controls prevent an incorrect raw-save-state cut. Fresh/cache and both saved orders
+pin movement, activity/live counts, exact link repair, repeated rewrites with no
+resurrection and continuation. All 217 affected cases pass. Reference: Ufo::think,
+GeoscapeState time30Minutes/time5Seconds/processMissionSite and target deletion,
+with verified strategic-crashed-ufo/world/site-timer captures. This completes
+cycle 18's three slices; aggregate lookup work, malformed cases and batch acceptance
+are audited next. No event/combat/month capability or 4d behavior is enabled.
+
+Cycle 18 batch audit finds no additional confirmed runtime defect. The lift-vector
+mismatch was fixed during slice two. Reviewed ordered live pointer lookup, both lift
+callers' work bounds and craft population changes, timed versus raw follower state,
+crash cleanup, restored waypoints, shields, activity and exact persistence/control
+continuation. Full formatting and code-map/diff checks pass; root validation runs
+before this checkpoint closes. No new disposable artifacts or reference edits.
+
+Cycle 18 audit closes with all 4,449 root tests passing, zero failures/skips,
+full formatting and regenerated code-map/diff checks. No additional confirmed
+defect was found; ordered takeoff vectors were fixed in slice two. Useful captures
+and logs remain and the pinned reference is clean. Conditional leader availability,
+research/source alternatives and final acceptance keep 4c open.
+
+## Conditional loaded-escort airborne arrivals (2026-10-09)
+
+A loaded idle escort with possible ordinary newborn leaders can now either attach
+or execute its already-proved old airborne arrival. The bounded source-only proof
+requires a nonterminal airborne score path, no selected-area/land lookahead or
+research interruption, validated areas and wide replacement speed. It publishes
+flying status only; execution retains real flags, waypoint, speed and identity.
+Two fresh/cache regressions reproduce the restriction; 64 deterministic seeds
+cover all eight constructor patterns with exact RNG/ordered movement, activity,
+live counts, three rewrites and continuation. All 144 affected cases pass.
+Reference: GeoscapeState::ufoHuntingAndEscorting/time5Seconds, AlienMission::
+ufoReachedWaypoint/getWaypoint and native hunter constructor/lifecycle captures.
+This is cycle 19 slice one; pursuit/follower composition and batch audit remain.
+
+Conditional attachment/old-air-arrival proofs now compose with distant craft
+pursuit and takeoff through the existing bounded target movement envelope. Four
+fresh/cache cases reproduce the refusal; 64 seeds cover both outcomes with actual
+craft coordinates/identity, three rewrites and control continuation. Close cases
+retain atomic combat refusal. All 164 affected pursuit/escort cases pass.
+This is cycle 19 slice two; dependent UFO chains and the batch audit remain.
+
+Conditional attachment/air-arrival now propagates through the shared bounded
+follower proof. Flying chains retain inexact positions, stationary nodes cut them,
+and all craft dependencies use movement envelopes. Eight fresh/cache regressions
+cover two-level chains in both saved orders with/without pursuit; 64 seeds per
+case pin both native source outcomes, ordered positions, identities, activity,
+three rewrites and continuation. All 176 affected cases pass. This completes
+cycle 19's three slices; the batch audit checks every skipped arrival operation
+and conditional position consumer before full validation.
+
+Cycle 19 batch audit finds no additional confirmed defect. Reviewed every ordinary
+alternative's airborne/nonterminal status, selected-area and ground/land exclusions,
+daily/late interruption checks, wide speed and area validation, source wave inference,
+ordered inexact propagation and craft envelopes. Constructor RNG, first ordinary
+identity and all eight outcomes retain exact execution/persistence. Full formatting
+and regenerated code-map/diff checks pass; root validation is running before closure.
+
+Cycle 19 audit closes with all 4,465 root tests passing, zero failures/skips,
+full formatting and regenerated code-map/diff verification. No additional confirmed
+runtime issue was found. Two redundant draft copies were removed; useful captures,
+logs and checkpoints remain, and the pinned reference is clean. The timed run stops
+after this audit. Conditional arrivals beyond the proven score/air domain, ordered
+research/source alternatives, special newborn outcomes and final branch-wide
+reconciliation keep 4c open; 4d and later-branch capabilities are unchanged.
+
+
+## Conditional escort waypoint selection (2026-10-09)
+
+Conditional loaded-escort airborne arrivals now compose with infiltration, base,
+site and supply objectives. The caller already validates think-time consequences;
+native non-ground arrival does not execute them again. Eight fresh/cache
+regressions reproduce the former refusal, then cover all eight constructor
+patterns over 64 seeds, both Earth/Space operations, final base/pact/activity
+consequences, three rewrites and control continuation. All 48 affected cases pass.
+Reference: pinned AlienMission::think/ufoReachedWaypoint/getWaypoint and
+GeoscapeState::ufoHuntingAndEscorting, with verified strategic-world-lifecycle,
+strategic-hunting, strategic-objective-base-spawn and strategic-infiltration-region
+evidence. This is cycle 20 slice one; selected areas, land lookahead and audit remain.
+
+Selected-area airborne arrivals now use the native objective-wave/spawn-zone
+predicate. Fixed selected origins/destinations execute without random selection;
+unconsumed selected metadata does not block ordinary regional selection. Four
+fresh/cache regressions reproduce the refusal; 64 seeds assert exact constructor,
+radar and double-waypoint RNG, positions/identity, three rewrites and continuation.
+Two consumed invalid-index tests fail intentionally before mutation, while invalid
+unconsumed indices remain executable. All 62 affected cases pass. Reference:
+AlienMission::getWaypoint/ufoReachedWaypoint and the existing verified origin,
+lifecycle and hunting captures. This is cycle 20 slice two; selected land retries
+and ordinary ground-lookahead selection remain for slice three and the batch audit.
+
+Conditional airborne arrivals now select land for a later ground point, including
+selected landing-site areas. A shared waypoint work estimator preserves both native
+selections, point-city bypass, selected-area region bypass and the hundred-attempt
+forced decision. Loaded ordinary/conditional arrivals and newborn waves share one
+pass budget. Twelve fresh/cache regressions reproduce refusals or missing loaded
+bounds; eight 64-seed cases pin exact RNG and all constructor patterns, subsequent
+landing/conversion, three rewrites and control continuation. Four extra cases prove
+city bypass and independently admissible newborn work refusing only when composed
+with loaded work. All 111 affected tests pass. Reference: pinned AlienMission::
+getWaypoint/getLandPoint/getLandPointForMissionSite/ufoReachedWaypoint and verified
+lifecycle landRectangleOriginRows. This completes cycle 20's three slices; the batch
+audit checks skipped effects, caller predicates and aggregate bounds before closure.
+
+Cycle 20 batch audit closes with no additional confirmed issue. Reviewed objective
+think versus airborne arrival effects, source-wave inference, selected-area and
+land retry predicates, all flight/pursuit consumers, wide speed and pass reset.
+All 4,495 root tests pass with zero failures/skips, including native checksums,
+private corpus and populated allocation gates. Full formatting, code-map and diff
+checks pass; no native edits or disposable probe artifacts were produced. Useful
+regression logs remain. Conditional ground/terminal outcomes, source/research
+alternatives and final branch-wide reconciliation keep 4c open.
+
+## Globe equality audit correction (2026-10-09)
+
+Cycle 25's combined audit confirmed that globe equality used .NET's smallest
+subnormal instead of the native machine epsilon. `WorldGeometry.AreSame` now
+uses the exact binary64 spacing near 1.0, retaining the native absolute/relative
+scale and inclusive comparison. This corrects destination arrival, coincident
+distance and cardinal heading consumers without changing coordinate storage.
+Reference: pinned `src/fmath.h::AreSame`, `Target::getDistance`,
+`MovingTarget::reachedDestination` and `Ufo::calculateSpeed`.
+
+The extracted native world capture adds twenty equality and eight two-axis arrival
+boundaries with 17-digit coordinates; every existing oracle row is unchanged. Three
+unit and three compatibility cases reproduce the old defect, including fresh/cache
+optional base deletion near home during takeoff: the tick now refuses before any
+research mutation. Full validation is recorded in the integration checkpoint.
+
+## Flight fuel setter correction (2026-10-09)
+
+Native `Craft::consumeFuel` calls `setFuel`, including for a zero burn when
+consumption is enabled. The port now shares that setter with refuelling: ordinary
+overfilled tanks cap at effective capacity, item fuel returns whole refuel units
+to the owning base and retains the remainder, and free patrol skips the setter.
+Installed weapon fuel bonuses use a fuel-only allocation-free projection. Refund
+writes belong to the registered servicing operation. Arithmetic/rate checks run
+before world forecasts; aggregate refund stock checks use the pure servicing,
+arrival and production projection without replacing the full hunter forecast.
+
+Reference: pinned `Craft.cpp::setFuel/consumeFuel/refuel`,
+`GeoscapeState::time10Minutes` and `Transfer::advance`. The hunting capture adds
+192 direct native consumption rows; every prior row is unchanged. Fresh/cache
+runtime cases cover all rows, three repeated save rewrites, no duplicate refund
+on the next tick, combined craft refunds, exact stock limits, hourly arrival plus
+refund, unsafe excess arithmetic, negative-speed subtraction, relaunched refund
+validation even without hunters and installed disabled-weapon fuel bonuses without consuming unrelated
+unit statistics. Twenty-three affected unit tests and 372 affected pursuit/escort/
+supply/site-return tests pass; full gates are recorded in the integration checkpoint.
+
+The optional-return fixture now loads its explicit craft rules after the master
+and overlay and gives its intended full-tank scenarios capacity 1,000. Earlier
+merge order left those fabricated 1,000-unit tanks above the actual capacity of
+100, which the missing setter had masked. Dedicated overfilled tests retain that
+external behavior coverage instead of relying on an impossible full-tank setup.
+Other affected pursuit fixtures use a final craft-capacity override without
+changing the previous ruleset merge order or weakening their assertions.
+
+## Branch 4c closure R1: detection provider ledger (2026-10-11)
+
+Every detectUfoFromBase/detectUfoFromCraft binding in the pinned catalogue (377)
+is now either executed or listed in the fixed ledger of
+`StrategicWorldDetectionClosureTests`, keyed by name and receiver type. Newly
+executed: `Time.getDaysPastEpoch` (shared with price scripts through
+`CampaignTimeScriptValues`; native `std::mktime` reads the host zone, the port
+fixes it to UTC and truncates like C++), all fifteen remaining read-only Armor
+getters (side armor with native out-of-range zero, drawing routine, bubbles,
+death frames, constant animation, the six base move costs, geoscape/battle
+corpses and required research, with reference forecasts), and counted loops
+whose limit is a local register written only by literal `set`/`clear` (bounded
+by the largest literal; inputs, outputs and computed limits still refuse and the
+step budget is unchanged). The 82 ledger entries are unreachable or not
+headless-strategic: BattleGame/Tile receivers (branch 5), editable receivers and
+`RandomState`, Mod sound/sprite offsets (vanilla resource-set sizes), Position
+value arithmetic (no VM value representation; tactical scripting) and the
+`Target`-typed generic `getId`. The armor work exposed a loader defect: an
+explicit `corpseGeo` now overrides the battle-corpse default as in `Armor::load`
+(compiler revision 55).

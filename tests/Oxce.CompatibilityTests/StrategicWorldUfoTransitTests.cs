@@ -39,7 +39,7 @@ public sealed class StrategicWorldUfoTransitTests
     }
 
     [Fact]
-    public void UnsupportedArrivalStopsWhileOrdinaryHalfHourTransitScoresActivity()
+    public void SiteArrivalConvertsWhileOrdinaryHalfHourTransitScoresActivity()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
@@ -55,11 +55,15 @@ public sealed class StrategicWorldUfoTransitTests
         {
             World = snapshot.World with
             {
-                Missions = [Assert.Single(snapshot.World.Missions) with { RuleId = "MISSION_SITE", NextWave = 1 }],
-                Ufos = [ufo with { Longitude = 0.99999, Latitude = 0.6, MissionWaveNumber = 0 }],
+                Missions = [Assert.Single(snapshot.World.Missions) with { RuleId = "MISSION_SITE", NextWave = 1, MissionSiteZoneArea = 0 }],
+                // The selected ground objective arrival now creates a visible site.
+                Ufos = [ufo with { Longitude = 0.99999, Latitude = 0.6, MissionWaveNumber = 0,
+                    TrajectoryId = "TRAJ_PATROL", TrajectoryPoint = 1 }],
             },
         }, content, new SplitMix64RandomSource(42));
-        AssertTimeBlocked(near, "UFO waypoint arrival requires mission simulation.");
+        Assert.Contains(near.Execute(new AdvanceCampaignTime(1)).Events, item => item is MissionSiteDetected);
+        Assert.True(Assert.Single(near.Capture().World.MissionSites).Detected);
+        Assert.Equal(UfoStatus.Destroyed, Assert.Single(near.Capture().World.Ufos).Status);
 
         var boundary = CampaignState.Restore(snapshot with
         {
@@ -247,7 +251,7 @@ public sealed class StrategicWorldUfoTransitTests
     }
 
     [Fact]
-    public void ObjectiveWaveArrivalInMissionSpawnZoneRemainsBlocked()
+    public void ObjectiveWaveArrivalUsesSelectedAreaBeforeFutureSiteConsequences()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0),
@@ -270,7 +274,17 @@ public sealed class StrategicWorldUfoTransitTests
             },
         }, content, new SplitMix64RandomSource(73));
 
-        AssertTimeBlocked(arriving, "UFO waypoint arrival requires mission simulation.");
+        var random = new SplitMix64RandomSource(snapshot.RandomState);
+        var region = content.RuntimeRules.Regions[content.RuntimeRules.Regions.GetRequired("REGION")].Value;
+        var expected = WorldGeometry.MissionSiteLandPoint(region, content.RuntimeRules.Campaign.Globe, 0, 0, 20, random);
+        expected = WorldGeometry.MissionSiteLandPoint(region, content.RuntimeRules.Campaign.Globe, 0, 0, 20, random);
+        AdvanceOne(arriving);
+        var after = arriving.Capture();
+        Assert.Equal(WorldPosition.Create(expected.Longitude, expected.Latitude), Assert.Single(after.World.Ufos).Destination!.Position);
+        Assert.Equal(1, after.World.Ufos[0].TrajectoryPoint);
+        Assert.Equal(random.State, after.RandomState);
+        Assert.Empty(after.World.MissionSites);
+        Reload(content, arriving, 73, "selected-arrival.sav");
     }
 
     [Theory]
@@ -404,22 +418,33 @@ public sealed class StrategicWorldUfoTransitTests
     }
 
     [Fact]
-    public void LaterNonterminalArrivalBlocksBeforeAnEarlierTerminalArrival()
+    public void LaterUnsupportedGroundArrivalBlocksBeforeAnEarlierTerminalArrival()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0),
-            ufoRuleId: "UFO_SCOUT", missionRuleId: "MISSION_SITE", missionWaveNumber: 0);
+            ufoRuleId: "UFO_SCOUT", missionRuleId: "MISSION_SITE", trajectoryId: "TRAJ_SITE", missionWaveNumber: 0);
         var snapshot = campaign.Capture();
         var ufo = Assert.Single(snapshot.World.Ufos);
         var lastPoint = content.RuntimeRules.UfoTrajectories[
             content.RuntimeRules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value.Waypoints.Count - 1;
         var arriving = ufo with { Longitude = 0.99999, Latitude = 0.6, TrajectoryPoint = lastPoint };
-        var later = ufo with { UniqueId = 10, Id = 4, Longitude = 0.99999, Latitude = 0.6 };
+        var later = ufo with
+        {
+            UniqueId = 10,
+            Id = 4,
+            // Land inside the region, as in StrategicWorldUfoLandingTests.
+            Longitude = Degrees(8.02),
+            Latitude = Degrees(2),
+            Destination = ufo.Destination! with { Longitude = Degrees(8.02), Latitude = Degrees(2) },
+            TrajectoryId = "TRAJ_LANDING_ZERO",
+            TrajectoryPoint = 0,
+        };
+        // Select an ordinary ground arrival whose zero ground timer is still invalid.
         var restored = CampaignState.Restore(snapshot with
         {
             World = snapshot.World with
             {
-                Missions = [Assert.Single(snapshot.World.Missions) with { LiveUfos = 2 }],
+                Missions = [Assert.Single(snapshot.World.Missions) with { LiveUfos = 2, MissionSiteZoneArea = -1 }],
                 Ufos = [arriving, later],
             },
         }, content, new SplitMix64RandomSource(62));
@@ -428,9 +453,8 @@ public sealed class StrategicWorldUfoTransitTests
     }
 
     [Theory]
-    [InlineData("crashed", "UFO state requires world simulation.")]
-    [InlineData("hunter", "UFO state requires world simulation.")]
-    [InlineData("shield", "UFO shield handling requires world simulation.")]
+    [InlineData("hunter", "UFO hunting or escort state requires a valid original waypoint.")]
+    [InlineData("shield", "UFO shield arithmetic exceeds the supported range.")]
     [InlineData("speed", "UFO speed is invalid.")]
     public void UnsupportedUfoStateReportsItsPreflightReason(string condition, string reason)
     {
@@ -440,9 +464,8 @@ public sealed class StrategicWorldUfoTransitTests
         var ufo = Assert.Single(snapshot.World.Ufos);
         ufo = condition switch
         {
-            "crashed" => ufo with { Status = UfoStatus.Crashed },
-            "hunter" => ufo with { HunterKiller = true },
-            "shield" => ufo with { Shield = 1 },
+            "hunter" => ufo with { HunterKiller = true, Hunting = true, OriginalWaypoint = null },
+            "shield" => ufo with { Shield = -2 },
             "speed" => ufo with { Speed = -1 },
             _ => throw new ArgumentOutOfRangeException(nameof(condition)),
         };
@@ -455,7 +478,7 @@ public sealed class StrategicWorldUfoTransitTests
     }
 
     [Fact]
-    public void RaceDerivedShieldCapacityReportsItsPreflightReason()
+    public void RaceDerivedShieldCapacityInitializesOnTheFirstFlyingTick()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
@@ -466,7 +489,8 @@ public sealed class StrategicWorldUfoTransitTests
             World = snapshot.World with { Missions = [mission with { Race = "RACE_B" }] },
         }, content, new SplitMix64RandomSource(63));
 
-        AssertTimeBlocked(restored, "UFO shield handling requires world simulation.");
+        AdvanceOne(restored);
+        Assert.Equal(2, Assert.Single(restored.Capture().World.Ufos).Shield);
     }
 
     [Fact]

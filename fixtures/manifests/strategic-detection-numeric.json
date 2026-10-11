@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-detection-numeric",
+  "description": "Full pinned native Script.cpp compile/execution traces for signed scalar arithmetic, clamp ordering, overflow, and calculated divisors/wave periods used in detection forecasts. Native conditional sign/zero/conjunction and signed-extreme paths establish scalar edge refinement. Chained native division/modulo helpers establish calculated output ranges. Native bitwise masks/complements and valid signed shifts establish bounded output forecasts. Signed wave cap/size/amplitude cases establish composed wave output forecasts.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "Script.cpp scalar arithmetic and wave helper operations; Script.h typed parser/worker",
+      "capture": "tools/capture-strategic-detection-numeric-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; full native Script.cpp and Yaml.cpp"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/scripting/strategic_detection_numeric_probe.cpp",
+      "size": 7871,
+      "sha256": "1e8ebd1e9bdf1e8887937f1f2a34699bd7787282b3caf5c6d90f6f118e9d9e80"
+    },
+    {
+      "path": "tools/capture-strategic-detection-numeric-reference.ps1",
+      "size": 3618,
+      "sha256": "cb3357a4c5f1a37e2fcc55097af7ffbcb7671fea2da332e96fcc57c092999db0"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/scripting/strategic-detection-numeric.expected.json"
+}

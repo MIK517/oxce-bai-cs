@@ -24,6 +24,14 @@ public sealed class CampaignStartSettings
         CustomTrainingFactor = builder.CustomTrainingFactor;
         ManaWoundThreshold = builder.ManaWoundThreshold;
         HealthWoundThreshold = builder.HealthWoundThreshold;
+        EscortRange = builder.EscortRange;
+        MaximumViewDistance = builder.MaximumViewDistance;
+        MaximumDarknessToSeeUnits = builder.MaximumDarknessToSeeUnits;
+        HunterKillerFastRetarget = builder.HunterKillerFastRetarget;
+        AllowAlienBasesOnWrongTextures = builder.AllowAlienBasesOnWrongTextures;
+        AllowCountriesToCancelAlienPact = builder.AllowCountriesToCancelAlienPact;
+        BuildInfiltrationBaseCloseToTheCountry = builder.BuildInfiltrationBaseCloseToTheCountry;
+        InfiltrateRandomCountryInTheRegion = builder.InfiltrateRandomCountryInTheRegion;
         StartingBases = new ReadOnlyDictionary<StartingBaseVariant, YamlMappingNode>(
             new Dictionary<StartingBaseVariant, YamlMappingNode>(builder.StartingBases));
         StartingTime = new CampaignStartTime(
@@ -38,6 +46,7 @@ public sealed class CampaignStartSettings
         HireByCountryOdds = builder.HireByCountryOdds;
         HireByRegionOdds = builder.HireByRegionOdds;
         InitialFunding = builder.InitialFunding;
+        PerformanceBonusFactor = builder.PerformanceBonusFactor;
         GlobalTransferCostMultiplier = builder.GlobalTransferCostMultiplier;
         GlobalTransferCostDivisor = builder.GlobalTransferCostDivisor;
         PsiUnlockResearch = builder.PsiUnlockResearch;
@@ -96,13 +105,23 @@ public sealed class CampaignStartSettings
         IReadOnlyList<int> sellPriceCoefficients,
         IReadOnlyList<YamlMappingNode> globeLayers,
         int buildTimeReductionScaling, int customTrainingFactor, int manaWoundThreshold, int healthWoundThreshold,
-        IReadOnlyDictionary<string, string>? fixedUserOptions = null)
+        IReadOnlyDictionary<string, string>? fixedUserOptions = null, int escortRange = 20,
+        double performanceBonusFactor = 0, bool allowCountriesToCancelAlienPact = false, bool hunterKillerFastRetarget = true, bool allowAlienBasesOnWrongTextures = true,
+        bool buildInfiltrationBaseCloseToTheCountry = false, bool infiltrateRandomCountryInTheRegion = false, int maximumViewDistance = 20, int maximumDarknessToSeeUnits = 9)
     {
         FixedUserOptions = Sorted(fixedUserOptions ?? new Dictionary<string, string>());
         BuildTimeReductionScaling = buildTimeReductionScaling;
         CustomTrainingFactor = customTrainingFactor;
         ManaWoundThreshold = manaWoundThreshold;
         HealthWoundThreshold = healthWoundThreshold;
+        EscortRange = escortRange;
+        MaximumViewDistance = maximumViewDistance;
+        MaximumDarknessToSeeUnits = maximumDarknessToSeeUnits;
+        HunterKillerFastRetarget = hunterKillerFastRetarget;
+        AllowAlienBasesOnWrongTextures = allowAlienBasesOnWrongTextures;
+        AllowCountriesToCancelAlienPact = allowCountriesToCancelAlienPact;
+        BuildInfiltrationBaseCloseToTheCountry = buildInfiltrationBaseCloseToTheCountry;
+        InfiltrateRandomCountryInTheRegion = infiltrateRandomCountryInTheRegion;
         GlobeLayers = Array.AsReadOnly(globeLayers.ToArray());
         StartingBases = new ReadOnlyDictionary<StartingBaseVariant, YamlMappingNode>(
             new Dictionary<StartingBaseVariant, YamlMappingNode>(startingBases));
@@ -116,6 +135,7 @@ public sealed class CampaignStartSettings
         HireByCountryOdds = hireByCountryOdds;
         HireByRegionOdds = hireByRegionOdds;
         InitialFunding = initialFunding;
+        PerformanceBonusFactor = performanceBonusFactor;
         GlobalTransferCostMultiplier = globalTransferCostMultiplier;
         GlobalTransferCostDivisor = globalTransferCostDivisor;
         PsiUnlockResearch = psiUnlockResearch;
@@ -144,6 +164,14 @@ public sealed class CampaignStartSettings
     public int CustomTrainingFactor { get; }
     public int ManaWoundThreshold { get; }
     public int HealthWoundThreshold { get; }
+    public int EscortRange { get; }
+    public int MaximumViewDistance { get; }
+    public int MaximumDarknessToSeeUnits { get; }
+    public bool HunterKillerFastRetarget { get; }
+    public bool AllowAlienBasesOnWrongTextures { get; }
+    public bool AllowCountriesToCancelAlienPact { get; }
+    public bool BuildInfiltrationBaseCloseToTheCountry { get; }
+    public bool InfiltrateRandomCountryInTheRegion { get; }
     public CampaignStartTime StartingTime { get; }
     public int StartingDifficulty { get; }
     public int CostHireEngineer { get; }
@@ -154,6 +182,7 @@ public sealed class CampaignStartSettings
     public int HireByCountryOdds { get; }
     public int HireByRegionOdds { get; }
     public int InitialFunding { get; }
+    public double PerformanceBonusFactor { get; }
     public IReadOnlyList<int> BuyPriceCoefficients { get; }
     public IReadOnlyList<int> SellPriceCoefficients { get; }
     public int GlobalTransferCostMultiplier { get; }
@@ -196,6 +225,14 @@ internal sealed class CampaignStartSettingsBuilder
     public int CustomTrainingFactor { get; set; } = 100;
     public int ManaWoundThreshold { get; set; } = 200;
     public int HealthWoundThreshold { get; set; } = 100;
+    public int EscortRange { get; set; } = 20;
+    public int MaximumViewDistance { get; set; } = 20;
+    public int MaximumDarknessToSeeUnits { get; set; } = 9;
+    public bool HunterKillerFastRetarget { get; set; } = true;
+    public bool AllowAlienBasesOnWrongTextures { get; set; } = true;
+    public bool AllowCountriesToCancelAlienPact { get; set; }
+    public bool BuildInfiltrationBaseCloseToTheCountry { get; set; }
+    public bool InfiltrateRandomCountryInTheRegion { get; set; }
     public int[] BuyPriceCoefficients { get; } = [100, 100, 100, 100, 100];
     public int[] SellPriceCoefficients { get; } = [100, 100, 100, 100, 100];
     public Dictionary<StartingBaseVariant, YamlMappingNode> StartingBases { get; } = [];
@@ -215,6 +252,7 @@ internal sealed class CampaignStartSettingsBuilder
     public int HireByCountryOdds { get; set; }
     public int HireByRegionOdds { get; set; }
     public int InitialFunding { get; set; }
+    public double PerformanceBonusFactor { get; set; }
     public int GlobalTransferCostMultiplier { get; set; } = 1;
     public int GlobalTransferCostDivisor { get; set; } = 1;
     public string PsiUnlockResearch { get; set; } = string.Empty;

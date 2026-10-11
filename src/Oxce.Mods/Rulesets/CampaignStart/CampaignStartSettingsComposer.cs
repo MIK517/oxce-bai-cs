@@ -36,6 +36,14 @@ internal static class CampaignStartSettingsComposer
             b.GlobeLayers.Add(globe as YamlMappingNode ?? throw new InvalidDataException("Globe rules require a mapping."));
         b.BuildTimeReductionScaling = Read(root, "buildTimeReductionScaling", b.BuildTimeReductionScaling);
         b.CustomTrainingFactor = Read(root, "customTrainingFactor", b.CustomTrainingFactor);
+        b.EscortRange = Read(root, "escortRange", b.EscortRange);
+        b.MaximumViewDistance = Read(root, "maxViewDistance", b.MaximumViewDistance);
+        b.MaximumDarknessToSeeUnits = Read(root, "maxDarknessToSeeUnits", b.MaximumDarknessToSeeUnits);
+        b.HunterKillerFastRetarget = Read(root, "hunterKillerFastRetarget", b.HunterKillerFastRetarget);
+        b.AllowAlienBasesOnWrongTextures = Read(root, "allowAlienBasesOnWrongTextures", b.AllowAlienBasesOnWrongTextures);
+        b.AllowCountriesToCancelAlienPact = Read(root, "allowCountriesToCancelAlienPact", b.AllowCountriesToCancelAlienPact);
+        b.BuildInfiltrationBaseCloseToTheCountry = Read(root, "buildInfiltrationBaseCloseToTheCountry", b.BuildInfiltrationBaseCloseToTheCountry);
+        b.InfiltrateRandomCountryInTheRegion = Read(root, "infiltrateRandomCountryInTheRegion", b.InfiltrateRandomCountryInTheRegion);
         if (root.TryGet("mana", out var mana))
             b.ManaWoundThreshold = Read(mana as YamlMappingNode ?? throw new InvalidDataException("Mana settings require a mapping."), "woundThreshold", b.ManaWoundThreshold);
         if (root.TryGet("health", out var health))
@@ -70,6 +78,12 @@ internal static class CampaignStartSettingsComposer
         b.HireByCountryOdds = Read(root, "hireByCountryOdds", b.HireByCountryOdds);
         b.HireByRegionOdds = Read(root, "hireByRegionOdds", b.HireByRegionOdds);
         b.InitialFunding = Read(root, "initialFunding", b.InitialFunding);
+        if (root.TryGet("performanceBonusFactor", out var bonus))
+        {
+            b.PerformanceBonusFactor = YamlValueReader.ReadDouble(bonus!);
+            if (!double.IsFinite(b.PerformanceBonusFactor))
+                throw new YamlFormatException("performanceBonusFactor must be finite.", bonus!.Span);
+        }
         ApplyCoefficients(root, "buyPriceCoefficient", b.BuyPriceCoefficients);
         ApplyCoefficients(root, "sellPriceCoefficient", b.SellPriceCoefficients);
         if (root.TryGet("transferCosts", out var transfer))

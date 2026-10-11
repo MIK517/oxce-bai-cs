@@ -75,7 +75,7 @@ internal sealed record CompiledContentCacheReadResult(
 internal static class CompiledContentCache
 {
     internal const int FormatVersion = 1;
-    internal const int CompilerRevision = 23;
+    internal const int CompilerRevision = 55;
     private const string FileName = "content-v1.json.gz";
     private const int CacheKeyLength = 64;
     private static ReadOnlySpan<byte> HeaderMagic => "OXCECC1\n"u8;
@@ -404,6 +404,7 @@ internal static class CompiledContentCache
         {
             TypeInfoResolver = CompiledContentCacheJsonContext.Default,
         };
+        options.Converters.Add(new ReadOnlyCollectionJsonConverterFactory());
         options.Converters.Add(new YamlMappingNodeJsonConverter());
         options.Converters.Add(new YamlNodeJsonConverter());
         options.Converters.Add(new ScriptOperandJsonConverter());

@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "id": "strategic-world",
-  "description": "Pins world-simulation arithmetic: target coordinates and distance, moving-target speed and movement, region containment and random points, UFO heading/altitude/visibility, craft fuel range, base detection chance, weighted selection and alien-strategy mission bookkeeping.",
+  "description": "Pins world-simulation arithmetic: target coordinates and distance, moving-target speed and movement, region containment and random points, UFO heading/altitude/visibility, craft fuel range, base detection chance, weighted selection and alien-strategy mission bookkeeping. Includes machine-epsilon equality and arrival boundaries.",
   "reference": {
     "kind": "cpp-reference",
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
     "buildOptions": {
-      "sources": "src/Savegame/Target.cpp (setLongitude, setLatitude, getDistance), MovingTarget.cpp (calculateRadianSpeed, setSpeed, calculateSpeed, calculateMeetPoint, reachedDestination, move), Ufo.cpp (calculateSpeed, getVisibility, getAltitudeInt), Craft.cpp (recalcSpeedMaxRadian, getFuelConsumption, getFuelLimit, getBaseRange), Base.cpp (getDetectionChance), WeightedOptions.cpp (choose, set), AlienStrategy.cpp (addMissionRun, addMissionLocation, validMissionLocation), Mod/RuleRegion.cpp (insideRegion, getRandomPoint), fmath.h (AreSame, Deg2Rad, Nautical, XcomDistance)",
+      "sources": "src/Savegame/Target.cpp (setLongitude, setLatitude, getDistance), MovingTarget.cpp (calculateRadianSpeed, setSpeed, calculateSpeed, calculateMeetPoint, reachedDestination, move), Ufo.cpp (calculateSpeed, getVisibility, getAltitudeInt), Craft.cpp (recalcSpeedMaxRadian, getFuelConsumption, getFuelLimit, getBaseRange), Base.cpp (getDetectionChance), WeightedOptions.cpp (choose, set), AlienStrategy.cpp (addMissionRun, addMissionLocation, validMissionLocation), Mod/RuleRegion.cpp (insideRegion, getRandomPoint), fmath.h (AreSame, Deg2Rad, Nautical, XcomDistance); Ufo::think with GeoscapeState::time5Seconds saved-order movement, controlled live escort targets (chain, ring and self); terminal mission collaborator and pinned time5Seconds destroyed-arrival return before later escort movement; native saved-order movement after idle escort attachment to an appended leader, with an existing UFO follower; fmath.h DBL_EPSILON equality boundaries and MovingTarget::reachedDestination on both axes",
       "probe": "fixtures/reference-probes/savegames/strategic_world_probe.cpp",
       "capture": "tools/capture-strategic-world-reference.ps1",
       "compiler": "MSVC x64, /std:c++20; method bodies inserted verbatim by the capture script, randomness scripted by the probe"
@@ -16,13 +16,18 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_world_probe.cpp",
-      "size": 16018,
-      "sha256": "7115b750f3c0d7f736f4addf56b8caf601108a93a315fa8e0a7225593533b3bd"
+      "size": 21066,
+      "sha256": "562d983141de74f2f127457c882d081e35874ff185c8ab5d619b99db78293c4b"
     },
     {
       "path": "tools/capture-strategic-world-reference.ps1",
-      "size": 7483,
-      "sha256": "197fb8140b961964d876102c54a3366f4ed800df70d792b1ef30f2041ce5128c"
+      "size": 7880,
+      "sha256": "13ef2d07d2cc093b9e3181453043d15c8db7bb7ab58061a750591bc655a09924"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-escort.rul",
+      "size": 192,
+      "sha256": "f8a4d742a14098cd1a209a3d35c867c3ddbfdfc921617b84e0d3eabb66841aae"
     }
   ],
   "normalization": [

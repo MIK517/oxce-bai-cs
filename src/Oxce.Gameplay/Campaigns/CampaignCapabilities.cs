@@ -19,7 +19,7 @@ internal sealed class DelegatedCampaignCapability(Action<CampaignCapabilityRegis
 }
 
 /// <summary>Checks the next tick without mutating state; returns a stop reason or null.</summary>
-internal delegate string? CampaignTimePreflight(CampaignTime next, CampaignTimeTrigger highest);
+internal delegate string? CampaignTimePreflight(CampaignTime next, CampaignTimeTrigger highest, CampaignTimeSpeed selectedSpeed);
 
 /// <summary>
 /// Handler order inside one reference time handler (<c>GeoscapeState::time5Seconds</c> ...
@@ -29,6 +29,7 @@ internal delegate string? CampaignTimePreflight(CampaignTime next, CampaignTimeT
 internal static class CampaignTimeOrder
 {
     // time5Seconds: UFO processing precedes craft movement.
+    public const int FiveSecondsWorldUfoRetarget = 50;
     public const int FiveSecondsWorldUfos = 100;
     public const int FiveSecondsWorldCrafts = 200;
     public const int FiveSecondsWorldUfoCleanup = 300;
@@ -36,25 +37,34 @@ internal static class CampaignTimeOrder
     // time10Minutes: craft fuel consumption precedes detection and retargeting.
     public const int TenMinutesWorldCraftFuel = 100;
     public const int TenMinutesWorldBaseDetection = 200;
+    public const int TenMinutesWorldAlienBaseHunting = 300;
+    public const int TenMinutesWorldUfoRetarget = 400;
 
     // time1Month: SavedGame::addMonth runs first.
     public const int MonthCalendar = 100;
+    public const int MonthWorldScheduling = 105;
     public const int MonthPurchaseLimits = 110;
 
     // time1Day: GeoscapeState::time1Day base loop (construction, research, soldier recovery and training).
     public const int DayCalendar = 100;
     public const int DayBases = 200;
+    public const int DayWorldMissionInterruption = 250;
+    public const int DayWorldAlienBases = 300;
 
     // time1Hour: craft servicing loop, transfers, then production.
     public const int HourCraftServicing = 100;
     public const int HourTransfers = 200;
     public const int HourProduction = 300;
+    public const int HourWorldSiteDiscovery = 400;
 
     // time30Minutes: missions, craft refuelling, then UFO activity and detection.
     public const int ThirtyMinutesWorldMissions = 50;
+    public const int ThirtyMinutesWorldCrashExpiry = 60;
     public const int ThirtyMinutesRefuel = 100;
     public const int ThirtyMinutesAutoPatrol = 200;
     public const int ThirtyMinutesWorldUfoDetection = 300;
+    public const int ThirtyMinutesWorldSites = 400;
+    public const int ThirtyMinutesWorldEvents = 500;
 }
 
 /// <summary>Order of time preflight checks; the first non-null reason stops time.</summary>
@@ -64,8 +74,10 @@ internal static class CampaignPreflightOrder
     public const int WorldSimulation = 150;
     public const int CraftMovement = 200;
     public const int MonthBoundary = 300;
+    public const int MonthlyWorldScheduling = 350;
     public const int Servicing = 400;
     public const int ResearchProduction = 500;
+    public const int ProductionCraftTargets = 510;
     public const int Transfers = 600;
 }
 
@@ -80,6 +92,7 @@ internal sealed class CampaignCapabilityRegistry
     private readonly List<Action> _validators = [];
     private readonly List<Action> _initializers = [];
     private readonly Dictionary<Type, object> _queries = [];
+    private readonly Dictionary<Type, object> _operations = [];
 
     internal const int TriggerCount = (int)CampaignTimeTrigger.OneMonth + 1;
 
@@ -97,6 +110,12 @@ internal sealed class CampaignCapabilityRegistry
     {
         ArgumentNullException.ThrowIfNull(check);
         Add(_preflights, new Ordered<CampaignTimePreflight>(order, name, check), "preflight");
+    }
+
+    public void Preflight(int order, string name, Func<CampaignTime, CampaignTimeTrigger, string?> check)
+    {
+        ArgumentNullException.ThrowIfNull(check);
+        Preflight(order, name, (next, highest, _) => check(next, highest));
     }
 
     public void Timed(CampaignTimeTrigger trigger, int order, string name, Action<CampaignState.TimeEffects> handler)
@@ -150,7 +169,16 @@ internal sealed class CampaignCapabilityRegistry
         [.. _restores],
         [.. _validators],
         [.. _initializers],
-        _queries.ToFrozenDictionary());
+        _queries.ToFrozenDictionary(),
+        _operations.ToFrozenDictionary());
+
+    /// <summary>Internal operations run only within the caller's existing campaign transaction.</summary>
+    public void Operation<TOperation>(TOperation implementation) where TOperation : class
+    {
+        ArgumentNullException.ThrowIfNull(implementation);
+        if (!typeof(TOperation).IsInterface || !_operations.TryAdd(typeof(TOperation), implementation))
+            throw new InvalidOperationException("An operation must have a unique interface registration.");
+    }
 
     private static void Add<T>(List<Ordered<T>> target, Ordered<T> entry, string scope)
     {
@@ -176,17 +204,19 @@ internal sealed class CampaignHandlerTable(
     Action<CampaignSnapshot>[] restores,
     Action[] validators,
     Action[] initializers,
-    FrozenDictionary<Type, object> queries)
+    FrozenDictionary<Type, object> queries,
+    FrozenDictionary<Type, object> operations)
 {
     public bool TryGetCommand(Type type, out Func<ICampaignCommand, CampaignCommandResult> handler) =>
         commands.TryGetValue(type, out handler!);
 
     public IReadOnlyCollection<Type> CommandTypes => commands.Keys;
 
-    public string? Preflight(CampaignTime next, CampaignTimeTrigger highest)
+    public string? Preflight(CampaignTime next, CampaignTimeTrigger highest,
+        CampaignTimeSpeed selectedSpeed = CampaignTimeSpeed.FiveSeconds)
     {
         foreach (var check in preflights)
-            if (check.Handler(next, highest) is { } reason) return reason;
+            if (check.Handler(next, highest, selectedSpeed) is { } reason) return reason;
         return null;
     }
 
@@ -223,4 +253,7 @@ internal sealed class CampaignHandlerTable(
 
     public TQuery? Query<TQuery>() where TQuery : class =>
         queries.TryGetValue(typeof(TQuery), out var query) ? (TQuery)query : null;
+
+    internal TOperation Operation<TOperation>() where TOperation : class =>
+        (TOperation)operations[typeof(TOperation)];
 }

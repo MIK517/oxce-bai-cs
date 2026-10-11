@@ -100,6 +100,13 @@ public:
 
 class Ufo : public MovingTarget {
 public:
+	enum Status { FLYING, LANDED, CRASHED, DESTROYED, IGNORE_ME };
+	Status _status = FLYING;
+	int _secondsRemaining = 5;
+	bool _detected = false, hunting = false, escorting = false;
+	bool isHunting() const { return hunting; }
+	bool isEscorting() const { return escorting; }
+	void think();
 	static const char *ALTITUDE_STRING[];
 	const RuleUfo *_rules = nullptr;
 	std::string _altitude = "STR_HIGH_UC";
@@ -112,6 +119,7 @@ const char *Ufo::ALTITUDE_STRING[] = { "STR_GROUND", "STR_VERY_LOW", "STR_LOW_UC
 // UFO_CALCULATE_SPEED
 // UFO_GET_VISIBILITY
 // UFO_GET_ALTITUDE_INT
+// UFO_THINK
 
 struct RuleCraft { bool _refuelItem = false; bool getRefuelItem() const { return _refuelItem; } };
 class Base;
@@ -196,6 +204,33 @@ int main()
 	std::cout << R"({"schemaVersion":1,"referenceCommit":"4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15")"
 		<< R"(,"referenceBuild":{"compiler":"MSVC","languageStandard":"c++20"},"mods":[])";
 
+	// Retain 17 digits here: fixed12 would erase the epsilon boundary.
+	std::cout << ",\"equality\":[";
+	bool equalityFirst = true;
+	for (double left : { 0.0, -0.5, 1.0, 4.0 })
+		for (double right : { left, left + DBL_EPSILON, left + 2 * DBL_EPSILON,
+			std::nextafter(left, INFINITY), std::nextafter(std::nextafter(left, INFINITY), INFINITY) })
+		{
+			if (!equalityFirst) std::cout << ','; equalityFirst = false;
+			std::cout << '[' << std::defaultfloat << std::setprecision(17) << left << ',' << right
+				<< ',' << AreSame(left, right) << ']';
+		}
+	std::cout << "],\"arrivalEquality\":[";
+	equalityFirst = true;
+	for (int axis : { 0, 1 })
+		for (int ulps : { 0, 1, 2, 3 })
+		{
+			Target destination; destination.setLongitude(1.0); destination.setLatitude(1.0);
+			MovingTarget mover; mover.setLongitude(1.0); mover.setLatitude(1.0);
+			double nearby = 1.0;
+			for (int step = 0; step < ulps; ++step) nearby = std::nextafter(nearby, INFINITY);
+			if (axis == 0) mover.setLongitude(nearby); else mover.setLatitude(nearby);
+			mover._dest = &destination;
+			if (!equalityFirst) std::cout << ','; equalityFirst = false;
+			std::cout << '[' << axis << ',' << ulps << ',' << mover.reachedDestination() << ']';
+		}
+	std::cout << ']' << std::fixed << std::setprecision(12);
+
 	// Coordinate wrapping and great-circle distance.
 	std::cout << ",\"coordinates\":[";
 	bool first = true;
@@ -242,6 +277,64 @@ int main()
 			<< ',' << fixed12(mover._speedLat) << ',' << mover.reachedDestination();
 		for (const auto& step : steps) std::cout << ',' << step;
 		std::cout << ']';
+	}
+
+	// Reference time5Seconds visits live target pointers in saved UFO order.
+	// Imported escort chains and rings need no recursive movement.
+	std::cout << "],\"escortMovement\":[";
+	first = true;
+	for (int shape : { 0, 1, 2, 3 })
+		for (int order : { 0, 1, 2, 3, 4, 5 })
+		{
+			Target destination; destination.setLongitude(1.0); destination.setLatitude(0.6);
+			if (shape == 3) { destination.setLongitude(0.400001); destination.setLatitude(0.2); }
+			Ufo actors[3];
+			for (int index = 0; index < 3; ++index) {
+				actors[index].setLongitude(0.4 + index * 0.1);
+				actors[index].setLatitude(0.2 + index * 0.05);
+				actors[index].setSpeed(2200);
+				actors[index].escorting = (shape != 0 && shape != 3) || index != 0;
+				actors[index]._dest = shape == 2 ? &actors[index] : index == 0 ?
+					(shape == 0 || shape == 3 ? &destination : &actors[2]) : &actors[index - 1];
+			}
+			int permutations[6][3] = {{0,1,2},{0,2,1},{1,0,2},{1,2,0},{2,0,1},{2,1,0}};
+			for (int step = 1; step <= (shape == 3 ? 1 : 3); ++step) {
+				for (int index : permutations[order]) {
+					actors[index].think();
+					// Controlled terminal mission collaborator: the reached ordinary
+					// waypoint destroys actor zero; native time5Seconds returns.
+					if (shape == 3 && index == 0 && actors[index].reachedDestination()) break;
+				}
+				if (!first) std::cout << ','; first = false;
+				std::cout << '[' << shape << ',' << order << ',' << step;
+				for (const auto& actor : actors) std::cout << ',' << fixed12(actor.getLongitude()) << ',' << fixed12(actor.getLatitude());
+				std::cout << ']';
+			}
+		}
+
+	// A saved idle escort acquires an appended leader before ordered movement.
+	// Native retarget attachment is pinned separately by spawnEscortSequenceRows.
+	std::cout << "],\"idleEscortFollowerMovement\":[";
+	first = true;
+	for (bool reverse : { false, true })
+	{
+		Target destination; destination.setLongitude(1.0); destination.setLatitude(0.6);
+		Target leaderDestination; leaderDestination.setLongitude(Deg2Rad(2.0)); leaderDestination.setLatitude(Deg2Rad(2.0));
+		Ufo actors[3];
+		actors[0].setLongitude(0.4); actors[0].setLatitude(0.2);
+		actors[1].setLongitude(0.7); actors[1].setLatitude(0.3);
+		actors[2].setLongitude(Deg2Rad(10.0)); actors[2].setLatitude(Deg2Rad(8.0));
+		for (int index = 0; index < 3; ++index) actors[index].setSpeed(2200);
+		actors[0].escorting = actors[1].escorting = true;
+		actors[0]._dest = &actors[2]; actors[1]._dest = &actors[0]; actors[2]._dest = &leaderDestination;
+		int orders[2][3] = {{0,1,2},{1,0,2}};
+		for (int step = 1; step <= 3; ++step) {
+			for (int index : orders[reverse ? 1 : 0]) actors[index].think();
+			if (!first) std::cout << ','; first = false;
+			std::cout << '[' << (reverse ? "true" : "false") << ',' << step;
+			for (const auto& actor : actors) std::cout << ',' << fixed12(actor.getLongitude()) << ',' << fixed12(actor.getLatitude());
+			std::cout << ']';
+		}
 	}
 
 	// Region containment, including the wrapped-longitude and pole rules.
@@ -425,6 +518,21 @@ int main()
 			if (!first) std::cout << ','; first = false;
 			std::cout << '[' << (int)spawnTimer << ',' << (int)roll << ',' << (int)scaled << ',' << (int)countdown << ']';
 		}
+	std::cout << "],\"pursuit\":[";
+	{
+		Target destination; destination._lon = 1.0; destination._lat = 0.6;
+		MovingTarget target; target._lon = 0.4; target._lat = 0.2;
+		target._dest = &destination; target.setSpeed(2200);
+		MovingTarget follower; follower._lon = 0.2; follower._lat = 0.1;
+		follower._dest = &target; follower.setSpeed(6000);
+		for (int tick = 0; tick < 12; ++tick)
+		{
+			target.move(); follower.move();
+			if (tick) std::cout << ',';
+			std::cout << '[' << target._lon << ',' << target._lat << ','
+				<< follower._lon << ',' << follower._lat << ']';
+		}
+	}
 	std::cout << "]}" << std::endl;
 	return 0;
 }

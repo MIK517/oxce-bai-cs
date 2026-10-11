@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-mission-operation",
+  "description": "Verbatim AlienMission::start timer, existing-base selection and abort. New-base creation is replaced with an explicit boundary sentinel.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "AlienMission::start initialization through existing-base abort",
+      "capture": "tools/capture-strategic-mission-operation-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; selected blocks inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_mission_operation_probe.cpp",
+      "size": 2048,
+      "sha256": "bf35bc83969a25d0fb835928854db20082fcb9b7ee1b47f4c4fad58a0a3fbbc0"
+    },
+    {
+      "path": "tools/capture-strategic-mission-operation-reference.ps1",
+      "size": 3032,
+      "sha256": "6c3bdb0a87102eeec05cfc6ae2ee3476e72dc1e6e68cb2a0e1f99e416c761c45"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-mission-initialization.rul",
+      "size": 4622,
+      "sha256": "9f09e32b328ea86c1b211ec0ddf8c0361a2e31fac0a84a22d40f1dd380ac15c7"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-world.rul",
+      "size": 14290,
+      "sha256": "9b1d246a38a20824d282ef0d14a64c65d68e687a780d3caa1f4da8c93a510c07"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-mission-operation.expected.json"
+}

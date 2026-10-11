@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-event",
+  "description": "Extracted event scheduling and countdown traces; scripted RNG and rule collaborators; payload execution excluded.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "SavedGame::spawnEvent/canSpawnInstantEvent/addGeneratedEvent; GeoscapeEvent::think; WeightedOptions::choose",
+      "probe": "fixtures/reference-probes/savegames/strategic_event_probe.cpp",
+      "capture": "tools/capture-strategic-event-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; method bodies inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_event_probe.cpp",
+      "size": 4377,
+      "sha256": "bfed6129d2664962e8d92b5586ab0a7429a50b5e26a58f83864a51d77133afb0"
+    },
+    {
+      "path": "tools/capture-strategic-event-reference.ps1",
+      "size": 3206,
+      "sha256": "f0a26251eacd3adfc3238a747328d7045c556b051a38218b53344f736d5aa2f5"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-events.rul",
+      "size": 1252,
+      "sha256": "66d990c0673c87d606feea59dbac9608b300c18464eca9447ffeaa6f56a0bd96"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-site-expiry.rul",
+      "size": 731,
+      "sha256": "2cf190d97bd8c393a574143e2d8fe76374a2e16d4c6fac6c8224d532c17620b0"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-event.expected.json"
+}

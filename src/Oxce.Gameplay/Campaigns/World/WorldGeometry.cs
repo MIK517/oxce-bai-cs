@@ -55,9 +55,12 @@ public readonly record struct WorldPosition(double Longitude, double Latitude)
 /// </summary>
 public static class WorldGeometry
 {
+    // DBL_EPSILON is the spacing near 1.0, unlike .NET double.Epsilon (the smallest subnormal).
+    private const double DoubleMachineEpsilon = 2.2204460492503131e-16;
+
     /// <summary>fmath.h AreSame(double, double).</summary>
     public static bool AreSame(double left, double right) =>
-        Math.Abs(left - right) <= double.Epsilon * Math.Max(1.0, Math.Max(Math.Abs(left), Math.Abs(right)));
+        Math.Abs(left - right) <= DoubleMachineEpsilon * Math.Max(1.0, Math.Max(Math.Abs(left), Math.Abs(right)));
 
     /// <summary>fmath.h Nautical: converts reference distance units to radians.</summary>
     public static double Nautical(double value) => value * (1 / 60.0) * (Math.PI / 180.0);
@@ -77,8 +80,12 @@ public static class WorldGeometry
     public static double Distance(WorldPosition from, double longitude, double latitude)
     {
         if (AreSame(longitude, from.Longitude) && AreSame(latitude, from.Latitude)) return 0.0;
-        return Math.Acos(Math.Cos(from.Latitude) * Math.Cos(latitude) * Math.Cos(longitude - from.Longitude) +
-            Math.Sin(from.Latitude) * Math.Sin(latitude));
+        var cosine = Math.Cos(from.Latitude) * Math.Cos(latitude) * Math.Cos(longitude - from.Longitude) +
+            Math.Sin(from.Latitude) * Math.Sin(latitude);
+        // Target::getDistance uses this acos formula. Rounding at coincident or
+        // antipodal points can exceed its domain by an ulp. Define those endpoints
+        // instead of letting NaN fail a later integer conversion after tick mutation.
+        return Math.Acos(Math.Clamp(cosine, -1.0, 1.0));
     }
 
     /// <summary>MovingTarget::calculateRadianSpeed.</summary>
@@ -111,9 +118,13 @@ public static class WorldGeometry
     }
 
     internal static WorldPosition Move(WorldPosition current, WorldPosition destination, double speedRadian,
-        (double Longitude, double Latitude) vector)
+        (double Longitude, double Latitude) vector) => Move(current, destination, speedRadian, vector, Distance(current, destination));
+
+    /// <param name="distance">Exactly <c>Distance(current, destination)</c>, computed once by the caller.</param>
+    internal static WorldPosition Move(WorldPosition current, WorldPosition destination, double speedRadian,
+        (double Longitude, double Latitude) vector, double distance)
     {
-        if (Distance(current, destination) > speedRadian)
+        if (distance > speedRadian)
             return current.WithLongitude(current.Longitude + vector.Longitude).WithLatitude(current.Latitude + vector.Latitude);
         return current.WithLongitude(destination.Longitude).WithLatitude(destination.Latitude);
     }
@@ -124,8 +135,9 @@ public static class WorldGeometry
     {
         ArgumentNullException.ThrowIfNull(areas);
         if (ignoreTechnicalRegion && areas.Count == 0) return true;
-        foreach (var area in areas)
+        for (var index = 0; index < areas.Count; index++)
         {
+            var area = areas[index];
             var insideLongitude = area.LongitudeMinimum <= area.LongitudeMaximum
                 ? longitude >= area.LongitudeMinimum && longitude < area.LongitudeMaximum
                 : (longitude >= area.LongitudeMinimum && longitude < 2 * Math.PI) ||
@@ -198,6 +210,21 @@ public static class WorldGeometry
             // The reference accepts the hundredth candidate unconditionally.
             if (attempt == 100 || InsideLand(globe, point) && InsideRegion(region, point) &&
                 InsideFakeUnderwaterTexture(globe, point) == fakeWater)
+                return point;
+        }
+    }
+
+    /// <summary>AlienMission::getLandPointForMissionSite: fixed area, no city bypass or region containment.</summary>
+    public static WorldPosition MissionSiteLandPoint(RuntimeRegionRule region, RuntimeGlobe globe, int zone,
+        int area, int fakeWaterLandingChance, IRandomSource random)
+    {
+        var areas = MissionAreas(region, zone);
+        if ((uint)area >= (uint)areas.Count) throw new InvalidDataException($"Mission zone {zone} has no area {area}.");
+        var fakeWater = RandomChance.Percent(random, fakeWaterLandingChance);
+        for (var attempt = 1; ; attempt++)
+        {
+            var point = RandomPoint(region, zone, area, random);
+            if (attempt == 100 || InsideLand(globe, point) && InsideFakeUnderwaterTexture(globe, point) == fakeWater)
                 return point;
         }
     }

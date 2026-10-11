@@ -16,7 +16,8 @@ public enum CampaignDifficulty
 public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool CanSellLiveAliens = false,
     bool AutoCombatDefaultSoldier = true, bool AnytimePsiTraining = false, bool AllowPsiStrengthImprovement = false,
     int MaximumBases = 8, bool AllowBuildingQueue = false, bool UfoLandingAlert = false,
-    bool AggressiveRetaliation = true, bool CraftLaunchAlways = false)
+    bool AggressiveRetaliation = true, bool CraftLaunchAlways = false, bool SuppressLandingWithoutEquipment = false,
+    bool SuppressRedundantHunterAlert = true, bool RetainCorpses = false)
 {
     /// <summary>
     /// Mod::loadAll's fixedUserOptions pass: a loaded mod forces these user options for every
@@ -38,6 +39,9 @@ public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool Ca
             UfoLandingAlert = Fixed("oxceUfoLandingAlert", UfoLandingAlert),
             AggressiveRetaliation = Fixed("aggressiveRetaliation", AggressiveRetaliation),
             CraftLaunchAlways = Fixed("craftLaunchAlways", CraftLaunchAlways),
+            SuppressLandingWithoutEquipment = Fixed("oxceGeoSuppressLandingWithoutEquipment", SuppressLandingWithoutEquipment),
+            SuppressRedundantHunterAlert = Fixed("oxceGeoSuppressRedundantHKAlert", SuppressRedundantHunterAlert),
+            RetainCorpses = Fixed("retainCorpses", RetainCorpses),
         };
 
         bool Fixed(string id, bool current) =>
@@ -106,6 +110,7 @@ public sealed record FacilitySnapshot(
 
 public sealed record CraftSnapshot(string RuleId, int Id)
 {
+    public IReadOnlyList<ScriptValueEntry> ScriptValues { get; init; } = [];
     public string PreservationKey { get; init; } = string.Empty;
     public CraftLogisticsState? Logistics { get; init; }
 }
@@ -147,6 +152,7 @@ public sealed record BaseSnapshot(
 {
     public bool FakeUnderwater { get; init; }
     public bool RetaliationTarget { get; init; }
+    public int? RetaliationMissionId { get; init; }
     public IReadOnlyList<TransferSnapshot> Transfers { get; init; } = [];
     public IReadOnlyList<ResearchProjectSnapshot> Research { get; init; } = [];
     public IReadOnlyList<ProductionSnapshot> Productions { get; init; } = [];
@@ -173,6 +179,8 @@ public sealed record CampaignSnapshot(
 {
     public IReadOnlyList<CampaignRestriction> Restrictions { get; init; } = [];
     public IReadOnlyList<string> CompletedResearch { get; init; } = [];
+    public IReadOnlyList<ResearchDiaryEntrySnapshot> ResearchDiary { get; init; } = [];
+    public ulong ResearchDiarySequence { get; init; }
     public IReadOnlyDictionary<string, int> ResearchRuleStatus { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
     public IReadOnlyDictionary<string, int> ManufactureRuleStatus { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
     public IReadOnlyDictionary<string, int> MonthlyPurchaseLog { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());

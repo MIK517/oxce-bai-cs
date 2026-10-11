@@ -11,12 +11,10 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicResearchProductionFixtureTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ResearchUnlockManufactureAndReloadFormOneEconomyChain(bool fromCache)
+    [Fact]
+    public void ResearchUnlockManufactureAndReloadFormOneEconomyChain()
     {
-        var content = StrategicReadinessTestContent.Load("strategic-research-production.rul", fromCache);
+        var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
         var campaign = NewCampaign(content, 42);
 
         var started = Assert.IsType<CampaignResearchChanged>(Assert.Single(campaign.Execute(

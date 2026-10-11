@@ -1,0 +1,38 @@
+crafts:
+  - type: SHIP
+    sightRange: 0
+  - type: SHIELD_CRAFT
+    undetectable: true
+    sightRange: 0
+alienDeployments:
+  - &huntTimer
+    type: HUNT_TIMER
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    baseDetectionRange: 100
+    baseDetectionChance: 100
+    huntMissionMaxFrequency: 60
+    huntMissionWeights: {0: {"": 1}}
+  - type: HUNT_DISABLED
+    refNode: *huntTimer
+    baseDetectionRange: 0
+  - type: HUNT_ZERO_CHANCE
+    refNode: *huntTimer
+    baseDetectionChance: 0
+  - type: HUNT_ZERO_TOTAL
+    refNode: *huntTimer
+    huntMissionWeights: {0: {}}
+  - &huntLive
+    type: HUNT_LIVE
+    refNode: *huntTimer
+    huntMissionWeights: {0: {MISSION_SCOUT: 1}}
+  - type: HUNT_FUTURE
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    baseDetectionRange: 100
+    baseDetectionChance: 100
+    huntMissionMaxFrequency: 60
+    huntMissionWeights: {10: {"": 1}}
+  - type: HUNT_DELETE
+    refNode: *huntLive
+    baseSelfDestructCode: UNLOCK

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-mission-counter",
+  "description": "Legacy UFO wave inference at the arrival caller, with controlled pre/post-think counters.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "Verbatim AlienMission::ufoReachedWaypoint waveNumber selection; controlled saved wave and mission counters",
+      "capture": "tools/capture-strategic-mission-counter-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_mission_counter_probe.cpp",
+      "size": 710,
+      "sha256": "1cf97879159583c893c42c3878f2771318577f41c96e16fb9265eec32f0361f9"
+    },
+    {
+      "path": "tools/capture-strategic-mission-counter-reference.ps1",
+      "size": 2863,
+      "sha256": "634cde82d1e220aa6e0e840c9f2602c9244c68befb8a30e5d1d713ac252e9d8a"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-mission-counter.expected.json"
+}

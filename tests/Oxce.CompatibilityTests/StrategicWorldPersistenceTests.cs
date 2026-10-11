@@ -108,11 +108,15 @@ public sealed class StrategicWorldPersistenceTests
     }
 
     [Fact]
-    public void LiveWorldStateStopsTimeWithoutPartialMutation()
+    public void DueWorldEventStopsTimeWithoutPartialMutation()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CampaignState.Restore(
-            PlacedCampaign(content) with { World = SampleWorld() }, content, new SplitMix64RandomSource(7));
+            PlacedCampaign(content) with
+            {
+                Time = new(1, 1, 1, 1999, 0, 29, 55),
+                World = SampleWorld() with { Events = [new("EVENT_DESPAWN", 30)] }
+            }, content, new SplitMix64RandomSource(7));
         var before = campaign.Capture();
 
         var events = campaign.Execute(new AdvanceCampaignTime(12)).Events;
@@ -120,7 +124,7 @@ public sealed class StrategicWorldPersistenceTests
         var advanced = Assert.IsType<CampaignTimeAdvanced>(events[0]);
         Assert.Equal(0, advanced.Summary.TickCount);
         var blocked = Assert.IsType<CampaignActionBlocked>(events[^1]);
-        Assert.Equal("Mission site expiry requires world simulation.", blocked.Reason);
+        Assert.Equal("Strategic event consequences require campaign event execution (Phase 6 branch 6).", blocked.Reason);
         Assert.Equivalent(before, campaign.Capture(), strict: true);
 
         var overview = campaign.GetQuery<ICampaignWorldQuery>()!.QueryWorld();
@@ -199,6 +203,23 @@ public sealed class StrategicWorldPersistenceTests
         var yaml = OxceSaveAdapter.EmitNewCampaign(restored);
         Assert.DoesNotContain("REMOVED_DEPLOYMENT", yaml, StringComparison.Ordinal);
         Assert.DoesNotContain("ufoUniqueId: 4242", yaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void InactiveHuntingAllowsComposedWorldMovementAndTransitionReload()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var initial = PlacedCampaign(content) with { Time = new(1, 1, 1, 1999, 0, 9, 55), World = SampleWorld() };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(7));
+        var events = campaign.Execute(new AdvanceCampaignTime(12)).Events;
+        Assert.Equal(12, Assert.Single(events.OfType<CampaignTimeAdvanced>()).Summary.TickCount);
+        Assert.DoesNotContain(events, e => e is CampaignActionBlocked);
+        var after = campaign.Capture();
+        Assert.Equal(40, Assert.Single(after.World.AlienBases).MinutesSinceLastHuntMissionGeneration);
+        Assert.NotEqual(initial.World.Ufos[0].Longitude, after.World.Ufos[0].Longitude);
+        Assert.Equal(initial.World.Events, after.World.Events);
+        var loaded = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(after), content, 7, "inactive-world-hunt.sav");
+        Assert.Equivalent(after, loaded.Campaign.Capture(), strict: true);
     }
 
     [Fact]

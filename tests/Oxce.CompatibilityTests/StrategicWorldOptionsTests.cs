@@ -11,12 +11,10 @@ namespace Oxce.CompatibilityTests;
 /// <summary>Options::load of fixedUserOptions (Mod::loadAll), the SavedGame options snapshot and craftLaunchAlways.</summary>
 public sealed class StrategicWorldOptionsTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ModFixedUserOptionsOverrideNewAndRestoredCampaigns(bool fromCache)
+    [Fact]
+    public void ModFixedUserOptionsOverrideNewAndRestoredCampaigns()
     {
-        var content = StrategicReadinessTestContent.Load("strategic-world-fixed-options.rul", fromCache);
+        var content = StrategicReadinessTestContent.Load("strategic-world-fixed-options.rul");
         var expected = new CampaignOptions(CanSellLiveAliens: false, UfoLandingAlert: true,
             AggressiveRetaliation: false, CraftLaunchAlways: true);
 

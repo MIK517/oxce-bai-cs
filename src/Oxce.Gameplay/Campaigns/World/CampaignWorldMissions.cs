@@ -1,4 +1,5 @@
 using Oxce.Mods.Rulesets.Runtime;
+using Oxce.Mods.Rulesets.CampaignStart;
 
 namespace Oxce.Gameplay.Campaigns.World;
 
@@ -9,91 +10,347 @@ namespace Oxce.Gameplay.Campaigns.World;
 /// </summary>
 internal sealed partial class CampaignWorld
 {
-    private void RegisterMissionOperations(CampaignCapabilityRegistry registry) =>
+    private void RegisterMissionOperations(CampaignCapabilityRegistry registry)
+    {
+        registry.Timed(CampaignTimeTrigger.OneDay, CampaignTimeOrder.DayWorldMissionInterruption,
+            "alien mission research interruption", InterruptMissionsDaily);
         registry.Timed(CampaignTimeTrigger.ThirtyMinutes, CampaignTimeOrder.ThirtyMinutesWorldMissions,
             "alien mission countdown", AdvanceMissionCountdowns);
+    }
 
-    private string? MissionSchedulingReason(CampaignTimeTrigger highest)
+    private string? MissionSchedulingReason(CampaignTimeTrigger highest, IReadOnlySet<string>? guaranteedResearch)
     {
-        if (highest < CampaignTimeTrigger.ThirtyMinutes) return null;
+        if (highest < CampaignTimeTrigger.ThirtyMinutes && _pass.GeneratedWaveMissions is not { Count: > 0 }) return null;
         var ufoSpawns = 0;
-        for (var index = 0; index < _missions.Count; index++)
+        Dictionary<(int Source, string Marker, bool Hunting), int>? generatedUfoSpawns = null;
+        Dictionary<(int Source, string Marker), int>? huntingContactSpawns = null;
+        var newFlyingHunters = 0;
+        var newEscorts = 0;
+        HashSet<int>? possibleNewLeaderMissions = null;
+        var work = 0;
+        long sourceBaseWork = 0;
+        long cleanupWork = 0;
+        long geometryWork = 0;
+        long landWork = _pass.UfoWaypointLandWork;
+        long escortSelectionWork = 0;
+        Dictionary<string, int>? siteMarkerReservations = null;
+        var siteSpawns = 0;
+        GeneratedTargetReservations? generatedSites = null;
+        GeneratedTargetReservations? generatedBases = null;
+        GeneratedTargetReservations? generatedPactBases = null;
+        foreach (var forecast in MissionWaveForecasts(highest, guaranteedResearch))
         {
-            var mission = _missions[index];
+            var mission = forecast.Mission;
+            var generatedSiteCandidate = false;
+            var missionUfoSpawns = 0;
+            var missionHuntContacts = 0;
             var rule = campaign.Content.RuntimeRules.AlienMissions[
                 campaign.Content.RuntimeRules.AlienMissions.GetRequired(mission.RuleId)].Value;
             if (IsOver(mission, rule))
             {
-                // A malformed saved count must not delete a mission that the later
-                // detection/movement handlers still need, after time has advanced.
-                foreach (var ufo in _ufos)
-                    if (ufo.MissionId == mission.Id)
-                        return "Alien mission cannot expire while UFOs still reference it.";
-                if (rule.Objective == RuntimeMissionObjective.Retaliation)
-                    return "Retaliation mission cleanup requires base linkage.";
+                if (MissionExpiryReason(mission, rule, ref cleanupWork) is { } expiryReason) return expiryReason;
                 continue;
             }
             if (mission.Interrupted || mission.MultiUfoRetaliationInProgress && !rule.MultiUfoRetaliationExtra ||
                 mission.NextWave >= rule.Waves.Count)
                 continue;
             if (mission.SpawnCountdown > 30) continue;
-            if (CanAdvanceNoObjectWave(mission, rule)) continue;
-            if (CanSpawnOrdinaryUfoWave(mission, rule))
+            if (rule.Objective == RuntimeMissionObjective.Infiltration && rule.EndlessInfiltration &&
+                rule.Waves.All(wave => wave.SpawnTimer == 0)) return WaveWorkReason;
+            foreach (var step in DueWaveSteps(mission, rule))
             {
-                ufoSpawns++;
-                continue;
+                if (++work > MaximumImmediateWaveSteps) return WaveWorkReason;
+                if (step.AlienBase is not null)
+                {
+                    sourceBaseWork += _alienBases.Count;
+                    if (sourceBaseWork > MaximumAlienBaseChecks) return "Alien mission source base lookups exceed the supported work limit.";
+                }
+                if (CompletesInfiltration(step, rule, rule.Waves[step.NextWave]))
+                {
+                    if (forecast.Generated) (generatedPactBases ??= new()).Begin(mission, forecast.Hunting);
+                    if (InfiltrationReason(step, rule, highest, siteMarkerReservations ??= new(StringComparer.Ordinal),
+                            ref geometryWork, forecast.Generated ? generatedPactBases : null,
+                            forecast.Generated ? mission.AlienBase : null) is { } infiltrationReason)
+                        return infiltrationReason;
+                }
+                if (CompletesBaseObjective(step, rule, rule.Waves[step.NextWave]))
+                {
+                    if (forecast.Generated) (generatedBases ??= new()).Begin(mission, forecast.Hunting);
+                    siteMarkerReservations ??= new(StringComparer.Ordinal);
+                    if (ObjectiveBaseSpawnReason(step, rule, highest, siteMarkerReservations, ref geometryWork,
+                            forecast.Generated ? generatedBases : null, forecast.Generated ? mission.AlienBase : null) is { } baseReason)
+                        return baseReason;
+                }
+                if (RetaliationWaveReason(step, rule, ref geometryWork) is { } retaliationReason) return retaliationReason;
+                if (IsDirectSiteWave(step, rule))
+                {
+                    if (forecast.Generated && !generatedSiteCandidate)
+                    {
+                        (generatedSites ??= new()).Begin(mission, forecast.Hunting);
+                        generatedSiteCandidate = true;
+                    }
+                    siteMarkerReservations ??= new(StringComparer.Ordinal);
+                    if (DirectSiteSpawnReason(step, rule, highest, siteMarkerReservations, ref geometryWork, ref siteSpawns,
+                            processThisTick: !forecast.Hunting, generated: forecast.Generated ? generatedSites : null) is { } siteReason)
+                        return siteReason;
+                    var finishes = step.NextWave + 1 == rule.Waves.Count &&
+                        (ulong)step.NextUfoCounter + 1 >= rule.Waves[step.NextWave].UfoCount;
+                    if (finishes && !(rule.Objective == RuntimeMissionObjective.Infiltration && rule.EndlessInfiltration) &&
+                        step.LiveUfos == 0 &&
+                        MissionExpiryReason(step, rule, ref cleanupWork) is { } expiryReason) return expiryReason;
+                    continue;
+                }
+                if (CanAdvanceNoObjectWave(step, rule))
+                {
+                    var finishes = step.NextWave + 1 == rule.Waves.Count &&
+                        (ulong)step.NextUfoCounter + 1 >= rule.Waves[step.NextWave].UfoCount;
+                    if (finishes && !(rule.Objective == RuntimeMissionObjective.Infiltration && rule.EndlessInfiltration) &&
+                        step.LiveUfos == 0 &&
+                        MissionExpiryReason(step, rule, ref cleanupWork) is { } expiryReason) return expiryReason;
+                    continue;
+                }
+                if (NewbornHuntingReason(step, rule, highest, forecast.Generated ? mission : null) is { } newbornReason) return newbornReason;
+                if (NewEscortWave(rule, SpawnWave(step, rule)))
+                {
+                    escortSelectionWork += _ufos.Count;
+                    if (escortSelectionWork > MaximumAlienBaseChecks)
+                        return "New UFO escort selection exceeds the supported work limit.";
+                }
+                if (NewEscortSpawnReason(step, rule) is { } escortReason) return escortReason;
+                if (CanSpawnOrdinaryUfoWave(step, rule))
+                {
+                    var trajectory = campaign.Content.RuntimeRules.UfoTrajectories[SpawnWave(step, rule).Trajectory!.Value].Value;
+                    var region = campaign.Content.RuntimeRules.Regions[campaign.Content.RuntimeRules.Regions.GetRequired(step.RegionId)].Value;
+                    landWork += SpawnOriginLandWork(step, rule, trajectory, region);
+                    landWork += SpawnDestinationLandWork(step, rule, trajectory, region);
+                    if (landWork > MaximumSpawnLandWork) return "Alien mission land selection exceeds the supported work limit.";
+                    TryOrdinarySpawnPositions(step, rule, trajectory, region, out var origins);
+                    TryOrdinarySpawnDestinations(step, rule, trajectory, region, out var destinations);
+                    geometryWork += (long)origins.Count * destinations.Count;
+                    if (geometryWork > MaximumAlienBaseChecks) return "Alien mission spawn geometry exceeds the supported work limit.";
+                    if (trajectory.Altitude(0) != 0 && FirstWaypointReachable(origins, destinations, trajectory.Speed(0,
+                            campaign.Content.RuntimeRules.Ufos[SpawnWave(step, rule).Ufo!.Value].Value.StatsForRace(step.Race).SpeedMaximum)))
+                    {
+                        // ufoReachedWaypoint selects its replacement twice. Bound
+                        // any land retries independently from waypoint lookup work.
+                        geometryWork += 2L * (WorldGeometry.MissionAreas(region, trajectory.Zone(1)).Count + _alienBases.Count + 1);
+                        landWork += NewbornReplacementLandWork(step, rule, trajectory, region);
+                        if (landWork > MaximumSpawnLandWork) return "Alien mission land selection exceeds the supported work limit.";
+                        if (trajectory.Altitude(1) == 0)
+                            geometryWork += NewbornLandingGeometryWork(destinations);
+                        if (geometryWork > MaximumAlienBaseChecks) return "Alien mission spawn geometry exceeds the supported work limit.";
+                    }
+                    if (forecast.Generated) missionUfoSpawns++;
+                    else ufoSpawns++;
+                    var wave = SpawnWave(step, rule);
+                    if (forecast.Hunting && NewbornCanRevealHunt(step, wave)) missionHuntContacts++;
+                    var ufoRule = campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value;
+                    // Every non-hunter birth is an ordinary leader. A stochastic
+                    // hunter constructor may produce either outcome; no RNG is forecast.
+                    if (rule.Objective == RuntimeMissionObjective.Supply && wave.Objective ||
+                        (wave.HunterKillerPercentage == -1 ? ufoRule.HunterKillerPercentage : wave.HunterKillerPercentage) < 100)
+                        (possibleNewLeaderMissions ??= []).Add(step.Id);
+                    if (trajectory.Altitude(0) != 0 && !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
+                        (wave.HunterKillerPercentage == -1 ? ufoRule.HunterKillerPercentage : wave.HunterKillerPercentage) > 0)
+                        newFlyingHunters++;
+                    if (wave.Escort && !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
+                        (wave.HunterKillerPercentage == -1 ? ufoRule.HunterKillerPercentage : wave.HunterKillerPercentage) > 0)
+                        newEscorts++;
+                    continue;
+                }
+                return "Alien mission wave spawning requires world simulation.";
             }
-            return "Alien mission wave spawning requires world simulation.";
+            if (forecast.Generated)
+            {
+                // One source creates at most one mission at each caller. Rules,
+                // regions and races are alternatives, not simultaneous births.
+                var source = mission.AlienBase!;
+                var key = (source.Id, source.TypeId, forecast.Hunting);
+                generatedUfoSpawns ??= [];
+                generatedUfoSpawns[key] = Math.Max(generatedUfoSpawns.GetValueOrDefault(key), missionUfoSpawns);
+                if (forecast.Hunting && missionHuntContacts != 0)
+                {
+                    // These births miss half-hour detection but can reveal themselves
+                    // in the later hunting caller. Alternatives consume one source slot.
+                    huntingContactSpawns ??= [];
+                    var contactKey = (source.Id, source.TypeId);
+                    huntingContactSpawns[contactKey] = Math.Max(huntingContactSpawns.GetValueOrDefault(contactKey), missionHuntContacts);
+                }
+            }
         }
+        if (generatedUfoSpawns is not null)
+            foreach (var count in generatedUfoSpawns.Values) ufoSpawns += count;
+        if (huntingContactSpawns is not null)
+            foreach (var count in huntingContactSpawns.Values) _pass.PossibleHuntMarkerIds += count;
+        long newbornFollowerWork = 0;
+        var savedIdleEscorts = 0;
+        var savedMovingEscorts = 0;
+        foreach (var saved in _ufos)
+        {
+            var projected = UfoForFlight(saved, highest);
+            if (projected.Escorting) savedMovingEscorts++;
+            if (projected.Status != UfoStatus.Flying || !projected.HunterKiller || !projected.Escort ||
+                projected.Hunting || projected.Escorting) continue;
+            savedIdleEscorts++;
+            if (possibleNewLeaderMissions?.Contains(saved.MissionId) != true) continue;
+            // The live retarget pass sees appended leaders. It does not relocate
+            // this saved source, but replaces its waypoint and speed. Prove that
+            // no ordinary arrival or craft pursuit forecast depends on them.
+            // UFO escort followers cannot trigger combat or waypoint transitions;
+            // their live ordered movement can safely follow this changed source.
+            if (LoadedEscortNewLeaderReason(projected, ref newbornFollowerWork) is { } leaderReason)
+                return leaderReason;
+            savedMovingEscorts++;
+        }
+        var finalUfoCount = (long)_ufos.Count + ufoSpawns;
+        var escortWork = 2L * newEscorts * finalUfoCount + (long)savedIdleEscorts * ufoSpawns;
+        if (_pass.HuntingForecastWork + escortWork + newbornFollowerWork > MaximumAlienBaseChecks)
+            return "New UFO escort selection exceeds the supported work limit.";
+        if (2L * (savedMovingEscorts + newEscorts) * finalUfoCount > MaximumAlienBaseChecks)
+            return "New UFO escort movement exceeds the supported work limit.";
+        _pass.EscortMissionLookupActors = savedMovingEscorts + newEscorts != 0 ? finalUfoCount : 0;
+        _pass.NewFlyingHunterBirths = newFlyingHunters;
+        _pass.HuntingRetargetWorkBound = _pass.HuntingForecastWork + escortWork + newbornFollowerWork;
+        if (ufoSpawns != 0 && HasDestroyedUfoAfterTransitions(highest))
+        {
+            var terminal = 0;
+            foreach (var ufo in _ufos)
+                if (UfoDestroyedAfterTimers(ufo, highest)) terminal++;
+            if ((_missions.Count + (long)(_pass.GeneratedWaveMissions?.Count ?? 0)) * finalUfoCount > MaximumAlienBaseChecks ||
+                (long)terminal * finalUfoCount > MaximumAlienBaseChecks)
+                return "Destroyed UFO cleanup with new waves exceeds the supported work limit.";
+        }
+        if (newFlyingHunters != 0)
+        {
+            var retargetWork = _pass.HuntingRetargetWorkBound;
+            if (campaign.ProductionPreflight.CraftPopulationBound(highest, ref retargetWork, out var possibleCrafts) is { } populationReason)
+                return populationReason;
+            _pass.HuntingRetargetWorkBound = retargetWork + (possibleCrafts + campaign.BaseStates.Count + (long)_missions.Count) * newFlyingHunters;
+            if (_pass.HuntingRetargetWorkBound > MaximumAlienBaseChecks)
+                return "New UFO retargeting exceeds the supported work limit.";
+        }
+        if ((long)_ufos.Count + ufoSpawns > 100_000) return "World UFO population exceeds the supported limit.";
         return CanAllocateUfoIds(ufoSpawns) ? null : "UFO unique IDs are exhausted or collide with a saved UFO.";
     }
 
-    private void AdvanceMissionCountdowns(CampaignState.TimeEffects _)
+    private string? MissionExpiryReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, ref long work)
+    {
+        // Check both existing completion and completion forecast within this tick.
+        // Saved live counts alone cannot prove that deleting the mission is safe.
+        work += _ufos.Count + (long)campaign.BaseStates.Count;
+        if (work > MaximumAlienBaseChecks) return "Retaliation mission cleanup exceeds the supported work limit.";
+        foreach (var ufo in _ufos)
+            if (ufo.MissionId == mission.Id) return "Alien mission cannot expire while UFOs still reference it.";
+        return rule.Objective != RuntimeMissionObjective.Retaliation &&
+            campaign.BaseStates.Any(owner => owner.RetaliationMissionId == mission.Id)
+            ? "A non-retaliation mission cannot expire while a base links it as retaliation." : null;
+    }
+
+    private void AdvanceMissionCountdowns(CampaignState.TimeEffects effects)
     {
         for (var index = 0; index < _missions.Count; index++)
         {
             var mission = _missions[index];
             var rule = campaign.Content.RuntimeRules.AlienMissions[
                 campaign.Content.RuntimeRules.AlienMissions.GetRequired(mission.RuleId)].Value;
-            if (mission.Interrupted || mission.MultiUfoRetaliationInProgress && !rule.MultiUfoRetaliationExtra ||
-                mission.NextWave >= rule.Waves.Count)
-                continue;
-            if (mission.SpawnCountdown > 30)
-                _missions[index] = mission with { SpawnCountdown = mission.SpawnCountdown - 30 };
-            else
+            var previousBaseCount = _alienBases.Count;
+            _missions[index] = ThinkMission(mission, rule, index);
+            // GeoscapeState::time30Minutes only reveals the last base born during
+            // this mission's think. Direct late hunting and UFO landing callers
+            // intentionally do not apply showAlienBase.
+            if (_alienBases.Count > previousBaseCount &&
+                WorldObjectiveBaseSpawn.RevealAfterMissionThink(true, _alienBases[^1].Discovered, rule.ShowAlienBase))
             {
-                var spawnsUfo = CanSpawnOrdinaryUfoWave(mission, rule);
-                if (!spawnsUfo && !CanAdvanceNoObjectWave(mission, rule))
-                    throw new InvalidOperationException("Alien mission wave changed after world preflight.");
-                var wave = rule.Waves[mission.NextWave];
-                if (spawnsUfo) _ufos.Add(SpawnOrdinaryUfo(mission, wave));
-                var counter = (ulong)mission.NextUfoCounter + 1;
-                var nextWave = mission.NextWave;
-                if (counter >= wave.UfoCount)
-                {
-                    counter = 0;
-                    nextWave++;
-                }
-                var countdown = nextWave < rule.Waves.Count
-                    ? WorldTrajectory.SpawnCountdown(checked((int)rule.Waves[nextWave].SpawnTimer), campaign.Random)
-                    : mission.SpawnCountdown;
-                _missions[index] = mission with
-                {
-                    NextWave = nextWave,
-                    NextUfoCounter = checked((int)counter),
-                    SpawnCountdown = countdown,
-                    LiveUfos = spawnsUfo ? checked(mission.LiveUfos + 1) : mission.LiveUfos,
-                };
+                var alienBase = _alienBases[^1] with { Discovered = true };
+                _alienBases[^1] = alienBase;
+                effects.Notify(new AlienBaseDiscovered(alienBase.Id, alienBase.DeploymentId));
             }
         }
+
         for (var index = _missions.Count - 1; index >= 0; index--)
         {
             var mission = _missions[index];
             var rule = campaign.Content.RuntimeRules.AlienMissions[
                 campaign.Content.RuntimeRules.AlienMissions.GetRequired(mission.RuleId)].Value;
             if (IsOver(mission, rule))
+            {
+                if (rule.Objective == RuntimeMissionObjective.Retaliation)
+                    foreach (var owner in campaign.BaseStates)
+                        if (owner.RetaliationMissionId == mission.Id) owner.RetaliationMissionId = null;
                 _missions.RemoveAt(index);
+            }
         }
+    }
+
+    private AlienMissionSnapshot AdvanceWaveCounters(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, bool spawnsUfo)
+    {
+        var counter = (ulong)mission.NextUfoCounter + 1;
+        var nextWave = mission.NextWave;
+        if (counter >= rule.Waves[nextWave].UfoCount) { counter = 0; nextWave++; }
+        var countdown = nextWave < rule.Waves.Count
+            ? WorldTrajectory.SpawnCountdown(checked((int)rule.Waves[nextWave].SpawnTimer), campaign.Random)
+            : mission.SpawnCountdown;
+        return mission with
+        {
+            NextWave = nextWave,
+            NextUfoCounter = checked((int)counter),
+            SpawnCountdown = countdown,
+            LiveUfos = spawnsUfo ? checked(mission.LiveUfos + 1) : mission.LiveUfos,
+        };
+    }
+
+    private string? ImmediateNoObjectReason(AlienBaseSnapshot source, RuntimeAlienDeploymentRule deployment,
+        RuntimeAlienMissionRule rule, ref long work, string boundary, string? regionId = null)
+    {
+        if (rule.Objective is RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation && regionId is null) return boundary;
+        var candidate = new AlienMissionSnapshot(-1, string.Empty, regionId ?? string.Empty, source.Race, 0, 0, 0, 0, -1)
+        { AlienBase = new(WorldTargetKind.AlienBase, deployment.MarkerName, source.Id, source.Longitude, source.Latitude) };
+        foreach (var step in DueWaveSteps(candidate, rule))
+        {
+            if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+            if (rule.Objective is RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation)
+            {
+                var region = campaign.Content.RuntimeRules.Regions[campaign.Content.RuntimeRules.Regions.GetRequired(step.RegionId)].Value;
+                work += 8L * campaign.BaseStates.Count * (region.Areas.Count + 1L);
+                if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+            }
+            if (CompletesBaseObjective(step, rule, rule.Waves[step.NextWave]) ||
+                CompletesInfiltration(step, rule, rule.Waves[step.NextWave]) || !CanAdvanceNoObjectWave(step, rule)) return boundary;
+        }
+        return null;
+    }
+
+    private AlienMissionSnapshot ThinkMission(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, int index)
+    {
+        if (mission.Interrupted || mission.MultiUfoRetaliationInProgress && !rule.MultiUfoRetaliationExtra ||
+            mission.NextWave >= rule.Waves.Count) return mission;
+        if (mission.SpawnCountdown > 30) return mission with { SpawnCountdown = mission.SpawnCountdown - 30 };
+        for (var work = 0; ; work++)
+        {
+            if (work >= MaximumImmediateWaveSteps)
+                throw new InvalidOperationException("Mission wave work changed after preflight.");
+            var spawnsUfo = CanSpawnOrdinaryUfoWave(mission, rule);
+            var spawnsSite = IsDirectSiteWave(mission, rule);
+            if (!spawnsUfo && !spawnsSite && !CanAdvanceNoObjectWave(mission, rule))
+                throw new InvalidOperationException("Alien mission wave changed after world preflight.");
+            var wave = rule.Waves[mission.NextWave];
+            if (InstantRetaliationWithoutTarget(mission, rule)) mission = mission with { Interrupted = true };
+            if (spawnsUfo) _ufos.Add(SpawnOrdinaryUfo(mission, wave));
+            if (spawnsSite) SpawnDirectSite(mission, rule);
+            var completesBase = CompletesBaseObjective(mission, rule, wave);
+            var completesInfiltration = CompletesInfiltration(mission, rule, wave);
+            mission = AdvanceWaveCounters(mission, rule, spawnsUfo);
+            if (completesBase) CompleteBaseObjective(mission, rule);
+            if (completesInfiltration)
+            {
+                CompleteInfiltration(mission, rule);
+                if (rule.EndlessInfiltration) mission = WorldInfiltration.Restart(mission, rule, campaign.Random);
+            }
+            _missions[index] = mission;
+            // Recursion tests the original timer, not the rounded countdown.
+            if (mission.Interrupted || mission.NextWave == rule.Waves.Count || rule.Waves[mission.NextWave].SpawnTimer != 0) break;
+        }
+        return mission;
     }
 
     private static bool IsOver(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule) =>
@@ -101,60 +358,405 @@ internal sealed partial class CampaignWorld
         !(rule.Objective == RuntimeMissionObjective.Infiltration && rule.EndlessInfiltration) &&
         mission.NextWave == rule.Waves.Count && mission.LiveUfos == 0;
 
-    private static bool CanAdvanceNoObjectWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
+    private bool CanAdvanceNoObjectWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
     {
-        if (rule.Objective != RuntimeMissionObjective.Score ||
-            rule.OperationType != RuntimeMissionOperationType.Space)
-            return false;
         var wave = rule.Waves[mission.NextWave];
-        if (wave.UfoType.Length != 0 || wave.Ufo is not null || wave.Deployment is not null ||
-            wave.Trajectory is null || wave.Objective || wave.ObjectiveOnTheLandingSite ||
-            wave.ObjectiveOnXcomBase)
+        if (InstantRetaliationWithoutTarget(mission, rule))
+            return wave.Trajectory is not null &&
+                !(wave.Ufo is null && wave.Deployment is { } instantDeployment &&
+                    campaign.Content.RuntimeRules.AlienDeployments[instantDeployment].Value.MarkerName.Length != 0) &&
+                CanAdvanceWaveCounters(mission, rule, wave);
+        if (rule.Objective is RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation &&
+            RetaliationCandidates(mission, rule).Count != 0) return false;
+        if (SuppressedSupplyWave(mission, rule, wave))
+            return wave.Trajectory is not null && CanAdvanceWaveCounters(mission, rule, wave);
+        if (wave.Ufo is not null || wave.Trajectory is null ||
+            rule.Objective == RuntimeMissionObjective.Site && wave.Objective ||
+            wave.Deployment is { } deployment && campaign.Content.RuntimeRules.AlienDeployments[deployment].Value.MarkerName.Length != 0)
             return false;
         return CanAdvanceWaveCounters(mission, rule, wave);
     }
 
-    private bool CanSpawnOrdinaryUfoWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
+    private bool SuppressedSupplyWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, RuntimeMissionWave wave) =>
+        rule.Objective == RuntimeMissionObjective.Supply &&
+        (wave.Ufo is null ? wave.Deployment is null : wave.Objective && MissionSourceBase(mission) is null);
+
+    private bool CanSpawnOrdinaryUfoWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, bool requireHuntingForecast = true)
     {
-        if (rule.Objective != RuntimeMissionObjective.Score ||
-            rule.OperationType != RuntimeMissionOperationType.Space || mission.LiveUfos == int.MaxValue)
+        if (rule.Objective == RuntimeMissionObjective.InstantRetaliation || mission.LiveUfos == int.MaxValue)
             return false;
-        var wave = rule.Waves[mission.NextWave];
+        var wave = SpawnWave(mission, rule);
         if (wave.Ufo is not { } ufoHandle || wave.Trajectory is not { } trajectoryHandle ||
-            wave.Objective || wave.ObjectiveOnTheLandingSite || wave.ObjectiveOnXcomBase)
+            SuppressedSupplyWave(mission, rule, wave))
             return false;
         var rules = campaign.Content.RuntimeRules;
         var ufoRule = rules.Ufos[ufoHandle].Value;
         var hunterKillerPercentage = wave.HunterKillerPercentage == -1
             ? ufoRule.HunterKillerPercentage : wave.HunterKillerPercentage;
-        if (hunterKillerPercentage > 0) return false;
         var trajectory = rules.UfoTrajectories[trajectoryHandle].Value;
         if (trajectory.Waypoints.Count < 2 ||
-            !IsAirborne(trajectory.Altitude(0)) || !IsAirborne(trajectory.Altitude(1)))
+            trajectory.Altitude(0) != 0 && !IsAirborne(trajectory.Altitude(0)) ||
+            trajectory.Altitude(1) != 0 && !IsAirborne(trajectory.Altitude(1)))
             return false;
+        if (requireHuntingForecast && hunterKillerPercentage > 0 && !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
+            (trajectory.Altitude(0) != 0 && !NewbornHuntingIsForecast(mission, wave))) return false;
+        if (NewEscortSpawnReason(mission, rule, requireHuntingForecast) is not null) return false;
         var stats = ufoRule.StatsForRace(mission.Race);
-        var speed = trajectory.Speed(0, stats.SpeedMaximum);
+        if (!TryNewbornInitialSpeed(trajectory, stats.SpeedMaximum, out var speed)) return false;
+        if (trajectory.Altitude(0) == 0 &&
+            (rule.Objective == RuntimeMissionObjective.Supply || stats.DamageMaximum <= 0 ||
+             trajectory.GroundTimer <= 0 || trajectory.GroundTimer > int.MaxValue / 5))
+            return false;
         // The half-hour UFO handler scores and detects this ship after spawning.
-        if (ufoRule.Scripts.Count != 0 || stats.ShieldCapacity != 0 || speed < 0)
+        if (!WorldUfoShields.IsValid(-1, stats.ShieldCapacity, stats.ShieldRechargeInGeoscape) || speed < 0)
             return false;
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
-        if (!TryGetFixedWaypoint(region, trajectory.Zone(0), out var position) ||
-            !TryGetFixedWaypoint(region, trajectory.Zone(1), out var destination) ||
-            !(WorldGeometry.Distance(position, destination) > WorldGeometry.RadianSpeed(speed)))
+        if (!TryOrdinarySpawnPositions(mission, rule, trajectory, region, out var positions) ||
+            !TryOrdinarySpawnDestinations(mission, rule, trajectory, region, out var destinations))
             return false;
+        // Landed births consume their ground timer, including a possible lift,
+        // without moving in this pass. Their next tick uses saved-UFO proofs.
+        if (trajectory.Altitude(0) != 0 && FirstWaypointReachable(positions, destinations, speed) &&
+            !CanAdvanceNewbornAirborneWaypoint(mission, rule, wave, trajectory, region, stats.SpeedMaximum,
+                destinations, requireHuntingForecast)) return false;
         return CanAdvanceWaveCounters(mission, rule, wave);
     }
 
-    private static bool TryGetFixedWaypoint(RuntimeRegionRule region, int zone, out WorldPosition position)
+    private static bool TryNewbornInitialSpeed(RuntimeUfoTrajectoryRule trajectory, int maximum, out int speed)
+    {
+        var value = (long)maximum * trajectory.Waypoints[0].SpeedPercentage / 100;
+        speed = value is >= 0 and <= int.MaxValue ? (int)value : 0;
+        return value is >= 0 and <= int.MaxValue;
+    }
+
+    private static bool FirstWaypointReachable(IReadOnlyList<SpawnArea> positions,
+        IReadOnlyList<SpawnArea> destinations, int speed)
+    {
+        foreach (var position in positions)
+            foreach (var destination in destinations)
+                if (!(WorldGeometry.Distance(position.Center, destination.Center) - position.Radius - destination.Radius >
+                        WorldGeometry.RadianSpeed(speed) + 1e-12)) return true;
+        return false;
+    }
+
+    private bool CanAdvanceNewbornAirborneWaypoint(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, RuntimeMissionWave wave,
+        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region, int speedMaximum,
+        IReadOnlyList<SpawnArea> destinations, bool requireHuntingForecast)
+    {
+        // A flying birth can advance exactly once. Early read-only site projection
+        // defers hunt/escort proof to final mission preflight, after its research
+        // forecast is available. Actual spawning always requires that owning proof.
+        // Conditional interruption, conversion and landing-base effects stay guarded.
+        if (rule.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply or
+                RuntimeMissionObjective.Site or RuntimeMissionObjective.Base or RuntimeMissionObjective.Infiltration) ||
+            _pass.SiteResearchForecast?.PossibleExplicitTopics.Contains(rule.InterruptResearchId) == true ||
+            !IsAirborne(trajectory.Altitude(0)) ||
+            trajectory.Altitude(1) != 0 && !IsAirborne(trajectory.Altitude(1)) ||
+            !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
+            (wave.HunterKillerPercentage == -1
+                ? campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value.HunterKillerPercentage
+                : wave.HunterKillerPercentage) > 0 && requireHuntingForecast &&
+            !NewbornHuntingIsForecast(mission, wave)) return false;
+        if (trajectory.Altitude(1) == 0)
+        {
+            var ufoRule = campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value;
+            if (NewbornLandingGeometryWork(destinations) > MaximumAlienBaseChecks ||
+                ufoRule.StatsForRace(mission.Race).DamageMaximum <= 0 ||
+                wave.TrajectoryId == RuntimeUfoTrajectoryRule.RetaliationAssaultRun ||
+                mission.MissionSiteZoneArea != -1 && wave.Objective && trajectory.Zone(0) == rule.SpawnZone) return false;
+            var mayLand = NewbornLandingPossible(destinations, ufoRule);
+            if (mayLand && (trajectory.GroundTimer <= 0 || trajectory.GroundTimer > int.MaxValue / 5 ||
+                WorldObjectiveBaseSpawn.CreatesOnLanding(rule, wave, trajectory.Zone(0), allowed: true, conversion: false)))
+                return false;
+        }
+        // Validate the native wide intermediate before narrowing. Calling Speed
+        // here would throw rather than return an atomic capability refusal.
+        var replacementSpeed = (long)speedMaximum * trajectory.Waypoints[1].SpeedPercentage / 100;
+        if (replacementSpeed is < 0 or > int.MaxValue) return false;
+        if (WorldGeometry.MissionAreas(region, trajectory.Zone(1)).Count > 256) return false;
+        ValidateWaypointAreas(region, trajectory.Zone(1));
+        if (mission.MissionSiteZoneArea != -1 && wave.Objective && trajectory.Zone(1) == rule.SpawnZone)
+            _ = SelectedMissionArea(region, rule.SpawnZone, mission.MissionSiteZoneArea);
+        if (NewbornReplacementLandWork(mission, rule, trajectory, region) > MaximumSpawnLandWork) return false;
+        return true;
+    }
+
+    private long NewbornReplacementLandWork(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
+        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region) =>
+        2 * OrdinaryDestinationLandWork(mission, rule, trajectory, region);
+
+    private long SpawnDestinationLandWork(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
+        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region)
+    {
+        if (HasRetaliationTarget(mission, rule)) return 0;
+        if (rule.Objective != RuntimeMissionObjective.Supply)
+            return OrdinaryDestinationLandWork(mission, rule, trajectory, region);
+        // Supply birth selects land using altitude(1), rather than getWaypoint's
+        // altitude(2). An objective supply ship instead targets its linked base.
+        var wave = SpawnWave(mission, rule);
+        if (trajectory.Altitude(1) != 0 || wave.Objective ||
+            WorldGeometry.MissionAreas(region, trajectory.Zone(1))[0].IsPoint) return 0;
+        return 100 * (2 * GlobeLandQueryWork() + region.Areas.Count + 1);
+    }
+
+    private long OrdinaryDestinationLandWork(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
+        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region) =>
+        OrdinaryWaypointLandWork(mission, rule, SpawnWave(mission, rule), trajectory, region, 1);
+
+    private long OrdinaryWaypointLandWork(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
+        RuntimeMissionWave wave, RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region, int point)
+    {
+        var selected = mission.MissionSiteZoneArea != -1 && wave.Objective && trajectory.Zone(point) == rule.SpawnZone;
+        if (selected && !wave.ObjectiveOnTheLandingSite) return 0;
+        if (!selected && (trajectory.Waypoints.Count <= point + 1 || trajectory.Altitude(point + 1) != 0)) return 0;
+        if (!selected && WorldGeometry.MissionAreas(region, trajectory.Zone(point))[0].IsPoint) return 0;
+        var scan = GlobeLandQueryWork();
+        // Selected site areas omit the ordinary region query and city bypass.
+        // Callers reserve once at birth and twice at ordinary waypoint arrival.
+        return 100 * (2 * scan + (selected ? 0 : region.Areas.Count) + 1);
+    }
+
+    private long NewbornLandingGeometryWork(IReadOnlyList<SpawnArea> destinations)
+    {
+        var scan = GlobeLandQueryWork();
+        // Both land queries, all spawn/forecast predicate callers, and the actual
+        // arrival. Rectangles conservatively admit land without polygon queries.
+        return 2L * (6L * destinations.Count + 1) * scan;
+    }
+
+    // Runtime globe rules are immutable for this campaign; avoid rescanning the
+    // polygon collection for each candidate wave and each preflight caller.
+    private long? _globeLandQueryWork;
+
+    private long GlobeLandQueryWork()
+    {
+        if (_globeLandQueryWork is { } cached) return cached;
+        long scan = 1;
+        foreach (var polygon in campaign.Content.RuntimeRules.Campaign.Globe.Polygons)
+            scan += 1L + 4L * polygon.Points.Count;
+        _globeLandQueryWork = scan;
+        return scan;
+    }
+
+    private bool NewbornLandingPossible(IReadOnlyList<SpawnArea> destinations, RuntimeUfoRule rule)
+    {
+        foreach (var destination in destinations)
+            if (destination.Radius != 0 || LandingAllowed(destination.Center, rule)) return true;
+        return false;
+    }
+
+    private bool NewEscortWave(RuntimeAlienMissionRule rule, RuntimeMissionWave wave) =>
+        wave.Escort && wave.Ufo is { } handle && !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
+        (wave.HunterKillerPercentage == -1
+            ? campaign.Content.RuntimeRules.Ufos[handle].Value.HunterKillerPercentage : wave.HunterKillerPercentage) > 0;
+
+    private string? NewEscortSpawnReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, bool requireHuntingForecast = true)
+    {
+        var wave = SpawnWave(mission, rule);
+        if (!NewEscortWave(rule, wave) || wave.Trajectory is not { } trajectory) return null;
+        var ufoRule = campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value;
+        var path = campaign.Content.RuntimeRules.UfoTrajectories[trajectory].Value;
+        var maximum = (long)ufoRule.Stats.SpeedMaximum + ufoRule.RaceBonus(mission.Race).SpeedMaximum;
+        if (maximum is < 0 or > int.MaxValue) return "UFO escort speed exceeds the supported range.";
+        if (requireHuntingForecast && path.Waypoints.Count != 0 && path.Altitude(0) != 0 && !NewbornHuntingIsForecast(mission, wave))
+            return "New UFO escorts require craft retarget forecasts.";
+        return null;
+    }
+
+    // A new hunter has no original target. With no current or potential airborne
+    // craft, the reference retarget pass cannot select a craft.
+    private bool NoCraftCanBecomeHunterTarget() => _pass.NewHunterHasNoTarget ??= CalculateNoHunterTarget();
+
+    private bool CalculateNoHunterTarget()
+    {
+        long work = 0;
+        foreach (var owner in campaign.BaseStates)
+        {
+            work += owner.Crafts.Count + (long)owner.Transfers.Count;
+            if (work > MaximumAlienBaseChecks) return false;
+            foreach (var craft in owner.Crafts)
+                if (!campaign.Content.RuntimeRules.Crafts[craft.Rule].Value.Undetectable &&
+                    craft.Logistics is { } state &&
+                    (state.Status == "STR_OUT" && !WorldHunting.IsIgnored(state.LowFuel, state.MissionComplete) || state.IsAutoPatrolling &&
+                        campaign.Content.RuntimeRules.Crafts[craft.Rule].Value.AutoPatrol)) return false;
+            foreach (var transfer in owner.Transfers)
+                if (_pass.NewbornHighestTrigger >= CampaignTimeTrigger.OneHour && transfer.Hours <= 1 &&
+                    !transfer.Delivered && transfer.Craft?.Logistics is { } state &&
+                    (state.Status == "STR_OUT" || state.IsAutoPatrolling &&
+                        campaign.Content.RuntimeRules.Crafts[
+                            campaign.Content.RuntimeRules.Crafts.GetRequired(transfer.Craft.RuleId)].Value.AutoPatrol)) return false;
+        }
+        return true;
+    }
+
+    private string? LoadedEscortNewLeaderReason(UfoSnapshot escort, ref long work)
+    {
+        if (NewLeaderCraftPursuitReason(escort, ref work) is { } pursuitReason) return pursuitReason;
+        if (escort.Destination is not { Kind: WorldTargetKind.Waypoint } destination ||
+            !(WorldGeometry.Distance(escort.Position, destination.Position) > WorldGeometry.RadianSpeed(escort.Speed) + 1e-12))
+            return "Loaded idle escorts require same-tick newborn waypoint forecasts.";
+        return null;
+    }
+
+    private AlienBaseSnapshot? MissionSourceBase(AlienMissionSnapshot mission)
+    {
+        if (mission.AlienBase is null) return null;
+        foreach (var candidate in _alienBases)
+            if (FollowsAlienBase(mission.AlienBase, candidate)) return candidate;
+        return null;
+    }
+
+    private bool TryOrdinarySpawnPositions(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
+        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region, out IReadOnlyList<SpawnArea> positions)
+    {
+        var assault = HasRetaliationTarget(mission, rule);
+        if (assault) trajectory = campaign.Content.RuntimeRules.UfoTrajectories[rule.Waves[mission.NextWave].Trajectory!.Value].Value;
+        var source = rule.OperationType == RuntimeMissionOperationType.Space ? null : MissionSourceBase(mission);
+        if (source is not null && (rule.Objective == RuntimeMissionObjective.Supply || assault))
+        {
+            positions = [new(source.Position, 0)];
+            return source.Position.IsNormalized;
+        }
+        var wave = rule.Waves[mission.NextWave];
+        if (source is not null)
+        {
+            positions = [];
+            if (WorldGeometry.MissionAreas(region, trajectory.Zone(0)).Count > 256) return false;
+            ValidateWaypointAreas(region, trajectory.Zone(0));
+            if (mission.MissionSiteZoneArea != -1 && wave.Objective && trajectory.Zone(0) == rule.SpawnZone)
+                _ = SelectedMissionArea(region, rule.SpawnZone, mission.MissionSiteZoneArea);
+            positions = [new(source.Position, 0)];
+            return source.Position.IsNormalized;
+        }
+        if (!assault && rule.Objective != RuntimeMissionObjective.Supply && mission.MissionSiteZoneArea != -1 &&
+            wave.Objective && trajectory.Zone(0) == rule.SpawnZone)
+        {
+            var area = SelectedMissionArea(region, rule.SpawnZone, mission.MissionSiteZoneArea);
+            positions = [];
+            if (wave.ObjectiveOnTheLandingSite)
+            {
+                if (!TrySpawnArea(area, out var selected)) return false;
+                positions = [selected];
+            }
+            else positions = [new(WorldPosition.Create(area.LongitudeMinimum, area.LatitudeMinimum), 0)];
+        }
+        else
+        {
+            var areas = WorldGeometry.MissionAreas(region, trajectory.Zone(0));
+            positions = [];
+            if (areas.Count > 256) return false;
+            var result = new SpawnArea[areas.Count];
+            for (var index = 0; index < areas.Count; index++)
+                if (!TrySpawnArea(areas[index], out result[index])) return false;
+            positions = result;
+        }
+        return positions.All(static position => position.Center.IsNormalized);
+    }
+
+    private bool TryOrdinarySpawnDestinations(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
+        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region, out IReadOnlyList<SpawnArea> positions)
+    {
+        if (HasRetaliationTarget(mission, rule))
+        {
+            positions = RetaliationCandidates(mission, rule).Select(owner => new SpawnArea(new(owner.Longitude, owner.Latitude), 0)).ToArray();
+            return positions.All(static area => area.Center.IsNormalized);
+        }
+        if (rule.Objective == RuntimeMissionObjective.Supply && rule.Waves[mission.NextWave].Objective &&
+            trajectory.Altitude(1) == 0 && MissionSourceBase(mission) is { } supplyBase)
+        {
+            positions = [new(supplyBase.Position, 0)];
+            return supplyBase.Position.IsNormalized;
+        }
+        _ = WorldGeometry.MissionAreas(region, trajectory.Zone(1));
+        var wave = rule.Waves[mission.NextWave];
+        if (rule.Objective != RuntimeMissionObjective.Supply && mission.MissionSiteZoneArea != -1 &&
+            wave.Objective && trajectory.Zone(1) == rule.SpawnZone)
+        {
+            var area = SelectedMissionArea(region, rule.SpawnZone, mission.MissionSiteZoneArea);
+            positions = [];
+            if (wave.ObjectiveOnTheLandingSite)
+            {
+                if (!TrySpawnArea(area, out var selected)) return false;
+                positions = [selected];
+            }
+            else positions = [new(WorldPosition.Create(area.LongitudeMinimum, area.LatitudeMinimum), 0)];
+            return true;
+        }
+        if (rule.Objective != RuntimeMissionObjective.Supply && rule.OperationType != RuntimeMissionOperationType.Space &&
+            trajectory.Waypoints.Count == 2 && MissionSourceBase(mission) is { } source)
+        {
+            positions = [new(source.Position, 0)];
+            return source.Position.IsNormalized;
+        }
+        var areas = WorldGeometry.MissionAreas(region, trajectory.Zone(1));
+        positions = [];
+        if (areas.Count > 256) return false;
+        var result = new SpawnArea[areas.Count];
+        for (var index = 0; index < areas.Count; index++)
+            if (!TrySpawnArea(areas[index], out result[index])) return false;
+        positions = result;
+        return true;
+    }
+
+    private static MissionArea SelectedMissionArea(RuntimeRegionRule region, int zone, int index)
     {
         var areas = WorldGeometry.MissionAreas(region, zone);
-        if (areas.Count != 1 || !areas[0].IsPoint)
+        if ((uint)index >= (uint)areas.Count) throw new InvalidDataException($"Mission zone {zone} has no area {index}.");
+        var area = areas[index];
+        ValidateWaypointPosition(area.LongitudeMinimum, area.LatitudeMinimum);
+        ValidateWaypointPosition(area.LongitudeMaximum, area.LatitudeMaximum);
+        return area;
+    }
+
+    private readonly record struct SpawnArea(WorldPosition Center, double Radius);
+
+    private const long MaximumSpawnLandWork = 10_000_000;
+
+    private long SpawnOriginLandWork(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
+        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region)
+    {
+        var assault = HasRetaliationTarget(mission, rule);
+        if (assault)
         {
-            position = default;
-            return false;
+            if (rule.OperationType != RuntimeMissionOperationType.Space && MissionSourceBase(mission) is not null) return 0;
+            trajectory = campaign.Content.RuntimeRules.UfoTrajectories[rule.Waves[mission.NextWave].Trajectory!.Value].Value;
+            if (trajectory.Altitude(0) != 0) return 0;
         }
-        position = WorldPosition.Create(areas[0].LongitudeMinimum, areas[0].LatitudeMinimum);
-        return position.IsNormalized;
+        var wave = rule.Waves[mission.NextWave];
+        var selected = !assault && rule.Objective != RuntimeMissionObjective.Supply && mission.MissionSiteZoneArea != -1 &&
+            wave.Objective && trajectory.Zone(0) == rule.SpawnZone;
+        if (selected && !wave.ObjectiveOnTheLandingSite) return 0;
+        if (!selected && (assault || rule.Objective == RuntimeMissionObjective.Supply ? trajectory.Altitude(0) != 0 : trajectory.Altitude(1) != 0)) return 0;
+        if (rule.Objective == RuntimeMissionObjective.Supply && rule.OperationType != RuntimeMissionOperationType.Space &&
+            MissionSourceBase(mission) is not null) return 0;
+        if (!selected && WorldGeometry.MissionAreas(region, trajectory.Zone(0))[0].IsPoint) return 0;
+        var scan = GlobeLandQueryWork();
+        // Up to 100 attempts, with two polygon queries and an ordinary region query.
+        return 100 * (2 * scan + (selected ? 0 : region.Areas.Count) + 1);
+    }
+
+    private static bool TrySpawnArea(MissionArea area, out SpawnArea result)
+    {
+        result = default;
+        ValidateWaypointPosition(area.LongitudeMinimum, area.LatitudeMinimum);
+        ValidateWaypointPosition(area.LongitudeMaximum, area.LatitudeMaximum);
+        // A point has no uncertain latitude interval. Preserve Target's pole
+        // normalization already supported by the former point-origin projection.
+        if (area.IsPoint)
+        {
+            result = new(WorldPosition.Create(area.LongitudeMinimum, area.LatitudeMinimum), 0);
+            return true;
+        }
+        // Keep the whole raw latitude interval within a single pole domain.
+        if (Math.Min(area.LatitudeMinimum, area.LatitudeMaximum) < -Math.PI / 2 ||
+            Math.Max(area.LatitudeMinimum, area.LatitudeMaximum) > Math.PI / 2) return false;
+        var longitudeWidth = Math.Abs(area.LongitudeMaximum - area.LongitudeMinimum);
+        var latitudeWidth = Math.Abs(area.LatitudeMaximum - area.LatitudeMinimum);
+        var center = WorldPosition.Create((area.LongitudeMinimum + area.LongitudeMaximum) / 2,
+            (area.LatitudeMinimum + area.LatitudeMaximum) / 2);
+        // A path along the meridian and parallel bounds every point in the rectangle.
+        result = new(center, Math.Min(Math.PI, (longitudeWidth + latitudeWidth) / 2));
+        return true;
     }
 
     private bool CanAllocateUfoIds(int count)
@@ -172,22 +774,49 @@ internal sealed partial class CampaignWorld
     private UfoSnapshot SpawnOrdinaryUfo(AlienMissionSnapshot mission, RuntimeMissionWave wave)
     {
         var rules = campaign.Content.RuntimeRules;
+        var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
+        var assault = HasRetaliationTarget(mission, missionRule);
+        var original = wave;
+        CampaignState.BaseState? target = null;
+        if (assault)
+        {
+            var candidates = RetaliationCandidates(mission, missionRule);
+            target = candidates[WorldRetaliation.SelectIndex(candidates.Count, campaign.Random)!.Value];
+            wave = SpawnWave(mission, missionRule);
+        }
         var ufoRule = rules.Ufos[wave.Ufo!.Value].Value;
         var trajectory = rules.UfoTrajectories[wave.Trajectory!.Value].Value;
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
-        var position = NormalizeWaypoint(WorldGeometry.RandomPoint(region, trajectory.Zone(0), -1, campaign.Random));
-        // Fixed-point eligibility implies getLandPoint's city bypass when the
-        // following leg lands, consuming the same regional selection.
-        var destination = NormalizeWaypoint(WorldGeometry.RandomPoint(region, trajectory.Zone(1), -1, campaign.Random));
+        var source = missionRule.OperationType == RuntimeMissionOperationType.Space ? null : MissionSourceBase(mission);
+        var hunter = assault || missionRule.Objective == RuntimeMissionObjective.Supply && wave.Objective
+            ? (HunterKiller: false, Mode: 0, Behavior: 0)
+            : WorldHunting.Initialize(wave.HunterKillerPercentage == -1 ? ufoRule.HunterKillerPercentage : wave.HunterKillerPercentage,
+                wave.HuntMode == -1 ? ufoRule.HuntMode : wave.HuntMode,
+                wave.HuntBehavior == -1 ? ufoRule.HuntBehavior : wave.HuntBehavior, campaign.Random);
+        var position = source is not null && (assault || missionRule.Objective == RuntimeMissionObjective.Supply)
+            ? source.Position
+            : assault ? RetaliationSpawnPosition(mission, original, region, ufoRule)
+            : NormalizeWaypoint(missionRule.Objective == RuntimeMissionObjective.Supply
+                ? WorldGeometry.RandomPoint(region, trajectory.Zone(0), -1, campaign.Random)
+                : OrdinaryWaypoint(mission, trajectory, 0, region, ufoRule, wave));
+        if (source is not null) position = source.Position;
+        var destination = target is not null ? new WorldPosition(target.Longitude, target.Latitude) : NormalizeWaypoint(missionRule.Objective == RuntimeMissionObjective.Supply
+            ? SupplySpawnDestination(mission, wave, trajectory, region, ufoRule)
+            : OrdinaryWaypoint(mission, trajectory, 1, region, ufoRule, wave));
         var stats = ufoRule.StatsForRace(mission.Race);
         var speed = trajectory.Speed(0, stats.SpeedMaximum);
         var speedRadian = WorldGeometry.RadianSpeed(speed);
         var vector = WorldGeometry.SpeedVector(position, destination, speedRadian);
-        return new UfoSnapshot(campaign.NextId("STR_UFO_UNIQUE"), wave.UfoType, mission.Id,
-            wave.TrajectoryId, 0, position.Longitude, position.Latitude, UfoStatus.Flying,
+        var spawned = new UfoSnapshot(campaign.NextId("STR_UFO_UNIQUE"), wave.UfoType, mission.Id,
+            wave.TrajectoryId, 0, position.Longitude, position.Latitude,
+            trajectory.Altitude(0) == 0 ? UfoStatus.Landed : UfoStatus.Flying,
             WorldAltitudes.All[trajectory.Altitude(0)])
         {
+            HunterKiller = hunter.HunterKiller,
+            HuntMode = hunter.Mode,
+            HuntBehavior = hunter.Behavior,
             MissionWaveNumber = mission.NextWave,
+            SecondsRemaining = trajectory.Altitude(0) == 0 ? checked(trajectory.GroundTimer * 5) : 0,
             Speed = speed,
             SpeedRadian = speedRadian,
             SpeedLongitude = vector.Longitude,
@@ -195,6 +824,17 @@ internal sealed partial class CampaignWorld
             Destination = new WorldTargetReference(WorldTargetKind.Waypoint,
                 WorldTargetReference.WaypointType, 0, destination.Longitude, destination.Latitude),
         };
+        return WorldHunting.InitializeEscort(spawned, wave.Escort, stats.SpeedMaximum, _ufos);
+    }
+
+    private WorldPosition SupplySpawnDestination(AlienMissionSnapshot mission, RuntimeMissionWave wave,
+        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region, RuntimeUfoRule ufoRule)
+    {
+        if (trajectory.Altitude(1) != 0)
+            return WorldGeometry.RandomPoint(region, trajectory.Zone(1), -1, campaign.Random);
+        if (wave.Objective) return MissionSourceBase(mission)!.Position;
+        return WorldGeometry.LandPoint(region, campaign.Content.RuntimeRules.Campaign.Globe,
+            trajectory.Zone(1), ufoRule.FakeWaterLandingChance, campaign.Random);
     }
 
     private static WorldPosition NormalizeWaypoint(WorldPosition position) =>
@@ -208,12 +848,45 @@ internal sealed partial class CampaignWorld
         var counter = (ulong)mission.NextUfoCounter + 1;
         if (counter > int.MaxValue && counter < wave.UfoCount) return false;
         var nextWave = counter >= wave.UfoCount ? mission.NextWave + 1 : mission.NextWave;
-        if (nextWave == rule.Waves.Count) return true;
+        if (nextWave == rule.Waves.Count)
+        {
+            if (rule.Objective != RuntimeMissionObjective.Infiltration || !rule.EndlessInfiltration) return true;
+            nextWave = 0;
+        }
         var timer = rule.Waves[nextWave].SpawnTimer;
-        // AlienMission::think recurses when this next timer is zero. A recursive wave
-        // needs a preflight of the entire chain before any state or RNG changes.
-        if (timer == 0 || timer > int.MaxValue) return false;
+        // DueWaveSteps validates the entire immediate chain before any mutation/RNG.
+        if (timer > int.MaxValue) return false;
         var steps = (long)(timer / 30);
         return (steps / 2 + steps) * 30 <= int.MaxValue;
+    }
+
+    private const int MaximumImmediateWaveSteps = 4096;
+    private const string WaveWorkReason = "Immediate mission waves exceed the supported work limit.";
+
+    /// <summary>Forecasts only counters, never object creation, scripts or random choices.</summary>
+    private IEnumerable<AlienMissionSnapshot> DueWaveSteps(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
+    {
+        for (var work = 0; ; work++)
+        {
+            if (work >= MaximumImmediateWaveSteps) throw new InvalidDataException(WaveWorkReason);
+            yield return mission;
+            var wave = rule.Waves[mission.NextWave];
+            if (InstantRetaliationWithoutTarget(mission, rule)) yield break;
+            var counter = (ulong)mission.NextUfoCounter + 1;
+            var nextWave = mission.NextWave;
+            if (counter >= wave.UfoCount) { counter = 0; nextWave++; }
+            if (nextWave == rule.Waves.Count && rule.Objective == RuntimeMissionObjective.Infiltration && rule.EndlessInfiltration)
+                nextWave = 0;
+            if (nextWave == rule.Waves.Count || rule.Waves[nextWave].SpawnTimer != 0) yield break;
+            var spawned = SpawnWave(mission, rule);
+            mission = mission with
+            {
+                NextWave = nextWave,
+                NextUfoCounter = checked((int)counter),
+                SpawnCountdown = 0,
+                LiveUfos = spawned.Ufo is not null && !SuppressedSupplyWave(mission, rule, spawned)
+                    ? checked(mission.LiveUfos + 1) : mission.LiveUfos
+            };
+        }
     }
 }

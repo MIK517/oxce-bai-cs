@@ -226,12 +226,35 @@ public sealed class ScriptCompiler
             return;
         }
         _registers.Add(new ScriptRegisterDefinition(name, type, offset, IsOutput: false));
-        Emit(
-            statement.Arguments.Count == typeTokenCount + 1 ? CoreScriptOperation.Clear : CoreScriptOperation.Set,
-            statement.Span,
-            statement.Arguments.Count == typeTokenCount + 1
-                ? [ScriptOperand.Register(offset)]
-                : [ScriptOperand.Register(offset), ReadValue(statement.Arguments[typeTokenCount + 1])]);
+        if (statement.Arguments.Count == typeTokenCount + 1 && type.Id == ScriptPrimitiveTypes.Text && !type.IsReference)
+        {
+            Emit(CoreScriptOperation.Set, statement.Span, [ScriptOperand.Register(offset), ScriptOperand.TextValue("")]);
+            return;
+        }
+        if (statement.Arguments.Count == typeTokenCount + 1)
+        {
+            Emit(CoreScriptOperation.Clear, statement.Span, [ScriptOperand.Register(offset)]);
+            return;
+        }
+
+        var initializerToken = statement.Arguments[typeTokenCount + 1];
+        var initializer = ReadTypedValue(initializerToken);
+        if (HasErrors)
+        {
+            return;
+        }
+        // Native parseVariableImpl resolves BindSet, whose null alternative also covers ScriptTag.
+        var compatible = initializer.Type.Id == ScriptPrimitiveTypes.Null
+            ? type.IsReference || definition!.Name.EndsWith(".Tag", StringComparison.Ordinal)
+            : type.Id == initializer.Type.Id && type.IsReference == initializer.Type.IsReference &&
+                (!type.IsEditableReference || initializer.Type.IsEditableReference);
+        if (!compatible)
+        {
+            Error(ScriptDiagnosticCodes.InvalidDeclaration,
+                $"Initializer for variable '{name}' is incompatible with its declared type.", initializerToken.Span);
+            return;
+        }
+        Emit(CoreScriptOperation.Set, statement.Span, [ScriptOperand.Register(offset), initializer.Operand]);
     }
 
     private bool TryDeclarationType(
@@ -246,6 +269,13 @@ public sealed class ScriptCompiler
             definition = ScalarType;
         }
         else if (!_definition.ApiCatalog.TryGetType(name, out definition))
+        {
+            type = default;
+            return false;
+        }
+        // Native assignment overloads accept primitive, Position and tag values, not pointers to them.
+        if (typeTokenCount == 2 && (definition!.Id.Value < ScriptPrimitiveTypes.FirstCustomTypeValue ||
+            definition.Name == "Position" || definition.Name.EndsWith(".Tag", StringComparison.Ordinal)))
         {
             type = default;
             return false;
@@ -615,6 +645,13 @@ public sealed class ScriptCompiler
             return;
         }
         var arguments = typedArguments.Select(static argument => argument.Operand).ToArray();
+        if (operation == CoreScriptOperation.Clear && typedArguments.Length == 1 &&
+            typedArguments[0].Type.Id == ScriptPrimitiveTypes.Text && !typedArguments[0].Type.IsReference &&
+            typedArguments[0].Type.IsWritable && arguments[0].Kind == ScriptOperandKind.Register)
+        {
+            Emit(CoreScriptOperation.Set, statement.Span, [arguments[0], ScriptOperand.TextValue("")]);
+            return;
+        }
         var coreCompatible = arguments.Length == expected &&
             (expected == 0 || arguments[0].Kind == ScriptOperandKind.Register) &&
             (operation != CoreScriptOperation.Swap || arguments[1].Kind == ScriptOperandKind.Register) &&
@@ -643,18 +680,22 @@ public sealed class ScriptCompiler
         ScriptStatementSyntax statement,
         IReadOnlyList<TypedOperand> arguments)
     {
-        if (statement.Operation.Lexeme != "set" || arguments.Count != 2 ||
-            arguments[0].Operand.Kind != ScriptOperandKind.Register ||
-            !arguments[0].Type.IsWritable || arguments[0].Type.Id == ScriptPrimitiveTypes.Scalar ||
-            arguments[0].Type.Id != arguments[1].Type.Id ||
-            arguments[0].Type.IsReference != arguments[1].Type.IsReference ||
-            arguments[0].Type.IsEditableReference && !arguments[1].Type.IsEditableReference)
+        if (statement.Operation.Lexeme != "set" || arguments.Count != 2) return false;
+        var target = arguments[0].Type;
+        var source = arguments[1].Type;
+        var nullSource = source.Id == ScriptPrimitiveTypes.Null &&
+            (target.IsReference || _definition.ApiCatalog.TryGetType(target.Id, out var definition) &&
+                definition!.Name.EndsWith(".Tag", StringComparison.Ordinal));
+        if (arguments[0].Operand.Kind != ScriptOperandKind.Register || !target.IsWritable ||
+            target.Id == ScriptPrimitiveTypes.Scalar || !nullSource &&
+            (target.Id != source.Id || target.IsReference != source.IsReference ||
+                target.IsEditableReference && !source.IsEditableReference))
         {
             return false;
         }
-        var sourceModifiers = arguments[1].Type.Modifiers &
+        var sourceModifiers = (nullSource ? target.Modifiers : source.Modifiers) &
             ~(ScriptTypeModifier.Register | ScriptTypeModifier.Writable);
-        var sourceType = new ScriptTypeRef(arguments[1].Type.Id, sourceModifiers);
+        var sourceType = new ScriptTypeRef(target.Id, sourceModifiers);
         var declaration = new ScriptBindingDeclaration(
             new ScriptBindingId(3_000_000 + arguments[0].Type.Id.Value * 2 +
                 (arguments[0].Type.IsEditableReference ? 1 : 0)),

@@ -4,9 +4,8 @@ namespace Oxce.Gameplay.Campaigns.World;
 
 /// <summary>
 /// The strategic world capability: alien missions, UFOs, mission sites, alien bases, player
-/// waypoints, scheduled events and the alien strategy table. This commit owns the graph, its
-/// identities and its persistence. Craft-only waypoint flight has timed handlers; alien mission,
-/// UFO, site, base and event state still stops time until its simulation handlers exist.
+/// waypoints, scheduled events and the alien strategy table. Timed handlers own supported
+/// transitions; preflight prevents unavailable world and later-phase effects from mutating a tick.
 /// Reference: <c>Savegame/SavedGame.cpp</c> load/save of the world sections, <c>AlienMission.cpp</c>,
 /// <c>Ufo.cpp</c>, <c>MissionSite.cpp</c>, <c>AlienBase.cpp</c>, <c>Waypoint.cpp</c>,
 /// <c>GeoscapeEvent.cpp</c> and <c>AlienStrategy.cpp</c> at 4df3a5e.
@@ -18,6 +17,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     private readonly List<WaypointSnapshot> _waypoints = [];
     private readonly List<MissionSiteSnapshot> _sites = [];
     private readonly List<AlienBaseSnapshot> _alienBases = [];
+    private ulong _alienBaseBirthSequence;
     private readonly List<GeoscapeEventSnapshot> _events = [];
     private AlienStrategyState _strategy = new();
 
@@ -25,15 +25,28 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     {
         ArgumentNullException.ThrowIfNull(registry);
         registry.Query<ICampaignWorldQuery>(this);
-        registry.Capture(snapshot => snapshot with { World = Capture() });
+        registry.Operation<ICampaignWorldActivityPreflight>(this);
+        registry.Operation<ICampaignMissionResearchInterruption>(this);
+        registry.Capture(CaptureWorldState);
         registry.Restore(Restore);
         registry.Validate(Validate);
         registry.Initialize(Initialize);
-        registry.Preflight(CampaignPreflightOrder.WorldSimulation, "world simulation", (_, highest) => LiveWorldReason(highest));
+        registry.Preflight(CampaignPreflightOrder.WorldSimulation, "world simulation", (_, highest, speed) => LiveWorldReason(highest, speed));
         RegisterUfoOperations(registry);
+        RegisterHunting(registry);
         RegisterMissionOperations(registry);
         RegisterUfoDetection(registry);
+        RegisterSiteOperations(registry);
+        RegisterAlienBaseOperations(registry);
+        RegisterAlienBaseMonthly(registry);
         RegisterCraftOperations(registry);
+        RegisterCraftRemoval(registry);
+        RegisterEventScheduling(registry);
+        RegisterEventScripts(registry);
+        RegisterMissionScripts(registry);
+        RegisterAdhocScripts(registry);
+        RegisterArcScripts(registry);
+        RegisterWorldScheduling(registry);
     }
 
     internal AlienStrategyState Strategy => _strategy;
@@ -53,7 +66,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     public CampaignWorldOverview QueryWorld() => campaign.Read(() =>
     {
         var targets = new List<CampaignWorldTarget>();
-        foreach (var ufo in _ufos.Where(static ufo => ufo.Detected && ufo.Status != UfoStatus.Destroyed))
+        foreach (var ufo in _ufos.Where(static ufo => ufo.Detected && ufo.Status is not (UfoStatus.Destroyed or UfoStatus.IgnoreMe)))
             targets.Add(new CampaignWorldTarget(WorldTargetKind.Ufo, ufo.Status switch
             {
                 UfoStatus.Landed => ufo.LandId,
@@ -64,7 +77,11 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
                 Status = ufo.Status.ToString(),
                 Altitude = ufo.Altitude,
                 Detected = ufo.Detected,
+                DetectionAlertIgnored = _ignoredUfoContacts.Contains(ufo.Id),
                 SecondsRemaining = ufo.SecondsRemaining,
+                Reference = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, ufo.Id, ufo.Longitude, ufo.Latitude)
+                { UniqueId = ufo.UniqueId },
+                UnavailableActionReason = ufo.Status == UfoStatus.Flying ? InterceptionReason : LandingReason,
             });
         foreach (var site in _sites.Where(static site => site.Detected))
             targets.Add(new CampaignWorldTarget(WorldTargetKind.MissionSite, site.Id, site.DeploymentId,
@@ -73,20 +90,54 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
                 Detected = site.Detected,
                 SecondsRemaining = site.SecondsRemaining,
                 Status = site.City,
+                Reference = new(WorldTargetKind.MissionSite, MarkerName(site.DeploymentId), site.Id, site.Longitude, site.Latitude),
+                UnavailableActionReason = LandingReason,
             });
         foreach (var alienBase in _alienBases.Where(static alienBase => alienBase.Discovered))
             targets.Add(new CampaignWorldTarget(WorldTargetKind.AlienBase, alienBase.Id, alienBase.DeploymentId,
                 alienBase.Name.Length != 0 ? alienBase.Name : MarkerName(alienBase.DeploymentId),
                 alienBase.Longitude, alienBase.Latitude)
-            { Detected = alienBase.Discovered });
+            {
+                Detected = alienBase.Discovered,
+                Reference = new(WorldTargetKind.AlienBase, MarkerName(alienBase.DeploymentId), alienBase.Id,
+                    alienBase.Longitude, alienBase.Latitude),
+                UnavailableActionReason = LandingReason
+            });
         foreach (var waypoint in _waypoints)
             targets.Add(new CampaignWorldTarget(WorldTargetKind.Waypoint, waypoint.Id,
                 WorldTargetReference.WaypointType,
                 waypoint.Name.Length != 0 ? waypoint.Name : WorldTargetReference.WaypointType,
                 waypoint.Longitude, waypoint.Latitude)
             { Detected = true });
-        return new CampaignWorldOverview(CampaignSnapshot.ReadOnly(targets), _missions.Count, _events.Count);
+        return new CampaignWorldOverview(CampaignSnapshot.ReadOnly(targets), _missions.Count, _events.Count)
+        {
+            Bases = CampaignSnapshot.ReadOnly(campaign.BaseStates.Where(static owner => owner.IsPlaced)
+                .Select(owner => new CampaignWorldBase(owner.Id, owner.Name, owner.Longitude, owner.Latitude))),
+            Crafts = CampaignSnapshot.ReadOnly(campaign.BaseStates.SelectMany(owner => owner.Crafts.Select(craft =>
+            {
+                var state = craft.Logistics;
+                var airborneReason = state is not { Status: "STR_OUT" } ? "The craft is not airborne." :
+                    IsReturningHome(state) ? ReturningReason : null;
+                return new CampaignWorldCraft(owner.Id, campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule),
+                    craft.Id, state?.Name ?? string.Empty, state?.Status ?? string.Empty,
+                    state?.Longitude ?? owner.Longitude, state?.Latitude ?? owner.Latitude,
+                    state?.Fuel ?? 0, Resolve(state?.Destination), DispatchReason(owner, craft), airborneReason);
+            }))),
+        };
     });
+
+    private CampaignSnapshot CaptureWorldState(CampaignSnapshot snapshot) => snapshot with
+    {
+        World = Capture(),
+        // Target::saveId writes the target's current coordinates, including craft moved later
+        // in the same pass. Resolve here without mutating live state or depending on list order.
+        Bases = CampaignSnapshot.ReadOnly(snapshot.Bases.Select(owner => owner with
+        {
+            Crafts = CampaignSnapshot.ReadOnly(owner.Crafts.Select(craft => craft.Logistics is { Destination: { } destination } state
+                && destination.Kind is WorldTargetKind.Ufo or WorldTargetKind.Craft
+                ? craft with { Logistics = state with { Destination = Resolve(destination) ?? destination } } : craft)),
+        })),
+    };
 
     /// <summary>AlienStrategy::init for a newly created campaign.</summary>
     private void Initialize() => _strategy.Initialize(StrategyRegions());
@@ -98,11 +149,15 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     private WorldSnapshot Capture() => new()
     {
         Missions = CampaignSnapshot.ReadOnly(_missions),
-        Ufos = CampaignSnapshot.ReadOnly(_ufos),
+        Ufos = CampaignSnapshot.ReadOnly(_ufos.Select(ufo => ufo.Destination is { } destination &&
+            (ufo.Hunting || ufo.Escorting)
+            ? ufo with { Destination = Resolve(destination) ?? destination } : ufo)),
         Waypoints = CampaignSnapshot.ReadOnly(_waypoints),
         MissionSites = CampaignSnapshot.ReadOnly(_sites),
         AlienBases = CampaignSnapshot.ReadOnly(_alienBases),
+        AlienBaseBirthSequence = _alienBaseBirthSequence,
         Events = CampaignSnapshot.ReadOnly(_events),
+        GeneratedEvents = CampaignSnapshot.ReadOnlyIds(_generatedEvents),
         Strategy = CaptureStrategy(),
     };
 
@@ -127,7 +182,10 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         _waypoints.Clear();
         _sites.Clear();
         _alienBases.Clear();
+        _alienBaseBirthSequence = snapshot.World.AlienBaseBirthSequence;
         _events.Clear();
+        _generatedEvents.Clear();
+        foreach (var pair in snapshot.World.GeneratedEvents) _generatedEvents.Add(pair.Key, pair.Value);
 
         // SavedGame::load drops entities whose rules are gone and keeps the rest.
         foreach (var alienBase in snapshot.World.AlienBases)
@@ -154,6 +212,9 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
                         ? site.CustomDeploymentId : string.Empty,
                     UfoUniqueId = _ufos.Any(ufo => ufo.UniqueId == site.UfoUniqueId) ? site.UfoUniqueId : 0,
                 });
+        foreach (var owner in campaign.BaseStates)
+            if (owner.RetaliationMissionId is { } id && !_missions.Any(mission => mission.Id == id))
+                owner.RetaliationMissionId = null;
         _waypoints.AddRange(snapshot.World.Waypoints);
         NormalizeDestinations();
         _strategy = AlienStrategyState.Restore(
@@ -234,12 +295,21 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
 
     private void Validate()
     {
+        foreach (var alienBase in _alienBases)
+            if (alienBase.PreservationKey.StartsWith("alien-base:generated:", StringComparison.Ordinal) &&
+                (!ulong.TryParse(alienBase.PreservationKey.AsSpan("alien-base:generated:".Length),
+                    System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var birth) ||
+                 birth == 0 || birth > _alienBaseBirthSequence))
+                throw new InvalidDataException("Alien base birth identity exceeds its saved sequence.");
+
         var rules = campaign.Content.RuntimeRules;
         EnsureUnique(_missions.Select(static mission => mission.Id), "alien mission IDs");
         EnsureUnique(_ufos.Select(static ufo => ufo.UniqueId), "UFO unique IDs");
         EnsureUnique(_waypoints.Select(static waypoint => waypoint.Id), "waypoint IDs");
         EnsureUnique(_sites.Select(static site => (site.DeploymentId, site.Id)), "mission site identities");
         EnsureUnique(_alienBases.Select(static item => (item.DeploymentId, item.Id)), "alien base identities");
+        EnsureUnique(_alienBases.Where(static item => item.PreservationKey.Length != 0)
+            .Select(static item => item.PreservationKey), "alien base preservation keys");
 
         foreach (var mission in _missions)
         {
@@ -283,11 +353,14 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
             if (ufo.Destination is null) throw new InvalidDataException("A UFO must have a destination.");
         }
 
+        var linkedSiteUfos = new HashSet<int>();
         foreach (var site in _sites)
         {
             if (site.Id <= 0) throw new InvalidDataException("Mission site IDs must be positive.");
             ValidatePosition(site.Position, "mission site");
             if (site.SecondsRemaining < 0) throw new InvalidDataException("Mission site timers cannot be negative.");
+            if (site.UfoUniqueId != 0 && !linkedSiteUfos.Add(site.UfoUniqueId))
+                throw new InvalidDataException("Multiple mission sites reference the same dormant UFO.");
         }
 
         foreach (var alienBase in _alienBases)
@@ -310,6 +383,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         foreach (var scheduled in _events)
             if (scheduled.SpawnCountdown < 0)
                 throw new InvalidDataException("Scheduled event countdowns cannot be negative.");
+        ValidateEventHistory();
 
         foreach (var state in campaign.BaseStates)
             foreach (var craft in state.Crafts)
@@ -369,26 +443,48 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     {
         if (reference is null) return;
         if (!Enum.IsDefined(reference.Kind)) throw new InvalidDataException($"A {what} has an unsupported kind.");
-        if (reference.Id <= 0 && reference.Kind is not (WorldTargetKind.Base or WorldTargetKind.Waypoint))
+        if (reference.Id <= 0 && reference.Kind is not (WorldTargetKind.Base or WorldTargetKind.Waypoint) &&
+            !(reference.Kind == WorldTargetKind.Ufo && reference.Id == 0 && reference.UniqueId > 0))
             throw new InvalidDataException($"A {what} must reference a positive identity.");
         ValidatePosition(reference.Position, what);
     }
 
     /// <summary>The reason live world state blocks time until its handlers exist.</summary>
-    private string? LiveWorldReason(CampaignTimeTrigger highest)
+    private string? LiveWorldReason(CampaignTimeTrigger highest, CampaignTimeSpeed speed)
     {
-        var ufoReason = UfoMovementReason();
+        _pass.BeginWorld(highest);
+        if (FlightFuelValuesReason(highest) is { } fuelValuesReason) return fuelValuesReason;
+        var interruptionReason = MissionInterruptionReason(highest, out var guaranteedResearch);
+        if (interruptionReason is not null) return interruptionReason;
+        var destructionReason = AlienBaseDestructionReason(highest, ref guaranteedResearch);
+        if (destructionReason is not null) return destructionReason;
+        _pass.DailyResearchForecast = guaranteedResearch;
+        if (PrepareDailyGeneratedWaveForecasts(highest, guaranteedResearch) is { } generationReason) return generationReason;
+        if (PrepareMissionCounterForecasts(highest) is { } counterReason) return counterReason;
+        if (SiteDiscoveryReason(highest) is { } discoveryReason) return discoveryReason;
+        if (SiteFollowerWorkReason(highest) is { } followerWorkReason) return followerWorkReason;
+        if (SiteUfoRepairReason(highest) is { } repairReason) return repairReason;
+        if (PrepareSiteResearch(highest) is { } siteResearchReason) return siteResearchReason;
+        if (HuntingReason(highest, speed) is { } huntingReason) return huntingReason;
+        if (SiteResearchUfoWorkReason(highest) is { } siteFlightReason) return siteFlightReason;
+        if (PrepareHuntingGeneratedWaveForecasts(highest, guaranteedResearch) is { } huntBirthReason) return huntBirthReason;
+        var ufoReason = UfoMovementReason(highest);
         if (ufoReason is not null) return ufoReason;
-        var missionReason = MissionSchedulingReason(highest);
+        var missionReason = MissionSchedulingReason(highest, guaranteedResearch);
         if (missionReason is not null) return missionReason;
+        if (ArrivalContactLossReason(highest) is { } arrivalLossReason) return arrivalLossReason;
+        var alienBaseReason = AlienBaseActivityReason(highest, guaranteedResearch);
+        if (alienBaseReason is not null) return alienBaseReason;
         var baseDetectionReason = UfoBaseDetectionReason(highest);
         if (baseDetectionReason is not null) return baseDetectionReason;
-        var detectionReason = UfoHalfHourReason(highest);
+        var siteReason = SiteTimingReason(highest);
+        if (siteReason is not null) return siteReason;
+        if (UfoSiteConversionsReason(highest) is { } conversionReason) return conversionReason;
+        if (ObjectiveBasePatrolReason(highest) is { } patrolReason) return patrolReason;
+        var detectionReason = UfoHalfHourReason(highest, guaranteedResearch);
         if (detectionReason is not null) return detectionReason;
-        if (_sites.Count != 0) return "Mission site expiry requires world simulation.";
-        if (_alienBases.Count != 0) return "Alien base activity requires world simulation.";
-        if (_events.Count != 0) return "Strategic event scheduling requires world simulation.";
-        return null;
+        if (FlightFuelRefundReason(highest) is { } fuelRefundReason) return fuelRefundReason;
+        return EventSchedulingReason(highest);
     }
 
     private string MarkerName(string deploymentId) =>

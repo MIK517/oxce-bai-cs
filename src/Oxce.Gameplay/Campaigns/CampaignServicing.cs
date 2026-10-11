@@ -2,10 +2,24 @@ using Oxce.Mods.Rulesets.Runtime;
 
 namespace Oxce.Gameplay.Campaigns;
 
-public sealed partial class CampaignState
+internal interface ICampaignCraftFuelStock
 {
+    void Refund(int baseId, RuleHandle<ItemRuleFamily> item, int quantity);
+}
+
+public sealed partial class CampaignState : ICampaignCraftFuelStock
+{
+    internal ICampaignCraftFuelStock CraftFuelStock => _handlers.Operation<ICampaignCraftFuelStock>();
+
+    void ICampaignCraftFuelStock.Refund(int baseId, RuleHandle<ItemRuleFamily> item, int quantity)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(quantity);
+        ChangeServiceStock(_bases.Single(owner => owner.Id == baseId), item, quantity);
+    }
+
     private void RegisterCraftServicing(CampaignCapabilityRegistry registry)
     {
+        registry.Operation<ICampaignCraftFuelStock>(this);
         registry.Preflight(CampaignPreflightOrder.Servicing, "craft servicing", (_, highest) =>
             highest >= CampaignTimeTrigger.ThirtyMinutes ? PreflightServicing() : null);
         registry.Timed(CampaignTimeTrigger.OneHour, CampaignTimeOrder.HourCraftServicing, "craft servicing", ServiceCraftsHourly);
@@ -75,27 +89,14 @@ public sealed partial class CampaignState
             {
                 var facility = owner.Facilities[index];
                 var rule = _content.RuntimeRules.Facilities[facility.Rule].Value;
-                if (rule.AmmoMaximum <= 0 || facility.BuildTime > 0) continue;
-                if (facility.Ammo >= rule.AmmoMaximum)
-                {
-                    owner.Facilities[index] = facility with { AmmoMissingReported = false };
-                    continue;
-                }
-                var used = Math.Min(checked(rule.AmmoMaximum - facility.Ammo), rule.RearmRate);
-                if (rule.AmmoItem is { } item)
-                {
-                    var available = owner.Items.GetValueOrDefault(item);
-                    if (available < used)
-                    {
-                        if (!facility.AmmoMissingReported)
-                            effects.Notify(new FacilityServiceMessage(owner.Id, facility.X, facility.Y,
-                                "STR_NOT_ENOUGH_ITEM_TO_REARM_FACILITY_AT_BASE"));
-                        facility = facility with { AmmoMissingReported = true };
-                        used = available;
-                    }
-                    ChangeServiceStock(owner, item, -used);
-                }
-                owner.Facilities[index] = facility with { Ammo = checked(facility.Ammo + used) };
+                var result = FacilityServicing.Rearm(facility.Ammo, rule.AmmoMaximum, rule.RearmRate,
+                    facility.BuildTime, facility.AmmoMissingReported, rule.AmmoItem is not null,
+                    rule.AmmoItem is { } stockItem ? owner.Items.GetValueOrDefault(stockItem) : 0);
+                if (rule.AmmoItem is { } item && result.Used != 0) ChangeServiceStock(owner, item, -result.Used);
+                if (result.Notify) effects.Notify(new FacilityServiceMessage(owner.Id, facility.X, facility.Y,
+                    "STR_NOT_ENOUGH_ITEM_TO_REARM_FACILITY_AT_BASE"));
+                if (facility.Ammo == result.Ammo && facility.AmmoMissingReported == result.MissingReported) continue;
+                owner.Facilities[index] = facility with { Ammo = result.Ammo, AmmoMissingReported = result.MissingReported };
             }
         }
     }

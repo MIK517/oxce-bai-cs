@@ -6,6 +6,51 @@ namespace Oxce.Gameplay.Campaigns;
 /// <summary>Hourly maintenance from Craft.cpp and CraftWeapon.cpp at reference 4df3a5e.</summary>
 public static class CraftServicing
 {
+    /// <summary>Uses the execution transition without selecting an ammunition-saving outcome.</summary>
+    public static bool TryForecastRearm(CraftLogisticsState state, RuntimeRuleCatalog rules,
+        IReadOnlyDictionary<string, int> stores,
+        out (CraftLogisticsState State, string Clip, int ClipsUsed, bool MissingAmmo) result)
+    {
+        try { result = Rearm(state, rules, stores, ForecastRandom.Instance); return true; }
+        catch (UncertainRearmException) { result = (state, "", 0, false); return false; }
+    }
+
+    /// <summary>Bounds native clip savings while retaining an exact craft transition, without campaign RNG.</summary>
+    public static bool TryForecastRearmRange(CraftLogisticsState state, RuntimeRuleCatalog rules,
+        IReadOnlyDictionary<string, int> stores,
+        out (CraftLogisticsState State, string Clip, int MinimumUsed, int MaximumUsed, bool MissingAmmo) result)
+    {
+        if (TryForecastRearm(state, rules, stores, out var exact))
+        {
+            result = (exact.State, exact.Clip, exact.ClipsUsed, exact.ClipsUsed, exact.MissingAmmo);
+            return true;
+        }
+        var low = Rearm(state, rules, stores, RearmEndpointRandom.Minimum);
+        var high = Rearm(state, rules, stores, RearmEndpointRandom.Maximum);
+        result = (low.State, low.Clip, Math.Min(low.ClipsUsed, high.ClipsUsed), Math.Max(low.ClipsUsed, high.ClipsUsed), low.MissingAmmo);
+        return low.Clip == high.Clip && low.MissingAmmo == high.MissingAmmo &&
+            low.State.Weapons.SequenceEqual(high.State.Weapons) && (low.State with { Weapons = high.State.Weapons }) == high.State;
+    }
+
+    private sealed class RearmEndpointRandom(bool maximum) : IRandomSource
+    {
+        internal static readonly RearmEndpointRandom Minimum = new(false);
+        internal static readonly RearmEndpointRandom Maximum = new(true);
+        public int NextInclusive(int minimum, int maximumValue) => maximum ? maximumValue : minimum;
+        public int NextExclusive(int exclusiveMaximum) => throw new UncertainRearmException();
+        public double NextUnit() => throw new UncertainRearmException();
+    }
+
+    private sealed class UncertainRearmException : Exception;
+
+    private sealed class ForecastRandom : IRandomSource
+    {
+        internal static readonly ForecastRandom Instance = new();
+        public int NextExclusive(int exclusiveMaximum) => throw new UncertainRearmException();
+        public int NextInclusive(int minimum, int maximum) => throw new UncertainRearmException();
+        public double NextUnit() => throw new UncertainRearmException();
+    }
+
     /// <summary>GeoscapeState::time5Seconds and Craft::setShield, after craft movement.</summary>
     public static CraftLogisticsState RechargeGeoscapeShield(CraftLogisticsState state,
         int capacity, int recharge, IRandomSource random)

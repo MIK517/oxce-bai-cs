@@ -1,0 +1,83 @@
+ufos:
+  - type: HUNTER
+    speedMax: 2200
+    damageMax: 50
+    radarRange: 300
+    huntSpeed: 150
+  - type: ESCORT_HUNTER
+    speedMax: 2200
+    damageMax: 50
+    radarRange: 0
+    huntSpeed: 150
+
+  - type: SPAWN_HUNTER_DEFAULTS
+    speedMax: 2200
+    damageMax: 50
+    radarRange: 300
+    hunterKillerPercentage: 100
+    huntMode: 1
+    huntBehavior: 1
+ufoTrajectories:
+  - id: TRAJ_HUNTER_GROUND
+    groundTimer: 12
+    waypoints:
+      - [4, 0, 100]
+      - [3, 2, 80]
+      - [0, 3, 50]
+  - id: TRAJ_ESCORT_SPAWN
+    waypoints:
+      - [4, 3, 25]
+      - [3, 2, 80]
+      - [0, 3, 50]
+  - id: TRAJ_ESCORT_DISTINCT
+    waypoints:
+      - [5, 3, 25]
+      - [3, 2, 80]
+      - [0, 3, 50]
+  - id: TRAJ_ESCORT_GROUND
+    groundTimer: 12
+    waypoints:
+      - [4, 0, 25]
+      - [3, 2, 80]
+      - [0, 3, 50]
+  - id: TRAJ_ESCORT_GROUND_IMMEDIATE
+    groundTimer: 1
+    waypoints:
+      - [4, 0, 25]
+      - [3, 2, 80]
+      - [0, 3, 50]
+alienMissions:
+  - type: MISSION_HUNTER_GROUND
+    objective: 0
+    waves:
+      - {ufo: HUNTER, count: 1, trajectory: TRAJ_HUNTER_GROUND, timer: 9000, hunterKillerPercentage: 100, huntMode: 2, huntBehavior: 2}
+  - type: MISSION_HUNTER_AIR
+    objective: 0
+    waves:
+      - {ufo: SPAWN_HUNTER_DEFAULTS, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: MISSION_ESCORT_SPAWN
+    objective: 0
+    waves:
+      - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+      - {ufo: ESCORT_HUNTER, count: 1, trajectory: TRAJ_ESCORT_SPAWN, timer: 9000, hunterKillerPercentage: 100, escort: true}
+  - type: MISSION_ESCORT_CHAIN_EARLY_LEADER
+    objective: 0
+    waves:
+      - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+      - {ufo: ESCORT_HUNTER, count: 2, trajectory: TRAJ_ESCORT_DISTINCT, timer: 0, hunterKillerPercentage: 100, escort: true}
+  - type: MISSION_ESCORT_CHAIN_LATE_LEADER
+    objective: 0
+    waves:
+      - {ufo: ESCORT_HUNTER, count: 2, trajectory: TRAJ_ESCORT_DISTINCT, timer: 0, hunterKillerPercentage: 100, escort: true}
+      - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 0}
+  - type: MISSION_ESCORT_GROUND
+    objective: 0
+    waves:
+      - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+      - {ufo: ESCORT_HUNTER, count: 1, trajectory: TRAJ_ESCORT_GROUND, timer: 9000, hunterKillerPercentage: 100, escort: true}
+  - type: MISSION_ESCORT_GROUND_IMMEDIATE
+    objective: 0
+    points: 7
+    waves:
+      - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+      - {ufo: HUNTER, count: 1, trajectory: TRAJ_ESCORT_GROUND_IMMEDIATE, timer: 9000, hunterKillerPercentage: 100, escort: true}

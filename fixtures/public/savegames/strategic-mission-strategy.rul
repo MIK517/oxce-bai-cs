@@ -1,0 +1,70 @@
+alienMissions:
+  - type: MISSION_A
+    objective: 0
+    raceWeights: {0: {RACE_A: 1}}
+    waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: MISSION_B
+    objective: 0
+    raceWeights: {0: {RACE_A: 1}}
+    waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+missionScripts:
+  - type: STRATEGY_MISSION
+    firstMonth: 30
+    lastMonth: 30
+    regionWeights: {0: {REGION: 1}}
+    startDelay: 60
+    varName: STRATEGY_RUN
+    label: 1
+  - type: STRATEGY_KEEP
+    firstMonth: 31
+    lastMonth: 31
+    regionWeights: {0: {REGION: 1}}
+    startDelay: 60
+    useTable: false
+  - type: EARLIER_REMOVE
+    firstMonth: 32
+    lastMonth: 32
+    regionWeights: {0: {REGION: 1}}
+    missionWeights: {0: {MISSION_A: 1}}
+    startDelay: 60
+  - type: LATER_STRATEGY
+    firstMonth: 32
+    lastMonth: 32
+    regionWeights: {0: {REGION: 1}}
+    startDelay: 60
+  - type: BATCH_FIRST
+    firstMonth: 33
+    lastMonth: 33
+    regionWeights: {0: {REGION: 1}}
+    startDelay: 60
+  - type: BATCH_SECOND
+    firstMonth: 33
+    lastMonth: 33
+    regionWeights: {0: {REGION: 1}}
+    startDelay: 60
+  - type: FULL_STRATEGY
+    firstMonth: 34
+    lastMonth: 34
+    startDelay: 60
+    varName: REFRESH_RUN
+  - type: REFRESH_BATCH_FIRST
+    firstMonth: 35
+    lastMonth: 35
+    startDelay: 60
+    varName: REFRESH_RUN
+  - type: REFRESH_BATCH_SECOND
+    firstMonth: 35
+    lastMonth: 35
+    startDelay: 60
+    varName: REFRESH_RUN
+  - type: REFRESH_BATCH_THIRD
+    firstMonth: 35
+    lastMonth: 35
+    startDelay: 60
+    varName: REFRESH_RUN
+  - type: IMPLICIT_BASE
+    firstMonth: 36
+    lastMonth: 36
+    targetBaseOdds: 100
+    startDelay: 60
+    varName: BASE_FALLBACK_RUN

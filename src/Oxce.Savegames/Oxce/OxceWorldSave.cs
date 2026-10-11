@@ -28,7 +28,7 @@ public static partial class OxceSaveAdapter
             .Select(static map => ReadMissionSite(map, legacy: true))
             .Concat(Maps(body, "missionSites").Select(static map => ReadMissionSite(map, legacy: false))).ToArray();
         var alienBases = Maps(body, "alienBases").Select(ReadAlienBase).ToArray();
-        var markers = new WorldMarkerIndex(sites, alienBases, content);
+        var markers = new WorldMarkerIndex(sites, alienBases, content, body);
         return new WorldSnapshot
         {
             Missions = Array.AsReadOnly(Maps(body, "alienMissions").Select(map => ReadAlienMission(map, markers)).ToArray()),
@@ -38,10 +38,15 @@ public static partial class OxceSaveAdapter
             { Name = String(map, "name", string.Empty) }).ToArray()),
             MissionSites = Array.AsReadOnly(sites),
             AlienBases = Array.AsReadOnly(alienBases),
-            Events = Array.AsReadOnly(Maps(body, "geoscapeEvents").Select(static map => new GeoscapeEventSnapshot(
+            AlienBaseBirthSequence = ULong(body, "oxcePortAlienBaseBirthSequence", 0),
+            Events = Array.AsReadOnly(Maps(body, "geoscapeEvents").Select(static (map, index) => new GeoscapeEventSnapshot(
                 RequiredString(map, "name"), Integer(map, "spawnCountdown", 0))
-            { Over = Boolean(map, "over", false) }).ToArray()),
+            {
+                Over = Boolean(map, "over", false),
+                PreservationKey = String(map, "oxcePortEntityKey", $"event:legacy:{index}"),
+            }).ToArray()),
             Strategy = ReadAlienStrategy(body),
+            GeneratedEvents = ReadIntMap(body, "generatedEvents"),
         };
     }
 
@@ -70,6 +75,7 @@ public static partial class OxceSaveAdapter
         Double(map, "lon", 0),
         Double(map, "lat", 0))
     {
+        PreservationKey = String(map, "oxcePortEntityKey", AlienBasePreservationKey(map)),
         Name = String(map, "name", string.Empty),
         Discovered = Boolean(map, "discovered", false),
         InBattlescape = Boolean(map, "inBattlescape", false),
@@ -233,19 +239,23 @@ public static partial class OxceSaveAdapter
     {
         private readonly HashSet<(string Marker, int Id)> _sites = [];
         private readonly Dictionary<(string Marker, int Id), (double Longitude, double Latitude, string Type)> _bases = [];
-        private readonly HashSet<string> _craftTypes;
+        private readonly HashSet<(string Type, int Id)> _crafts = [];
 
         public WorldMarkerIndex(
             IEnumerable<MissionSiteSnapshot> sites,
             IEnumerable<AlienBaseSnapshot> alienBases,
-            RuntimeContent content)
+            RuntimeContent content, YamlMappingNode body)
         {
             foreach (var site in sites) _sites.Add((MarkerName(content, site.DeploymentId), site.Id));
             foreach (var alienBase in alienBases)
                 _bases[(MarkerName(content, alienBase.DeploymentId), alienBase.Id)] =
                     (alienBase.Longitude, alienBase.Latitude, alienBase.DeploymentId);
-            _craftTypes = content.RuntimeRules.Crafts.Rules.Select(static rule => rule.Id)
-                .ToHashSet(StringComparer.Ordinal);
+            foreach (var owner in Maps(body, "bases"))
+                foreach (var craft in Maps(owner, "crafts"))
+                {
+                    var type = String(craft, "type", string.Empty);
+                    if (content.RuntimeRules.Crafts.TryGet(type, out _)) _crafts.Add((type, Integer(craft, "id", 0)));
+                }
         }
 
         /// <summary>
@@ -257,7 +267,7 @@ public static partial class OxceSaveAdapter
         /// </summary>
         public WorldTargetKind Classify(ref string type, int id)
         {
-            if (_craftTypes.Contains(type)) return WorldTargetKind.Craft;
+            if (_crafts.Contains((type, id))) return WorldTargetKind.Craft;
             if (type == LegacyTerrorMission) type = LegacyTerrorMarker;
             if (_sites.Contains((type, id))) return WorldTargetKind.MissionSite;
             return _bases.ContainsKey((type, id)) ? WorldTargetKind.AlienBase : WorldTargetKind.MissionSite;
@@ -277,8 +287,41 @@ public static partial class OxceSaveAdapter
     private static YamlSequenceNode? BuildWorldSection(int count, IEnumerable<YamlNode> values) =>
         count == 0 ? null : Sequence(values);
 
+    private static YamlMappingNode?[] MatchAlienBases(IReadOnlyList<AlienBaseSnapshot> bases,
+        IEnumerable<YamlMappingNode> source)
+    {
+        var originals = source.ToArray();
+        var byKey = new Dictionary<string, int>(StringComparer.Ordinal);
+        var byIdentity = new Dictionary<(string Deployment, int Id), int>();
+        for (var index = 0; index < originals.Length; index++)
+        {
+            var map = originals[index];
+            var key = String(map, "oxcePortEntityKey", AlienBasePreservationKey(map));
+            if (key.Length != 0 && !byKey.TryAdd(key, index))
+                throw new InvalidDataException("Duplicate alien base preservation keys.");
+            byIdentity.TryAdd((String(map, "deployment", "STR_ALIEN_BASE_ASSAULT"), Integer(map, "id", 0)), index);
+        }
+        var used = new bool[originals.Length];
+        var matches = new YamlMappingNode?[bases.Count];
+        for (var index = 0; index < bases.Count; index++)
+        {
+            var current = bases[index];
+            var matched = current.PreservationKey.Length != 0
+                ? byKey.TryGetValue(current.PreservationKey, out var keyed) ? keyed : -1
+                : byIdentity.TryGetValue((current.DeploymentId, current.Id), out var legacy) ? legacy : -1;
+            if (matched < 0 || used[matched] || Integer(originals[matched], "id", 0) != current.Id) continue;
+            matches[index] = originals[matched];
+            used[matched] = true;
+        }
+        return matches;
+    }
+
+    private static string AlienBasePreservationKey(YamlMappingNode map) =>
+        $"alien-base:identity:{String(map, "deployment", "STR_ALIEN_BASE_ASSAULT")}:{Integer(map, "id", 0)}";
+
     /// <summary>
-    /// A scheduled event has no save identity. Prefer its complete saved state, then use the
+    /// Imported and newly scheduled events have a persistent sidecar key. Unkeyed synthetic
+    /// snapshots retain the legacy matching behavior: prefer complete saved state, then use the
     /// occurrence order within a rule when its countdown or completion flag has changed.
     /// Each source occurrence is consumed once, so repeated rule IDs keep distinct sidecars.
     /// </summary>
@@ -286,11 +329,15 @@ public static partial class OxceSaveAdapter
         IReadOnlyList<GeoscapeEventSnapshot> events, IEnumerable<YamlMappingNode> source)
     {
         var originals = source.ToArray();
+        var byKey = new Dictionary<string, int>(StringComparer.Ordinal);
         var exact = new Dictionary<(string RuleId, int Countdown, bool Over), Queue<int>>();
         var byRule = new Dictionary<string, Queue<int>>(StringComparer.Ordinal);
         for (var index = 0; index < originals.Length; index++)
         {
             var map = originals[index];
+            var preservationKey = String(map, "oxcePortEntityKey", $"event:legacy:{index}");
+            if (preservationKey.Length != 0 && !byKey.TryAdd(preservationKey, index))
+                throw new InvalidDataException("Duplicate scheduled event preservation keys.");
             var ruleId = String(map, "name", string.Empty);
             var key = (ruleId, Integer(map, "spawnCountdown", 0), Boolean(map, "over", false));
             if (!exact.TryGetValue(key, out var exactMatches)) exact[key] = exactMatches = new Queue<int>();
@@ -304,6 +351,16 @@ public static partial class OxceSaveAdapter
         for (var index = 0; index < events.Count; index++)
         {
             var scheduled = events[index];
+            if (scheduled.PreservationKey.Length != 0)
+            {
+                if (byKey.TryGetValue(scheduled.PreservationKey, out var original) && !used[original] &&
+                    String(originals[original], "name", string.Empty) == scheduled.RuleId)
+                {
+                    matches[index] = originals[original];
+                    used[original] = true;
+                }
+                continue; // A new keyed event must never inherit an old occurrence's sidecar.
+            }
             var key = (scheduled.RuleId, scheduled.SpawnCountdown, scheduled.Over);
             var match = exact.TryGetValue(key, out var exactMatches) ? TakeUnused(exactMatches, used) : -1;
             if (match < 0 && byRule.TryGetValue(scheduled.RuleId, out var ruleMatches))
@@ -403,6 +460,7 @@ public static partial class OxceSaveAdapter
 
     private static YamlMappingNode BuildAlienBase(AlienBaseSnapshot alienBase, YamlMappingNode? source) => Overlay(source,
     [
+        Pair("oxcePortEntityKey", alienBase.PreservationKey.Length == 0 ? null : Scalar(alienBase.PreservationKey)),
         Pair("lon", Real(alienBase.Longitude)), Pair("lat", Real(alienBase.Latitude)),
         Pair("id", Integer(alienBase.Id)),
         Pair("name", alienBase.Name.Length == 0 ? null : Scalar(alienBase.Name)),

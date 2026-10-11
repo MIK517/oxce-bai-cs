@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "id": "strategic-world-lifecycle",
-  "description": "Ordinary UFO lifecycle traces with pinned C++ transition methods and bounded score-mission fragments; controlled successful radar collaborator and asset-free region. GUI, pursuit, combat, scripts, retaliation and scheduling excluded. Every five-second state is recorded.",
+  "description": "Ordinary UFO lifecycle traces and associated mission-site UFO release rows with pinned C++ transition methods and bounded mission fragments; controlled successful radar collaborator and asset-free region. GUI, pursuit, combat, scripts, retaliation spawning/assault effects and scheduling excluded. Ordinary traces record every five-second state; site rows isolate timer retention and objective score filtering. Transition rows cover all objective/operation combinations, linked and absent operation bases, and three non-terminal waypoints with objective flags disabled; ordinary transition rows disable aggressive retaliation. Normal lift rows cover all objective and operation combinations, including Base/Infiltration score suppression. Ordinary spawn rows cover all three objective-flag combinations without mission-site targeting. Spawn path rows include generic and Supply altitude combinations, using verbatim Supply spawn fragments and a linked base. Point destination rows select both ordered city areas and count exact regional RNG. Aggressive arrival rows retain the discarded base-near RNG and the second ordinary rectangle selection. Origin rows include ordered points and rectangular Earth overrides; selected-site rows capture fixed-area land retries. Space rectangular origin rows retain raw reversed/wrapped bounds. Land-tested origin rows cover fake water and regional rejection; selected rectangular origins use fixed-area draws without geographic region containment.",
   "reference": {
     "kind": "cpp-reference",
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
     "buildOptions": {
-      "sources": "AlienMission.cpp think/spawnUfo ordinary fragments, ufoReachedWaypoint with unsupported bodies aborting, ufoLifting/isOver/getWaypoint/getLandPoint; Ufo.cpp think/setAltitude/isCrashed/isDestroyed/calculateSpeed; Target/MovingTarget/RuleRegion geometry. Driver controls time and radar success; see probe exclusions.",
+      "sources": "AlienMission.cpp think/spawnUfo ordinary fragments, ufoReachedWaypoint with unsupported bodies aborting, ufoLifting/isOver/getWaypoint/getLandPoint and addScore infiltration filter; GeoscapeState.cpp processMissionSite associated-UFO release block; Ufo.cpp think/setAltitude/isCrashed/isDestroyed/calculateSpeed; Target/MovingTarget/RuleRegion geometry. Driver controls time and radar success; see probe exclusions.",
       "probe": "fixtures/reference-probes/savegames/strategic_world_lifecycle_probe.cpp",
       "capture": "tools/capture-strategic-world-lifecycle-reference.ps1",
       "compiler": "MSVC x64 /std:c++20"
@@ -16,18 +16,68 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_world_lifecycle_probe.cpp",
-      "size": 9087,
-      "sha256": "90ef3042d4765128693b6803a44f5d439bcd02798a904ee0bb8fc1449f60b95e"
+      "size": 25190,
+      "sha256": "c785a154fd905ddc5e42616210e3192d39fa726f4492b334ae77db56f498dc93"
     },
     {
       "path": "tools/capture-strategic-world-lifecycle-reference.ps1",
-      "size": 12157,
-      "sha256": "71649672b7e720f16ba1bfd272e4513618625e3687470ffe482ab99c44bf464b"
+      "size": 13641,
+      "sha256": "7957a316e250fe04c1410da5b0a6a1e4d388a311bbe5fe624bb66dd755b43ac1"
     },
     {
       "path": "fixtures/reference-probes/savegames/strategic_world_probe.cpp",
-      "size": 16018,
-      "sha256": "7115b750f3c0d7f736f4addf56b8caf601108a93a315fa8e0a7225593533b3bd"
+      "size": 21066,
+      "sha256": "562d983141de74f2f127457c882d081e35874ff185c8ab5d619b99db78293c4b"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-objective-lifecycle.rul",
+      "size": 8088,
+      "sha256": "3a4e12be4e27fafe8c659919c4d884a485c0018970cc58dacbc6006b9d376366"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-flagged-spawn.rul",
+      "size": 9075,
+      "sha256": "6f6dc2e2f7d310a55144003c099752e70c19931ddf24cc5424bf5ca67b93b1bb"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-spawn-paths.rul",
+      "size": 1924,
+      "sha256": "738cbef161624459e90490d970cfac02f0fd6803b445b63049b25600ce01b0f8"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-point-destinations.rul",
+      "size": 471,
+      "sha256": "310b70571bc46ffed331cd174b869c555dfbc1373093ddd35eb8e3b262ba4ff7"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-point-origins.rul",
+      "size": 404,
+      "sha256": "ab94ba9332799ddeab149eb759bb8ea1bab2580d6992e4aee7860439e7c002eb"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-rectangle-destinations.rul",
+      "size": 395,
+      "sha256": "f1b9d5493d468f6065162a529e26ab4f9492466882b8df6137ce06f04317f084"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-selected-site-waypoints.rul",
+      "size": 468,
+      "sha256": "0da70e41692b226d65ecf661da6a70f1c90601cf3db5eecb992832942b4e3c80"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-earth-rectangle-origins.rul",
+      "size": 3033,
+      "sha256": "45b52fa923bb718deac60d25de0929df9cb5604cae080dd661581c2b157aacf9"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-aggressive-arrivals.rul",
+      "size": 385,
+      "sha256": "c7b6ecea3e8a0177c71e998453f9e7365de7c59ccedeb176812501e4458b7c56"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-rectangle-origins.rul",
+      "size": 3433,
+      "sha256": "7191884c8b77d5f9183f4f1e4910668fd22db31407e0f36ebc711172f6f04906"
     }
   ],
   "normalization": [

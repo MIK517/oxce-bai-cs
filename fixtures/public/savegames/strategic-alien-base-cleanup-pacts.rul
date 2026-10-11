@@ -1,0 +1,2 @@
+# Optional mod setting; the reference defaults to false.
+allowCountriesToCancelAlienPact: true

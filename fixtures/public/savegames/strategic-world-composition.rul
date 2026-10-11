@@ -1,0 +1,46 @@
+# Caller-only composition fixture. Individual mission/base effects have separate oracles.
+research:
+  - name: R1
+    cost: 1
+    points: 100
+    lookup: R2
+    disables: [OLD]
+  - name: R2
+    cost: 1
+    points: 100
+  - name: R3
+    cost: 1
+    points: 100
+  - name: OLD
+    cost: 1
+arcScripts:
+  - type: A1
+    sequentialArcs: [R1]
+  - type: A2
+    researchTriggers: {R1: false}
+    sequentialArcs: [R3]
+missionScripts:
+  - type: M1_SCRIPT
+    researchTriggers: {R2: true}
+    varName: RUN
+    startDelay: 60
+    missionWeights: {0: {MISSION_SCOUT: 1}}
+    regionWeights: {0: {REGION: 1}}
+    raceWeights: {0: {RACE_A: 1}}
+  - type: M2_SCRIPT
+    researchTriggers: {R3: true}
+    varName: RUN
+    maxRuns: 1
+    startDelay: 60
+    missionWeights: {0: {MISSION_LANDING: 1}}
+    regionWeights: {0: {REGION: 1}}
+    raceWeights: {0: {RACE_A: 1}}
+eventScripts:
+  - type: E1
+    researchTriggers: {R3: true}
+    missionVarName: RUN
+    counterMin: 2
+    oneTimeSequentialEvents: [E]
+  - type: E2
+    minScore: 50
+    oneTimeSequentialEvents: [E]

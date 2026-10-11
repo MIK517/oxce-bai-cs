@@ -44,6 +44,7 @@ $methods = [ordered]@{
     'UFO_CALCULATE_SPEED'                  = @('src\Savegame\Ufo.cpp', 'void Ufo::calculateSpeed()')
     'UFO_GET_VISIBILITY'                   = @('src\Savegame\Ufo.cpp', 'int Ufo::getVisibility() const')
     'UFO_GET_ALTITUDE_INT'                 = @('src\Savegame\Ufo.cpp', 'int Ufo::getAltitudeInt() const')
+    'UFO_THINK'                            = @('src\Savegame\Ufo.cpp', 'void Ufo::think()')
     'BASE_GET_DETECTION_CHANCE'            = @('src\Savegame\Base.cpp', 'size_t Base::getDetectionChance() const')
     'CRAFT_RECALC_SPEED_MAX_RADIAN'        = @('src\Savegame\Craft.cpp', 'void Craft::recalcSpeedMaxRadian()')
     'CRAFT_GET_FUEL_CONSUMPTION'           = @('src\Savegame\Craft.cpp', 'int Craft::getFuelConsumption(int speed, int escortSpeed) const')
@@ -62,6 +63,9 @@ foreach ($entry in $methods.GetEnumerator()) {
     $template = $template.Replace($marker, (Read-ReferenceMethod $entry.Value[0] $entry.Value[1]))
 }
 # Arithmetic the probe reproduces inline is pinned by its exact reference statement.
+Assert-ReferenceContains 'src\Geoscape\GeoscapeState.cpp' 'for (auto* ufo : *_game->getSavedGame()->getUfos())'
+Assert-ReferenceContains 'src\Geoscape\GeoscapeState.cpp' 'ufo->think();'
+Assert-ReferenceContains 'src\Geoscape\GeoscapeState.cpp' "if (ufo->getStatus() == Ufo::DESTROYED)`n`t`t`t`t`treturn;"
 Assert-ReferenceContains 'src\Mod\UfoTrajectory.h' 'int applySpeedPercentage(size_t wp, int baseSpeed) const { return baseSpeed * _waypoints[wp].speed / 100; }'
 Assert-ReferenceContains 'src\Savegame\AlienMission.cpp' '_spawnCountdown = (spawnTimer/2 + RNG::generate(0, spawnTimer)) * 30;'
 Assert-ReferenceContains 'src\Savegame\AlienMission.cpp' '_spawnCountdown += 30 * (RNG::generate(0, 400) + 48);'

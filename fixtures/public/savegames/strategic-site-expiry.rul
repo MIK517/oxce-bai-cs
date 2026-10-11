@@ -1,0 +1,29 @@
+alienDeployments:
+  - &safeSite
+    type: SITE_NO_EVENT
+    markerName: STR_TERROR_SITE
+    points: 4
+    despawnPenalty: 9
+  - type: SITE_ZERO_EVENT
+    refNode: *safeSite
+    despawnEvents: {INSTANT: 0}
+  - type: SITE_MISSING_EVENT
+    refNode: *safeSite
+    unlockedResearchOnDespawn: MISSING_RESEARCH
+    despawnEvents: {MISSING: 1}
+  - type: SITE_INTERRUPTED_EVENT
+    refNode: *safeSite
+    despawnEvents: {INSTANT: 1}
+  - type: SITE_MIXED_EVENT
+    refNode: *safeSite
+    despawnEvents: {MISSING: 1, INSTANT: 1}
+  - type: SITE_OVERFLOW_EVENT
+    refNode: *safeSite
+    despawnEvents: {MISSING: 2147483647, INSTANT: 1}
+events:
+  - name: INSTANT
+    timer: 120
+    interruptResearch: STOP
+research:
+  - name: STOP
+    cost: 1

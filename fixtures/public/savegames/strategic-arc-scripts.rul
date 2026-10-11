@@ -1,0 +1,116 @@
+# GeoscapeState::determineAlienMissions arc loop at 4df3a5e, isolated by month.
+research:
+  - name: ARC_A
+    cost: 1
+    points: 5
+    lookup: ARC_LOOKUP
+    unlocks: [ARC_ZERO]
+  - name: ARC_LOOKUP
+    cost: 1
+    points: 7
+  - name: ARC_ZERO
+    cost: 0
+    points: 17
+    requires: [ARC_A]
+  - name: ARC_B
+    cost: 1
+    points: 11
+  - name: ARC_C
+    cost: 1
+    points: 13
+  - name: UNRELATED_BIG
+    cost: 1
+    points: 2147483647
+  - name: SAFE_BIG
+    cost: 1
+    points: 1200000000
+  - name: WEIGHTED_BIG_A
+    cost: 1
+    points: 1100000000
+  - name: WEIGHTED_BIG_B
+    cost: 1
+    points: 1150000000
+  - name: DISABLE_A
+    cost: 1
+    disables: [ARC_A]
+arcScripts:
+  - type: FIRST
+    firstMonth: 0
+    lastMonth: 1
+    maxArcs: 3
+    sequentialArcs: [ARC_A, ARC_B]
+    randomArcs: {ARC_A: 1}
+  - type: LATER
+    firstMonth: 0
+    lastMonth: 0
+    researchTriggers: {ARC_A: false}
+    sequentialArcs: [ARC_C]
+  - type: REACHABLE_TAIL
+    firstMonth: 2
+    lastMonth: 2
+    sequentialArcs: [ARC_B, MISSING_ARC]
+  - type: MISSING_HEAD
+    firstMonth: 3
+    lastMonth: 3
+    sequentialArcs: [MISSING_ARC]
+  - type: ZERO_ODDS_BAD
+    firstMonth: 4
+    lastMonth: 4
+    executionOdds: 0
+    sequentialArcs: [MISSING_ARC]
+  - type: EARLIER_GRANT
+    firstMonth: 5
+    lastMonth: 5
+    sequentialArcs: [ARC_B]
+  - type: EXPOSED_TAIL
+    firstMonth: 5
+    lastMonth: 5
+    sequentialArcs: [ARC_B, MISSING_ARC]
+  - type: AUTO_GRANT
+    firstMonth: 6
+    lastMonth: 6
+    sequentialArcs: [ARC_A]
+  - type: AUTO_EXPOSED_TAIL
+    firstMonth: 6
+    lastMonth: 6
+    sequentialArcs: [ARC_ZERO, MISSING_ARC]
+  - type: SCORE_OVERFLOW
+    firstMonth: 7
+    lastMonth: 7
+    sequentialArcs: [UNRELATED_BIG]
+    randomArcs: {ARC_B: 1}
+  - type: SINGLE_SLOT
+    firstMonth: 8
+    lastMonth: 8
+    maxArcs: 1
+    sequentialArcs: [ARC_B]
+    randomArcs: {MISSING_ARC: 1}
+  - type: SAFE_SCORE
+    firstMonth: 9
+    lastMonth: 9
+    sequentialArcs: [SAFE_BIG]
+  - type: SINGLE_SLOT_EARLIER
+    firstMonth: 10
+    lastMonth: 10
+    maxArcs: 1
+    sequentialArcs: [ARC_A]
+    randomArcs: {ARC_B: 1}
+  - type: AFTER_SINGLE_SLOT
+    firstMonth: 10
+    lastMonth: 10
+    sequentialArcs: [ARC_B, MISSING_ARC]
+  - type: WEIGHTED_SINGLE_SLOT
+    firstMonth: 11
+    lastMonth: 11
+    randomArcs: {WEIGHTED_BIG_A: 1, WEIGHTED_BIG_B: 1}
+  - type: POSSIBLE_DISABLER
+    firstMonth: 12
+    lastMonth: 12
+    executionOdds: 1
+    sequentialArcs: [DISABLE_A]
+  - type: AFTER_POSSIBLE_DISABLER
+    firstMonth: 12
+    lastMonth: 12
+    maxArcs: 1
+    sequentialArcs: [ARC_A]
+    randomArcs: {MISSING_ARC: 1}

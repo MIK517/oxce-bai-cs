@@ -1,0 +1,1 @@
+{"rows":[{"event":"SECOND","scripts":["SECOND_FIRST","FOLLOW_SECOND"]},{"event":"OTHER","scripts":["OTHER_FIRST"]},{"event":"BOTH","scripts":["SECOND_FIRST","FOLLOW_SECOND","OTHER_FIRST"]},{"event":"BAD","scripts":["BAD_SITE"]},{"event":"THRESHOLD","scripts":["THRESHOLD"]},{"event":"EMPTY","scripts":[]}]}

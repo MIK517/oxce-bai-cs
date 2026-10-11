@@ -144,6 +144,9 @@ internal sealed class ArmorRuleLoader : TypedRuleFamilyLoader<ArmorBuilder, Armo
                 throw new YamlFormatException("corpseBattle must contain at least one item.", corpseBattle!.Span);
             builder.Strings["corpseGeo"] = builder.CorpseBattle[0];
         }
+        // Armor::load reads corpseGeo after either default, so an explicit value wins.
+        if (reader.TryGet("corpseGeo", out var corpseGeo))
+            builder.Strings["corpseGeo"] = YamlValueReader.ReadString(corpseGeo!);
     }
 
     private static void ApplyLayers(ArmorBuilder builder, RulePropertyReader reader)

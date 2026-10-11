@@ -78,7 +78,7 @@ public sealed record UfoRule(
         "STR_MEDIUM_UC" => 4,
         "STR_LARGE" => 5,
         "STR_VERY_LARGE" => 6,
-        _ => 2,
+        _ => 0,
     };
 }
 

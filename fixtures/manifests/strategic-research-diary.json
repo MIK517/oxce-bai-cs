@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-research-diary",
+  "description": "Native diary load/save source kinds, removed source links, unsigned date widths and removed-topic filtering.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "Verbatim ResearchDiary.h enum, source and entry structs; typed YAML collaborators and SavedGame load topic-filter evidence",
+      "capture": "tools/capture-strategic-research-diary-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_research_diary_probe.cpp",
+      "size": 2948,
+      "sha256": "d17207e8a22288cf59ab38a3c2d7e981fc45e96c85295732c1ef4a697fa6dde3"
+    },
+    {
+      "path": "tools/capture-strategic-research-diary-reference.ps1",
+      "size": 3099,
+      "sha256": "c7f9034fce34bef1b837766952356cdabe3b873e4833e591e32203298e457d3e"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-research-diary.expected.json"
+}

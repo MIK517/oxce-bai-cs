@@ -1,0 +1,47 @@
+alienDeployments:
+  - type: SITE_TIMER
+    markerName: STR_TERROR_SITE
+    duration: [1, 1]
+    points: 4
+    despawnPenalty: 9
+  - type: SITE_COUNTERS
+    markerName: STR_TERROR_SITE
+    duration: [1, 1]
+    points: 4
+    despawnPenalty: 9
+    counterDespawn: shared
+    counterFailure: shared
+    counterAll: all
+    decreaseCounterDespawn: shared
+    decreaseCounterFailure: missing
+    decreaseCounterAll: all
+ufos:
+  - type: UFO_NEGATIVE_LIFT_MAXIMUM
+    speedMax: -2200
+  - type: UFO_OVERFLOW_LIFT_MAXIMUM
+    speedMax: 2147483647
+    raceBonus:
+      RACE_B: {speedMax: 1}
+ufoTrajectories:
+  # A positive product must not conceal an invalid effective maximum.
+  - id: TRAJ_NORMAL_NEGATIVE_LIFT
+    waypoints: [[6, 0, -50], [6, 1, 100]]
+  # Dormant UFOs may carry these values until a site attempts to lift them.
+  # Both unsafe takeoff speeds must stop before site expiry mutates state.
+  - id: TRAJ_SITE_NEGATIVE_LIFT
+    waypoints: [[6, 0, -100], [6, 1, 100]]
+  - id: TRAJ_SITE_OVERFLOW_LIFT
+    waypoints: [[6, 0, 2147483647], [6, 1, 100]]
+alienMissions:
+  - type: MISSION_SITE_FORCE
+    objective: 3
+    despawnEvenIfTargeted: true
+    waves:
+      - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SITE, timer: 3000}
+research:
+  - name: UNUSED_COUNTER_RULE
+    cost: 1
+    increaseCounter: [shared]
+  - name: COUNTER_DECREMENT
+    cost: 1
+    decreaseCounter: [shared]

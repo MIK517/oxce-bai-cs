@@ -1,0 +1,336 @@
+using Oxce.Mods.Rulesets.Runtime;
+using Oxce.Scripting.Api;
+using Oxce.Scripting.Runtime;
+
+namespace Oxce.Gameplay.Campaigns.World;
+
+/// <summary>Read-only providers from Ufo::ScriptRegister, Craft::ScriptRegister and BindBase.</summary>
+internal sealed partial class CampaignWorld
+{
+    private readonly DetectionTimeReference _detectionTime = new();
+    private int _detectionShieldCapacity;
+    private int _detectionDamageMaximum;
+
+    internal bool DetectionBindingSupported(ScriptBindingDeclaration binding) =>
+        DetectionValueSet(binding) || WorldDetectionItemQueries.Supports(binding.Name) || WorldDetectionDamageQueries.Supports(binding.Name) || DetectionBindingNameSupported(binding.Name) || WorldDetectionRuleQueries.Supports(binding.Name) || WorldDetectionArmorLinks.Supports(binding.Name) || DetectionInventoryRole(binding.Name) is not null || DetectionUnitRuleStat(binding.Name).Key is not null || DetectionCraftStatKey(binding.Name) is not null || DetectionUfoStatIndex(binding.Name) >= 0 || DetectionTagSupported(binding);
+
+    private static bool DetectionValueSet(ScriptBindingDeclaration binding) =>
+        binding.Name == "set" && binding.Parameters.Count == 2 &&
+        binding.Parameters[0].Writable && binding.Parameters[0].Type.IsRegister &&
+        binding.Parameters[0].Type.IsReference == binding.Parameters[1].Type.IsReference &&
+        !binding.Parameters[1].Type.IsRegister &&
+        binding.Parameters[0].Type.Id == binding.Parameters[1].Type.Id;
+
+    private static bool DetectionBindingNameSupported(string name) => name is
+        "Ufo.getAltitude" or "Ufo.getStatus" or "Ufo.getVisibility" or "Ufo.getDamage" or
+        "Ufo.getDamageMax" or "Ufo.getDamagePercentage" or "Ufo.getDetected" or "Ufo.getHyperDetected" or "Ufo.getShield" or "Ufo.getShieldMax" or
+        "Ufo.getShieldPercentage" or "Ufo.isHunterKiller" or "Ufo.isHunting" or "Ufo.isEscorting" or
+        "Ufo.getHuntMode" or "Ufo.getHuntBehavior" or "Ufo.getRules" or "Ufo.getRuleUfo" or
+        "RuleInventory.getMoveToCost" or "RuleInventory.getId" or "RuleInventory.getType" or "RuleInventory.isRightHand" or "RuleInventory.isLeftHand" or "RuleMod.getRuleInventory" or "RuleUnit.getType" or "RuleUnit.getSpawnUnit" or "RuleUnit.getLiveAlienGeoscape" or "RuleUnit.getCivilianRecoveryItemType" or "RuleMod.getRuleUnit" or "RuleCraft.getType" or "RuleItem.getType" or "RuleArmor.getType" or "RuleSkill.getType" or "RuleSoldier.getType" or
+        "RuleArmor.getVisibilityAtDark" or "RuleArmor.getVisibilityAtDay" or "RuleArmor.getCamouflageAtDark" or "RuleArmor.getCamouflageAtDay" or "RuleArmor.getAntiCamouflageAtDark" or "RuleArmor.getAntiCamouflageAtDay" or "RuleArmor.getHeatVision" or "RuleArmor.getVisibilityThroughFire" or "RuleArmor.getPersonalLight" or "RuleArmor.getPersonalLightHostile" or "RuleArmor.getPersonalLightNeutral" or
+        "RuleItem.getDamageType" or "RuleItem.getMeleeDamageType" or
+        "RuleDamageType.getRandomType" or "RuleDamageType.getResistType" or "RuleDamageType.getArmorIgnore" or
+        "RuleDamageType.isDirect" or "RuleDamageType.isAreaOfEffect" or
+        "RuleItem.hasCategory" or
+        "RuleItem.getWaypoints" or
+        "RuleArmor.getSize" or "RuleArmor.getArmor" or
+        "RuleUfo.getRadius" or "RuleUfo.getWeaponRange" or "RuleUfo.getWeaponPower" or "RuleUfo.getWeaponReload" or
+        "Craft.getDamage" or "Craft.getDamageMax" or "Craft.getDamagePercentage" or
+        "Craft.getShield" or "Craft.getShieldMax" or "Craft.getShieldPercentage" or "Craft.getRuleCraft" or
+        "Craft.Stats.getRadarRange" or "Craft.Stats.getRadarChance" or
+        "RuleCraft.Stats.getRadarRange" or "RuleCraft.Stats.getRadarChance" or
+        "RuleCraft.getPilotsMax" or "RuleCraft.getSoldiersMax" or "RuleCraft.getVehiclesMax" or "RuleCraft.getWeaponsMax" or
+        "GeoscapeGame.difficultyLevel" or "GeoscapeGame.getDaysPassed" or "GeoscapeGame.getMonthsPassed" or
+        "GeoscapeGame.getCountries.init" or "GeoscapeGame.getCountries.list" or
+        "Country.getRuleCountry" or "RuleCountry.getFundingCap" or "Country.getPact" or "Country.getCurrentFunding" or "Country.getCurrentActivityXcom" or "Country.getCurrentActivityAlien" or
+        "GeoscapeGame.getTime" or "GeoscapeGame.isResearched" or "RuleMod.getRuleResearch" or
+        "RuleMod.getSmokeReduction" or "RuleMod.getMaxViewDistance" or "RuleMod.getMaxDarknessToSeeUnits" or
+        "RuleMod.getRuleItem" or "RuleMod.getRuleArmor" or "RuleMod.getRuleSoldier" or "RuleMod.getRuleSkill" or
+        "RuleResearch.getNeededItem" or "RuleResearch.getCost" or "RuleResearch.getPoints" or "RuleResearch.getLookup" ||
+        CampaignTimeScriptValues.Supports(name);
+
+    private static string? DetectionInventoryRole(string name) => WorldDetectionReferenceForecast.InventoryRole(name);
+
+    private ScriptBindingResult InvokeDetectionBinding(ScriptBindingDeclaration binding, Span<ScriptRuntimeValue> args)
+    {
+        if (DetectionValueSet(binding))
+        {
+            args[0] = args[1];
+            return ScriptBindingResult.Success;
+        }
+        var name = binding.Name;
+        if (name.EndsWith(".getTag", StringComparison.Ordinal)) return InvokeDetectionTag(binding, args);
+        var receiver = args[0].Reference;
+        if (name == "RuleDamageType.getRandomDamage")
+        {
+            if (args[0].Reference is not null && args[3].Reference is not null)
+                throw new InvalidOperationException("Detection random damage was not preflighted.");
+            args[1] = ScriptRuntimeValue.FromScalar(0);
+            return ScriptBindingResult.Success;
+        }
+        if (WorldDetectionDamageQueries.Supports(name))
+        {
+            var value = receiver is RuntimeItemDamageRule queryRule
+                ? WorldDetectionDamageQueries.Result(name, queryRule, args.Length > 2 ? args[2].Scalar : 0) : 0;
+            if (!WorldDetectionDamageQueries.InIntegerRange(value))
+                throw new InvalidOperationException("Detection damage query was not preflighted.");
+            args[1] = ScriptRuntimeValue.FromScalar((int)value);
+            return ScriptBindingResult.Success;
+        }
+        if (WorldDetectionRuleQueries.Supports(name))
+        {
+            args[1] = ScriptRuntimeValue.FromScalar(WorldDetectionRuleQueries.Value(name, receiver, campaign.Content.RuntimeRules));
+            return ScriptBindingResult.Success;
+        }
+        if (WorldDetectionTextQueries.Supports(name))
+        {
+            args[1] = ScriptRuntimeValue.FromText(WorldDetectionTextQueries.Value(receiver));
+            return ScriptBindingResult.Success;
+        }
+        var ufo = receiver as UfoSnapshot;
+        var craft = receiver as CampaignState.CraftState;
+        var rules = campaign.Content.RuntimeRules;
+        switch (name)
+        {
+            case "RuleItem.getDamageType":
+            case "RuleItem.getMeleeDamageType":
+                args[1] = ScriptRuntimeValue.FromReference(receiver is RuntimeItemRule damageItem
+                    ? name == "RuleItem.getDamageType" ? damageItem.Damage : damageItem.MeleeDamage : null);
+                break;
+            case "RuleDamageType.getRandomType":
+            case "RuleDamageType.getResistType":
+            case "RuleDamageType.getArmorIgnore":
+            case "RuleDamageType.isDirect":
+            case "RuleDamageType.isAreaOfEffect":
+                args[1] = ScriptRuntimeValue.FromScalar(receiver is RuntimeItemDamageRule damageRule
+                    ? WorldDetectionDamageQueries.Classification(name, damageRule) : 0);
+                break;
+            case "RuleItem.hasCategory":
+                args[1] = ScriptRuntimeValue.FromScalar(receiver is RuntimeItemRule categoryItem &&
+                    categoryItem.Categories.Contains(args[2].Text ?? "") ? 1 : 0);
+                break;
+            case "RuleInventory.getMoveToCost":
+                args[1] = ScriptRuntimeValue.FromScalar(receiver is RuntimeInventoryRule sourceInventory
+                    ? ReferenceEquals(sourceInventory, args[2].Reference) ? 0
+                        : args[2].Reference is RuntimeInventoryRule targetInventory ? sourceInventory.Costs[targetInventory.Id]
+                        : throw new InvalidOperationException("Detection inventory destination was not preflighted.") : 0);
+                break;
+            case "Ufo.getRules":
+            case "Ufo.getRuleUfo":
+                args[1] = ScriptRuntimeValue.FromReference(ufo is null ? null : rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value);
+                break;
+            case "Craft.getRuleCraft":
+                args[1] = ScriptRuntimeValue.FromReference(craft is null ? null : rules.Crafts[craft.Rule].Value);
+                break;
+            case "RuleMod.getRuleResearch":
+                args[1] = ScriptRuntimeValue.FromReference(receiver is null ? null : DetectionResearchRule(args[2].Text));
+                break;
+            case "RuleArmor.getArmor":
+                args[1] = ScriptRuntimeValue.FromScalar(DetectionArmorSide(receiver as RuntimeArmorRule, args[2].Scalar));
+                break;
+            case "RuleArmor.getCorpseGeoscape":
+            case "RuleArmor.getCorpseBattlescape":
+            case "RuleArmor.getRequiredResearch":
+                args[1] = ScriptRuntimeValue.FromReference(WorldDetectionArmorLinks.Value(name, receiver as RuntimeArmorRule,
+                    args.Length > 2 ? args[2].Scalar : 0, rules));
+                break;
+            case "RuleUnit.getSpawnUnit":
+                args[1] = ScriptRuntimeValue.FromReference(receiver is RuntimeUnitRule { SpawnUnit: { } spawned } ? rules.Units[spawned].Value : null);
+                break;
+            case "RuleUnit.getLiveAlienGeoscape":
+                args[1] = ScriptRuntimeValue.FromReference(receiver is RuntimeUnitRule { LiveAlien: { } live } ? rules.Items[live].Value : null);
+                break;
+            case "RuleUnit.getCivilianRecoveryItemType":
+                args[1] = ScriptRuntimeValue.FromReference(receiver is RuntimeUnitRule { CivilianRecoveryItem: { } recovery } ? rules.Items[recovery].Value : null);
+                break;
+            case "RuleMod.getSmokeReduction":
+                if (receiver is not RuntimeRuleCatalog) throw new InvalidOperationException("Smoke receiver was not preflighted.");
+                args[1] = ScriptRuntimeValue.FromScalar(unchecked(args[1].Scalar * rules.Campaign.MaximumViewDistance) / 60);
+                break;
+            case "RuleMod.getRuleInventoryRightHand":
+            case "RuleMod.getRuleInventoryLeftHand":
+            case "RuleMod.getRuleInventoryBackpack":
+            case "RuleMod.getRuleInventoryBelt":
+            case "RuleMod.getRuleInventoryGround":
+                args[1] = ScriptRuntimeValue.FromReference(receiver is null ? null :
+                    rules.Inventories[rules.Inventories.GetRequired(DetectionInventoryRole(name)!)].Value);
+                break;
+            case "RuleMod.getRuleInventory":
+                args[1] = ScriptRuntimeValue.FromReference(receiver is null ? null : DetectionRule(rules.Inventories, args[2].Text));
+                break;
+            case "RuleMod.getRuleUnit":
+                args[1] = ScriptRuntimeValue.FromReference(receiver is null ? null : DetectionRule(rules.Units, args[2].Text));
+                break;
+            case "RuleMod.getRuleItem":
+                args[1] = ScriptRuntimeValue.FromReference(receiver is null || args[2].Text == "STR_NONE"
+                    ? null : DetectionRule(rules.Items, args[2].Text));
+                break;
+            case "RuleMod.getRuleArmor":
+                args[1] = ScriptRuntimeValue.FromReference(receiver is null ? null : DetectionRule(rules.Armors, args[2].Text));
+                break;
+            case "RuleMod.getRuleSoldier":
+                args[1] = ScriptRuntimeValue.FromReference(receiver is null ? null : DetectionRule(rules.Soldiers, args[2].Text));
+                break;
+            case "RuleMod.getRuleSkill":
+                args[1] = ScriptRuntimeValue.FromReference(receiver is null ? null : DetectionRule(rules.Skills, args[2].Text));
+                break;
+            case "RuleResearch.getNeededItem":
+                var researchRule = receiver is string neededTopic ? rules.Research[rules.Research.GetRequired(neededTopic)].Value : null;
+                args[1] = ScriptRuntimeValue.FromReference(researchRule is { NeedItem: true } && researchRule.NeededItem != "STR_NONE"
+                    ? DetectionRule(rules.Items, researchRule.NeededItem) : null);
+                break;
+            case "RuleResearch.getLookup":
+                args[1] = ScriptRuntimeValue.FromReference(receiver is string researchId
+                    ? DetectionResearchRule(rules.Research[rules.Research.GetRequired(researchId)].Value.Lookup) : null);
+                break;
+            case "GeoscapeGame.isResearched":
+                args[1] = ScriptRuntimeValue.FromScalar(receiver is not null && args[2].Reference is string research &&
+                    campaign.HasCompletedResearch(research) ? 1 : 0);
+                break;
+            case "Country.getRuleCountry":
+                args[1] = ScriptRuntimeValue.FromReference(receiver is CampaignState.CountryState owner ? rules.Countries[owner.Rule].Value : null);
+                break;
+            case "GeoscapeGame.getCountries.init" or "GeoscapeGame.getCountries.list":
+                GeoscapeCountryQueries.InvokeList(name, args, campaign.CountryStates);
+                break;
+            case "GeoscapeGame.getTime":
+                _detectionTime.Time = campaign.Time;
+                args[1] = ScriptRuntimeValue.FromReference(receiver is null ? null : _detectionTime);
+                break;
+            default:
+                args[1] = ScriptRuntimeValue.FromScalar(receiver is null ? 0 :
+                    ufo is not null ? DetectionUfoValue(name, ufo) :
+                    craft is not null ? DetectionCraftValue(name, craft) :
+                    receiver is CampaignState.CountryState country ? GeoscapeCountryQueries.Value(name, country) :
+                    receiver is RuntimeCountryRule countryRule ? countryRule.FundingCap :
+                    receiver is RuntimeItemRule itemRule ? WorldDetectionItemQueries.Value(name, itemRule) :
+                    receiver is DetectionTimeReference time ? CampaignTimeScriptValues.Value(name, time.Time) :
+                    name switch
+                    {
+                        "GeoscapeGame.difficultyLevel" => (int)campaign.Difficulty,
+                        "GeoscapeGame.getDaysPassed" => campaign.DaysPassed,
+                        "GeoscapeGame.getMonthsPassed" => campaign.MonthsPassed,
+                        _ => throw new InvalidOperationException("Detection provider receiver was not preflighted."),
+                    });
+                break;
+        }
+        return ScriptBindingResult.Success;
+    }
+
+
+    private string? DetectionResearchRule(string? id)
+    {
+        var rules = campaign.Content.RuntimeRules.Research;
+        return id is not null && id.Length != 0 && id != "\0" && rules.TryGet(id, out var handle)
+            ? rules.GetExternalId(handle) : null;
+    }
+
+    private static TProjection? DetectionRule<TFamily, TProjection>(
+        RuntimeRuleFamily<TFamily, TProjection> rules, string? id) where TProjection : class =>
+        id is not null && id.Length != 0 && id != "\0" && rules.TryGet(id, out var handle) ? rules[handle].Value : null;
+
+    private int DetectionUfoValue(string name, UfoSnapshot ufo)
+    {
+        var field = DetectionUfoStatIndex(name);
+        if (field >= 0) return unchecked(DetectionUfoStat(_detectionUfoStats, field) + DetectionUfoStat(_detectionUfoBonus, field));
+        switch (name)
+        {
+            case "Ufo.getAltitude": return WorldAltitudes.Index(ufo.Altitude);
+            case "Ufo.getStatus": return (int)ufo.Status;
+            case "Ufo.getDamage": return ufo.Damage;
+            case "Ufo.getDamageMax": return _detectionDamageMaximum;
+            case "Ufo.getDamagePercentage": return (int)Math.Floor((double)ufo.Damage / _detectionDamageMaximum * 100);
+            case "Ufo.getDetected": return ufo.Detected ? 1 : 0;
+            case "Ufo.getHyperDetected": return ufo.HyperDetected ? 1 : 0;
+            case "Ufo.getShield": return ufo.Shield;
+            case "Ufo.isHunterKiller": return ufo.HunterKiller ? 1 : 0;
+            case "Ufo.isHunting": return ufo.Hunting ? 1 : 0;
+            case "Ufo.isEscorting": return ufo.Escorting ? 1 : 0;
+            case "Ufo.getHuntMode": return ufo.HuntMode;
+            case "Ufo.getHuntBehavior": return ufo.HuntBehavior;
+        }
+        var rules = campaign.Content.RuntimeRules;
+        var rule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
+        if (name == "Ufo.getVisibility") return WorldAltitudes.Visibility(rule.DefaultVisibility, ufo.Altitude);
+        var capacity = _detectionShieldCapacity;
+        return name switch
+        {
+            "Ufo.getShieldMax" => capacity,
+            "Ufo.getShieldPercentage" => capacity == 0 ? 0 : unchecked(ufo.Shield * 100) / capacity,
+            _ => throw new InvalidOperationException("Detection UFO provider was not preflighted."),
+        };
+    }
+
+    private int DetectionCraftValue(string name, CampaignState.CraftState craft)
+    {
+        if (name == "Craft.getDamage") return craft.Logistics?.Damage ?? 0;
+        if (name == "Craft.getShield") return craft.Logistics?.Shield ?? 0;
+        var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
+        if (name is "Craft.getDamageMax" or "Craft.getDamagePercentage")
+        {
+            var maximum = checked((int)DetectionCraftStat(rule, craft.Logistics, "damageMax"));
+            return name == "Craft.getDamageMax" ? maximum :
+                (int)Math.Floor((double)(craft.Logistics?.Damage ?? 0) / maximum * 100);
+        }
+        if (name is "Craft.getShieldMax" or "Craft.getShieldPercentage")
+        {
+            var maximum = checked((int)DetectionCraftStat(rule, craft.Logistics, "shieldCapacity"));
+            return name == "Craft.getShieldMax" ? maximum : maximum == 0 ? 0 :
+                unchecked((craft.Logistics?.Shield ?? 0) * 100) / maximum;
+        }
+        var key = DetectionCraftStatKey(name)
+            ?? throw new InvalidOperationException("Detection craft provider was not preflighted.");
+        return checked((int)DetectionCraftStat(campaign.Content.RuntimeRules.Crafts[craft.Rule].Value,
+            craft.Logistics, key));
+    }
+
+    private long DetectionCraftStat(RuntimeCraftRule rule, CraftLogisticsState? state, string key)
+    {
+        long value = rule.DefaultStats.GetValueOrDefault(key);
+        if (state is null) return value;
+        var rules = campaign.Content.RuntimeRules;
+        for (var index = 0; index < state.Weapons.Count; index++)
+            if (state.Weapons[index] is { } weapon)
+                value += rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats.GetValueOrDefault(key);
+        return value;
+    }
+
+    internal static int DetectionCraftRuleValue(string name, RuntimeCraftRule rule) =>
+        DetectionCraftStatKey(name) is { } key ? rule.DefaultStats.GetValueOrDefault(key) : name switch
+        {
+            "RuleCraft.getPilotsMax" => rule.Pilots,
+            "RuleCraft.getSoldiersMax" => rule.SoldierCapacity,
+            "RuleCraft.getVehiclesMax" => rule.VehicleCapacity,
+            "RuleCraft.getWeaponsMax" => rule.WeaponSlots,
+            _ => throw new InvalidOperationException("Detection craft rule provider was not preflighted."),
+        };
+
+    internal static string? DetectionCraftStatKey(string name) => name switch
+    {
+        "RuleCraft.Stats.getFuelMax" or "Craft.Stats.getFuelMax" => "fuelMax",
+        "RuleCraft.Stats.getDamageMax" or "Craft.Stats.getDamageMax" => "damageMax",
+        "RuleCraft.Stats.getSpeedMax" or "Craft.Stats.getSpeedMax" => "speedMax",
+        "RuleCraft.Stats.getAccel" or "Craft.Stats.getAccel" => "accel",
+        "RuleCraft.Stats.getRadarRange" or "Craft.Stats.getRadarRange" => "radarRange",
+        "RuleCraft.Stats.getRadarChance" or "Craft.Stats.getRadarChance" => "radarChance",
+        "RuleCraft.Stats.getSightRange" or "Craft.Stats.getSightRange" => "sightRange",
+        "RuleCraft.Stats.getHitBonus" or "Craft.Stats.getHitBonus" => "hitBonus",
+        "RuleCraft.Stats.getAvoidBonus" or "Craft.Stats.getAvoidBonus" => "avoidBonus",
+        "RuleCraft.Stats.getAvoidBonus2" or "Craft.Stats.getAvoidBonus2" => "avoidBonus2",
+        "RuleCraft.Stats.getPowerBonus" or "Craft.Stats.getPowerBonus" => "powerBonus",
+        "RuleCraft.Stats.getArmor" or "Craft.Stats.getArmor" => "armor",
+        "RuleCraft.Stats.getShieldCapacity" or "Craft.Stats.getShieldCapacity" => "shieldCapacity",
+        "RuleCraft.Stats.getShieldRecharge" or "Craft.Stats.getShieldRecharge" => "shieldRecharge",
+        "RuleCraft.Stats.getShieldRechargeInGeoscape" or "Craft.Stats.getShieldRechargeInGeoscape" => "shieldRechargeInGeoscape",
+        "RuleCraft.Stats.getShieldBleedThrough" or "Craft.Stats.getShieldBleedThrough" => "shieldBleedThrough",
+        "RuleCraft.Stats.getMaxUnits" or "Craft.Stats.getMaxUnits" => "soldiers",
+        "RuleCraft.Stats.getMaxVehiclesAndLargeSoldiers" or "Craft.Stats.getMaxVehiclesAndLargeSoldiers" => "vehicles",
+        "RuleCraft.Stats.getMaxItems" or "Craft.Stats.getMaxItems" => "maxItems",
+        _ => null,
+    };
+
+    private sealed class DetectionTimeReference
+    {
+        public CampaignTime Time { get; set; }
+    }
+}

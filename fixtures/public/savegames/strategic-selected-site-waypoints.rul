@@ -1,0 +1,12 @@
+ufoTrajectories:
+  - id: SELECTED_SITE
+    waypoints: [[4, 3, 100], [1, 2, 80], [6, 0, 50], [6, 4, 100]]
+alienMissions:
+  - type: SELECTED_SITE
+    objective: 3
+    spawnZone: 1
+    waves: [{ufo: UFO_SCOUT, count: 2, trajectory: SELECTED_SITE, timer: 9000, objective: true}]
+  - type: SELECTED_SITE_LAND
+    objective: 3
+    spawnZone: 1
+    waves: [{ufo: UFO_SCOUT, count: 2, trajectory: SELECTED_SITE, timer: 9000, objective: true, objectiveOnTheLandingSite: true}]

@@ -1,0 +1,20 @@
+# Isolated base-objective choices; no original assets.
+globe:
+  textures:
+    - {id: 101, deployments: {TEXTURE: 0}}
+    - {id: 102, deployments: {TEXTURE: 2, Z_UNUSED: 3}}
+    - {id: 104}
+    - {id: 105, deployments: {TEXTURE: 0, Z_UNUSED: 0}}
+alienDeployments:
+  - {type: EXPLICIT, markerName: OBJECTIVE_BASE, alienBase: true, huntMissionMaxFrequency: 90}
+  - {type: TEXTURE, markerName: OBJECTIVE_BASE, alienBase: true, huntMissionMaxFrequency: 120}
+  - {type: Z_UNUSED, markerName: OBJECTIVE_BASE, alienBase: true}
+  - {type: STR_ALIEN_BASE_ASSAULT, markerName: OBJECTIVE_BASE, alienBase: true}
+alienMissions:
+  - type: BASE_OBJECTIVE
+    objective: 2
+    spawnZone: 1
+    siteType: EXPLICIT
+    points: 13
+    waves:
+      - {ufo: UNDEFINED, count: 1, trajectory: TRAJ_PATROL, timer: 30}

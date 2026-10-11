@@ -1,0 +1,85 @@
+# Synthetic alien-base activity/discovery overlay. No original assets.
+regions:
+  - type: REGION_OUTSIDE
+    areas: [[40, 50, -20, 20]]
+  - type: REGION_OVERLAP
+    areas: [[0, 30, -20, 20]]
+alienDeployments:
+  - type: BASE_MERGED_GENERATING
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    genMissionFreq: 100
+    refNode:
+      genMission: {MISSION_SUPPLY: 1}
+    genMission: {"": 1}
+  - type: BASE_MERGED_OVERRIDE
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    genMissionFreq: 100
+    genMission: {MISSION_SUPPLY: 1}
+  - type: BASE_MERGED_OVERRIDE
+    genMission: {"": 1}
+  - type: BASE_PASSIVE
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    race: RACE_A
+  - type: BASE_NEGATIVE
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: -3
+    race: RACE_A
+  - type: BASE_ZERO_FREQUENCY
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    genMission: {MISSION_SUPPLY: 5}
+  - type: BASE_EXHAUSTED
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    genMission: {MISSION_SUPPLY: 5}
+    genMissionFreq: 100
+    genMissionLimit: 0
+  - type: BASE_EMPTY_CHOICE
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    genMission: {MISSION_SUPPLY: 1, "": 1}
+  - type: BASE_GENERATING
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    genMission: {MISSION_SUPPLY: 5}
+    genMissionFreq: 100
+  - type: BASE_MISSING_MISSION
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    genMission: {MISSING_MISSION: 1}
+    genMissionLimit: 0
+  - type: BASE_EXCESSIVE_WEIGHTS
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    genMission: {MISSION_SUPPLY: 2147483648}
+  - type: BASE_SELF_DESTRUCT
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    baseSelfDestructCode: UNLOCK
+  - type: BASE_HUNTING
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    baseDetectionRange: 100
+facilities:
+  - type: SIGHT_DYNAMIC
+    mapName: LOGISTICS
+    sightRange: 100
+  - type: SIGHT_ALWAYS
+    mapName: LOGISTICS
+    sightRange: 100
+    sightChance: 100
+crafts:
+  - type: SHIP
+    sightRange: 100
+craftWeapons:
+  - type: SIGHT_BOOST
+    launcher: SUPPLY
+    stats: {sightRange: 100}
+  - type: SIGHT_EXCESS
+    launcher: SUPPLY
+    stats: {sightRange: 2147483647}

@@ -8,6 +8,33 @@ namespace Oxce.UnitTests.Gameplay;
 
 public sealed class CraftServicingTests
 {
+    [Fact]
+    public void RearmRangeRejectsInvalidConsumedAmmoWithoutChangingStocks()
+    {
+        var rules = CampaignLogisticsTests.LoadFixture().RuntimeRules;
+        var state = new CraftLogisticsState(100, 0, "STR_REARMING", [new("FIXED", -1, true)], new Dictionary<string, int>(), []);
+        var stores = new Dictionary<string, int> { ["BULKY"] = 1 };
+        Assert.Throws<InvalidDataException>(() => CraftServicing.TryForecastRearmRange(state, rules, stores, out _));
+        Assert.Equal(1, stores["BULKY"]);
+        Assert.Equal(-1, state.Weapons[0]!.Ammo);
+    }
+
+    [Theory]
+    [InlineData(-1, 1, 1)]
+    [InlineData(0, -1, 1)]
+    [InlineData(0, 1, -1)]
+    public void FacilityServiceRejectsNegativeConsumedInputs(int ammo, int rate, int stock) =>
+        Assert.Throws<InvalidDataException>(() => FacilityServicing.Rearm(ammo, 2, rate, 0, false, true, stock));
+
+    [Fact]
+    public void FacilityServiceClampsLargeRatesBeforeAddition()
+    {
+        Assert.Equal((int.MaxValue, false, 1, false),
+            FacilityServicing.Rearm(int.MaxValue - 1, int.MaxValue, int.MaxValue, 0, false, true, int.MaxValue));
+        Assert.Equal((int.MaxValue, false, 0, false),
+            FacilityServicing.Rearm(int.MaxValue - 1, int.MaxValue, int.MaxValue, 0, false, false, 0));
+    }
+
     [Theory]
     [InlineData(0, 10, -1, 10, false)]
     [InlineData(0, 10, 0, 0, false)]
@@ -81,6 +108,24 @@ public sealed class CraftServicingTests
             campaign = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(snapshot), content, seed: 7, name: "service.sav").Campaign;
             Assert.Equivalent(snapshot, campaign.Capture(), strict: true);
         }
+    }
+
+    [Fact]
+    public void RearmingForecastSharesExecutionAndDoesNotMutateInputs()
+    {
+        var rules = CampaignLogisticsTests.LoadFixture().RuntimeRules;
+        var state = CraftLogistics.Purchase(rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value, rules, 0, 0)
+            with
+        { Status = "STR_REARMING", Weapons = [new("FIXED", 0, true), null] };
+        var stores = new Dictionary<string, int> { ["BULKY"] = 2 };
+        var random = new SplitMix64RandomSource(7);
+        var before = random.State;
+        var executed = CraftServicing.Rearm(state, rules, stores, random);
+        Assert.True(CraftServicing.TryForecastRearm(state, rules, stores, out var forecast));
+        Assert.Equivalent(executed, forecast, strict: true);
+        Assert.Equal(before, random.State);
+        Assert.Equal(0, state.Weapons[0]!.Ammo);
+        Assert.Equal(2, stores["BULKY"]);
     }
 
     [Fact]

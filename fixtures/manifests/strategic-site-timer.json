@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-site-timer",
+  "description": "Extracted GeoscapeState mission-site half-hour timer, follower and score branches.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "GeoscapeState::processMissionSite timer/follower and score statements; GeoscapeState::time1Hour discovery; Target::~Target; Ufo::setDestination/resetOriginalDestination",
+      "capture": "tools/capture-strategic-site-timer-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; selected statement blocks inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_site_timer_probe.cpp",
+      "size": 7723,
+      "sha256": "eb523497427c7a704201624d0b41ed5709d902d8534fa1cc1e8d6e7e354c7057"
+    },
+    {
+      "path": "tools/capture-strategic-site-timer-reference.ps1",
+      "size": 4881,
+      "sha256": "6b314762a9bac893ef3d6e5d79384f4af88dde4e77975e4fff46239bbc13e857"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-site-timer.rul",
+      "size": 1377,
+      "sha256": "c2a07390a9ce08f49f3c0246d7ac170c96badfe6f7b9b287aa23ab83e5539a1d"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-world.rul",
+      "size": 14290,
+      "sha256": "9b1d246a38a20824d282ef0d14a64c65d68e687a780d3caa1f4da8c93a510c07"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-site-timer.expected.json"
+}

@@ -1,0 +1,7 @@
+# Mod::escortRange defaults to 20; a non-default value must survive the content cache.
+escortRange: 42
+crafts:
+  - type: SHIP
+    speedMax: 6000
+    damageMax: 100
+    patrolWithoutFuel: true

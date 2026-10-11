@@ -9,6 +9,20 @@ namespace Oxce.UnitTests.Scripting;
 
 public sealed class ScriptApiAndHostTests
 {
+    [Theory]
+    [InlineData("var ptr RuleItem value null; set value null; return;")]
+    [InlineData("var ptre RandomState value null; set value null; return;")]
+    [InlineData("var RuleItem.Tag value null; set value null; return;")]
+    public void NullAssignmentUsesTheTargetsTypedCopyBinding(string source)
+    {
+        var compiled = ScriptCompiler.Compile(source, ScriptParserDefinition.FromCatalog("detectUfoFromBase"));
+        Assert.True(compiled.Succeeded, Messages(compiled));
+        var binding = Assert.Single(compiled.Program!.Bindings);
+        Assert.Equal("set", binding.Name);
+        Assert.Equal(binding.Parameters[0].Type.Id, binding.Parameters[1].Type.Id);
+        Assert.Equal(binding.Parameters[0].Type.IsReference, binding.Parameters[1].Type.IsReference);
+    }
+
     [Fact]
     public void DeclaredBindingCompilesWithoutProviderAndFailsAsMissingCapability()
     {

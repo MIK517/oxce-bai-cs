@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-ignored-contacts",
+  "description": "Pinned SavedGame ignore-set methods and GeoscapeState alert predicate. Includes zero, duplicate and negative ID set semantics; reference ignore state is transient and not serialized.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "SavedGame.cpp addUfoToIgnoreList/isUfoOnIgnoreList; GeoscapeState.cpp ufoDetection alert condition; UfoDetectedState.cpp btnCancelClick caller",
+      "capture": "tools/capture-strategic-ignored-contacts-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; exact methods and condition inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_ignored_contacts_probe.cpp",
+      "size": 1080,
+      "sha256": "999150968b7221544ec74dde9f7bf09d00c3f9b21ec32099dae1ff56672edffa"
+    },
+    {
+      "path": "tools/capture-strategic-ignored-contacts-reference.ps1",
+      "size": 3356,
+      "sha256": "5383143a3e52b2b9ba2736107591fed75eadfdc4a5a2e88d3628cd2ae683120b"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-ignored-contacts.expected.json"
+}
