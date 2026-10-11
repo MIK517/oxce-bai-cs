@@ -234,6 +234,9 @@ public sealed record RuntimeAlienDeploymentRule(
 {
     public string StartingCondition { get; init; } = string.Empty;
 
+    /// <summary>AlienDeployment::getAlienBaseDiscoveredMessage: AlienBaseState's title, or "" for the default.</summary>
+    public string AlienBaseDiscoveredMessage { get; init; } = string.Empty;
+
     /// <summary>
     /// AlienDeployment::generateHuntMission / generateAlienBaseUpgrade: the timeline is stored in
     /// descending month order and the first entry at or below the given month wins.

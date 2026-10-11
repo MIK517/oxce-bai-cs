@@ -206,3 +206,26 @@ several-targets choice instead of a scrolling list, and no title strip over the 
 destination is chosen.
 Tests: `StrategicWorldGeoscapeScreensTests`, `GeoscapeScreensTests`, `GeoscapeNotificationsTests`,
 `GeoscapeClientTests`.
+
+## S7 — Notification screens (2026-10-11)
+
+- `UfoDetectedState`: the alert and a globe click on a UFO show its size, altitude
+  (`STR_GROUNDED` when landed), heading (`STR_NONE_UC` unless flying) and speed, and with
+  hyper-wave decoding its craft type, race, mission and zone (the world query now carries these as
+  `CampaignWorldUfoDetails`). Intercept and Centre reset the speed and centre on it. The
+  reference's Ctrl+Cancel "Ignore" is a separate Ignore button running `IgnoreUfoContact`; it is
+  not offered once the contact is ignored.
+- A craft whose pursued UFO left radar opens `GeoscapeCraftState` with the UFO's last position:
+  the status reads `STR_INTERCEPTING_UFO` and Cancel becomes "Go to last known UFO position"
+  (Esc), which sends the craft to a new waypoint there. Other lost targets (destroyed or ignored
+  UFOs, removed sites and bases) show nothing, as in the reference: the craft returns or patrols.
+- `AlienBaseState`: the title names "country, region", the region alone, or unknown, from the
+  first country and region containing the base in saved order, using the deployment's
+  `alienBaseDiscoveredMessage` (with the marker name) when it has one.
+The other alerts (UFO lost, site detected and lost, low fuel, craft ready and service shortages,
+waypoint reached, landing and hunting alerts, items arriving, construction, production, research,
+training, time refusals) keep their S5/S6 texts and buttons.
+Known differences: research completion has no "View reports" button (no Ufopaedia yet), training
+completion names soldiers by id, `STR_AIRBORNE` for underwater UFOs over water is not applied, and
+UFO alert sounds are not played.
+Tests: `GeoscapeNotificationsTests`, `StrategicWorldGlobeQueryTests`.

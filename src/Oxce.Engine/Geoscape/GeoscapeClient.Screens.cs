@@ -64,30 +64,13 @@ public sealed partial class GeoscapeClient
                 Push(GeoscapeScreens.Craft(craft, _world, _setup.Rules, _setup.Localize, _setup.ShowEtaMode), group: group);
                 break;
             case WorldTargetKind.Ufo when target.Target is { } ufo:
-                // UfoDetectedState without the detection sound or text.
-                Push(new GeoscapePopup(ufo.Label, Details(ufo),
-                [
-                    new(_setup.Localize("STR_INTERCEPT"), true, new WorldPosition(ufo.Longitude, ufo.Latitude))
-                    {
-                        Intent = new InterceptIntent(ufo.Reference),
-                    },
-                    new(_setup.Localize("STR_CENTER_ON_UFO_TIME_5_SECONDS"), true, new WorldPosition(ufo.Longitude, ufo.Latitude)),
-                    new(_setup.Localize("STR_CANCEL_UC"), CancelKey: true),
-                ]), group: group);
+                // MultipleTargetsState opens UfoDetectedState without the detection line.
+                Push(GeoscapeScreens.Ufo(ufo, detected: false, ufo.HyperDetected, _setup.Localize), group: group);
                 break;
             case WorldTargetKind.Waypoint or WorldTargetKind.MissionSite or WorldTargetKind.AlienBase when target.Target is { } info:
                 Push(GeoscapeScreens.TargetInfo(info, _setup.Localize), group: group);
                 break;
         }
-    }
-
-    private List<string> Details(CampaignWorldTarget target)
-    {
-        var lines = new List<string>();
-        if (target.Status.Length != 0) lines.Add(target.Status);
-        if (target.Altitude.Length != 0) lines.Add(_setup.Localize(target.Altitude));
-        if (target.UnavailableActionReason is { } reason) lines.Add(reason);
-        return lines;
     }
 
     /// <summary>Opens the screen a button leads to.</summary>

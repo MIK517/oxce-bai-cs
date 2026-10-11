@@ -676,7 +676,10 @@ public static class RuntimeRuleLinker
                 Timeline(source.AlienBaseUpgrades),
                 Array.AsReadOnly(evolution),
                 Weights(id, "despawnEvents", source.DespawnEvents))
-            { StartingCondition = source.Strings["startingCondition"] };
+            {
+                StartingCondition = source.Strings["startingCondition"],
+                AlienBaseDiscoveredMessage = source.Strings["alienBaseDiscoveredMessage"],
+            };
         }
 
         RuntimeAlienRaceEvolution? ReadEvolution(string id, YamlNode node)

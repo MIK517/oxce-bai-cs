@@ -409,7 +409,7 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     {
         foreach (var notification in events)
         {
-            if (GeoscapeNotifications.Describe(notification, _world, _setup.Localize) is { } popup)
+            if (GeoscapeNotifications.Describe(notification, _world, _setup.Localize, _setup.Rules, _setup.ShowEtaMode) is { } popup)
                 Enqueue(popup);
         }
     }

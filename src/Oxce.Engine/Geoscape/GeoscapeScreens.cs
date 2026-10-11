@@ -14,6 +14,9 @@ public sealed record InterceptPageIntent(int Page) : GeoscapeIntent;
 /// <summary>ConfirmDestinationState's follow-wing-leader toggle.</summary>
 public sealed record FollowLeaderIntent : GeoscapeIntent;
 
+/// <summary>GeoscapeCraftState's lost-target variant: the UFO's last known position and marker id.</summary>
+public sealed record GeoscapeLostUfo(WorldPosition Position, int UfoId);
+
 /// <summary>Where a wing is sent: a globe target or a new waypoint.</summary>
 public sealed record GeoscapeDestination(WorldTargetReference? Target, WorldPosition? Waypoint, string Label)
 {
@@ -57,17 +60,21 @@ public static class GeoscapeScreens
         craft.Status == "STR_READY" || (craft.Status == "STR_OUT" && !craft.LowFuel && !craft.MissionComplete);
 
     /// <summary>GeoscapeCraftState for an airborne craft.</summary>
-    public static GeoscapePopup Craft(CampaignWorldCraft craft, CampaignWorldOverview world, RuntimeRuleCatalog rules,
-        Func<string, string> tr, int etaMode = 0)
+    /// <param name="lost">
+    /// GeoscapeState::time5Seconds after a pursued UFO vanished from radar: the status names the UFO
+    /// and Cancel becomes "Go to last known UFO position", which sends the craft to a new waypoint there.
+    /// </param>
+    public static GeoscapePopup Craft(CampaignWorldCraft craft, CampaignWorldOverview world, RuntimeRuleCatalog? rules,
+        Func<string, string> tr, int etaMode = 0, GeoscapeLostUfo? lost = null)
     {
         ArgumentNullException.ThrowIfNull(craft);
         ArgumentNullException.ThrowIfNull(world);
-        ArgumentNullException.ThrowIfNull(rules);
         ArgumentNullException.ThrowIfNull(tr);
         var key = Key(craft);
+        var status = lost is null ? CraftStatus(craft, world, tr) : Format(tr("STR_INTERCEPTING_UFO"), lost.UfoId);
         var lines = new List<string>
         {
-            Format(tr("STR_STATUS_"), CraftStatus(craft, world, tr)),
+            Format(tr("STR_STATUS_"), status),
             Format(tr("STR_BASE_UC"), BaseName(world, craft.BaseId)),
             Format(tr("STR_SPEED_"), Number(craft.Speed)) + "  " + Format(tr("STR_MAXIMUM_SPEED_UC"), Number(craft.SpeedMaximum)),
             Format(tr("STR_FUEL"), Percent(Percentage(craft.Fuel, craft.FuelMaximum))) + "  " +
@@ -75,7 +82,7 @@ public static class GeoscapeScreens
         };
         if (craft.ShieldMaximum != 0)
             lines.Add(Format(tr("STR_SHIELD"), Percent(craft.Shield * 100 / craft.ShieldMaximum)));
-        var rule = rules.Crafts.TryGet(craft.TypeId, out var handle) ? rules.Crafts[handle].Value : null;
+        var rule = rules is not null && rules.Crafts.TryGet(craft.TypeId, out var handle) ? rules.Crafts[handle].Value : null;
         var slotLabels = rule?.WeaponStrings ?? [];
         for (var slot = 0; slot < craft.Weapons.Count; slot++)
         {
@@ -91,7 +98,8 @@ public static class GeoscapeScreens
         if (rule is not { EffectiveMaximumUnits: 0 }) crew.Add(tr("STR_SOLDIERS_UC") + " " + Number(craft.Soldiers));
         if (rule is not { EffectiveMaximumVehiclesAndLargeSoldiers: 0 }) crew.Add(tr("STR_HWPS") + " " + Number(craft.Vehicles));
         if (crew.Count != 0) lines.Add(string.Join("  ", crew));
-        if (craft.Destination is { } destination && Eta(craft, destination, world, tr, etaMode) is { } eta) lines.Add(eta);
+        if (lost is null && craft.Destination is { } destination && Eta(craft, destination, world, tr, etaMode) is { } eta)
+            lines.Add(eta);
         var actions = new List<GeoscapePopupAction>();
         // GeoscapeCraftState hides its commands for a craft returning on low fuel or after its mission.
         if (!craft.LowFuel && !craft.MissionComplete)
@@ -109,8 +117,56 @@ public static class GeoscapeScreens
                 Disabled = refused,
             });
         }
-        actions.Add(new(tr("STR_CANCEL_UC"), CancelKey: true));
+        actions.Add(lost is null
+            ? new(tr("STR_CANCEL_UC"), CancelKey: true)
+            : new(tr("STR_GO_TO_LAST_KNOWN_UFO_POSITION"), CancelKey: true)
+            {
+                Command = new DispatchCraftToWaypoint(craft.BaseId, craft.TypeId, craft.Id, lost.Position.Longitude,
+                    lost.Position.Latitude),
+            });
         return new(CraftName(craft, tr), lines, actions);
+    }
+
+    /// <summary>
+    /// UfoDetectedState: the UFO's size, altitude, heading and speed, then with hyper-wave decoding
+    /// its craft type, race, mission and zone. Intercept and Centre reset the speed and centre on it;
+    /// Ignore (the reference's Ctrl+Cancel) stops further alerts for this contact until reload.
+    /// </summary>
+    public static GeoscapePopup Ufo(CampaignWorldTarget ufo, bool detected, bool hyperwave, Func<string, string> tr)
+    {
+        ArgumentNullException.ThrowIfNull(ufo);
+        ArgumentNullException.ThrowIfNull(tr);
+        var lines = new List<string>();
+        if (detected) lines.Add(tr("STR_DETECTED"));
+        var details = ufo.Ufo;
+        if (details is not null)
+        {
+            lines.Add(Row(tr("STR_SIZE_UC"), tr(details.Size)));
+            lines.Add(Row(tr("STR_ALTITUDE"), tr(ufo.Altitude == "STR_GROUND" ? "STR_GROUNDED" : ufo.Altitude)));
+            lines.Add(Row(tr("STR_HEADING"), tr(details.Heading)));
+            lines.Add(Row(tr("STR_SPEED"), Number(details.Speed)));
+        }
+        if (hyperwave)
+        {
+            lines.Add(tr("STR_HYPER_WAVE_TRANSMISSIONS_ARE_DECODED"));
+            if (details is not null)
+            {
+                lines.Add(Row(tr("STR_CRAFT_TYPE"), tr(ufo.TypeId)));
+                lines.Add(Row(tr("STR_RACE"), tr(details.Race)));
+                lines.Add(Row(tr("STR_MISSION"), tr(details.Mission)));
+                lines.Add(Row(tr("STR_ZONE"), tr(details.Region)));
+            }
+        }
+        var position = new WorldPosition(ufo.Longitude, ufo.Latitude);
+        var actions = new List<GeoscapePopupAction>
+        {
+            new(tr("STR_INTERCEPT"), true, position) { Intent = new InterceptIntent(ufo.Reference) },
+            new(tr("STR_CENTER_ON_UFO_TIME_5_SECONDS"), true, position),
+            new(tr("STR_CANCEL_UC"), CancelKey: true),
+        };
+        if (!ufo.DetectionAlertIgnored && ufo.Reference.UniqueId > 0)
+            actions.Add(new(tr("STR_IGNORE_UC")) { Command = new IgnoreUfoContact(ufo.Reference.UniqueId, ufo.Reference.Id) });
+        return new(ufo.Label, lines, actions);
     }
 
     /// <summary>
@@ -322,6 +378,8 @@ public static class GeoscapeScreens
         maximum <= 0 ? 0 : (int)Math.Floor((double)value / maximum * 100.0);
 
     private static string Percent(int value) => value.ToString(CultureInfo.InvariantCulture) + "%";
+
+    private static string Row(string label, string value) => label + " . . " + value;
 
     private static string Number(int value) => value.ToString("N0", CultureInfo.InvariantCulture);
 

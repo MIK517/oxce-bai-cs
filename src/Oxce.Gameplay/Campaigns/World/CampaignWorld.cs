@@ -90,6 +90,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
                 // UFO waypoints are anonymous Waypoint objects outside the player's list.
                 Destination = Resolve(ufo.Destination)?.Position ??
                     (ufo.Destination is { Kind: WorldTargetKind.Waypoint } waypoint ? waypoint.Position : null),
+                Ufo = UfoDetails(ufo),
             });
         foreach (var site in _sites.Where(static site => site.Detected))
             targets.Add(new CampaignWorldTarget(WorldTargetKind.MissionSite, site.Id, site.DeploymentId,
@@ -112,6 +113,11 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
                     alienBase.Longitude, alienBase.Latitude),
                 UnavailableActionReason = LandingReason,
                 ActionUnavailable = WorldCommandReasons.For(LandingReason),
+                CountryId = CountryAt(alienBase.Position),
+                RegionId = RegionAt(alienBase.Position),
+                DiscoveredMessage = campaign.Content.RuntimeRules.AlienDeployments.TryGet(alienBase.DeploymentId, out var deployment)
+                    ? campaign.Content.RuntimeRules.AlienDeployments[deployment].Value.AlienBaseDiscoveredMessage
+                    : string.Empty,
             });
         foreach (var waypoint in _waypoints)
             targets.Add(new CampaignWorldTarget(WorldTargetKind.Waypoint, waypoint.Id,
@@ -583,6 +589,34 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         if (detectionReason is not null) return detectionReason;
         if (FlightFuelRefundReason(highest) is { } fuelRefundReason) return fuelRefundReason;
         return EventSchedulingReason(highest);
+    }
+
+    private CampaignWorldUfoDetails UfoDetails(UfoSnapshot ufo)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        var mission = _missions.FirstOrDefault(entry => entry.Id == ufo.MissionId);
+        return new(rules.Ufos.TryGet(ufo.RuleId, out var handle) ? rules.Ufos[handle].Value.Size : string.Empty,
+            ufo.Status == UfoStatus.Flying ? ufo.Direction : "STR_NONE_UC", ufo.Speed,
+            mission?.Race ?? string.Empty, mission?.RuleId ?? string.Empty, mission?.RegionId ?? string.Empty);
+    }
+
+    /// <summary>AlienBaseState: the first country containing a position, in saved order.</summary>
+    private string CountryAt(WorldPosition position)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        foreach (var country in campaign.CountryStates)
+            if (WorldGeometry.InsideCountry(rules.Countries[country.Rule].Value, position))
+                return rules.Countries.GetExternalId(country.Rule);
+        return string.Empty;
+    }
+
+    private string RegionAt(WorldPosition position)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        foreach (var region in campaign.RegionStates)
+            if (WorldGeometry.InsideRegion(rules.Regions[region.Rule].Value, position))
+                return rules.Regions.GetExternalId(region.Rule);
+        return string.Empty;
     }
 
     private string MarkerName(string deploymentId) =>
