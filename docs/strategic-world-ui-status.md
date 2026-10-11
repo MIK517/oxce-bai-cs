@@ -168,8 +168,9 @@ The geoscape's craft and target screens are popups pushed above queued notificat
 (`GeoscapeScreens` builds them; `GeoscapeClient` runs their buttons). Screens opened from one
 another share a group, so a launch closes them together as the reference pops its state stack, and
 a cancel returns to the screen below.
-- `InterceptState` (Intercept button, I key, or a click on a base for that base's craft): every
-  craft with status, base and weapons/soldiers/vehicles, paged six rows at a time. A craft that
+- `InterceptState` (Intercept button, I key, or a click on a base for that base's craft and a Go
+  to base button): every craft with status, base and weapons/soldiers/vehicles, paged six rows at
+  a time. A craft that
   cannot start (`allowStart`) is listed but refuses with its reason in the status line;
   Shift+click adds or removes up to three wing members, a plain click launches with that craft
   leading — to `ConfirmDestinationState` when a target is given, otherwise to destination choice.
@@ -178,21 +179,30 @@ a cancel returns to the screen below.
   and queued notifications wait, as in the reference. A grounded leader's return range
   (`Craft::getBaseRange`, now in the world query) is drawn while radar lines are on. Esc or the
   sidebar Cancel ends the choice.
-- `ConfirmDestinationState`: the target, the leader's ETA (`oxceShowETAMode` 1: none for moving
-  targets) and, for a wing, the follow-wing-leader toggle (off when going after a flying UFO). OK
+- `ConfirmDestinationState`: the target, the leader's ETA as `oxceShowETAMode` asks
+  (`GeoscapeClientSetup.ShowEtaMode`; 0, the reference default, shows none; 1 none for moving
+  targets; 2 always) and, for a wing, the follow-wing-leader toggle (off when going after a flying UFO). OK
   executes `DispatchCraftWing`; a refusal closes the screens and shows the reference text
   (`TextKey`, `STR_NOT_ENOUGH_PILOTS` with the craft's pilot requirement) or the port reason.
 - `GeoscapeCraftState` (click an airborne craft): status, base, speed, fuel, damage, shield,
-  weapons by the rule's slot labels (`weaponStrings`, now projected) with rounds, crew and ETA;
+  weapons by the rule's slot labels (`weaponStrings`, now projected) with rounds, crew (hidden
+  when the craft carries none) and ETA;
   Return to base, Select new target, Patrol/Auto patrol and Cancel. The commands are hidden for a
   craft returning on low fuel or after its mission.
 - `TargetInfoState` (waypoint, mission site, alien base) and the UFO screen offer Intercept. The
   detection popups gain Intercept (timer reset and centring, `InterceptState` above them);
-  `CraftPatrolState` gains Redirect (Enter); items arriving, construction and production gain Go
-  to base / Allocate manufacture (Enter, timer reset), which open the base screens on that base.
-Unnamed craft are labelled by type and id on the globe, as `Craft::getName` does.
+  `CraftPatrolState` gains Redirect (Enter), which opens the craft screen; items arriving
+  (Enter), construction and production gain Go to base / Allocate manufacture (timer reset), which
+  open the base screens on that base.
+Unnamed craft are labelled `STR_CRAFTNAME` (type and id) on the globe, as `Craft::getDefaultName` does.
 Known differences: craft altitude, maintenance times in the intercept list, distance sorting
-(`oxceGeoSortCraftByDistanceToTarget`), `Ctrl` ignore on UFO alerts and the "Go to last known UFO
-position" craft screen (with the lost-target notifications, S7) are not shown; button and row
-layout is the popup layout, not the reference windows.
-Tests: `StrategicWorldGeoscapeScreensTests`, `GeoscapeNotificationsTests`, `GeoscapeClientTests`.
+(`oxceGeoSortCraftByDistanceToTarget`), intercept row right-click (centre or craft info), `Ctrl`
+ignore on UFO alerts, the dogfight "tailing" status and the "Go to last known UFO position" craft
+screen (with the lost-target notifications, S7) are not shown. Allocate manufacture opens the base
+screens rather than `ManufactureState`, and the random-production summary (which hides that
+button) is not shown. Button and row layout is the popup layout, not the reference windows: six
+intercept rows per page instead of `oxceInterceptTableSize` 8, at most 16 entries in the
+several-targets choice instead of a scrolling list, and no title strip over the globe while a
+destination is chosen.
+Tests: `StrategicWorldGeoscapeScreensTests`, `GeoscapeScreensTests`, `GeoscapeNotificationsTests`,
+`GeoscapeClientTests`.

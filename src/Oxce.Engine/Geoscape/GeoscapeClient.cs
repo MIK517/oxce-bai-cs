@@ -21,6 +21,8 @@ public sealed record GeoscapeClientSetup(
     public Func<CampaignUiSession>? Load { get; init; }
     public Func<TimeSpan>? Stopwatch { get; init; }
     public GlobeRenderOptions Options { get; init; } = new();
+    /// <summary>Options::oxceShowETAMode: 0 (default) no ETA, 1 not for moving targets, 2 always.</summary>
+    public int ShowEtaMode { get; init; }
     /// <summary>Opens the base screens; defaults to the indexed logistics client.</summary>
     public Func<CampaignUiSession, IIndexedLoopClient>? OpenBases { get; init; }
 }
@@ -334,6 +336,8 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     /// <summary>MultipleTargetsState: one button per target, then cancel.</summary>
     private void ChooseTarget(IReadOnlyList<GlobeTarget> near, Action<GlobeTarget> chosen, int group = 0)
     {
+        // The popup has room for this many buttons; the reference scrolls a longer list.
+        if (near.Count > MaximumTargetChoices) near = near.Take(MaximumTargetChoices).ToArray();
         var actions = near.Select(target => new GeoscapePopupAction(target.Label)).Append(
             new GeoscapePopupAction(_setup.Localize("STR_CANCEL_UC"), CancelKey: true)).ToArray();
         Push(new GeoscapePopup(_setup.Localize("STR_TARGETS"), [], actions), choice =>
@@ -476,6 +480,7 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
         _selected = null;
         _selecting = null;
         _confirm = null;
+        _intercept = null;
         _time.Select(CampaignTimeSpeed.FiveSeconds);
         EnterWorld();
         Refresh();
@@ -558,6 +563,7 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     }
 
     private const int PopupLeft = 36;
+    private const int MaximumTargetChoices = 16;
     private const int PopupWidth = 440;
     private const int ButtonHeight = 14;
 

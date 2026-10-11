@@ -61,7 +61,7 @@ public sealed partial class GeoscapeClient
                 OpenIntercept(new InterceptIntent(null, target.Reference.Id), group);
                 break;
             case WorldTargetKind.Craft when target.Craft is { } craft:
-                Push(GeoscapeScreens.Craft(craft, _world, _setup.Rules, _setup.Localize), group: group);
+                Push(GeoscapeScreens.Craft(craft, _world, _setup.Rules, _setup.Localize, _setup.ShowEtaMode), group: group);
                 break;
             case WorldTargetKind.Ufo when target.Target is { } ufo:
                 // UfoDetectedState without the detection sound or text.
@@ -97,8 +97,9 @@ public sealed partial class GeoscapeClient
         switch (intent)
         {
             case InterceptIntent intercept:
-                // UfoDetectedState, MissionDetectedState and TargetInfoState stay below InterceptState.
-                if (source.Popup.Actions.Any(action => action.Intent is InterceptIntent))
+                // UfoDetectedState, MissionDetectedState and TargetInfoState stay below InterceptState
+                // (a vanished target leaves nothing to return to).
+                if (intercept.Target is not null && source.Popup.Actions.Any(action => action.Intent is InterceptIntent))
                     _popups.Insert(0, source with { Group = group });
                 OpenIntercept(intercept, group);
                 break;
@@ -109,7 +110,7 @@ public sealed partial class GeoscapeClient
                 ShowIntercept(state with { Page = page.Page });
                 break;
             case CraftIntent craft when FindCraft(craft.Craft) is { } found:
-                Push(GeoscapeScreens.Craft(found, _world, _setup.Rules, _setup.Localize), group: group);
+                Push(GeoscapeScreens.Craft(found, _world, _setup.Rules, _setup.Localize, _setup.ShowEtaMode), group: group);
                 break;
             case SelectDestinationIntent select:
                 BeginSelection(select.Wing, group);
@@ -169,8 +170,8 @@ public sealed partial class GeoscapeClient
     private void ShowConfirm(ConfirmState state)
     {
         _confirm = state;
-        Push(GeoscapeScreens.Confirm(_world, state.Wing, state.Destination, state.FollowLeader, _setup.Localize),
-            group: state.Group);
+        Push(GeoscapeScreens.Confirm(_world, state.Wing, state.Destination, state.FollowLeader, _setup.Localize,
+            _setup.ShowEtaMode), group: state.Group);
     }
 
     private void BeginSelection(IReadOnlyList<CraftKey> wing, int group)

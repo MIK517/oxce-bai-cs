@@ -83,17 +83,19 @@ public sealed class GeoscapeNotificationsTests
         Assert.DoesNotContain(detected.Actions, action => action.OkKey);
         Assert.True(detected.Actions[2].CancelKey);
 
-        // CraftPatrolState: Esc is OK, Enter redirects the craft without a timer reset.
+        // CraftPatrolState: Esc is OK; Enter (Redirect) opens the craft screen without a timer reset.
         var patrol = Describe(new CraftArrivedAtWaypoint(1, "STR_INTERCEPTOR", 2, 5))!;
         Assert.Equal([(false, true), (true, false)], patrol.Actions.Select(action => (action.OkKey, action.CancelKey)));
         Assert.False(patrol.Actions[1].ResetSpeed);
-        Assert.Equal(new CraftKey(1, "STR_INTERCEPTOR", 2),
-            Assert.Single(Assert.IsType<SelectDestinationIntent>(patrol.Actions[1].Intent).Wing));
+        Assert.Equal(new CraftKey(1, "STR_INTERCEPTOR", 2), Assert.IsType<CraftIntent>(patrol.Actions[1].Intent).Craft);
 
-        // ItemsArrivingState and ProductionCompleteState: Enter goes to the base and resets the speed.
+        // ItemsArrivingState: Enter goes to the base and resets the speed. ProductionCompleteState's
+        // base button resets the speed but has no key.
         var goTo = Describe(new SuppliesArrived(1, []))!.Actions[1];
         Assert.Equal((true, true, false, 1), (goTo.ResetSpeed, goTo.OkKey, goTo.CancelKey,
             Assert.IsType<BaseIntent>(goTo.Intent).BaseId));
+        var allocate = Describe(new CampaignConstructionCompleted(1, "STR_LAB", 0, 0))!.Actions[1];
+        Assert.Equal((true, false, false), (allocate.ResetSpeed, allocate.OkKey, allocate.CancelKey));
 
         Assert.True(Describe(new CampaignResearchCompleted(1, "STR_LASER", []))!.ResetsSpeedWhenShown);
         var lost = Describe(new UfoContactLost(70))!;
