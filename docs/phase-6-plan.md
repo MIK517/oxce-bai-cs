@@ -7,7 +7,7 @@ Status (scope revised 2026-09-26): branches 1–3 have bounded acceptance docume
 [research and production status](strategic-research-production-status.md).
 Branch 4a supplies the bounded world foundation; branch 4b satisfies its revised
 ordinary-lifecycle closure gate and merged in `e10d96f` (PR #72).
-Branch 4c merged in `e22b6853` (PR #73); branch 4d is in progress and branches 5–6 remain planned.
+Branch 4c merged (PR #73); branch 4d is in progress and branches 5–6 remain planned.
 This is not a Phase 6 completion claim.
 
 ## Goal and scope
@@ -376,7 +376,7 @@ partial tick mutation. World-owned research and counters are implemented at thei
 
 ### Branch 4d — Globe integration and combined acceptance
 
-`claude/strategic-world-ui` starts from merged main after 4c (`e22b6853`, PR #73). It adds navigable indexed
+`claude/strategic-world-ui` starts from merged main after 4c (see the [4d slices](phase-6-world-integration-plan.md#branch-4d-slices-approved-2026-10-11)). It adds navigable indexed
 globe, target information, dispatch/patrol/recall controls, notifications, explicit
 pause/speed and save/load flows using the headless commands. It closes UI and combined
 world scenarios. The original branch 4 acceptance below gates 4d closure and branch 5,
