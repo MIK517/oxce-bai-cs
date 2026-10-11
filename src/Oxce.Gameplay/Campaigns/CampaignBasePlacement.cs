@@ -44,6 +44,23 @@ public sealed partial class CampaignState
         }
     }
 
+    public string? QueryNewBaseRestriction()
+    {
+        lock (_transactionGate)
+        {
+            if (_bases.Any(b => !b.IsPlaced)) return PlaceStartingBaseFirst;
+            if (_bases.Count >= Options.MaximumBases) return MaximumBasesReason;
+            if (_content.RuntimeRules.Campaign.NewBaseUnlockResearch is { } research &&
+                !_completedResearch.Contains(_content.RuntimeRules.Research.GetExternalId(research)))
+                return NewBaseResearchReason;
+            return null;
+        }
+    }
+
+    private const string PlaceStartingBaseFirst = "Place the starting base first.";
+    private const string MaximumBasesReason = "Maximum number of bases reached.";
+    private const string NewBaseResearchReason = "Required research is not complete.";
+
     private string? BaseSiteRestriction(double longitude, double latitude, bool first)
     {
         if (!double.IsFinite(longitude) || longitude < 0 || longitude >= Math.Tau || !double.IsFinite(latitude) || Math.Abs(latitude) > Math.PI / 2)
@@ -56,7 +73,7 @@ public sealed partial class CampaignState
             (first || settings.FakeUnderwaterBaseUnlockResearch is { } gate && !_completedResearch.Contains(_content.RuntimeRules.Research.GetExternalId(gate))))
             return "STR_XCOM_BASE_CANNOT_BE_BUILT";
         if (!first && settings.NewBaseUnlockResearch is { } research && !_completedResearch.Contains(_content.RuntimeRules.Research.GetExternalId(research)))
-            return "Required research is not complete.";
+            return NewBaseResearchReason;
         return null;
     }
 
@@ -75,8 +92,8 @@ public sealed partial class CampaignState
     private CampaignCommandResult CreateBase(CreateCampaignBase command)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(command.Name);
-        if (_bases.Any(b => !b.IsPlaced)) return Blocked("Place the starting base first.");
-        if (_bases.Count >= Options.MaximumBases) return Blocked("Maximum number of bases reached.");
+        if (_bases.Any(b => !b.IsPlaced)) return Blocked(PlaceStartingBaseFirst);
+        if (_bases.Count >= Options.MaximumBases) return Blocked(MaximumBasesReason);
         var site = QueryBaseSite(command.Longitude, command.Latitude);
         if (site.UnavailableReason is { } reason) return Blocked(reason);
         var handle = _content.RuntimeRules.Facilities.GetRequired(command.LiftRuleId);

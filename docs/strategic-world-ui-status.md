@@ -240,19 +240,27 @@ Tests: `GeoscapeNotificationsTests`, `StrategicWorldGlobeQueryTests`.
 ## S8 — Base placement on the globe (2026-10-11)
 
 A new game starts in `BuildNewBaseState` for the starting base (no Cancel): time and the base
-screens wait until a land site is clicked and named. Further bases start from N on the geoscape or
-N in the base screens (which close and hand over to the globe), with Esc or the sidebar Cancel to
-stop. While a site is chosen the radar lines are on and the pointer carries the radar preview
-(`Globe::setNewBaseHover`): every facility type's radar range around it and, with
-`globeAllRadarsOnBaseBuild` (default on), around each placed base instead of its own radar.
+screens wait until a land site is clicked and named (the SDL window now enables text input).
+Further bases start from N on the geoscape or N in the base screens (which close and hand over to
+the globe), with Esc or the sidebar Cancel to stop; at the base limit or before the
+`newBaseUnlockResearch` the request is refused at once (`QueryNewBaseRestriction`), as
+`BasescapeState` hides the button. While a site is chosen the radar lines are on and the pointer carries the radar preview
+(`Globe::setNewBaseHover`, refreshed on a 50 ms hover tick): every facility type's radar range
+around it and, with `globeAllRadarsOnBaseBuild` (`GeoscapeClientSetup.AllRadarsOnBaseBuild`,
+default on), around each placed base instead of its own radar.
 A click on water or a forbidden fake-underwater texture shows `STR_XCOM_BASE_CANNOT_BE_BUILT`;
 otherwise the starting base goes to `BaseNameState`, and a new base to `ConfirmNewBaseState`
 (cost and area from the first region containing the site, now carried by `CampaignBaseSite`),
-whose OK refuses with `STR_NOT_ENOUGH_MONEY` when the funds fall short, then `BaseNameState`
-(typed text, Backspace, Enter or Esc to accept a non-empty name), the access lift choice when the
-base type offers several (`PlaceLiftState`), `CreateCampaignBase`, and the new base's screens.
+whose OK refuses with `STR_NOT_ENOUGH_MONEY` when the funds fall short (and with a message when
+the base type has no access lift), then `BaseNameState` (typed text, Backspace, Enter or Esc to
+accept a name that is not blank; the digit that pressed OK is not typed), the access lift choice
+when the base type offers several (`PlaceLiftState`), `CreateCampaignBase`, and the new base's
+screens. The globe stops rotating while a name is typed.
 `CampaignOverviewClient`, the foundation's minimal view, is retired.
 Known differences: the access lift is placed at the grid centre instead of a clicked position,
-`baseNamesFirst/Middle/Last` random default names are not offered, and `customInitialBase` (a
-lift for the starting base) is not supported.
+`baseNamesFirst/Middle/Last` random default names are not offered, `customInitialBase` (a
+lift for the starting base) is not supported, the hover preview leaves out zero and repeated
+radar ranges (the same pixels), costs use a comma thousands separator instead of a non-breaking
+space, names are limited to 40 characters and a blank name is refused, and a custom
+`GeoscapeClientSetup.OpenBases` factory keeps its own new-base behaviour.
 Tests: `GeoscapeClientTests`, `StrategicWorldBasePlacementTests`.

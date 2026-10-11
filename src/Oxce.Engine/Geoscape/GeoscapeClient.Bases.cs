@@ -18,9 +18,15 @@ public sealed partial class GeoscapeClient
 
     private sealed record NamingState(string Text, Action<string> Done);
 
+    private static readonly TimeSpan HoverInterval = TimeSpan.FromMilliseconds(50);
+
     private PlacementState? _placing;
     private NamingState? _naming;
     private GlobeBaseHover? _hover;
+    private GlobeBaseHover? _pendingHover;
+    private TimeSpan _hoverElapsed;
+    private string? _keyText;
+    private string? _suppressText;
 
     /// <summary>A base site is being chosen on the globe (BuildNewBaseState); true for the starting base.</summary>
     public bool? PlacingBase => _placing?.First;
@@ -36,15 +42,15 @@ public sealed partial class GeoscapeClient
             _status = "Base placement is unavailable for this session.";
             return;
         }
-        var bases = _overview.Bases;
-        var unplaced = -1;
-        for (var index = 0; index < bases.Count; index++)
-            if (!bases[index].IsPlaced)
-            {
-                unplaced = index;
-                break;
-            }
-        _placing = new PlacementState(unplaced >= 0, Math.Max(unplaced, 0));
+        // Only the starting base is ever unplaced (GeoscapeState::init checks the first base).
+        var first = _overview.Bases.Count != 0 && !_overview.Bases[0].IsPlaced;
+        if (!first && _session.Readiness.QueryNewBaseRestriction() is { } restriction)
+        {
+            // BasescapeState hides "Build new base" at the base limit or before the unlock research.
+            Push(Message(_setup.Localize(restriction)));
+            return;
+        }
+        _placing = new PlacementState(first, 0);
         _rotateLongitude = _rotateLatitude = 0;
         _dragging = false;
         _time.Interrupt();
@@ -56,15 +62,30 @@ public sealed partial class GeoscapeClient
         // BuildNewBaseState hides Cancel for the starting base.
         if (_placing is not { First: false }) return;
         _placing = null;
-        _hover = null;
+        _hover = _pendingHover = null;
         RebuildScene();
     }
 
+    /// <summary>BuildNewBaseState::globeHover: the preview moves on the next 50 ms hover tick.</summary>
     private void HoverBaseSite(int x, int y)
     {
         if (!View.TryUnproject(x, y, out var longitude, out var latitude)) return;
-        _hover = new GlobeBaseHover(longitude, latitude);
+        _pendingHover = new GlobeBaseHover(longitude, latitude, _setup.AllRadarsOnBaseBuild);
+    }
+
+    /// <summary>BuildNewBaseState::hoverRedraw: redraws only when the hovered point changed.</summary>
+    private bool TickHover(TimeSpan interval)
+    {
+        if (_placing is null || _pendingHover is null) return false;
+        _hoverElapsed += interval;
+        if (_hoverElapsed < HoverInterval) return false;
+        _hoverElapsed = TimeSpan.Zero;
+        var pending = _pendingHover;
+        _pendingHover = null;
+        if (_hover == pending) return false;
+        _hover = pending;
         RebuildScene();
+        return true;
     }
 
     /// <summary>BuildNewBaseState::globeClick.</summary>
@@ -100,7 +121,14 @@ public sealed partial class GeoscapeClient
                 Push(Message(tr("STR_NOT_ENOUGH_MONEY")));
                 return;
             }
-            BeginNaming(name => ChooseLift(name, site));
+            var lifts = _session.Readiness!.QueryAccessLifts(site.FakeUnderwater)
+                .Where(lift => lift.UnavailableReason is null).ToArray();
+            if (lifts.Length == 0)
+            {
+                Push(Message("No access lift is available for this base type."));
+                return;
+            }
+            BeginNaming(name => ChooseLift(name, site, lifts));
         });
     }
 
@@ -113,21 +141,15 @@ public sealed partial class GeoscapeClient
             return;
         }
         _placing = null;
-        _hover = null;
+        _hover = _pendingHover = null;
         // GeoscapeState::init enters the world once the starting base exists.
         EnterWorld();
         Refresh();
     }
 
     /// <summary>PlaceLiftState: the access lift, chosen when the base type offers several.</summary>
-    private void ChooseLift(string name, CampaignBaseSite site)
+    private void ChooseLift(string name, CampaignBaseSite site, CampaignFacilityChoice[] lifts)
     {
-        var lifts = _session.Readiness!.QueryAccessLifts(site.FakeUnderwater).Where(lift => lift.UnavailableReason is null).ToArray();
-        if (lifts.Length == 0)
-        {
-            Push(Message("No access lift is available for this base."));
-            return;
-        }
         if (lifts.Length == 1)
         {
             CreateBase(name, site, lifts[0]);
@@ -151,7 +173,7 @@ public sealed partial class GeoscapeClient
             return;
         }
         _placing = null;
-        _hover = null;
+        _hover = _pendingHover = null;
         Refresh();
         // PlaceLiftState continues to BasescapeState for the new base.
         if (result.Events.OfType<CampaignBaseCreated>().FirstOrDefault() is { } created) OpenBases(created.BaseId);
@@ -160,6 +182,10 @@ public sealed partial class GeoscapeClient
     private void BeginNaming(Action<string> done)
     {
         _naming = new NamingState(string.Empty, done);
+        // A digit that chose the button that opened the name box also arrives as text: drop it.
+        _suppressText = _keyText;
+        _rotateLongitude = _rotateLatitude = 0;
+        _dragging = false;
         _time.Interrupt();
     }
 
@@ -169,7 +195,11 @@ public sealed partial class GeoscapeClient
         var naming = _naming!;
         switch (input.Kind)
         {
+            case GameInputEventKind.TextInput when input.Text is { Length: > 0 } text && _suppressText == text:
+                _suppressText = null;
+                break;
             case GameInputEventKind.TextInput when input.Text is { Length: > 0 } text:
+                _suppressText = null;
                 var appended = naming.Text + new string(text.Where(static character => !char.IsControl(character)).ToArray());
                 _naming = naming with { Text = appended.Length > MaximumBaseName ? appended[..MaximumBaseName] : appended };
                 break;
@@ -188,15 +218,16 @@ public sealed partial class GeoscapeClient
 
     private void AcceptName()
     {
+        // BaseNameState accepts any non-empty name; a blank one would be refused by the command.
         var naming = _naming!;
-        var name = naming.Text.Trim();
-        if (name.Length == 0) return;
+        if (string.IsNullOrWhiteSpace(naming.Text)) return;
         _naming = null;
-        naming.Done(name);
+        _suppressText = null;
+        naming.Done(naming.Text);
     }
 
     private GeoscapePopup NamingPopup() => new(_setup.Localize("STR_BASE_NAME"), [_naming!.Text + "_"],
-        _naming.Text.Trim().Length == 0 ? [] : [new(_setup.Localize("STR_OK"), OkKey: true, CancelKey: true)]);
+        string.IsNullOrWhiteSpace(_naming.Text) ? [] : [new(_setup.Localize("STR_OK"), OkKey: true, CancelKey: true)]);
 
     /// <summary>Unicode::formatFunding: thousands separated, the one-character currency in front.</summary>
     private static string Funding(long value) =>
