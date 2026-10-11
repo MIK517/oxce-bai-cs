@@ -164,7 +164,8 @@ public static class GeoscapeScreens
             new(tr("STR_CENTER_ON_UFO_TIME_5_SECONDS"), true, position),
             new(tr("STR_CANCEL_UC"), CancelKey: true),
         };
-        if (!ufo.DetectionAlertIgnored && ufo.Reference.UniqueId > 0)
+        // IgnoreUfoContact accepts flying and landed contacts; a crash site has no alerts left to ignore.
+        if (!ufo.DetectionAlertIgnored && ufo.Reference.UniqueId > 0 && ufo.Status != nameof(UfoStatus.Crashed))
             actions.Add(new(tr("STR_IGNORE_UC")) { Command = new IgnoreUfoContact(ufo.Reference.UniqueId, ufo.Reference.Id) });
         return new(ufo.Label, lines, actions);
     }

@@ -28,7 +28,15 @@ public sealed record CraftLowFuel(int BaseId, string CraftTypeId, int CraftId) :
 
 /// <summary>The craft stopped pursuit; the last position can be confirmed as a new waypoint.</summary>
 public sealed record CraftTargetLost(int BaseId, string CraftTypeId, int CraftId,
-    WorldTargetReference Target, bool ReturningToBase) : ICampaignEvent;
+    WorldTargetReference Target, bool ReturningToBase) : ICampaignEvent
+{
+    /// <summary>
+    /// GeoscapeState::time5Seconds opens GeoscapeCraftState at the UFO's last position: the pursued
+    /// UFO left radar (even when it was also destroyed or ignored), except a retaliation assault run
+    /// that landed or was destroyed.
+    /// </summary>
+    public bool OffersLastPosition { get; init; }
+}
 
 /// <summary>
 /// Craft-only world operations. Reference: Craft::setDestination, think, returnToBase,

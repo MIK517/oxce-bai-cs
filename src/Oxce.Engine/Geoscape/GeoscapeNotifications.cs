@@ -147,14 +147,14 @@ public static class GeoscapeNotifications
                             Intent = new CraftIntent(new(arrived.BaseId, arrived.CraftTypeId, arrived.CraftId)),
                         },
                     ]);
-            case CraftTargetLost { ReturningToBase: false, Target.Kind: WorldTargetKind.Ufo } lostTarget
+            case CraftTargetLost { OffersLastPosition: true, Target.Kind: WorldTargetKind.Ufo } lostTarget
                 when world.Crafts.FirstOrDefault(craft => craft.BaseId == lostTarget.BaseId &&
                     craft.TypeId == lostTarget.CraftTypeId && craft.Id == lostTarget.CraftId) is { } pursuer:
                 // GeoscapeState::time5Seconds: a pursued UFO left radar; the craft screen offers its last position.
                 return GeoscapeScreens.Craft(pursuer, world, rules, tr, etaMode,
                     new GeoscapeLostUfo(lostTarget.Target.Position, lostTarget.Target.Id));
             case CraftTargetLost:
-                // A destroyed or ignored target, or one that no longer exists: the craft just returns or patrols.
+                // A visible destroyed or ignored UFO, or a target that no longer exists: the craft just returns or patrols.
                 return null;
             case SuppliesArrived supplies:
                 return new(tr("STR_ITEMS_ARRIVING"), [BaseName(supplies.BaseId)], [OkCancelOnly(), GoToBase(supplies.BaseId, okKey: true)]);
