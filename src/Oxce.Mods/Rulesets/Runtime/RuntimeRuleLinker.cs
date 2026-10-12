@@ -472,7 +472,16 @@ public static class RuntimeRuleLinker
             BuildFamily<AlienRaceRuleFamily, AlienRaceRule, RuntimeAlienRaceRule>(generation, content.TerrainDeployment.AlienRaces,
                 static rule => new RuntimeAlienRaceRule(rule.Id, rule.Value.RetaliationAggression,
                     Array.AsReadOnly(rule.Value.RetaliationMissionWeights.Select(static entry =>
-                        new RuntimeWeightedTimeline(entry.Key, entry.Value)).ToArray()))),
+                        new RuntimeWeightedTimeline(entry.Key, entry.Value)).ToArray()))
+                {
+                    BaseCustomDeploy = rule.Value.BaseCustomDeploy,
+                    BaseCustomMission = rule.Value.BaseCustomMission,
+                }),
+            BuildFamily<StartingConditionRuleFamily, StartingConditionRule, RuntimeStartingCondition>(generation,
+                content.TerrainDeployment.StartingConditions, static rule => new RuntimeStartingCondition(
+                    rule.Value.NameCollections["allowedCraft"], rule.Value.NameCollections["forbiddenCraft"],
+                    rule.Value.NameCollections["allowedSoldierTypes"], rule.Value.NameCollections["forbiddenSoldierTypes"],
+                    rule.Value.RequiredItems, rule.Value.DestroyRequiredItems, rule.Value.RequireCommanderOnboard)),
             BuildFamily<MissionScriptRuleFamily, StrategicScriptRule, RuntimeMissionScriptRule>(generation,
                 content.MissionEvents.MissionScripts, rule => BuildMissionScript(rule, "missionScripts")),
             BuildFamily<AdhocScriptRuleFamily, StrategicScriptRule, RuntimeMissionScriptRule>(generation,

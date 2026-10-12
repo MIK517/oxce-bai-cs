@@ -199,11 +199,32 @@ public sealed record RuntimeAlienMissionRule(
 }
 
 /// <summary>A month-keyed weighted table. Reference: <c>WeightedOptions</c> timelines in the mod rules.</summary>
+/// <summary>
+/// The landing checks of a starting condition (RuleStartingCondition, ConfirmLandingState::checkStartingCondition).
+/// A forbidden list, when present, wins over the allowed list.
+/// </summary>
+public sealed record RuntimeStartingCondition(IReadOnlyList<string> AllowedCraft, IReadOnlyList<string> ForbiddenCraft,
+    IReadOnlyList<string> AllowedSoldierTypes, IReadOnlyList<string> ForbiddenSoldierTypes,
+    IReadOnlyDictionary<string, int> RequiredItems, bool DestroyRequiredItems, bool RequireCommanderOnboard)
+{
+    public bool IsCraftPermitted(string craftType) => Permitted(AllowedCraft, ForbiddenCraft, craftType);
+
+    public bool IsSoldierTypePermitted(string soldierType) => Permitted(AllowedSoldierTypes, ForbiddenSoldierTypes, soldierType);
+
+    private static bool Permitted(IReadOnlyList<string> allowed, IReadOnlyList<string> forbidden, string type) =>
+        forbidden.Count != 0 ? !forbidden.Contains(type) : allowed.Count == 0 || allowed.Contains(type);
+}
+
 public sealed record RuntimeWeightedTimeline(ulong FirstMonth, IReadOnlyDictionary<string, ulong> Weights);
 
 /// <summary>The strategic projection of an alien race: retaliation aggression and the retaliation
 /// mission timeline in rule order (AlienRace::retaliationMissionWeights).</summary>
-public sealed record RuntimeAlienRaceRule(string Id, int RetaliationAggression, IReadOnlyList<RuntimeWeightedTimeline> RetaliationMissionWeights);
+public sealed record RuntimeAlienRaceRule(string Id, int RetaliationAggression, IReadOnlyList<RuntimeWeightedTimeline> RetaliationMissionWeights)
+{
+    /// <summary>AlienRace::getBaseCustomDeploy and getBaseCustomMission: alien-base battle deployments.</summary>
+    public string BaseCustomDeploy { get; init; } = string.Empty;
+    public string BaseCustomMission { get; init; } = string.Empty;
+}
 
 /// <summary>
 /// The strategic projection of an alien deployment: site and alien-base bookkeeping only.
