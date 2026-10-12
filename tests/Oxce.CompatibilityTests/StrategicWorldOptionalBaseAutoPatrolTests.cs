@@ -78,8 +78,7 @@ public sealed class StrategicWorldOptionalBaseAutoPatrolTests
         initial = Snapshot(content, 17, "STR_REFUELLING");
         var craft = initial.Bases[0].Crafts[0].Logistics!;
         initial = initial with { World = initial.World with { Ufos = [initial.World.Ufos[0] with { Longitude = craft.Longitude, Latitude = craft.Latitude }] } };
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
-            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+        AssertInterceptionStarts(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)));
     }
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content, ulong seed, string status)

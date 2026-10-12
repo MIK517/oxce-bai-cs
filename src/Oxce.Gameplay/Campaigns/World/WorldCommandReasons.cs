@@ -29,7 +29,7 @@ public static class WorldCommandReasons
     internal const string LandingBoundary = "Craft landing requires deployment (Phase 6 branch 5).";
     internal const string InterceptionOutcomeBoundary = "Interception outcomes require their world consequences (Phase 6 branch 5).";
     internal const string NoInterception = "There is no such interception.";
-    internal const string InterceptionTimeBoundary = "Time with open interceptions requires their scheduling (Phase 6 branch 5).";
+    internal const string InterceptionsOpen = "Open interception windows stop the clock until they are minimized.";
     internal const string InterceptionMode = "The interception does not offer that mode.";
     internal const string ContactGone = "The UFO contact no longer exists or is not visible.";
     internal const string ContactLimit = "Ignored UFO contacts exceed the supported limit.";
@@ -57,7 +57,7 @@ public static class WorldCommandReasons
         new("boundary.landing", LandingBoundary),
         new("boundary.interception-outcome", InterceptionOutcomeBoundary),
         new("interception.none", NoInterception),
-        new("boundary.interception-time", InterceptionTimeBoundary),
+        new("interception.open", InterceptionsOpen),
         new("interception.mode", InterceptionMode),
         new("contact.gone", ContactGone),
         new("contact.limit", ContactLimit),

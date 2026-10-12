@@ -70,12 +70,13 @@ public sealed class StrategicWorldGeoscapeScenarioTests
         Assert.Equal(WorldTargetKind.Ufo, Ship(client).Destination!.Kind);
 
         // The ship carries no crew, so it waits over the landing (no ConfirmLandingState). When the UFO
-        // lifts off the ship meets a flying UFO: interception needs strategic combat (branch 5), so the
-        // clock stops with the reason in a popup and stays halted.
+        // lifts off the ship meets a flying UFO and an interception opens; the open window stops the clock.
+        // Dogfight windows join the client in branch 5 S8; until then the halt reason names the open window.
         Key(client, '2');
         var seen = Drive(client, () => campaign, 4 * 60, () => client.Time.HaltReason is not null);
-        Assert.Equal(["Time cannot advance: " + WorldCommandReasons.InterceptionBoundary], seen);
-        Assert.Contains(WorldCommandReasons.InterceptionBoundary, client.Time.HaltReason, StringComparison.Ordinal);
+        Assert.Equal(["Time cannot advance: " + WorldCommandReasons.InterceptionsOpen], seen);
+        Assert.Contains(WorldCommandReasons.InterceptionsOpen, client.Time.HaltReason, StringComparison.Ordinal);
+        Assert.Single(campaign.GetQuery<ICampaignInterceptionQuery>()!.QueryInterceptions());
         Assert.False(client.Time.Running);
         var stopped = campaign.QueryOverview().Time;
         client.Tick(GeoscapeTimeController.GeoClock);
@@ -87,6 +88,8 @@ public sealed class StrategicWorldGeoscapeScenarioTests
         OpenCraft(client, ship);
         client.Choose(0);
         Assert.Equal(WorldTargetKind.Base, Ship(client).Destination!.Kind);
+        // One dogfight step ends the window of a craft that no longer targets its UFO.
+        Assert.IsType<InterceptionEnded>(Assert.Single(campaign.Execute(new AdvanceInterceptions()).Events));
         Key(client, '2');
         Assert.True(client.TimeCanRun);
         Drive(client, () => campaign, 3 * 24 * 60, () => Ship(client).Status != "STR_OUT");

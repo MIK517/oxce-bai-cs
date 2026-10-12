@@ -95,6 +95,8 @@ internal sealed partial class CampaignWorld
         // hunting or escorting UFOs are never stored because later steps can still extend the
         // forecasts their projection reads.
         public bool SharedFlightsReady;
+        // A hunter-killer may attack its craft this tick, which stops the craft pass (ufoIsAttacking).
+        public bool HunterAttackForecast;
         public SharedFlight[]? SharedFlights;
 
         // Reset by BeginHunting, when hunting and escort forecasts start later in the pass. The
@@ -161,6 +163,7 @@ internal sealed partial class CampaignWorld
             GuaranteedDailyResearch = null;
             SuppressedUfoSites = null;
             SharedFlightsReady = false;
+            HunterAttackForecast = false;
             ResetSharedFlights();
         }
 

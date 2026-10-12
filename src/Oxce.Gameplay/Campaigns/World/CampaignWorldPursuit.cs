@@ -180,6 +180,8 @@ internal sealed partial class CampaignWorld
     private string? CraftArrivalReason(CampaignState.BaseState owner, CampaignState.CraftState craft,
         CraftLogisticsState state, CampaignTimeTrigger highest, ref bool? terminalUfoArrival)
     {
+        // A hunter-killer attack this tick stops the craft pass before any craft arrives.
+        if (_pass.HunterAttackForecast) return null;
         if (state.Destination is { Kind: WorldTargetKind.Craft } escort && escort.Id == craft.Id &&
             escort.TypeId == campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule))
             return WorldCommandReasons.TargetSelf;
@@ -225,12 +227,8 @@ internal sealed partial class CampaignWorld
         var from = new WorldPosition(state.Longitude, state.Latitude);
         var position = state.Takeoff > 0 ? from : WorldGeometry.Move(from, targetPosition, WorldGeometry.RadianSpeed(state.Speed));
         if (!WorldGeometry.ReachedDestination(position, targetPosition)) return null;
-        if (projectedUfo is { Status: UfoStatus.Flying } projected)
-        {
-            CraftLogistics.TryEffectiveSpeedMaximum(campaign.Content.RuntimeRules.Crafts[craft.Rule].Value,
-                state.Weapons, campaign.Content.RuntimeRules, out var maximum);
-            return projected.Speed <= maximum ? InterceptionReason : null;
-        }
+        // Reaching a flying UFO starts an interception (branch 5 S4), which needs no further preflight.
+        if (projectedUfo is { Status: UfoStatus.Flying }) return null;
         if (!CanLand(owner, craft, state)) return null;
         if (destination.Kind == WorldTargetKind.AlienBase &&
             TargetAlienBase(destination) is { Discovered: false } undiscoveredBase)

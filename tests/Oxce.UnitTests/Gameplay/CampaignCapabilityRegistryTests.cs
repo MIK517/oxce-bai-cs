@@ -60,7 +60,7 @@ public sealed class CampaignCapabilityRegistryTests
             "UFO hunting and escort retargeting"],
             table.HandlerNames(CampaignTimeTrigger.TenMinutes));
         Assert.Equal<string>(["fast UFO retargeting and target repair", "world UFO movement", "world craft movement",
-            "destroyed UFO cleanup"],
+            "interception start", "destroyed UFO interception cleanup", "destroyed UFO cleanup", "interception waits"],
             table.HandlerNames(CampaignTimeTrigger.FiveSeconds));
         Assert.Equal<string>(
             ["restrictions", "interceptions", "world simulation", "craft movement", "month boundary", "monthly world scheduling", "craft servicing",

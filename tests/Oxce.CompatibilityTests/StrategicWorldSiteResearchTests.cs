@@ -133,8 +133,7 @@ public sealed class StrategicWorldSiteResearchTests
             { Status = "STR_OUT", Takeoff = 0, Fuel = 300, Speed = 0, Longitude = 0.4, Latitude = 0.2, Destination = null }
         });
         var snapshot = existing with { World = existing.World with { MissionSites = Snapshot(content).World.MissionSites } };
-        AssertTimeBlocked(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17)),
-            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+        AssertInterceptionStarts(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17)));
     }
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content)
