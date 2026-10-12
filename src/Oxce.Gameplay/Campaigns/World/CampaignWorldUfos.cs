@@ -260,7 +260,7 @@ internal sealed partial class CampaignWorld
                 // Ufo::think stops at the waypoint; AlienMission::ufoReachedWaypoint
                 // destroys an interrupted UFO or one at the trajectory's last point.
                 if (ufo.Detected && HasArrivalContactFollowers(ufo))
-                    effects.Notify(new UfoContactLost(ufo.UniqueId));
+                    effects.Notify(new UfoContactLost(ufo.UniqueId) { MarkerId = ufo.Id });
                 _ufos[index] = ufo with
                 {
                     Longitude = moved.Longitude,

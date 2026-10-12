@@ -39,7 +39,9 @@ public sealed class PrivateStrategicWorldTests
                 Assert.True(seed.IsSuccess, seed.DescribeFailure());
                 var cached = InstallationContentLoader.Load(request, options, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.True(cached.IsSuccess, cached.DescribeFailure());
-                Assert.Equal(CompiledContentCacheStatus.Hit, cached.CacheStatus);
+                // A cache too large to publish leaves the previous family's file, which is then rejected.
+                Assert.True(cached.CacheStatus == CompiledContentCacheStatus.Hit,
+                    $"{master}/{addon}: {cached.CacheStatus} {cached.CacheRejectionReason}");
                 var first = Exercise(fresh.Content!, request, family);
                 Assert.Equal(count, first.Length);
                 Assert.Equivalent(first, Exercise(cached.Content!, request, family), strict: true);

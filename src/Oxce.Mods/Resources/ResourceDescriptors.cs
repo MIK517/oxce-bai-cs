@@ -56,6 +56,13 @@ public readonly record struct ResourceHandle
     public ResourceKind Kind { get; }
 }
 
+/// <summary>
+/// The cell a subdivided extra sprite takes from its image. ExtraSprites::loadSurfaceSet divides
+/// the declared size into <c>subX</c> by <c>subY</c> cells and copies each from the loaded image;
+/// cell pixels outside the image stay transparent.
+/// </summary>
+public readonly record struct ResourceSubFrame(int X, int Y, int Width, int Height);
+
 public sealed record ResolvedResourceDescriptor(
     ResourceHandle Handle,
     string Id,
@@ -68,7 +75,11 @@ public sealed record ResolvedResourceDescriptor(
     int Width,
     int Height,
     string OwnerSection,
-    string OwnerId);
+    string OwnerId)
+{
+    /// <summary>Set for one cell of a subdivided image; the descriptor size is then the cell size.</summary>
+    public ResourceSubFrame? SubFrame { get; init; }
+}
 
 public sealed record ResolvedResourceIndex(
     ResourceKind Kind,
@@ -89,9 +100,12 @@ public sealed class ResolvedResourceCatalog
     internal ResolvedResourceCatalog(
         ContentGenerationId generation,
         IEnumerable<ResolvedResourceDescriptor> descriptors,
-        IEnumerable<ResolvedResourceIndex>? indexes = null)
+        IEnumerable<ResolvedResourceIndex>? indexes = null,
+        IReadOnlyDictionary<string, int>? modOffsets = null)
     {
         Generation = generation;
+        ModOffsets = new ReadOnlyDictionary<string, int>(
+            new Dictionary<string, int>(modOffsets ?? new Dictionary<string, int>(), StringComparer.Ordinal));
         _descriptors = descriptors.ToArray();
         if (_descriptors.Select(static descriptor => descriptor.Id).Distinct(StringComparer.Ordinal).Count() !=
             _descriptors.Length)
@@ -131,6 +145,9 @@ public sealed class ResolvedResourceCatalog
             return _descriptors[handle.Index];
         }
     }
+
+    /// <summary>Each mod's sprite and sound offset (ModData::offset): reserved space times 1000, in load order.</summary>
+    public IReadOnlyDictionary<string, int> ModOffsets { get; }
 
     public bool TryGet(string id, out ResourceHandle handle) => _handlesById.TryGetValue(id, out handle);
 
@@ -189,7 +206,12 @@ public sealed class ResolvedResourceCatalog
 
 public sealed record ResourceResolutionOptions
 {
-    public const int DefaultMaximumDescriptors = 250_000;
+    /// <summary>
+    /// A guard against runaway rulesets, not a content limit: every cell of a subdivided extra
+    /// sprite is its own descriptor (ExtraSprites::loadSurfaceSet makes a surface per frame), and
+    /// large mods reach about 300,000 (40k with ROSIGMA).
+    /// </summary>
+    public const int DefaultMaximumDescriptors = 1_000_000;
     public const int DefaultMaximumDimension = 32_768;
 
     public int MaximumDescriptors { get; init; } = DefaultMaximumDescriptors;

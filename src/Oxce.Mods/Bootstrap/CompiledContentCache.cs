@@ -75,7 +75,7 @@ internal sealed record CompiledContentCacheReadResult(
 internal static class CompiledContentCache
 {
     internal const int FormatVersion = 1;
-    internal const int CompilerRevision = 55;
+    internal const int CompilerRevision = 59;
     private const string FileName = "content-v1.json.gz";
     private const int CacheKeyLength = 64;
     private static ReadOnlySpan<byte> HeaderMagic => "OXCECC1\n"u8;
@@ -586,9 +586,11 @@ internal sealed record CachedRuntimeContent(
     IReadOnlyList<ContentScriptArtifact> Scripts,
     IReadOnlyList<CachedScriptEventPlan> EventPlans,
     IReadOnlyList<ContentInitialScriptValue> InitialValues,
+    IReadOnlyList<CachedResourceSource> ResourceSources,
     IReadOnlyList<CachedResourceDescriptor> Resources,
     IReadOnlyList<CachedResourceIndex> ResourceIndexes,
-    IReadOnlyDictionary<string, IReadOnlyList<RuntimeSoldierNamePool>> SoldierNamePools)
+    IReadOnlyDictionary<string, IReadOnlyList<RuntimeSoldierNamePool>> SoldierNamePools,
+    IReadOnlyDictionary<string, int>? ModOffsets = null)
 {
     public static CachedRuntimeContent Capture(ContentSnapshot snapshot) => new(
         snapshot.CompatibilityData.Catalog,
@@ -598,26 +600,11 @@ internal sealed record CachedRuntimeContent(
         snapshot.Content.Scripts,
         snapshot.Content.EventPlans.Select(CachedScriptEventPlan.Capture).ToArray(),
         snapshot.Content.InitialValues,
-        snapshot.Content.Resources.Descriptors.Select(static descriptor => new CachedResourceDescriptor(
-            descriptor.Id,
-            descriptor.Kind,
-            descriptor.CanonicalPath,
-            descriptor.SourcePath,
-            descriptor.Provenance,
-            descriptor.LoadPolicy,
-            descriptor.RuntimeIndex,
-            descriptor.Width,
-            descriptor.Height,
-            descriptor.OwnerSection,
-            descriptor.OwnerId)).ToArray(),
-        snapshot.Content.Resources.Indexes.Select(static index => new CachedResourceIndex(
-            index.Kind,
-            index.SetId,
-            index.ModId,
-            index.DeclaredIndex,
-            index.RuntimeIndex,
-            index.Handle.Index)).ToArray(),
-        snapshot.Content.RuntimeRules.Soldiers.Rules.ToDictionary(r => r.Id, r => r.Value.NamePools, StringComparer.Ordinal));
+        CachedResourceSource.Table(snapshot.Content.Resources.Descriptors, out var resourceDescriptors),
+        resourceDescriptors,
+        CachedResourceIndex.Runs(snapshot.Content.Resources.Indexes),
+        snapshot.Content.RuntimeRules.Soldiers.Rules.ToDictionary(r => r.Id, r => r.Value.NamePools, StringComparer.Ordinal),
+        snapshot.Content.Resources.ModOffsets);
 
     public CachedRuntimeContentRestore Restore(
         ContentSnapshotOptions options,
@@ -642,35 +629,45 @@ internal sealed record CachedRuntimeContent(
             throw new InvalidDataException("Compiled content cache does not contain linked runtime content.");
         }
         var generation = ContentGenerationId.Next();
-        var descriptors = Resources.Select((descriptor, index) => new ResolvedResourceDescriptor(
-            new ResourceHandle(generation, index, descriptor.Kind),
-            descriptor.Id,
-            descriptor.Kind,
-            descriptor.CanonicalPath,
-            descriptor.SourcePath,
-            descriptor.Provenance,
-            descriptor.LoadPolicy,
-            descriptor.RuntimeIndex,
-            descriptor.Width,
-            descriptor.Height,
-            descriptor.OwnerSection,
-            descriptor.OwnerId)).ToArray();
-        var indexes = ResourceIndexes.Select(index =>
+        var descriptors = Resources.Select((descriptor, index) =>
         {
-            if ((uint)index.DescriptorIndex >= (uint)descriptors.Length ||
-                descriptors[index.DescriptorIndex].Kind != index.Kind)
+            if ((uint)descriptor.Source >= (uint)ResourceSources.Count)
+                throw new InvalidDataException("Compiled resource descriptor refers outside its source table.");
+            var source = ResourceSources[descriptor.Source];
+            return new ResolvedResourceDescriptor(
+                new ResourceHandle(generation, index, source.Kind),
+                descriptor.Id,
+                source.Kind,
+                source.CanonicalPath,
+                source.SourcePath,
+                source.Provenance,
+                source.LoadPolicy,
+                descriptor.RuntimeIndex,
+                source.Width,
+                source.Height,
+                source.OwnerSection,
+                source.OwnerId)
+            { SubFrame = descriptor.SubFrame };
+        }).ToArray();
+        var indexes = new List<ResolvedResourceIndex>();
+        foreach (var run in ResourceIndexes)
+        {
+            if (run.Count < 1 || (long)run.DescriptorIndex + run.Count > descriptors.Length || run.DescriptorIndex < 0 ||
+                (long)run.DeclaredIndex + run.Count - 1 > int.MaxValue || (long)run.RuntimeIndex + run.Count - 1 > int.MaxValue ||
+                (long)indexes.Count + run.Count > options.ResourceResolution.MaximumDescriptors)
             {
                 throw new InvalidDataException("Compiled resource index refers outside its descriptor table.");
             }
-            return new ResolvedResourceIndex(
-                index.Kind,
-                index.SetId,
-                index.ModId,
-                index.DeclaredIndex,
-                index.RuntimeIndex,
-                descriptors[index.DescriptorIndex].Handle);
-        }).ToArray();
-        var resources = new ResolvedResourceCatalog(generation, descriptors, indexes);
+            for (var offset = 0; offset < run.Count; offset++)
+            {
+                var descriptor = descriptors[run.DescriptorIndex + offset];
+                if (descriptor.Kind != run.Kind)
+                    throw new InvalidDataException("Compiled resource index refers outside its descriptor table.");
+                indexes.Add(new ResolvedResourceIndex(run.Kind, run.SetId, run.ModId,
+                    run.DeclaredIndex + offset, run.RuntimeIndex + offset, descriptor.Handle));
+            }
+        }
+        var resources = new ResolvedResourceCatalog(generation, descriptors, indexes, ModOffsets);
         resourceMeasurement.Dispose();
         using var linkingMeasurement = measurements.Measure(InstallationStartupStage.RuntimeRuleLinking);
         var runtimeRules = RuntimeRuleLinker.Link(
@@ -757,26 +754,87 @@ internal sealed record CachedScriptEventPlan(
     }
 }
 
-internal sealed record CachedResourceDescriptor(
-    string Id,
+/// <summary>
+/// What descriptors of one file share. Every cell of a subdivided sprite sheet is its own
+/// descriptor, so large mods hold hundreds of thousands of them; the cache stores the shared part
+/// once and each descriptor as its id, runtime index and cell.
+/// </summary>
+internal sealed record CachedResourceSource(
     ResourceKind Kind,
     string CanonicalPath,
     string SourcePath,
     VirtualFileProvenance Provenance,
     ResourceLoadPolicy LoadPolicy,
-    int? RuntimeIndex,
     int Width,
     int Height,
     string OwnerSection,
-    string OwnerId);
+    string OwnerId)
+{
+    public static IReadOnlyList<CachedResourceSource> Table(IReadOnlyList<ResolvedResourceDescriptor> descriptors,
+        out IReadOnlyList<CachedResourceDescriptor> compact)
+    {
+        var sources = new List<CachedResourceSource>();
+        var indexes = new Dictionary<CachedResourceSource, int>();
+        var entries = new CachedResourceDescriptor[descriptors.Count];
+        for (var index = 0; index < descriptors.Count; index++)
+        {
+            var descriptor = descriptors[index];
+            var source = new CachedResourceSource(descriptor.Kind, descriptor.CanonicalPath, descriptor.SourcePath,
+                descriptor.Provenance, descriptor.LoadPolicy, descriptor.Width, descriptor.Height,
+                descriptor.OwnerSection, descriptor.OwnerId);
+            if (!indexes.TryGetValue(source, out var sourceIndex))
+            {
+                sourceIndex = sources.Count;
+                sources.Add(source);
+                indexes.Add(source, sourceIndex);
+            }
+            entries[index] = new CachedResourceDescriptor(descriptor.Id, sourceIndex, descriptor.RuntimeIndex, descriptor.SubFrame);
+        }
+        compact = entries;
+        return sources;
+    }
+}
 
+internal sealed record CachedResourceDescriptor(
+    string Id,
+    int Source,
+    int? RuntimeIndex,
+    ResourceSubFrame? SubFrame = null);
+
+/// <summary>
+/// A run of resource indexes whose declared index, runtime index and descriptor all advance by one,
+/// as the cells of a subdivided sprite sheet do; single indexes are runs of one.
+/// </summary>
 internal sealed record CachedResourceIndex(
     ResourceKind Kind,
     string SetId,
     string ModId,
     int DeclaredIndex,
     int RuntimeIndex,
-    int DescriptorIndex);
+    int DescriptorIndex,
+    int Count = 1)
+{
+    public static IReadOnlyList<CachedResourceIndex> Runs(IReadOnlyList<ResolvedResourceIndex> indexes)
+    {
+        var runs = new List<CachedResourceIndex>();
+        foreach (var index in indexes)
+        {
+            if (runs.Count != 0 && runs[^1] is var last && last.Kind == index.Kind &&
+                string.Equals(last.SetId, index.SetId, StringComparison.Ordinal) &&
+                string.Equals(last.ModId, index.ModId, StringComparison.Ordinal) &&
+                (long)last.DeclaredIndex + last.Count == index.DeclaredIndex &&
+                (long)last.RuntimeIndex + last.Count == index.RuntimeIndex &&
+                (long)last.DescriptorIndex + last.Count == index.Handle.Index)
+            {
+                runs[^1] = last with { Count = last.Count + 1 };
+                continue;
+            }
+            runs.Add(new CachedResourceIndex(index.Kind, index.SetId, index.ModId, index.DeclaredIndex,
+                index.RuntimeIndex, index.Handle.Index));
+        }
+        return runs;
+    }
+}
 
 internal sealed class YamlNodeJsonConverter : JsonConverter<YamlNode>
 {

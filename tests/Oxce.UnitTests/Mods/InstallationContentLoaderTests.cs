@@ -66,6 +66,52 @@ public sealed class InstallationContentLoaderTests
     }
 
     [Fact]
+    public void SubdividedSpriteCellsAndModOffsetsSurviveCompiledCache()
+    {
+        using var installation = new TemporaryInstallation("strategic-logistics");
+        File.AppendAllText(installation.FirstRuleset, """
+
+            extraSprites:
+              - type: GlobeMarkers
+                width: 6
+                height: 3
+                subX: 3
+                subY: 3
+                files: {9: Resources/markers.png}
+            """);
+        var image = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(installation.FirstRuleset)!)!, "Resources", "markers.png");
+        Directory.CreateDirectory(Path.GetDirectoryName(image)!);
+        File.WriteAllText(image, "cells");
+        var request = installation.Request("logistics", "-");
+        var first = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
+        var cached = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
+        Assert.True(first.IsSuccess, first.DescribeFailure());
+        Assert.True(cached.IsSuccess, cached.DescribeFailure());
+        Assert.Equal(CompiledContentCacheStatus.Hit, cached.CacheStatus);
+
+        static object[] Cells(InstallationContentLoadResult result) => result.Content!.Resources.Descriptors
+            .Where(static descriptor => descriptor.OwnerId == "GlobeMarkers")
+            .Select(static object (descriptor) => new { descriptor.RuntimeIndex, descriptor.SubFrame, descriptor.Width })
+            .ToArray();
+        Assert.Equal(2, Cells(first).Length);
+        Assert.Equivalent(Cells(first), Cells(cached), strict: true);
+        Assert.Equal(new Oxce.Mods.Resources.ResourceSubFrame(3, 0, 3, 3),
+            first.Content!.Resources.Descriptors.Single(static descriptor => descriptor.RuntimeIndex == 10).SubFrame);
+        Assert.NotEmpty(first.Content.Resources.ModOffsets);
+        Assert.Equal(first.Content.Resources.ModOffsets, cached.Content!.Resources.ModOffsets);
+
+        // The cache stores shared descriptor fields once and index runs; every descriptor and
+        // index comes back identical apart from the generation-scoped handle.
+        static object[] Descriptors(InstallationContentLoadResult result) => result.Content!.Resources.Descriptors
+            .Select(static object (descriptor) => descriptor with { Handle = default }).ToArray();
+        static object[] Indexes(InstallationContentLoadResult result) => result.Content!.Resources.Indexes
+            .Select(static object (index) => (index with { Handle = default }, index.Handle.Index, index.Handle.Kind)).ToArray();
+        Assert.Equal(Descriptors(first), Descriptors(cached));
+        Assert.Equal(Indexes(first), Indexes(cached));
+        Assert.Contains(first.Content.Resources.Indexes, static index => index.SetId == "GlobeMarkers" && index.DeclaredIndex == 10);
+    }
+
+    [Fact]
     public void NamePoolsSurviveCacheAndContentChangesInvalidateIt()
     {
         using var installation = new TemporaryInstallation("strategic-logistics");

@@ -17,12 +17,12 @@ internal sealed partial class CampaignWorld
             if (ufo.UniqueId != command.UfoUniqueId || command.UfoUniqueId <= 0) continue;
             if (ufo.Id != command.ContactId || command.ContactId <= 0 || !ufo.Detected ||
                 ufo.Status is not (UfoStatus.Flying or UfoStatus.Landed))
-                return Blocked("The UFO contact no longer exists or is not visible.");
+                return Blocked(WorldCommandReasons.ContactGone);
             if (!_ignoredUfoContacts.Contains(ufo.Id) && _ignoredUfoContacts.Count >= 100_000)
-                return Blocked("Ignored UFO contacts exceed the supported limit.");
+                return Blocked(WorldCommandReasons.ContactLimit);
             _ignoredUfoContacts.Add(ufo.Id);
             return new([new UfoContactIgnored(ufo.UniqueId, ufo.Id)]);
         }
-        return Blocked("The UFO contact no longer exists or is not visible.");
+        return Blocked(WorldCommandReasons.ContactGone);
     }
 }

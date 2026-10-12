@@ -4,7 +4,11 @@ namespace Oxce.Gameplay.Campaigns;
 
 public sealed record CreateCampaignBase(string Name, double Longitude, double Latitude, string LiftRuleId, int X, int Y) : ICampaignCommand;
 public sealed record CampaignBaseCreated(int BaseId, string Name, long Cost) : ICampaignEvent;
-public sealed record CampaignBaseSite(double Longitude, double Latitude, int Cost, bool FakeUnderwater, string? UnavailableReason);
+public sealed record CampaignBaseSite(double Longitude, double Latitude, int Cost, bool FakeUnderwater, string? UnavailableReason)
+{
+    /// <summary>ConfirmNewBaseState's area: the first region containing the site ("" when none).</summary>
+    public string RegionId { get; init; } = string.Empty;
+}
 
 public sealed partial class CampaignState
 {
@@ -32,11 +36,30 @@ public sealed partial class CampaignState
         lock (_transactionGate)
         {
             var texture = StrategicGeography.TextureAt(_content.RuntimeRules.Campaign.Globe, longitude, latitude);
-            return new(longitude, latitude, startingBase ? 0 : BaseCost(longitude, latitude),
+            var (cost, region) = BaseRegion(longitude, latitude);
+            return new(longitude, latitude, startingBase ? 0 : cost,
                 texture is { } id && _content.RuntimeRules.Campaign.Globe.Textures.GetValueOrDefault(id)?.FakeUnderwater == true,
-                BaseSiteRestriction(longitude, latitude, startingBase));
+                BaseSiteRestriction(longitude, latitude, startingBase))
+            { RegionId = region };
         }
     }
+
+    public string? QueryNewBaseRestriction()
+    {
+        lock (_transactionGate)
+        {
+            if (_bases.Any(b => !b.IsPlaced)) return PlaceStartingBaseFirst;
+            if (_bases.Count >= Options.MaximumBases) return MaximumBasesReason;
+            if (_content.RuntimeRules.Campaign.NewBaseUnlockResearch is { } research &&
+                !_completedResearch.Contains(_content.RuntimeRules.Research.GetExternalId(research)))
+                return NewBaseResearchReason;
+            return null;
+        }
+    }
+
+    private const string PlaceStartingBaseFirst = "Place the starting base first.";
+    private const string MaximumBasesReason = "Maximum number of bases reached.";
+    private const string NewBaseResearchReason = "Required research is not complete.";
 
     private string? BaseSiteRestriction(double longitude, double latitude, bool first)
     {
@@ -50,25 +73,27 @@ public sealed partial class CampaignState
             (first || settings.FakeUnderwaterBaseUnlockResearch is { } gate && !_completedResearch.Contains(_content.RuntimeRules.Research.GetExternalId(gate))))
             return "STR_XCOM_BASE_CANNOT_BE_BUILT";
         if (!first && settings.NewBaseUnlockResearch is { } research && !_completedResearch.Contains(_content.RuntimeRules.Research.GetExternalId(research)))
-            return "Required research is not complete.";
+            return NewBaseResearchReason;
         return null;
     }
 
-    private int BaseCost(double longitude, double latitude)
+    /// <summary>ConfirmNewBaseState: the cost and name of the first region containing the site.</summary>
+    private (int Cost, string RegionId) BaseRegion(double longitude, double latitude)
     {
         foreach (var region in _regions)
         {
             var rule = _content.RuntimeRules.Regions[region.Rule].Value;
-            if (rule.Areas.Any(a => AreaContains(a, longitude, latitude))) return rule.BaseCost;
+            if (rule.Areas.Any(a => AreaContains(a, longitude, latitude)))
+                return (rule.BaseCost, _content.RuntimeRules.Regions.GetExternalId(region.Rule));
         }
-        return 0;
+        return (0, string.Empty);
     }
 
     private CampaignCommandResult CreateBase(CreateCampaignBase command)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(command.Name);
-        if (_bases.Any(b => !b.IsPlaced)) return Blocked("Place the starting base first.");
-        if (_bases.Count >= Options.MaximumBases) return Blocked("Maximum number of bases reached.");
+        if (_bases.Any(b => !b.IsPlaced)) return Blocked(PlaceStartingBaseFirst);
+        if (_bases.Count >= Options.MaximumBases) return Blocked(MaximumBasesReason);
         var site = QueryBaseSite(command.Longitude, command.Latitude);
         if (site.UnavailableReason is { } reason) return Blocked(reason);
         var handle = _content.RuntimeRules.Facilities.GetRequired(command.LiftRuleId);

@@ -7,6 +7,11 @@ public interface ICampaignReadinessQuery
     CampaignBaseReadiness QueryReadiness(int baseId);
     IReadOnlyList<CampaignBaseSite> QueryBaseSites(bool startingBase);
     CampaignBaseSite QueryBaseSite(double longitude, double latitude, bool startingBase = false);
+    /// <summary>
+    /// Why no new base can be started now (BasescapeState hides "Build new base"): the base limit,
+    /// the unlock research, or an unplaced starting base; null when one can.
+    /// </summary>
+    string? QueryNewBaseRestriction();
     IReadOnlyList<CampaignFacilityChoice> QueryAccessLifts(bool fakeUnderwater);
     CampaignBaseManagement QueryBaseManagement(int baseId);
 }

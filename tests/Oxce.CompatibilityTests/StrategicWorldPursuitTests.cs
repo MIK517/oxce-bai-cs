@@ -188,6 +188,8 @@ public sealed class StrategicWorldPursuitTests
         Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
         var lost = Assert.Single(result.Events.OfType<CraftTargetLost>());
         Assert.False(lost.ReturningToBase);
+        // GeoscapeState::time5Seconds offers the UFO's last position when it leaves radar.
+        Assert.True(lost.OffersLastPosition);
         Assert.Equal(campaign.Capture().World.Ufos[0].Longitude, lost.Target.Longitude);
         var state = Ship(campaign.Capture());
         Assert.Null(state.Destination);
@@ -304,12 +306,15 @@ public sealed class StrategicWorldPursuitTests
         var arrival = campaign.Execute(new AdvanceCampaignTime(1));
         Assert.Collection(arrival.Events,
             item => Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(item).Summary.TickCount),
-            item => Assert.Equal(new UfoContactLost(snapshot.World.Ufos[0].UniqueId), Assert.IsType<UfoContactLost>(item)));
+            item => Assert.Equal(new UfoContactLost(snapshot.World.Ufos[0].UniqueId) { MarkerId = snapshot.World.Ufos[0].Id },
+                Assert.IsType<UfoContactLost>(item)));
         Assert.Equal(UfoStatus.Destroyed, Assert.Single(campaign.Capture().World.Ufos).Status);
         Assert.Equal(WorldTargetKind.Ufo, Ship(campaign.Capture()).Destination!.Kind);
         campaign = Reload(content, campaign, 92, "terminal-pursuit.sav");
         var result = campaign.Execute(new AdvanceCampaignTime(1));
-        Assert.True(Assert.Single(result.Events.OfType<CraftTargetLost>()).ReturningToBase);
+        // AlienMission::ufoReachedWaypoint hides the destroyed UFO, so the craft screen still opens.
+        var terminal = Assert.Single(result.Events.OfType<CraftTargetLost>());
+        Assert.Equal((true, true), (terminal.ReturningToBase, terminal.OffersLastPosition));
         Assert.Empty(campaign.Capture().World.Ufos);
         Assert.Null(Ship(campaign.Capture()).Destination); // Already at home, checkup runs in this tick.
         Assert.NotEqual("STR_OUT", Ship(campaign.Capture()).Status);

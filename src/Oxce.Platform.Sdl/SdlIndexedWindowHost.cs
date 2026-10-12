@@ -17,6 +17,8 @@ public sealed class SdlIndexedWindowHost : IGameHost
     private int _tickCount;
     private TimeSpan _totalPresentationDuration;
     private TimeSpan _maximumPresentationDuration;
+    private TimeSpan _totalUploadDuration;
+    private TimeSpan _maximumUploadDuration;
 
     public SdlIndexedWindowHost(
         IIndexedLoopClient client,
@@ -41,6 +43,8 @@ public sealed class SdlIndexedWindowHost : IGameHost
         _tickCount = 0;
         _totalPresentationDuration = TimeSpan.Zero;
         _maximumPresentationDuration = TimeSpan.Zero;
+        _totalUploadDuration = TimeSpan.Zero;
+        _maximumUploadDuration = TimeSpan.Zero;
         if (cancellationToken.IsCancellationRequested)
         {
             return 0;
@@ -96,7 +100,9 @@ public sealed class SdlIndexedWindowHost : IGameHost
                         _presentedFrameCount,
                         _suppressedPresentationCount,
                         _totalPresentationDuration,
-                        _maximumPresentationDuration);
+                        _maximumPresentationDuration,
+                        _totalUploadDuration,
+                        _maximumUploadDuration);
                     return result;
                 }
                 finally
@@ -227,6 +233,9 @@ public sealed class SdlIndexedWindowHost : IGameHost
                 rgbaAddress,
                 checked(width * IndexedFrameConverter.RgbaBytesPerPixel)),
             "SDL_UpdateTexture");
+        var uploaded = Stopwatch.GetElapsedTime(started);
+        _totalUploadDuration += uploaded;
+        if (uploaded > _maximumUploadDuration) _maximumUploadDuration = uploaded;
 
         RequireSuccess(SdlNative.SDL_RenderClear(renderer.DangerousGetHandle()), "SDL_RenderClear");
         RequireSuccess(

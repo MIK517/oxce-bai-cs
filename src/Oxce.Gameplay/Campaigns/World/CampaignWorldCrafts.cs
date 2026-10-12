@@ -28,7 +28,15 @@ public sealed record CraftLowFuel(int BaseId, string CraftTypeId, int CraftId) :
 
 /// <summary>The craft stopped pursuit; the last position can be confirmed as a new waypoint.</summary>
 public sealed record CraftTargetLost(int BaseId, string CraftTypeId, int CraftId,
-    WorldTargetReference Target, bool ReturningToBase) : ICampaignEvent;
+    WorldTargetReference Target, bool ReturningToBase) : ICampaignEvent
+{
+    /// <summary>
+    /// GeoscapeState::time5Seconds opens GeoscapeCraftState at the UFO's last position: the pursued
+    /// UFO left radar (even when it was also destroyed or ignored), except a retaliation assault run
+    /// that landed or was destroyed.
+    /// </summary>
+    public bool OffersLastPosition { get; init; }
+}
 
 /// <summary>
 /// Craft-only world operations. Reference: Craft::setDestination, think, returnToBase,
@@ -48,6 +56,7 @@ internal sealed partial class CampaignWorld
         registry.Command<DispatchCraftToTarget>(DispatchTarget);
         registry.Command<RecallCraft>(Recall);
         registry.Command<PatrolCraft>(Patrol);
+        registry.Command<DispatchCraftWing>(DispatchWing);
         registry.Preflight(CampaignPreflightOrder.CraftMovement, "craft movement", (_, highest) => CraftMovementReason(highest));
         registry.Timed(CampaignTimeTrigger.FiveSeconds, CampaignTimeOrder.FiveSecondsWorldCrafts,
             "world craft movement", MoveCrafts);
@@ -82,43 +91,50 @@ internal sealed partial class CampaignWorld
             craft.Id, destination)]);
     }
 
-    private string? DispatchReason(CampaignState.BaseState owner, CampaignState.CraftState craft)
+    private string? DispatchReason(CampaignState.BaseState owner, CampaignState.CraftState craft) =>
+        LaunchReason(owner, craft) ?? ArmorReason(owner, craft) ?? ItemsReason(craft) ?? PilotsReason(owner, craft);
+
+    /// <summary>InterceptState::lstCraftsLeftClick's allowStart plus the port's speed guard.</summary>
+    private string? LaunchReason(CampaignState.BaseState owner, CampaignState.CraftState craft)
     {
-        if (craft.Logistics is not { } state) return "Craft dispatch requires resolved craft state.";
-        if (!owner.IsPlaced) return "A craft cannot depart from an unplaced base.";
+        if (craft.Logistics is not { } state) return WorldCommandReasons.Unresolved;
+        if (!owner.IsPlaced) return WorldCommandReasons.BaseUnplaced;
         // InterceptState::lstCraftsLeftClick: a READY craft always starts. An airborne craft,
         // or any craft under craftLaunchAlways, starts only while it is not returning for
         // fuel or after completing its mission.
         if (state.Status != "STR_READY")
         {
             if (state.Status != "STR_OUT" && !campaign.Options.CraftLaunchAlways)
-                return "The craft is not ready to depart.";
+                return WorldCommandReasons.NotReady;
             if (IsReturningHome(state)) return ReturningReason;
         }
         var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
-        if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
-                campaign.Content.RuntimeRules, out _))
-            return SpeedRangeReason;
-        // ConfirmDestinationState::btnOkClick checks armor, cargo, then pilots.
-        if (!campaign.HasAllowedArmorsOnboard(owner, craft))
-            return "The craft carries armor forbidden by its rules.";
-        if (CraftLogistics.TooManyItemsOnboard(state, rule, campaign.Content.RuntimeRules))
-            return "The craft carries too many items.";
-        if (!campaign.HasRequiredPilots(owner, craft)) return "The craft does not have enough pilots.";
-        return null;
+        return CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons, campaign.Content.RuntimeRules, out _)
+            ? null : SpeedRangeReason;
     }
+
+    // ConfirmDestinationState::btnOkClick checks armor, cargo, then pilots.
+    private string? ArmorReason(CampaignState.BaseState owner, CampaignState.CraftState craft) =>
+        campaign.HasAllowedArmorsOnboard(owner, craft) ? null : WorldCommandReasons.ArmorForbidden;
+
+    private string? ItemsReason(CampaignState.CraftState craft) =>
+        CraftLogistics.TooManyItemsOnboard(craft.Logistics!, campaign.Content.RuntimeRules.Crafts[craft.Rule].Value,
+            campaign.Content.RuntimeRules) ? WorldCommandReasons.TooManyItems : null;
+
+    private string? PilotsReason(CampaignState.BaseState owner, CampaignState.CraftState craft) =>
+        campaign.HasRequiredPilots(owner, craft) ? null : WorldCommandReasons.NoPilots;
 
     /// <summary>Craft::getLowFuel or getMissionComplete: the craft is already heading home.</summary>
     private static bool IsReturningHome(CraftLogisticsState state) => state.LowFuel || state.MissionComplete;
 
-    private const string ReturningReason = "The craft is returning to base.";
+    private const string ReturningReason = WorldCommandReasons.Returning;
 
     private CampaignCommandResult Patrol(PatrolCraft command)
     {
         var (owner, index) = FindCraft(command.BaseId, command.CraftTypeId, command.CraftId);
         var craft = owner.Crafts[index];
         if (craft.Logistics is not { Status: "STR_OUT" } state)
-            return Blocked("The craft is not airborne.");
+            return Blocked(WorldCommandReasons.NotAirborne);
         if (IsReturningHome(state)) return Blocked(ReturningReason);
         var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
         if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
@@ -150,7 +166,7 @@ internal sealed partial class CampaignWorld
         var (owner, index) = FindCraft(command.BaseId, command.CraftTypeId, command.CraftId);
         var craft = owner.Crafts[index];
         var state = craft.Logistics;
-        if (state is not { Status: "STR_OUT" }) return Blocked("The craft is not airborne.");
+        if (state is not { Status: "STR_OUT" }) return Blocked(WorldCommandReasons.NotAirborne);
         // GeoscapeCraftState hides its commands while the craft is already heading home.
         if (IsReturningHome(state)) return Blocked(ReturningReason);
         var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
@@ -262,7 +278,7 @@ internal sealed partial class CampaignWorld
         return CanAllocateWaypointIds(possibleRelaunches) ? null : WaypointIdReason;
     }
 
-    private const string WaypointIdReason = "Waypoint IDs are exhausted or collide with a saved waypoint.";
+    private const string WaypointIdReason = WorldCommandReasons.WaypointIds;
 
     private bool CanAllocateWaypointIds(int count)
     {
@@ -309,7 +325,7 @@ internal sealed partial class CampaignWorld
             SpeedLatitude = 0,
         };
 
-    private const string SpeedRangeReason = "Craft speed exceeds the supported range.";
+    private const string SpeedRangeReason = WorldCommandReasons.SpeedRange;
 
     private void MoveCrafts(CampaignState.TimeEffects effects)
     {
@@ -585,5 +601,5 @@ internal sealed partial class CampaignWorld
     }
 
     private static CampaignCommandResult Blocked(string reason) =>
-        new([new CampaignActionBlocked(reason)]);
+        new([CampaignActionBlocked.From(WorldCommandReasons.For(reason))]);
 }

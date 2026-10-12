@@ -84,7 +84,9 @@ public sealed class StrategicWorldCrashedUfoTests
         var campaign = Restore(content, snapshot);
         var events = campaign.Execute(new AdvanceCampaignTime(2)).Events;
         Assert.Empty(events.OfType<CampaignActionBlocked>());
-        Assert.True(Assert.Single(events.OfType<CraftTargetLost>()).ReturningToBase);
+        // An expired crash is hidden before it is destroyed: GeoscapeState still offers its last position.
+        var lost = Assert.Single(events.OfType<CraftTargetLost>());
+        Assert.Equal((true, true), (lost.ReturningToBase, lost.OffersLastPosition));
         Assert.Empty(campaign.Capture().World.Ufos);
         Assert.NotEqual("STR_OUT", campaign.Capture().Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP").Logistics!.Status);
         Reload(content, campaign, 40, "expired-followed-crash.sav");

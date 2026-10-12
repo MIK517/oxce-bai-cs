@@ -42,12 +42,26 @@ hard gates.
 | Interactive frame construction | p95 <= 8 ms | Main-thread state snapshot to indexed frame on a representative busy screen. |
 | Presentation conversion/upload | p95 <= 4 ms | Changed 640x400 indexed frame through SDL present path; unchanged frames remain suppressed. |
 | Audio callback work | p99 <= 25% of buffer duration | Maximum supported effect voices plus music/ambient on the reference class. |
+| Strategic time at one-day speed (soft) | <= 0.6 s tick work per in-game day | 17,280 five-second ticks at one-day speed for every `CampaignTimeAdvanceBenchmarks` one-day scenario; see below. |
 
 The startup and memory budgets are deliberately generous relative to the current
 content-only measurements. They allow a large scripted installation while still
 detecting retained YAML graphs, duplicated catalogs, unbounded caches, or eager decode.
 The cache budget must be configurable downward and upward; eviction correctness cannot
 depend on the default.
+
+The one-day speed target is soft. A scenario may exceed it only when a strong architectural
+reason makes that the better trade-off, and the reason must be stated openly in the table
+below with the measured value; an exceedance without a stated reason is a defect. The
+reference performs one in-game day per 80 ms `geoClockSpeed` step and slows down when the
+ticks take longer; the port spreads the same ticks over host frames (ADR 0032). Check with
+`dotnet run --project benchmarks/Oxce.Benchmarks -c Release -- --time-profile`, which also
+prints where the time goes by phase, and confirm with the benchmark.
+
+| Scenario | Measured (2026-10-12, Linux VM on the comparison machine) | Status |
+|---|---:|---|
+| 8, 32 flying UFOs; 32 with pursuit; 8 leaders with 24 escorts; 32 hunters with 16 craft | 0.12–0.43 s | Within target. |
+| 128 flying UFOs | 0.91 s | Exceeded. Reason: every tick is preflighted completely before it mutates anything, so a tick the port cannot simulate is refused atomically ([ADR 0025](decisions/0025-strategic-time-and-mobile-save-ownership.md), [4c closure](phase-6-world-integration-plan.md#branch-4c-closure-2026-10-11)). The preflight forecasts each UFO's flight several times and costs about 1.7× the movement it guards. Whether to keep forecasts and share them per tick, or move to capture-and-restore ticks, is decided at the [branch 5 kickoff](phase-6-plan.md#branch-5--interception-and-strategic-deployment-handoff). |
 
 Tactical simulation, pathfinding, visibility, and AI budgets will be added with their
 first representative scenarios. AI turns may legitimately exceed one display frame,

@@ -194,11 +194,13 @@ public static class RuntimeRuleLinker
                 ScriptsFor(scriptBuild.ByOwner, "crafts", rule.Id))
             {
                 Type = rule.Id,
+                Marker = GlobeMarker(rule.Value.Marker, resources),
                 Purchase = new(rule.Value.Integers["monthlyBuyLimit"], rule.Value.Strings["monthlyBuyLimitMessage"],
                     rule.Value.Strings["requiresBuyCountry"], rule.Value.RequiredBuyBaseFunctions, []),
                 DefaultStats = rule.Value.Stats.Integers,
                 HangarType = rule.Value.Integers["hangarType"],
                 WeaponSlots = rule.Value.Integers["weapons"],
+                WeaponStrings = rule.Value.WeaponStrings,
                 RefuelRate = rule.Value.Integers["refuelRate"],
                 RepairRate = rule.Value.Integers["repairRate"],
                 ShieldCapacity = rule.Value.Stats.Get("shieldCapacity"),
@@ -346,6 +348,9 @@ public static class RuntimeRuleLinker
             ManaWoundThreshold = content.CampaignStart.Settings.ManaWoundThreshold,
             HealthWoundThreshold = content.CampaignStart.Settings.HealthWoundThreshold,
             EscortRange = content.CampaignStart.Settings.EscortRange,
+            DrawEnemyRadarCircles = content.CampaignStart.Settings.DrawEnemyRadarCircles,
+            GlobeLabels = Array.AsReadOnly(content.CampaignStart.GlobeLabels.Rules.Select(static rule => new RuntimeGlobeLabel(
+                rule.Id, rule.Value.LabelLongitude, rule.Value.LabelLatitude, rule.Value.LabelColor, rule.Value.ZoomLevel)).ToArray()),
             MaximumViewDistance = content.CampaignStart.Settings.MaximumViewDistance,
             MaximumDarknessToSeeUnits = content.CampaignStart.Settings.MaximumDarknessToSeeUnits,
             HunterKillerFastRetarget = content.CampaignStart.Settings.HunterKillerFastRetarget,
@@ -534,9 +539,9 @@ public static class RuntimeRuleLinker
                 source.Booleans["unmanned"],
                 source.Booleans["instaHyper"],
                 source.Booleans["noAlert"],
-                source.Marker.Index,
-                source.LandedMarker.Index,
-                source.CrashedMarker.Index,
+                GlobeMarker(source.Marker, resources),
+                GlobeMarker(source.LandedMarker, resources),
+                GlobeMarker(source.CrashedMarker, resources),
                 stats,
                 new ReadOnlyDictionary<string, RuntimeUfoStats>(bonuses),
                 ScriptsFor(scriptBuild.ByOwner, "ufos", id))
@@ -671,7 +676,10 @@ public static class RuntimeRuleLinker
                 Timeline(source.AlienBaseUpgrades),
                 Array.AsReadOnly(evolution),
                 Weights(id, "despawnEvents", source.DespawnEvents))
-            { StartingCondition = source.Strings["startingCondition"] };
+            {
+                StartingCondition = source.Strings["startingCondition"],
+                AlienBaseDiscoveredMessage = source.Strings["alienBaseDiscoveredMessage"],
+            };
         }
 
         RuntimeAlienRaceEvolution? ReadEvolution(string id, YamlNode node)
@@ -956,6 +964,14 @@ public static class RuntimeRuleLinker
             result[rule.Id] = result.GetValueOrDefault(rule.ReplaceBy, rule.ReplaceBy);
         return result;
     }
+
+    /// <summary>
+    /// Mod::getOffset(marker, 8): a frame above the nine shared globe markers is offset into the
+    /// declaring mod's range whether or not that mod supplies the frame.
+    /// </summary>
+    private static int GlobeMarker(RuleIndexReference reference, ResolvedResourceCatalog resources) =>
+        reference.Index <= 8 ? reference.Index
+            : checked(reference.Index + resources.ModOffsets.GetValueOrDefault(reference.ModId));
 
     private static RuntimeIndexedResourceReference Resource(
         RuleIndexReference reference,

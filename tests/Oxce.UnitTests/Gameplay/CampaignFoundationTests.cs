@@ -1,7 +1,5 @@
 using Oxce.Core.Random;
 using Oxce.Gameplay.Campaigns;
-using Oxce.Engine;
-using Oxce.Engine.Input;
 using Oxce.Mods.Rulesets;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.TestSupport;
@@ -172,34 +170,6 @@ public sealed class CampaignFoundationTests
         var simulatedDays = campaign.DaysPassed - daysBefore;
         Assert.True(simulatedDays > 0);
         Assert.InRange(allocated, 0, 16_384L * (simulatedDays + 1));
-    }
-
-    [Fact]
-    public void MinimalCampaignViewPlacesBaseAdvancesTimeAndSuppressesIdleWork()
-    {
-        var campaign = CampaignFactory.Create(
-            LoadFixture(), Request(), new SplitMix64RandomSource(7), new FixedClock());
-        var client = new CampaignOverviewClient(campaign, campaign);
-        var initialRevision = client.PresentationRevision;
-
-        client.Tick(TimeSpan.FromMilliseconds(16));
-        Assert.Equal(initialRevision, client.PresentationRevision);
-
-        var place = GameInputEvent.PointerButtonChange(
-            GameInputEventKind.PointerPressed, 0, 1, 16, 92, button: 1, clickCount: 1);
-        client.HandleInput(place);
-        var placedBase = Assert.Single(client.Overview.Bases);
-        Assert.Equal("First Base", placedBase.Name);
-        Assert.Equal(1, Assert.Single(placedBase.Facilities).SizeX);
-        Assert.Equal(initialRevision + 1, client.PresentationRevision);
-
-        var previous = client.Overview.Time;
-        var advance = GameInputEvent.Key(
-            GameInputEventKind.KeyPressed, 0, 1, 0, CampaignOverviewClient.AdvanceMinuteKey,
-            InputKeyModifiers.None);
-        client.HandleInput(advance);
-        Assert.NotEqual(previous, client.Overview.Time);
-        Assert.Equal(initialRevision + 2, client.PresentationRevision);
     }
 
     internal static RuntimeContent LoadFixture() =>

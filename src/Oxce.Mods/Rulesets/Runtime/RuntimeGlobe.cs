@@ -20,6 +20,23 @@ public sealed record RuntimeGlobeTexture(bool IsOcean = false, bool FakeUnderwat
 public sealed record RuntimeGlobe(IReadOnlyList<WorldPolygon> Polygons, IReadOnlyDictionary<int, RuntimeGlobeTexture> Textures)
 {
     public static RuntimeGlobe Empty { get; } = new([], new ReadOnlyDictionary<int, RuntimeGlobeTexture>(new Dictionary<int, RuntimeGlobeTexture>()));
+
+    /// <summary>Border lines drawn by Globe::drawDetail. Reference: <c>Mod/Polyline.cpp</c>.</summary>
+    public IReadOnlyList<RuntimeGlobePolyline> Polylines { get; init; } = [];
+
+    public RuntimeGlobeColors Colors { get; init; } = RuntimeGlobeColors.Default;
+}
+
+public sealed record RuntimeGlobePolyline(IReadOnlyList<WorldPoint> Points);
+
+/// <summary>
+/// Globe palette indices. Mod::Mod sets the defaults and RuleGlobe::load overrides each one that a
+/// layer names; <c>oceanPalette</c> is a palette block, stored here as its first index.
+/// </summary>
+public sealed record RuntimeGlobeColors(byte Ocean, bool OceanShading, byte CountryLabel, byte CityLabel,
+    byte BaseLabel, byte Line)
+{
+    public static RuntimeGlobeColors Default { get; } = new(12 * 16, true, 239, 138, 133, 162);
 }
 
 internal static class RuntimeGlobeLoader
@@ -27,6 +44,8 @@ internal static class RuntimeGlobeLoader
     public static RuntimeGlobe Load(IReadOnlyList<YamlMappingNode> layers, VirtualFileCatalog? files)
     {
         IReadOnlyList<WorldPolygon> polygons = [];
+        IReadOnlyList<RuntimeGlobePolyline> polylines = [];
+        var colors = RuntimeGlobeColors.Default;
         var textures = new Dictionary<int, RuntimeGlobeTexture>();
         foreach (var layer in layers)
         {
@@ -66,6 +85,31 @@ internal static class RuntimeGlobeLoader
                     return new WorldPolygon((int)texture, Array.AsReadOnly(points));
                 }).ToArray());
             }
+            if (layer.TryGet("polylines", out var lineNode))
+            {
+                var lines = Sequence(lineNode!);
+                if (lines.Items.Count > WorldMapCodec.MaximumPolygons) throw new InvalidDataException("Too many globe polylines.");
+                polylines = Array.AsReadOnly(lines.Items.Select(line =>
+                {
+                    var values = Sequence(line).Items;
+                    // Polyline::load reads coordinate pairs; an odd count would read past the vector.
+                    if (values.Count < 2 || values.Count > 2 * MaximumPolylinePoints || values.Count % 2 != 0)
+                        throw new InvalidDataException($"Globe polyline requires 1 to {MaximumPolylinePoints} coordinate pairs.");
+                    var points = new WorldPoint[values.Count / 2];
+                    for (var i = 0; i < points.Length; i++)
+                        points[i] = new(Degrees(values[i * 2], 360), Degrees(values[i * 2 + 1], 90));
+                    return new RuntimeGlobePolyline(Array.AsReadOnly(points));
+                }).ToArray());
+            }
+            colors = colors with
+            {
+                Ocean = layer.TryGet("oceanPalette", out var oceanBlock) ? checked((byte)(Byte(oceanBlock!, 15) * 16)) : colors.Ocean,
+                OceanShading = layer.TryGet("oceanShading", out var shading) ? YamlValueReader.ReadBoolean(shading!) : colors.OceanShading,
+                CountryLabel = layer.TryGet("countryColor", out var country) ? Byte(country!, 255) : colors.CountryLabel,
+                CityLabel = layer.TryGet("cityColor", out var city) ? Byte(city!, 255) : colors.CityLabel,
+                BaseLabel = layer.TryGet("baseColor", out var baseColor) ? Byte(baseColor!, 255) : colors.BaseLabel,
+                Line = layer.TryGet("lineColor", out var line) ? Byte(line!, 255) : colors.Line,
+            };
             if (layer.TryGet("textures", out var textureNode))
                 foreach (var node in Sequence(textureNode!).Items)
                 {
@@ -84,7 +128,28 @@ internal static class RuntimeGlobeLoader
                     else if (map.TryGet("delete", out var deleted)) textures.Remove(YamlValueReader.ReadInt32(deleted!));
                 }
         }
-        return new(polygons, new ReadOnlyDictionary<int, RuntimeGlobeTexture>(textures));
+        return new(polygons, new ReadOnlyDictionary<int, RuntimeGlobeTexture>(textures))
+        {
+            Polylines = polylines,
+            Colors = colors,
+        };
+    }
+
+    private const int MaximumPolylinePoints = 4096;
+
+    private static double Degrees(YamlNode node, double limit)
+    {
+        var value = YamlValueReader.ReadDouble(node);
+        if (!double.IsFinite(value) || Math.Abs(value) > limit)
+            throw new InvalidDataException("Globe coordinates exceed their supported range.");
+        return value * Math.PI / 180;
+    }
+
+    private static byte Byte(YamlNode node, int maximum)
+    {
+        var value = YamlValueReader.ReadInt32(node);
+        if (value < 0 || value > maximum) throw new InvalidDataException($"Globe colour must be between 0 and {maximum}.");
+        return (byte)value;
     }
     private static ReadOnlyDictionary<string, ulong> ReadDeployments(YamlNode node)
     {
