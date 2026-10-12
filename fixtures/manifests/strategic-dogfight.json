@@ -15,14 +15,14 @@
   },
   "inputs": [
     {
-      "size": 34509,
+      "size": 39438,
       "path": "fixtures/reference-probes/savegames/strategic_dogfight_probe.cpp",
-      "sha256": "d49839e5a5b880e677c35c82601b706d496b9d672529414815705fa8a1320c24"
+      "sha256": "03fcebd63f336c95d4fb67d4cc2d6d3de48886c38a3cd95b772a6f7915fffbb6"
     },
     {
-      "size": 7074,
+      "size": 7405,
       "path": "tools/capture-strategic-dogfight-reference.ps1",
-      "sha256": "92b1015707feb96fa1e0496a04c9e7adce1d35e0547720e36cd98b5bcff3a715"
+      "sha256": "6b823cc706d564f463d79f3898ef3e7cf15e94f72e077308b6e30a42cfe8659c"
     }
   ],
   "normalization": [

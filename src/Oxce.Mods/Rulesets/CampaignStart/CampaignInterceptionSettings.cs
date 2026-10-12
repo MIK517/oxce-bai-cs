@@ -28,7 +28,10 @@ public sealed record CampaignInterceptionSettings(
     IReadOnlyList<int> RetaliationBaseRegionOdds,
     IReadOnlyList<int> AliensFacingCraftOdds,
     IReadOnlyList<int> DifficultyCoefficients,
-    IReadOnlyList<int> DifficultyBasedRetaliationDelay)
+    IReadOnlyList<int> DifficultyBasedRetaliationDelay,
+    int DamageRange,
+    int ExplosiveDamageRange,
+    IReadOnlyList<int> FireDamageRange)
 {
     /// <summary>SavedGame::getDifficultyCoefficient: <c>Mod::DIFFICULTY_COEFFICIENT[min(difficulty, 4)]</c>.</summary>
     public int DifficultyCoefficient(int difficulty) => DifficultyCoefficients[Math.Min(difficulty, 4)];
@@ -62,6 +65,11 @@ internal sealed class CampaignInterceptionSettingsBuilder
     // reference, reset by Mod::resetGlobalStatics before every mod load (Game::loadMods).
     public int[] DifficultyCoefficients { get; } = [0, 1, 2, 3, 4];
     public int[] DifficultyBasedRetaliationDelay { get; } = [0, 0, 0, 0, 0];
+    // Mod::DAMAGE_RANGE, EXPLOSIVE_DAMAGE_RANGE and FIRE_DAMAGE_RANGE (statics too), read by
+    // RuleDamageType::getRandomDamage for unified-formula craft weapons.
+    public int DamageRange { get; set; } = 100;
+    public int ExplosiveDamageRange { get; set; } = 50;
+    public int[] FireDamageRange { get; } = [5, 10];
 
     public CampaignInterceptionSettings Build() => new(
         ChanceToStopRetaliation,
@@ -85,5 +93,8 @@ internal sealed class CampaignInterceptionSettingsBuilder
         Array.AsReadOnly(RetaliationBaseRegionOdds.ToArray()),
         Array.AsReadOnly(AliensFacingCraftOdds.ToArray()),
         Array.AsReadOnly((int[])DifficultyCoefficients.Clone()),
-        Array.AsReadOnly((int[])DifficultyBasedRetaliationDelay.Clone()));
+        Array.AsReadOnly((int[])DifficultyBasedRetaliationDelay.Clone()),
+        DamageRange,
+        ExplosiveDamageRange,
+        Array.AsReadOnly((int[])FireDamageRange.Clone()));
 }

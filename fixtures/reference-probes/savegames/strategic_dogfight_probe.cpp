@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <functional>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -69,7 +70,16 @@ struct RuleCraftStats
     int hitBonus = 0, avoidBonus = 0, powerBonus = 0, armor = 0;
     int shieldCapacity = 0, shieldRecharge = 0, shieldRechargeInGeoscape = 0, shieldBleedThrough = 0;
 };
-struct RuleDamageType { int getRandomDamage(int power) const { return power; } };
+template<class T> using FuncRef = std::function<T>;
+enum ItemDamageType { DT_NONE, DT_AP, DT_IN, DT_HE, DT_LASER, DT_PLASMA, DT_STUN, DT_MELEE, DT_ACID, DT_SMOKE };
+enum ItemDamageRandomType { DRT_DEFAULT = 0, DRT_UFO = 1, DRT_TFTD = 2, DRT_FLAT = 3, DRT_FIRE = 4, DRT_NONE = 5,
+    DRT_UFO_WITH_TWO_DICE = 6, DRT_EASY = 7, DRT_STANDARD = 8, DRT_EXPLOSION = 9, DRT_UFO_WITH_FOUR_DICE = 10 };
+struct RuleDamageType
+{
+    ItemDamageRandomType RandomType = DRT_DEFAULT; ItemDamageType ResistType = DT_NONE;
+    int getRandomDamage(int power) const;
+    int getRandomDamage(int power, FuncRef<int(int, int)> randFunc) const;
+};
 struct RuleItem { RuleDamageType type; const RuleDamageType* getDamageType() const { return &type; } };
 struct RuleCraftWeapon
 {
@@ -82,8 +92,9 @@ struct RuleCraftWeapon
     int getAggressiveReload() const { return reloadAggressive; } int getAmmoMax() const { return ammoMax; }
     CraftWeaponProjectileType getProjectileType() const { return projectileType; }
     int getProjectileSpeed() const { return projectileSpeed; } int getTractorBeamPower() const { return tractorBeamPower; }
-    int getSound() const { return 0; } bool unifiedDamageFormula() const { return false; }
-    const RuleItem* getClipItem() const { return nullptr; } const RuleItem* getLauncherItem() const { return nullptr; }
+    bool unified = false; const RuleItem* clip = nullptr;
+    int getSound() const { return 0; } bool unifiedDamageFormula() const { return unified; }
+    const RuleItem* getClipItem() const { return clip; } const RuleItem* getLauncherItem() const { return nullptr; }
 };
 struct RuleCraft
 {
@@ -135,6 +146,7 @@ struct AlienMission
 struct Mod
 {
     static int DIFFICULTY_BASED_RETAL_DELAY[5];
+    static int DAMAGE_RANGE, EXPLOSIVE_DAMAGE_RANGE, FIRE_DAMAGE_RANGE[2];
     static const int NO_SOUND = -1;
     std::vector<int> startSounds;
     const std::vector<int>& getStartDogfightSounds() const { return startSounds; }
@@ -165,6 +177,10 @@ struct Mod
     int getPilotBraveryThresholdNormal() const { return bravery[2]; }
 };
 int Mod::DIFFICULTY_BASED_RETAL_DELAY[5] = {0, 0, 0, 0, 0};
+int Mod::DAMAGE_RANGE = 100;
+int Mod::EXPLOSIVE_DAMAGE_RANGE = 50;
+int Mod::FIRE_DAMAGE_RANGE[2] = {5, 10};
+// DAMAGE_TYPE_METHODS
 
 // ---- Targets, soldiers, craft, UFO -------------------------------------------------------------
 struct Target { virtual ~Target() {} double lon = 0, lat = 0; double getLongitude() const { return lon; } double getLatitude() const { return lat; } };
@@ -401,6 +417,8 @@ struct Scenario
     bool dogfightAI = true;          // Options::dogfightAI default
     int waveInterrupt = -1;          // >= 0: the UFO belongs to wave 0 with this interruptPercentage
     bool firstWeaponDisabled = false;
+    int unifiedRandomType = -1;      // >= 0: the first weapon uses the unified damage formula with this random type
+    int unifiedResistType = 0;
 };
 
 static const char* modeName(DogfightState& d)
@@ -411,6 +429,47 @@ static const char* modeName(DogfightState& d)
     if (d._mode == d._btnAggressive) return "aggressive";
     if (d._mode == d._btnDisengage) return "disengage";
     return "none";
+}
+
+// The scenario's inputs, so a replay can rebuild it from the oracle alone.
+static std::string describe(const Scenario& s)
+{
+    auto stats = [](const RuleCraftStats& c) {
+        std::ostringstream o;
+        o << '[' << c.damageMax << ',' << c.speedMax << ',' << c.accel << ',' << c.hitBonus << ',' << c.avoidBonus << ','
+          << c.powerBonus << ',' << c.armor << ',' << c.shieldCapacity << ',' << c.shieldRecharge << ',' << c.shieldBleedThrough << ']';
+        return o.str();
+    };
+    auto list = [](const std::vector<int>& v) {
+        std::ostringstream o; o << '[';
+        for (size_t i = 0; i < v.size(); ++i) o << (i ? "," : "") << v[i];
+        o << ']'; return o.str();
+    };
+    std::ostringstream o;
+    o << "{\"craft\":" << stats(s.craft) << ",\"craftState\":[" << s.craftDamage << ',' << s.craftShield << ',' << s.missilePower << "],\"weapons\":[";
+    for (size_t i = 0; i < s.weapons.size(); ++i)
+    {
+        auto& w = s.weapons[i];
+        o << (i ? "," : "") << '[' << w.damage << ',' << w.range << ',' << w.accuracy << ',' << w.cautious << ',' << w.standard << ','
+          << w.aggressive << ',' << w.ammo << ',' << w.ammoMax << ',' << w.type << ',' << w.speed << ',' << w.tractor << ',' << w.shieldModifier << ']';
+    }
+    o << "],\"pilots\":[";
+    for (size_t i = 0; i < s.pilots.size(); ++i)
+        o << (i ? "," : "") << '[' << s.pilots[i].firing << ',' << s.pilots[i].reactions << ',' << s.pilots[i].bravery << ']';
+    auto& u = s.ufoRules;
+    o << "],\"ufo\":" << stats(s.ufo) << ",\"ufoRule\":[" << u.weaponRange << ',' << u.weaponPower << ',' << u.weaponReload << ','
+      << u.radius << ',' << u.score << ',' << u.breakOffTime << ',' << u.softlockThreshold << ',' << u.splashdownSurvivalChance << ','
+      << (u.unmanned ? 1 : 0) << ',' << u.blobSize << "],\"ufoState\":[" << s.ufoDamage << ',' << s.ufoShield << ',' << s.ufoSpeed << ','
+      << s.huntBehavior << ',' << (s.hunterKiller ? 1 : 0) << ',' << (s.ufoIsAttacking ? 1 : 0) << "],\"world\":[" << s.difficulty << ','
+      << s.coefficient << ',' << s.months << ',' << s.retaliationOdds << ',' << s.aggression << ',' << (s.land ? 1 : 0) << ','
+      << (s.fakeWater ? 1 : 0) << ',' << (s.missionExists ? 1 : 0) << ',' << s.glancing << ',' << (s.dogfightAI ? 1 : 0) << ','
+      << s.waveInterrupt << ',' << (s.firstWeaponDisabled ? 1 : 0) << ',' << s.unifiedRandomType << ',' << s.unifiedResistType << "],\"firing\":" << list(s.firing) << ",\"escape\":" << list(s.escape)
+      << ",\"trigger\":" << list(s.trigger) << ",\"baseRegion\":" << list(s.baseRegion) << ",\"steps\":" << s.steps << ",\"commands\":[";
+    for (size_t i = 0; i < s.commands.size(); ++i) o << (i ? "," : "") << '[' << s.commands[i].first << ",\"" << s.commands[i].second << "\"]";
+    o << "],\"rng\":[";
+    for (size_t i = 0; i < s.rng.size(); ++i) o << (i ? "," : "") << s.rng[i];
+    o << "]}";
+    return o.str();
 }
 
 static void run(const Scenario& s, bool first)
@@ -432,6 +491,9 @@ static void run(const Scenario& s, bool first)
     std::vector<Soldier> soldiers; for (auto& p : s.pilots) soldiers.push_back(Soldier{p});
     for (auto& soldier : soldiers) craft.pilots.push_back(&soldier);
     std::vector<RuleCraftWeapon> weaponRules(s.weapons.size()); std::vector<CraftWeapon*> weapons;
+    RuleItem unifiedItem; unifiedItem.type.RandomType = (ItemDamageRandomType)std::max(0, s.unifiedRandomType);
+    unifiedItem.type.ResistType = (ItemDamageType)s.unifiedResistType;
+    if (s.unifiedRandomType >= 0 && !weaponRules.empty()) { weaponRules[0].unified = true; weaponRules[0].clip = &unifiedItem; }
     for (size_t i = 0; i < s.weapons.size(); ++i)
     {
         auto& w = s.weapons[i]; auto& r = weaponRules[i];
@@ -447,7 +509,7 @@ static void run(const Scenario& s, bool first)
     if (s.ufoIsAttacking) ufo._dest = &craft;
     craft._dest = &ufo; craft._inDogfight = true;
     DogfightState dogfight(&game, &geoscape, &craft, &ufo, s.ufoIsAttacking, 1);
-    std::cout << (first ? "" : ",") << "\n{\"name\":\"" << s.name << "\",\"start\":[" << dogfight._currentDist << ',' << dogfight._targetDist << ",\""
+    std::cout << (first ? "" : ",") << "\n{\"name\":\"" << s.name << "\",\"input\":" << describe(s) << ",\"start\":[" << dogfight._currentDist << ',' << dogfight._targetDist << ",\""
         << modeName(dogfight) << "\"," << dogfight._pilotAccuracyBonus << ',' << dogfight._pilotDodgeBonus << ','
         << dogfight._pilotApproachSpeedModifier << ',' << dogfight._craftAccelerationBonus << ',' << ufo._escapeCountdown << ','
         << ufo._fireCountdown << ',' << dogfight._ufoSize << "],\"steps\":[";
@@ -541,6 +603,12 @@ int main()
             0, 0, 1, 0, 0, true, false, false, {}, {}, {}, {}, 0, lowRolls, 500, {{0, 'A'}}, true, 60},
         {"disabled-weapon-at-start", interceptor, 0, 0, 0, {cannon, stingray}, {}, scout, passive, 0, 0, 1000, 2, false, false,
             0, 0, 1, 0, 0, true, false, false, {}, {}, {}, {}, 0, lowRolls, 400, {{0, 'A'}}, true, -1, true},
+        {"unified-damage-standard", interceptor, 0, 0, 0, {stingray}, {}, scout, passive, 0, 0, 1000, 2, false, false,
+            0, 0, 1, 0, 0, true, false, false, {}, {}, {}, {}, 0, mixed, 400, {{0, 'A'}}, true, -1, false, 8, 1},
+        {"unified-damage-default-fire", interceptor, 0, 0, 0, {stingray}, {}, scout, passive, 0, 0, 1000, 2, false, false,
+            0, 0, 1, 0, 0, true, false, false, {}, {}, {}, {}, 0, mixed, 400, {{0, 'A'}}, true, -1, false, 0, 2},
+        {"unified-damage-four-dice", interceptor, 0, 0, 0, {stingray}, {}, scout, passive, 0, 0, 1000, 2, false, false,
+            0, 0, 1, 0, 0, true, false, false, {}, {}, {}, {}, 0, mixed, 400, {{0, 'A'}}, true, -1, false, 10, 3},
     };
     std::cout << "{\"scenarios\":[";
     bool first = true;

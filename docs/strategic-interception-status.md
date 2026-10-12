@@ -132,3 +132,30 @@ toggles are captured in S3 with their consumer); the reference-save option seedi
 options was untested (added); a comment misplaced the reset of the reference statics (corrected).
 Validation on the Windows workstation: formatting and code map clean; root `dotnet test` passes
 3,463 tests (private corpus included) with no failures or skips.
+
+## S3 — Interception state and combat step (in progress)
+
+### Dogfight engine (2026-10-12)
+
+`Dogfight` (`Campaigns/World/Interception`) ports the gameplay of `DogfightState`: the constructor's
+weapon enable, pilot bonuses, hunter-killer and missile options, initial mode, escape and fire
+countdowns, weapon intervals, UFO size and shield-recharge handle; `think`, `update`, the status
+timeout and hit-frame counters of `animate`, `fireWeapon`, `ufoFireWeapon`, the distance helpers and
+mode handlers, `endDogfight`, minimize and self-destruct (`btnMinimizeClick`) and the weapon toggle
+(`weaponClick`, remembered with `oxceRememberDisabledCraftWeapons`). `DogfightProjectile` ports
+`CraftWeaponProjectile`, `DogfightWeapon.SetAmmo` `CraftWeapon::setAmmo`, and the craft and UFO
+views port the `Craft`/`Ufo` damage, shield, crash and destruction rules, including the wave
+interrupt roll of `Ufo::setDamage`. Everything outside the window goes through `IDogfightWorld`
+in reference order (experience, globe tests, UFO move, craft return/think/pursuit, hunter reset,
+shot-down bookkeeping, retaliation odds and spawn, activity scores, IDs, mission interruption).
+`DogfightItemDamage` ports `RuleDamageType::getRandomDamage` for unified-formula weapons, with the
+`damageRange`, `explosiveDamageRange` and `fireDamageRange` globals now projected (compiler/cache
+revision 62).
+
+`StrategicDogfightOracleTests` replays all 18 `strategic-dogfight` scenarios (three new ones use
+the unified formula: standard, default-to-fire and four dice) from their recorded inputs and checks
+the start state, every step row, the final world-facing state and every random call against the
+reference. The engine is not yet driven by time advance or commands; the world capability, save
+behaviour and UI follow in the rest of S3, S4 and S8.
+Validation: formatting and code map clean; root `dotnet test` passes 3,481 tests with no failures
+or skips.
