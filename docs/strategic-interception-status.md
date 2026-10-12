@@ -51,19 +51,84 @@ and the site arrival condition were duplicated (now one `ComputeFlight`/`FlightD
 Windows workstation: formatting, code map and Release build clean; root `dotnet test` passes 3,458
 tests (private corpus included) with no failures or skips, every stored read verified.
 
-## S2 — Evidence and ownership (in progress)
+## S2 — Evidence and ownership (2026-10-12)
 
-### Craft-weapon and UFO dogfight rule projection (2026-10-12)
+### Rule projection
 
-The typed catalog already parsed and validated every `RuleCraftWeapon` and `RuleUfo` property
-(including `RuleCraftWeapon::afterLoad`'s launcher, missile-speed and rearm checks). The runtime
-projection now also carries what interception reads: craft-weapon `damage`,
-`shieldDamageModifier` (default 100), `range`, `accuracy`, the three reload times,
-`projectileType` (default 2, `CWPT_CANNON_ROUND`), `projectileSpeed`, `weaponType`,
-`tractorBeamPower`, `unifiedDamageFormula` and `underwaterOnly`; UFO `score`, `breakOffTime`,
-`softlockThreshold` (default 100), `missilePower`, `missileStopChance` and
-`splashdownSurvivalChance` (default 100), beside the already projected weapon power, range and
-reload. Compiler/cache revision 60. `StrategicInterceptionRuleProjectionTests` pins declared values
-and reference defaults on fresh and restored content. The C++ probes, craft and global rules,
-the ownership ledger and the option inventory remain for the rest of S2. Validation: formatting
-and code map clean; root `dotnet test` passes 3,459 tests with no failures or skips.
+The typed catalog already parsed and validated every `RuleCraftWeapon`, `RuleCraft` and `RuleUfo`
+property (including `RuleCraftWeapon::afterLoad`'s launcher, missile-speed and rearm checks). The
+runtime projection now carries what interception reads:
+
+- Craft weapons: `damage`, `shieldDamageModifier` (default 100), `range`, `accuracy`, the three reload
+  times, `projectileType` (default 2, `CWPT_CANNON_ROUND`), `projectileSpeed`, `weaponType`,
+  `tractorBeamPower`, `unifiedDamageFormula` and `underwaterOnly`.
+- Crafts: `missilePower` (`isMissile` when positive) and `maxAltitude` (default -1; `isWaterOnly`
+  above it).
+- UFOs: `score`, `breakOffTime`, `softlockThreshold` (default 100), `missilePower`,
+  `missileStopChance` and `splashdownSurvivalChance` (default 100), beside the already projected
+  weapon power, range and reload.
+- Globals (`CampaignInterceptionSettings`, `Mod::loadFile` order and `Mod::Mod` defaults):
+  `chanceToStopRetaliation`, `lessAliensDuringBaseDefense`, `ufoGlancingHitThreshold`,
+  `ufoBeamWidthParameter`, `ufoTractorBeamSizeModifiers` (five slots), `escortsJoinFightAgainstHK`,
+  the crew and pilot evacuation survival chances, the pilot accuracy/reactions zero points and
+  ranges, `pilotBraveryThresholds` (three slots), `showDogfightDistanceInKm`,
+  `difficultyCoefficient` and `difficultyBasedRetaliationDelay` (five slots each; process-wide
+  statics in the reference), and the `difficultyCoefficientOverrides` lists
+  (`ufoFiringRateCoefficients`, `ufoEscapeCountdownCoefficients`, `retaliationTriggerOdds`,
+  `retaliationBaseRegionOdds`, `aliensFacingCraftOdds`, `monthlyRatingThresholds`). Fixed slots
+  layer per mod element by element; each override list replaces the previous one, even when empty,
+  and its callers use it only when it has an entry for the difficulty.
+
+Compiler/cache revision 61. `StrategicInterceptionRuleProjectionTests` pins declared values,
+reference defaults and two-layer merging on fresh and cache-restored content.
+
+### Options
+
+`dogfightAI` (default true) and `oxceRememberDisabledCraftWeapons` (default false) are campaign
+options: saved in the port options node, seeded from a reference save's option snapshot and
+overridden by a mod's fixed user options (`StrategicInterceptionOptionsTests`). The option inventory
+for interception paths is in the [ownership ledger](phase-6-ownership.md#branch-5-interception-ownership-s2-2026-10-12).
+
+### Dogfight step oracle
+
+`strategic-dogfight` compiles the reference `DogfightState::think`, `update`, `animate`,
+`endDogfight`, `fireWeapon`, `ufoFireWeapon`, the distance helpers, `setStatus` and the five mode
+handlers verbatim, together with the gameplay parts of the constructor (weapon enable, pilot bonuses,
+hunter-killer and missile options, initial mode, escape and fire countdowns, weapon intervals, UFO
+size, shield-recharge handle), `Ufo::setDamage` (including the wave interrupt roll), `CraftWeaponProjectile`, `CraftWeapon::setAmmo/fire`, the `Craft`
+pilot bonuses and the `Ufo`/`Craft` damage and shield setters. Drawing and sounds are stubs; RNG
+returns scripted raw values through `RandomState::generate`, so the port can replay the same calls.
+Each of 15 scenarios records the start state, every step (distances, mode, UFO and craft damage and
+shields, countdowns, tractor slowdown, ammunition and weapon timers, projectiles, end flags, status
+timeout and text), the final world-facing state and every RNG call: standoff then aggressive cannon
+crash, cautious missile crash with retaliation spawn, standard lasers against shields with all
+difficulty overrides, an outrunning UFO, disengage and minimize, a hunter-killer attack with
+evasive manoeuvres, a tractor-beam forced landing, a missile craft impact, a crash surviving fake
+water, escape-countdown break-off, an all-miss fight, a damaged cautious craft retreating to
+standoff, the first scenario with `dogfightAI` off (all others use its default, on), a large UFO
+whose crash rolls its wave's `interruptPercentage`, and a weapon disabled at the start. The oracle is consumed by S3.
+
+Findings that shape S3: the status timeout that ends a fight after a crash or a craft loss is
+decremented in `animate`, which runs only while the window is not minimized; ending a break-off
+moves the UFO once (`Ufo::move`) and ending a hunter-killer attack lets the craft take one
+movement step (`Craft::think`), both outside the time tick; the pilot averages divide by
+`size_t`; `Ufo::setDamage` rolls the wave's `interruptPercentage` when the UFO crashes; a unified
+damage formula draws from the clip's or launcher's damage type (`RuleDamageType::getRandomDamage`,
+not pinned here: S3 captures it with its consumer); the UFO's `shieldRechargeHandle`
+and `softlockShotCounter` are saved (the port already persists them).
+
+### Scope note
+
+Start rules, landing starting conditions and base-defense rounds are captured with the slices that
+implement them (S4, S6, S7) rather than here, so each oracle lands with its consumer; the plan
+records the move.
+
+### Audit and validation
+
+The slice review found four items, all addressed: the oracle ran with `dogfightAI` off although the
+reference default is on (now on by default, with one scenario off); it missed the wave interrupt
+roll, larger UFOs and a disabled weapon (added; the unified damage formula and in-fight weapon
+toggles are captured in S3 with their consumer); the reference-save option seeding of the new
+options was untested (added); a comment misplaced the reset of the reference statics (corrected).
+Validation on the Windows workstation: formatting and code map clean; root `dotnet test` passes
+3,463 tests (private corpus included) with no failures or skips.

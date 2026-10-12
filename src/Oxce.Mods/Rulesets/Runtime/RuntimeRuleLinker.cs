@@ -206,6 +206,8 @@ public static class RuntimeRuleLinker
                 ShieldCapacity = rule.Value.Stats.Get("shieldCapacity"),
                 ShieldRechargeInGeoscape = rule.Value.Stats.Get("shieldRechargeInGeoscape"),
                 ShieldRechargeAtBase = rule.Value.Integers["shieldRechargedAtBase"],
+                MissilePower = rule.Value.Integers["missilePower"],
+                MaximumAltitude = rule.Value.Integers["maxAltitude"],
                 SightRange = rule.Value.Stats.Get("sightRange"),
                 RadarRange = rule.Value.Stats.Get("radarRange"),
                 RadarChance = rule.Value.Stats.Get("radarChance"),
@@ -358,6 +360,7 @@ public static class RuntimeRuleLinker
             AllowCountriesToCancelAlienPact = content.CampaignStart.Settings.AllowCountriesToCancelAlienPact,
             BuildInfiltrationBaseCloseToTheCountry = content.CampaignStart.Settings.BuildInfiltrationBaseCloseToTheCountry,
             InfiltrateRandomCountryInTheRegion = content.CampaignStart.Settings.InfiltrateRandomCountryInTheRegion,
+            Interception = content.CampaignStart.Settings.Interception,
         };
         var compatibility = new RuntimeRuleCompatibilitySidecar(CompatibilityEntries(content));
         var catalog = new RuntimeRuleCatalog(
