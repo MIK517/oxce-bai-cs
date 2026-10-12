@@ -559,39 +559,67 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     /// <summary>The reason live world state blocks time until its handlers exist.</summary>
     private string? LiveWorldReason(CampaignTimeTrigger highest, CampaignTimeSpeed speed)
     {
+        // Opt-in timing of each step (CampaignTimeProfile); a no-op without a profile.
+        const string Step = CampaignTimeProfile.WorldPrefix;
+        var steps = new CampaignTimeProfile.Steps(campaign.ActiveTimeProfile);
         _pass.BeginWorld(highest);
+        steps.Mark(Step + nameof(WorldPreflightPass.BeginWorld));
         if (FlightFuelValuesReason(highest) is { } fuelValuesReason) return fuelValuesReason;
+        steps.Mark(Step + nameof(FlightFuelValuesReason));
         var interruptionReason = MissionInterruptionReason(highest, out var guaranteedResearch);
+        steps.Mark(Step + nameof(MissionInterruptionReason));
         if (interruptionReason is not null) return interruptionReason;
         var destructionReason = AlienBaseDestructionReason(highest, ref guaranteedResearch);
+        steps.Mark(Step + nameof(AlienBaseDestructionReason));
         if (destructionReason is not null) return destructionReason;
         _pass.DailyResearchForecast = guaranteedResearch;
         if (PrepareDailyGeneratedWaveForecasts(highest, guaranteedResearch) is { } generationReason) return generationReason;
+        steps.Mark(Step + nameof(PrepareDailyGeneratedWaveForecasts));
         if (PrepareMissionCounterForecasts(highest) is { } counterReason) return counterReason;
+        steps.Mark(Step + nameof(PrepareMissionCounterForecasts));
         if (SiteDiscoveryReason(highest) is { } discoveryReason) return discoveryReason;
+        steps.Mark(Step + nameof(SiteDiscoveryReason));
         if (SiteFollowerWorkReason(highest) is { } followerWorkReason) return followerWorkReason;
+        steps.Mark(Step + nameof(SiteFollowerWorkReason));
         if (SiteUfoRepairReason(highest) is { } repairReason) return repairReason;
+        steps.Mark(Step + nameof(SiteUfoRepairReason));
         if (PrepareSiteResearch(highest) is { } siteResearchReason) return siteResearchReason;
+        steps.Mark(Step + nameof(PrepareSiteResearch));
         if (HuntingReason(highest, speed) is { } huntingReason) return huntingReason;
+        steps.Mark(Step + nameof(HuntingReason));
         if (SiteResearchUfoWorkReason(highest) is { } siteFlightReason) return siteFlightReason;
+        steps.Mark(Step + nameof(SiteResearchUfoWorkReason));
         if (PrepareHuntingGeneratedWaveForecasts(highest, guaranteedResearch) is { } huntBirthReason) return huntBirthReason;
+        steps.Mark(Step + nameof(PrepareHuntingGeneratedWaveForecasts));
         var ufoReason = UfoMovementReason(highest);
+        steps.Mark(Step + nameof(UfoMovementReason));
         if (ufoReason is not null) return ufoReason;
         var missionReason = MissionSchedulingReason(highest, guaranteedResearch);
+        steps.Mark(Step + nameof(MissionSchedulingReason));
         if (missionReason is not null) return missionReason;
         if (ArrivalContactLossReason(highest) is { } arrivalLossReason) return arrivalLossReason;
+        steps.Mark(Step + nameof(ArrivalContactLossReason));
         var alienBaseReason = AlienBaseActivityReason(highest, guaranteedResearch);
+        steps.Mark(Step + nameof(AlienBaseActivityReason));
         if (alienBaseReason is not null) return alienBaseReason;
         var baseDetectionReason = UfoBaseDetectionReason(highest);
+        steps.Mark(Step + nameof(UfoBaseDetectionReason));
         if (baseDetectionReason is not null) return baseDetectionReason;
         var siteReason = SiteTimingReason(highest);
+        steps.Mark(Step + nameof(SiteTimingReason));
         if (siteReason is not null) return siteReason;
         if (UfoSiteConversionsReason(highest) is { } conversionReason) return conversionReason;
+        steps.Mark(Step + nameof(UfoSiteConversionsReason));
         if (ObjectiveBasePatrolReason(highest) is { } patrolReason) return patrolReason;
+        steps.Mark(Step + nameof(ObjectiveBasePatrolReason));
         var detectionReason = UfoHalfHourReason(highest, guaranteedResearch);
+        steps.Mark(Step + nameof(UfoHalfHourReason));
         if (detectionReason is not null) return detectionReason;
         if (FlightFuelRefundReason(highest) is { } fuelRefundReason) return fuelRefundReason;
-        return EventSchedulingReason(highest);
+        steps.Mark(Step + nameof(FlightFuelRefundReason));
+        var eventReason = EventSchedulingReason(highest);
+        steps.Mark(Step + nameof(EventSchedulingReason));
+        return eventReason;
     }
 
     private CampaignWorldUfoDetails UfoDetails(UfoSnapshot ufo)

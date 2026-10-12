@@ -11,21 +11,21 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 | Project | Files | References |
 | --- | ---: | --- |
-| [Oxce.Benchmarks](#oxcebenchmarks) | 16 | Engine, Formats, Mods, Rendering, Resources, Savegames |
+| [Oxce.Benchmarks](#oxcebenchmarks) | 17 | Engine, Formats, Mods, Rendering, Resources, Savegames |
 | [Oxce.App](#oxceapp) | 3 | Engine, Extensions, Formats, Mods, Platform.Sdl, Rendering, Savegames |
 | [Oxce.Core](#oxcecore) | 8 | - |
 | [Oxce.Engine](#oxceengine) | 28 | Core, Gameplay, Rendering, Resources |
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 168 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 169 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 93 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 5 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 301 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 302 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 101 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -34,7 +34,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Benchmarks
 
-`benchmarks/Oxce.Benchmarks` - 16 files.
+`benchmarks/Oxce.Benchmarks` - 17 files.
 
 ### `Oxce.Benchmarks`
 
@@ -52,6 +52,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `ResourceRuntimeBenchmarks` (class) [ResourceRuntimeBenchmarks.cs](../benchmarks/Oxce.Benchmarks/ResourceRuntimeBenchmarks.cs)
 - `RuntimeRuleLinkingBenchmarks` (class) [RuntimeRuleLinkingBenchmarks.cs](../benchmarks/Oxce.Benchmarks/RuntimeRuleLinkingBenchmarks.cs)
 - `ScriptVmBenchmarks` (class) [ScriptVmBenchmarks.cs](../benchmarks/Oxce.Benchmarks/ScriptVmBenchmarks.cs)
+- `TimeAdvanceProfiler` (internal class) [TimeAdvanceProfiler.cs](../benchmarks/Oxce.Benchmarks/TimeAdvanceProfiler.cs) - `--time-profile [scenario...] [--speed FiveSeconds\|OneDay] [--seconds N] [--top N]`: runs the `CampaignTimeAdvanceBenchmarks` scenarios a...
 - `VirtualFileCatalogBenchmarks` (class) [VirtualFileCatalogBenchmarks.cs](../benchmarks/Oxce.Benchmarks/VirtualFileCatalogBenchmarks.cs)
 - `VirtualPathLookupBenchmarks` (class) [VirtualPathLookupBenchmarks.cs](../benchmarks/Oxce.Benchmarks/VirtualPathLookupBenchmarks.cs)
 - `YamlBenchmarks` (class) [YamlBenchmarks.cs](../benchmarks/Oxce.Benchmarks/YamlBenchmarks.cs)
@@ -332,7 +333,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 168 files.
+`src/Oxce.Gameplay` - 169 files.
 
 ### `Oxce.Gameplay`
 
@@ -466,6 +467,8 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `ICampaignTimeEffects` (interface) [CampaignTimeDispatcher.cs](../src/Oxce.Gameplay/Campaigns/CampaignTimeDispatcher.cs) - Single-writer simulation effects.
 - `CampaignTimeDispatchResult` (record struct) [CampaignTimeDispatcher.cs](../src/Oxce.Gameplay/Campaigns/CampaignTimeDispatcher.cs)
 - `CampaignTimeDispatcher` (class) [CampaignTimeDispatcher.cs](../src/Oxce.Gameplay/Campaigns/CampaignTimeDispatcher.cs) - Executes GeoscapeState::timeAdvance fallthrough.
+- `CampaignTimeProfileEntry` (record struct) [CampaignTimeProfile.cs](../src/Oxce.Gameplay/Campaigns/CampaignTimeProfile.cs) - Accumulated wall time of one named phase of time advance.
+- `CampaignTimeProfile` (class) [CampaignTimeProfile.cs](../src/Oxce.Gameplay/Campaigns/CampaignTimeProfile.cs) - Opt-in diagnostics for time advance: wall time per registered preflight check, per time handler and per world-simulation preflight step.
 - `TransformCampaignSoldier` (record) [CampaignTransformations.cs](../src/Oxce.Gameplay/Campaigns/CampaignTransformations.cs)
 - `CampaignSoldierTransformed` (record) [CampaignTransformations.cs](../src/Oxce.Gameplay/Campaigns/CampaignTransformations.cs)
 - `CampaignTransformationEventSelected` (record) [CampaignTransformations.cs](../src/Oxce.Gameplay/Campaigns/CampaignTransformations.cs)
@@ -1107,7 +1110,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 301 files.
+`tests/Oxce.CompatibilityTests` - 302 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1115,7 +1118,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>298 test classes</summary>
+<details><summary>299 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1399,6 +1402,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicWorldStationaryLeaderFollowerTests` ([StrategicWorldStationaryLeaderFollowerTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldStationaryLeaderFollowerTests.cs))
 - `StrategicWorldStockResearchTests` ([StrategicWorldStockResearchTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldStockResearchTests.cs))
 - `StrategicWorldTerminalResearchTests` ([StrategicWorldTerminalResearchTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTerminalResearchTests.cs))
+- `StrategicWorldTimeProfileTests` ([StrategicWorldTimeProfileTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTimeProfileTests.cs))
 - `StrategicWorldUfoLandingTests` ([StrategicWorldUfoLandingTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldUfoLandingTests.cs))
 - `StrategicWorldUfoShieldTests` ([StrategicWorldUfoShieldTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldUfoShieldTests.cs))
 - `StrategicWorldUfoSiteConversionTests` ([StrategicWorldUfoSiteConversionTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldUfoSiteConversionTests.cs))

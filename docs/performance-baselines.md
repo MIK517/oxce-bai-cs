@@ -617,6 +617,21 @@ the 12 ms budget ([ADR 0032](decisions/0032-geoscape-ui-intentional-differences.
 32 flying UFOs needs about 0.31 s of tick work per game day and 128 UFOs about 1.0 s, instead of
 the reference's one day per 80 ms frame.
 
+Per-phase cost of time advance: `--time-profile [scenario...] [--speed OneDay|FiveSeconds]
+[--seconds N] [--top N]` runs the `CampaignTimeAdvanceBenchmarks` scenarios outside
+BenchmarkDotNet. It prints the cost per tick and per in-game day from an unprofiled run (exit
+code 3 when a one-day scenario exceeds the soft target in
+[performance targets](performance-targets.md)) and, from a profiled run, the time of every
+registered preflight check (`preflight:`), time handler (`apply:`) and world-simulation preflight
+step (`world simulation/`) through the opt-in `CampaignState.TimeProfile`, which never changes
+gameplay. With 32 flying UFOs at one-day speed (VM, 2026-10-12): the world-simulation preflight
+9.2 us/tick, of which the UFO movement forecast 4.0 and the site-conversion check 2.5, against
+5.0 us for the UFO movement itself. Each clock read adds about 20 ns per phase.
+
+```powershell
+dotnet run --project benchmarks/Oxce.Benchmarks -c Release -- --time-profile Flight32 Flight128 --seconds 5
+```
+
 The Windows SDL smoke (`--campaign-sdl-smoke`, owned installation, Direct3D 11) reported an average
 presentation of 7.2 ms over 151 frames. That figure includes `SDL_RenderPresent`, which can wait for
 the compositor, so it is not comparable with the 4 ms presentation target. The smoke now also prints

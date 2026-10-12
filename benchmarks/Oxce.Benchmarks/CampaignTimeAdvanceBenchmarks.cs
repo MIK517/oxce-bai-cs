@@ -65,8 +65,16 @@ public class CampaignTimeAdvanceBenchmarks
         Validate();
     }
 
+    /// <summary>Optional phase timing attached to each restored campaign (<c>--time-profile</c>); not used by
+    /// the benchmarks themselves.</summary>
+    public CampaignTimeProfile? Profile { get; set; }
+
     [IterationSetup]
-    public void Restore() => _campaign = CampaignState.Restore(_snapshot, _content, new SplitMix64RandomSource(40));
+    public void Restore()
+    {
+        _campaign = CampaignState.Restore(_snapshot, _content, new SplitMix64RandomSource(40));
+        _campaign.TimeProfile = Profile;
+    }
 
     /// <summary>Advances the full interval, resuming after notification pauses as the geoscape does.</summary>
     [Benchmark(OperationsPerInvoke = Ticks)]
