@@ -18,7 +18,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 174 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 175 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 94 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
@@ -333,7 +333,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 174 files.
+`src/Oxce.Gameplay` - 175 files.
 
 ### `Oxce.Gameplay`
 
@@ -524,6 +524,9 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CraftLowFuel` (record) [CampaignWorldCrafts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldCrafts.cs)
 - `CraftTargetLost` (record) [CampaignWorldCrafts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldCrafts.cs) - The craft stopped pursuit; the last position can be confirmed as a new waypoint.
 - `UfoStartedHunting` (record) [CampaignWorldHunting.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldHunting.cs)
+- `InterceptionStarted` (record) [CampaignWorldInterceptionStart.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldInterceptionStart.cs) - A craft and a UFO met: an interception window opened (GeoscapeState::startDogfight).
+- `InterceptionWaiting` (record) [CampaignWorldInterceptionStart.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldInterceptionStart.cs) - DogfightErrorState: a water-only craft cannot engage yet; its window waits minimized.
+- `InterceptionReady` (record) [CampaignWorldInterceptionStart.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldInterceptionStart.cs) - A waiting interception can engage now; time stops so the window can open.
 - `InterceptionMode` (enum) [CampaignWorldInterceptions.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldInterceptions.cs) - The interception modes (the dogfight window's mode buttons).
 - `AdvanceInterceptions` (record) [CampaignWorldInterceptions.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldInterceptions.cs) - One dogfight timer step for every open interception (GeoscapeState::handleDogfights).
 - `SetInterceptionMode` (record) [CampaignWorldInterceptions.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldInterceptions.cs) - Presses a mode button of an interception window.
@@ -1608,7 +1611,7 @@ Prefer these over local copies (see AGENTS.md, *Test conventions*).
 ### [tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs)
 
 - `StrategicWorldTestSupport` (class) - Shared setup and assertions for the strategic-world compatibility tests.
-- members: `AssertDetectionReadScript`, `CreateSnapshot`, `CreateLifecycleSnapshot`, `CreateUfoTransitCampaign`, `Degrees`, `WithCraft`, `WithFacility`, `WithNextId`, `AdvanceOne`, `AdvanceUnblocked`, `AssertTimeBlocked`, `Reload`, `AssertSelectedNewbornArrival`, `AllocatedBytes`
+- members: `AssertDetectionReadScript`, `CreateSnapshot`, `CreateLifecycleSnapshot`, `CreateUfoTransitCampaign`, `Degrees`, `WithCraft`, `WithFacility`, `WithNextId`, `AdvanceOne`, `AdvanceUnblocked`, `AssertInterceptionStarts`, `AssertTimeBlocked`, `Reload`, `AssertSelectedNewbornArrival`, `AllocatedBytes`
 
 ### [tests/Oxce.TestExtension/ProbeExtension.cs](../tests/Oxce.TestExtension/ProbeExtension.cs)
 

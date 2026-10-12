@@ -75,8 +75,13 @@ public sealed class StrategicWorldAirborneResearchTests
                 { UniqueId = ufo.UniqueId },
             },
         });
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
-            "Craft interception requires strategic combat (Phase 6 branch 5).");
+        // The earlier guard refused conservatively. The UFO reaches its last waypoint and is destroyed,
+        // which ends the flight pass before the craft pass, so no interception starts.
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.DoesNotContain(result.Events, static evt => evt is CampaignActionBlocked or InterceptionStarted);
+        Assert.Empty(campaign.GetQuery<ICampaignInterceptionQuery>()!.QueryInterceptions());
     }
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content, ulong seed)

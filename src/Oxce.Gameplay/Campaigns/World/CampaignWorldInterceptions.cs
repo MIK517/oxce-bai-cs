@@ -77,10 +77,10 @@ internal sealed partial class CampaignWorld : ICampaignInterceptionQuery
     private void RegisterInterceptions(CampaignCapabilityRegistry registry)
     {
         registry.Query<ICampaignInterceptionQuery>(this);
-        // GeoscapeState::think runs the clock only while every window is minimized, and time5Seconds then
-        // updates and cleans up open interceptions (branch 5 S4). Until then time stops while any is open.
+        // GeoscapeState::think runs the clock only while every window is minimized.
         registry.Preflight(CampaignPreflightOrder.Interceptions, "interceptions",
-            (_, _) => _interceptions.Count != 0 ? WorldCommandReasons.InterceptionTimeBoundary : null);
+            (_, _) => _interceptions.Any(static d => !d.Minimized) ? WorldCommandReasons.InterceptionsOpen : null);
+        RegisterInterceptionStart(registry);
         registry.Command<AdvanceInterceptions>(_ => AdvanceInterceptionStep());
         registry.Command<SetInterceptionMode>(SetInterceptionMode);
         registry.Command<MinimizeInterception>(MinimizeInterception);
@@ -90,7 +90,7 @@ internal sealed partial class CampaignWorld : ICampaignInterceptionQuery
 
     /// <summary>Whether the craft is in an open interception (Craft::isInDogfight).</summary>
     internal bool CraftInDogfight(int baseId, string craftTypeId, int craftId) =>
-        _interceptions.Any(d => d.Craft.InDogfight && d.Craft.Key is InterceptionCraftKey key &&
+        OpenAndPendingInterceptions.Any(d => d.Craft.InDogfight && d.Craft.Key is InterceptionCraftKey key &&
             key.BaseId == baseId && key.TypeId == craftTypeId && key.Id == craftId);
 
     internal IReadOnlyList<Dogfight> Interceptions => _interceptions;

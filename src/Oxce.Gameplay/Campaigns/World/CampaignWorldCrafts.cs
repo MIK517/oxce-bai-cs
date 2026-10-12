@@ -341,15 +341,17 @@ internal sealed partial class CampaignWorld
             {
                 var craft = owner.Crafts[index];
                 if (craft.Logistics is not { } state) continue;
+                WorldTargetReference? arrival = null;
                 if (state.Status == "STR_OUT")
                 {
                     state = RepairCraftPursuit(owner, craft, state, effects);
-                    var takingOff = state.Takeoff > 0;
-                    if (takingOff)
-                        state = state with { Takeoff = state.Takeoff - 1 };
-                    if (state.Destination is { } destination)
+                    // Craft::think: takeoff, movement and the return-to-base checkup.
+                    if (!_ufoIsAttackingThisTick)
                     {
-                        if (TryGetCraftDestinationPosition(destination, out var to))
+                        var takingOff = state.Takeoff > 0;
+                        if (takingOff)
+                            state = state with { Takeoff = state.Takeoff - 1 };
+                        if (state.Destination is { } destination && TryGetCraftDestinationPosition(destination, out var to))
                         {
                             var from = new WorldPosition(state.Longitude, state.Latitude);
                             if (!takingOff)
@@ -373,41 +375,58 @@ internal sealed partial class CampaignWorld
                                     state = CheckupOnReturn(state, craft, campaign.Content.RuntimeRules);
                                     _returnedCraftTargets.Add((campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id));
                                 }
-                                else if (destination.Kind == WorldTargetKind.Waypoint)
-                                {
-                                    if (!CraftLogistics.TryEffectiveSpeedMaximum(
-                                        campaign.Content.RuntimeRules.Crafts[craft.Rule].Value, state.Weapons,
-                                        campaign.Content.RuntimeRules, out var maximum))
-                                        throw new InvalidOperationException("Craft speed changed after world preflight.");
-                                    var speed = maximum / 2;
-                                    state = state with
-                                    {
-                                        Destination = null,
-                                        Speed = speed,
-                                        SpeedRadian = WorldGeometry.RadianSpeed(speed),
-                                        SpeedLongitude = 0,
-                                        SpeedLatitude = 0,
-                                    };
-                                    if (!state.IsAutoPatrolling)
-                                        effects.Notify(new CraftArrivedAtWaypoint(owner.Id,
-                                            campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id,
-                                            destination.Id));
-                                }
                                 else
                                 {
-                                    state = ArriveAtWorldTarget(owner, craft, state, destination);
+                                    arrival = destination;
                                 }
                             }
                         }
                     }
                 }
-                // The reference recharges grounded craft too, after think/checkup and
-                // before the next craft. A terminal UFO arrival skips this whole pass.
-                var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
-                if (!CraftLogistics.TryEffectiveGeoscapeShields(rule, state.Weapons, campaign.Content.RuntimeRules,
-                        out var capacity, out var recharge))
-                    throw new InvalidOperationException("Craft shield stats changed after world preflight.");
-                state = CraftServicing.RechargeGeoscapeShield(state, capacity, recharge, campaign.Random);
+                // The reference recharges grounded craft too, after think/checkup and before the
+                // arrival handling. A terminal UFO arrival skips this whole pass; a hunter-killer
+                // attack skips the shields and arrivals of the craft after it.
+                if (!_ufoIsAttackingThisTick)
+                {
+                    var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
+                    if (!CraftLogistics.TryEffectiveGeoscapeShields(rule, state.Weapons, campaign.Content.RuntimeRules,
+                            out var capacity, out var recharge))
+                        throw new InvalidOperationException("Craft shield stats changed after world preflight.");
+                    state = CraftServicing.RechargeGeoscapeShield(state, capacity, recharge, campaign.Random);
+                }
+                if (arrival is { } reached && !_ufoIsAttackingThisTick)
+                {
+                    if (reached.Kind == WorldTargetKind.Waypoint)
+                    {
+                        if (!CraftLogistics.TryEffectiveSpeedMaximum(
+                            campaign.Content.RuntimeRules.Crafts[craft.Rule].Value, state.Weapons,
+                            campaign.Content.RuntimeRules, out var maximum))
+                            throw new InvalidOperationException("Craft speed changed after world preflight.");
+                        var speed = maximum / 2;
+                        state = state with
+                        {
+                            Destination = null,
+                            Speed = speed,
+                            SpeedRadian = WorldGeometry.RadianSpeed(speed),
+                            SpeedLongitude = 0,
+                            SpeedLatitude = 0,
+                        };
+                        if (!state.IsAutoPatrolling)
+                            effects.Notify(new CraftArrivedAtWaypoint(owner.Id,
+                                campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id,
+                                reached.Id));
+                    }
+                    else if (reached.Kind == WorldTargetKind.Ufo && TargetUfo(reached) is { Status: UfoStatus.Flying } flying)
+                    {
+                        if (!ReferenceEquals(state, craft.Logistics)) owner.Crafts[index] = craft with { Logistics = state };
+                        ArriveAtFlyingUfo(owner, index, UfoIndex(flying.UniqueId));
+                        continue;
+                    }
+                    else
+                    {
+                        state = ArriveAtWorldTarget(owner, craft, state, reached);
+                    }
+                }
                 if (!ReferenceEquals(state, craft.Logistics)) owner.Crafts[index] = craft with { Logistics = state };
             }
         }

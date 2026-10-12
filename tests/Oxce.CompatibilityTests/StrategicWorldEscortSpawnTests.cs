@@ -87,7 +87,7 @@ public sealed class StrategicWorldEscortSpawnTests
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "leader-dependency-before.sav");
         if (kind is "direct" or "chain")
         {
-            AssertTimeBlocked(campaign, "Craft interception requires strategic combat (Phase 6 branch 5).");
+            AssertInterceptionStarts(campaign);
             return;
         }
         AdvanceUnblocked(campaign, 1);
@@ -603,8 +603,8 @@ public sealed class StrategicWorldEscortSpawnTests
             var campaign = Reload(content, CampaignState.Restore(initial with { RandomState = seed }, content, new SplitMix64RandomSource(seed)), seed, "correlated-leader-before.sav");
             if (!same || fast)
             {
-                AssertTimeBlocked(campaign, fast ? "Craft interception requires strategic combat (Phase 6 branch 5)." :
-                    "Loaded idle escorts require same-tick newborn craft pursuit forecasts.");
+                if (fast) AssertInterceptionStarts(campaign);
+                else AssertTimeBlocked(campaign, "Loaded idle escorts require same-tick newborn craft pursuit forecasts.");
                 continue;
             }
             AdvanceUnblocked(campaign, 1);
@@ -1001,8 +1001,7 @@ public sealed class StrategicWorldEscortSpawnTests
                 Destination = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, 9, 0.4, 0.2) { UniqueId = 9 },
             }
         });
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
-            "Craft interception requires strategic combat (Phase 6 branch 5).");
+        AssertInterceptionStarts(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)));
     }
 
     [Fact]
@@ -1420,7 +1419,7 @@ public sealed class StrategicWorldEscortSpawnTests
             2 * rules[rules.GetRequired("HUNTER")].Value.MissionScore + 7;
         Assert.Equal(initial.Regions[0].ActivityAlien[^1] + expectedScore, campaign.Capture().Regions[0].ActivityAlien[^1]);
         campaign = Reload(content, campaign, 81, "creation-tick-escort-takeoff.sav");
-        AssertTimeBlocked(campaign, "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+        AssertInterceptionStarts(campaign);
     }
 
     [Fact]

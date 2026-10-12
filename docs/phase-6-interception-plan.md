@@ -233,3 +233,13 @@ consequences before any change
 craft's `pilots` list is now owned. Time stops while an interception is open until S4; crash,
 destruction, forced landing, retaliation, experience and break-off consequences remain for S5.
 
+### S4 — Interception start (2026-10-12)
+
+Interceptions start inside time advance: hunter-killer attacks with escorts, craft arrivals at flying
+UFOs with the four-window limit and water-only waits, the destroyed-UFO cleanup and end-of-tick wait
+checks; time runs while every window is minimized
+([status](strategic-interception-status.md#s4--interception-start-2026-10-12)). `InterceptionBoundary`
+and the flight-pass `HuntCombatReason` are gone; a hunter-killer reaching a craft on its birth tick
+keeps its refusal. No native start-rule probe was captured; the start rules are pinned by focused
+tests from the reference statements.
+

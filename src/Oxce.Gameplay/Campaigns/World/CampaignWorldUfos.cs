@@ -143,11 +143,13 @@ internal sealed partial class CampaignWorld
                     siteLinkWork += 2L * _ufos.Count;
                     if (siteLinkWork > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
                 }
+                // A hunter-killer reaching its craft starts an interception (branch 5 S4); the craft pass
+                // then neither moves, recharges shields nor arrives this tick.
                 if (!movementEnded && ufo.Hunting && ForecastHuntingTarget(destination) is { Logistics: { } targetState } targetCraft &&
                     targetState.Damage < CraftLogistics.EffectiveDamageMaximum(targetState,
                         campaign.Content.RuntimeRules.Crafts[targetCraft.Rule].Value, campaign.Content.RuntimeRules) &&
                     WorldGeometry.Distance(ufo.Position, destination.Position) <= WorldGeometry.RadianSpeed(ufo.Speed))
-                    return HuntCombatReason;
+                    _pass.HunterAttackForecast = true;
                 continue;
             }
             if (!movementEnded && EndsUfoFlightPass(index, highest)) movementEnded = true;
@@ -199,6 +201,7 @@ internal sealed partial class CampaignWorld
     private void MoveUfos(CampaignState.TimeEffects effects)
     {
         _ufoArrivalEndedTick = false;
+        _ufoIsAttackingThisTick = false;
         for (var index = 0; index < _ufos.Count; index++)
         {
             var ufo = _ufos[index];
@@ -222,6 +225,22 @@ internal sealed partial class CampaignWorld
             var vector = WorldGeometry.SpeedVector(ufo.Position, destination.Position, speedRadian);
             var distance = WorldGeometry.Distance(ufo.Position, destination.Position);
             var moved = WorldGeometry.Move(ufo.Position, destination.Position, speedRadian, vector, distance);
+            if (ufo.Hunting && !(distance > speedRadian))
+            {
+                // A hunter-killer reached its craft: the attack starts and the UFO skips its shield recharge.
+                var arrived = _ufos[index];
+                _ufos[index] = ufo with
+                {
+                    Longitude = moved.Longitude,
+                    Latitude = moved.Latitude,
+                    SpeedRadian = speedRadian,
+                    SpeedLongitude = vector.Longitude,
+                    SpeedLatitude = vector.Latitude,
+                    Direction = WorldAltitudes.Direction(vector.Longitude, vector.Latitude),
+                };
+                if (TryHunterKillerAttack(index)) continue;
+                _ufos[index] = arrived;
+            }
             if (!ufo.Hunting && !ufo.Escorting && !(distance > speedRadian))
             {
                 var mission = FindMission(ufo.MissionId)!;

@@ -588,7 +588,7 @@ Owners are branch 5 slices ([plan](phase-6-interception-plan.md)); evidence is r
 | Dogfight step: distance, modes, weapons, projectiles, shields, tractor beams, UFO fire/escape, break-off, crash/destroy/forced landing, retaliation spawn, scores | S3 (state and step), S5 (world consequences) | `DogfightState`, `CraftWeaponProjectile`, `CraftWeapon`, `Craft`, `Ufo` | `strategic-dogfight` verbatim step oracle (18 scenarios); the S3 `Dogfight` engine replays it exactly (`StrategicDogfightOracleTests`) |
 | Open interceptions, dogfight timer step, modes, minimize, weapon toggles; craft `pilots` list | S3 | `GeoscapeState::handleDogfights`, `DogfightState`, `Craft::getPilotList` | Implemented headlessly with forecast refusal of later consequences; `StrategicInterceptionTests` |
 | Pilot experience, diary and daily dogfight cache | S5 | `DogfightState::awardExperienceToPilots`, `GeoscapeState::handleDogfightExperience` | To capture with S5 |
-| Interception start rules, waits and HK exclusivity | S4 | `GeoscapeState::time5Seconds`, `startDogfight`, `handleDogfights` | To capture with S4 |
+| Interception start rules, waits and HK exclusivity | S4 | `GeoscapeState::time5Seconds`, `startDogfight`, `handleDogfights` | Implemented in time advance; focused tests (no native probe) |
 | Landing confirmation and starting conditions | S6 | `ConfirmLandingState`, `GeoscapeState::time5Seconds` | To capture with S6 |
 | Base defense, missile damage, base loss | S7 | `BaseDefenseState`, `GeoscapeState::handleBaseDefense`, `Base::damageFacilities` | To capture with S7 |
 | Dogfight presentation (`dogfightSpeed`, sounds, blobs, distance in km, ocean indicator) | S8 | `DogfightState` drawing, `Options::dogfightSpeed` | UI only; no gameplay state |

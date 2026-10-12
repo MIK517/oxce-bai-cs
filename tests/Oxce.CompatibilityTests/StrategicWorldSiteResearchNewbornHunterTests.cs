@@ -151,8 +151,7 @@ public sealed class StrategicWorldSiteResearchNewbornHunterTests
                 Logistics = craft.Logistics! with
                 { Longitude = ufo.Longitude, Latitude = ufo.Latitude, Speed = 0, Takeoff = 0, Destination = null },
             });
-            AssertTimeBlocked(CampaignState.Restore(combat, content, new SplitMix64RandomSource(17)),
-                "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+            AssertInterceptionStarts(CampaignState.Restore(combat, content, new SplitMix64RandomSource(17)));
         }
     }
 

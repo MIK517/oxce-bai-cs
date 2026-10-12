@@ -107,7 +107,7 @@ public sealed class StrategicWorldSiteUfoTests
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-timer.rul"]);
         var snapshot = WithFollower(LinkedSnapshot(content, 0));
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
-        AssertTimeBlocked(campaign, "Craft interception requires strategic combat (Phase 6 branch 5).");
+        AssertInterceptionStarts(campaign);
     }
 
     [Fact]

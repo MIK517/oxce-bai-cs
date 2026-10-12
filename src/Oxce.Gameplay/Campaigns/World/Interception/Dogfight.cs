@@ -173,7 +173,10 @@ internal sealed class Dogfight
     public DogfightCraft Craft { get; }
     public DogfightUfo Ufo { get; }
     public bool UfoIsAttacking { get; }
-    public int InterceptionNumber { get; }
+    public int InterceptionNumber { get; private set; }
+
+    /// <summary>GeoscapeState::startDogfight: the window's slot, given when it opens.</summary>
+    public void AssignNumber(int number) => InterceptionNumber = number;
     public DogfightMode Mode { get; private set; }
     public int CurrentDistance { get; private set; }
     public int TargetDistance { get; private set; }

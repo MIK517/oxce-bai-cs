@@ -198,3 +198,42 @@ Validation on the Windows workstation: formatting, code map and Release build cl
 order list, and `STR_MEDIUM`, which `RuleUfo::load` renames to `STR_MEDIUM_UC` and so has blob size 2);
 both tests were corrected and their classes pass, with every other test unchanged and green.
 
+## S4 — Interception start (2026-10-12)
+
+`CampaignWorldInterceptionStart` starts interceptions inside `GeoscapeState::time5Seconds`:
+
+- UFO pass: a hunting UFO that reaches a live craft starts a hunter-killer window. Only one
+  hunter-killer fight runs at a time (a second attacker waits); starting one ends every other window
+  without their end handling. Escorts within `escortRange` with a loaded weapon join, up to three,
+  when `escortsJoinFightAgainstHK` is on. The UFO skips its shield recharge, and the rest of the craft
+  pass neither moves, recharges shields nor arrives (`ufoIsAttacking`).
+- Craft pass: a craft reaching a flying UFO it can match for speed opens a window, at most four at a
+  time except against hunter-killers; a hunter-killer UFO makes it an attack window with escorts. A
+  water-only craft below the UFO's altitude, or over water, gets `InterceptionWaiting` with the
+  `DogfightErrorState` text and a minimized window waiting for depth or land.
+- Windows opened in a tick wait like `_dogfightsToBeStarted` and open at the end of the craft pass,
+  latest first, taking `getFirstFreeDogfightSlot` numbers; each emits `InterceptionStarted`, which
+  pauses time (and lets the UI reset the speed, as `timerReset` does).
+- The destroyed-UFO cleanup removes that UFO's windows, and a waiting window whose UFO came within
+  reach emits `InterceptionReady` at the end of the tick, which pauses time.
+
+`MoveCrafts` now follows the reference order: movement and the return-to-base checkup, then the
+shield recharge, then the other arrivals. Time runs while every window is minimized
+(`interception.open` otherwise). The preflight no longer refuses a craft reaching a flying UFO or a
+hunter-killer reaching its craft; it marks the hunter-killer attack so the craft-arrival forecast
+expects no arrivals that tick. A hunter-killer reaching a craft on its own birth tick keeps its
+earlier refusal (named restriction). Window numbering happens at the end of the tick rather than
+after the reference's zoom animation, and start sounds are presentation.
+
+Tests: the earlier guard tests now check, at the same tick, that the tick runs and opens an
+interception (`AssertInterceptionStarts`), including a hunter-killer attack window with its
+restricted modes; one conservative guard case now runs without an interception because its UFO is
+destroyed on arrival first. `StrategicInterceptionTests` covers ordinary and water-only starts and
+the minimized clock rule.
+
+Validation on the Windows workstation: formatting, code map and Release build clean; root
+`dotnet test` ran 3,491 tests with one expectation failure (the new five-second handlers in the
+handler order list), corrected and re-run with the unit suite (820 pass); everything else green. The
+slice audit was a focused self-review of the start paths against `time5Seconds` (the code-review
+pass is repeated with S5, which builds on these paths).
+

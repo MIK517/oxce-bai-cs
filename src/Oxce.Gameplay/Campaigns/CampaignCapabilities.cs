@@ -32,7 +32,10 @@ internal static class CampaignTimeOrder
     public const int FiveSecondsWorldUfoRetarget = 50;
     public const int FiveSecondsWorldUfos = 100;
     public const int FiveSecondsWorldCrafts = 200;
+    public const int FiveSecondsWorldInterceptionStart = 250;
+    public const int FiveSecondsWorldInterceptionCleanup = 290;
     public const int FiveSecondsWorldUfoCleanup = 300;
+    public const int FiveSecondsWorldInterceptionWaits = 350;
 
     // time10Minutes: craft fuel consumption precedes detection and retargeting.
     public const int TenMinutesWorldCraftFuel = 100;

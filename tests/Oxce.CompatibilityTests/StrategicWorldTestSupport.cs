@@ -149,6 +149,20 @@ internal static class StrategicWorldTestSupport
     }
 
     /// <summary>Asserts that the next tick is refused with <paramref name="reason"/> and changes nothing.</summary>
+    /// <summary>
+    /// Branch 5 S4: the tick where a craft and a UFO meet runs and opens an interception, which pauses
+    /// time. This replaces the earlier atomic interception guard at the same tick.
+    /// </summary>
+    public static InterceptionStarted AssertInterceptionStarts(CampaignState campaign, bool? ufoAttacking = null)
+    {
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.DoesNotContain(result.Events, static evt => evt is CampaignActionBlocked);
+        var started = Assert.IsType<InterceptionStarted>(result.Events.First(static evt => evt is InterceptionStarted));
+        if (ufoAttacking is { } attacking) Assert.Equal(attacking, started.UfoAttacking);
+        return started;
+    }
+
     public static void AssertTimeBlocked(CampaignState campaign, string reason)
     {
         var before = campaign.Capture();

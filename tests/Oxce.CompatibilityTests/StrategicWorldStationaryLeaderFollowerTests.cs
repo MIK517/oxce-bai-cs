@@ -113,8 +113,8 @@ public sealed class StrategicWorldStationaryLeaderFollowerTests
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(41));
         if (close)
         {
-            AssertTimeBlocked(campaign, timer == 5 ? "Craft interception requires strategic combat (Phase 6 branch 5)."
-                : "Craft landing requires deployment (Phase 6 branch 5).");
+            if (timer == 5) AssertInterceptionStarts(campaign);
+            else AssertTimeBlocked(campaign, "Craft landing requires deployment (Phase 6 branch 5).");
             return;
         }
         AdvanceUnblocked(campaign, 1);

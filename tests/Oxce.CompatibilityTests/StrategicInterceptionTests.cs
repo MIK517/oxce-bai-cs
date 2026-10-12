@@ -40,9 +40,9 @@ public sealed class StrategicInterceptionTests
         """;
 
     private static (RuntimeContent Content, CampaignState Campaign, CampaignWorld World) Create(int ufoDamage = 0, ulong seed = 7,
-        bool tractor = false, int ufoLandId = 0)
+        bool tractor = false, int ufoLandId = 0, string shipRules = "")
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], Rules);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], Rules.Replace("    weapons: 2\n", "    weapons: 2\n" + shipRules, StringComparison.Ordinal));
         var snapshot = CreateSnapshot(content, "Interception");
         var ufo = new UfoSnapshot(9, "UFO_SCOUT", 4, "TRAJ_PATROL", 0, 0.4, 0.2, UfoStatus.Flying, WorldAltitudes.High)
         {
@@ -68,6 +68,7 @@ public sealed class StrategicInterceptionTests
             {
                 Status = "STR_OUT",
                 Fuel = 100,
+                Speed = 6000,
                 Longitude = 0.4,
                 Latitude = 0.2,
                 Weapons = [new CraftWeaponSnapshot("DOGFIGHT_CANNON", 200, false, false),
@@ -204,14 +205,15 @@ public sealed class StrategicInterceptionTests
     }
 
     [Fact]
-    public void TimeStopsWhileAnInterceptionIsOpen()
+    public void TimeRunsOnlyWhileEveryInterceptionIsMinimized()
     {
         var (_, campaign, world) = Create();
         var number = Start(campaign, world);
-        AssertTimeBlocked(campaign, WorldCommandReasons.InterceptionTimeBoundary);
-        campaign.Execute(new SetInterceptionMode(number, InterceptionMode.Disengage));
-        while (world.QueryInterceptions().Count != 0) campaign.Execute(new AdvanceInterceptions());
+        AssertTimeBlocked(campaign, WorldCommandReasons.InterceptionsOpen);
+        Assert.Empty(campaign.Execute(new MinimizeInterception(number)).Events);
         AdvanceOne(campaign);
+        Assert.Empty(campaign.Execute(new RestoreInterception(number)).Events);
+        AssertTimeBlocked(campaign, WorldCommandReasons.InterceptionsOpen);
     }
 
     [Fact]
@@ -226,5 +228,30 @@ public sealed class StrategicInterceptionTests
         while (!result.Events.OfType<CampaignActionBlocked>().Any() && Single(world).Distance > 64);
         Assert.Equal(WorldCommandReasons.InterceptionOutcomeBoundary, Assert.Single(result.Events.OfType<CampaignActionBlocked>()).Reason);
         Assert.Equal(UfoStatus.Flying, Assert.Single(campaign.Capture().World.Ufos).Status);
+    }
+
+    [Fact]
+    public void ACraftReachingItsUfoOpensAWindowThatAWaterOnlyCraftMustWaitIn()
+    {
+        // Branch 5 S4: the craft pass opens the window; a water-only craft below the UFO's altitude gets
+        // DogfightErrorState's depth message and a minimized, waiting window, so time keeps running.
+        var (_, campaign, world) = Create(shipRules: "    maxAltitude: 1\n");
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        var started = Assert.Single(result.Events.OfType<InterceptionStarted>());
+        Assert.False(started.UfoAttacking);
+        Assert.Equal(new InterceptionWaiting(started.Interception, "STR_UNABLE_TO_ENGAGE_DEPTH"), Assert.Single(result.Events.OfType<InterceptionWaiting>()));
+        Assert.True(Single(world).Minimized);
+        AdvanceOne(campaign);
+        Assert.Single(world.QueryInterceptions());
+    }
+
+    [Fact]
+    public void ACraftReachingItsUfoOpensAnOrdinaryWindow()
+    {
+        var (_, campaign, world) = Create();
+        var started = AssertInterceptionStarts(campaign, ufoAttacking: false);
+        Assert.Equal(1, started.Interception);
+        Assert.Equal((InterceptionMode.Standoff, false), (Single(world).Mode, Single(world).Minimized));
+        AssertTimeBlocked(campaign, WorldCommandReasons.InterceptionsOpen);
     }
 }
