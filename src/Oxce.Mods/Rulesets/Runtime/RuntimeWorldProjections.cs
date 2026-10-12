@@ -94,6 +94,8 @@ public sealed record RuntimeUfoRule(
     public int MissilePower { get; init; }
     public int MissileStopChance { get; init; }
     public int SplashdownSurvivalChance { get; init; } = 100;
+    /// <summary>RuleUfo::getBlobSize: the declared size 0-7, or one derived from the size class.</summary>
+    public int BlobSize { get; init; } = 4;
 
     /// <summary>RuleUfo::getRaceBonus: the unnamed bonus is the fallback.</summary>
     public RuntimeUfoStats RaceBonus(string race) =>

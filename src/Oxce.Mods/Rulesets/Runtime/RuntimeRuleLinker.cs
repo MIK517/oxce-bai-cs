@@ -572,6 +572,14 @@ public static class RuntimeRuleLinker
                 MissilePower = source.Integers["missilePower"],
                 MissileStopChance = source.Integers["missileStopChance"],
                 SplashdownSurvivalChance = source.Integers["splashdownSurvivalChance"],
+                BlobSize = source.Integers["blobSize"] is > -1 and < 8 ? source.Integers["blobSize"] : source.Size switch
+                {
+                    "STR_VERY_SMALL" => 0,
+                    "STR_SMALL" => 1,
+                    "STR_MEDIUM_UC" => 2,
+                    "STR_LARGE" => 3,
+                    _ => 4,
+                },
             };
         }
 

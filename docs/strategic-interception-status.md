@@ -133,7 +133,7 @@ options was untested (added); a comment misplaced the reset of the reference sta
 Validation on the Windows workstation: formatting and code map clean; root `dotnet test` passes
 3,463 tests (private corpus included) with no failures or skips.
 
-## S3 — Interception state and combat step (in progress)
+## S3 — Interception state and combat step (2026-10-12)
 
 ### Dogfight engine (2026-10-12)
 
@@ -159,3 +159,42 @@ reference. The engine is not yet driven by time advance or commands; the world c
 behaviour and UI follow in the rest of S3, S4 and S8.
 Validation: formatting and code map clean; root `dotnet test` passes 3,481 tests with no failures
 or skips.
+
+### Interceptions in the campaign
+
+`CampaignWorld` keeps the open interception windows (`CampaignWorldInterceptions`) and offers
+`AdvanceInterceptions` (one dogfight timer step: `GeoscapeState::handleDogfights`, including the
+per-step `interceptionProcessed` reset and the depth/land wait checks), `SetInterceptionMode`,
+`MinimizeInterception` (only at standoff range; the self-destruct switch of a defenceless craft),
+`RestoreInterception`, `ToggleInterceptionWeapon` and `ICampaignInterceptionQuery`. Windows are numbered
+like `getFirstFreeDogfightSlot`. The craft and UFO sides are mirrors of the saved state: before each
+command they are refreshed from the craft logistics and UFO snapshots, and afterwards damage, shield,
+ammunition, disabled weapons, interception order, escape and fire countdowns, shield-recharge handle,
+softlock counter, hunter flag and speed are written back. Transient `Ufo` fields (tractor slowdown,
+firing window, hit frame) stay on a per-UFO mirror until the UFO leaves the world, as on the reference
+object, and are dropped by a reload. Craft statistics are the rule's statistics plus installed-weapon
+bonuses; pilot bonuses use `Craft::getPilotList(false)` with soldier-bonus statistics, and the chosen
+pilots are written to the craft's `pilots` list, which the port now owns (saved and loaded like
+`Craft::save`/`load`).
+
+A step is forecast first on copies of every window, craft and UFO, with the random source rewound
+afterwards so the real step draws the same values. Outcomes whose world consequences belong to later
+slices (pilot experience once the UFO is down, crash or destruction bookkeeping, retaliation, activity
+scores, IDs, wave interruption, break-off movement, hunter-killer resets and craft steps, crash
+followers, and a forced landing even when no new ID is needed) refuse the step before anything changes
+(`boundary.interception-outcome`). Disengaging is complete: the craft returns to base
+(`Craft::returnToBase`) and the window ends with `InterceptionEnded`. Time refuses to advance while any
+interception is open (`boundary.interception-time`) until S4 schedules the clock against open windows.
+Saves never contain combat: `StrategicInterceptionTests` shows a reload dropping the window while the
+saved UFO and craft fields survive.
+
+Audit (code review of the slice) found five items, all fixed: a tractor-beam forced landing of a UFO
+that already had a landing ID escaped the forecast (now any status, timer, altitude or ID change is
+refused), a craft without pilot seats had its pilot list cleared, weapon-slot indexing could overrun a
+shorter saved weapon list, a hunter-killer's target craft was not refreshed, and UFO mirrors were never
+pruned.
+Validation on the Windows workstation: formatting, code map and Release build clean; root
+`dotnet test` ran 3,488 tests with two test-expectation failures (the new preflight in the handler
+order list, and `STR_MEDIUM`, which `RuleUfo::load` renames to `STR_MEDIUM_UC` and so has blob size 2);
+both tests were corrected and their classes pass, with every other test unchanged and green.
+

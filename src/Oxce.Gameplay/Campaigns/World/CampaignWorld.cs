@@ -47,6 +47,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         RegisterAdhocScripts(registry);
         RegisterArcScripts(registry);
         RegisterWorldScheduling(registry);
+        RegisterInterceptions(registry);
     }
 
     internal AlienStrategyState Strategy => _strategy;
