@@ -244,6 +244,23 @@ public sealed record RuntimeCraftWeaponRule(int AmmoMaximum, int RearmRate, stri
 {
     public bool StatisticalBulletSaving { get; init; }
     public double BonusStorageSpace { get; init; }
+
+    // Dogfight properties (RuleCraftWeapon; read by DogfightState and CraftWeaponProjectile).
+    public int Damage { get; init; }
+    public int ShieldDamageModifier { get; init; } = 100;
+    public int Range { get; init; }
+    public int Accuracy { get; init; }
+    public int ReloadCautious { get; init; }
+    public int ReloadStandard { get; init; }
+    public int ReloadAggressive { get; init; }
+    /// <summary>CraftWeaponProjectileType: 0 stingray missile, 1 avalanche missile, 2 cannon round
+    /// (default), 3 fusion ball, 4 laser beam, 5 plasma beam.</summary>
+    public int ProjectileType { get; init; } = 2;
+    public int ProjectileSpeed { get; init; }
+    public int WeaponType { get; init; }
+    public int TractorBeamPower { get; init; }
+    public bool UnifiedDamageFormula { get; init; }
+    public bool UnderwaterOnly { get; init; }
 }
 
 /// <summary>Raw rule action accuracy before tactical bonuses and random rolls.</summary>
