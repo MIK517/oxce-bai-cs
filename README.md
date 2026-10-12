@@ -54,6 +54,12 @@ dotnet publish src\Oxce.App\Oxce.App.csproj --configuration Release --output art
 dotnet artifacts\sdl-publish\Oxce.App.dll --sdl-smoke
 ```
 
+For local runs on Windows, building `Oxce.App` copies a pinned SDL3.dll that is already staged
+under `artifacts/` (`artifacts/sdl3-3.4.10/SDL3-3.4.10/lib/x64` or the helper's
+`artifacts/sdl-work/expanded/SDL3-3.4.10/lib/x64`) beside the build output after verifying its
+checksum, so `dotnet run --project src/Oxce.App` finds it. Use `-p:OxceSdl3Library=<path>` to copy
+another file or `-p:OxceSdl3Disable=true` to copy nothing; `dotnet publish` output is unchanged.
+
 The existing interactive helper can instead use an already available SDL directory:
 
 ```powershell

@@ -75,7 +75,8 @@ public sealed partial class CampaignState : ICampaignCraftFuelStock
                     state = result.State;
                     if (result.ClipsUsed != 0) ChangeServiceStock(owner, _content.RuntimeRules.Items.GetRequired(result.Clip), -result.ClipsUsed);
                     if (result.MissingAmmo) effects.Notify(new CraftArrivalServiceMessage(owner.Id,
-                        _content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id, "STR_NOT_ENOUGH_ITEM_TO_REARM_CRAFT_AT_BASE"));
+                        _content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id, "STR_NOT_ENOUGH_ITEM_TO_REARM_CRAFT_AT_BASE")
+                    { ItemId = result.Clip });
                 }
                 var shieldMaximum = CraftLogistics.EffectiveShieldMaximum(rule, state.Weapons, _content.RuntimeRules);
                 if (shieldMaximum > 0 && state.Status != "STR_OUT")
@@ -94,7 +95,11 @@ public sealed partial class CampaignState : ICampaignCraftFuelStock
                     rule.AmmoItem is { } stockItem ? owner.Items.GetValueOrDefault(stockItem) : 0);
                 if (rule.AmmoItem is { } item && result.Used != 0) ChangeServiceStock(owner, item, -result.Used);
                 if (result.Notify) effects.Notify(new FacilityServiceMessage(owner.Id, facility.X, facility.Y,
-                    "STR_NOT_ENOUGH_ITEM_TO_REARM_FACILITY_AT_BASE"));
+                    "STR_NOT_ENOUGH_ITEM_TO_REARM_FACILITY_AT_BASE")
+                {
+                    ItemId = rule.AmmoItem is { } ammo ? _content.RuntimeRules.Items.GetExternalId(ammo) : string.Empty,
+                    FacilityRuleId = _content.RuntimeRules.Facilities.GetExternalId(facility.Rule),
+                });
                 if (facility.Ammo == result.Ammo && facility.AmmoMissingReported == result.MissingReported) continue;
                 owner.Facilities[index] = facility with { Ammo = result.Ammo, AmmoMissingReported = result.MissingReported };
             }
@@ -109,4 +114,9 @@ public sealed partial class CampaignState : ICampaignCraftFuelStock
     }
 }
 
-public sealed record FacilityServiceMessage(int BaseId, int X, int Y, string Message) : ICampaignEvent;
+public sealed record FacilityServiceMessage(int BaseId, int X, int Y, string Message) : ICampaignEvent
+{
+    /// <summary>The missing ammunition item and the facility rule the message names.</summary>
+    public string ItemId { get; init; } = string.Empty;
+    public string FacilityRuleId { get; init; } = string.Empty;
+}

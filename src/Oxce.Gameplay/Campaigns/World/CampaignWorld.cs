@@ -82,49 +82,156 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
                 Reference = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, ufo.Id, ufo.Longitude, ufo.Latitude)
                 { UniqueId = ufo.UniqueId },
                 UnavailableActionReason = ufo.Status == UfoStatus.Flying ? InterceptionReason : LandingReason,
+                ActionUnavailable = WorldCommandReasons.For(ufo.Status == UfoStatus.Flying ? InterceptionReason : LandingReason),
+                HunterKiller = ufo.HunterKiller,
+                HyperDetected = ufo.HyperDetected,
+                RadarRange = UfoRadarRange(ufo),
+                Hunting = ufo.Hunting,
+                // UFO waypoints are anonymous Waypoint objects outside the player's list.
+                Destination = Resolve(ufo.Destination)?.Position ??
+                    (ufo.Destination is { Kind: WorldTargetKind.Waypoint } waypoint ? waypoint.Position : null),
+                Ufo = UfoDetails(ufo),
             });
         foreach (var site in _sites.Where(static site => site.Detected))
             targets.Add(new CampaignWorldTarget(WorldTargetKind.MissionSite, site.Id, site.DeploymentId,
                 site.Name.Length != 0 ? site.Name : MarkerName(site.DeploymentId), site.Longitude, site.Latitude)
             {
+                HasCustomName = site.Name.Length != 0,
                 Detected = site.Detected,
                 SecondsRemaining = site.SecondsRemaining,
                 Status = site.City,
                 Reference = new(WorldTargetKind.MissionSite, MarkerName(site.DeploymentId), site.Id, site.Longitude, site.Latitude),
                 UnavailableActionReason = LandingReason,
+                ActionUnavailable = WorldCommandReasons.For(LandingReason),
             });
         foreach (var alienBase in _alienBases.Where(static alienBase => alienBase.Discovered))
             targets.Add(new CampaignWorldTarget(WorldTargetKind.AlienBase, alienBase.Id, alienBase.DeploymentId,
-                alienBase.Name.Length != 0 ? alienBase.Name : MarkerName(alienBase.DeploymentId),
+                // Target::getMarkerName: the alien base's type (the deployment marker) plus "_".
+                alienBase.Name.Length != 0 ? alienBase.Name : MarkerName(alienBase.DeploymentId) + "_",
                 alienBase.Longitude, alienBase.Latitude)
             {
+                HasCustomName = alienBase.Name.Length != 0,
                 Detected = alienBase.Discovered,
                 Reference = new(WorldTargetKind.AlienBase, MarkerName(alienBase.DeploymentId), alienBase.Id,
                     alienBase.Longitude, alienBase.Latitude),
-                UnavailableActionReason = LandingReason
+                UnavailableActionReason = LandingReason,
+                ActionUnavailable = WorldCommandReasons.For(LandingReason),
+                CountryId = CountryAt(alienBase.Position),
+                RegionId = RegionAt(alienBase.Position),
+                DiscoveredMessage = campaign.Content.RuntimeRules.AlienDeployments.TryGet(alienBase.DeploymentId, out var deployment)
+                    ? campaign.Content.RuntimeRules.AlienDeployments[deployment].Value.AlienBaseDiscoveredMessage
+                    : string.Empty,
             });
         foreach (var waypoint in _waypoints)
             targets.Add(new CampaignWorldTarget(WorldTargetKind.Waypoint, waypoint.Id,
                 WorldTargetReference.WaypointType,
-                waypoint.Name.Length != 0 ? waypoint.Name : WorldTargetReference.WaypointType,
+                waypoint.Name.Length != 0 ? waypoint.Name : WorldTargetReference.WaypointType + "_",
                 waypoint.Longitude, waypoint.Latitude)
-            { Detected = true });
+            { Detected = true, HasCustomName = waypoint.Name.Length != 0 });
         return new CampaignWorldOverview(CampaignSnapshot.ReadOnly(targets), _missions.Count, _events.Count)
         {
+            CountryIds = CampaignSnapshot.ReadOnly(campaign.CountryStates.Select(country =>
+                campaign.Content.RuntimeRules.Countries.GetExternalId(country.Rule))),
+            RegionIds = CampaignSnapshot.ReadOnly(campaign.RegionStates.Select(region =>
+                campaign.Content.RuntimeRules.Regions.GetExternalId(region.Rule))),
             Bases = CampaignSnapshot.ReadOnly(campaign.BaseStates.Where(static owner => owner.IsPlaced)
-                .Select(owner => new CampaignWorldBase(owner.Id, owner.Name, owner.Longitude, owner.Latitude))),
+                .Select(owner => new CampaignWorldBase(owner.Id, owner.Name, owner.Longitude, owner.Latitude)
+                {
+                    RadarRange = BaseRadarRange(owner),
+                })),
             Crafts = CampaignSnapshot.ReadOnly(campaign.BaseStates.SelectMany(owner => owner.Crafts.Select(craft =>
             {
                 var state = craft.Logistics;
-                var airborneReason = state is not { Status: "STR_OUT" } ? "The craft is not airborne." :
-                    IsReturningHome(state) ? ReturningReason : null;
-                return new CampaignWorldCraft(owner.Id, campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule),
+                var airborneReason = state is not { Status: "STR_OUT" } ? WorldCommandReasons.NotAirborne :
+                    IsReturningHome(state) ? ReturningReason :
+                    !CraftLogistics.TryEffectiveSpeedMaximum(campaign.Content.RuntimeRules.Crafts[craft.Rule].Value,
+                        state.Weapons, campaign.Content.RuntimeRules, out _) ? SpeedRangeReason : null;
+                var dispatchReason = DispatchReason(owner, craft);
+                var summary = new CampaignWorldCraft(owner.Id, campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule),
                     craft.Id, state?.Name ?? string.Empty, state?.Status ?? string.Empty,
                     state?.Longitude ?? owner.Longitude, state?.Latitude ?? owner.Latitude,
-                    state?.Fuel ?? 0, Resolve(state?.Destination), DispatchReason(owner, craft), airborneReason);
+                    state?.Fuel ?? 0, Resolve(state?.Destination), dispatchReason, airborneReason)
+                {
+                    RadarRange = CraftRadarRange(craft),
+                    DispatchUnavailable = dispatchReason is null ? null : WorldCommandReasons.For(dispatchReason),
+                    PatrolRecallUnavailable = airborneReason is null ? null : WorldCommandReasons.For(airborneReason),
+                };
+                return Details(summary, owner, craft);
             }))),
         };
     });
+
+    private static double BaseRangeOf(RuntimeCraftRule rule, int fuel, int speedMaximum)
+    {
+        if (speedMaximum <= 0) return 0;
+        var consumption = WorldFlight.FuelConsumption(rule.RefuelItem is not null, speedMaximum, speedMaximum, 0);
+        return consumption == 0 ? double.PositiveInfinity : WorldFlight.BaseRange(rule.RefuelItem is not null, speedMaximum, fuel);
+    }
+
+    /// <summary>GeoscapeCraftState's fields; absent for a craft whose state was not resolved.</summary>
+    private CampaignWorldCraft Details(CampaignWorldCraft summary, CampaignState.BaseState owner, CampaignState.CraftState craft)
+    {
+        if (craft.Logistics is not { } state) return summary;
+        var rules = campaign.Content.RuntimeRules;
+        var rule = rules.Crafts[craft.Rule].Value;
+        // Saturated rather than thrown: one craft with out-of-range bonuses must not fail the query;
+        // its commands report the range refusal instead.
+        CraftLogistics.TryEffectiveFuelMaximum(rule, state.Weapons, rules, out var fuelMaximum);
+        CraftLogistics.TryEffectiveGeoscapeShields(rule, state.Weapons, rules, out var shieldMaximum, out _);
+        CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons, rules, out var speedMaximum);
+        var type = rules.Crafts.GetExternalId(craft.Rule);
+        return summary with
+        {
+            FuelMaximum = Math.Max(fuelMaximum, 0),
+            Damage = state.Damage,
+            DamageMaximum = (int)Math.Clamp(CraftLogistics.EffectiveDamageMaximum(state, rule, rules), 0, int.MaxValue),
+            Shield = state.Shield,
+            ShieldMaximum = shieldMaximum,
+            Speed = state.Speed,
+            SpeedMaximum = Math.Max(speedMaximum, 0),
+            Weapons = CampaignSnapshot.ReadOnly(state.Weapons.Select(weapon => weapon is null ? null
+                : new CampaignWorldCraftWeapon(weapon.RuleId, weapon.Ammo,
+                    rules.CraftWeapons.TryGet(weapon.RuleId, out var handle) ? rules.CraftWeapons[handle].Value.AmmoMaximum : 0))),
+            // Craft::getNumTotalSoldiers reports none for a craft that cannot carry units.
+            Soldiers = rule.EffectiveMaximumUnits == 0 ? 0 : owner.Soldiers.Count(soldier => soldier.Personal is { } personal &&
+                personal.CraftType == type && personal.CraftId == craft.Id),
+            Vehicles = state.Vehicles.Count,
+            LowFuel = state.LowFuel,
+            MissionComplete = state.MissionComplete,
+            CanAutoPatrol = rule.AutoPatrol,
+            BaseRange = BaseRangeOf(rule, state.Fuel, speedMaximum),
+        };
+    }
+
+    private int BaseRadarRange(CampaignState.BaseState owner)
+    {
+        // Globe::drawRadars: the largest completed radar below MAX_DRAW_RADAR_CIRCLE_RADIUS.
+        var range = 0;
+        foreach (var facility in owner.Facilities)
+        {
+            if (facility.BuildTime != 0) continue;
+            var radar = campaign.Content.RuntimeRules.Facilities[facility.Rule].Value.RadarRange;
+            if (radar < 10_000 && radar > range) range = radar;
+        }
+        return range;
+    }
+
+    private int CraftRadarRange(CampaignState.CraftState craft)
+    {
+        if (craft.Logistics is not { } state) return 0;
+        var rules = campaign.Content.RuntimeRules;
+        CraftLogistics.EffectiveRadar(rules.Crafts[craft.Rule].Value, state.Weapons, rules, out var range, out _);
+        return range;
+    }
+
+    private int UfoRadarRange(UfoSnapshot ufo)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        if (!rules.Ufos.TryGet(ufo.RuleId, out var handle)) return 0;
+        var rule = rules.Ufos[handle].Value;
+        var race = FindMission(ufo.MissionId)?.Race ?? string.Empty;
+        return (int)Math.Clamp((long)rule.Stats.RadarRange + rule.RaceBonus(race).RadarRange, 0, int.MaxValue);
+    }
 
     private CampaignSnapshot CaptureWorldState(CampaignSnapshot snapshot) => snapshot with
     {
@@ -452,39 +559,95 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     /// <summary>The reason live world state blocks time until its handlers exist.</summary>
     private string? LiveWorldReason(CampaignTimeTrigger highest, CampaignTimeSpeed speed)
     {
+        // Opt-in timing of each step (CampaignTimeProfile); a no-op without a profile.
+        const string Step = CampaignTimeProfile.WorldPrefix;
+        var steps = new CampaignTimeProfile.Steps(campaign.ActiveTimeProfile);
         _pass.BeginWorld(highest);
+        steps.Mark(Step + nameof(WorldPreflightPass.BeginWorld));
         if (FlightFuelValuesReason(highest) is { } fuelValuesReason) return fuelValuesReason;
+        steps.Mark(Step + nameof(FlightFuelValuesReason));
         var interruptionReason = MissionInterruptionReason(highest, out var guaranteedResearch);
+        steps.Mark(Step + nameof(MissionInterruptionReason));
         if (interruptionReason is not null) return interruptionReason;
         var destructionReason = AlienBaseDestructionReason(highest, ref guaranteedResearch);
+        steps.Mark(Step + nameof(AlienBaseDestructionReason));
         if (destructionReason is not null) return destructionReason;
         _pass.DailyResearchForecast = guaranteedResearch;
         if (PrepareDailyGeneratedWaveForecasts(highest, guaranteedResearch) is { } generationReason) return generationReason;
+        steps.Mark(Step + nameof(PrepareDailyGeneratedWaveForecasts));
         if (PrepareMissionCounterForecasts(highest) is { } counterReason) return counterReason;
+        steps.Mark(Step + nameof(PrepareMissionCounterForecasts));
         if (SiteDiscoveryReason(highest) is { } discoveryReason) return discoveryReason;
+        steps.Mark(Step + nameof(SiteDiscoveryReason));
         if (SiteFollowerWorkReason(highest) is { } followerWorkReason) return followerWorkReason;
+        steps.Mark(Step + nameof(SiteFollowerWorkReason));
         if (SiteUfoRepairReason(highest) is { } repairReason) return repairReason;
+        steps.Mark(Step + nameof(SiteUfoRepairReason));
         if (PrepareSiteResearch(highest) is { } siteResearchReason) return siteResearchReason;
+        steps.Mark(Step + nameof(PrepareSiteResearch));
         if (HuntingReason(highest, speed) is { } huntingReason) return huntingReason;
+        steps.Mark(Step + nameof(HuntingReason));
         if (SiteResearchUfoWorkReason(highest) is { } siteFlightReason) return siteFlightReason;
+        steps.Mark(Step + nameof(SiteResearchUfoWorkReason));
         if (PrepareHuntingGeneratedWaveForecasts(highest, guaranteedResearch) is { } huntBirthReason) return huntBirthReason;
+        steps.Mark(Step + nameof(PrepareHuntingGeneratedWaveForecasts));
         var ufoReason = UfoMovementReason(highest);
+        steps.Mark(Step + nameof(UfoMovementReason));
         if (ufoReason is not null) return ufoReason;
         var missionReason = MissionSchedulingReason(highest, guaranteedResearch);
+        steps.Mark(Step + nameof(MissionSchedulingReason));
         if (missionReason is not null) return missionReason;
         if (ArrivalContactLossReason(highest) is { } arrivalLossReason) return arrivalLossReason;
+        steps.Mark(Step + nameof(ArrivalContactLossReason));
         var alienBaseReason = AlienBaseActivityReason(highest, guaranteedResearch);
+        steps.Mark(Step + nameof(AlienBaseActivityReason));
         if (alienBaseReason is not null) return alienBaseReason;
         var baseDetectionReason = UfoBaseDetectionReason(highest);
+        steps.Mark(Step + nameof(UfoBaseDetectionReason));
         if (baseDetectionReason is not null) return baseDetectionReason;
         var siteReason = SiteTimingReason(highest);
+        steps.Mark(Step + nameof(SiteTimingReason));
         if (siteReason is not null) return siteReason;
         if (UfoSiteConversionsReason(highest) is { } conversionReason) return conversionReason;
+        steps.Mark(Step + nameof(UfoSiteConversionsReason));
         if (ObjectiveBasePatrolReason(highest) is { } patrolReason) return patrolReason;
+        steps.Mark(Step + nameof(ObjectiveBasePatrolReason));
         var detectionReason = UfoHalfHourReason(highest, guaranteedResearch);
+        steps.Mark(Step + nameof(UfoHalfHourReason));
         if (detectionReason is not null) return detectionReason;
         if (FlightFuelRefundReason(highest) is { } fuelRefundReason) return fuelRefundReason;
-        return EventSchedulingReason(highest);
+        steps.Mark(Step + nameof(FlightFuelRefundReason));
+        var eventReason = EventSchedulingReason(highest);
+        steps.Mark(Step + nameof(EventSchedulingReason));
+        return eventReason;
+    }
+
+    private CampaignWorldUfoDetails UfoDetails(UfoSnapshot ufo)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        var mission = _missions.FirstOrDefault(entry => entry.Id == ufo.MissionId);
+        return new(rules.Ufos.TryGet(ufo.RuleId, out var handle) ? rules.Ufos[handle].Value.Size : string.Empty,
+            ufo.Status == UfoStatus.Flying ? ufo.Direction : "STR_NONE_UC", ufo.Speed,
+            mission?.Race ?? string.Empty, mission?.RuleId ?? string.Empty, mission?.RegionId ?? string.Empty);
+    }
+
+    /// <summary>AlienBaseState: the first country containing a position, in saved order.</summary>
+    private string CountryAt(WorldPosition position)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        foreach (var country in campaign.CountryStates)
+            if (WorldGeometry.InsideCountry(rules.Countries[country.Rule].Value, position))
+                return rules.Countries.GetExternalId(country.Rule);
+        return string.Empty;
+    }
+
+    private string RegionAt(WorldPosition position)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        foreach (var region in campaign.RegionStates)
+            if (WorldGeometry.InsideRegion(rules.Regions[region.Rule].Value, position))
+                return rules.Regions.GetExternalId(region.Rule);
+        return string.Empty;
     }
 
     private string MarkerName(string deploymentId) =>

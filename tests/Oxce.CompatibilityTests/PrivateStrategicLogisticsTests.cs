@@ -34,7 +34,9 @@ public sealed class PrivateStrategicLogisticsTests
                 Assert.True(seed.IsSuccess, seed.DescribeFailure());
                 var cached = InstallationContentLoader.Load(request, options, cancellationToken: TestContext.Current.CancellationToken);
                 Assert.True(cached.IsSuccess, cached.DescribeFailure());
-                Assert.Equal(CompiledContentCacheStatus.Hit, cached.CacheStatus);
+                // A cache too large to publish leaves the previous family's file, which is then rejected.
+                Assert.True(cached.CacheStatus == CompiledContentCacheStatus.Hit,
+                    $"{master}/{addon}: {cached.CacheStatus} {cached.CacheRejectionReason}");
                 var first = Exercise(fresh.Content!, request);
                 var second = Exercise(cached.Content!, request);
                 Assert.Equivalent(first, second, strict: true);

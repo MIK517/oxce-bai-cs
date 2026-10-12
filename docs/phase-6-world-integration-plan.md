@@ -1,8 +1,8 @@
 # Phase 6 world integration delivery plan
 
 Approved 2026-09-26. Branch 4c: `codex/strategic-world-integration`, based on
-`e10d96f` (merged branch 4b). Branch 4d: `codex/strategic-world-ui`, from main after
-4c merges. Branch 5 follows 4d. Reference: `4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`.
+`e10d96f` (merged branch 4b). Branch 4d: `claude/strategic-world-ui`, from main after
+4c merges (`e22b6853`). Branch 5 follows 4d. Reference: `4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`.
 
 ## Branch 4c: tested headless slices
 
@@ -47,6 +47,47 @@ Use explicit reference speeds, F5 save and confirmed F9 load; repair stale selec
 Verify structural rendering, input, SDL smoke and UFO/TFTD/modded scenarios. Full polish
 remains Phase 8. Combined world acceptance closes here, with the named later-phase guards.
 
+### Branch 4d slices (approved 2026-10-11)
+
+Starting audit of `e22b6853` found: the SDL app reaches the campaign through
+`CampaignExtensionSession`, which implements none of the readiness, research/production
+or world query interfaces, so the client's readiness and research/production views are
+unreachable outside tests and no world view exists; no UI path calls
+`EnterCampaignWorld`; headless refusal reasons are English literals; wings and airborne
+craft transfer have no headless command; one-day speed (17,280 ticks per 80 ms
+`geoClockSpeed` frame) costs 0.3–1.1 s at measured tick costs; globe polylines, cities,
+craft markers, geoscape interface colours, palettes, `TEXTURE.DAT` and `GlobeMarkers`
+are not projected; `SavedGame` globe view fields are unowned; and every timed
+notification pauses, whereas the reference pauses for popups and resets speed per popup.
+
+Decisions: (D1) refusals become typed reason codes mapped to reference `STR_` keys where one
+exists (port-only guards keep English text); (D2) wings are an atomic headless command;
+(D3) airborne craft transfer is a named restriction; (D4) the client is one 640×400 frame with the
+reference geoscape layout at 2×; (D5) time advance is chunked under a per-frame budget with
+the selected speed, pause and speed-reset behaviour preserved.
+
+Slices, each followed by an independent audit before the next:
+
+- S0 record this plan.
+- S1 typed UI session (queries from the campaign, commands through the extension
+  session, reattached on load) and world entry after first base placement or load.
+- S2 geoscape content projection and resource resolution (compiler/cache revision).
+- S3 globe geometry: `polarToCart`/`cartToPolar`, back-side test, zoom radii,
+  rotation/centring, target hit testing and keyboard target order.
+- S4 indexed globe renderer: ocean, textured land, shadow, radars, flight paths,
+  markers and detail, without per-frame allocation.
+- S5 geoscape shell: screen stack, modal pause, six reference speeds, chunked advance,
+  popup queue and speed-reset table, top-screen F5/F9, base screens.
+- S6 target information, craft information, interception list, destination selection and
+  confirmation, patrol/recall, wings and reason codes.
+- S7 detection, loss, fuel, patrol, site/base and boundary notifications.
+- S8 globe base placement; retire `CampaignOverviewClient`.
+- S9 globe view persistence, F5/F9 with live world state, stale-selection repair.
+- S10 scripted UI scenarios over public fixtures and private UFO/TFTD/modded saves; SDL smoke.
+- S11 performance, ADR, matrices, code map and combined branch 4 acceptance.
+
+Slice evidence is recorded in [strategic world UI status](strategic-world-ui-status.md).
+
 ## Validation
 
 Cover scheduling triggers/conditionals/labels/weights/history; all objectives and wave kinds;
@@ -62,6 +103,14 @@ Run root `dotnet test`, formatting verification, checksum tests and code-map ver
 This section owns cross-cutting 4c checkpoints, the current scope and the remaining guards.
 Subsystem slices, audits and evidence are recorded once, in their `strategic-*-status.md`
 documents; entries here link to them instead of copying them.
+
+### Branch 4d closure (2026-10-12)
+
+Slices S0–S11 are implemented, each with an independent audit; evidence is in
+[strategic world UI status](strategic-world-ui-status.md) and intentional differences in
+[ADR 0032](decisions/0032-geoscape-ui-intentional-differences.md). Combined branch 4
+acceptance is mapped in [S11](strategic-world-ui-status.md#s11--performance-decisions-and-combined-branch-4-acceptance-2026-10-12).
+Branch 5 (interception and strategic deployment) is next.
 
 ### Branch 4c closure (2026-10-11)
 

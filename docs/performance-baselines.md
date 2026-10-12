@@ -19,6 +19,7 @@ not required.
 | Audio | Mix 1,024 stereo frames from sixteen looping 48 kHz stereo voices, both uncontended and while a control thread continuously changes bus gain. |
 | Content lifetime | Compare normal runtime publication with explicit audit-artifact retention for the public script-content fixture. |
 | Script VM | Compare the allocating result adapter with prepared scalar, host-call, and three-program event frames. |
+| Geoscape frames | Render a busy synthetic globe (48×24 land quads, 64 markers, 16 radars, 12 paths, 48 labels at dusk) and redraw the geoscape client with the interception list open over 32 detected UFOs, at the nearest and farthest zoom. |
 
 Setup constructs files, layers, YAML, surfaces, palettes, clips, and output buffers
 outside the measured operations. Batched benchmarks declare their operations-per-invoke
@@ -583,6 +584,59 @@ baselines.
 With `IterationSetup`, BenchmarkDotNet runs one invocation per iteration. Use at least ten
 warmup iterations; with three, the hunter-killer escort scenario is still tiering up and
 reports up to three times its steady-state cost.
+
+### Geoscape frame and one-day speed result (2026-10-12)
+
+`GeoscapeFrameBenchmarks` measures frame construction for the branch 4d geoscape against the
+[interactive frame target](performance-targets.md) (p95 <= 8 ms). `RenderBusyGlobe` renders a
+synthetic globe with every layer populated from a still view, where land polygons stay projected
+between frames; `RenderRotatingGlobe` takes one 10 ms rotation step before each frame, so every
+polygon is projected again. `RedrawGeoscapeWithPopup` is one 100 ms client tick of the public
+`strategic-world` campaign with 32 detected UFOs and the interception list open: the popup stops
+time, so each tick is a blink redraw of the globe, sidebar and popup without time advance.
+Measured in the Linux VM (Ryzen 9 7940HS, 2 logical cores, .NET SDK 10.0.401, runtime 10.0.12)
+with the in-process toolchain, 8 warmup and 20 measured iterations:
+
+| Workload | Zoom | Mean | P95 | Allocated |
+|---|---:|---:|---:|---:|
+| Busy globe, still | 0 | 2.40 ms | 2.42 ms | 0 B |
+| Busy globe, still | 5 | 3.99 ms | 4.03 ms | 55 B |
+| Busy globe, rotating | 0 | 2.62 ms | 2.63 ms | 27 B |
+| Busy globe, rotating | 5 | 4.05 ms | 4.33 ms | 55 B |
+| Client redraw with popup | 0 | 1.72 ms | 1.74 ms | 662 B |
+| Client redraw with popup | 5 | 3.54 ms | 3.57 ms | 675 B |
+
+The globe renderer does not allocate per frame (the few bytes are below one object per operation
+and amortized). The client's remaining allocation is the clock, date, funds and wrapped popup text
+formatted each frame.
+
+Time advance is measured separately. The same run of `CampaignTimeAdvanceBenchmarks` at commit
+`94b634b4` matched the 2026-10-06 results within noise (one-day speed: 32 UFOs 18.0 us/tick,
+128 UFOs 59.1 us/tick). One-day speed owes 17,280 ticks per 80 ms step; spread over frames within
+the 12 ms budget ([ADR 0032](decisions/0032-geoscape-ui-intentional-differences.md)), a world with
+32 flying UFOs needs about 0.31 s of tick work per game day and 128 UFOs about 1.0 s, instead of
+the reference's one day per 80 ms frame.
+
+Per-phase cost of time advance: `--time-profile [scenario...] [--speed OneDay|FiveSeconds]
+[--seconds N] [--top N]` runs the `CampaignTimeAdvanceBenchmarks` scenarios outside
+BenchmarkDotNet. It prints the cost per tick and per in-game day from an unprofiled run (exit
+code 3 when a one-day scenario exceeds the soft target in
+[performance targets](performance-targets.md)) and, from a profiled run, the time of every
+registered preflight check (`preflight:`), time handler (`apply:`) and world-simulation preflight
+step (`world simulation/`) through the opt-in `CampaignState.TimeProfile`, which never changes
+gameplay. With 32 flying UFOs at one-day speed (VM, 2026-10-12): the world-simulation preflight
+9.2 us/tick, of which the UFO movement forecast 4.0 and the site-conversion check 2.5, against
+5.0 us for the UFO movement itself. Each clock read adds about 20 ns per phase.
+
+```powershell
+dotnet run --project benchmarks/Oxce.Benchmarks -c Release -- --time-profile Flight32 Flight128 --seconds 5
+```
+
+The Windows SDL smoke (`--campaign-sdl-smoke`, owned installation, Direct3D 11) reported an average
+presentation of 7.2 ms over 151 frames. That figure includes `SDL_RenderPresent`, which can wait for
+the compositor, so it is not comparable with the 4 ms presentation target. The smoke now also prints
+the average and maximum conversion and upload time without the present call (the host keeps no
+per-frame samples, so no p95) and the client tick p50/p95/maximum.
 
 ### Windows x64 publish-size baseline
 

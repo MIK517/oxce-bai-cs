@@ -5,8 +5,8 @@ namespace Oxce.Gameplay.Campaigns.World;
 /// <summary>GeoscapeState::time5Seconds craft pursuit and target-loss handling.</summary>
 internal sealed partial class CampaignWorld
 {
-    private const string InterceptionReason = "Craft interception requires strategic combat (Phase 6 branch 5).";
-    private const string LandingReason = "Craft landing requires deployment (Phase 6 branch 5).";
+    private const string InterceptionReason = WorldCommandReasons.InterceptionBoundary;
+    private const string LandingReason = WorldCommandReasons.LandingBoundary;
 
     private CampaignCommandResult DispatchTarget(DispatchCraftToTarget command)
     {
@@ -15,24 +15,13 @@ internal sealed partial class CampaignWorld
         var craft = owner.Crafts[index];
         if (DispatchReason(owner, craft) is { } reason) return Blocked(reason);
         var target = command.Target;
-        if (!Enum.IsDefined(target.Kind)) return Blocked("The destination kind is invalid.");
-        if (target.Kind == WorldTargetKind.Ufo && target.UniqueId <= 0)
-            return Blocked("UFO dispatch requires its stable unique identity.");
-        if (Resolve(target) is not { } resolved || !IsVisibleTarget(resolved))
-            return Blocked("The destination no longer exists or is not visible.");
-        resolved = resolved.Kind switch
-        {
-            WorldTargetKind.Ufo => resolved with { TypeId = WorldTargetReference.UfoType, Id = TargetUfo(resolved)!.Id },
-            WorldTargetKind.Base => resolved with { TypeId = WorldTargetReference.BaseType },
-            WorldTargetKind.Waypoint => resolved with { TypeId = WorldTargetReference.WaypointType },
-            _ => resolved,
-        };
+        if (DestinationReason(target, out var resolved) is { } destinationReason) return Blocked(destinationReason);
         if (target.Kind == WorldTargetKind.Craft && target.Id == craft.Id && target.TypeId == command.CraftTypeId)
-            return Blocked("A craft cannot escort itself.");
+            return Blocked(WorldCommandReasons.TargetSelf);
         if (target.Kind == WorldTargetKind.Base && target.Id != owner.Id)
-            return Blocked("A craft can return only to its own base; use a transfer to change bases.");
+            return Blocked(WorldCommandReasons.ForeignBase);
         if (TargetDeployment(resolved) is { StartingCondition.Length: > 0 })
-            return Blocked("Target starting conditions require deployment validation (Phase 6 branch 5).");
+            return Blocked(WorldCommandReasons.StartingConditionBoundary);
         var state = craft.Logistics!;
         var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
         CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons, campaign.Content.RuntimeRules, out var speed);
@@ -42,6 +31,25 @@ internal sealed partial class CampaignWorld
                 speed, resolved),
         };
         return new([new CraftDestinationChanged(owner.Id, command.CraftTypeId, craft.Id, resolved)]);
+    }
+
+    /// <summary>Resolves a visible destination to the reference a craft stores.</summary>
+    private string? DestinationReason(WorldTargetReference target, out WorldTargetReference resolved)
+    {
+        resolved = target;
+        if (!Enum.IsDefined(target.Kind)) return WorldCommandReasons.TargetKind;
+        if (target.Kind == WorldTargetKind.Ufo && target.UniqueId <= 0)
+            return WorldCommandReasons.UfoIdentity;
+        if (Resolve(target) is not { } found || !IsVisibleTarget(found))
+            return WorldCommandReasons.TargetGone;
+        resolved = found.Kind switch
+        {
+            WorldTargetKind.Ufo => found with { TypeId = WorldTargetReference.UfoType, Id = TargetUfo(found)!.Id },
+            WorldTargetKind.Base => found with { TypeId = WorldTargetReference.BaseType },
+            WorldTargetKind.Waypoint => found with { TypeId = WorldTargetReference.WaypointType },
+            _ => found,
+        };
+        return null;
     }
 
     private UfoSnapshot? TargetUfo(WorldTargetReference reference)
@@ -164,7 +172,7 @@ internal sealed partial class CampaignWorld
     {
         if (state.Destination is { Kind: WorldTargetKind.Craft } escort && escort.Id == craft.Id &&
             escort.TypeId == campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule))
-            return "A craft cannot escort itself.";
+            return WorldCommandReasons.TargetSelf;
         if (state.Destination is not { } destination ||
             destination.Kind is WorldTargetKind.Base or WorldTargetKind.Waypoint or WorldTargetKind.Craft) return null;
         if (highest >= CampaignTimeTrigger.OneDay && destination.Kind == WorldTargetKind.AlienBase)
@@ -304,8 +312,13 @@ internal sealed partial class CampaignWorld
             !exists && target.Kind != WorldTargetKind.Waypoint;
         CraftLogistics.TryEffectiveSpeedMaximum(campaign.Content.RuntimeRules.Crafts[craft.Rule].Value,
             state.Weapons, campaign.Content.RuntimeRules, out var maximum);
+        var offersLastPosition = ufo is { Detected: false } && !(ufo.TrajectoryId == RuntimeUfoTrajectoryRule.RetaliationAssaultRun &&
+            ufo.Status is UfoStatus.Landed or UfoStatus.Destroyed);
         effects.Notify(new CraftTargetLost(owner.Id, campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule),
-            craft.Id, exists ? target with { Longitude = targetPosition.Longitude, Latitude = targetPosition.Latitude } : target, returnHome));
+            craft.Id, exists ? target with { Longitude = targetPosition.Longitude, Latitude = targetPosition.Latitude } : target, returnHome)
+        {
+            OffersLastPosition = offersLastPosition,
+        });
         if (returnHome) return SetDestination(state, maximum, BaseReference(owner));
         return state with
         {
