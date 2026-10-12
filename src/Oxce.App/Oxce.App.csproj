@@ -11,4 +11,35 @@
     <ProjectReference Include="../Oxce.Rendering/Oxce.Rendering.csproj" />
     <ProjectReference Include="../Oxce.Savegames/Oxce.Savegames.csproj" />
   </ItemGroup>
+
+  <!--
+    SDL3 runtime for local runs: on Windows, a pinned SDL3.dll already staged under artifacts/ is
+    copied beside the build output so `dotnet run` and the SDL commands work without manual
+    copying. Set OxceSdl3Library to copy another file (any OS; its checksum is checked only when
+    OxceSdl3Sha256 is also given), or OxceSdl3Disable=true to copy nothing. A staged file must
+    match the pinned SDL 3.4.10 x64 checksum. Publishing is unchanged: release staging stays
+    explicit (tools/stage-sdl3-windows.ps1).
+  -->
+  <PropertyGroup>
+    <OxceSdl3Sha256 Condition="'$(OxceSdl3Sha256)' == '' And '$(OxceSdl3Library)' == ''">C39FBDA24ECA1009B06A4D4E340D12511E3C8B0D44C4898D29E336E2CC7A25F0</OxceSdl3Sha256>
+    <_OxceRepositoryRoot>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..'))</_OxceRepositoryRoot>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(OxceSdl3Disable)' != 'true' And '$(OxceSdl3Library)' == '' And $([MSBuild]::IsOSPlatform('Windows'))">
+    <OxceSdl3Library Condition="'$(OxceSdl3Library)' == '' And Exists('$(_OxceRepositoryRoot)artifacts/sdl3-3.4.10/SDL3-3.4.10/lib/x64/SDL3.dll')">$(_OxceRepositoryRoot)artifacts/sdl3-3.4.10/SDL3-3.4.10/lib/x64/SDL3.dll</OxceSdl3Library>
+    <OxceSdl3Library Condition="'$(OxceSdl3Library)' == '' And Exists('$(_OxceRepositoryRoot)artifacts/sdl-work/expanded/SDL3-3.4.10/lib/x64/SDL3.dll')">$(_OxceRepositoryRoot)artifacts/sdl-work/expanded/SDL3-3.4.10/lib/x64/SDL3.dll</OxceSdl3Library>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(OxceSdl3Disable)' != 'true' And '$(OxceSdl3Library)' != ''">
+    <None Include="$(OxceSdl3Library)" Link="SDL3.dll" Visible="false"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+  <Target Name="OxceVerifySdl3Library" BeforeTargets="PrepareForBuild"
+          Condition="'$(OxceSdl3Disable)' != 'true' And '$(OxceSdl3Library)' != '' And '$(OxceSdl3Sha256)' != ''">
+    <Error Condition="!Exists('$(OxceSdl3Library)')" Text="SDL3 runtime '$(OxceSdl3Library)' does not exist." />
+    <GetFileHash Files="$(OxceSdl3Library)" Algorithm="SHA256">
+      <Output TaskParameter="Hash" PropertyName="_OxceSdl3ActualSha256" />
+    </GetFileHash>
+    <!-- MSBuild condition comparisons ignore case. -->
+    <Error Condition="'$(_OxceSdl3ActualSha256)' != '$(OxceSdl3Sha256)'"
+           Text="SDL3 runtime '$(OxceSdl3Library)' has SHA-256 $(_OxceSdl3ActualSha256); expected the pinned SDL 3.4.10 x64 build $(OxceSdl3Sha256)." />
+  </Target>
 </Project>
