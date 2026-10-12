@@ -293,12 +293,12 @@ internal sealed partial class CampaignWorld
                 IsSiteConversion(ufo, mission, trajectory));
     }
 
-    private string? LandingObjectiveBaseReason(UfoSnapshot saved, CampaignTimeTrigger highest,
+    private string? LandingObjectiveBaseReason(int index, CampaignTimeTrigger highest,
         ref Dictionary<string, int>? reservations, ref long work)
     {
-        var ufo = ProjectFlightTarget(UfoForFlight(saved, highest), highest);
+        var ufo = SharedFlightAt(index, highest, out var distance);
         if (ufo.Hunting || ufo.Escorting || ufo.Status != UfoStatus.Flying || ufo.Destination is null ||
-            UfoDestinationDistance(ufo) > WorldGeometry.RadianSpeed(ufo.Speed)) return null;
+            distance > WorldGeometry.RadianSpeed(ufo.Speed)) return null;
         var mission = ForecastMission(ufo.MissionId, highest);
         if (mission.Interrupted) return null;
         var rules = campaign.Content.RuntimeRules;

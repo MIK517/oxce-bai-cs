@@ -121,7 +121,7 @@ internal sealed partial class CampaignWorld
         ForecastUfoStep(ProjectFlightTarget(UfoForFlight(ufo, highest), highest), highest, needPosition);
 
     private (WorldPosition Position, UfoStatus Status, int Speed) ForecastUfoStep(UfoSnapshot ufo,
-        CampaignTimeTrigger highest, bool needPosition = true)
+        CampaignTimeTrigger highest, bool needPosition = true, double? knownDistance = null)
     {
         if (ufo.Status == UfoStatus.Landed)
             return ufo.SecondsRemaining == 5 ? (ufo.Position, UfoStatus.Flying,
@@ -132,7 +132,7 @@ internal sealed partial class CampaignWorld
                                 FindMission(ufo.MissionId)!.Race).SpeedMaximum)) : (ufo.Position, ufo.Status, ufo.Speed);
         if (ufo.Status != UfoStatus.Flying) return (ufo.Position, ufo.Status, ufo.Speed);
         var speedRadian = WorldGeometry.RadianSpeed(ufo.Speed);
-        var distance = UfoDestinationDistance(ufo);
+        var distance = knownDistance ?? UfoDestinationDistance(ufo);
         var destination = ufo.Destination!.Position;
         // Status-only callers skip MovingTarget::move. The speed vector is only used for a step
         // that does not reach the destination; an arriving step snaps to it.
@@ -166,6 +166,16 @@ internal sealed partial class CampaignWorld
     private bool EndsUfoFlightPass(UfoSnapshot ufo, CampaignTimeTrigger highest) =>
         UfoForFlight(ufo, highest).Status == UfoStatus.Flying &&
         ForecastUfo(ufo, highest, needPosition: false).Status == UfoStatus.Destroyed;
+
+    /// <summary><see cref="EndsUfoFlightPass(UfoSnapshot, CampaignTimeTrigger)"/> for the saved UFO at
+    /// <paramref name="index"/>, through the shared flight projection. The step's status is not
+    /// shared: a suppressed site conversion changes it during the pass.</summary>
+    private bool EndsUfoFlightPass(int index, CampaignTimeTrigger highest)
+    {
+        var ufo = SharedFlightAt(index, highest, out var distance);
+        return ufo.Status == UfoStatus.Flying &&
+            ForecastUfoStep(ufo, highest, needPosition: false, distance).Status == UfoStatus.Destroyed;
+    }
 
     private string? CraftArrivalReason(CampaignState.BaseState owner, CampaignState.CraftState craft,
         CraftLogisticsState state, CampaignTimeTrigger highest, ref bool? terminalUfoArrival)

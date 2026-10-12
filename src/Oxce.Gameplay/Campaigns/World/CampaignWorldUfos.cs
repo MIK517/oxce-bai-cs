@@ -87,7 +87,7 @@ internal sealed partial class CampaignWorld
         {
             if (_ufos[index] is { Status: UfoStatus.Crashed, InBattlescape: true })
                 return "Crashed UFO battlescape transitions require tactical simulation.";
-            var ufo = ProjectFlightTarget(UfoForFlight(_ufos[index], highest), highest);
+            var ufo = SharedFlightAt(index, highest, out var destinationDistance);
             if (_ufos[index].Status == UfoStatus.Crashed && ufo.Status == UfoStatus.Destroyed)
             {
                 siteLinkWork += _sites.Count;
@@ -150,11 +150,11 @@ internal sealed partial class CampaignWorld
                     return HuntCombatReason;
                 continue;
             }
-            if (!movementEnded && EndsUfoFlightPass(ufo, highest)) movementEnded = true;
+            if (!movementEnded && EndsUfoFlightPass(index, highest)) movementEnded = true;
             var speedRadian = WorldGeometry.RadianSpeed(ufo.Speed);
             // MovingTarget::move snaps to this stationary waypoint when distance is
             // not greater than one step, including the reference's NaN fallback.
-            if (!(UfoDestinationDistance(ufo) > speedRadian))
+            if (!(destinationDistance > speedRadian))
             {
                 _pass.ArrivalLossFollowerScanRequired = true;
                 if (FindMission(ufo.MissionId) is null) return "UFO mission link requires world simulation.";

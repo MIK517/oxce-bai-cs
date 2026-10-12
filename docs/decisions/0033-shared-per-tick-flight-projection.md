@@ -35,18 +35,22 @@ Keep the atomic per-tick preflight. Share one flight projection per UFO per tick
 The shared projection is constrained because its inputs change during the preflight pass:
 
 - The cached value is `ProjectFlightTarget(UfoForFlight(ufo))` per UFO index. It is filled no
-  earlier than after `PrepareHuntingGeneratedWaveForecasts`, when `RetargetForecast`,
-  `NewLeaderFlightForecast`, `HuntingCraftForecast` and the escort target tables are final; earlier
+  earlier than after `PrepareHuntingGeneratedWaveForecasts`, when `RetargetForecast` and
+  `NewLeaderFlightForecast` are final, and read only up to the end of the half-hour step; other
   callers compute directly.
 - `FlightFuelRefundReason` temporarily swaps `HuntingCraftForecast` and computes directly. Any other
   temporary swap is bypassed the same way.
-- A `ForecastUfoStep` status is cached only where it does not read `SuppressedUfoSites`, which
-  `UfoSiteConversionsReason` fills, or the entry is invalidated when that set changes.
+- Hunting and escorting UFOs are not stored: steps inside the window can still create the hunting
+  craft forecast their projection reads.
+- The `ForecastUfoStep` status is not stored: it reads `SuppressedUfoSites`, which
+  `UfoSiteConversionsReason` fills during the window.
 - A test-only mode recomputes every cached read and asserts equality. It runs over the public
   compatibility tests and the private corpus.
 
-The expected gain is measured before it is claimed: S1 first measures the share of the three steps
-that is projection, and an indexed mission lookup for the tick is in scope if the scans matter.
+The gain was measured before it was claimed: in Flight128 each UFO was projected seven times per
+tick, and for ordinary UFOs the cost was the repeated distance-memo hashing rather than the
+projection itself; mission scans did not matter (one mission). Results are in
+[performance baselines](../performance-baselines.md#shared-per-tick-flight-projection-branch-5-s1-2026-10-12).
 
 ## Consequences
 

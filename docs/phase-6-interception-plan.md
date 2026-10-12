@@ -204,3 +204,12 @@ This plan, [ADR 0033](decisions/0033-shared-per-tick-flight-projection.md) and t
 corrections are recorded; baseline validation is in
 [strategic interception status](strategic-interception-status.md#s0--plan-and-baseline-2026-10-12).
 All branch 5 boundaries listed in the starting audit remain.
+
+### S1 — Shared per-tick flight projection (2026-10-12)
+
+Each saved UFO's flight is projected once per tick across the movement, site-conversion and
+half-hour steps, with the recomputation check on in every test
+([status](strategic-interception-status.md#s1--shared-per-tick-flight-projection-2026-10-12)).
+Flight128 improves by about 28% but stays above the soft one-day target, with the reason recorded
+in [performance targets](performance-targets.md). No gameplay behaviour changes; the branch 5
+boundaries remain.
