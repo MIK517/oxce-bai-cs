@@ -99,6 +99,16 @@ public sealed class InstallationContentLoaderTests
             first.Content!.Resources.Descriptors.Single(static descriptor => descriptor.RuntimeIndex == 10).SubFrame);
         Assert.NotEmpty(first.Content.Resources.ModOffsets);
         Assert.Equal(first.Content.Resources.ModOffsets, cached.Content!.Resources.ModOffsets);
+
+        // The cache stores shared descriptor fields once and index runs; every descriptor and
+        // index comes back identical apart from the generation-scoped handle.
+        static object[] Descriptors(InstallationContentLoadResult result) => result.Content!.Resources.Descriptors
+            .Select(static object (descriptor) => descriptor with { Handle = default }).ToArray();
+        static object[] Indexes(InstallationContentLoadResult result) => result.Content!.Resources.Indexes
+            .Select(static object (index) => (index with { Handle = default }, index.Handle.Index, index.Handle.Kind)).ToArray();
+        Assert.Equal(Descriptors(first), Descriptors(cached));
+        Assert.Equal(Indexes(first), Indexes(cached));
+        Assert.Contains(first.Content.Resources.Indexes, static index => index.SetId == "GlobeMarkers" && index.DeclaredIndex == 10);
     }
 
     [Fact]
