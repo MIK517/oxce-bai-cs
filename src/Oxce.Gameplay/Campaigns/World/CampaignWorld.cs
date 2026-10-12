@@ -83,8 +83,6 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
                 SecondsRemaining = ufo.SecondsRemaining,
                 Reference = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, ufo.Id, ufo.Longitude, ufo.Latitude)
                 { UniqueId = ufo.UniqueId },
-                UnavailableActionReason = ufo.Status == UfoStatus.Flying ? InterceptionReason : LandingReason,
-                ActionUnavailable = WorldCommandReasons.For(ufo.Status == UfoStatus.Flying ? InterceptionReason : LandingReason),
                 HunterKiller = ufo.HunterKiller,
                 HyperDetected = ufo.HyperDetected,
                 RadarRange = UfoRadarRange(ufo),
@@ -103,8 +101,6 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
                 SecondsRemaining = site.SecondsRemaining,
                 Status = site.City,
                 Reference = new(WorldTargetKind.MissionSite, MarkerName(site.DeploymentId), site.Id, site.Longitude, site.Latitude),
-                UnavailableActionReason = LandingReason,
-                ActionUnavailable = WorldCommandReasons.For(LandingReason),
             });
         foreach (var alienBase in _alienBases.Where(static alienBase => alienBase.Discovered))
             targets.Add(new CampaignWorldTarget(WorldTargetKind.AlienBase, alienBase.Id, alienBase.DeploymentId,
@@ -116,8 +112,6 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
                 Detected = alienBase.Discovered,
                 Reference = new(WorldTargetKind.AlienBase, MarkerName(alienBase.DeploymentId), alienBase.Id,
                     alienBase.Longitude, alienBase.Latitude),
-                UnavailableActionReason = LandingReason,
-                ActionUnavailable = WorldCommandReasons.For(LandingReason),
                 CountryId = CountryAt(alienBase.Position),
                 RegionId = RegionAt(alienBase.Position),
                 DiscoveredMessage = campaign.Content.RuntimeRules.AlienDeployments.TryGet(alienBase.DeploymentId, out var deployment)
@@ -269,6 +263,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         GeneratedEvents = CampaignSnapshot.ReadOnlyIds(_generatedEvents),
         Strategy = CaptureStrategy(),
         CraftLostDogfight = _craftLostDogfight,
+        DeploymentRequest = _deploymentRequest,
     };
 
     private AlienStrategySnapshot CaptureStrategy() => new()
@@ -294,6 +289,8 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         _alienBases.Clear();
         _alienBaseBirthSequence = snapshot.World.AlienBaseBirthSequence;
         _craftLostDogfight = snapshot.World.CraftLostDogfight;
+        _deploymentRequest = snapshot.World.DeploymentRequest;
+        _deploymentRequestTaken = false;
         _events.Clear();
         _generatedEvents.Clear();
         foreach (var pair in snapshot.World.GeneratedEvents) _generatedEvents.Add(pair.Key, pair.Value);

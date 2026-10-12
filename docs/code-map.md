@@ -18,7 +18,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 179 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 180 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 94 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
@@ -333,7 +333,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 179 files.
+`src/Oxce.Gameplay` - 180 files.
 
 ### `Oxce.Gameplay`
 
@@ -513,6 +513,10 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 - `AlienStrategyState` (class) [AlienStrategyState.cs](../src/Oxce.Gameplay/Campaigns/World/AlienStrategyState.cs) - The alien strategy table: which regions are still worth attacking, which missions remain available there, how often each mission-script v...
 - `AlienStrategyState.MissionLocation` (record struct) [AlienStrategyState.cs](../src/Oxce.Gameplay/Campaigns/World/AlienStrategyState.cs)
+- `CampaignDeploymentRequest` (record) [CampaignDeploymentRequest.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignDeploymentRequest.cs) - The battle a confirmed landing asks for (D4): what `ConfirmLandingState::btnYesClick` hands to `BattlescapeGenerator`.
+- `DeploymentRequested` (record) [CampaignDeploymentRequest.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignDeploymentRequest.cs) - A confirmed landing recorded its deployment request; the campaign waits for the battle.
+- `TakeDeploymentRequest` (record) [CampaignDeploymentRequest.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignDeploymentRequest.cs) - The Phase 7 seam: takes the pending deployment request, exactly once.
+- `DeploymentRequestTaken` (record) [CampaignDeploymentRequest.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignDeploymentRequest.cs) - The request taken by `TakeDeploymentRequest`.
 - `CampaignArcUnlocked` (record) [CampaignWorldArcScripts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldArcScripts.cs) - The article that GeoscapeState opens for one granted arc.
 - `IgnoreUfoContact` (record) [CampaignWorldContacts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldContacts.cs) - Suppress future detected-contact alerts for this current UFO contact.
 - `UfoContactIgnored` (record) [CampaignWorldContacts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldContacts.cs)

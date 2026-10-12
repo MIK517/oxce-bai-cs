@@ -610,6 +610,7 @@ public static class RuntimeRuleLinker
             source.MissionCustomDeployment)
         {
             FuelMaximum = source.Craft.Get("fuelMax"),
+            CraftCustomDeployment = source.CraftCustomDeployment,
             HitBonus = source.Craft.Get("hitBonus"),
             AvoidBonus = source.Craft.Get("avoidBonus"),
             AvoidBonus2 = source.Craft.Get("avoidBonus2"),

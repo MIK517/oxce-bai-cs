@@ -148,7 +148,8 @@ public sealed class StrategicWorldPursuitTests
         Assert.Equal(42, target.Id);
         Assert.Equal(9, target.Reference.UniqueId);
         Assert.Equal(3, target.Reference.Id);
-        Assert.Contains("branch 5", target.UnavailableActionReason);
+        // Branch 5 S4-S6: interception and landing are available, so the target names no restriction.
+        Assert.Null(target.UnavailableActionReason);
         Assert.Contains(query.Bases, owner => owner.Id == snapshot.Bases[0].Id && owner.Name == "Alpha");
         Assert.Null(Assert.Single(query.Crafts, craft => craft.TypeId == "SHIP").DispatchUnavailableReason);
         var result = campaign.Execute(new DispatchCraftToTarget(snapshot.Bases[0].Id, "SHIP", 1, target.Reference));
