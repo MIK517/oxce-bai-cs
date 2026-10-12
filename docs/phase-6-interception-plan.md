@@ -255,3 +255,16 @@ craft (soldier deaths and the memorial are not owned), retaliation missions run 
 a retaliation against a base outside every region. The crashed-UFO ground arrival with followers
 keeps its refusal until S6, where crafts reaching a crash site are handled.
 
+### S6 — Landing and deployment request (in progress, 2026-10-13)
+
+Done: the landing-site shade in gameplay with a verbatim globe shading oracle; landing confirmations
+queued by the craft pass with texture and shade (`globeSeasons` is now a campaign option), held time,
+`init` closing, No and Patrol; starting conditions on Yes (runtime family, texture fallback, race
+custom base missions) with the refusal sending the craft home; the deployment request with
+required-item destruction, the port-only save node and the once-per-load Phase 7 seam
+([status](strategic-interception-status.md#s6--landing-and-deployment-request-in-progress)).
+`boundary.starting-condition` is gone. Remaining: refusing other world commands while a request is
+pending, the follower landing at a site respawned by a UFO conversion and the crashed-UFO ground
+arrival with followers (both still `boundary.landing`), the Rosigma `Early.sav` request, and the S6
+audit.
+
