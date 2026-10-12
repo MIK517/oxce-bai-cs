@@ -48,7 +48,12 @@ Tests: `ResourceDescriptorResolverTests` (cells, offsets, one report for an inva
 Follow-up (2026-10-12): per-cell descriptors took 40k with ROSIGMA (about 220,000 subdivided cells,
 around 300,000 descriptors) past the 250,000-descriptor guard (`OXCE-MOD-0029`), found by the
 private geoscape tests. The default guard is now 1,000,000; the reference also keeps one surface
-per frame.
+per frame. The compiled content cache stores what a file's descriptors share once
+(`CachedResourceSource`) and each descriptor as its id, runtime index and cell (compiler revision
+58), because repeating paths and provenance per cell pushed ROSIGMA's cache past the 512 MB
+expanded-size guard. Globe markers of any size (ROSIGMA's are 7x7) centre as `Globe::drawTarget`
+does, at `x - width / 2` reference pixels; the port previously placed odd-sized markers one screen
+pixel up and left.
 
 ## S3 — Globe geometry and targets (2026-10-11)
 

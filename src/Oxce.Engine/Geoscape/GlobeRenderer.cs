@@ -341,8 +341,9 @@ public sealed class GlobeRenderer
             !_assets.Markers.TryGetValue(marker.Frame, out var frame)) return;
         var (x, y) = _view.Project(marker.Longitude, marker.Latitude);
         var scale = _view.PixelScale;
-        var left = x - frame.Width * scale / 2;
-        var top = y - frame.Height * scale / 2;
+        // Globe::drawTarget centres at x - width / 2 in reference pixels (mods may ship larger markers).
+        var left = x - frame.Width / 2 * scale;
+        var top = y - frame.Height / 2 * scale;
         var shift = marker.Frame == GlobeScene.CityMarker || blinkOn ? 0 : 1;
         for (var row = 0; row < frame.Height * scale; row++)
         {

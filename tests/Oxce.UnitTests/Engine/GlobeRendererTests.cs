@@ -56,6 +56,30 @@ public sealed class GlobeRendererTests
         Assert.Equal(255, renderer.Surface.GetPixel(32, 32));
     }
 
+    [Theory]
+    [InlineData(3)]
+    [InlineData(7)]
+    public void MarkersCentreOnTheirMiddleCellAtEveryScale(int size)
+    {
+        // Globe::drawTarget blits at x - width / 2 in reference pixels; at 2x each cell is 2x2.
+        var view = new GlobeView(128, 128, pixelScale: 2);
+        var marker = new IndexedSurface(size, size);
+        marker.Clear(20);
+        marker.GetRow(size / 2)[size / 2] = 90;
+        var renderer = new GlobeRenderer(view, new GeoscapeAssets(IndexedPalette.CreateGrayscale(),
+            new Dictionary<int, IndexedSurface>(), new Dictionary<int, IndexedSurface> { [0] = marker },
+            RuntimeGlobeColors.Default), Globe());
+        renderer.Surface.Clear(7);
+        renderer.DrawMarker(new GlobeMarker(0, 0, 0), blinkOn: true);
+        var (x, y) = view.Project(0, 0);
+        Assert.Equal([90, 90, 90, 90], new[]
+        {
+            renderer.Surface.GetPixel(x, y), renderer.Surface.GetPixel(x + 1, y),
+            renderer.Surface.GetPixel(x, y + 1), renderer.Surface.GetPixel(x + 1, y + 1),
+        });
+        Assert.Equal(20, renderer.Surface.GetPixel(x - 2, y - 2));
+    }
+
     [Fact]
     public void ShadowRangesFromLitToNightForEveryNoiseValue()
     {
