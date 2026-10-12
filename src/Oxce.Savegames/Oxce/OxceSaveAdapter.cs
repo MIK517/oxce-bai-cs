@@ -531,7 +531,8 @@ public static partial class OxceSaveAdapter
                 Pair("oxceGeoSuppressRedundantHKAlert", Boolean(snapshot.Options.SuppressRedundantHunterAlert)),
                 Pair("retainCorpses", Boolean(snapshot.Options.RetainCorpses)),
                 Pair("dogfightAI", Boolean(snapshot.Options.DogfightAI)),
-                Pair("oxceRememberDisabledCraftWeapons", Boolean(snapshot.Options.RememberDisabledCraftWeapons))])),
+                Pair("oxceRememberDisabledCraftWeapons", Boolean(snapshot.Options.RememberDisabledCraftWeapons)),
+                Pair("globeSeasons", Boolean(snapshot.Options.GlobeSeasons))])),
         ]);
     }
 
@@ -813,14 +814,15 @@ public static partial class OxceSaveAdapter
 
     private static CampaignOptions ReadOptions(YamlMappingNode map)
     {
-        RejectDuplicateKnownKeys(map, ["storageLimitsEnforced", "canSellLiveAliens", "autoCombatDefaultSoldier", "anytimePsiTraining", "allowPsiStrengthImprovement", "maximumBases", "allowBuildingQueue", "oxceUfoLandingAlert", "aggressiveRetaliation", "craftLaunchAlways", "oxceGeoSuppressLandingWithoutEquipment", "oxceGeoSuppressRedundantHKAlert", "retainCorpses", "dogfightAI", "oxceRememberDisabledCraftWeapons"]);
+        RejectDuplicateKnownKeys(map, ["storageLimitsEnforced", "canSellLiveAliens", "autoCombatDefaultSoldier", "anytimePsiTraining", "allowPsiStrengthImprovement", "maximumBases", "allowBuildingQueue", "oxceUfoLandingAlert", "aggressiveRetaliation", "craftLaunchAlways", "oxceGeoSuppressLandingWithoutEquipment", "oxceGeoSuppressRedundantHKAlert", "retainCorpses", "dogfightAI", "oxceRememberDisabledCraftWeapons", "globeSeasons"]);
         return new(Boolean(map, "storageLimitsEnforced", false), Boolean(map, "canSellLiveAliens", false),
             Boolean(map, "autoCombatDefaultSoldier", true), Boolean(map, "anytimePsiTraining", false),
             Boolean(map, "allowPsiStrengthImprovement", false), Integer(map, "maximumBases", 8),
             Boolean(map, "allowBuildingQueue", false), Boolean(map, "oxceUfoLandingAlert", false),
             Boolean(map, "aggressiveRetaliation", true), Boolean(map, "craftLaunchAlways", false),
             Boolean(map, "oxceGeoSuppressLandingWithoutEquipment", false), Boolean(map, "oxceGeoSuppressRedundantHKAlert", true), Boolean(map, "retainCorpses", false),
-            Boolean(map, "dogfightAI", true), Boolean(map, "oxceRememberDisabledCraftWeapons", false));
+            Boolean(map, "dogfightAI", true), Boolean(map, "oxceRememberDisabledCraftWeapons", false),
+            Boolean(map, "globeSeasons", false));
     }
 
     /// <summary>
@@ -849,6 +851,7 @@ public static partial class OxceSaveAdapter
             RetainCorpses = Snapshot("retainCorpses", defaults.RetainCorpses),
             DogfightAI = Snapshot("dogfightAI", defaults.DogfightAI),
             RememberDisabledCraftWeapons = Snapshot("oxceRememberDisabledCraftWeapons", defaults.RememberDisabledCraftWeapons),
+            GlobeSeasons = Snapshot("globeSeasons", defaults.GlobeSeasons),
         };
 
         bool Snapshot(string key, bool fallback) =>

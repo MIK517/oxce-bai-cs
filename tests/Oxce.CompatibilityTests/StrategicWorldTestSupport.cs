@@ -162,6 +162,18 @@ internal static class StrategicWorldTestSupport
         return started;
     }
 
+    /// <summary>
+    /// Branch 5 S6: the tick where a craft that may land reaches its landing target runs and queues a
+    /// landing confirmation, which pauses time. This replaces the earlier landing guard at the same tick.
+    /// </summary>
+    public static LandingConfirmationRequested AssertLandingRequested(CampaignState campaign)
+    {
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.DoesNotContain(result.Events, static evt => evt is CampaignActionBlocked);
+        return Assert.IsType<LandingConfirmationRequested>(result.Events.First(static evt => evt is LandingConfirmationRequested));
+    }
+
     /// <summary>Asserts that the next tick is refused with <paramref name="reason"/> and changes nothing.</summary>
     public static void AssertTimeBlocked(CampaignState campaign, string reason)
     {

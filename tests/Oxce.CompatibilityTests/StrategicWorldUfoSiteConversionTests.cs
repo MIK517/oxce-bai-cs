@@ -434,13 +434,15 @@ public sealed class StrategicWorldUfoSiteConversionTests
         var campaign = CampaignState.Restore(initial, content, new QuarterChoices());
         if (respawn)
         {
-            AssertTimeBlocked(campaign, "Craft landing requires deployment (Phase 6 branch 5).");
+            // A follower landing at a respawned site during conversion keeps its refusal (the site
+            // follower landing is part of the deployment request, later in branch 5 S6).
+            AssertTimeBlocked(campaign, WorldCommandReasons.LandingBoundary);
             return;
         }
         Assert.Contains(campaign.Execute(new AdvanceCampaignTime(1)).Events, item => item is MissionSiteDetected);
         Assert.Equal(WorldTargetKind.MissionSite, campaign.Capture().Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP").Logistics!.Destination!.Kind);
         var next = Reload(content, campaign, 17, "terminal-follower-transfer.sav");
-        AssertTimeBlocked(next, "Craft landing requires deployment (Phase 6 branch 5).");
+        AssertLandingRequested(next);
     }
 
     [Fact]

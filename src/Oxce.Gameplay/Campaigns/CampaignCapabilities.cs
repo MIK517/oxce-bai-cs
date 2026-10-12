@@ -76,6 +76,7 @@ internal static class CampaignPreflightOrder
 {
     public const int Restrictions = 100;
     public const int Interceptions = 120;
+    public const int Landings = 122;
     public const int DestroyedCrafts = 125;
     public const int WorldSimulation = 150;
     public const int CraftMovement = 200;

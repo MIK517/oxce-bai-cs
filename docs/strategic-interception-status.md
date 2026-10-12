@@ -306,3 +306,29 @@ getShadowValue, getSunDirection, GameTime::getDaylight and the conversion verbat
 (`tools/capture-strategic-landing-shade-reference.ps1`) and records 5,376 shades over six dates
 (including leap days and a non-leap century), eight clock times, eight longitudes and seven
 latitudes, with seasons off and on; `StrategicLandingShadeOracleTests` matches every one.
+
+### Landing confirmations (2026-10-13)
+
+`CampaignWorldLandings` queues `ConfirmLandingState` from the craft pass: a craft that may land
+(units on board, `allowLanding`, not suppressed by `oxceGeoSuppressLandingWithoutEquipment`) reaching
+a landed, crashed or expiring UFO outside an interception, a mission site or a discovered alien base
+emits `LandingConfirmationRequested` with the mission and globe texture ids (a site on a cosmetic
+ocean texture uses -1; a site's own texture is its mission texture) and the `WorldShading` shade, read
+with the new `globeSeasons` campaign option (saved like the other options). The queue is the popup
+list: it pauses time (`landing.open`), shows one window at a time, is not saved (a craft still at its
+target asks again after a reload), and applies `ConfirmLandingState::init` before each window: a
+craft now heading for its own base, or (intentional difference, ADR 0032) left without a destination,
+closes it. `AnswerLanding` No sends the craft home; Patrol leaves it circling at half speed; Yes still
+refuses with `boundary.landing` until the starting conditions and the deployment request land.
+
+The craft-movement preflight no longer refuses landing arrivals; only the self-escort check remains,
+and its dead landing and discovery forecasts are removed. A follower landing at a site respawned by a
+UFO conversion keeps `boundary.landing` for now. The earlier landing guard tests now check that the
+same tick opens a confirmation (`AssertLandingRequested`); the Rosigma `Early.sav` horizon now runs one
+tick further and stops at the open confirmation. `StrategicLandingTests` covers the texture and shade,
+the clock hold, a wrong confirmation id, No, Patrol, a reload with seasons on, and a crew-less craft
+sent home from a crash site.
+
+Validation on the Windows workstation: formatting, code map and Release build clean; root
+`dotnet test` ran 3,500 tests, all green (including the private horizon test).
+

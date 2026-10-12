@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 178 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 179 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 94 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 5 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 308 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 309 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 101 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -333,7 +333,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 178 files.
+`src/Oxce.Gameplay` - 179 files.
 
 ### `Oxce.Gameplay`
 
@@ -538,6 +538,11 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CampaignInterceptionWeapon` (record) [CampaignWorldInterceptions.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldInterceptions.cs)
 - `CampaignInterception` (record) [CampaignWorldInterceptions.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldInterceptions.cs) - An open interception window as the UI shows it.
 - `ICampaignInterceptionQuery` (interface) [CampaignWorldInterceptions.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldInterceptions.cs)
+- `LandingAnswer` (enum) [CampaignWorldLandings.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldLandings.cs) - The answers of `ConfirmLandingState`: Yes, No, or Patrol (No with Ctrl held).
+- `AnswerLanding` (record) [CampaignWorldLandings.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldLandings.cs) - Answers the landing confirmation that is currently shown.
+- `LandingConfirmationRequested` (record) [CampaignWorldLandings.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldLandings.cs) - A craft is ready to land near its destination (`ConfirmLandingState`).
+- `CampaignLandingConfirmation` (record) [CampaignWorldLandings.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldLandings.cs) - A queued landing confirmation as the UI shows it; the first one is the open window.
+- `ICampaignLandingQuery` (interface) [CampaignWorldLandings.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldLandings.cs)
 - `CampaignWorldTarget` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs) - A globe target as the player sees it; detection state decides visibility.
 - `CampaignWorldCraftWeapon` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs) - A craft weapon slot for the craft screen: weapon rule and rounds.
 - `CampaignWorldBase` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs)
@@ -1127,7 +1132,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 308 files.
+`tests/Oxce.CompatibilityTests` - 309 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1135,7 +1140,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>305 test classes</summary>
+<details><summary>306 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1206,6 +1211,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicInterceptionRuleProjectionTests` ([StrategicInterceptionRuleProjectionTests.cs](../tests/Oxce.CompatibilityTests/StrategicInterceptionRuleProjectionTests.cs))
 - `StrategicInterceptionTests` ([StrategicInterceptionTests.cs](../tests/Oxce.CompatibilityTests/StrategicInterceptionTests.cs))
 - `StrategicLandingShadeOracleTests` ([StrategicLandingShadeOracleTests.cs](../tests/Oxce.CompatibilityTests/StrategicLandingShadeOracleTests.cs))
+- `StrategicLandingTests` ([StrategicLandingTests.cs](../tests/Oxce.CompatibilityTests/StrategicLandingTests.cs))
 - `StrategicLogisticsFixtureTests` ([StrategicLogisticsFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicLogisticsFixtureTests.cs))
 - `StrategicMissionBaseTargetTests` ([StrategicMissionBaseTargetTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionBaseTargetTests.cs))
 - `StrategicMissionCounterForecastTests` ([StrategicMissionCounterForecastTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionCounterForecastTests.cs))
@@ -1615,7 +1621,7 @@ Prefer these over local copies (see AGENTS.md, *Test conventions*).
 ### [tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs)
 
 - `StrategicWorldTestSupport` (class) - Shared setup and assertions for the strategic-world compatibility tests.
-- members: `AssertDetectionReadScript`, `CreateSnapshot`, `CreateLifecycleSnapshot`, `CreateUfoTransitCampaign`, `Degrees`, `WithCraft`, `WithFacility`, `WithNextId`, `AdvanceOne`, `AdvanceUnblocked`, `AssertInterceptionStarts`, `AssertTimeBlocked`, `Reload`, `AssertSelectedNewbornArrival`, `AllocatedBytes`
+- members: `AssertDetectionReadScript`, `CreateSnapshot`, `CreateLifecycleSnapshot`, `CreateUfoTransitCampaign`, `Degrees`, `WithCraft`, `WithFacility`, `WithNextId`, `AdvanceOne`, `AdvanceUnblocked`, `AssertInterceptionStarts`, `AssertLandingRequested`, `AssertTimeBlocked`, `Reload`, `AssertSelectedNewbornArrival`, `AllocatedBytes`
 
 ### [tests/Oxce.TestExtension/ProbeExtension.cs](../tests/Oxce.TestExtension/ProbeExtension.cs)
 

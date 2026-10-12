@@ -30,7 +30,7 @@ public sealed class StrategicWorldAlienBaseArrivalTests
             var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
             if (row[5].GetBoolean())
             {
-                AssertTimeBlocked(campaign, "Craft landing requires deployment (Phase 6 branch 5).");
+                AssertLandingRequested(campaign);
                 continue;
             }
             AdvanceUnblocked(campaign, 1);
@@ -92,7 +92,7 @@ public sealed class StrategicWorldAlienBaseArrivalTests
             };
             var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
             if (blocked)
-                AssertTimeBlocked(campaign, "Craft landing requires deployment (Phase 6 branch 5).");
+                AssertLandingRequested(campaign);
             else
             {
                 var result = campaign.Execute(new AdvanceCampaignTime(1));
@@ -141,7 +141,7 @@ public sealed class StrategicWorldAlienBaseArrivalTests
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
         if (!removed)
         {
-            AssertTimeBlocked(campaign, "Craft landing requires deployment (Phase 6 branch 5).");
+            AssertLandingRequested(campaign);
             return;
         }
         AdvanceUnblocked(campaign, 1);
