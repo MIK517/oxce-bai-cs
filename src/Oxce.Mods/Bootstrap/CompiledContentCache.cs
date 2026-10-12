@@ -75,7 +75,7 @@ internal sealed record CompiledContentCacheReadResult(
 internal static class CompiledContentCache
 {
     internal const int FormatVersion = 1;
-    internal const int CompilerRevision = 57;
+    internal const int CompilerRevision = 58;
     private const string FileName = "content-v1.json.gz";
     private const int CacheKeyLength = 64;
     private static ReadOnlySpan<byte> HeaderMagic => "OXCECC1\n"u8;
@@ -586,6 +586,7 @@ internal sealed record CachedRuntimeContent(
     IReadOnlyList<ContentScriptArtifact> Scripts,
     IReadOnlyList<CachedScriptEventPlan> EventPlans,
     IReadOnlyList<ContentInitialScriptValue> InitialValues,
+    IReadOnlyList<CachedResourceSource> ResourceSources,
     IReadOnlyList<CachedResourceDescriptor> Resources,
     IReadOnlyList<CachedResourceIndex> ResourceIndexes,
     IReadOnlyDictionary<string, IReadOnlyList<RuntimeSoldierNamePool>> SoldierNamePools,
@@ -599,19 +600,8 @@ internal sealed record CachedRuntimeContent(
         snapshot.Content.Scripts,
         snapshot.Content.EventPlans.Select(CachedScriptEventPlan.Capture).ToArray(),
         snapshot.Content.InitialValues,
-        snapshot.Content.Resources.Descriptors.Select(static descriptor => new CachedResourceDescriptor(
-            descriptor.Id,
-            descriptor.Kind,
-            descriptor.CanonicalPath,
-            descriptor.SourcePath,
-            descriptor.Provenance,
-            descriptor.LoadPolicy,
-            descriptor.RuntimeIndex,
-            descriptor.Width,
-            descriptor.Height,
-            descriptor.OwnerSection,
-            descriptor.OwnerId,
-            descriptor.SubFrame)).ToArray(),
+        CachedResourceSource.Table(snapshot.Content.Resources.Descriptors, out var resourceDescriptors),
+        resourceDescriptors,
         snapshot.Content.Resources.Indexes.Select(static index => new CachedResourceIndex(
             index.Kind,
             index.SetId,
@@ -645,20 +635,26 @@ internal sealed record CachedRuntimeContent(
             throw new InvalidDataException("Compiled content cache does not contain linked runtime content.");
         }
         var generation = ContentGenerationId.Next();
-        var descriptors = Resources.Select((descriptor, index) => new ResolvedResourceDescriptor(
-            new ResourceHandle(generation, index, descriptor.Kind),
-            descriptor.Id,
-            descriptor.Kind,
-            descriptor.CanonicalPath,
-            descriptor.SourcePath,
-            descriptor.Provenance,
-            descriptor.LoadPolicy,
-            descriptor.RuntimeIndex,
-            descriptor.Width,
-            descriptor.Height,
-            descriptor.OwnerSection,
-            descriptor.OwnerId)
-        { SubFrame = descriptor.SubFrame }).ToArray();
+        var descriptors = Resources.Select((descriptor, index) =>
+        {
+            if ((uint)descriptor.Source >= (uint)ResourceSources.Count)
+                throw new InvalidDataException("Compiled resource descriptor refers outside its source table.");
+            var source = ResourceSources[descriptor.Source];
+            return new ResolvedResourceDescriptor(
+                new ResourceHandle(generation, index, source.Kind),
+                descriptor.Id,
+                source.Kind,
+                source.CanonicalPath,
+                source.SourcePath,
+                source.Provenance,
+                source.LoadPolicy,
+                descriptor.RuntimeIndex,
+                source.Width,
+                source.Height,
+                source.OwnerSection,
+                source.OwnerId)
+            { SubFrame = descriptor.SubFrame };
+        }).ToArray();
         var indexes = ResourceIndexes.Select(index =>
         {
             if ((uint)index.DescriptorIndex >= (uint)descriptors.Length ||
@@ -761,18 +757,51 @@ internal sealed record CachedScriptEventPlan(
     }
 }
 
-internal sealed record CachedResourceDescriptor(
-    string Id,
+/// <summary>
+/// What descriptors of one file share. Every cell of a subdivided sprite sheet is its own
+/// descriptor, so large mods hold hundreds of thousands of them; the cache stores the shared part
+/// once and each descriptor as its id, runtime index and cell.
+/// </summary>
+internal sealed record CachedResourceSource(
     ResourceKind Kind,
     string CanonicalPath,
     string SourcePath,
     VirtualFileProvenance Provenance,
     ResourceLoadPolicy LoadPolicy,
-    int? RuntimeIndex,
     int Width,
     int Height,
     string OwnerSection,
-    string OwnerId,
+    string OwnerId)
+{
+    public static IReadOnlyList<CachedResourceSource> Table(IReadOnlyList<ResolvedResourceDescriptor> descriptors,
+        out IReadOnlyList<CachedResourceDescriptor> compact)
+    {
+        var sources = new List<CachedResourceSource>();
+        var indexes = new Dictionary<CachedResourceSource, int>();
+        var entries = new CachedResourceDescriptor[descriptors.Count];
+        for (var index = 0; index < descriptors.Count; index++)
+        {
+            var descriptor = descriptors[index];
+            var source = new CachedResourceSource(descriptor.Kind, descriptor.CanonicalPath, descriptor.SourcePath,
+                descriptor.Provenance, descriptor.LoadPolicy, descriptor.Width, descriptor.Height,
+                descriptor.OwnerSection, descriptor.OwnerId);
+            if (!indexes.TryGetValue(source, out var sourceIndex))
+            {
+                sourceIndex = sources.Count;
+                sources.Add(source);
+                indexes.Add(source, sourceIndex);
+            }
+            entries[index] = new CachedResourceDescriptor(descriptor.Id, sourceIndex, descriptor.RuntimeIndex, descriptor.SubFrame);
+        }
+        compact = entries;
+        return sources;
+    }
+}
+
+internal sealed record CachedResourceDescriptor(
+    string Id,
+    int Source,
+    int? RuntimeIndex,
     ResourceSubFrame? SubFrame = null);
 
 internal sealed record CachedResourceIndex(
