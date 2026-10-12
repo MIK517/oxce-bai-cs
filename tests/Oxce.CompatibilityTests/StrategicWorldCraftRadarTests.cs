@@ -307,8 +307,9 @@ public sealed class StrategicWorldCraftRadarTests
         campaign = CampaignState.Restore(UfoNearBase(snapshot), content, new SplitMix64RandomSource(87));
         if (destroyed)
         {
-            // time5Seconds would delete a destroyed craft before it could fly again.
-            AssertTimeBlocked(campaign, "Destroyed craft removal requires world simulation.");
+            // Branch 5 S5: time5Seconds deletes the destroyed craft before its radar can search.
+            Assert.DoesNotContain(campaign.Execute(new AdvanceCampaignTime(1)).Events, item => item is CampaignActionBlocked);
+            Assert.DoesNotContain(campaign.Capture().Bases[0].Crafts, craft => craft.RuleId == "SHIP");
             return;
         }
         var before = campaign.Capture();

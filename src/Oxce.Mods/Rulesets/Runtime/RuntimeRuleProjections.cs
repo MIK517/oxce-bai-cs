@@ -214,6 +214,8 @@ public sealed record RuntimeCraftRule(
     public int ShieldRechargeAtBase { get; init; }
     /// <summary>RuleCraft::_missilePower; a positive value makes the craft a missile (RuleCraft::isMissile).</summary>
     public int MissilePower { get; init; }
+    /// <summary>RuleCraft::getScore: the X-COM activity lost when the craft is destroyed.</summary>
+    public int Score { get; init; }
     /// <summary>RuleCraft::_maxAltitude; above -1 the craft is water-only (RuleCraft::isWaterOnly) and cannot
     /// engage a UFO above this altitude.</summary>
     public int MaximumAltitude { get; init; } = -1;
@@ -389,6 +391,8 @@ public sealed record RuntimeSoldierRule(
     public int RankCount { get; init; }
     public IReadOnlyDictionary<string, short> StatCaps { get; init; } = new ReadOnlyDictionary<string, short>(new Dictionary<string, short>());
     public IReadOnlyDictionary<string, short> TrainingStatCaps { get; init; } = new ReadOnlyDictionary<string, short>(new Dictionary<string, short>());
+    /// <summary>RuleSoldier::getDogfightExperience: percent chances per interception win.</summary>
+    public IReadOnlyDictionary<string, short> DogfightExperience { get; init; } = new ReadOnlyDictionary<string, short>(new Dictionary<string, short>());
 }
 
 public sealed record RuntimeSoldierBonusRule(int ListOrder, IReadOnlyDictionary<string, short> Stats);

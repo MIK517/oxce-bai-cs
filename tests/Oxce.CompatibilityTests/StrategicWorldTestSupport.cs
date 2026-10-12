@@ -148,7 +148,6 @@ internal static class StrategicWorldTestSupport
         }
     }
 
-    /// <summary>Asserts that the next tick is refused with <paramref name="reason"/> and changes nothing.</summary>
     /// <summary>
     /// Branch 5 S4: the tick where a craft and a UFO meet runs and opens an interception, which pauses
     /// time. This replaces the earlier atomic interception guard at the same tick.
@@ -163,6 +162,7 @@ internal static class StrategicWorldTestSupport
         return started;
     }
 
+    /// <summary>Asserts that the next tick is refused with <paramref name="reason"/> and changes nothing.</summary>
     public static void AssertTimeBlocked(CampaignState campaign, string reason)
     {
         var before = campaign.Capture();

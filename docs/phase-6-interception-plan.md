@@ -243,3 +243,15 @@ and the flight-pass `HuntCombatReason` are gone; a hunter-killer reaching a craf
 keeps its refusal. No native start-rule probe was captured; the start rules are pinned by focused
 tests from the reference statements.
 
+### S5 — Interception outcomes in the world (2026-10-13)
+
+Interception steps apply their world consequences: crash and forced-landing bookkeeping,
+`ufoShotDown`, wave interrupts, retaliation missions, X-COM activity, pilot experience with the diary
+and daily cache, break-off and hunter-killer endings, crash followers, and the loss of destroyed
+crafts with crew evacuation and `craftLostDogfight`
+([status](strategic-interception-status.md#s5--interception-outcomes-in-the-world-2026-10-13)).
+`InterceptionOutcomeBoundary` is gone. Named restrictions remain for crew who could die with their
+craft (soldier deaths and the memorial are not owned), retaliation missions run from alien bases and
+a retaliation against a base outside every region. The crashed-UFO ground arrival with followers
+keeps its refusal until S6, where crafts reaching a crash site are handled.
+

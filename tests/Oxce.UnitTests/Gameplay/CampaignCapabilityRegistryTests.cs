@@ -49,7 +49,7 @@ public sealed class CampaignCapabilityRegistryTests
 
         Assert.Equal<string>(["months passed", "monthly world scheduling", "purchase limits"], table.HandlerNames(CampaignTimeTrigger.OneMonth));
         Assert.Equal<string>(["days passed", "base daily loop", "alien mission research interruption",
-            "alien base activity and facility discovery"],
+            "alien base activity and facility discovery", "dogfight experience cache"],
             table.HandlerNames(CampaignTimeTrigger.OneDay));
         Assert.Equal<string>(["craft servicing", "transfers", "production", "mission site discovery"],
             table.HandlerNames(CampaignTimeTrigger.OneHour));
@@ -63,7 +63,7 @@ public sealed class CampaignCapabilityRegistryTests
             "interception start", "destroyed UFO interception cleanup", "destroyed UFO cleanup", "interception waits"],
             table.HandlerNames(CampaignTimeTrigger.FiveSeconds));
         Assert.Equal<string>(
-            ["restrictions", "interceptions", "world simulation", "craft movement", "month boundary", "monthly world scheduling", "craft servicing",
+            ["restrictions", "interceptions", "destroyed crafts", "world simulation", "craft movement", "month boundary", "monthly world scheduling", "craft servicing",
                 "research and production", "craft target removal", "transfers"],
             table.PreflightNames);
         var commandTypes = typeof(ICampaignCommand).Assembly.GetTypes()

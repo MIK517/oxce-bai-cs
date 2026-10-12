@@ -81,6 +81,7 @@ internal sealed partial class CampaignWorld : ICampaignInterceptionQuery
         registry.Preflight(CampaignPreflightOrder.Interceptions, "interceptions",
             (_, _) => _interceptions.Any(static d => !d.Minimized) ? WorldCommandReasons.InterceptionsOpen : null);
         RegisterInterceptionStart(registry);
+        RegisterCraftLosses(registry);
         registry.Command<AdvanceInterceptions>(_ => AdvanceInterceptionStep());
         registry.Command<SetInterceptionMode>(SetInterceptionMode);
         registry.Command<MinimizeInterception>(MinimizeInterception);
@@ -156,14 +157,6 @@ internal sealed partial class CampaignWorld : ICampaignInterceptionQuery
         }
         Step(copies);
         random.Restore(state);
-        // A forced landing of a UFO that already has a landing ID reaches no consequence callback.
-        foreach (var (key, copy) in ufoCopies)
-        {
-            var original = _interceptionUfos[(int)key];
-            if (copy.Status != original.Status || copy.SecondsRemaining != original.SecondsRemaining ||
-                copy.Altitude != original.Altitude || copy.CrashId != original.CrashId || copy.LandId != original.LandId)
-                return Blocked(forecast.Reason ?? WorldCommandReasons.InterceptionOutcomeBoundary);
-        }
         if (forecast.Reason is { } reason) return Blocked(reason);
 
         var events = new List<ICampaignEvent>();
@@ -385,7 +378,7 @@ internal sealed partial class CampaignWorld : ICampaignInterceptionQuery
             AllowLanding = rule.AllowLanding,
             WeaponSlots = rule.WeaponSlots,
             Weapons = weapons,
-            Pilots = pilots,
+            Pilots = [.. pilots.Select(soldier => PilotStats(soldier.Personal!))],
         };
     }
 
@@ -394,7 +387,7 @@ internal sealed partial class CampaignWorld : ICampaignInterceptionQuery
     /// exactly fill the seats, otherwise the manually chosen pilots who still qualify. The list is
     /// remembered on the craft, as the reference rewrites <c>_pilots</c>.
     /// </summary>
-    private (IReadOnlyList<DogfightPilot> Pilots, IReadOnlyList<int> Ids) PilotList(CampaignState.BaseState owner,
+    private (IReadOnlyList<CampaignState.SoldierState> Pilots, IReadOnlyList<int> Ids) PilotList(CampaignState.BaseState owner,
         CampaignState.CraftState craft, Oxce.Mods.Rulesets.Runtime.RuntimeCraftRule rule, string type, CraftLogisticsState state)
     {
         if (rule.Pilots == 0) return ([], []);
@@ -417,7 +410,7 @@ internal sealed partial class CampaignWorld : ICampaignInterceptionQuery
         var ids = new List<int>();
         foreach (var soldier in result)
             if (!ids.Contains(soldier.Id)) ids.Add(soldier.Id);
-        return ([.. result.Select(soldier => PilotStats(soldier.Personal!))], ids);
+        return (result, ids);
     }
 
     // Soldier::getStatsWithSoldierBonusesOnly: current statistics plus transformation and commendation bonuses.
@@ -494,106 +487,21 @@ internal sealed partial class CampaignWorld : ICampaignInterceptionQuery
             ShieldRechargeHandle = ufo.ShieldRechargeHandle,
             SoftlockShotCounter = ufo.SoftlockShotCounter,
             HunterKiller = ufo.HunterKiller,
+            Status = ufo.Status switch
+            {
+                DogfightUfoStatus.Landed => UfoStatus.Landed,
+                DogfightUfoStatus.Crashed => UfoStatus.Crashed,
+                DogfightUfoStatus.Destroyed => UfoStatus.Destroyed,
+                _ => snapshot.Status,
+            },
+            SecondsRemaining = ufo.SecondsRemaining,
+            Altitude = ufo.Altitude,
+            CrashId = ufo.CrashId,
+            LandId = ufo.LandId,
             Speed = ufo.Speed,
             SpeedRadian = speedChanged ? WorldGeometry.RadianSpeed(ufo.Speed) : snapshot.SpeedRadian,
             SpeedLongitude = speedChanged ? 0 : snapshot.SpeedLongitude,
             SpeedLatitude = speedChanged ? 0 : snapshot.SpeedLatitude,
         };
-    }
-
-    /// <summary>
-    /// The world as one interception step sees it. A forecast records the first consequence that is
-    /// not implemented yet; the real step never reaches one because its forecast refused first.
-    /// </summary>
-    private sealed class InterceptionWorld(CampaignWorld world, bool forecast, IReadOnlyList<Dogfight> windows) : IDogfightWorld
-    {
-        private readonly HashSet<object> _returnedCrafts = [];
-
-        public string? Reason { get; private set; }
-
-        public IRandomSource Random => world.Campaign.Random;
-        public CampaignInterceptionSettings Settings => world.Campaign.Content.RuntimeRules.Campaign.Interception;
-        public int Difficulty => (int)world.Campaign.Difficulty;
-        public int MonthsPassed => world.Campaign.MonthsPassed;
-        public bool DogfightAI => world.Campaign.Options.DogfightAI;
-
-        public bool CraftTargetsUfo(DogfightCraft craft, DogfightUfo ufo)
-        {
-            if (_returnedCrafts.Contains(craft.Key)) return false;
-            var (_, state) = world.FindInterceptionCraft((InterceptionCraftKey)craft.Key);
-            return state.Logistics?.Destination is { Kind: WorldTargetKind.Ufo } target &&
-                (target.UniqueId > 0 ? target.UniqueId == (int)ufo.Key : world.UfoIndex((int)ufo.Key) is var index && index >= 0 &&
-                    world._ufos[index].Id == target.Id);
-        }
-
-        public void DogfightExperience()
-        {
-            // GeoscapeState::handleDogfightExperience: pilots gain experience once their UFO is down.
-            foreach (var window in windows)
-                if (window.FiredAtLeastOnce && !window.ExperienceAwarded && (window.Ufo.IsCrashed || window.Ufo.IsDestroyed))
-                    Consequence();
-        }
-
-        public bool InsideLand(DogfightUfo ufo) => world.InsideLand(ufo);
-
-        public bool InsideFakeUnderwater(DogfightUfo ufo) => WorldGeometry.InsideFakeUnderwaterTexture(
-            world.Campaign.Content.RuntimeRules.Campaign.Globe, new WorldPosition(ufo.Longitude, ufo.Latitude));
-
-        public void CraftReturnToBase(DogfightCraft craft)
-        {
-            _returnedCrafts.Add(craft.Key);
-            if (forecast)
-            {
-                if (ReturnSpeed(craft) is null) Consequence(WorldCommandReasons.SpeedRange);
-                return;
-            }
-            var key = (InterceptionCraftKey)craft.Key;
-            if (!world.TryFindCraft(key.BaseId, key.TypeId, key.Id, out var owner, out var index)) return;
-            var state = owner.Crafts[index].Logistics!;
-            owner.Crafts[index] = owner.Crafts[index] with
-            {
-                Logistics = SetDestination(state, ReturnSpeed(craft)!.Value, BaseReference(owner)),
-            };
-        }
-
-        private int? ReturnSpeed(DogfightCraft craft)
-        {
-            var key = (InterceptionCraftKey)craft.Key;
-            if (!world.TryFindCraft(key.BaseId, key.TypeId, key.Id, out var owner, out var index)) return null;
-            var stored = owner.Crafts[index];
-            return CraftLogistics.TryEffectiveSpeedMaximum(world.Campaign.Content.RuntimeRules.Crafts[stored.Rule].Value,
-                stored.Logistics!.Weapons, world.Campaign.Content.RuntimeRules, out var speed) ? speed : null;
-        }
-
-        public void MoveUfo(DogfightUfo ufo) => Consequence();
-        public void CraftPursueUfo(DogfightCraft craft, DogfightUfo ufo) => Consequence();
-        public bool CraftThink(DogfightCraft craft) => ConsequenceValue(false);
-        public void StopHuntingCraft(DogfightCraft craft) => Consequence();
-        public void ReturnUnlandableFollowers(DogfightUfo ufo) => Consequence();
-        public void ResetHunterDestination(DogfightUfo ufo, DogfightCraft craft) => Consequence();
-        public void ClearUfoDestination(DogfightUfo ufo) => Consequence();
-        public void UfoShotDown(DogfightUfo ufo) => Consequence();
-        public int MissionRetaliationOdds(DogfightUfo ufo) => ConsequenceValue(0);
-        public int RetaliationAggression(DogfightUfo ufo) => ConsequenceValue(0);
-        public string UfoMissionRegion(DogfightUfo ufo) => ConsequenceValue("");
-        public string CraftBaseRegion(DogfightCraft craft) => ConsequenceValue("");
-        public bool RetaliationMissionExists(string region, DogfightUfo ufo) => ConsequenceValue(true);
-        public void StartRetaliation(string region, DogfightUfo ufo) => Consequence();
-        public void AddXcomActivity(DogfightUfo ufo, int score) => Consequence();
-        public int NextId(string key) => ConsequenceValue(0);
-        public int WaveInterruptPercentage(DogfightUfo ufo) => ConsequenceValue(0);
-        public void InterruptMission(DogfightUfo ufo) => Consequence();
-
-        private void Consequence(string reason = WorldCommandReasons.InterceptionOutcomeBoundary)
-        {
-            if (!forecast) throw new InvalidOperationException("An interception step reached a consequence its forecast did not stop.");
-            Reason ??= reason;
-        }
-
-        private T ConsequenceValue<T>(T value)
-        {
-            Consequence();
-            return value;
-        }
     }
 }

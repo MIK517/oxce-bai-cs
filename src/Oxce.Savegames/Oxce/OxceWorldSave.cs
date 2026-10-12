@@ -47,6 +47,7 @@ public static partial class OxceSaveAdapter
             }).ToArray()),
             Strategy = ReadAlienStrategy(body),
             GeneratedEvents = ReadIntMap(body, "generatedEvents"),
+            CraftLostDogfight = Integer(body, "craftLostDogfight", 0),
         };
     }
 

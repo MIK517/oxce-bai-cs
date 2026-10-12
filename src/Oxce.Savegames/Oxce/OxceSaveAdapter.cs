@@ -501,6 +501,7 @@ public static partial class OxceSaveAdapter
                 ])))),
             Pair("alienStrategy", BuildAlienStrategy(snapshot.World.Strategy, originalStrategy)),
             Pair("generatedEvents", IntMapping(snapshot.World.GeneratedEvents)),
+            Pair("craftLostDogfight", Integer(snapshot.World.CraftLostDogfight)),
             Pair("oxcePortAlienBaseBirthSequence", snapshot.World.AlienBaseBirthSequence == 0
                 ? null : ULong(snapshot.World.AlienBaseBirthSequence)),
             // Legacy terror sites were imported as mission sites, so the legacy node is not rewritten.
@@ -623,6 +624,11 @@ public static partial class OxceSaveAdapter
             Pair("kills", Integer(personal.Kills)),
             Pair("stuns", Integer(personal.Stuns)),
             Pair("diary", BuildSoldierDiary(source, personal)),
+            Pair("dailyDogfightExperienceCache", personal.DailyDogfightExperience.IsEmpty ? null : Overlay(
+                source is not null && source.TryGet("dailyDogfightExperienceCache", out var cache) ? RequireMap(cache!, "dogfight experience") : null,
+                [Pair("firing", Integer(personal.DailyDogfightExperience.Firing)),
+                    Pair("reactions", Integer(personal.DailyDogfightExperience.Reactions)),
+                    Pair("bravery", Integer(personal.DailyDogfightExperience.Bravery))])),
             Pair("manaMissing", Integer(personal.ManaMissing)),
             Pair("healthMissing", Integer(personal.HealthMissing)),
             Pair("improvement", Integer(personal.Improvement)),
@@ -717,7 +723,8 @@ public static partial class OxceSaveAdapter
     private static YamlMappingNode? BuildSoldierDiary(YamlMappingNode? source, SoldierPersonalState personal)
     {
         var diary = source is not null && source.TryGet("diary", out var node) ? RequireMap(node!, "soldier diary") : null;
-        if (diary is null && personal.Commendations.Count == 0) return null;
+        if (diary is null && personal.Commendations.Count == 0 && personal.UfosShotDownTotal == 0 && personal.UfosDamageTotal == 0)
+            return null;
         var previous = Maps(diary, "commendations").ToArray();
         var commendations = personal.Commendations.Select((commendation, index) =>
         {
@@ -730,7 +737,12 @@ public static partial class OxceSaveAdapter
                 Pair("decorationLevel", Integer(commendation.DecorationLevel)),
             ]);
         });
-        var result = Overlay(diary, [Pair("commendations", Sequence(commendations))]);
+        var result = Overlay(diary,
+        [
+            Pair("commendations", Sequence(commendations)),
+            Pair("ufosShotDownTotal", personal.UfosShotDownTotal == 0 ? null : Integer(personal.UfosShotDownTotal)),
+            Pair("ufosDamageTotal", personal.UfosDamageTotal == 0 ? null : Integer(personal.UfosDamageTotal)),
+        ]);
         return diary is null ? Overlay(result, [Pair("killList", Sequence([]))]) : result;
     }
 
@@ -765,6 +777,12 @@ public static partial class OxceSaveAdapter
             TransformationBonuses = ReadIntMap(map, "transformationBonuses"),
             Commendations = Array.AsReadOnly(Maps(diary, "commendations").Select(c => new SoldierCommendation(
                 RequiredString(c, "commendationName"), String(c, "noun", "noNoun"), Integer(c, "decorationLevel", 0))).ToArray()),
+            UfosShotDownTotal = diary is null ? 0 : Integer(diary, "ufosShotDownTotal", 0),
+            UfosDamageTotal = diary is null ? 0 : Integer(diary, "ufosDamageTotal", 0),
+            DailyDogfightExperience = map.TryGet("dailyDogfightExperienceCache", out var cacheNode) &&
+                RequireMap(cacheNode!, "dogfight experience") is var cache
+                ? new(Integer(cache, "firing", 0), Integer(cache, "reactions", 0), Integer(cache, "bravery", 0))
+                : SoldierDogfightExperience.None,
             ReplacedArmor = String(map, "replacedArmor", ""),
             TransformedArmor = String(map, "transformedArmor", ""),
             PersonalEquipmentArmor = String(map, "personalEquipmentArmor", ""),

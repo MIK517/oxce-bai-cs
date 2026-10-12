@@ -236,6 +236,8 @@ internal sealed partial class CampaignWorld
                 var craft = owner.Crafts[craftIndex];
                 if (craft.Logistics is not { } state) continue;
                 var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
+                // A destroyed craft is lost before it moves; DestroyedCraftReason checks that loss.
+                if (IsLostCraft(state, rule)) continue;
                 if (CraftConditionReason(state, rule) is { } reason) return reason;
                 if (highest >= CampaignTimeTrigger.ThirtyMinutes && state.IsAutoPatrolling && rule.AutoPatrol &&
                     (state.Status == "STR_REFUELLING" || highest >= CampaignTimeTrigger.OneHour &&
@@ -291,13 +293,22 @@ internal sealed partial class CampaignWorld
         return true;
     }
 
+    /// <summary>
+    /// Craft::isDestroyed as the craft pass applies it: GeoscapeState::time5Seconds removes a destroyed
+    /// craft in any status. The port keeps its exception for incomplete rules with non-positive damageMax.
+    /// </summary>
+    private bool IsLostCraft(CraftLogisticsState state, RuntimeCraftRule rule)
+    {
+        // An undamaged craft is never lost (a positive limit is required); skip the weapon bonus lookup.
+        if (state.Damage <= 0) return false;
+        var damageMaximum = CraftLogistics.EffectiveDamageMaximum(state, rule, campaign.Content.RuntimeRules);
+        return damageMaximum > 0 && state.Damage >= damageMaximum;
+    }
+
     private string? CraftConditionReason(CraftLogisticsState state, RuntimeCraftRule rule)
     {
-        // GeoscapeState::time5Seconds removes a destroyed craft in any status, with
-        // activity, crew and statistics consequences owned by the dogfight slice.
-        // Retain the port's exception for incomplete rules with non-positive damageMax.
-        var damageMaximum = CraftLogistics.EffectiveDamageMaximum(state, rule, campaign.Content.RuntimeRules);
-        if (damageMaximum > 0 && state.Damage >= damageMaximum)
+        // A craft arriving by transfer is only lost by a later craft pass after it lands.
+        if (IsLostCraft(state, rule))
             return "Destroyed craft removal requires world simulation.";
         if (!CraftLogistics.TryEffectiveGeoscapeShields(rule, state.Weapons, campaign.Content.RuntimeRules,
                 out _, out _))
@@ -341,46 +352,22 @@ internal sealed partial class CampaignWorld
             {
                 var craft = owner.Crafts[index];
                 if (craft.Logistics is not { } state) continue;
+                if (IsLostCraft(state, campaign.Content.RuntimeRules.Crafts[craft.Rule].Value))
+                {
+                    LoseDestroyedCraft(owner, index--);
+                    continue;
+                }
                 WorldTargetReference? arrival = null;
                 if (state.Status == "STR_OUT")
                 {
+                    var destinationBefore = state.Destination;
                     state = RepairCraftPursuit(owner, craft, state, effects);
+                    if (destinationBefore is not null) ReleaseInterceptionCraft(owner, craft, destinationBefore);
                     // Craft::think: takeoff, movement and the return-to-base checkup.
                     if (!_ufoIsAttackingThisTick)
                     {
-                        var takingOff = state.Takeoff > 0;
-                        if (takingOff)
-                            state = state with { Takeoff = state.Takeoff - 1 };
-                        if (state.Destination is { } destination && TryGetCraftDestinationPosition(destination, out var to))
-                        {
-                            var from = new WorldPosition(state.Longitude, state.Latitude);
-                            if (!takingOff)
-                            {
-                                var speedRadian = WorldGeometry.RadianSpeed(state.Speed);
-                                var vector = WorldGeometry.SpeedVector(from, to, speedRadian);
-                                var moved = WorldGeometry.Move(from, to, speedRadian, vector);
-                                state = state with
-                                {
-                                    Longitude = moved.Longitude,
-                                    Latitude = moved.Latitude,
-                                    SpeedRadian = speedRadian,
-                                    SpeedLongitude = vector.Longitude,
-                                    SpeedLatitude = vector.Latitude,
-                                };
-                            }
-                            if (WorldGeometry.ReachedDestination(new WorldPosition(state.Longitude, state.Latitude), to))
-                            {
-                                if (destination.Kind == WorldTargetKind.Base)
-                                {
-                                    state = CheckupOnReturn(state, craft, campaign.Content.RuntimeRules);
-                                    _returnedCraftTargets.Add((campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id));
-                                }
-                                else
-                                {
-                                    arrival = destination;
-                                }
-                            }
-                        }
+                        state = CraftThink(craft, state, out arrival, out var returned);
+                        if (returned) _returnedCraftTargets.Add((campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id));
                     }
                 }
                 // The reference recharges grounded craft too, after think/checkup and before the
@@ -444,6 +431,44 @@ internal sealed partial class CampaignWorld
         }
         for (var index = _waypoints.Count - 1; index >= 0; index--)
             if (!_followedWaypointIds.Contains(_waypoints[index].Id)) _waypoints.RemoveAt(index);
+    }
+
+    /// <summary>
+    /// Craft::think: takes off or moves one step toward the destination; reaching the home base runs the
+    /// checkup. A reached destination other than the base is returned for the caller's arrival handling.
+    /// </summary>
+    private CraftLogisticsState CraftThink(CampaignState.CraftState craft, CraftLogisticsState state,
+        out WorldTargetReference? arrival, out bool returnedToBase)
+    {
+        arrival = null;
+        returnedToBase = false;
+        var takingOff = state.Takeoff > 0;
+        if (takingOff)
+            state = state with { Takeoff = state.Takeoff - 1 };
+        if (state.Destination is not { } destination || !TryGetCraftDestinationPosition(destination, out var to)) return state;
+        var from = new WorldPosition(state.Longitude, state.Latitude);
+        if (!takingOff)
+        {
+            var speedRadian = WorldGeometry.RadianSpeed(state.Speed);
+            var vector = WorldGeometry.SpeedVector(from, to, speedRadian);
+            var moved = WorldGeometry.Move(from, to, speedRadian, vector);
+            state = state with
+            {
+                Longitude = moved.Longitude,
+                Latitude = moved.Latitude,
+                SpeedRadian = speedRadian,
+                SpeedLongitude = vector.Longitude,
+                SpeedLatitude = vector.Latitude,
+            };
+        }
+        if (!WorldGeometry.ReachedDestination(new WorldPosition(state.Longitude, state.Latitude), to)) return state;
+        if (destination.Kind == WorldTargetKind.Base)
+        {
+            returnedToBase = true;
+            return CheckupOnReturn(state, craft, campaign.Content.RuntimeRules);
+        }
+        arrival = destination;
+        return state;
     }
 
     private void StopHuntingReturnedCrafts()

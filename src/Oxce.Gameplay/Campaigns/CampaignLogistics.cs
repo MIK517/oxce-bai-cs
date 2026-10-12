@@ -377,6 +377,32 @@ public sealed partial class CampaignState
         return new CampaignCommandResult([new LogisticsOrderCompleted(origin.Id, quote.Operation, subtotal)]);
     }
 
+    /// <summary>
+    /// Craft::evacuateCrew: a crew member who survived the loss of their craft leaves it and any
+    /// training (remembering to return when healed) and travels home as a personnel transfer.
+    /// </summary>
+    internal void QueueEvacuatedSoldier(BaseState owner, SoldierState soldier)
+    {
+        var personal = soldier.Personal!;
+        owner.Soldiers.Remove(soldier);
+        QueueTransfer(owner, _content.RuntimeRules.Campaign.PersonnelTransferTime, CampaignTransferKind.Soldier,
+            _content.RuntimeRules.Soldiers.GetExternalId(soldier.Rule), 1, soldier: new SoldierSnapshot(
+                _content.RuntimeRules.Soldiers.GetExternalId(soldier.Rule), soldier.Id)
+            {
+                PreservationKey = soldier.PreservationKey,
+                Personal = personal with
+                {
+                    CraftType = "",
+                    CraftId = 0,
+                    Training = false,
+                    ReturnToTrainingWhenHealed = personal.ReturnToTrainingWhenHealed || personal.Training,
+                },
+            });
+    }
+
+    /// <summary>Whether <paramref name="count"/> more transfers can still get identities.</summary>
+    internal bool CanQueueTransfers(int count) => NextTransferId() <= int.MaxValue - count;
+
     private int NextTransferId()
     {
         const string key = "oxcePortTransfer";
