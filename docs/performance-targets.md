@@ -61,7 +61,7 @@ prints where the time goes by phase, and confirm with the benchmark.
 | Scenario | Measured (2026-10-12, Linux VM on the comparison machine) | Status |
 |---|---:|---|
 | 8, 32 flying UFOs; 32 with pursuit; 8 leaders with 24 escorts; 32 hunters with 16 craft | 0.12–0.43 s | Within target. |
-| 128 flying UFOs | 0.91 s | Exceeded. Reason: every tick is preflighted completely before it mutates anything, so a tick the port cannot simulate is refused atomically ([ADR 0025](decisions/0025-strategic-time-and-mobile-save-ownership.md), [4c closure](phase-6-world-integration-plan.md#branch-4c-closure-2026-10-11)). The preflight forecasts each UFO's flight several times and costs about 1.7× the movement it guards. Whether to keep forecasts and share them per tick, or move to capture-and-restore ticks, is decided at the [branch 5 kickoff](phase-6-plan.md#branch-5--interception-and-strategic-deployment-handoff). |
+| 128 flying UFOs | 0.91 s | Exceeded. Reason: every tick is preflighted completely before it mutates anything, so a tick the port cannot simulate is refused atomically ([ADR 0025](decisions/0025-strategic-time-and-mobile-save-ownership.md), [4c closure](phase-6-world-integration-plan.md#branch-4c-closure-2026-10-11)). The preflight forecasts each UFO's flight several times and costs about 1.7× the movement it guards. The branch 5 kickoff keeps the preflight and shares each UFO's flight projection per tick ([ADR 0033](decisions/0033-shared-per-tick-flight-projection.md)); branch 5 S1 re-measures. |
 
 Tactical simulation, pathfinding, visibility, and AI budgets will be added with their
 first representative scenarios. AI turns may legitimately exceed one display frame,

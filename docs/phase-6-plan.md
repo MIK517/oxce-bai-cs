@@ -7,7 +7,8 @@ Status (scope revised 2026-09-26): branches 1–3 have bounded acceptance docume
 [research and production status](strategic-research-production-status.md).
 Branch 4a supplies the bounded world foundation; branch 4b satisfies its revised
 ordinary-lifecycle closure gate and merged in `e10d96f` (PR #72).
-Branch 4c merged (PR #73); branch 4d is in progress and branches 5–6 remain planned.
+Branches 4c (PR #73) and 4d (PR #74) merged; branch 5 is in progress
+([branch 5 plan](phase-6-interception-plan.md)) and branch 6 remains planned.
 This is not a Phase 6 completion claim.
 
 ## Goal and scope
@@ -57,7 +58,7 @@ Every branch carries its own integration and closure work.
 | 4b | `codex/strategic-world-operations` | Complete the supported ordinary UFO lifecycle alongside headless craft operations and bounded spawning | Scope by vertical slices |
 | 4c | `codex/strategic-world-integration` | Complete headless mission/arc/event scheduling, broader world lifecycles, pursuit and scripts | Scope by vertical slices |
 | 4d | `claude/strategic-world-ui` | Globe controls and combined branch 4 acceptance | Scope by vertical slices |
-| 5 | `codex/strategic-interception-deployment` | Resolve interceptions and commit/reload a validated deployment handoff | 6 |
+| 5 | `claude/strategic-interception-deployment` | Resolve interceptions and commit/reload a validated deployment handoff | Scope by vertical slices |
 | 6 | `codex/strategic-campaign-cycle` | Complete monthly evaluation, campaign events/endings, and integrated strategic closure | 6 |
 
 Commit counts are review units, not quotas. Combine adjacent small commits, or split a
@@ -160,9 +161,10 @@ bounded state, and an operable campaign take precedence over that independent ta
   Branches 4a–4c are explicit headless intermediate boundaries; branch 4d owns
   their globe/UI integration and must satisfy the original branch 4 UI acceptance.
 - Extend managed capability contracts only for actual use, with versioning and no
-  implementation types. Integrate live extension save state no later than branch 5,
-  or earlier if a state-owning extension first participates; required missing extension
-  state cannot be dropped. Tactical AI extension capabilities stay in Phase 7.
+  implementation types. Integrate live extension save state when the first state-owning
+  extension participates ([ADR 0021](decisions/0021-versioned-managed-extensions.md));
+  until then such extensions are refused (`EXT1011`), so required extension state cannot
+  be dropped. Tactical AI extension capabilities stay in Phase 7.
 - Update compatibility matrices and compiler/cache revisions when projections or
   reconstruction semantics change. Test both fresh and restored content. No package
   additions are assumed; any necessary dependency receives the repository review.
@@ -447,32 +449,15 @@ results are not implemented by this branch.
 deployment/terrain/craft-weapon/UFO rules. Inspect the generator boundary without
 mechanically porting its tactical implementation.
 
-**Kickoff decision (recorded 2026-10-12):** before the first slice, choose how time advance
-stays atomic as interception makes branch 5 transitions executable. Either keep per-tick
-preflight forecasts and share each UFO's flight forecast within a tick (ordinary flying UFOs
-first, with a test-only mode comparing shared and recomputed results), or move to
-capture-and-restore ticks with execution-time boundary checks (the 4c closure's deferred
-alternative; it needs a check for every boundary and an audit of every preflight-pass consumer).
-Decide from `--time-profile` phase measurements and the soft one-day speed target in
-[performance targets](performance-targets.md), which the 128-UFO scenario currently exceeds.
-Until then, preflight code does not cache flight forecasts across checks.
+**Kickoff decision (2026-10-12):** time advance keeps the atomic per-tick preflight and
+shares each UFO's flight projection within a tick
+([ADR 0033](decisions/0033-shared-per-tick-flight-projection.md)); capture-and-restore ticks
+remain the documented alternative.
 
-**Commit purposes:**
-
-1. Capture interception legality, timing, ammunition/damage and landing/deployment
-   decision fixtures, including multi-craft and modded weapon/depth cases.
-2. Implement interception state and resolution: approach/range, modes, weapons,
-   disengagement, fuel interruption, damage/destruction and reference script hooks.
-3. Integrate strategic outcomes: crashes/sites, craft returns, losses, scores and
-   base-defense pre-battle effects; restore interruption state where reference permits.
-4. Define and execute the deployment request boundary: destination/deployment IDs,
-   participants/loadouts, terrain/depth/race/context, eligibility, resource reservation
-   and exactly-once transition. Persist pending state separately from real battle state;
-   document any port-only envelope and its C++ readability limitations.
-5. Add interception/landing/loadout confirmation UI and a headless request consumer;
-   integrate/version live managed extension persistence if not already required earlier.
-6. Close dispatch -> intercept -> land -> reload handoff scenarios, rollback/cancellation
-   where reference permits, target-loss tests, extension-state tests and matrix updates.
+**Delivery:** the approved [branch 5 plan](phase-6-interception-plan.md) delivers this
+branch as slices S0–S10, records its decisions (interception capability, time/combat
+interleaving, the port-only deployment request, base loss and extension state) and maps
+the originally planned six commit purposes to those slices.
 
 **Acceptance:** deterministic choices reproduce legal combat outcomes and resource use;
 launch cannot duplicate participants or consume them twice after reload. Cover landed/

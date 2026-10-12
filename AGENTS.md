@@ -105,7 +105,9 @@ mechanical translations with no executable acceptance test.
 - Record each fact once and link to it elsewhere; do not copy paragraphs between documents.
 - Phase 6 world work: subsystem slices, audits and evidence belong in the matching
   `docs/strategic-*-status.md`; cross-cutting checkpoints, current scope and remaining guards
-  belong in the Progress section of `docs/phase-6-world-integration-plan.md`.
+  belong in the Progress section of the branch's delivery plan
+  (`docs/phase-6-world-integration-plan.md` for branch 4, `docs/phase-6-interception-plan.md`
+  for branch 5).
   `docs/phase-6-ownership.md` keeps the ownership and fixture ledger, and
   `docs/implementation-plan.md` keeps phase-level status; both link to those records.
 
