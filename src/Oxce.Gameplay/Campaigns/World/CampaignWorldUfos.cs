@@ -144,8 +144,9 @@ internal sealed partial class CampaignWorld
                     if (siteLinkWork > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
                 }
                 // A hunter-killer reaching its craft starts an interception (branch 5 S4); the craft pass
-                // then neither moves, recharges shields nor arrives this tick.
-                if (!movementEnded && ufo.Hunting && ForecastHuntingTarget(destination) is { Logistics: { } targetState } targetCraft &&
+                // then neither moves, recharges shields nor arrives this tick. While another hunter-killer
+                // fight is open the attacker only waits, so the craft pass runs as usual.
+                if (!movementEnded && ufo.Hunting && !_interceptions.Any(static d => d.UfoIsAttacking) && ForecastHuntingTarget(destination) is { Logistics: { } targetState } targetCraft &&
                     targetState.Damage < CraftLogistics.EffectiveDamageMaximum(targetState,
                         campaign.Content.RuntimeRules.Crafts[targetCraft.Rule].Value, campaign.Content.RuntimeRules) &&
                     WorldGeometry.Distance(ufo.Position, destination.Position) <= WorldGeometry.RadianSpeed(ufo.Speed))

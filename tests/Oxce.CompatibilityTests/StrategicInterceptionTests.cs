@@ -2,16 +2,18 @@ using Oxce.Core.Random;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
+using Oxce.Savegames.Oxce;
+using Oxce.TestSupport;
 using Xunit;
 using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
 
 namespace Oxce.CompatibilityTests;
 
 /// <summary>
-/// Branch 5 S3: open interceptions in a campaign. Each step runs the dogfight engine
+/// Branch 5 S3-S5: open interceptions in a campaign. Each step runs the dogfight engine
 /// (<see cref="StrategicDogfightOracleTests"/>) against the craft and UFO state, writes the saved fields
-/// back, and refuses before any change when an outcome needs world consequences that are not implemented
-/// yet. Combat itself is never saved, as in the reference.
+/// back and applies the world consequences of its outcomes. Combat itself is never saved, as in the
+/// reference.
 /// </summary>
 public sealed class StrategicInterceptionTests
 {
@@ -40,11 +42,12 @@ public sealed class StrategicInterceptionTests
         """;
 
     private static (RuntimeContent Content, CampaignState Campaign, CampaignWorld World) Create(int ufoDamage = 0, ulong seed = 7,
-        bool tractor = false, int ufoLandId = 0, string shipRules = "")
+        bool tractor = false, int ufoLandId = 0, string shipRules = "", double longitude = 0.4, double latitude = 0.2, int craftDamage = 0,
+        string extraRules = "", bool singlePilot = false)
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], Rules.Replace("    weapons: 2\n", "    weapons: 2\n" + shipRules, StringComparison.Ordinal));
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], Rules.Replace("    weapons: 2\n", "    weapons: 2\n" + shipRules, StringComparison.Ordinal) + extraRules);
         var snapshot = CreateSnapshot(content, "Interception");
-        var ufo = new UfoSnapshot(9, "UFO_SCOUT", 4, "TRAJ_PATROL", 0, 0.4, 0.2, UfoStatus.Flying, WorldAltitudes.High)
+        var ufo = new UfoSnapshot(9, "UFO_SCOUT", 4, "TRAJ_PATROL", 0, longitude, latitude, UfoStatus.Flying, WorldAltitudes.High)
         {
             Id = 3,
             Speed = 1000,
@@ -69,14 +72,30 @@ public sealed class StrategicInterceptionTests
                 Status = "STR_OUT",
                 Fuel = 100,
                 Speed = 6000,
-                Longitude = 0.4,
-                Latitude = 0.2,
+                Longitude = longitude,
+                Latitude = latitude,
+                Damage = craftDamage,
                 Weapons = [new CraftWeaponSnapshot("DOGFIGHT_CANNON", 200, false, false),
                     tractor ? new CraftWeaponSnapshot("DOGFIGHT_TRACTOR", 0, false, false) : null],
                 Items = new Dictionary<string, int>(),
-                Destination = new WorldTargetReference(WorldTargetKind.Ufo, WorldTargetReference.UfoType, 3, 0.4, 0.2) { UniqueId = 9 },
+                Destination = new WorldTargetReference(WorldTargetKind.Ufo, WorldTargetReference.UfoType, 3, longitude, latitude) { UniqueId = 9 },
             },
         });
+        if (singlePilot)
+        {
+            // The first soldier is the ship's only crew member and pilot.
+            var owner = snapshot.Bases[0];
+            snapshot = snapshot with
+            {
+                Bases = [owner with
+                {
+                    Soldiers = [.. owner.Soldiers.Select((soldier, index) => soldier with
+                    {
+                        Personal = soldier.Personal! with { CraftType = index == 0 ? "SHIP" : "", CraftId = index == 0 ? 1 : 0 },
+                    })],
+                }, .. snapshot.Bases.Skip(1)],
+            };
+        }
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(seed));
         var world = (CampaignWorld)campaign.GetQuery<ICampaignInterceptionQuery>()!;
         return (content, campaign, world);
@@ -119,27 +138,129 @@ public sealed class StrategicInterceptionTests
         Assert.Equal(199, Single(world).Weapons[0].Ammo);
     }
 
-    [Fact]
-    public void ACrashOutcomeIsRefusedBeforeAnythingChanges()
+    // Steps the window in aggressive mode until it ends.
+    private static void FightToTheEnd(CampaignState campaign, CampaignWorld world, int number)
     {
-        // One more hit of 5-10 damage crashes the 50-point scout; its consequences belong to a later slice.
-        var (_, campaign, world) = Create(ufoDamage: 24);
-        var number = Start(campaign, world);
         campaign.Execute(new SetInterceptionMode(number, InterceptionMode.Aggressive));
-        CampaignCommandResult result;
-        do
+        for (var step = 0; step < 5000; step++)
         {
-            var before = campaign.Capture();
-            var distance = Single(world).Distance;
-            result = campaign.Execute(new AdvanceInterceptions());
-            if (result.Events.OfType<CampaignActionBlocked>().Any())
+            var result = campaign.Execute(new AdvanceInterceptions());
+            Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+            if (result.Events.OfType<InterceptionEnded>().Any())
             {
-                Assert.Equivalent(before, campaign.Capture(), strict: true);
-                Assert.Equal(distance, Single(world).Distance);
+                Assert.Empty(world.QueryInterceptions());
+                return;
             }
         }
-        while (!result.Events.OfType<CampaignActionBlocked>().Any());
-        Assert.Equal(WorldCommandReasons.InterceptionOutcomeBoundary, Assert.Single(result.Events.OfType<CampaignActionBlocked>()).Reason);
+        Assert.Fail("The interception did not end.");
+    }
+
+    [Fact]
+    public void AScoutShotDownAtSeaIsDestroyedDelaysItsMissionAndTheCraftReturns()
+    {
+        // One more hit of 5-10 damage crashes the 50-point scout over the ocean, where it cannot survive.
+        var (_, campaign, world) = Create(ufoDamage: 24);
+        var number = Start(campaign, world);
+        FightToTheEnd(campaign, world, number);
+
+        var captured = campaign.Capture();
+        var ufo = Assert.Single(captured.World.Ufos);
+        Assert.Equal((UfoStatus.Destroyed, 0, 0), (ufo.Status, ufo.Speed, ufo.CrashId));
+        // AlienMission::ufoShotDown: wave 1 of 2 is still to come, so it waits 30 * (48..448) seconds longer.
+        var mission = captured.World.Missions.Single(m => m.Id == 4);
+        Assert.InRange(mission.SpawnCountdown - 1500, 30 * 48, 30 * 448);
+        Assert.Equal(0, (mission.SpawnCountdown - 1500) % 30);
+        var craft = captured.Bases[0].Crafts.Single(c => c.Logistics?.Status == "STR_OUT").Logistics!;
+        Assert.Equal(WorldTargetKind.Base, craft.Destination!.Kind);
+
+        // The next tick removes the UFO and releases its mission's live count.
+        campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Empty(campaign.Capture().World.Ufos);
+        Assert.Equal(0, campaign.Capture().World.Missions.Single(m => m.Id == 4).LiveUfos);
+    }
+
+    [Fact]
+    public void AScoutShotDownOverLandCrashesWithACrashSiteAndCraftsThatCannotLandGoHome()
+    {
+        var (content, campaign, world) = Create(ufoDamage: 24, longitude: Degrees(10), latitude: 0);
+        var number = Start(campaign, world);
+        FightToTheEnd(campaign, world, number);
+
+        var ufo = Assert.Single(campaign.Capture().World.Ufos);
+        Assert.Equal((UfoStatus.Crashed, WorldAltitudes.Ground, 1, 0), (ufo.Status, ufo.Altitude, ufo.CrashId, ufo.Speed));
+        Assert.Null(ufo.Destination);
+        Assert.InRange(ufo.SecondsRemaining, 24 * 3600, 96 * 3600);
+        Assert.Equal(0, ufo.SecondsRemaining % 3600);
+        Assert.Equal(2, campaign.Capture().NextIds["STR_CRASH_SITE"]);
+        // The crew-less ship cannot land at the crash site and returns to base.
+        var craft = campaign.Capture().Bases[0].Crafts.Single(c => c.Logistics?.Status == "STR_OUT").Logistics!;
+        Assert.Equal(WorldTargetKind.Base, craft.Destination!.Kind);
+
+        // The crash site survives a reload and keeps counting down. Ufo::load gives the crashed UFO a
+        // waypoint at its own position for the destination it no longer has, as the reference does.
+        var reloaded = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(campaign.Capture()), content, 7, "crash.sav").Campaign;
+        Assert.Equivalent(ufo with { Destination = WorldTargetReference.ForWaypoint(0, ufo.Position) }, Assert.Single(reloaded.Capture().World.Ufos), strict: true);
+        // Its timer runs in time30Minutes: 1:00:05 reaches 1:30 after 359 ticks.
+        AdvanceUnblocked(reloaded, 359);
+        Assert.Equal(ufo.SecondsRemaining - 1800, Assert.Single(reloaded.Capture().World.Ufos).SecondsRemaining);
+    }
+
+    [Fact]
+    public void PilotsOfTheWinningCraftGainExperienceRecordedInTheirDiaryAndTodaysCache()
+    {
+        const string pilotRules = "\nsoldiers:\n  - type: RECRUIT\n    dogfightExperience: {firing: 100, reactions: 100, bravery: 100}\n" +
+            "    statCaps: {firing: 100, reactions: 100, bravery: 100}\n";
+        var (content, campaign, world) = Create(ufoDamage: 24, shipRules: "    soldiers: 1\n    pilots: 1\n", extraRules: pilotRules,
+            singlePilot: true);
+        var before = campaign.Capture().Bases[0].Soldiers[0].Personal!;
+        var number = Start(campaign, world);
+        FightToTheEnd(campaign, world, number);
+
+        var pilot = campaign.Capture().Bases[0].Soldiers[0].Personal!;
+        Assert.Equal((before.CurrentStats["firing"] + 1, before.CurrentStats["reactions"] + 1, before.CurrentStats["bravery"] + 10),
+            ((int)pilot.CurrentStats["firing"], (int)pilot.CurrentStats["reactions"], (int)pilot.CurrentStats["bravery"]));
+        Assert.Equal(new SoldierDogfightExperience(1, 1, 10), pilot.DailyDogfightExperience);
+        // SoldierDiary::addUfoShotDown records the UFO's maximum damage.
+        Assert.Equal((1, 50), (pilot.UfosShotDownTotal, pilot.UfosDamageTotal));
+        Assert.Equal([campaign.Capture().Bases[0].Soldiers[0].Id], campaign.Capture().Bases[0].Crafts.Single(c => c.RuleId == "SHIP").Logistics!.Pilots);
+
+        // The next tick removes the destroyed UFO, whose cleared destination a reload would not keep.
+        AdvanceUnblocked(campaign, 1);
+        var reloaded = Reload(content, campaign, 7, "pilot.sav");
+        Assert.Equal(new SoldierDogfightExperience(1, 1, 10), reloaded.Capture().Bases[0].Soldiers[0].Personal!.DailyDogfightExperience);
+        // GeoscapeState::time1Day clears the cache.
+        AdvanceUnblocked(reloaded, 23 * 720);
+        var cleared = reloaded.Capture().Bases[0].Soldiers[0].Personal!;
+        Assert.Equal((SoldierDogfightExperience.None, 1), (cleared.DailyDogfightExperience, cleared.UfosShotDownTotal));
+    }
+
+    [Fact]
+    public void ATractorBeamForcesALandingThatKeepsItsLandingId()
+    {
+        // 1100 power x 200% (small UFO) cancels the scout's 2200 speed: the UFO lands without a new ID.
+        var (_, campaign, world) = Create(tractor: true, ufoLandId: 5, longitude: Degrees(10), latitude: 0);
+        var number = Start(campaign, world);
+        FightToTheEnd(campaign, world, number);
+        var ufo = Assert.Single(campaign.Capture().World.Ufos);
+        Assert.Equal((UfoStatus.Landed, WorldAltitudes.Ground, 5, 0), (ufo.Status, ufo.Altitude, ufo.LandId, ufo.Speed));
+        Assert.InRange(ufo.SecondsRemaining, 30 * 60, 120 * 60);
+        Assert.Equal(0, ufo.SecondsRemaining % 60);
+        Assert.False(campaign.Capture().NextIds.ContainsKey("STR_LANDING_SITE"));
+    }
+
+    [Fact]
+    public void ACraftDestroyedInAnInterceptionIsLostOnTheNextTick()
+    {
+        var (content, campaign, _) = Create(craftDamage: 100);
+        var before = campaign.Capture().Bases[0].Crafts.Count;
+        campaign.Execute(new AdvanceCampaignTime(1));
+        var captured = campaign.Capture();
+        Assert.Equal(before - 1, captured.Bases[0].Crafts.Count);
+        Assert.DoesNotContain(captured.Bases[0].Crafts, craft => craft.Logistics?.Status == "STR_OUT");
+        Assert.Equal(1, captured.World.CraftLostDogfight);
+        // Craft::evacuateCrew: with the default 100% survival chance the crew travel home as personnel.
+        Assert.DoesNotContain(captured.Bases[0].Soldiers, soldier => soldier.Personal!.CraftType == "SHIP" && soldier.Personal.CraftId == 1);
+        Assert.Equal(1, Reload(content, campaign, 7, "lost.sav").Capture().World.CraftLostDogfight);
     }
 
     [Fact]
@@ -214,20 +335,6 @@ public sealed class StrategicInterceptionTests
         AdvanceOne(campaign);
         Assert.Empty(campaign.Execute(new RestoreInterception(number)).Events);
         AssertTimeBlocked(campaign, WorldCommandReasons.InterceptionsOpen);
-    }
-
-    [Fact]
-    public void AForcedLandingOfAUfoWithALandingIdIsRefusedToo()
-    {
-        // 1100 power x 200% (small UFO) cancels the scout's 2200 speed: the UFO lands without needing a new ID.
-        var (_, campaign, world) = Create(tractor: true, ufoLandId: 5);
-        var number = Start(campaign, world);
-        campaign.Execute(new SetInterceptionMode(number, InterceptionMode.Aggressive));
-        CampaignCommandResult result;
-        do result = campaign.Execute(new AdvanceInterceptions());
-        while (!result.Events.OfType<CampaignActionBlocked>().Any() && Single(world).Distance > 64);
-        Assert.Equal(WorldCommandReasons.InterceptionOutcomeBoundary, Assert.Single(result.Events.OfType<CampaignActionBlocked>()).Reason);
-        Assert.Equal(UfoStatus.Flying, Assert.Single(campaign.Capture().World.Ufos).Status);
     }
 
     [Fact]

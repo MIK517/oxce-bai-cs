@@ -201,6 +201,10 @@ public sealed record RuntimeAlienMissionRule(
 /// <summary>A month-keyed weighted table. Reference: <c>WeightedOptions</c> timelines in the mod rules.</summary>
 public sealed record RuntimeWeightedTimeline(ulong FirstMonth, IReadOnlyDictionary<string, ulong> Weights);
 
+/// <summary>The strategic projection of an alien race: retaliation aggression and the retaliation
+/// mission timeline in rule order (AlienRace::retaliationMissionWeights).</summary>
+public sealed record RuntimeAlienRaceRule(string Id, int RetaliationAggression, IReadOnlyList<RuntimeWeightedTimeline> RetaliationMissionWeights);
+
 /// <summary>
 /// The strategic projection of an alien deployment: site and alien-base bookkeeping only.
 /// Battlescape generation properties remain in the typed catalog for Phase 7.

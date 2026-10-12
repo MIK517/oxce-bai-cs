@@ -53,6 +53,7 @@ internal static class CampaignTimeOrder
     public const int DayBases = 200;
     public const int DayWorldMissionInterruption = 250;
     public const int DayWorldAlienBases = 300;
+    public const int DayDogfightExperience = 400;
 
     // time1Hour: craft servicing loop, transfers, then production.
     public const int HourCraftServicing = 100;
@@ -75,6 +76,7 @@ internal static class CampaignPreflightOrder
 {
     public const int Restrictions = 100;
     public const int Interceptions = 120;
+    public const int DestroyedCrafts = 125;
     public const int WorldSimulation = 150;
     public const int CraftMovement = 200;
     public const int MonthBoundary = 300;

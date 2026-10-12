@@ -38,7 +38,7 @@ public sealed class StrategicWorldAlienBaseHuntingTests
     }
 
     [Fact]
-    public void DestroyedCraftIsIgnoredByHuntingButWholeTickKeepsItsRemovalGuard()
+    public void DestroyedCraftIsIgnoredByHuntingAndLostInTheCraftPass()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-hunt-timer");
         var row = TestFixtures.Rows(oracle.RootElement, "rows").Single(row => row[0].GetString() == "destroyed");
@@ -48,8 +48,10 @@ public sealed class StrategicWorldAlienBaseHuntingTests
         { Logistics = craft.Logistics! with { Damage = 100 } });
         var state = snapshot.Bases[0].Crafts.Single(c => c.RuleId == "SHIP").Logistics!;
         Assert.False(WorldAlienBaseHunting.Eligible(state, false, 100, new(0.2, 0.1), 100));
-        AssertTimeBlocked(CampaignState.Restore(snapshot, content, new MinimumChoices()),
-            "Destroyed craft removal requires world simulation.");
+        // Branch 5 S5: the craft pass loses the destroyed craft.
+        var campaign = CampaignState.Restore(snapshot, content, new MinimumChoices());
+        Assert.DoesNotContain(campaign.Execute(new AdvanceCampaignTime(1)).Events, item => item is CampaignActionBlocked);
+        Assert.DoesNotContain(campaign.Capture().Bases[0].Crafts, craft => craft.RuleId == "SHIP");
     }
 
     [Fact]

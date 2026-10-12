@@ -33,6 +33,19 @@ public sealed record SoldierPersonalState(
     public IReadOnlyDictionary<string, int> PreviousTransformations { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
     public IReadOnlyDictionary<string, int> TransformationBonuses { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
     public IReadOnlyList<SoldierCommendation> Commendations { get; init; } = [];
+    /// <summary>SoldierDiary::_ufosShotDownTotal and _ufosDamageTotal (pilot interception wins).</summary>
+    public int UfosShotDownTotal { get; init; }
+    public int UfosDamageTotal { get; init; }
+    /// <summary>Soldier::_dailyDogfightExperienceCache: today's interception stat gains, cleared each day.</summary>
+    public SoldierDogfightExperience DailyDogfightExperience { get; init; } = SoldierDogfightExperience.None;
+}
+
+/// <summary>The interception stat gains a pilot earned today (firing, reactions, bravery).</summary>
+public sealed record SoldierDogfightExperience(int Firing, int Reactions, int Bravery)
+{
+    public static SoldierDogfightExperience None { get; } = new(0, 0, 0);
+
+    public bool IsEmpty => Firing <= 0 && Reactions <= 0 && Bravery <= 0;
 }
 
 /// <summary>Initial state from Soldier::Soldier and Mod::genSoldier at reference 4df3a5e.</summary>

@@ -18,7 +18,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 175 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 177 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 94 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
@@ -333,7 +333,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 175 files.
+`src/Oxce.Gameplay` - 177 files.
 
 ### `Oxce.Gameplay`
 
@@ -501,6 +501,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `ResearchItemLifecycle` (class) [ResearchItemLifecycle.cs](../src/Oxce.Gameplay/Campaigns/ResearchItemLifecycle.cs) - Needed-item return at Base::removeResearch, before corpse recovery.
 - `SoldierCommendation` (record) [SoldierGeneration.cs](../src/Oxce.Gameplay/Campaigns/SoldierGeneration.cs)
 - `SoldierPersonalState` (record) [SoldierGeneration.cs](../src/Oxce.Gameplay/Campaigns/SoldierGeneration.cs)
+- `SoldierDogfightExperience` (record) [SoldierGeneration.cs](../src/Oxce.Gameplay/Campaigns/SoldierGeneration.cs) - The interception stat gains a pilot earned today (firing, reactions, bravery).
 - `SoldierGeneration` (class) [SoldierGeneration.cs](../src/Oxce.Gameplay/Campaigns/SoldierGeneration.cs) - Initial state from Soldier::Soldier and Mod::genSoldier at reference 4df3a5e.
 - `SoldierDailyRecovery` (record struct) [SoldierReadiness.cs](../src/Oxce.Gameplay/Campaigns/SoldierReadiness.cs)
 - `SoldierReadiness` (class) [SoldierReadiness.cs](../src/Oxce.Gameplay/Campaigns/SoldierReadiness.cs) - Strategic Soldier.cpp recovery and training rules at reference 4df3a5e.
@@ -914,6 +915,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RuntimeMissionOperationType` (enum) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - Where a mission's UFOs operate from.
 - `RuntimeAlienMissionRule` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - Reference: `Mod/RuleAlienMission.cpp`.
 - `RuntimeWeightedTimeline` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - A month-keyed weighted table.
+- `RuntimeAlienRaceRule` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - The strategic projection of an alien race: retaliation aggression and the retaliation mission timeline in rule order (AlienRace::retaliat...
 - `RuntimeAlienDeploymentRule` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - The strategic projection of an alien deployment: site and alien-base bookkeeping only.
 - `RuntimeAlienRaceEvolution` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - Reference: `AlienDeployment::getAlienRaceEvolution` tuples.
 

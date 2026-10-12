@@ -237,3 +237,58 @@ handler order list), corrected and re-run with the unit suite (820 pass); everyt
 slice audit was a focused self-review of the start paths against `time5Seconds` (the code-review
 pass is repeated with S5, which builds on these paths).
 
+
+## S5 — Interception outcomes in the world (2026-10-13)
+
+`CampaignWorldInterceptionOutcomes` implements the `DogfightState` calls into the geoscape, so an
+interception step no longer refuses its outcomes (`boundary.interception-outcome` is gone):
+
+- Crash bookkeeping: crash and forced-landing status, timer, altitude and crash or landing IDs are
+  written back to the saved UFO; `Ufo::setDestination(0)` clears a shot-down UFO's destination (a
+  reload gives it a waypoint at its own position, as `Ufo::load` does); a hunter-killer that escapes
+  or crashes resets its original destination only while it still targets that craft.
+- `AlienMission::ufoShotDown` delays the next wave; `Ufo::setDamage` rolls the wave's interrupt
+  chance (the battleship of a retaliation assault run counts as the last wave).
+- Retaliation: mission odds, race aggression, difficulty overrides and the retaliation delay; the
+  target region (UFO mission region or `locateRegion` of the craft's base); `findAlienMission` by the
+  race's retaliation mission names or by objective; the race's weights or `getRandomMission`, then a
+  new mission with the first wave's spawn timer. Alien races now project `retaliationAggression` and
+  `retaliationMissionWeights` (compiler/cache revision 64).
+- X-COM activity for the first country and first region containing the UFO.
+- Pilot experience (`awardExperienceToPilots`): firing, reactions and bravery (+10) rolls under the
+  soldier's caps with the new `dogfightExperience` projection, the diary's `ufosShotDownTotal` and
+  `ufosDamageTotal`, and the daily `dailyDogfightExperienceCache`, all owned and saved; `time1Day`
+  clears the cache (`DayDogfightExperience`). The stat string is presentation and is not kept.
+- Endings: a breaking-off UFO moves one step and a pursuing craft keeps chasing at full speed; a
+  hunter-killer fight's craft returns, thinks one step and, if home, stops being hunted; crafts that
+  follow a crashed UFO without units or landing ability return to base.
+- Craft loss: a destroyed craft is lost at the start of the next craft pass, with its score taken
+  from X-COM activity, its crew evacuated as personnel transfers (`personnelTime`), hunters and
+  followers released and `craftLostDogfight` (now owned and saved) increased. A crew member whose
+  evacuation roll could fail would die; soldier deaths and the memorial are not owned yet, so the
+  preflight refuses that tick (named restriction, default survival chances are 100%). The craft pass
+  also takes a craft out of its interception when its UFO landed or its destination is no longer a
+  UFO.
+
+The step forecast keeps every world change in overlays (crafts, UFOs, missions, new missions,
+soldiers, IDs and activity), so later callbacks of the same step see what they would see live and
+draw the same random values; it refuses only outcomes the port cannot apply: a retaliation mission
+run from an alien base (operation-base simulation), a base outside every region (undefined in the
+reference), and out-of-range counters.
+
+Tests: `StrategicInterceptionTests` covers destruction at sea with the mission delay and UFO removal,
+a crash on land with its crash ID, timer, followers returning and reload, a tractor-beam landing that
+keeps its landing ID, pilot experience with the diary and daily cache through reload and the day
+change, and the loss of a destroyed craft with crew evacuation and `craftLostDogfight` through reload.
+The earlier destroyed-craft guard tests now check the loss; a craft under repair at an hour boundary
+is mended first because the hourly handlers fall through to `time5Seconds`.
+
+Audit: the code-review pass over S4 and S5 found that the hunter-killer attack forecast ignored an
+already open hunter-killer fight (the attacker then only waits, so crafts still arrive) and that the
+destroyed-craft preflight allocated a closure per craft and tick; both are fixed. Accepted: the
+activity range check is per lost craft rather than cumulative, and a step refused for an undefined
+retaliation region keeps its window open (malformed content).
+
+Validation on the Windows workstation: formatting, code map and Release build clean; root
+`dotnet test` ran 3,495 tests with one expectation failure (the new daily handler and preflight in
+the order lists), corrected and re-run with the unit suite (820 pass); everything else green.

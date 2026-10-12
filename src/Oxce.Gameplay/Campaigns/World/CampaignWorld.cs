@@ -18,6 +18,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     private readonly List<MissionSiteSnapshot> _sites = [];
     private readonly List<AlienBaseSnapshot> _alienBases = [];
     private ulong _alienBaseBirthSequence;
+    private int _craftLostDogfight;
     private readonly List<GeoscapeEventSnapshot> _events = [];
     private AlienStrategyState _strategy = new();
 
@@ -267,6 +268,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         Events = CampaignSnapshot.ReadOnly(_events),
         GeneratedEvents = CampaignSnapshot.ReadOnlyIds(_generatedEvents),
         Strategy = CaptureStrategy(),
+        CraftLostDogfight = _craftLostDogfight,
     };
 
     private AlienStrategySnapshot CaptureStrategy() => new()
@@ -291,6 +293,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         _sites.Clear();
         _alienBases.Clear();
         _alienBaseBirthSequence = snapshot.World.AlienBaseBirthSequence;
+        _craftLostDogfight = snapshot.World.CraftLostDogfight;
         _events.Clear();
         _generatedEvents.Clear();
         foreach (var pair in snapshot.World.GeneratedEvents) _generatedEvents.Add(pair.Key, pair.Value);
