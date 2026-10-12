@@ -85,8 +85,17 @@ internal sealed partial class CampaignWorld
         // keys. Keys hold no references, so per-tick projections are not kept alive across a GC. The
         // world preflight clears the table when it starts, bounding it to one pass; the craft-movement
         // preflight later in the same pass reuses the entries. Only distances are cached, never an
-        // outcome that depends on pass-local forecasts.
+        // outcome that depends on pass-local forecasts. UFOs stored in SharedFlights keep their
+        // distance there instead, so a craft pursuing one computes it again.
         public readonly Dictionary<(long, long, long, long), double> UfoDestinationDistances = [];
+        // Shared flight projection of each saved UFO (ADR 0033), by list index. Only the UFO
+        // movement, site conversion and half-hour steps read it, between the point where the
+        // hunting and new-leader forecasts are final and the flight fuel step; SharedFlightsReady
+        // marks that window. An entry belongs to the saved snapshot it was computed from, and
+        // hunting or escorting UFOs are never stored because later steps can still extend the
+        // forecasts their projection reads.
+        public bool SharedFlightsReady;
+        public SharedFlight[]? SharedFlights;
 
         // Reset by BeginHunting, when hunting and escort forecasts start later in the pass. The
         // checks that run before it never read these values.
@@ -151,6 +160,15 @@ internal sealed partial class CampaignWorld
             EarlyLiveWorldMarkers = null;
             GuaranteedDailyResearch = null;
             SuppressedUfoSites = null;
+            SharedFlightsReady = false;
+            ResetSharedFlights();
+        }
+
+        /// <summary>Drops every shared flight projection. Stored projections never read the escort
+        /// flight cache, so a suppressed site conversion does not invalidate them.</summary>
+        public void ResetSharedFlights()
+        {
+            if (SharedFlights is { } flights) Array.Clear(flights);
         }
 
         /// <summary>Starts the hunting and escort forecasts of the current pass.</summary>
@@ -183,5 +201,14 @@ internal sealed partial class CampaignWorld
             if (EscortFlightTargets is { } cached) Array.Clear(cached);
             EscortFlightEndIndex = int.MaxValue;
         }
+    }
+
+    /// <summary>A saved UFO, its flight projection and the distance to the projected destination
+    /// (NaN without a destination).</summary>
+    private struct SharedFlight
+    {
+        public UfoSnapshot? Source;
+        public UfoSnapshot Projected;
+        public double Distance;
     }
 }

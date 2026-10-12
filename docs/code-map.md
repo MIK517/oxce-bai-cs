@@ -25,7 +25,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 5 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 302 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 303 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 101 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -1110,7 +1110,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 302 files.
+`tests/Oxce.CompatibilityTests` - 303 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1118,7 +1118,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>299 test classes</summary>
+<details><summary>300 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1369,6 +1369,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicWorldReturnedCraftHuntingTests` ([StrategicWorldReturnedCraftHuntingTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldReturnedCraftHuntingTests.cs))
 - `StrategicWorldRuleProjectionTests` ([StrategicWorldRuleProjectionTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldRuleProjectionTests.cs))
 - `StrategicWorldSelectedSiteWaypointTests` ([StrategicWorldSelectedSiteWaypointTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSelectedSiteWaypointTests.cs))
+- `StrategicWorldSharedFlightTests` ([StrategicWorldSharedFlightTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSharedFlightTests.cs))
 - `StrategicWorldSiteChoiceGrantTests` ([StrategicWorldSiteChoiceGrantTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteChoiceGrantTests.cs))
 - `StrategicWorldSiteExpiryTests` ([StrategicWorldSiteExpiryTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteExpiryTests.cs))
 - `StrategicWorldSiteResearchBaseTests` ([StrategicWorldSiteResearchBaseTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteResearchBaseTests.cs))
@@ -1599,6 +1600,11 @@ Prefer these over local copies (see AGENTS.md, *Test conventions*).
 - `ProbeExtension` (class)
 - `ThrowOnEventExtension` (class)
 - members: `Initialize`, `Shutdown`, `Attach`, `OnEvent`, `Detach`, `CaptureState`, `RestoreState`, `Initialize`, `Shutdown`, `Attach`, `OnEvent`, `Detach`
+
+### [tests/Shared/GameplayVerification.cs](../tests/Shared/GameplayVerification.cs) - linked into Oxce.CompatibilityTests, Oxce.UnitTests
+
+- `GameplayVerification` (class) - Turns on the gameplay self-checks that only tests run.
+- members: `Enable`
 
 ### [tests/Shared/TestFixtures.cs](../tests/Shared/TestFixtures.cs) - linked into Oxce.CompatibilityTests, Oxce.UnitTests
 

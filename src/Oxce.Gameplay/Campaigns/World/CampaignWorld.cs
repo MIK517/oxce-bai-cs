@@ -591,6 +591,30 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         steps.Mark(Step + nameof(SiteResearchUfoWorkReason));
         if (PrepareHuntingGeneratedWaveForecasts(highest, guaranteedResearch) is { } huntBirthReason) return huntBirthReason;
         steps.Mark(Step + nameof(PrepareHuntingGeneratedWaveForecasts));
+        // The hunting and new-leader forecasts are final here. The UFO steps up to the half-hour step
+        // share one flight projection per UFO (ADR 0033); the window closes before the flight fuel
+        // step swaps the hunting craft forecast that projections read, and on every refusal.
+        _pass.SharedFlightsReady = true;
+        try
+        {
+            if (SharedFlightStepsReason(highest, guaranteedResearch, ref steps) is { } sharedReason) return sharedReason;
+        }
+        finally
+        {
+            _pass.SharedFlightsReady = false;
+        }
+        if (FlightFuelRefundReason(highest) is { } fuelRefundReason) return fuelRefundReason;
+        steps.Mark(Step + nameof(FlightFuelRefundReason));
+        var eventReason = EventSchedulingReason(highest);
+        steps.Mark(Step + nameof(EventSchedulingReason));
+        return eventReason;
+    }
+
+    /// <summary>The world preflight steps that read the shared flight projection (ADR 0033).</summary>
+    private string? SharedFlightStepsReason(CampaignTimeTrigger highest, IReadOnlySet<string>? guaranteedResearch,
+        ref CampaignTimeProfile.Steps steps)
+    {
+        const string Step = CampaignTimeProfile.WorldPrefix;
         var ufoReason = UfoMovementReason(highest);
         steps.Mark(Step + nameof(UfoMovementReason));
         if (ufoReason is not null) return ufoReason;
@@ -614,12 +638,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         steps.Mark(Step + nameof(ObjectiveBasePatrolReason));
         var detectionReason = UfoHalfHourReason(highest, guaranteedResearch);
         steps.Mark(Step + nameof(UfoHalfHourReason));
-        if (detectionReason is not null) return detectionReason;
-        if (FlightFuelRefundReason(highest) is { } fuelRefundReason) return fuelRefundReason;
-        steps.Mark(Step + nameof(FlightFuelRefundReason));
-        var eventReason = EventSchedulingReason(highest);
-        steps.Mark(Step + nameof(EventSchedulingReason));
-        return eventReason;
+        return detectionReason;
     }
 
     private CampaignWorldUfoDetails UfoDetails(UfoSnapshot ufo)
