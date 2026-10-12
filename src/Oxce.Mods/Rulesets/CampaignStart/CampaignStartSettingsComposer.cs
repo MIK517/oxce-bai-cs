@@ -112,6 +112,46 @@ internal static class CampaignStartSettingsComposer
         ApplyNames(root, "operationNamesLast", b.OperationNamesLast, false);
         if (root.TryGet("fixedUserOptions", out var fixedOptions))
             CampaignStartYaml.ApplyEditableNameMap(b.FixedUserOptions, fixedOptions!, "fixedUserOptions");
+        ApplyInterception(root, b.Interception);
+    }
+
+    // Mod::loadFile order and defaults; see CampaignInterceptionSettings.
+    private static void ApplyInterception(YamlMappingNode root, CampaignInterceptionSettingsBuilder b)
+    {
+        b.ChanceToStopRetaliation = Read(root, "chanceToStopRetaliation", b.ChanceToStopRetaliation);
+        b.LessAliensDuringBaseDefense = Read(root, "lessAliensDuringBaseDefense", b.LessAliensDuringBaseDefense);
+        b.UfoGlancingHitThreshold = Read(root, "ufoGlancingHitThreshold", b.UfoGlancingHitThreshold);
+        b.UfoBeamWidthParameter = Read(root, "ufoBeamWidthParameter", b.UfoBeamWidthParameter);
+        ApplyCoefficients(root, "ufoTractorBeamSizeModifiers", b.UfoTractorBeamSizeModifiers);
+        b.EscortsJoinFightAgainstHK = Read(root, "escortsJoinFightAgainstHK", b.EscortsJoinFightAgainstHK);
+        b.CrewEmergencyEvacuationSurvivalChance = Read(root, "crewEmergencyEvacuationSurvivalChance", b.CrewEmergencyEvacuationSurvivalChance);
+        b.PilotsEmergencyEvacuationSurvivalChance = Read(root, "pilotsEmergencyEvacuationSurvivalChance", b.PilotsEmergencyEvacuationSurvivalChance);
+        b.PilotAccuracyZeroPoint = Read(root, "pilotAccuracyZeroPoint", b.PilotAccuracyZeroPoint);
+        b.PilotAccuracyRange = Read(root, "pilotAccuracyRange", b.PilotAccuracyRange);
+        b.PilotReactionsZeroPoint = Read(root, "pilotReactionsZeroPoint", b.PilotReactionsZeroPoint);
+        b.PilotReactionsRange = Read(root, "pilotReactionsRange", b.PilotReactionsRange);
+        ApplyCoefficients(root, "pilotBraveryThresholds", b.PilotBraveryThresholds);
+        b.ShowDogfightDistanceInKm = Read(root, "showDogfightDistanceInKm", b.ShowDogfightDistanceInKm);
+        ApplyCoefficients(root, "difficultyCoefficient", b.DifficultyCoefficients);
+        ApplyCoefficients(root, "difficultyBasedRetaliationDelay", b.DifficultyBasedRetaliationDelay);
+        if (!root.TryGet("difficultyCoefficientOverrides", out var node)) return;
+        if (node is not YamlMappingNode overrides)
+            throw new YamlFormatException("Global rule 'difficultyCoefficientOverrides' must be a mapping.", node!.Span);
+        b.MonthlyRatingThresholds = ReadList(overrides, "monthlyRatingThresholds", b.MonthlyRatingThresholds);
+        b.UfoFiringRateCoefficients = ReadList(overrides, "ufoFiringRateCoefficients", b.UfoFiringRateCoefficients);
+        b.UfoEscapeCountdownCoefficients = ReadList(overrides, "ufoEscapeCountdownCoefficients", b.UfoEscapeCountdownCoefficients);
+        b.RetaliationTriggerOdds = ReadList(overrides, "retaliationTriggerOdds", b.RetaliationTriggerOdds);
+        b.RetaliationBaseRegionOdds = ReadList(overrides, "retaliationBaseRegionOdds", b.RetaliationBaseRegionOdds);
+        b.AliensFacingCraftOdds = ReadList(overrides, "aliensFacingCraftOdds", b.AliensFacingCraftOdds);
+    }
+
+    // YamlNodeReader::tryRead into a std::vector replaces the whole list.
+    private static List<int> ReadList(YamlMappingNode mapping, string key, List<int> current)
+    {
+        if (!mapping.TryGet(key, out var node)) return current;
+        if (node is not YamlSequenceNode sequence)
+            throw new YamlFormatException($"Global rule '{key}' must be a sequence.", node!.Span);
+        return [.. sequence.Items.Select(YamlValueReader.ReadInt32)];
     }
 
     private static YamlMappingNode Overlay(YamlMappingNode current, YamlMappingNode defaults)
@@ -127,7 +167,7 @@ internal static class CampaignStartSettingsComposer
         if (!root.TryGet(key, out var node)) return;
         if (node is not YamlSequenceNode sequence)
             throw new YamlFormatException($"Global rule '{key}' must be a sequence.", node!.Span);
-        // Mod::loadAll indexes exactly five slots; absent tail values retain earlier layers.
+        // Mod::loadFile indexes exactly the destination's slots; absent tail values retain earlier layers.
         for (var index = 0; index < Math.Min(destination.Length, sequence.Items.Count); index++)
             destination[index] = YamlValueReader.ReadInt32(sequence.Items[index]);
     }

@@ -136,18 +136,18 @@ Each slice is followed by an independent audit before the next.
 - **S2** — Evidence and ownership: pinned C++ probes for dogfight step arithmetic (approach and
   standoff distances, weapon reload and fire, hit chance, damage and shields, tractor beams, UFO fire
   and escape countdowns, break-off), outcomes (crash, destruction, splashdown, retaliation odds and
-  region), start rules, landing starting conditions and base-defense rounds. Project the missing
-  craft-weapon, UFO and global rules (`retaliationTriggerOdds`, `retaliationBaseRegionOdds`,
-  `escortsJoinFightAgainstHK`, `chanceToStopRetaliation`, `lessAliensDuringBaseDefense`, missile
-  power and stop chance, ...) with a compiler/cache revision; ownership ledger and option inventory
-  (`dogfightAI`).
+  region). Project the missing craft-weapon, UFO and global rules (`retaliationTriggerOdds`,
+  `retaliationBaseRegionOdds`, `escortsJoinFightAgainstHK`, `chanceToStopRetaliation`,
+  `lessAliensDuringBaseDefense`, missile power and stop chance, ...) with a compiler/cache revision;
+  ownership ledger and option inventory (`dogfightAI`). Start rules, landing starting conditions
+  and base-defense rounds are captured in S4, S6 and S7 with their consumers (moved 2026-10-12).
 - **S3** — Interception state and combat step (D2), headless: fixtures for each mode, weapon type and
   outcome path except world consequences; save/reload drops combat as the reference does.
 - **S4** — Interception start in `time5Seconds`: craft reaching a flying UFO, hunter-killer attacks
   (UFO and craft loops), escorts joining, depth and land waits, end-of-tick wait checks,
   destroyed-UFO cleanup of interceptions and the speed reset; target loss (UFO destroyed, landed, out
   of reach or undetected); replace `InterceptionBoundary` and `HuntCombatReason`; the preflight
-  models the `ufoIsAttacking` skip.
+  models the `ufoIsAttacking` skip. Captures the start-rule oracle.
 - **S5** — Interception outcomes in the world: crash and crash-site timers, scores, `ufoShotDown`,
   retaliation spawn, craft destruction, ammunition, experience, break-off and hunter reset, fuel
   interruption; crashed UFO arrival with followers; transition reloads.
@@ -155,12 +155,13 @@ Each slice is followed by an independent audit before the next.
   alien base (texture and shade, `_UNDERWATER`, custom deployments, starting conditions), Patrol and
   No, `CraftErrorState`; several confirmations in one tick, the held queue and its `init`
   dismissal, reload with an unanswered confirmation; replace `LandingBoundary` and
-  `StartingConditionBoundary`; headless consumer; Rosigma `Early.sav` reaches a request.
+  `StartingConditionBoundary`; headless consumer; Rosigma `Early.sav` reaches a request. Captures the
+  starting-condition oracle.
 - **S7** — Base defense, base loss and Cydonia: arrival at an X-COM base (wave countdown, defenses,
   `ignoreBaseDefenses`, insta-hyper), defense rounds, retaliation stop chance, missile damage and
   nuclear destruction, base-defense request, base destruction effects and `END_LOSE` (D5); the
   final-destination request. The in-tick base attack runs as the tick's last step, after the
-  preflight has validated its inputs.
+  preflight has validated its inputs. Captures the base-defense oracle.
 - **S8** — UI: dogfight windows (up to four, minimize icons, modes, disengage, weapon toggles,
   status texts, distance), landing confirmation, base defense, base destroyed, Cydonia,
   starting-condition errors and a "tactical execution unavailable" launch screen; D3 in the
@@ -213,3 +214,12 @@ half-hour steps, with the recomputation check on in every test
 Flight128 improves by about 28% but stays above the soft one-day target, with the reason recorded
 in [performance targets](performance-targets.md). No gameplay behaviour changes; the branch 5
 boundaries remain.
+
+### S2 — Evidence and ownership (2026-10-12)
+
+Interception rules, globals and options are projected with reference defaults (compiler/cache
+revision 61) and a verbatim dogfight step oracle pins 15 scenarios for S3
+([status](strategic-interception-status.md#s2--evidence-and-ownership-2026-10-12),
+[ownership](phase-6-ownership.md#branch-5-interception-ownership-s2-2026-10-12)). Start-rule,
+starting-condition and base-defense oracles move to S4, S6 and S7. No gameplay behaviour changes
+yet; the branch 5 boundaries remain.

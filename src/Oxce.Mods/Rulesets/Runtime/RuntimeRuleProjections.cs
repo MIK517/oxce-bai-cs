@@ -212,6 +212,13 @@ public sealed record RuntimeCraftRule(
     public int ShieldCapacity { get; init; }
     public int ShieldRechargeInGeoscape { get; init; }
     public int ShieldRechargeAtBase { get; init; }
+    /// <summary>RuleCraft::_missilePower; a positive value makes the craft a missile (RuleCraft::isMissile).</summary>
+    public int MissilePower { get; init; }
+    /// <summary>RuleCraft::_maxAltitude; above -1 the craft is water-only (RuleCraft::isWaterOnly) and cannot
+    /// engage a UFO above this altitude.</summary>
+    public int MaximumAltitude { get; init; } = -1;
+    public bool IsMissile => MissilePower > 0;
+    public bool IsWaterOnly => MaximumAltitude > -1;
     public int SightRange { get; init; }
     public int RadarRange { get; init; }
     public int RadarChance { get; init; }
@@ -486,6 +493,8 @@ public sealed record RuntimeCampaignSettings(
     public int HireByCountryOdds { get; init; }
     public int HireByRegionOdds { get; init; }
     public double PerformanceBonusFactor { get; init; }
+    /// <summary>Global rules read by interception, landing and base defense.</summary>
+    public CampaignInterceptionSettings Interception { get; init; } = CampaignInterceptionSettings.Default;
     /// <summary>Mod::getFixedUserOptions: options that the loaded mods force for every campaign.</summary>
     public IReadOnlyDictionary<string, string> FixedUserOptions { get; init; } =
         new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(new Dictionary<string, string>());

@@ -575,3 +575,26 @@ Recorded in [`strategic-world-hunting-status.md`](strategic-world-hunting-status
 
 Native flight-fuel setter ownership, registered stock refunds and pre-tick safety
 are recorded in [the flight fuel correction](strategic-world-operations-status.md#flight-fuel-setter-correction-2026-10-09).
+
+## Branch 5 interception ownership (S2, 2026-10-12)
+
+Owners are branch 5 slices ([plan](phase-6-interception-plan.md)); evidence is recorded in
+[strategic interception status](strategic-interception-status.md#s2--evidence-and-ownership-2026-10-12).
+
+| Behavior/state | Owner | Reference | Evidence/status |
+|---|---|---|---|
+| Craft-weapon, craft and UFO dogfight rules; interception globals and difficulty overrides | S2 | `RuleCraftWeapon`, `RuleCraft`, `RuleUfo`, `Mod::loadFile` | Projected with reference defaults and layering (compiler/cache revision 61); `StrategicInterceptionRuleProjectionTests` |
+| `dogfightAI`, `oxceRememberDisabledCraftWeapons` | S2 (read in S3) | `Options` | Campaign options with save round-trip and fixed user options; `StrategicInterceptionOptionsTests` |
+| Dogfight step: distance, modes, weapons, projectiles, shields, tractor beams, UFO fire/escape, break-off, crash/destroy/forced landing, retaliation spawn, scores | S3 (state and step), S5 (world consequences) | `DogfightState`, `CraftWeaponProjectile`, `CraftWeapon`, `Craft`, `Ufo` | `strategic-dogfight` verbatim step oracle (15 scenarios) |
+| Pilot experience, diary and daily dogfight cache | S5 | `DogfightState::awardExperienceToPilots`, `GeoscapeState::handleDogfightExperience` | To capture with S5 |
+| Interception start rules, waits and HK exclusivity | S4 | `GeoscapeState::time5Seconds`, `startDogfight`, `handleDogfights` | To capture with S4 |
+| Landing confirmation and starting conditions | S6 | `ConfirmLandingState`, `GeoscapeState::time5Seconds` | To capture with S6 |
+| Base defense, missile damage, base loss | S7 | `BaseDefenseState`, `GeoscapeState::handleBaseDefense`, `Base::damageFacilities` | To capture with S7 |
+| Dogfight presentation (`dogfightSpeed`, sounds, blobs, distance in km, ocean indicator) | S8 | `DogfightState` drawing, `Options::dogfightSpeed` | UI only; no gameplay state |
+
+Option inventory on these paths: gameplay-affecting `dogfightAI` (UFO-faster distance rule),
+`oxceRememberDisabledCraftWeapons` (weapon toggle persists `CraftWeapon` `disabled`),
+`oxceGeoSuppressLandingWithoutEquipment` and `oxceUfoLandingAlert` (already campaign options),
+`craftLaunchAlways` (interception list, already an option); presentation-only `dogfightSpeed`,
+`psiStrengthEval` (stat strings after experience), `oxceInterceptGuiMaintenanceTime`,
+`oxceInterceptTableSize`, `oxceShowETAMode`, `oxceGeoSortCraftByDistanceToTarget`.
