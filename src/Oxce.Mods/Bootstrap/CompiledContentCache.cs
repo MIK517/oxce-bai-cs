@@ -75,7 +75,7 @@ internal sealed record CompiledContentCacheReadResult(
 internal static class CompiledContentCache
 {
     internal const int FormatVersion = 1;
-    internal const int CompilerRevision = 58;
+    internal const int CompilerRevision = 59;
     private const string FileName = "content-v1.json.gz";
     private const int CacheKeyLength = 64;
     private static ReadOnlySpan<byte> HeaderMagic => "OXCECC1\n"u8;
@@ -602,13 +602,7 @@ internal sealed record CachedRuntimeContent(
         snapshot.Content.InitialValues,
         CachedResourceSource.Table(snapshot.Content.Resources.Descriptors, out var resourceDescriptors),
         resourceDescriptors,
-        snapshot.Content.Resources.Indexes.Select(static index => new CachedResourceIndex(
-            index.Kind,
-            index.SetId,
-            index.ModId,
-            index.DeclaredIndex,
-            index.RuntimeIndex,
-            index.Handle.Index)).ToArray(),
+        CachedResourceIndex.Runs(snapshot.Content.Resources.Indexes),
         snapshot.Content.RuntimeRules.Soldiers.Rules.ToDictionary(r => r.Id, r => r.Value.NamePools, StringComparer.Ordinal),
         snapshot.Content.Resources.ModOffsets);
 
@@ -655,21 +649,24 @@ internal sealed record CachedRuntimeContent(
                 source.OwnerId)
             { SubFrame = descriptor.SubFrame };
         }).ToArray();
-        var indexes = ResourceIndexes.Select(index =>
+        var indexes = new List<ResolvedResourceIndex>();
+        foreach (var run in ResourceIndexes)
         {
-            if ((uint)index.DescriptorIndex >= (uint)descriptors.Length ||
-                descriptors[index.DescriptorIndex].Kind != index.Kind)
+            if (run.Count < 1 || (long)run.DescriptorIndex + run.Count > descriptors.Length || run.DescriptorIndex < 0 ||
+                (long)run.DeclaredIndex + run.Count - 1 > int.MaxValue || (long)run.RuntimeIndex + run.Count - 1 > int.MaxValue ||
+                (long)indexes.Count + run.Count > options.ResourceResolution.MaximumDescriptors)
             {
                 throw new InvalidDataException("Compiled resource index refers outside its descriptor table.");
             }
-            return new ResolvedResourceIndex(
-                index.Kind,
-                index.SetId,
-                index.ModId,
-                index.DeclaredIndex,
-                index.RuntimeIndex,
-                descriptors[index.DescriptorIndex].Handle);
-        }).ToArray();
+            for (var offset = 0; offset < run.Count; offset++)
+            {
+                var descriptor = descriptors[run.DescriptorIndex + offset];
+                if (descriptor.Kind != run.Kind)
+                    throw new InvalidDataException("Compiled resource index refers outside its descriptor table.");
+                indexes.Add(new ResolvedResourceIndex(run.Kind, run.SetId, run.ModId,
+                    run.DeclaredIndex + offset, run.RuntimeIndex + offset, descriptor.Handle));
+            }
+        }
         var resources = new ResolvedResourceCatalog(generation, descriptors, indexes, ModOffsets);
         resourceMeasurement.Dispose();
         using var linkingMeasurement = measurements.Measure(InstallationStartupStage.RuntimeRuleLinking);
@@ -804,13 +801,40 @@ internal sealed record CachedResourceDescriptor(
     int? RuntimeIndex,
     ResourceSubFrame? SubFrame = null);
 
+/// <summary>
+/// A run of resource indexes whose declared index, runtime index and descriptor all advance by one,
+/// as the cells of a subdivided sprite sheet do; single indexes are runs of one.
+/// </summary>
 internal sealed record CachedResourceIndex(
     ResourceKind Kind,
     string SetId,
     string ModId,
     int DeclaredIndex,
     int RuntimeIndex,
-    int DescriptorIndex);
+    int DescriptorIndex,
+    int Count = 1)
+{
+    public static IReadOnlyList<CachedResourceIndex> Runs(IReadOnlyList<ResolvedResourceIndex> indexes)
+    {
+        var runs = new List<CachedResourceIndex>();
+        foreach (var index in indexes)
+        {
+            if (runs.Count != 0 && runs[^1] is var last && last.Kind == index.Kind &&
+                string.Equals(last.SetId, index.SetId, StringComparison.Ordinal) &&
+                string.Equals(last.ModId, index.ModId, StringComparison.Ordinal) &&
+                (long)last.DeclaredIndex + last.Count == index.DeclaredIndex &&
+                (long)last.RuntimeIndex + last.Count == index.RuntimeIndex &&
+                (long)last.DescriptorIndex + last.Count == index.Handle.Index)
+            {
+                runs[^1] = last with { Count = last.Count + 1 };
+                continue;
+            }
+            runs.Add(new CachedResourceIndex(index.Kind, index.SetId, index.ModId, index.DeclaredIndex,
+                index.RuntimeIndex, index.Handle.Index));
+        }
+        return runs;
+    }
+}
 
 internal sealed class YamlNodeJsonConverter : JsonConverter<YamlNode>
 {

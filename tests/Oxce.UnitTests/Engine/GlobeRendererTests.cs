@@ -58,6 +58,7 @@ public sealed class GlobeRendererTests
 
     [Theory]
     [InlineData(3)]
+    [InlineData(4)]
     [InlineData(7)]
     public void MarkersCentreOnTheirMiddleCellAtEveryScale(int size)
     {

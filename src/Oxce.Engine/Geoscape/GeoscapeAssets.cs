@@ -17,7 +17,6 @@ namespace Oxce.Engine.Geoscape;
 public sealed class GeoscapeAssets
 {
     public const int TextureSize = 32;
-    public const int MarkerSize = 3;
     public const string TextureSet = "TEXTURE.DAT";
     public const string MarkerSet = "GlobeMarkers";
     private const string PalettePath = "GEODATA/PALETTES.DAT";
