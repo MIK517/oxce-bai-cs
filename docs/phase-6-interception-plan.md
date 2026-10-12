@@ -223,3 +223,13 @@ revision 61) and a verbatim dogfight step oracle pins 15 scenarios for S3
 [ownership](phase-6-ownership.md#branch-5-interception-ownership-s2-2026-10-12)). Start-rule,
 starting-condition and base-defense oracles move to S4, S6 and S7. No gameplay behaviour changes
 yet; the branch 5 boundaries remain.
+
+### S3 — Interception state and combat step (2026-10-12)
+
+The `Dogfight` engine replays all 18 reference scenarios step by step, and open interceptions run in
+the campaign through headless commands with a forecast that refuses outcomes needing later world
+consequences before any change
+([status](strategic-interception-status.md#s3--interception-state-and-combat-step-2026-10-12)). The
+craft's `pilots` list is now owned. Time stops while an interception is open until S4; crash,
+destruction, forced landing, retaliation, experience and break-off consequences remain for S5.
+

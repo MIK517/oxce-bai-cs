@@ -119,6 +119,57 @@ internal sealed class Dogfight
         if (Ufo.ShieldRechargeHandle == 0) Ufo.ShieldRechargeHandle = InterceptionNumber;
     }
 
+    private Dogfight(Dogfight source, IDogfightWorld world, DogfightCraft craft, DogfightUfo ufo)
+    {
+        _world = world;
+        Craft = craft;
+        Ufo = ufo;
+        _weaponFireInterval = (int[])source._weaponFireInterval.Clone();
+        _weaponFireCountdown = (int[])source._weaponFireCountdown.Clone();
+        _weaponEnabled = (bool[])source._weaponEnabled.Clone();
+        _tractorLockedOn = (bool[])source._tractorLockedOn.Clone();
+        _projectiles.AddRange(source._projectiles.Select(static p => p.Clone()));
+        _weaponNum = source._weaponNum;
+        _pilotAccuracyBonus = source._pilotAccuracyBonus;
+        _pilotDodgeBonus = source._pilotDodgeBonus;
+        _pilotApproachSpeedModifier = source._pilotApproachSpeedModifier;
+        _craftAccelerationBonus = source._craftAccelerationBonus;
+        _missileCraft = source._missileCraft;
+        _disableDisengage = source._disableDisengage;
+        _disableStandoff = source._disableStandoff;
+        _disableCautious = source._disableCautious;
+        _disableStandard = source._disableStandard;
+        _disableAggressive = source._disableAggressive;
+        _ufoSize = source._ufoSize;
+        _missileImpact = source._missileImpact;
+        _endUfoHandled = source._endUfoHandled;
+        _endCraftHandled = source._endCraftHandled;
+        _destroyCraft = source._destroyCraft;
+        _animatingHit = source._animatingHit;
+        UfoIsAttacking = source.UfoIsAttacking;
+        InterceptionNumber = source.InterceptionNumber;
+        Mode = source.Mode;
+        CurrentDistance = source.CurrentDistance;
+        TargetDistance = source.TargetDistance;
+        Timeout = source.Timeout;
+        Status = source.Status;
+        Minimized = source.Minimized;
+        WaitForPoly = source.WaitForPoly;
+        WaitForAltitude = source.WaitForAltitude;
+        End = source.End;
+        Ended = source.Ended;
+        UfoBreakingOff = source.UfoBreakingOff;
+        DestroyUfo = source.DestroyUfo;
+        CraftDefenseless = source.CraftDefenseless;
+        SelfDestructPressed = source.SelfDestructPressed;
+        FiredAtLeastOnce = source.FiredAtLeastOnce;
+        ExperienceAwarded = source.ExperienceAwarded;
+        UfoBlobSize = source.UfoBlobSize;
+    }
+
+    /// <summary>An independent copy bound to copies of its craft and UFO, for a forecast of the next step.</summary>
+    public Dogfight Clone(IDogfightWorld world, DogfightCraft craft, DogfightUfo ufo) => new(this, world, craft, ufo);
+
     public DogfightCraft Craft { get; }
     public DogfightUfo Ufo { get; }
     public bool UfoIsAttacking { get; }
@@ -140,6 +191,8 @@ internal sealed class Dogfight
     public bool CraftDefenseless { get; private set; }
     public bool SelfDestructPressed { get; private set; }
     public bool FiredAtLeastOnce { get; private set; }
+    /// <summary>DogfightState::_experienceAwarded, set by the world when it awards pilot experience.</summary>
+    public bool ExperienceAwarded { get; set; }
     public int UfoBlobSize { get; private set; }
     public IReadOnlyList<DogfightProjectile> Projectiles => _projectiles;
 

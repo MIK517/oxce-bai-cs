@@ -76,11 +76,14 @@ public sealed class StrategicInterceptionRuleProjectionTests
         Assert.Equal((20, 30, 40), (ufo.WeaponPower, ufo.WeaponRange, ufo.WeaponReload));
         Assert.Equal((150, 300, 60), (ufo.Score, ufo.BreakOffTime, ufo.SoftlockThreshold));
         Assert.Equal((-1, 25, 40), (ufo.MissilePower, ufo.MissileStopChance, ufo.SplashdownSurvivalChance));
+        // RuleUfo::load renames STR_MEDIUM to STR_MEDIUM_UC, whose getBlobSize fallback is 2; STR_SMALL gives 1.
+        Assert.Equal(2, ufo.BlobSize);
 
         // RuleUfo defaults: softlockThreshold 100, splashdownSurvivalChance 100, the rest zero.
         var scout = rules.Ufos[rules.Ufos.GetRequired("UFO_SCOUT")].Value;
         Assert.Equal((0, 0, 100), (scout.Score, scout.BreakOffTime, scout.SoftlockThreshold));
         Assert.Equal((0, 0, 100), (scout.MissilePower, scout.MissileStopChance, scout.SplashdownSurvivalChance));
+        Assert.Equal(1, scout.BlobSize);
     }
 
     [Fact]

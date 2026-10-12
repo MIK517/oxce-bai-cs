@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 173 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 174 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 94 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 5 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 306 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 307 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 101 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -333,7 +333,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 173 files.
+`src/Oxce.Gameplay` - 174 files.
 
 ### `Oxce.Gameplay`
 
@@ -524,6 +524,16 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CraftLowFuel` (record) [CampaignWorldCrafts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldCrafts.cs)
 - `CraftTargetLost` (record) [CampaignWorldCrafts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldCrafts.cs) - The craft stopped pursuit; the last position can be confirmed as a new waypoint.
 - `UfoStartedHunting` (record) [CampaignWorldHunting.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldHunting.cs)
+- `InterceptionMode` (enum) [CampaignWorldInterceptions.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldInterceptions.cs) - The interception modes (the dogfight window's mode buttons).
+- `AdvanceInterceptions` (record) [CampaignWorldInterceptions.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldInterceptions.cs) - One dogfight timer step for every open interception (GeoscapeState::handleDogfights).
+- `SetInterceptionMode` (record) [CampaignWorldInterceptions.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldInterceptions.cs) - Presses a mode button of an interception window.
+- `MinimizeInterception` (record) [CampaignWorldInterceptions.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldInterceptions.cs) - The window's minimize button; a defenceless craft toggles self-destruct instead.
+- `RestoreInterception` (record) [CampaignWorldInterceptions.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldInterceptions.cs) - Reopens a minimized interception window.
+- `ToggleInterceptionWeapon` (record) [CampaignWorldInterceptions.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldInterceptions.cs) - Toggles one craft weapon of an interception (DogfightState::weaponClick).
+- `InterceptionEnded` (record) [CampaignWorldInterceptions.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldInterceptions.cs)
+- `CampaignInterceptionWeapon` (record) [CampaignWorldInterceptions.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldInterceptions.cs)
+- `CampaignInterception` (record) [CampaignWorldInterceptions.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldInterceptions.cs) - An open interception window as the UI shows it.
+- `ICampaignInterceptionQuery` (interface) [CampaignWorldInterceptions.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldInterceptions.cs)
 - `CampaignWorldTarget` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs) - A globe target as the player sees it; detection state decides visibility.
 - `CampaignWorldCraftWeapon` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs) - A craft weapon slot for the craft screen: weapon rule and rounds.
 - `CampaignWorldBase` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs)
@@ -1111,7 +1121,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 306 files.
+`tests/Oxce.CompatibilityTests` - 307 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1119,7 +1129,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>303 test classes</summary>
+<details><summary>304 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1188,6 +1198,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicInfiltrationTests` ([StrategicInfiltrationTests.cs](../tests/Oxce.CompatibilityTests/StrategicInfiltrationTests.cs))
 - `StrategicInterceptionOptionsTests` ([StrategicInterceptionOptionsTests.cs](../tests/Oxce.CompatibilityTests/StrategicInterceptionOptionsTests.cs))
 - `StrategicInterceptionRuleProjectionTests` ([StrategicInterceptionRuleProjectionTests.cs](../tests/Oxce.CompatibilityTests/StrategicInterceptionRuleProjectionTests.cs))
+- `StrategicInterceptionTests` ([StrategicInterceptionTests.cs](../tests/Oxce.CompatibilityTests/StrategicInterceptionTests.cs))
 - `StrategicLogisticsFixtureTests` ([StrategicLogisticsFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicLogisticsFixtureTests.cs))
 - `StrategicMissionBaseTargetTests` ([StrategicMissionBaseTargetTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionBaseTargetTests.cs))
 - `StrategicMissionCounterForecastTests` ([StrategicMissionCounterForecastTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionCounterForecastTests.cs))

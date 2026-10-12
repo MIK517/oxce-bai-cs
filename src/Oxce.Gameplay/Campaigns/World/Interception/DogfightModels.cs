@@ -45,6 +45,8 @@ internal sealed class DogfightWeapon(DogfightWeaponRule rule, int ammo, bool dis
     public int Ammo { get; private set; } = ammo;
     public bool Disabled { get; set; } = disabled;
 
+    public DogfightWeapon Clone() => new(Rule, Ammo, Disabled);
+
     /// <summary>CraftWeapon::setAmmo: clamps to [0, ammoMax]; false when the request was negative.</summary>
     public bool SetAmmo(int ammo)
     {
@@ -82,6 +84,22 @@ internal sealed class DogfightCraft
 
     /// <summary>Craft::setDamage.</summary>
     public void SetDamage(int damage) => Damage = Math.Max(0, damage);
+
+    public DogfightCraft Clone() => new()
+    {
+        Key = Key,
+        Stats = Stats,
+        Damage = Damage,
+        Shield = Shield,
+        LowFuel = LowFuel,
+        InDogfight = InDogfight,
+        InterceptionOrder = InterceptionOrder,
+        MissilePower = MissilePower,
+        AllowLanding = AllowLanding,
+        WeaponSlots = WeaponSlots,
+        Weapons = [.. Weapons.Select(static w => w?.Clone())],
+        Pilots = Pilots,
+    };
 
     /// <summary>Craft::setShield.</summary>
     public void SetShield(int shield) => Shield = Math.Max(0, Math.Min(Stats.ShieldCapacity, shield));
@@ -121,8 +139,8 @@ internal sealed class DogfightUfo
     public required object Key { get; init; }
     public required DogfightUfoRule Rule { get; init; }
     public required DogfightStats Stats { get; init; }
-    public double Longitude { get; init; }
-    public double Latitude { get; init; }
+    public double Longitude { get; set; }
+    public double Latitude { get; set; }
     public int Damage { get; set; }
     public int Shield { get; set; }
     public int Speed { get; set; }
@@ -135,7 +153,7 @@ internal sealed class DogfightUfo
     public int SoftlockShotCounter { get; set; }
     public bool InterceptionProcessed { get; set; }
     public bool HunterKiller { get; set; }
-    public int HuntBehavior { get; init; }
+    public int HuntBehavior { get; set; }
     public DogfightUfoStatus Status { get; set; }
     public int SecondsRemaining { get; set; }
     public string Altitude { get; set; } = "";
@@ -144,10 +162,12 @@ internal sealed class DogfightUfo
     /// <summary>Ufo::_shotDownByCraftId: the craft whose hit crashed or destroyed the UFO.</summary>
     public object? ShotDownBy { get; set; }
     /// <summary>The craft this hunter-killer is attacking (Ufo::getDestination as a craft), if any.</summary>
-    public object? TargetCraft { get; init; }
+    public object? TargetCraft { get; set; }
 
     /// <summary>Ufo::setShield.</summary>
     public void SetShield(int shield) => Shield = Math.Max(0, Math.Min(Stats.ShieldCapacity, shield));
+
+    public DogfightUfo Clone() => (DogfightUfo)MemberwiseClone();
 
     /// <summary>Ufo::isDestroyed.</summary>
     public bool IsDestroyed => Damage >= Stats.DamageMaximum;
@@ -220,6 +240,8 @@ internal sealed class DogfightProjectile(IDogfightDamageType? damageItem)
     public void SetSpeed(int speed) => _speed = speed;
 
     public void Remove() => ToBeRemoved = true;
+
+    public DogfightProjectile Clone() => (DogfightProjectile)MemberwiseClone();
 
     /// <summary>CraftWeaponProjectile::move.</summary>
     public void Move()
