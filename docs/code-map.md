@@ -11,7 +11,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 | Project | Files | References |
 | --- | ---: | --- |
-| [Oxce.Benchmarks](#oxcebenchmarks) | 15 | Engine, Formats, Mods, Rendering, Resources, Savegames |
+| [Oxce.Benchmarks](#oxcebenchmarks) | 16 | Engine, Formats, Mods, Rendering, Resources, Savegames |
 | [Oxce.App](#oxceapp) | 3 | Engine, Extensions, Formats, Mods, Platform.Sdl, Rendering, Savegames |
 | [Oxce.Core](#oxcecore) | 8 | - |
 | [Oxce.Engine](#oxceengine) | 28 | Core, Gameplay, Rendering, Resources |
@@ -34,13 +34,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Benchmarks
 
-`benchmarks/Oxce.Benchmarks` - 15 files.
+`benchmarks/Oxce.Benchmarks` - 16 files.
 
 ### `Oxce.Benchmarks`
 
 - `CampaignSaveBenchmarks` (class) [CampaignSaveBenchmarks.cs](../benchmarks/Oxce.Benchmarks/CampaignSaveBenchmarks.cs)
 - `CampaignTimeAdvanceBenchmarks` (class) [CampaignTimeAdvanceBenchmarks.cs](../benchmarks/Oxce.Benchmarks/CampaignTimeAdvanceBenchmarks.cs) - Geoscape time advance on public strategic fixtures.
 - `FrozenDictionaryBenchmarks` (class) [FrozenDictionaryBenchmarks.cs](../benchmarks/Oxce.Benchmarks/FrozenDictionaryBenchmarks.cs)
+- `GeoscapeFrameBenchmarks` (class) [GeoscapeFrameBenchmarks.cs](../benchmarks/Oxce.Benchmarks/GeoscapeFrameBenchmarks.cs) - Geoscape frame construction (performance target: interactive frame p95 &lt;= 8 ms).
 - `MixerBenchmarks` (class) [MixerBenchmarks.cs](../benchmarks/Oxce.Benchmarks/MixerBenchmarks.cs)
 - `MixerContentionBenchmarks` (class) [MixerBenchmarks.cs](../benchmarks/Oxce.Benchmarks/MixerBenchmarks.cs)
 - `Phase3ContentBenchmarks` (class) [Phase3ContentBenchmarks.cs](../benchmarks/Oxce.Benchmarks/Phase3ContentBenchmarks.cs)

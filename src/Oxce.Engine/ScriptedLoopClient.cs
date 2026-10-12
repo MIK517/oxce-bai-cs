@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Oxce.Engine.Input;
 using Oxce.Rendering;
 
@@ -15,6 +16,7 @@ public sealed class ScriptedLoopClient : IIndexedLoopClient
     private readonly IIndexedLoopClient _inner;
     private readonly ScriptedInput[] _script;
     private readonly TimeSpan _duration;
+    private readonly List<TimeSpan> _tickDurations = [];
     private int _next;
 
     public ScriptedLoopClient(IIndexedLoopClient inner, IEnumerable<ScriptedInput> script, TimeSpan duration)
@@ -38,6 +40,20 @@ public sealed class ScriptedLoopClient : IIndexedLoopClient
     /// <summary>Scripted inputs replayed so far.</summary>
     public int Replayed => _next;
 
+    /// <summary>Wall time of each inner tick (time advance and frame construction), in order.</summary>
+    public IReadOnlyList<TimeSpan> TickDurations => _tickDurations;
+
+    /// <summary>The nearest-rank percentile of <see cref="TickDurations"/>, or zero before the first tick.</summary>
+    public TimeSpan TickDurationPercentile(double percentile)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(percentile, 0);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(percentile, 100);
+        if (_tickDurations.Count == 0) return TimeSpan.Zero;
+        var sorted = _tickDurations.Order().ToArray();
+        var rank = Math.Max(1, (int)Math.Ceiling(percentile / 100 * sorted.Length));
+        return sorted[rank - 1];
+    }
+
     public void HandleInput(in GameInputEvent input) => _inner.HandleInput(input);
 
     public void Tick(TimeSpan fixedInterval)
@@ -45,6 +61,8 @@ public sealed class ScriptedLoopClient : IIndexedLoopClient
         Elapsed += fixedInterval;
         while (_next < _script.Length && _script[_next].At <= Elapsed)
             _inner.HandleInput(_script[_next++].Input);
+        var started = Stopwatch.GetTimestamp();
         _inner.Tick(fixedInterval);
+        _tickDurations.Add(Stopwatch.GetElapsedTime(started));
     }
 }

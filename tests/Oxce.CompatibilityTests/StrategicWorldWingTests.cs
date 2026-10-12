@@ -35,6 +35,24 @@ public sealed class StrategicWorldWingTests
     }
 
     [Fact]
+    public void AnAirborneCraftIsANamedRestrictionForSaleAndTransfer()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var (campaign, owner) = Ready(content);
+        Assert.All(campaign.Execute(new DispatchCraftToWaypoint(owner, "SHIP", 1, 0.3, 0.1)).Events,
+            evt => Assert.IsNotType<CampaignActionBlocked>(evt));
+
+        // The reference lists an airborne craft only with canTransferCraftsWhileAirborne, which the port
+        // does not support (D3); the row stays visible with the reason instead of disappearing.
+        var quote = Assert.IsType<LogisticsQuoted>(Assert.Single(
+            campaign.Execute(new PrepareLogisticsQuote(owner, LogisticsOperation.Sell)).Events)).Quote;
+        var row = Assert.Single(quote.Rows, row => row.Kind == CampaignTransferKind.Craft && row.RuleId == "SHIP");
+        Assert.Equal(0, row.MaximumQuantity);
+        Assert.Equal("Airborne craft cannot be sold or transferred (canTransferCraftsWhileAirborne is not supported).",
+            row.UnavailableReason);
+    }
+
+    [Fact]
     public void ALeaderTargetingItselfPatrolsAndItsWingFollows()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");

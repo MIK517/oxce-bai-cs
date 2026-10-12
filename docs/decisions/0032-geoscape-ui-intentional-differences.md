@@ -1,0 +1,67 @@
+# 0032: Geoscape UI intentional differences
+
+Status: accepted for Phase 6 branch 4d.
+
+## Problem
+
+Branch 4d puts the reference geoscape (`Globe`, `GeoscapeState` and the craft, target,
+interception, destination, notification and base-placement states) on top of headless world
+commands. Some reference behaviour depends on state mutated inside a UI handler, on windows the
+port does not have yet, or on work that does not fit in one host frame. Each such place needs one
+recorded choice so later branches do not rediscover it as a defect. The slice evidence is in
+[strategic world UI status](../strategic-world-ui-status.md); this record lists the decisions.
+
+## Decision
+
+The geoscape follows the reference by default. These differences are intentional:
+
+**Commands go through headless validation.** A UI action never mutates state the command did not
+validate. Consequences:
+- Refusals carry a stable code and the reference `STR_` key where one exists (D1); port-only guards
+  keep English text. Logistics, research and time refusals stay unclassified until their screens
+  need codes.
+- A wing is one atomic command (D2): every check of every craft runs before any craft changes.
+  With follow-leader off a follower cannot be the wing's target (the reference would let it chase
+  itself).
+- "Go to last known UFO position" runs `DispatchCraftToWaypoint`, so it applies that command's armour,
+  cargo and pilot checks and cancels auto-patrol; the reference only sets the destination.
+- Selling or transferring an airborne craft is a named restriction (D3): the reference lists one only
+  with `canTransferCraftsWhileAirborne`, which is not supported; the row stays visible with the reason.
+
+**Time advance is chunked under a frame budget (D5).** Each `geoClockSpeed` step's ticks run as
+`AdvanceCampaignTime` chunks carrying the selected speed, within 12 ms per host frame. Gameplay is
+unchanged; one-day speed runs slower in wall time than the reference's one day per 80 ms when the
+world is busy (see [performance baselines](../performance-baselines.md)). A tick fixes its speed
+context in preflight, so research completion's speed reset applies from the next tick rather than
+inside `time1Day`.
+
+**Selection uses the published world.** Only detected mission sites are globe targets (the reference
+lets an undetected site be clicked, which reveals it), and a destroyed UFO is not selectable during
+the instant before its removal. Grounded craft are not targets, as in `Globe::getTargets`.
+
+**Content projection.** Craft and UFO markers above the nine shared frames are offset into the
+declaring mod's range. Deployment `markerIcon` keeps its declared number because the typed rule has
+no declaring mod; a non-master mod's custom site or alien-base marker above 8 is a named restriction.
+
+**One 640×400 frame with popups (D4).** The globe is the reference layout at 2×. Screens are popups
+over the globe instead of reference windows: six interception rows per page instead of
+`oxceInterceptTableSize`, at most 16 entries in the several-targets choice, UFO "Ignore" as its own
+button instead of Ctrl+Cancel, no title strip while a destination is chosen and no "Redirect craft"
+caption. Allocate manufacture opens the base screens rather than `ManufactureState`.
+
+**Base placement.** The access lift is placed at the grid centre instead of a clicked position;
+`baseNamesFirst/Middle/Last`, `customInitialBase` and a lift for the starting base are not offered;
+names are limited to 40 characters and a blank name is refused; costs use a comma thousands
+separator; the hover preview omits zero and repeated radar ranges (the same pixels).
+
+**Not shown yet** (Phase 8 polish or later branches): craft altitude, maintenance times and distance
+sorting in the interception list, intercept row right-click, the dogfight "tailing" status,
+research "View reports" (no Ufopaedia), soldier names in training completion, `STR_AIRBORNE` for
+underwater UFOs over water, alert sounds and the random-production summary.
+
+## Consequences
+
+Each listed difference has a test or a named refusal, so a change in either direction is visible.
+Branch 5 owns interception combat and landing (`ConfirmLandingState`); until then the clock halts
+with the boundary reason. Phase 8 owns visual parity of windows, fonts and sounds. Removing an item
+from this record requires the reference behaviour and its fixture.

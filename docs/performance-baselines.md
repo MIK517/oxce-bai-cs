@@ -19,6 +19,7 @@ not required.
 | Audio | Mix 1,024 stereo frames from sixteen looping 48 kHz stereo voices, both uncontended and while a control thread continuously changes bus gain. |
 | Content lifetime | Compare normal runtime publication with explicit audit-artifact retention for the public script-content fixture. |
 | Script VM | Compare the allocating result adapter with prepared scalar, host-call, and three-program event frames. |
+| Geoscape frames | Render a busy synthetic globe (48×24 land quads, 64 markers, 16 radars, 12 paths, 48 labels at dusk) and redraw the geoscape client with the interception list open over 32 detected UFOs, at the nearest and farthest zoom. |
 
 Setup constructs files, layers, YAML, surfaces, palettes, clips, and output buffers
 outside the measured operations. Batched benchmarks declare their operations-per-invoke
@@ -583,6 +584,36 @@ baselines.
 With `IterationSetup`, BenchmarkDotNet runs one invocation per iteration. Use at least ten
 warmup iterations; with three, the hunter-killer escort scenario is still tiering up and
 reports up to three times its steady-state cost.
+
+### Geoscape frame and one-day speed result (2026-10-12)
+
+`GeoscapeFrameBenchmarks` measures frame construction for the branch 4d geoscape against the
+[interactive frame target](performance-targets.md) (p95 <= 8 ms). `RenderBusyGlobe` renders a
+synthetic globe with every layer populated; `RedrawGeoscapeWithPopup` is one client tick of the
+public `strategic-world` campaign at five-second speed with 32 detected UFOs and the interception
+list open (time advance plus globe, sidebar and popup). Measured in the Linux VM (Ryzen 9 7940HS,
+2 logical cores, .NET SDK 10.0.401, runtime 10.0.12) with the in-process toolchain, 8 warmup and
+20 measured iterations:
+
+| Workload | Zoom | Mean | P95 | Allocated |
+|---|---:|---:|---:|---:|
+| Busy globe | 0 | 2.43 ms | 2.45 ms | 0 B |
+| Busy globe | 5 | 4.04 ms | 4.11 ms | 55 B |
+| Client redraw with popup | 0 | 1.80 ms | 1.96 ms | 662 B |
+| Client redraw with popup | 5 | 3.57 ms | 3.63 ms | 675 B |
+
+The globe renderer does not allocate per frame (the 55 B is below one object per operation and
+amortized). The client's remaining allocation is the clock, date, funds and wrapped popup text
+formatted each frame. The same run of `CampaignTimeAdvanceBenchmarks` at commit `94b634b4` matched
+the 2026-10-06 results within noise (32 UFOs 18.0 us/tick, 128 UFOs 59.1 us/tick at one-day
+speed). One-day speed owes 17,280 ticks per 80 ms step; spread over frames within the 12 ms budget
+(ADR 0032), a world with 32 flying UFOs advances about one game day per 0.3 s of tick work, and 128
+UFOs about one per second, instead of the reference's one per 80 ms frame.
+
+The Windows SDL smoke (`--campaign-sdl-smoke`, owned installation, Direct3D 11) reported an average
+presentation of 7.2 ms over 151 frames. That figure includes `SDL_RenderPresent`, which can wait for
+the compositor; the smoke now also prints conversion and upload time separately (against the 4 ms
+presentation target) and the p50/p95/maximum client tick.
 
 ### Windows x64 publish-size baseline
 
