@@ -134,6 +134,9 @@ internal static class CampaignStartSettingsComposer
         b.ShowDogfightDistanceInKm = Read(root, "showDogfightDistanceInKm", b.ShowDogfightDistanceInKm);
         ApplyCoefficients(root, "difficultyCoefficient", b.DifficultyCoefficients);
         ApplyCoefficients(root, "difficultyBasedRetaliationDelay", b.DifficultyBasedRetaliationDelay);
+        b.DamageRange = Read(root, "damageRange", b.DamageRange);
+        b.ExplosiveDamageRange = Read(root, "explosiveDamageRange", b.ExplosiveDamageRange);
+        ApplyCoefficients(root, "fireDamageRange", b.FireDamageRange);
         if (!root.TryGet("difficultyCoefficientOverrides", out var node)) return;
         if (node is not YamlMappingNode overrides)
             throw new YamlFormatException("Global rule 'difficultyCoefficientOverrides' must be a mapping.", node!.Span);

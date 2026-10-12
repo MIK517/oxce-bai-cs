@@ -103,6 +103,8 @@ public sealed class StrategicInterceptionRuleProjectionTests
         Assert.Equal([0, 1, 2, 3, 4], settings.DifficultyCoefficients);
         Assert.Equal(4, settings.DifficultyCoefficient(7));
         Assert.Equal([0, 0, 0, 0, 0], settings.DifficultyBasedRetaliationDelay);
+        Assert.Equal((100, 50), (settings.DamageRange, settings.ExplosiveDamageRange));
+        Assert.Equal([5, 10], settings.FireDamageRange);
     }
 
     [Fact]
@@ -126,6 +128,9 @@ public sealed class StrategicInterceptionRuleProjectionTests
             showDogfightDistanceInKm: true
             difficultyCoefficient: [1, 2, 3, 4, 5]
             difficultyBasedRetaliationDelay: [6, 5, 4, 3, 2]
+            damageRange: 80
+            explosiveDamageRange: 30
+            fireDamageRange: [7, 12]
             difficultyCoefficientOverrides:
               ufoFiringRateCoefficients: [150, 125, 100, 75, 50]
               ufoEscapeCountdownCoefficients: [80, 90]
@@ -137,6 +142,7 @@ public sealed class StrategicInterceptionRuleProjectionTests
             ufoTractorBeamSizeModifiers: [9, 8]
             pilotBraveryThresholds: [70]
             difficultyBasedRetaliationDelay: [0, 0]
+            fireDamageRange: [1]
             difficultyCoefficientOverrides:
               ufoEscapeCountdownCoefficients: [120]
               retaliationTriggerOdds: []
@@ -161,5 +167,7 @@ public sealed class StrategicInterceptionRuleProjectionTests
         Assert.Equal([100, 200], settings.MonthlyRatingThresholds);
         Assert.Equal([1, 2, 3, 4, 5], settings.DifficultyCoefficients);
         Assert.Equal([0, 0, 4, 3, 2], settings.DifficultyBasedRetaliationDelay);
+        Assert.Equal((80, 30), (settings.DamageRange, settings.ExplosiveDamageRange));
+        Assert.Equal([1, 12], settings.FireDamageRange);
     }
 }

@@ -45,6 +45,9 @@ $template = $template.Replace('// CRAFT_METHODS', (@(
     'void Craft::setDamage(int damage)', 'void Craft::setShield(int shield)', 'int Craft::getDamagePercentage() const',
     'bool Craft::isDestroyed() const', 'int Craft::getDamageMax() const', 'int Craft::getShieldCapacity() const'
 ) | ForEach-Object { Read-Method $craft $_ }) -join "`n")
+$damageType = Read-Source 'src/Mod/RuleDamageType.cpp'
+$template = $template.Replace('// DAMAGE_TYPE_METHODS', (@('int RuleDamageType::getRandomDamage(int power) const',
+    'int RuleDamageType::getRandomDamage(int power, FuncRef<int(int, int)> randFunc) const') | ForEach-Object { Read-Method $damageType $_ }) -join "`n")
 $template = $template.Replace('// CRAFT_WEAPON_METHODS', (@('bool CraftWeapon::setAmmo(int ammo)', 'CraftWeaponProjectile* CraftWeapon::fire() const') |
     ForEach-Object { Read-Method $craftWeapon $_ }) -join "`n")
 $template = $template.Replace('// UFO_METHODS', (@('void Ufo::setDamage(int damage, const Mod *mod)', 'void Ufo::setShield(int shield)',
@@ -72,7 +75,7 @@ $template = $template.Replace('// DOGFIGHT_METHODS', (@(
     'void DogfightState::btnCautiousPress(Action *)', 'void DogfightState::btnStandardPress(Action *)',
     'void DogfightState::btnAggressivePress(Action *)', 'void DogfightState::btnDisengagePress(Action *)'
 ) | ForEach-Object { Read-Method $dogfight $_ }) -join "`n")
-if ($template -match '// [A-Z_]+\r?\n' -and $template -match '// (PROJECTILE|CRAFT|UFO|CONSTRUCTOR|DOGFIGHT)_[A-Z_]+') { throw 'Unreplaced probe marker.' }
+if ($template -match '// [A-Z_]+\r?\n' -and $template -match '// (PROJECTILE|CRAFT|UFO|CONSTRUCTOR|DOGFIGHT|DAMAGE)_[A-Z_]+') { throw 'Unreplaced probe marker.' }
 
 $work = Join-Path $repository 'artifacts/reference-strategic-dogfight'
 [IO.Directory]::CreateDirectory($work) | Out-Null
