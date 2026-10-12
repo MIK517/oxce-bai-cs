@@ -589,31 +589,39 @@ reports up to three times its steady-state cost.
 
 `GeoscapeFrameBenchmarks` measures frame construction for the branch 4d geoscape against the
 [interactive frame target](performance-targets.md) (p95 <= 8 ms). `RenderBusyGlobe` renders a
-synthetic globe with every layer populated; `RedrawGeoscapeWithPopup` is one client tick of the
-public `strategic-world` campaign at five-second speed with 32 detected UFOs and the interception
-list open (time advance plus globe, sidebar and popup). Measured in the Linux VM (Ryzen 9 7940HS,
-2 logical cores, .NET SDK 10.0.401, runtime 10.0.12) with the in-process toolchain, 8 warmup and
-20 measured iterations:
+synthetic globe with every layer populated from a still view, where land polygons stay projected
+between frames; `RenderRotatingGlobe` takes one 10 ms rotation step before each frame, so every
+polygon is projected again. `RedrawGeoscapeWithPopup` is one 100 ms client tick of the public
+`strategic-world` campaign with 32 detected UFOs and the interception list open: the popup stops
+time, so each tick is a blink redraw of the globe, sidebar and popup without time advance.
+Measured in the Linux VM (Ryzen 9 7940HS, 2 logical cores, .NET SDK 10.0.401, runtime 10.0.12)
+with the in-process toolchain, 8 warmup and 20 measured iterations:
 
 | Workload | Zoom | Mean | P95 | Allocated |
 |---|---:|---:|---:|---:|
-| Busy globe | 0 | 2.43 ms | 2.45 ms | 0 B |
-| Busy globe | 5 | 4.04 ms | 4.11 ms | 55 B |
-| Client redraw with popup | 0 | 1.80 ms | 1.96 ms | 662 B |
-| Client redraw with popup | 5 | 3.57 ms | 3.63 ms | 675 B |
+| Busy globe, still | 0 | 2.40 ms | 2.42 ms | 0 B |
+| Busy globe, still | 5 | 3.99 ms | 4.03 ms | 55 B |
+| Busy globe, rotating | 0 | 2.62 ms | 2.63 ms | 27 B |
+| Busy globe, rotating | 5 | 4.05 ms | 4.33 ms | 55 B |
+| Client redraw with popup | 0 | 1.72 ms | 1.74 ms | 662 B |
+| Client redraw with popup | 5 | 3.54 ms | 3.57 ms | 675 B |
 
-The globe renderer does not allocate per frame (the 55 B is below one object per operation and
-amortized). The client's remaining allocation is the clock, date, funds and wrapped popup text
-formatted each frame. The same run of `CampaignTimeAdvanceBenchmarks` at commit `94b634b4` matched
-the 2026-10-06 results within noise (32 UFOs 18.0 us/tick, 128 UFOs 59.1 us/tick at one-day
-speed). One-day speed owes 17,280 ticks per 80 ms step; spread over frames within the 12 ms budget
-(ADR 0032), a world with 32 flying UFOs advances about one game day per 0.3 s of tick work, and 128
-UFOs about one per second, instead of the reference's one per 80 ms frame.
+The globe renderer does not allocate per frame (the few bytes are below one object per operation
+and amortized). The client's remaining allocation is the clock, date, funds and wrapped popup text
+formatted each frame.
+
+Time advance is measured separately. The same run of `CampaignTimeAdvanceBenchmarks` at commit
+`94b634b4` matched the 2026-10-06 results within noise (one-day speed: 32 UFOs 18.0 us/tick,
+128 UFOs 59.1 us/tick). One-day speed owes 17,280 ticks per 80 ms step; spread over frames within
+the 12 ms budget ([ADR 0032](decisions/0032-geoscape-ui-intentional-differences.md)), a world with
+32 flying UFOs needs about 0.31 s of tick work per game day and 128 UFOs about 1.0 s, instead of
+the reference's one day per 80 ms frame.
 
 The Windows SDL smoke (`--campaign-sdl-smoke`, owned installation, Direct3D 11) reported an average
 presentation of 7.2 ms over 151 frames. That figure includes `SDL_RenderPresent`, which can wait for
-the compositor; the smoke now also prints conversion and upload time separately (against the 4 ms
-presentation target) and the p50/p95/maximum client tick.
+the compositor, so it is not comparable with the 4 ms presentation target. The smoke now also prints
+the average and maximum conversion and upload time without the present call (the host keeps no
+per-frame samples, so no p95) and the client tick p50/p95/maximum.
 
 ### Windows x64 publish-size baseline
 

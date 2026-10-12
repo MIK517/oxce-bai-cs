@@ -23,6 +23,7 @@ namespace Oxce.Benchmarks;
 public class GeoscapeFrameBenchmarks
 {
     private GlobeRenderer _renderer = null!;
+    private GlobeView _view = null!;
     private GlobeScene _scene = null!;
     private GeoscapeClient _client = null!;
     private static readonly CampaignTime Dusk = new(1, 1, 3, 1999, 18, 30, 0);
@@ -38,6 +39,7 @@ public class GeoscapeFrameBenchmarks
         var view = new GlobeView(GeoscapeClient.GlobeWidth, GeoscapeClient.Height, GeoscapeClient.PixelScale);
         view.Center(0.4, 0.3);
         view.SetZoom(Zoom);
+        _view = view;
         _renderer = new GlobeRenderer(view, assets, Globe(), IndexedInterfaceFont.Create());
         var random = new Random(7);
         _scene = GlobeScene.FromParts(
@@ -72,9 +74,18 @@ public class GeoscapeFrameBenchmarks
         if (_client.Popups.Count == 0) throw new InvalidOperationException("The Intercept list did not open.");
     }
 
-    /// <summary>The globe layers alone: land, shadow, radars, flights, detail and markers.</summary>
+    /// <summary>The globe layers alone: land, shadow, radars, flights, detail and markers, from a still view
+    /// (land polygons stay projected between frames).</summary>
     [Benchmark]
     public void RenderBusyGlobe() => _renderer.Render(_scene, Dusk, new GlobeRenderOptions(), blinkOn: true);
+
+    /// <summary>The same globe while it rotates: one 10 ms rotation step per frame re-projects every polygon.</summary>
+    [Benchmark]
+    public void RenderRotatingGlobe()
+    {
+        _view.Rotate(1, 0);
+        _renderer.Render(_scene, Dusk, new GlobeRenderOptions(), blinkOn: true);
+    }
 
     /// <summary>
     /// A whole geoscape frame: with a popup open time stands still, and each 100 ms blink redraws

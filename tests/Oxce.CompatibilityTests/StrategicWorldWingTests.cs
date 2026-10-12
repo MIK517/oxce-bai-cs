@@ -35,21 +35,27 @@ public sealed class StrategicWorldWingTests
     }
 
     [Fact]
-    public void AnAirborneCraftIsANamedRestrictionForSaleAndTransfer()
+    public void AnAirborneCraftCannotBeSoldAndItsTransferIsANamedRestriction()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var (campaign, owner) = Ready(content);
+        var (campaign, owner) = Ready(content, secondBase: true);
         Assert.All(campaign.Execute(new DispatchCraftToWaypoint(owner, "SHIP", 1, 0.3, 0.1)).Events,
             evt => Assert.IsNotType<CampaignActionBlocked>(evt));
 
-        // The reference lists an airborne craft only with canTransferCraftsWhileAirborne, which the port
-        // does not support (D3); the row stays visible with the reason instead of disappearing.
-        var quote = Assert.IsType<LogisticsQuoted>(Assert.Single(
-            campaign.Execute(new PrepareLogisticsQuote(owner, LogisticsOperation.Sell)).Events)).Quote;
-        var row = Assert.Single(quote.Rows, row => row.Kind == CampaignTransferKind.Craft && row.RuleId == "SHIP");
-        Assert.Equal(0, row.MaximumQuantity);
-        Assert.Equal("Airborne craft cannot be sold or transferred (canTransferCraftsWhileAirborne is not supported).",
-            row.UnavailableReason);
+        // SellState lists only grounded craft. TransferItemsState lists airborne craft only with
+        // canTransferCraftsWhileAirborne, which the port does not support; the rows stay visible with a reason.
+        Assert.Equal("Airborne craft cannot be sold.", Row(LogisticsOperation.Sell, null).UnavailableReason);
+        Assert.Equal("Airborne craft cannot be transferred (canTransferCraftsWhileAirborne is not supported).",
+            Row(LogisticsOperation.Transfer, 2).UnavailableReason);
+
+        LogisticsRow Row(LogisticsOperation operation, int? destination)
+        {
+            var quote = Assert.IsType<LogisticsQuoted>(Assert.Single(
+                campaign.Execute(new PrepareLogisticsQuote(owner, operation, destination)).Events)).Quote;
+            var row = Assert.Single(quote.Rows, row => row.Kind == CampaignTransferKind.Craft && row.RuleId == "SHIP");
+            Assert.Equal(0, row.MaximumQuantity);
+            return row;
+        }
     }
 
     [Fact]
@@ -164,7 +170,7 @@ public sealed class StrategicWorldWingTests
     }
 
     private static (CampaignState Campaign, int Owner) Ready(Oxce.Mods.Rulesets.Content.RuntimeContent content,
-        string interceptorStatus = "STR_READY", int? nextWaypointId = null, bool autoPatrolling = false)
+        string interceptorStatus = "STR_READY", int? nextWaypointId = null, bool autoPatrolling = false, bool secondBase = false)
     {
         var snapshot = CreateSnapshot(content, "Wing")
             .WithCraft("SHIP", craft => craft with
@@ -183,6 +189,14 @@ public sealed class StrategicWorldWingTests
                 Logistics = craft.Logistics! with { Status = interceptorStatus, Fuel = 10, IsAutoPatrolling = autoPatrolling },
             });
         if (nextWaypointId is { } id) snapshot = snapshot.WithNextId(WorldTargetReference.WaypointType, id);
+        if (secondBase)
+        {
+            var first = snapshot.Bases[0];
+            snapshot = snapshot with
+            {
+                Bases = [first, first with { Id = 2, Name = "Beta", Crafts = [], Soldiers = [], Transfers = [] }],
+            };
+        }
         return (CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(31)), snapshot.Bases[0].Id);
     }
 }

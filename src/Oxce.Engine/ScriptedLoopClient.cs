@@ -50,7 +50,7 @@ public sealed class ScriptedLoopClient : IIndexedLoopClient
         ArgumentOutOfRangeException.ThrowIfGreaterThan(percentile, 100);
         if (_tickDurations.Count == 0) return TimeSpan.Zero;
         var sorted = _tickDurations.Order().ToArray();
-        var rank = Math.Max(1, (int)Math.Ceiling(percentile / 100 * sorted.Length));
+        var rank = Math.Max(1, (int)Math.Ceiling(percentile * sorted.Length / 100));
         return sorted[rank - 1];
     }
 
