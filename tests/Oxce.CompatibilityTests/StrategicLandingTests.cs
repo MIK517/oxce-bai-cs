@@ -13,9 +13,9 @@ namespace Oxce.CompatibilityTests;
 /// </summary>
 public sealed class StrategicLandingTests
 {
-    private static (RuntimeContent Content, CampaignState Campaign) Create(bool seasons = false)
+    private static (RuntimeContent Content, CampaignState Campaign) Create(bool seasons = false, string? rules = null)
     {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], rules);
         var snapshot = CreateLifecycleSnapshot(content);
         var ufo = snapshot.World.Ufos[0] with { SecondsRemaining = 3600, Detected = true };
         var owner = snapshot.Bases[0];
@@ -116,5 +116,54 @@ public sealed class StrategicLandingTests
         AdvanceUnblocked(campaign, 1);
         Assert.Empty(Landings(campaign).QueryLandingConfirmations());
         Assert.Equal(WorldTargetKind.Base, Ship(campaign).Destination!.Kind);
+    }
+
+    // The UFO deployment names a starting condition; a texture condition applies only without one.
+    private const string Conditions = """
+        alienDeployments:
+          - type: UFO_SCOUT
+            startingCondition: SC_DEPLOYMENT
+        startingConditions:
+          - type: SC_DEPLOYMENT
+            requiredItems: {SUPPLY: 1000}
+          - type: SC_TEXTURE
+            forbiddenCraft: [SHIP]
+        globe:
+          textures:
+            - id: 10
+              startingCondition: SC_TEXTURE
+
+        """;
+
+    [Fact]
+    public void YesChecksTheDeploymentsStartingConditionAndAFailureSendsTheCraftHome()
+    {
+        var (_, campaign) = Create(rules: Conditions);
+        var requested = AssertLandingRequested(campaign);
+        var result = campaign.Execute(new AnswerLanding(requested.Confirmation, LandingAnswer.Yes));
+        Assert.Equal(new LandingRefused(requested.BaseId, "SHIP", 1, "STR_STARTING_CONDITION_ITEM"), Assert.Single(result.Events));
+        Assert.Equal(WorldTargetKind.Base, Ship(campaign).Destination!.Kind);
+        Assert.Empty(Landings(campaign).QueryLandingConfirmations());
+    }
+
+    [Fact]
+    public void WithoutADeploymentConditionTheMissionTexturesConditionApplies()
+    {
+        var (_, campaign) = Create(rules: Conditions.Replace("    startingCondition: SC_DEPLOYMENT\n", "", StringComparison.Ordinal));
+        var requested = AssertLandingRequested(campaign);
+        var result = campaign.Execute(new AnswerLanding(requested.Confirmation, LandingAnswer.Yes));
+        Assert.Equal("STR_STARTING_CONDITION_CRAFT", Assert.IsType<LandingRefused>(Assert.Single(result.Events)).TextKey);
+    }
+
+    [Fact]
+    public void APassingConditionStillWaitsForTheDeploymentRequest()
+    {
+        var (_, campaign) = Create();
+        var requested = AssertLandingRequested(campaign);
+        var before = campaign.Capture();
+        Assert.Equal(WorldCommandReasons.LandingBoundary, Assert.IsType<CampaignActionBlocked>(Assert.Single(
+            campaign.Execute(new AnswerLanding(requested.Confirmation, LandingAnswer.Yes)).Events)).Reason);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+        Assert.Single(Landings(campaign).QueryLandingConfirmations());
     }
 }

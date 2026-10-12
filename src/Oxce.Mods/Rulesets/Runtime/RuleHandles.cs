@@ -214,6 +214,7 @@ public readonly struct UfoTrajectoryRuleFamily;
 public readonly struct AlienMissionRuleFamily;
 public readonly struct AlienDeploymentRuleFamily;
 public readonly struct AlienRaceRuleFamily;
+public readonly struct StartingConditionRuleFamily;
 public readonly struct MissionScriptRuleFamily;
 public readonly struct AdhocScriptRuleFamily;
 public readonly struct ArcScriptRuleFamily;

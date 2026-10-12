@@ -20,8 +20,6 @@ internal sealed partial class CampaignWorld
             return Blocked(WorldCommandReasons.TargetSelf);
         if (target.Kind == WorldTargetKind.Base && target.Id != owner.Id)
             return Blocked(WorldCommandReasons.ForeignBase);
-        if (TargetDeployment(resolved) is { StartingCondition.Length: > 0 })
-            return Blocked(WorldCommandReasons.StartingConditionBoundary);
         var state = craft.Logistics!;
         var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
         CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons, campaign.Content.RuntimeRules, out var speed);
@@ -87,21 +85,6 @@ internal sealed partial class CampaignWorld
         WorldTargetKind.Waypoint => true, // Resolve already checked existence.
         _ => false,
     };
-
-    private RuntimeAlienDeploymentRule? TargetDeployment(WorldTargetReference reference)
-    {
-        var id = reference.Kind switch
-        {
-            WorldTargetKind.Ufo => TargetUfo(reference)?.RuleId,
-            WorldTargetKind.MissionSite => _sites.Find(site => site.Id == reference.Id &&
-                MarkerName(site.DeploymentId) == reference.TypeId)?.DeploymentId,
-            WorldTargetKind.AlienBase => _alienBases.Find(alienBase => alienBase.Id == reference.Id &&
-                MarkerName(alienBase.DeploymentId) == reference.TypeId)?.DeploymentId,
-            _ => null,
-        };
-        return id is not null && campaign.Content.RuntimeRules.AlienDeployments.TryGet(id, out var rule)
-            ? campaign.Content.RuntimeRules.AlienDeployments[rule].Value : null;
-    }
 
     private bool CanLand(CampaignState.BaseState owner, CampaignState.CraftState craft, CraftLogisticsState state)
     {

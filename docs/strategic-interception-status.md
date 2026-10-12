@@ -332,3 +332,20 @@ sent home from a crash site.
 Validation on the Windows workstation: formatting, code map and Release build clean; root
 `dotnet test` ran 3,500 tests, all green (including the private horizon test).
 
+### Starting conditions on Yes (2026-10-13)
+
+Starting conditions are a runtime rule family (`RuntimeStartingCondition`: allowed and forbidden
+craft and soldier types, required items, `destroyRequiredItems`, `requireCommanderOnboard`), globe
+textures project their `startingCondition`, and alien races their `baseCustomDeploy` and
+`baseCustomMission` (compiler/cache revision 65). Yes runs `ConfirmLandingState::checkStartingCondition`
+in order: banned armor, then the condition of the deployment it would use (the UFO type, with
+`_UNDERWATER` on a fake-underwater mission texture; the site's deployment; the race's custom base
+mission before the base's own deployment), falling back to the mission texture's condition; the
+commander (not asked for a destroyed UFO), craft, soldier-type and required-item checks. A failure
+sends the craft home and emits `LandingRefused` with the `CraftErrorState` text. A pass still refuses
+with `boundary.landing`, before any change, until the deployment request lands; required items are
+destroyed together with that request. Dispatching to a target with a starting condition is no longer
+refused (`boundary.starting-condition` is gone): the reference checks it only on landing.
+
+
+Validation: formatting, code map and Release build clean; root `dotnet test` ran 3,503 tests, all green.

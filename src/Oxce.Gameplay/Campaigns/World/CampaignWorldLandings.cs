@@ -1,3 +1,5 @@
+using Oxce.Mods.Rulesets.Runtime;
+
 namespace Oxce.Gameplay.Campaigns.World;
 
 /// <summary>The answers of <c>ConfirmLandingState</c>: Yes, No, or Patrol (No with Ctrl held).</summary>
@@ -21,6 +23,12 @@ public sealed record LandingConfirmationRequested(int Confirmation, int BaseId, 
 /// <summary>A queued landing confirmation as the UI shows it; the first one is the open window.</summary>
 public sealed record CampaignLandingConfirmation(int Confirmation, int BaseId, string CraftTypeId, int CraftId,
     WorldTargetReference Target, int MissionTexture, int GlobeTexture, int Shade);
+
+/// <summary>
+/// CraftErrorState after a refused starting condition: the craft returns to base and the window shows
+/// <see cref="TextKey"/>.
+/// </summary>
+public sealed record LandingRefused(int BaseId, string CraftTypeId, int CraftId, string TextKey) : ICampaignEvent;
 
 public interface ICampaignLandingQuery
 {
@@ -81,6 +89,68 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery
             landing.Target, landing.MissionTexture, landing.GlobeTexture, landing.Shade));
     }
 
+    /// <summary>
+    /// ConfirmLandingState::checkStartingCondition without its item destruction: the text key of the
+    /// first failed check, or null. <paramref name="condition"/> is the starting condition that applied.
+    /// </summary>
+    private string? StartingConditionRefusal(CampaignState.BaseState owner, CampaignState.CraftState craft, CraftLogisticsState state,
+        CampaignLandingConfirmation landing, out RuntimeStartingCondition? condition)
+    {
+        condition = null;
+        if (!campaign.HasAllowedArmorsOnboard(owner, craft)) return "STR_ARMOR_NOT_ALLOWED_ONBOARD";
+        var rules = campaign.Content.RuntimeRules;
+        var ufo = landing.Target.Kind == WorldTargetKind.Ufo ? TargetUfo(landing.Target) : null;
+        if (LandingDeployment(landing) is not { } deployment) return null;
+        if (deployment.StartingCondition.Length != 0 && rules.StartingConditions.TryGet(deployment.StartingCondition, out var handle))
+            condition = rules.StartingConditions[handle].Value;
+        else if (rules.Campaign.Globe.Textures.TryGetValue(landing.MissionTexture, out var texture) && texture.StartingCondition.Length != 0 &&
+            rules.StartingConditions.TryGet(texture.StartingCondition, out var textureHandle))
+            condition = rules.StartingConditions[textureHandle].Value;
+        if (condition is not { } applied) return null;
+        var type = landing.CraftTypeId;
+        bool Aboard(CampaignState.SoldierState soldier) =>
+            soldier.Personal is { } personal && personal.CraftType == type && personal.CraftId == craft.Id;
+        // Soldier rank 5 is RANK_COMMANDER; a destroyed UFO does not ask for one.
+        if (applied.RequireCommanderOnboard && !owner.Soldiers.Any(soldier => Aboard(soldier) && soldier.Personal!.Rank == 5) &&
+            ufo?.Status is not UfoStatus.Destroyed)
+            return "STR_STARTING_CONDITION_COMMANDER";
+        if (!applied.IsCraftPermitted(type)) return "STR_STARTING_CONDITION_CRAFT";
+        if (owner.Soldiers.Any(soldier => Aboard(soldier) && !applied.IsSoldierTypePermitted(rules.Soldiers.GetExternalId(soldier.Rule))))
+            return "STR_STARTING_CONDITION_SOLDIER_TYPE";
+        foreach (var (item, quantity) in applied.RequiredItems)
+            if (state.Items.GetValueOrDefault(item) < quantity) return "STR_STARTING_CONDITION_ITEM";
+        return null;
+    }
+
+    /// <summary>
+    /// The deployment ConfirmLandingState checks: the UFO type (with "_UNDERWATER" on a fake-underwater
+    /// mission texture), the site's deployment, or an alien base race's custom mission before the base's
+    /// own deployment. Null when the mod has none.
+    /// </summary>
+    private RuntimeAlienDeploymentRule? LandingDeployment(CampaignLandingConfirmation landing)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        string? id = null;
+        switch (landing.Target.Kind)
+        {
+            case WorldTargetKind.Ufo when TargetUfo(landing.Target) is { } ufo:
+                id = rules.Campaign.Globe.Textures.TryGetValue(landing.MissionTexture, out var texture) && texture.FakeUnderwater
+                    ? ufo.RuleId + "_UNDERWATER" : ufo.RuleId;
+                break;
+            case WorldTargetKind.MissionSite when _sites.Find(site => site.Id == landing.Target.Id &&
+                MarkerName(site.DeploymentId) == landing.Target.TypeId) is { } site:
+                id = site.DeploymentId;
+                break;
+            case WorldTargetKind.AlienBase when TargetAlienBase(landing.Target) is { } alienBase:
+                if (rules.AlienRaces.TryGet(alienBase.Race, out var race) && rules.AlienRaces[race].Value.BaseCustomMission is { Length: > 0 } custom &&
+                    rules.AlienDeployments.TryGet(custom, out _))
+                    id = custom;
+                else id = alienBase.DeploymentId;
+                break;
+        }
+        return id is not null && rules.AlienDeployments.TryGet(id, out var handle) ? rules.AlienDeployments[handle].Value : null;
+    }
+
     // ConfirmLandingState::init for the window about to be shown; earlier windows closed in order.
     private void CloseStaleLandings()
     {
@@ -107,7 +177,14 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery
         switch (command.Answer)
         {
             case LandingAnswer.Yes:
-                // The starting-condition check and the deployment request come with the rest of S6.
+                if (StartingConditionRefusal(owner, craft, state, landing, out _) is { } refusal)
+                {
+                    owner.Crafts[index] = craft with { Logistics = SetDestination(state, maximum, BaseReference(owner)) };
+                    _landings.RemoveAt(0);
+                    CloseStaleLandings();
+                    return new CampaignCommandResult([new LandingRefused(owner.Id, landing.CraftTypeId, landing.CraftId, refusal)]);
+                }
+                // The deployment request comes with the rest of S6.
                 return Blocked(LandingReason);
             case LandingAnswer.No:
                 owner.Crafts[index] = craft with { Logistics = SetDestination(state, maximum, BaseReference(owner)) };

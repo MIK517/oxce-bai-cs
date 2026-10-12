@@ -542,6 +542,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `AnswerLanding` (record) [CampaignWorldLandings.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldLandings.cs) - Answers the landing confirmation that is currently shown.
 - `LandingConfirmationRequested` (record) [CampaignWorldLandings.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldLandings.cs) - A craft is ready to land near its destination (`ConfirmLandingState`).
 - `CampaignLandingConfirmation` (record) [CampaignWorldLandings.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldLandings.cs) - A queued landing confirmation as the UI shows it; the first one is the open window.
+- `LandingRefused` (record) [CampaignWorldLandings.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldLandings.cs) - CraftErrorState after a refused starting condition: the craft returns to base and the window shows `TextKey`.
 - `ICampaignLandingQuery` (interface) [CampaignWorldLandings.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldLandings.cs)
 - `CampaignWorldTarget` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs) - A globe target as the player sees it; detection state decides visibility.
 - `CampaignWorldCraftWeapon` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs) - A craft weapon slot for the craft screen: weapon rule and rounds.
@@ -848,6 +849,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `AlienMissionRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
 - `AlienDeploymentRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
 - `AlienRaceRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `StartingConditionRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
 - `MissionScriptRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
 - `AdhocScriptRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
 - `ArcScriptRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
@@ -920,7 +922,8 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RuntimeMissionObjective` (enum) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - Mission objectives.
 - `RuntimeMissionOperationType` (enum) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - Where a mission's UFOs operate from.
 - `RuntimeAlienMissionRule` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - Reference: `Mod/RuleAlienMission.cpp`.
-- `RuntimeWeightedTimeline` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - A month-keyed weighted table.
+- `RuntimeStartingCondition` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - A month-keyed weighted table.
+- `RuntimeWeightedTimeline` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs)
 - `RuntimeAlienRaceRule` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - The strategic projection of an alien race: retaliation aggression and the retaliation mission timeline in rule order (AlienRace::retaliat...
 - `RuntimeAlienDeploymentRule` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - The strategic projection of an alien deployment: site and alien-base bookkeeping only.
 - `RuntimeAlienRaceEvolution` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - Reference: `AlienDeployment::getAlienRaceEvolution` tuples.

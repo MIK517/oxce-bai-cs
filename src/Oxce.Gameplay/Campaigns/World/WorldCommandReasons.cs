@@ -24,7 +24,6 @@ public static class WorldCommandReasons
     internal const string TargetGone = "The destination no longer exists or is not visible.";
     internal const string TargetSelf = "A craft cannot escort itself.";
     internal const string ForeignBase = "A craft can return only to its own base; use a transfer to change bases.";
-    internal const string StartingConditionBoundary = "Target starting conditions require deployment validation (Phase 6 branch 5).";
     internal const string InterceptionBoundary = "Craft interception requires strategic combat (Phase 6 branch 5).";
     internal const string LandingBoundary = "Craft landing requires deployment (Phase 6 branch 5).";
     internal const string NoInterception = "There is no such interception.";
@@ -53,7 +52,6 @@ public static class WorldCommandReasons
         new("target.gone", TargetGone),
         new("target.self", TargetSelf),
         new("target.foreign-base", ForeignBase),
-        new("boundary.starting-condition", StartingConditionBoundary),
         new("boundary.interception", InterceptionBoundary),
         new("boundary.landing", LandingBoundary),
         new("interception.none", NoInterception),
