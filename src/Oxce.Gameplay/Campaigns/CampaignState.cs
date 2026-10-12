@@ -32,6 +32,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     private Dictionary<string, int> _manufactureRuleStatus = new(StringComparer.Ordinal);
     private Dictionary<string, int> _monthlyPurchaseLog = new(StringComparer.Ordinal);
     private bool _debugMode;
+    private CampaignTimeProfile? _timeProfile;
 
     internal CampaignState(
         RuntimeContent content,
@@ -77,6 +78,16 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
 
     public CampaignIdentity Identity { get; private set; }
     public CampaignOptions Options { get; internal init; } = new();
+
+    /// <summary>Optional time-advance diagnostics (<see cref="CampaignTimeProfile"/>); null by default. It
+    /// never changes gameplay and is not saved.</summary>
+    public CampaignTimeProfile? TimeProfile
+    {
+        get { lock (_transactionGate) return _timeProfile; }
+        set { lock (_transactionGate) _timeProfile = value; }
+    }
+
+    internal CampaignTimeProfile? ActiveTimeProfile => _timeProfile;
     public CampaignDifficulty Difficulty { get; }
     public CampaignTime Time { get; private set; }
     public int Ending { get; }
@@ -325,12 +336,12 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         public void Notify(ICampaignEvent notification) => (Events ??= []).Add(notification);
 
         public string? Preflight(CampaignTime nextTime, CampaignTimeTrigger highestTrigger) =>
-            campaign._handlers.Preflight(nextTime, highestTrigger, SelectedSpeed);
+            campaign._handlers.Preflight(nextTime, highestTrigger, SelectedSpeed, campaign._timeProfile);
 
         public bool Apply(CampaignTime current, CampaignTimeTrigger trigger)
         {
             campaign.Time = current;
-            campaign._handlers.Apply(trigger, this);
+            campaign._handlers.Apply(trigger, this, campaign._timeProfile);
             return Events is not null;
         }
     }

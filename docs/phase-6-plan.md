@@ -447,6 +447,16 @@ results are not implemented by this branch.
 deployment/terrain/craft-weapon/UFO rules. Inspect the generator boundary without
 mechanically porting its tactical implementation.
 
+**Kickoff decision (recorded 2026-10-12):** before the first slice, choose how time advance
+stays atomic as interception makes branch 5 transitions executable. Either keep per-tick
+preflight forecasts and share each UFO's flight forecast within a tick (ordinary flying UFOs
+first, with a test-only mode comparing shared and recomputed results), or move to
+capture-and-restore ticks with execution-time boundary checks (the 4c closure's deferred
+alternative; it needs a check for every boundary and an audit of every preflight-pass consumer).
+Decide from `--time-profile` phase measurements and the soft one-day speed target in
+[performance targets](performance-targets.md), which the 128-UFO scenario currently exceeds.
+Until then, preflight code does not cache flight forecasts across checks.
+
 **Commit purposes:**
 
 1. Capture interception legality, timing, ammunition/damage and landing/deployment

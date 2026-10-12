@@ -109,7 +109,7 @@ internal sealed class CampaignCapabilityRegistry
     public void Preflight(int order, string name, CampaignTimePreflight check)
     {
         ArgumentNullException.ThrowIfNull(check);
-        Add(_preflights, new Ordered<CampaignTimePreflight>(order, name, check), "preflight");
+        Add(_preflights, new Ordered<CampaignTimePreflight>(order, name, check, CampaignTimeProfile.PreflightPrefix + name), "preflight");
     }
 
     public void Preflight(int order, string name, Func<CampaignTime, CampaignTimeTrigger, string?> check)
@@ -122,7 +122,7 @@ internal sealed class CampaignCapabilityRegistry
     {
         ArgumentNullException.ThrowIfNull(handler);
         if (!Enum.IsDefined(trigger)) throw new ArgumentOutOfRangeException(nameof(trigger));
-        Add(_handlers[(int)trigger], new Ordered<Action<CampaignState.TimeEffects>>(order, name, handler), trigger.ToString());
+        Add(_handlers[(int)trigger], new Ordered<Action<CampaignState.TimeEffects>>(order, name, handler, CampaignTimeProfile.ApplyPrefix + name), trigger.ToString());
     }
 
     /// <summary>Adds this capability's owned state to a captured snapshot.</summary>
@@ -193,7 +193,8 @@ internal sealed class CampaignCapabilityRegistry
     private static Ordered<T>[] Sorted<T>(List<Ordered<T>> source) =>
         [.. source.OrderBy(static entry => entry.Order)];
 
-    internal readonly record struct Ordered<T>(int Order, string Name, T Handler);
+    /// <param name="ProfileName">The name <see cref="CampaignTimeProfile"/> reports, built once at registration.</param>
+    internal readonly record struct Ordered<T>(int Order, string Name, T Handler, string ProfileName = "");
 }
 
 internal sealed class CampaignHandlerTable(
@@ -213,16 +214,45 @@ internal sealed class CampaignHandlerTable(
     public IReadOnlyCollection<Type> CommandTypes => commands.Keys;
 
     public string? Preflight(CampaignTime next, CampaignTimeTrigger highest,
-        CampaignTimeSpeed selectedSpeed = CampaignTimeSpeed.FiveSeconds)
+        CampaignTimeSpeed selectedSpeed = CampaignTimeSpeed.FiveSeconds, CampaignTimeProfile? profile = null)
     {
+        if (profile is not null) return ProfiledPreflight(next, highest, selectedSpeed, profile);
         foreach (var check in preflights)
             if (check.Handler(next, highest, selectedSpeed) is { } reason) return reason;
         return null;
     }
 
-    public void Apply(CampaignTimeTrigger trigger, CampaignState.TimeEffects effects)
+    public void Apply(CampaignTimeTrigger trigger, CampaignState.TimeEffects effects, CampaignTimeProfile? profile = null)
     {
+        if (profile is not null)
+        {
+            ProfiledApply(trigger, effects, profile);
+            return;
+        }
         foreach (var handler in handlers[(int)trigger]) handler.Handler(effects);
+    }
+
+    private string? ProfiledPreflight(CampaignTime next, CampaignTimeTrigger highest, CampaignTimeSpeed selectedSpeed,
+        CampaignTimeProfile profile)
+    {
+        foreach (var check in preflights)
+        {
+            var started = System.Diagnostics.Stopwatch.GetTimestamp();
+            var reason = check.Handler(next, highest, selectedSpeed);
+            profile.Record(check.ProfileName, started);
+            if (reason is not null) return reason;
+        }
+        return null;
+    }
+
+    private void ProfiledApply(CampaignTimeTrigger trigger, CampaignState.TimeEffects effects, CampaignTimeProfile profile)
+    {
+        foreach (var handler in handlers[(int)trigger])
+        {
+            var started = System.Diagnostics.Stopwatch.GetTimestamp();
+            handler.Handler(effects);
+            profile.Record(handler.ProfileName, started);
+        }
     }
 
     public IReadOnlyList<string> HandlerNames(CampaignTimeTrigger trigger) =>
