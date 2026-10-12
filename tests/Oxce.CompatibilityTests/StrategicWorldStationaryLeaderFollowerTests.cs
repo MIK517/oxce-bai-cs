@@ -114,7 +114,7 @@ public sealed class StrategicWorldStationaryLeaderFollowerTests
         if (close)
         {
             if (timer == 5) AssertInterceptionStarts(campaign);
-            else AssertTimeBlocked(campaign, "Craft landing requires deployment (Phase 6 branch 5).");
+            else AssertLandingRequested(campaign);
             return;
         }
         AdvanceUnblocked(campaign, 1);

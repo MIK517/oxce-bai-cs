@@ -93,7 +93,8 @@ public sealed class PrivateStrategicWorldTests
             [("vanilla-tftd", "early/IronMode.sav")] = (527039, MonthStop),
             [("vanilla-tftd", "early/Middle.sav")] = (90174, MonthStop),
             [("modded/rosigma", "early/Begining.sav")] = (580, "Strategic event consequences require campaign event execution (Phase 6 branch 6)."),
-            [("modded/rosigma", "early/Early.sav")] = (6289, "Craft landing requires deployment (Phase 6 branch 5)."),
+            // Branch 5 S6: the landing tick now runs and queues a confirmation, which then holds the clock.
+            [("modded/rosigma", "early/Early.sav")] = (6290, "Landing confirmations stop the clock until they are answered."),
             [("modded/rosigma", "early/Middle.sav")] = (429681, MonthStop),
             [("modded/rosigma", "early/_autogeo_.asav")] = (429698, MonthStop),
         };

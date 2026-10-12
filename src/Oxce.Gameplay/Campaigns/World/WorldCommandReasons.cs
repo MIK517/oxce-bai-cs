@@ -27,10 +27,11 @@ public static class WorldCommandReasons
     internal const string StartingConditionBoundary = "Target starting conditions require deployment validation (Phase 6 branch 5).";
     internal const string InterceptionBoundary = "Craft interception requires strategic combat (Phase 6 branch 5).";
     internal const string LandingBoundary = "Craft landing requires deployment (Phase 6 branch 5).";
-    internal const string InterceptionOutcomeBoundary = "Interception outcomes require their world consequences (Phase 6 branch 5).";
     internal const string NoInterception = "There is no such interception.";
     internal const string InterceptionsOpen = "Open interception windows stop the clock until they are minimized.";
     internal const string InterceptionMode = "The interception does not offer that mode.";
+    internal const string LandingConfirmationsOpen = "Landing confirmations stop the clock until they are answered.";
+    internal const string NoLandingConfirmation = "That landing confirmation is not the one shown.";
     internal const string ContactGone = "The UFO contact no longer exists or is not visible.";
     internal const string ContactLimit = "Ignored UFO contacts exceed the supported limit.";
 
@@ -55,10 +56,11 @@ public static class WorldCommandReasons
         new("boundary.starting-condition", StartingConditionBoundary),
         new("boundary.interception", InterceptionBoundary),
         new("boundary.landing", LandingBoundary),
-        new("boundary.interception-outcome", InterceptionOutcomeBoundary),
         new("interception.none", NoInterception),
         new("interception.open", InterceptionsOpen),
         new("interception.mode", InterceptionMode),
+        new("landing.open", LandingConfirmationsOpen),
+        new("landing.none", NoLandingConfirmation),
         new("contact.gone", ContactGone),
         new("contact.limit", ContactLimit),
     }.ToFrozenDictionary(static reason => reason.Text, StringComparer.Ordinal);

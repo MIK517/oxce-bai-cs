@@ -18,7 +18,7 @@ public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool Ca
     int MaximumBases = 8, bool AllowBuildingQueue = false, bool UfoLandingAlert = false,
     bool AggressiveRetaliation = true, bool CraftLaunchAlways = false, bool SuppressLandingWithoutEquipment = false,
     bool SuppressRedundantHunterAlert = true, bool RetainCorpses = false, bool DogfightAI = true,
-    bool RememberDisabledCraftWeapons = false)
+    bool RememberDisabledCraftWeapons = false, bool GlobeSeasons = false)
 {
     /// <summary>
     /// Mod::loadAll's fixedUserOptions pass: a loaded mod forces these user options for every
@@ -45,6 +45,7 @@ public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool Ca
             RetainCorpses = Fixed("retainCorpses", RetainCorpses),
             DogfightAI = Fixed("dogfightAI", DogfightAI),
             RememberDisabledCraftWeapons = Fixed("oxceRememberDisabledCraftWeapons", RememberDisabledCraftWeapons),
+            GlobeSeasons = Fixed("globeSeasons", GlobeSeasons),
         };
 
         bool Fixed(string id, bool current) =>

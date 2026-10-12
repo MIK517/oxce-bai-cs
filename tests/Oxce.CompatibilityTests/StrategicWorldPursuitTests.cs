@@ -237,7 +237,7 @@ public sealed class StrategicWorldPursuitTests
         if (timer == 5)
             AssertInterceptionStarts(campaign);
         else if (!suppressEmptyLanding)
-            AssertTimeBlocked(campaign, "Craft landing requires deployment (Phase 6 branch 5).");
+            AssertLandingRequested(campaign);
         else
         {
             AdvanceOne(campaign);

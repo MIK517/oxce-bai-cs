@@ -110,7 +110,7 @@ public sealed class StrategicWorldCrashedUfoTests
                 Destination = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, ufo.Id, 0.2, 0.1) { UniqueId = ufo.UniqueId }
             }
         });
-        AssertTimeBlocked(Restore(content, snapshot), "Craft landing requires deployment (Phase 6 branch 5).");
+        AssertLandingRequested(Restore(content, snapshot));
     }
 
     [Fact]

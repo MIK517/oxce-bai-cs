@@ -45,8 +45,6 @@ public sealed record CraftTargetLost(int BaseId, string CraftTypeId, int CraftId
 internal sealed partial class CampaignWorld
 {
     private readonly HashSet<int> _followedWaypointIds = [];
-    private readonly Dictionary<(string Marker, int Id), bool> _arrivalBaseDiscovery = [];
-    private long _arrivalBaseDiscoveryWork;
     private readonly HashSet<(string TypeId, int Id)> _possibleCraftReturns = [];
     private readonly HashSet<(string TypeId, int Id)> _returnedCraftTargets = [];
 
@@ -225,9 +223,6 @@ internal sealed partial class CampaignWorld
         var bases = campaign.BaseStates;
         var possibleRelaunches = 0;
         _possibleCraftReturns.Clear();
-        _arrivalBaseDiscovery.Clear();
-        _arrivalBaseDiscoveryWork = 0;
-        bool? terminalUfoArrival = null;
         for (var baseIndex = 0; baseIndex < bases.Count; baseIndex++)
         {
             var owner = bases[baseIndex];
@@ -254,7 +249,7 @@ internal sealed partial class CampaignWorld
                     return "Airborne craft fuel or takeoff state is out of range.";
                 if (!new WorldPosition(state.Longitude, state.Latitude).IsNormalized)
                     return "Airborne craft coordinates are invalid.";
-                if (CraftArrivalReason(owner, craft, state, highest, ref terminalUfoArrival) is { } arrivalReason) return arrivalReason;
+                if (CraftArrivalReason(craft, state) is { } arrivalReason) return arrivalReason;
             }
             if (highest < CampaignTimeTrigger.OneHour) continue;
             // Transfer::advance/checkup precedes refuelling and auto-patrol relaunch.
@@ -411,7 +406,7 @@ internal sealed partial class CampaignWorld
                     }
                     else
                     {
-                        state = ArriveAtWorldTarget(owner, craft, state, reached);
+                        state = ArriveAtWorldTarget(owner, craft, state, reached, effects);
                     }
                 }
                 if (!ReferenceEquals(state, craft.Logistics)) owner.Crafts[index] = craft with { Logistics = state };
