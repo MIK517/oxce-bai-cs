@@ -50,3 +50,20 @@ and the site arrival condition were duplicated (now one `ComputeFlight`/`FlightD
 `ProjectedArrivesAtSite`), and the distance-memo comment overstated reuse. Validation on the
 Windows workstation: formatting, code map and Release build clean; root `dotnet test` passes 3,458
 tests (private corpus included) with no failures or skips, every stored read verified.
+
+## S2 — Evidence and ownership (in progress)
+
+### Craft-weapon and UFO dogfight rule projection (2026-10-12)
+
+The typed catalog already parsed and validated every `RuleCraftWeapon` and `RuleUfo` property
+(including `RuleCraftWeapon::afterLoad`'s launcher, missile-speed and rearm checks). The runtime
+projection now also carries what interception reads: craft-weapon `damage`,
+`shieldDamageModifier` (default 100), `range`, `accuracy`, the three reload times,
+`projectileType` (default 2, `CWPT_CANNON_ROUND`), `projectileSpeed`, `weaponType`,
+`tractorBeamPower`, `unifiedDamageFormula` and `underwaterOnly`; UFO `score`, `breakOffTime`,
+`softlockThreshold` (default 100), `missilePower`, `missileStopChance` and
+`splashdownSurvivalChance` (default 100), beside the already projected weapon power, range and
+reload. Compiler/cache revision 60. `StrategicInterceptionRuleProjectionTests` pins declared values
+and reference defaults on fresh and restored content. The C++ probes, craft and global rules,
+the ownership ledger and the option inventory remain for the rest of S2. Validation: formatting
+and code map clean; root `dotnet test` passes 3,459 tests with no failures or skips.

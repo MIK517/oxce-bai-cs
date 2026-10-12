@@ -87,6 +87,14 @@ public sealed record RuntimeUfoRule(
     public int WeaponPower { get; init; }
     public int WeaponReload { get; init; }
 
+    // Dogfight and shoot-down properties (RuleUfo).
+    public int Score { get; init; }
+    public int BreakOffTime { get; init; }
+    public int SoftlockThreshold { get; init; } = 100;
+    public int MissilePower { get; init; }
+    public int MissileStopChance { get; init; }
+    public int SplashdownSurvivalChance { get; init; } = 100;
+
     /// <summary>RuleUfo::getRaceBonus: the unnamed bonus is the fallback.</summary>
     public RuntimeUfoStats RaceBonus(string race) =>
         RaceBonuses.TryGetValue(race, out var bonus) ? bonus : RaceBonuses.GetValueOrDefault("", RuntimeUfoStats.Empty);

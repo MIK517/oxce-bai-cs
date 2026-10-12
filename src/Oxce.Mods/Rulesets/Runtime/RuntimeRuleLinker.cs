@@ -372,6 +372,19 @@ public static class RuntimeRuleLinker
                 {
                     StatisticalBulletSaving = rule.Value.Booleans["bulletSaving"],
                     BonusStorageSpace = rule.Value.Stats.MaximumStorageSpace,
+                    Damage = rule.Value.Integers["damage"],
+                    ShieldDamageModifier = rule.Value.Integers["shieldDamageModifier"],
+                    Range = rule.Value.Integers["range"],
+                    Accuracy = rule.Value.Integers["accuracy"],
+                    ReloadCautious = rule.Value.Integers["reloadCautious"],
+                    ReloadStandard = rule.Value.Integers["reloadStandard"],
+                    ReloadAggressive = rule.Value.Integers["reloadAggressive"],
+                    ProjectileType = rule.Value.Integers["projectileType"],
+                    ProjectileSpeed = rule.Value.Integers["projectileSpeed"],
+                    WeaponType = rule.Value.Integers["weaponType"],
+                    TractorBeamPower = rule.Value.Integers["tractorBeamPower"],
+                    UnifiedDamageFormula = rule.Value.Booleans["unifiedDamageFormula"],
+                    UnderwaterOnly = rule.Value.Booleans["underwaterOnly"],
                 }),
             items,
             soldiers,
@@ -550,6 +563,12 @@ public static class RuntimeRuleLinker
                 WeaponRange = source.Integers["range"],
                 WeaponPower = source.Integers["power"],
                 WeaponReload = source.Integers["reload"],
+                Score = source.Integers["score"],
+                BreakOffTime = source.Integers["breakOffTime"],
+                SoftlockThreshold = source.Integers["softlockThreshold"],
+                MissilePower = source.Integers["missilePower"],
+                MissileStopChance = source.Integers["missileStopChance"],
+                SplashdownSurvivalChance = source.Integers["splashdownSurvivalChance"],
             };
         }
 
