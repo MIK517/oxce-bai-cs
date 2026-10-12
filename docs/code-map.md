@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 177 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 178 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 94 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 5 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 307 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 308 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 101 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -165,7 +165,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `GlobeLabel` (record) [GlobeScene.cs](../src/Oxce.Engine/Geoscape/GlobeScene.cs) - A detail label centred in a reference text box of `BoxWidth` pixels at the projected point, shown from `MinimumZoom`; cities also draw th...
 - `GlobeRenderOptions` (record) [GlobeScene.cs](../src/Oxce.Engine/Geoscape/GlobeScene.cs) - Display options the reference keeps in Options (globeSeasons, globeDetail, ...).
 - `GlobeScene` (class) [GlobeScene.cs](../src/Oxce.Engine/Geoscape/GlobeScene.cs) - What the globe draws for one world state, built when the world changes rather than per frame.
-- `GlobeShading` (class) [GlobeShading.cs](../src/Oxce.Engine/Geoscape/GlobeShading.cs) - Day/night shading of the globe.
+- `GlobeShading` (class) [GlobeShading.cs](../src/Oxce.Engine/Geoscape/GlobeShading.cs) - Day/night shading of the globe for drawing.
 - `GlobeTarget` (record) [GlobeTargets.cs](../src/Oxce.Engine/Geoscape/GlobeTargets.cs) - A selectable globe marker.
 - `GlobeTargets` (class) [GlobeTargets.cs](../src/Oxce.Engine/Geoscape/GlobeTargets.cs) - The selectable globe targets in Globe::getTargets order: each placed base (except one at exactly (0, 0)) followed by its airborne craft,...
 - `GlobeViewState` (record) [GlobeView.cs](../src/Oxce.Engine/Geoscape/GlobeView.cs) - The globe's centre (radians) and zoom level, as SavedGame stores them.
@@ -333,7 +333,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 177 files.
+`src/Oxce.Gameplay` - 178 files.
 
 ### `Oxce.Gameplay`
 
@@ -575,6 +575,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `WorldPosition` (record struct) [WorldGeometry.cs](../src/Oxce.Gameplay/Campaigns/World/WorldGeometry.cs) - A point on the globe in reference units: longitude in [0, 2π), latitude in [-π/2, π/2].
 - `WorldGeometry` (class) [WorldGeometry.cs](../src/Oxce.Gameplay/Campaigns/World/WorldGeometry.cs) - Globe arithmetic shared by world simulation: distances, movement, region containment and land queries.
 - `WorldScriptSelection` (class) [WorldScriptSelection.cs](../src/Oxce.Gameplay/Campaigns/World/WorldScriptSelection.cs) - RuleMissionScript/RuleEventScript reverse timeline scans and WeightedOptions::choose.
+- `WorldShading` (class) [WorldShading.cs](../src/Oxce.Gameplay/Campaigns/World/WorldShading.cs) - Day/night shading of the globe: Globe.cpp GlobeStaticData, CreateShadow::getShadowValue, Globe::getSunDirection and the battlescape shade...
 - `WorldTrajectory` (class) [WorldTrajectory.cs](../src/Oxce.Gameplay/Campaigns/World/WorldTrajectory.cs) - Trajectory and wave timing arithmetic.
 - `WorldUfoShields` (class) [WorldUfoShields.cs](../src/Oxce.Gameplay/Campaigns/World/WorldUfoShields.cs) - GeoscapeState::time5Seconds flying-UFO block and Ufo::setShield at 4df3a5e.
 - `WorldWeightedOptions` (class) [WorldWeightedOptions.cs](../src/Oxce.Gameplay/Campaigns/World/WorldWeightedOptions.cs) - An ordered weighted option set.
@@ -1126,7 +1127,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 307 files.
+`tests/Oxce.CompatibilityTests` - 308 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1134,7 +1135,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>304 test classes</summary>
+<details><summary>305 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1204,6 +1205,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicInterceptionOptionsTests` ([StrategicInterceptionOptionsTests.cs](../tests/Oxce.CompatibilityTests/StrategicInterceptionOptionsTests.cs))
 - `StrategicInterceptionRuleProjectionTests` ([StrategicInterceptionRuleProjectionTests.cs](../tests/Oxce.CompatibilityTests/StrategicInterceptionRuleProjectionTests.cs))
 - `StrategicInterceptionTests` ([StrategicInterceptionTests.cs](../tests/Oxce.CompatibilityTests/StrategicInterceptionTests.cs))
+- `StrategicLandingShadeOracleTests` ([StrategicLandingShadeOracleTests.cs](../tests/Oxce.CompatibilityTests/StrategicLandingShadeOracleTests.cs))
 - `StrategicLogisticsFixtureTests` ([StrategicLogisticsFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicLogisticsFixtureTests.cs))
 - `StrategicMissionBaseTargetTests` ([StrategicMissionBaseTargetTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionBaseTargetTests.cs))
 - `StrategicMissionCounterForecastTests` ([StrategicMissionCounterForecastTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionCounterForecastTests.cs))
@@ -1721,6 +1723,7 @@ A test is listed when it names the manifest id or its expected file.
 | [strategic-infiltration-region](../fixtures/manifests/strategic-infiltration-region.json) | cpp-reference | `savegames/strategic-infiltration-region.expected.json` | `StrategicInfiltrationTests` ([StrategicInfiltrationTests.cs](../tests/Oxce.CompatibilityTests/StrategicInfiltrationTests.cs))<br>`StrategicWorldConditionalLeaderObjectiveTests` ([StrategicWorldConditionalLeaderObjectiveTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldConditionalLeaderObjectiveTests.cs))<br>`StrategicWorldDailyWaveResearchTests` ([StrategicWorldDailyWaveResearchTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDailyWaveResearchTests.cs))<br>`StrategicWorldAlienBaseGenerationTests` ([StrategicWorldGeneratedObjectiveOpeningTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGeneratedObjectiveOpeningTests.cs))<br>`StrategicWorldNewbornObjectiveArrivalTests` ([StrategicWorldNewbornObjectiveArrivalTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldNewbornObjectiveArrivalTests.cs))<br>`StrategicWorldOptionalBaseGenerationTests` ([StrategicWorldOptionalBaseGenerationTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldOptionalBaseGenerationTests.cs))<br>`StrategicWorldOptionalPactResearchTests` ([StrategicWorldOptionalPactResearchTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldOptionalPactResearchTests.cs))<br>`StrategicWorldOptionalSpaceSourceTests` ([StrategicWorldOptionalSpaceSourceTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldOptionalSpaceSourceTests.cs))<br>`StrategicWorldSiteResearchGeneratedObjectiveTests` ([StrategicWorldSiteResearchGeneratedObjectiveTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteResearchGeneratedObjectiveTests.cs))<br>`StrategicWorldSiteResearchObjectiveTests` ([StrategicWorldSiteResearchObjectiveTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteResearchObjectiveTests.cs)) |
 | [strategic-infiltration-repeat](../fixtures/manifests/strategic-infiltration-repeat.json) | cpp-reference | `savegames/strategic-infiltration-repeat.expected.json` | `StrategicInfiltrationRepeatTests` ([StrategicInfiltrationRepeatTests.cs](../tests/Oxce.CompatibilityTests/StrategicInfiltrationRepeatTests.cs))<br>`StrategicWorldSiteResearchGeneratedObjectiveTests` ([StrategicWorldSiteResearchGeneratedObjectiveTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteResearchGeneratedObjectiveTests.cs)) |
 | [strategic-infiltration](../fixtures/manifests/strategic-infiltration.json) | cpp-reference | `savegames/strategic-infiltration.expected.json` | `StrategicInfiltrationTests` ([StrategicInfiltrationTests.cs](../tests/Oxce.CompatibilityTests/StrategicInfiltrationTests.cs))<br>`StrategicWorldAlienBaseGenerationTests` ([StrategicWorldGeneratedObjectiveOpeningTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGeneratedObjectiveOpeningTests.cs))<br>`StrategicWorldOptionalPactResearchTests` ([StrategicWorldOptionalPactResearchTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldOptionalPactResearchTests.cs)) |
+| [strategic-landing-shade](../fixtures/manifests/strategic-landing-shade.json) | cpp-reference | `savegames/strategic-landing-shade.expected.json` | `StrategicLandingShadeOracleTests` ([StrategicLandingShadeOracleTests.cs](../tests/Oxce.CompatibilityTests/StrategicLandingShadeOracleTests.cs)) |
 | [strategic-logistics](../fixtures/manifests/strategic-logistics.json) | cpp-reference | `savegames/strategic-logistics.expected.json` | `PublicCampaignFixtures (benchmark)` ([PublicCampaignFixtures.cs](../benchmarks/Oxce.Benchmarks/PublicCampaignFixtures.cs))<br>`StrategicLogisticsFixtureTests` ([StrategicLogisticsFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicLogisticsFixtureTests.cs))<br>`StrategicWorldOptionalBaseCraftTests` ([StrategicWorldOptionalBaseCraftTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldOptionalBaseCraftTests.cs))<br>`InstallationContentLoaderTests` ([InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs))<br>`TestFixtures (helper)` ([TestFixtures.cs](../tests/Shared/TestFixtures.cs)) |
 | [strategic-mission-base-target](../fixtures/manifests/strategic-mission-base-target.json) | cpp-reference | `savegames/strategic-mission-base-target.expected.json` | `StrategicMissionBaseTargetTests` ([StrategicMissionBaseTargetTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionBaseTargetTests.cs))<br>`StrategicMissionStrategyTests` ([StrategicMissionStrategyTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionStrategyTests.cs)) |
 | [strategic-mission-counter](../fixtures/manifests/strategic-mission-counter.json) | cpp-reference | `savegames/strategic-mission-counter.expected.json` | `StrategicMissionCounterForecastTests` ([StrategicMissionCounterForecastTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionCounterForecastTests.cs)) |

@@ -292,3 +292,17 @@ retaliation region keeps its window open (malformed content).
 Validation on the Windows workstation: formatting, code map and Release build clean; root
 `dotnet test` ran 3,495 tests with one expectation failure (the new daily handler and preflight in
 the order lists), corrected and re-run with the unit suite (820 pass); everything else green.
+
+## S6 — Landing and deployment request (in progress)
+
+### Landing-site shade (2026-10-13)
+
+`WorldShading` (gameplay) now owns the globe shading math the renderer used: the terminator
+gradient, `Globe::getSunDirection` with and without `globeSeasons`, `CreateShadow::getShadowValue`
+(with the reference's `x + (z + y)` summation) and the battlescape shade conversion of
+`Globe::getPolygonTextureAndShade`. The engine's `GlobeShading` keeps only its noise table and
+delegates. The `strategic-landing-shade` oracle compiles the reference Cord, GlobeStaticData,
+getShadowValue, getSunDirection, GameTime::getDaylight and the conversion verbatim
+(`tools/capture-strategic-landing-shade-reference.ps1`) and records 5,376 shades over six dates
+(including leap days and a non-leap century), eight clock times, eight longitudes and seven
+latitudes, with seasons off and on; `StrategicLandingShadeOracleTests` matches every one.

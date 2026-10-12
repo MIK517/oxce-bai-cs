@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-landing-shade",
+  "description": "Landing-site shade from the verbatim Cord, GlobeStaticData, CreateShadow::getShadowValue, Globe::getSunDirection, GameTime::getDaylight and the worldshades conversion of Globe::getPolygonTextureAndShade, with and without globeSeasons, over dates, clock times and coordinates.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "Geoscape/Globe.cpp, Geoscape/Cord.h; Savegame/GameTime.cpp",
+      "probe": "fixtures/reference-probes/savegames/strategic_landing_shade_probe.cpp",
+      "capture": "tools/capture-strategic-landing-shade-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; reference statements inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "size": 3243,
+      "path": "fixtures/reference-probes/savegames/strategic_landing_shade_probe.cpp",
+      "sha256": "83be7b318c053f5d6202073ef1a770b84d36a82a20b90fbfa4c43a8af6e339ea"
+    },
+    {
+      "size": 4158,
+      "path": "tools/capture-strategic-landing-shade-reference.ps1",
+      "sha256": "17d920109fb48d456bf5223c451ced6ec2fb0e80e9dac4c41a503f6aba332873"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-landing-shade.expected.json"
+}
