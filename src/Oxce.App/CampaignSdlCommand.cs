@@ -175,7 +175,13 @@ internal static class CampaignSdlCommand
         var run = host.LastRunDiagnostics;
         Console.WriteLine($"SDL video driver: {run?.VideoDriver}; renderer: {run?.Renderer}");
         Console.WriteLine($"Ticks: {run?.TickCount}; presented frames: {run?.PresentedFrameCount}; " +
-            $"average presentation us: {run?.AveragePresentationDuration.TotalMicroseconds.ToString("F3", CultureInfo.InvariantCulture)}");
+            $"average presentation us: {run?.AveragePresentationDuration.TotalMicroseconds.ToString("F3", CultureInfo.InvariantCulture)}; " +
+            $"maximum presentation us: {run?.MaximumPresentationDuration.TotalMicroseconds.ToString("F3", CultureInfo.InvariantCulture)}");
+        Console.WriteLine($"Conversion and upload average us: {run?.AverageUploadDuration.TotalMicroseconds.ToString("F3", CultureInfo.InvariantCulture)}; " +
+            $"maximum us: {run?.MaximumUploadDuration.TotalMicroseconds.ToString("F3", CultureInfo.InvariantCulture)}");
+        Console.WriteLine($"Client tick p50 us: {scripted.TickDurationPercentile(50).TotalMicroseconds.ToString("F3", CultureInfo.InvariantCulture)}; " +
+            $"p95 us: {scripted.TickDurationPercentile(95).TotalMicroseconds.ToString("F3", CultureInfo.InvariantCulture)}; " +
+            $"maximum us: {scripted.TickDurationPercentile(100).TotalMicroseconds.ToString("F3", CultureInfo.InvariantCulture)}");
         Console.WriteLine($"Scripted inputs replayed: {scripted.Replayed}; campaign time {start} -> {campaign.QueryOverview().Time}; " +
             $"popups open: {client.Popups.Count}; status: {client.Time.HaltReason ?? client.Status}");
         foreach (var diagnostic in diagnostics.Snapshot().Where(static diagnostic => diagnostic.Severity >= DiagnosticSeverity.Warning))

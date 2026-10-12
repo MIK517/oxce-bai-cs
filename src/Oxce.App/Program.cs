@@ -101,6 +101,8 @@ if (args.Length == 1 && string.Equals(args[0], "--sdl-smoke", StringComparison.O
     Console.WriteLine($"SDL suppressed presentations: {diagnostics.SuppressedPresentationCount}");
     Console.WriteLine($"SDL average presentation us: {diagnostics.AveragePresentationDuration.TotalMicroseconds.ToString("F3", CultureInfo.InvariantCulture)}");
     Console.WriteLine($"SDL maximum presentation us: {diagnostics.MaximumPresentationDuration.TotalMicroseconds.ToString("F3", CultureInfo.InvariantCulture)}");
+    Console.WriteLine($"SDL average upload us: {diagnostics.AverageUploadDuration.TotalMicroseconds.ToString("F3", CultureInfo.InvariantCulture)}");
+    Console.WriteLine($"SDL maximum upload us: {diagnostics.MaximumUploadDuration.TotalMicroseconds.ToString("F3", CultureInfo.InvariantCulture)}");
     Console.WriteLine("SDL3 indexed-window event loop completed.");
     return;
 }

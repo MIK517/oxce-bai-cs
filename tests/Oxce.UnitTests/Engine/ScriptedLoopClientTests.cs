@@ -27,6 +27,11 @@ public sealed class ScriptedLoopClientTests
         Assert.True(scripted.ExitRequested);
         Assert.Equal(2, scripted.Replayed);
         Assert.Same(inner.Frame, scripted.Frame);
+        Assert.Equal(3, scripted.TickDurations.Count);
+        Assert.Equal(scripted.TickDurations.Max(), scripted.TickDurationPercentile(100));
+        Assert.Equal(scripted.TickDurations.Min(), scripted.TickDurationPercentile(0));
+        Assert.Equal(TimeSpan.Zero, new ScriptedLoopClient(inner, [], TimeSpan.FromSeconds(1)).TickDurationPercentile(95));
+        Assert.Throws<ArgumentOutOfRangeException>(() => scripted.TickDurationPercentile(101));
 
         inner.Exit = true;
         Assert.True(new ScriptedLoopClient(inner, [], TimeSpan.FromSeconds(1)).ExitRequested);

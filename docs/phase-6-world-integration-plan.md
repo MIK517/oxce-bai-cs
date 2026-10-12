@@ -104,6 +104,14 @@ This section owns cross-cutting 4c checkpoints, the current scope and the remain
 Subsystem slices, audits and evidence are recorded once, in their `strategic-*-status.md`
 documents; entries here link to them instead of copying them.
 
+### Branch 4d closure (2026-10-12)
+
+Slices S0–S11 are implemented, each with an independent audit; evidence is in
+[strategic world UI status](strategic-world-ui-status.md) and intentional differences in
+[ADR 0032](decisions/0032-geoscape-ui-intentional-differences.md). Combined branch 4
+acceptance is mapped in [S11](strategic-world-ui-status.md#s11--performance-decisions-and-combined-branch-4-acceptance-2026-10-12).
+Branch 5 (interception and strategic deployment) is next.
+
 ### Branch 4c closure (2026-10-11)
 
 Branch 4c closes with the named restrictions below. The 2026-10-10 closure audit
