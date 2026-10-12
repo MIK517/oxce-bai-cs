@@ -9,7 +9,8 @@ namespace Oxce.CompatibilityTests;
 
 /// <summary>
 /// Branch 5 S6: a craft that may land reaching a landed UFO queues a <c>ConfirmLandingState</c> with the
-/// site's texture and shade. The queue pauses time, is not saved, and No or Patrol answer it.
+/// site's texture and shade. The queue pauses time and is not saved; No and Patrol answer it, and Yes
+/// checks the starting condition and records the deployment request (D4).
 /// </summary>
 public sealed class StrategicLandingTests
 {
@@ -156,14 +157,56 @@ public sealed class StrategicLandingTests
     }
 
     [Fact]
-    public void APassingConditionStillWaitsForTheDeploymentRequest()
+    public void YesRecordsTheDeploymentRequestThatHoldsTheCampaignUntilTheBattle()
     {
-        var (_, campaign) = Create();
+        var (content, campaign) = Create();
         var requested = AssertLandingRequested(campaign);
-        var before = campaign.Capture();
-        Assert.Equal(WorldCommandReasons.LandingBoundary, Assert.IsType<CampaignActionBlocked>(Assert.Single(
-            campaign.Execute(new AnswerLanding(requested.Confirmation, LandingAnswer.Yes)).Events)).Reason);
-        Assert.Equivalent(before, campaign.Capture(), strict: true);
-        Assert.Single(Landings(campaign).QueryLandingConfirmations());
+        var result = campaign.Execute(new AnswerLanding(requested.Confirmation, LandingAnswer.Yes));
+        var request = Assert.IsType<DeploymentRequested>(Assert.Single(result.Events)).Request;
+        var ufo = Assert.Single(campaign.Capture().World.Ufos);
+        var soldier = campaign.Capture().Bases[0].Soldiers[0].Id;
+        Assert.Equal(("STR_UFO_GROUND_ASSAULT", "RACE_A", 10, 10, requested.Shade, "SHIP", 1),
+            (request.MissionType, request.Race, request.MissionTexture, request.GlobeTexture, request.Shade, request.CraftTypeId, request.CraftId));
+        Assert.Equal((WorldTargetKind.Ufo, ufo.UniqueId), (request.Target.Kind, request.Target.UniqueId));
+        Assert.Equal([soldier], request.Soldiers);
+        Assert.Equal(request, Landings(campaign).QueryDeploymentRequest());
+        // The craft keeps its pre-battle state; the campaign waits for the battle.
+        Assert.Equal(WorldTargetKind.Ufo, Ship(campaign).Destination!.Kind);
+        AssertTimeBlocked(campaign, WorldCommandReasons.DeploymentRequestPending);
+
+        // The request survives a reload, and the Phase 7 seam takes it exactly once.
+        var reloaded = Reload(content, campaign, 17, "deployment.sav");
+        Assert.Equivalent(request, Landings(reloaded).QueryDeploymentRequest(), strict: true);
+        Assert.Equivalent(request, Assert.IsType<DeploymentRequestTaken>(Assert.Single(reloaded.Execute(new TakeDeploymentRequest()).Events)).Request,
+            strict: true);
+        Assert.Equal(WorldCommandReasons.NoDeploymentRequest, Assert.IsType<CampaignActionBlocked>(Assert.Single(
+            reloaded.Execute(new TakeDeploymentRequest()).Events)).Reason);
+        AssertTimeBlocked(reloaded, WorldCommandReasons.DeploymentRequestPending);
+    }
+
+    [Fact]
+    public void APassingConditionWithDestroyRequiredItemsConsumesThemBeforeTheRequest()
+    {
+        const string rules = """
+            alienDeployments:
+              - type: UFO_SCOUT
+                startingCondition: SC_KEY
+            startingConditions:
+              - type: SC_KEY
+                requiredItems: {SUPPLY: 1}
+                destroyRequiredItems: true
+
+            """;
+        var (_, campaign) = Create(rules: rules);
+        var snapshot = campaign.Capture().WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with { Items = new Dictionary<string, int> { ["SUPPLY"] = 3 } },
+        });
+        campaign = CampaignState.Restore(snapshot, StrategicReadinessTestContent.Load(["strategic-world.rul"], rules), new SplitMix64RandomSource(17));
+        var requested = AssertLandingRequested(campaign);
+        var request = Assert.IsType<DeploymentRequested>(Assert.Single(
+            campaign.Execute(new AnswerLanding(requested.Confirmation, LandingAnswer.Yes)).Events)).Request;
+        Assert.Equal(2, request.Items["SUPPLY"]);
+        Assert.Equal(2, Ship(campaign).Items["SUPPLY"]);
     }
 }

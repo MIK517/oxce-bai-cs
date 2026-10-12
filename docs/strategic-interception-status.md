@@ -349,3 +349,25 @@ refused (`boundary.starting-condition` is gone): the reference checks it only on
 
 
 Validation: formatting, code map and Release build clean; root `dotnet test` ran 3,503 tests, all green.
+
+### Deployment request (2026-10-13)
+
+A Yes that passes the starting condition destroys the required items when `destroyRequiredItems` is
+set and records the `CampaignDeploymentRequest` (D4): the mission type (`STR_UFO_CRASH_RECOVERY`,
+`STR_UFO_GROUND_ASSAULT`, or the site's or alien base's deployment), the deployment, the alien custom
+deployment and custom mission ids `BattlescapeGenerator` receives (the UFO's `craftCustomDeploy`, now
+projected, and its `_UNDERWATER` mission; the site's custom deployment; the race's base custom
+deployment and mission), the race, the mission and globe textures (none for an alien base, as
+`setWorldTexture(0, ...)`), the shade, the target, the craft, the soldiers on board, its vehicles and
+its remaining items. The craft keeps its pre-battle world state. The request is saved as the port-only
+`oxcePortDeploymentRequest` node; while it is pending, time (`deployment.pending`) and landing answers
+refuse, and confirmations queued in the same tick stay behind it. `TakeDeploymentRequest` is the
+Phase 7 seam: it hands the request over once per load (`deployment.none` afterwards) and the campaign
+keeps waiting, since the request cannot be withdrawn. The world target list no longer names an
+unavailable interception or landing action. Remaining in S6: the follower landing at a site respawned
+by a UFO conversion still refuses with `boundary.landing`, and world commands other than time and
+landing answers are not yet refused while a request is pending.
+
+Validation: formatting, code map and Release build clean (compiler/cache revision 66 for the UFO
+`craftCustomDeploy` projection); root `dotnet test` ran 3,504 tests, all green.
+

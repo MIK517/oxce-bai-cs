@@ -31,6 +31,8 @@ public static class WorldCommandReasons
     internal const string InterceptionMode = "The interception does not offer that mode.";
     internal const string LandingConfirmationsOpen = "Landing confirmations stop the clock until they are answered.";
     internal const string NoLandingConfirmation = "That landing confirmation is not the one shown.";
+    internal const string DeploymentRequestPending = "A confirmed landing waits for its battle (Phase 7 tactical execution).";
+    internal const string NoDeploymentRequest = "There is no deployment request to take.";
     internal const string ContactGone = "The UFO contact no longer exists or is not visible.";
     internal const string ContactLimit = "Ignored UFO contacts exceed the supported limit.";
 
@@ -59,6 +61,8 @@ public static class WorldCommandReasons
         new("interception.mode", InterceptionMode),
         new("landing.open", LandingConfirmationsOpen),
         new("landing.none", NoLandingConfirmation),
+        new("deployment.pending", DeploymentRequestPending),
+        new("deployment.none", NoDeploymentRequest),
         new("contact.gone", ContactGone),
         new("contact.limit", ContactLimit),
     }.ToFrozenDictionary(static reason => reason.Text, StringComparer.Ordinal);

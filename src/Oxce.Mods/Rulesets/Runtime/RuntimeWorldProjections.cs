@@ -19,6 +19,8 @@ public sealed record RuntimeUfoStats(
     string MissionCustomDeployment)
 {
     public int FuelMaximum { get; init; }
+    /// <summary>RuleCraftStats::craftCustomDeploy: the battle deployment of the UFO's crew.</summary>
+    public string CraftCustomDeployment { get; init; } = string.Empty;
     public int HitBonus { get; init; }
     public int AvoidBonus { get; init; }
     public int AvoidBonus2 { get; init; }
@@ -47,6 +49,7 @@ public sealed record RuntimeUfoStats(
         bonus.MissionCustomDeployment.Length != 0 ? bonus.MissionCustomDeployment : MissionCustomDeployment)
     {
         FuelMaximum = unchecked(FuelMaximum + bonus.FuelMaximum),
+        CraftCustomDeployment = bonus.CraftCustomDeployment.Length != 0 ? bonus.CraftCustomDeployment : CraftCustomDeployment,
         HitBonus = unchecked(HitBonus + bonus.HitBonus),
         AvoidBonus = unchecked(AvoidBonus + bonus.AvoidBonus),
         AvoidBonus2 = unchecked(AvoidBonus2 + bonus.AvoidBonus2),

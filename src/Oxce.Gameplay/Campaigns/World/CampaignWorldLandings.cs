@@ -33,6 +33,9 @@ public sealed record LandingRefused(int BaseId, string CraftTypeId, int CraftId,
 public interface ICampaignLandingQuery
 {
     IReadOnlyList<CampaignLandingConfirmation> QueryLandingConfirmations();
+
+    /// <summary>The pending deployment request, if a landing was confirmed.</summary>
+    CampaignDeploymentRequest? QueryDeploymentRequest();
 }
 
 /// <summary>
@@ -49,14 +52,28 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery
 {
     private readonly List<CampaignLandingConfirmation> _landings = [];
     private int _nextLanding = 1;
+    // D4: at most one deployment request; saved, never withdrawn, taken once by the Phase 7 seam.
+    private CampaignDeploymentRequest? _deploymentRequest;
+    private bool _deploymentRequestTaken;
 
     private void RegisterLandings(CampaignCapabilityRegistry registry)
     {
         registry.Query<ICampaignLandingQuery>(this);
         // Popups pause the geoscape; time runs again once every confirmation is answered.
         registry.Preflight(CampaignPreflightOrder.Landings, "landing confirmations",
-            (_, _, _) => _landings.Count != 0 ? WorldCommandReasons.LandingConfirmationsOpen : null);
+            (_, _, _) => _deploymentRequest is not null ? WorldCommandReasons.DeploymentRequestPending
+                : _landings.Count != 0 ? WorldCommandReasons.LandingConfirmationsOpen : null);
         registry.Command<AnswerLanding>(AnswerLanding);
+        registry.Command<TakeDeploymentRequest>(_ => TakeDeploymentRequest());
+    }
+
+    public CampaignDeploymentRequest? QueryDeploymentRequest() => campaign.Read(() => _deploymentRequest);
+
+    private CampaignCommandResult TakeDeploymentRequest()
+    {
+        if (_deploymentRequest is not { } request || _deploymentRequestTaken) return Blocked(WorldCommandReasons.NoDeploymentRequest);
+        _deploymentRequestTaken = true;
+        return new CampaignCommandResult([new DeploymentRequestTaken(request)]);
     }
 
     public IReadOnlyList<CampaignLandingConfirmation> QueryLandingConfirmations() => campaign.Read(() =>
@@ -151,6 +168,61 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery
         return id is not null && rules.AlienDeployments.TryGet(id, out var handle) ? rules.AlienDeployments[handle].Value : null;
     }
 
+    /// <summary>
+    /// ConfirmLandingState::btnYesClick's BattlescapeGenerator inputs for the shown landing: mission type,
+    /// deployments, race, textures, shade, target, craft and crew. Null when the target is gone (the
+    /// reference throws "No mission available!").
+    /// </summary>
+    private CampaignDeploymentRequest? DeploymentRequestFor(CampaignState.BaseState owner, CampaignState.CraftState craft,
+        CampaignLandingConfirmation landing)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        string missionType, deployment, customDeploy, customMission, race;
+        var missionTexture = landing.MissionTexture;
+        switch (landing.Target.Kind)
+        {
+            case WorldTargetKind.Ufo when TargetUfo(landing.Target) is { } ufo && FindMission(ufo.MissionId) is { } mission:
+                {
+                    missionType = ufo.Status == UfoStatus.Crashed ? "STR_UFO_CRASH_RECOVERY" : "STR_UFO_GROUND_ASSAULT";
+                    var underwater = rules.Campaign.Globe.Textures.TryGetValue(missionTexture, out var texture) && texture.FakeUnderwater;
+                    deployment = underwater ? ufo.RuleId + "_UNDERWATER" : ufo.RuleId;
+                    var stats = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value.StatsForRace(mission.Race);
+                    customDeploy = stats.CraftCustomDeployment;
+                    customMission = underwater ? deployment : "";
+                    race = mission.Race;
+                    break;
+                }
+            case WorldTargetKind.MissionSite when _sites.Find(site => site.Id == landing.Target.Id &&
+                MarkerName(site.DeploymentId) == landing.Target.TypeId) is { } site:
+                missionType = deployment = site.DeploymentId;
+                customDeploy = site.CustomDeploymentId;
+                customMission = "";
+                race = site.Race;
+                break;
+            case WorldTargetKind.AlienBase when TargetAlienBase(landing.Target) is { } alienBase:
+                {
+                    missionType = deployment = alienBase.DeploymentId;
+                    var raceRule = rules.AlienRaces.TryGet(alienBase.Race, out var handle) ? rules.AlienRaces[handle].Value : null;
+                    customDeploy = raceRule?.BaseCustomDeploy ?? "";
+                    customMission = raceRule?.BaseCustomMission ?? "";
+                    race = alienBase.Race;
+                    // BattlescapeGenerator::setWorldTexture(0, globeTexture) for alien bases.
+                    missionTexture = -1;
+                    break;
+                }
+            default:
+                return null;
+        }
+        string Known(string id) => id.Length != 0 && rules.AlienDeployments.TryGet(id, out _) ? id : "";
+        var type = landing.CraftTypeId;
+        return new CampaignDeploymentRequest(missionType, Known(deployment), Known(customDeploy), Known(customMission), race,
+            missionTexture, landing.GlobeTexture, landing.Shade, landing.Target, owner.Id, type, craft.Id)
+        {
+            Soldiers = [.. owner.Soldiers.Where(soldier => soldier.Personal is { } personal && personal.CraftType == type &&
+                personal.CraftId == craft.Id).Select(static soldier => soldier.Id)],
+        };
+    }
+
     // ConfirmLandingState::init for the window about to be shown; earlier windows closed in order.
     private void CloseStaleLandings()
     {
@@ -163,6 +235,8 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery
 
     private CampaignCommandResult AnswerLanding(AnswerLanding command)
     {
+        // Confirmations queued behind a confirmed landing wait until its battle is over (D4).
+        if (_deploymentRequest is not null) return Blocked(WorldCommandReasons.DeploymentRequestPending);
         CloseStaleLandings();
         if (_landings.Count == 0 || _landings[0].Confirmation != command.Confirmation || !Enum.IsDefined(command.Answer))
             return Blocked(WorldCommandReasons.NoLandingConfirmation);
@@ -177,15 +251,36 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery
         switch (command.Answer)
         {
             case LandingAnswer.Yes:
-                if (StartingConditionRefusal(owner, craft, state, landing, out _) is { } refusal)
+                if (StartingConditionRefusal(owner, craft, state, landing, out var condition) is { } refusal)
                 {
                     owner.Crafts[index] = craft with { Logistics = SetDestination(state, maximum, BaseReference(owner)) };
                     _landings.RemoveAt(0);
                     CloseStaleLandings();
                     return new CampaignCommandResult([new LandingRefused(owner.Id, landing.CraftTypeId, landing.CraftId, refusal)]);
                 }
-                // The deployment request comes with the rest of S6.
-                return Blocked(LandingReason);
+                if (DeploymentRequestFor(owner, craft, landing) is not { } request) return Blocked(LandingReason);
+                // Craft::destroyRequiredItems, then the request records the craft's load.
+                if (condition is { DestroyRequiredItems: true })
+                {
+                    var items = new Dictionary<string, int>(state.Items, StringComparer.Ordinal);
+                    foreach (var (item, quantity) in condition.RequiredItems)
+                        if (items.TryGetValue(item, out var held) && quantity > 0)
+                        {
+                            if (held - quantity <= 0) items.Remove(item);
+                            else items[item] = held - quantity;
+                        }
+                    state = state with { Items = new System.Collections.ObjectModel.ReadOnlyDictionary<string, int>(items) };
+                    owner.Crafts[index] = craft with { Logistics = state };
+                }
+                _deploymentRequest = request with
+                {
+                    Vehicles = [.. state.Vehicles.Select(static vehicle => vehicle.RuleId)],
+                    Items = new System.Collections.ObjectModel.ReadOnlyDictionary<string, int>(
+                        new Dictionary<string, int>(state.Items, StringComparer.Ordinal)),
+                };
+                _deploymentRequestTaken = false;
+                _landings.RemoveAt(0);
+                return new CampaignCommandResult([new DeploymentRequested(_deploymentRequest)]);
             case LandingAnswer.No:
                 owner.Crafts[index] = craft with { Logistics = SetDestination(state, maximum, BaseReference(owner)) };
                 break;

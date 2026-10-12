@@ -48,6 +48,8 @@ public static partial class OxceSaveAdapter
             Strategy = ReadAlienStrategy(body),
             GeneratedEvents = ReadIntMap(body, "generatedEvents"),
             CraftLostDogfight = Integer(body, "craftLostDogfight", 0),
+            DeploymentRequest = body.TryGet("oxcePortDeploymentRequest", out var request) && request is YamlMappingNode requestMap
+                ? ReadDeploymentRequest(requestMap, markers) : null,
         };
     }
 
@@ -500,6 +502,41 @@ public static partial class OxceSaveAdapter
 
     private static YamlMappingNode? WeightMapping(IReadOnlyList<KeyValuePair<string, ulong>> weights) =>
         weights.Count == 0 ? null : Mapping(weights.Select(static weight => Pair(weight.Key, (YamlNode?)ULong(weight.Value))));
+
+    // Port-only (D4): the deployment request of a confirmed landing, with the target as a saveId node.
+    private static YamlMappingNode? BuildDeploymentRequest(CampaignDeploymentRequest? request) => request is null ? null : Mapping(
+    [
+        Pair("missionType", Scalar(request.MissionType)),
+        Pair("deployment", Scalar(request.DeploymentId)),
+        Pair("alienCustomDeploy", Scalar(request.AlienCustomDeploymentId)),
+        Pair("alienCustomMission", Scalar(request.AlienCustomMissionId)),
+        Pair("race", Scalar(request.Race)),
+        Pair("missionTexture", Integer(request.MissionTexture)),
+        Pair("globeTexture", Integer(request.GlobeTexture)),
+        Pair("shade", Integer(request.Shade)),
+        Pair("dest", TargetReference(request.Target)),
+        Pair("base", Integer(request.BaseId)),
+        Pair("craft", Mapping([Pair("type", Scalar(request.CraftTypeId)), Pair("id", Integer(request.CraftId))])),
+        Pair("soldiers", Sequence(request.Soldiers.Select(static id => (YamlNode)Integer(id)))),
+        Pair("vehicles", Sequence(request.Vehicles.Select(static id => (YamlNode)Scalar(id)))),
+        Pair("items", IntMapping(request.Items.OrderBy(static pair => pair.Key, StringComparer.Ordinal))),
+    ]);
+
+    private static CampaignDeploymentRequest ReadDeploymentRequest(YamlMappingNode map, WorldMarkerIndex markers)
+    {
+        var craft = map.TryGet("craft", out var node) && node is YamlMappingNode craftMap ? craftMap
+            : throw new InvalidDataException("A deployment request needs its craft.");
+        return new CampaignDeploymentRequest(String(map, "missionType", ""), String(map, "deployment", ""),
+            String(map, "alienCustomDeploy", ""), String(map, "alienCustomMission", ""), String(map, "race", ""),
+            Integer(map, "missionTexture", -1), Integer(map, "globeTexture", -1), Integer(map, "shade", 0),
+            ReadTargetReference(map, markers, 0, 0) ?? throw new InvalidDataException("A deployment request needs its target."),
+            Integer(map, "base", 0), RequiredString(craft, "type"), Integer(craft, "id", 0))
+        {
+            Soldiers = Array.AsReadOnly(Sequence(map, "soldiers").Select(static node => YamlValueReader.ReadInt32(node)).ToArray()),
+            Vehicles = Array.AsReadOnly(Sequence(map, "vehicles").Select(static node => YamlValueReader.ReadString(node)).ToArray()),
+            Items = ReadIntMap(map, "items"),
+        };
+    }
 
     private static YamlMappingNode? TargetReference(WorldTargetReference? reference) => reference is null ? null : Mapping(
     [
