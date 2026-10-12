@@ -60,10 +60,10 @@ craft markers, geoscape interface colours, palettes, `TEXTURE.DAT` and `GlobeMar
 are not projected; `SavedGame` globe view fields are unowned; and every timed
 notification pauses, whereas the reference pauses for popups and resets speed per popup.
 
-Decisions: refusals become typed reason codes mapped to reference `STR_` keys where one
-exists (port-only guards keep English text); wings are an atomic headless command;
-airborne craft transfer is a named restriction; the client is one 640×400 frame with the
-reference geoscape layout at 2×; time advance is chunked under a per-frame budget with
+Decisions: (D1) refusals become typed reason codes mapped to reference `STR_` keys where one
+exists (port-only guards keep English text); (D2) wings are an atomic headless command;
+(D3) airborne craft transfer is a named restriction; (D4) the client is one 640×400 frame with the
+reference geoscape layout at 2×; (D5) time advance is chunked under a per-frame budget with
 the selected speed, pause and speed-reset behaviour preserved.
 
 Slices, each followed by an independent audit before the next:

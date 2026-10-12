@@ -321,28 +321,37 @@ Tests: `StrategicWorldGeoscapeScenarioTests`, `PrivateGeoscapeScenarioTests`, `S
 
 ## S11 — Performance, decisions and combined branch 4 acceptance (2026-10-12)
 
-- Performance: `GeoscapeFrameBenchmarks` (busy globe and client redraw with a popup, zoom 0 and 5)
-  measures frame construction at 1.8–4.1 ms p95 in the 2-core VM against the 8 ms target, with no
-  per-frame allocation in the globe renderer and under 0.7 KiB per client frame (clock, funds and
-  popup text). Time advance per tick is unchanged from 2026-10-06; at one-day speed the frame budget
-  makes a 32-UFO world run one game day per about 0.3 s of tick work. The SDL smoke's 7.2 ms average
-  presentation includes `SDL_RenderPresent`; the smoke now prints conversion/upload separately and
-  the client tick p50/p95/maximum. See [performance baselines](performance-baselines.md#geoscape-frame-and-one-day-speed-result-2026-10-12).
-- [ADR 0032](decisions/0032-geoscape-ui-intentional-differences.md) records every intentional
-  difference from S3–S10 in one place. The airborne-craft sale and transfer refusal now names the
-  unsupported `canTransferCraftsWhileAirborne` option instead of the obsolete "requires world
-  simulation" text (D3; `StrategicWorldWingTests`).
+- Performance: `GeoscapeFrameBenchmarks` (busy globe still and rotating, and a client redraw with
+  the interception list open, at zoom 0 and 5) measures frame construction at 1.7–4.3 ms p95 in the
+  2-core VM against the 8 ms target, with no per-frame allocation in the globe renderer and under
+  0.7 KiB per client frame (clock, funds and popup text). Time advance per tick is unchanged from
+  2026-10-06; at one-day speed the frame budget gives a 32-UFO world about 0.31 s of tick work per
+  game day. The SDL smoke's 7.2 ms average presentation includes `SDL_RenderPresent`; the smoke now
+  prints conversion and upload separately and the client tick p50/p95/maximum. See
+  [performance baselines](performance-baselines.md#geoscape-frame-and-one-day-speed-result-2026-10-12).
+- [ADR 0032](decisions/0032-geoscape-ui-intentional-differences.md) gathers the intentional
+  differences recorded in S2–S10, and the plan's decisions are numbered D1–D5. Selling an airborne
+  craft is refused as `SellState` does ("Airborne craft cannot be sold."); transferring one names the
+  unsupported `canTransferCraftsWhileAirborne` option (D3). Both replace the obsolete "requires world
+  simulation" text (`StrategicWorldWingTests`).
 - Compatibility matrices: gameplay (globe, crafts, detection, bases) and saves (globe view) rows
   updated; the code map is regenerated.
 - Combined branch 4 acceptance ([phase 6 plan](phase-6-plan.md#combined-branch-4-scope-and-acceptance)):
-  capability registration (ADR 0027), controlled mission/trajectory/spawn/detection choices, pursuit
-  and safe return, target deletion without dangling references, reload of in-flight UFOs, craft,
-  waves and sites, TFTD depth/terrain and modded deployment-only/no-object waves are closed by 4a–4c
-  ([4c closure](phase-6-world-integration-plan.md#branch-4c-closure-2026-10-11) with its named
-  restrictions). Commit purpose 5 (navigable globe, target information, notifications, dispatch and
-  recall with speed interruption and headless equivalents) is S1–S10. Transitions that need
-  interception/deployment (branch 5) or monthly evaluation and event payloads (branch 6) stop
-  before mutation with their reasons, which the geoscape shows and halts on.
+  - Closed by 4a–4c ([4c closure](phase-6-world-integration-plan.md#branch-4c-closure-2026-10-11)
+    and its named restrictions): capability registration (ADR 0027, purpose 0); controlled
+    mission, trajectory, spawn and detection choices; pursuit and safe return; target deletion
+    without dangling references; reload of in-flight UFOs, craft, waves and sites; TFTD
+    depth/terrain and modded deployment-only/no-object waves (purposes 1–4).
+  - Purpose 5 (navigable globe, target information, notifications, dispatch and recall with speed
+    interruption and headless equivalents) is S1–S10.
+  - Purpose 6: 72-hour composed, stepped/batched/reloaded and isolated month-boundary scenarios,
+    bounded populations, scripting coverage and 8/32/128-UFO allocation measurements are the 4c
+    evidence; this slice adds the geoscape frame measurements and matrix updates.
+  - Carried restriction: the monthly subsystems (mission, arc and event scripts, alien-base
+    upgrades) run as isolated operations, but integrated monthly progression in a live campaign
+    stays guarded for branch 6, as the 4c scope records. A campaign reaching the month boundary
+    halts with that reason, which the geoscape shows. Transitions that need interception or
+    deployment (branch 5) stop the same way before mutation.
 - Validation (2026-10-12, VM): build, 820 unit tests, 2,603 public compatibility tests (2,309
   sharded plus 294 hunting), formatting and code-map checks pass. The private corpus and SDL
   smoke run on Windows (S10 runs green before S11; rerun for the S11 commit).

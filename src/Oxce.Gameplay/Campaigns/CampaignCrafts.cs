@@ -67,7 +67,14 @@ public sealed partial class CampaignState
             var state = craft.Logistics;
             string? reason = state is null ? "Craft logistics state is required for sale or transfer." : null;
             if (origin.Soldiers.Any(s => s.Personal is null)) reason ??= "Soldier assignments must be resolved before moving or selling craft.";
-            if (state is { Status: "STR_OUT" }) reason ??= "Airborne craft cannot be sold or transferred (canTransferCraftsWhileAirborne is not supported).";
+            // SellState lists only grounded craft; TransferItemsState also lists airborne ones with
+            // canTransferCraftsWhileAirborne, which is not supported. The row stays visible with the reason.
+            if (state is { Status: "STR_OUT" })
+            {
+                reason ??= operation == LogisticsOperation.Transfer
+                    ? "Airborne craft cannot be transferred (canTransferCraftsWhileAirborne is not supported)."
+                    : "Airborne craft cannot be sold.";
+            }
             if (operation == LogisticsOperation.Transfer)
             {
                 if (UsedHangars(destination, rule.HangarType) >= AvailableHangars(destination, rule.HangarType)) reason ??= "No compatible destination hangar.";

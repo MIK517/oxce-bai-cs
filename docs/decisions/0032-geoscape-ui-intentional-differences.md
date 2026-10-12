@@ -17,16 +17,17 @@ The geoscape follows the reference by default. These differences are intentional
 
 **Commands go through headless validation.** A UI action never mutates state the command did not
 validate. Consequences:
-- Refusals carry a stable code and the reference `STR_` key where one exists (D1); port-only guards
-  keep English text. Logistics, research and time refusals stay unclassified until their screens
+- Refusals carry a stable code and the reference `STR_` key where one exists (decision D1); port-only
+  guards keep English text. Logistics, research and time refusals stay unclassified until their screens
   need codes.
 - A wing is one atomic command (D2): every check of every craft runs before any craft changes.
   With follow-leader off a follower cannot be the wing's target (the reference would let it chase
   itself).
 - "Go to last known UFO position" runs `DispatchCraftToWaypoint`, so it applies that command's armour,
   cargo and pilot checks and cancels auto-patrol; the reference only sets the destination.
-- Selling or transferring an airborne craft is a named restriction (D3): the reference lists one only
-  with `canTransferCraftsWhileAirborne`, which is not supported; the row stays visible with the reason.
+- Transferring an airborne craft is a named restriction (D3): the reference lists one only with
+  `canTransferCraftsWhileAirborne`, which is not supported. Selling one is refused as in `SellState`.
+  Both rows stay visible with the reason, where the reference leaves them out.
 
 **Time advance is chunked under a frame budget (D5).** Each `geoClockSpeed` step's ticks run as
 `AdvanceCampaignTime` chunks carrying the selected speed, within 12 ms per host frame. Gameplay is
@@ -35,24 +36,37 @@ world is busy (see [performance baselines](../performance-baselines.md)). A tick
 context in preflight, so research completion's speed reset applies from the next tick rather than
 inside `time1Day`.
 
-**Selection uses the published world.** Only detected mission sites are globe targets (the reference
-lets an undetected site be clicked, which reveals it), and a destroyed UFO is not selectable during
-the instant before its removal. Grounded craft are not targets, as in `Globe::getTargets`.
+**Selection uses the published world.** Targets follow `Globe::getTargets` (grounded craft are not
+targets), except that only detected mission sites are selectable (the reference lets an undetected
+site be clicked, which reveals it) and a destroyed UFO is not selectable during the instant before its
+removal.
 
-**Content projection.** Craft and UFO markers above the nine shared frames are offset into the
-declaring mod's range. Deployment `markerIcon` keeps its declared number because the typed rule has
-no declaring mod; a non-master mod's custom site or alien-base marker above 8 is a named restriction.
+**Robustness over failure.** Save, load and unexpected time failures report in the status line and
+halt the clock instead of ending the session; a failed load keeps the running campaign. A huge
+(untrusted) saved globe longitude is reduced before the reference normalisation loops so it cannot
+hang. A malformed run of sprite cells is reported once per declaration, where the reference stops at
+the first bad frame. The globe noise table uses a fixed seed instead of the clock, so frames are
+reproducible.
+
+**Content projection.** As in the reference, craft and UFO markers above the nine shared frames are
+offset into the declaring mod's range. Deployment `markerIcon`, however, keeps its declared number
+because the typed rule has no declaring mod; a non-master mod's custom site or alien-base marker above
+8 is a named restriction.
 
 **One 640×400 frame with popups (D4).** The globe is the reference layout at 2×. Screens are popups
 over the globe instead of reference windows: six interception rows per page instead of
 `oxceInterceptTableSize`, at most 16 entries in the several-targets choice, UFO "Ignore" as its own
 button instead of Ctrl+Cancel, no title strip while a destination is chosen and no "Redirect craft"
-caption. Allocate manufacture opens the base screens rather than `ManufactureState`.
+caption. Labels use the small font at its own size on the 2× frame and are not clipped to the
+reference text box. Allocate manufacture opens the base screens rather than `ManufactureState`.
+Port-only keys: `.`/`,` cycle front-facing targets (the reference has no target-cycling key), Enter
+centres and describes the selection, B opens the base screens and N starts base placement.
 
 **Base placement.** The access lift is placed at the grid centre instead of a clicked position;
-`baseNamesFirst/Middle/Last`, `customInitialBase` and a lift for the starting base are not offered;
-names are limited to 40 characters and a blank name is refused; costs use a comma thousands
-separator; the hover preview omits zero and repeated radar ranges (the same pixels).
+`baseNamesFirst/Middle/Last` default names are not offered; `customInitialBase` (a lift for the
+starting base) is not supported; names are limited to 40 characters and a blank name is refused;
+costs use a comma thousands separator; the hover preview omits zero and repeated radar ranges (the
+same pixels); a custom `GeoscapeClientSetup.OpenBases` factory keeps its own new-base behaviour.
 
 **Not shown yet** (Phase 8 polish or later branches): craft altitude, maintenance times and distance
 sorting in the interception list, intercept row right-click, the dogfight "tailing" status,
