@@ -296,5 +296,5 @@ Done: dispatch-to-request through the geoscape client (interception, crash, land
 the base-defense variants (fire, skip, base lost and campaign lost), a hunter-killer attack and escorts
 joining it, site and alien-base requests, and the TFTD depth wait; target loss is covered by the pursuit
 tests ([status](strategic-interception-status.md#s9--scenarios-in-progress)). Since done: the 19 staged saves'
-reclassification with headless branch 5 choices. Remaining: the SDL smoke run.
+reclassification with headless branch 5 choices, and the Windows SDL smoke run. S9 is complete.
 
