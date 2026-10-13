@@ -5,6 +5,8 @@ using Oxce.Engine.Input;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
+using Oxce.Savegames.Oxce;
+using Oxce.TestSupport;
 using Xunit;
 using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
 
@@ -240,6 +242,52 @@ public sealed class StrategicLandingTests
         Assert.Empty(client.Popups);
         Assert.Null(Ship(campaign).Destination);
         Assert.Equal(before.Speed / 2, Ship(campaign).Speed);
+    }
+
+    // The landed UFO's place taken by a detected terror site or a discovered alien base.
+    private static (RuntimeContent Content, CampaignState Campaign) CreateAt(bool alienBase)
+    {
+        var (content, campaign) = Create();
+        var snapshot = campaign.Capture();
+        var ufo = snapshot.World.Ufos[0];
+        var target = alienBase
+            ? new WorldTargetReference(WorldTargetKind.AlienBase, "STR_ALIEN_BASE", 5, ufo.Longitude, ufo.Latitude)
+            : new WorldTargetReference(WorldTargetKind.MissionSite, "STR_TERROR_SITE", 5, ufo.Longitude, ufo.Latitude);
+        snapshot = (snapshot with
+        {
+            World = snapshot.World with
+            {
+                Ufos = [],
+                MissionSites = alienBase ? snapshot.World.MissionSites
+                    : [new MissionSiteSnapshot(5, "MISSION_SCOUT", "SITE_DEPLOY", "RACE_B", ufo.Longitude, ufo.Latitude, 3600)
+                    { Detected = true, CustomDeploymentId = "STR_TERROR_MISSION" }],
+                AlienBases = alienBase ? [new AlienBaseSnapshot(5, "ALIEN_BASE_DEPLOY", "RACE_A", ufo.Longitude, ufo.Latitude) { Discovered = true }]
+                    : snapshot.World.AlienBases,
+            },
+        }).WithCraft("SHIP", craft => craft with { Logistics = craft.Logistics! with { Destination = target } });
+        return (content, CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17)));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LandingAtASiteOrAnAlienBaseRequestsItsDeploymentsBattle(bool alienBase)
+    {
+        var (content, campaign) = CreateAt(alienBase);
+        var requested = AssertLandingRequested(campaign);
+        Assert.Equal(alienBase ? WorldTargetKind.AlienBase : WorldTargetKind.MissionSite, requested.Target.Kind);
+        var request = Assert.IsType<DeploymentRequested>(Assert.Single(
+            campaign.Execute(new AnswerLanding(requested.Confirmation, LandingAnswer.Yes)).Events)).Request;
+        // ConfirmLandingState::btnYesClick: the site's or base's deployment is the mission type. A site
+        // keeps its custom deployment and race; an alien base uses mission texture 0 (setWorldTexture(0, ...)).
+        if (alienBase)
+            Assert.Equal(("ALIEN_BASE_DEPLOY", "ALIEN_BASE_DEPLOY", "RACE_A", 0, requested.GlobeTexture),
+                (request.MissionType, request.DeploymentId, request.Race, request.MissionTexture, request.GlobeTexture));
+        else
+            Assert.Equal(("SITE_DEPLOY", "SITE_DEPLOY", "STR_TERROR_MISSION", "RACE_B", requested.MissionTexture),
+                (request.MissionType, request.DeploymentId, request.AlienCustomDeploymentId, request.Race, request.MissionTexture));
+        var reloaded = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(campaign.Capture()), content, 17, "site-request.sav").Campaign;
+        Assert.Equivalent(request, Landings(reloaded).QueryDeploymentRequest(), strict: true);
     }
 
     [Fact]
