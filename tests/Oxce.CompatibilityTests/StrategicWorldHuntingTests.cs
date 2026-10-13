@@ -4978,4 +4978,65 @@ public sealed partial class StrategicWorldHuntingTests
             client.Tick(GeoscapeClient.DogfightClock);
         Assert.Equal(time, campaign.Capture().Time);
     }
+
+    [Fact]
+    public void AnArmedCraftBesideTheHuntedOneJoinsTheHunterKillersFight()
+    {
+        // GeoscapeState::time5Seconds with escortsJoinFightAgainstHK: crafts within escortRange that have a
+        // loaded weapon and are not returning join the attack in their own windows.
+        var content = Load("""
+            crafts:
+              - type: INTERCEPTOR
+                weapons: 1
+                damageMax: 100
+              - type: SHIP
+                damageMax: 100
+            craftWeapons:
+              - type: ESCORT_CANNON
+                launcher: SUPPLY
+                ammoMax: 50
+                damage: 10
+                range: 10
+                accuracy: 25
+                reloadCautious: 24
+                reloadStandard: 16
+                reloadAggressive: 8
+                projectileType: 2
+                projectileSpeed: 8
+
+            """);
+        var initial = HuntingSnapshot(content);
+        var hunter = initial.World.Ufos[0] with
+        {
+            HunterKiller = true,
+            Hunting = true,
+            OriginalWaypoint = new(1, 0.6),
+            Longitude = 0.45,
+            Latitude = 0.21,
+            Destination = new(WorldTargetKind.Craft, "SHIP", 1, 0.45, 0.21),
+        };
+        initial = (initial with { World = initial.World with { Ufos = [hunter] } }).WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with { Weapons = [new CraftWeaponSnapshot("ESCORT_CANNON", 50, false, false), null] },
+        }).WithCraft("INTERCEPTOR", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_OUT",
+                Fuel = 300,
+                Longitude = 0.4501,
+                Latitude = 0.2101,
+                Destination = null,
+                Weapons = [new CraftWeaponSnapshot("ESCORT_CANNON", 50, false, false)],
+            },
+        });
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.DoesNotContain(result.Events, static evt => evt is CampaignActionBlocked);
+        var started = result.Events.OfType<InterceptionStarted>().ToArray();
+        // The hunter may retarget the armed interceptor first; either way the other craft joins the fight.
+        Assert.Equal(["INTERCEPTOR", "SHIP"], started.Select(static evt => evt.CraftTypeId).Order());
+        Assert.All(started, static evt => Assert.True(evt.UfoAttacking));
+        Assert.Equal(2, campaign.GetQuery<ICampaignInterceptionQuery>()!.QueryInterceptions().Count);
+    }
 }
