@@ -292,8 +292,9 @@ sprites and the base-defense round animation.
 
 ### S9 — Scenarios (in progress, 2026-10-13)
 
-Done: dispatch-to-request through the geoscape client (interception, crash, landing, request, reload) and
-a defended base's window and a hunter-killer attack
-([status](strategic-interception-status.md#s9--scenarios-in-progress)). Remaining: escort fights, target loss, other base-defense variants, site and alien-base
-requests, TFTD depth cases, the staged saves and the SDL smoke run.
+Done: dispatch-to-request through the geoscape client (interception, crash, landing, request, reload),
+the base-defense variants (fire, skip, base lost and campaign lost), a hunter-killer attack and escorts
+joining it, site and alien-base requests, and the TFTD depth wait; target loss is covered by the pursuit
+tests ([status](strategic-interception-status.md#s9--scenarios-in-progress)). Remaining: the 19 staged
+saves' reclassification and the SDL smoke run.
 
