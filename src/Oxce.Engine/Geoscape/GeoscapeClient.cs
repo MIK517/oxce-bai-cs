@@ -126,9 +126,12 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     public string Status => _status;
     public GlobeRenderOptions Options => _options;
 
-    /// <summary>Time may run: no popup, destination choice or screen above the globe and the world has been entered.</summary>
+    /// <summary>
+    /// Time may run: no popup, destination choice, open interception window or screen above the globe, and
+    /// the world has been entered.
+    /// </summary>
     public bool TimeCanRun => _popups.Count == 0 && _bases is null && _selecting is null && _placing is null &&
-        _naming is null && _worldReady;
+        _naming is null && _worldReady && !InterceptionWindowsOpen;
 
     public void Tick(TimeSpan fixedInterval)
     {
@@ -157,6 +160,7 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
                 _globeDirty = redraw = true;
             }
         }
+        redraw |= TickInterceptions(fixedInterval);
         if (TimeCanRun)
         {
             GeoscapeTimeStep step;
@@ -186,13 +190,23 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     public void HandleInput(in GameInputEvent input)
     {
         if (input.Kind == GameInputEventKind.PointerReleased && input.PointerButton == 2) _dragging = false;
-        if (input.Kind == GameInputEventKind.FocusLost) _shift = false;
+        if (input.Kind == GameInputEventKind.FocusLost) _shift = _control = false;
         _keyText = input.Kind == GameInputEventKind.KeyPressed && input.KeyCode is >= 32 and < 127
             ? ((char)input.KeyCode).ToString()
             : null;
         if (input.Kind is GameInputEventKind.KeyPressed or GameInputEventKind.KeyReleased)
+        {
             _shift = (input.Modifiers & InputKeyModifiers.Shift) != 0 ||
                 (input.Kind == GameInputEventKind.KeyPressed && input.KeyCode is ShiftLeft or ShiftRight);
+            var control = input.KeyCode is ControlLeft or ControlRight
+                ? input.Kind == GameInputEventKind.KeyPressed
+                : (input.Modifiers & InputKeyModifiers.Control) != 0;
+            // ConfirmLandingState::togglePatrolButton relabels its button as Ctrl goes down and up.
+            var relabel = control != _control && PopupShown &&
+                _popups[0].Popup.Actions.Any(static action => action.ControlAlternative is not null);
+            _control = control;
+            if (relabel) Redraw();
+        }
         if (_bases is not null)
         {
             _bases.HandleInput(input);
@@ -329,6 +343,7 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     private void HandlePress(in GameInputEvent input)
     {
         int x = (int)input.X, y = (int)input.Y;
+        if (x < GlobeWidth && HandleInterceptionPress(input)) return;
         if (x >= GlobeWidth)
         {
             if (_placing is not null)
@@ -338,8 +353,9 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
             }
             if (_selecting is not null)
             {
-                // SelectDestinationState's Cancel button.
+                // SelectDestinationState's Cancel and Cydonia buttons.
                 if (input.PointerButton == 1 && y >= CancelTop && y < CancelTop + SpeedHeight) CancelSelection();
+                else if (input.PointerButton == 1 && y >= CancelTop + SpeedHeight && y < CancelTop + 2 * SpeedHeight) ChooseCydonia();
                 return;
             }
             var row = (y - SpeedTop) / SpeedHeight;
@@ -415,7 +431,8 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
             choice = PopupButtonAt(popup, (int)input.X, (int)input.Y);
         else return;
         if (choice < 0) return;
-        Choose(choice, _shift || (input.Modifiers & InputKeyModifiers.Shift) != 0);
+        Choose(choice, _shift || (input.Modifiers & InputKeyModifiers.Shift) != 0,
+            _control || (input.Modifiers & InputKeyModifiers.Control) != 0);
     }
 
     private static int IndexOf(GeoscapePopup popup, Func<GeoscapePopupAction, bool> binding)
@@ -429,13 +446,14 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     /// Applies a popup button: speed reset, centring, the popup's own callback, then the button's
     /// command or the screen it opens. A disabled button keeps the popup open and reports why.
     /// </summary>
-    public void Choose(int choice, bool shift = false)
+    public void Choose(int choice, bool shift = false, bool control = false)
     {
         if (_popups.Count == 0) throw new InvalidOperationException("No popup is open.");
         var entry = _popups[0];
         ArgumentOutOfRangeException.ThrowIfNegative(choice);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(choice, entry.Popup.Actions.Count);
         var action = entry.Popup.Actions[choice];
+        if (control && action.ControlAlternative is { } alternative) action = alternative;
         if (action.Disabled is { } disabled && !(shift && action.Intent is InterceptRowIntent))
         {
             _status = disabled;
@@ -533,6 +551,7 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
         _session = session;
         // Nothing owed by the old campaign's clock may run on the loaded one.
         _time.Interrupt();
+        _dogfightElapsed = TimeSpan.Zero;
         _popups.Clear();
         _selected = null;
         _selecting = null;
@@ -564,6 +583,28 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
         if (_placing is null && _overview.Bases.Count != 0 && !_overview.Bases[0].IsPlaced && _session.Readiness is not null)
             BeginBasePlacement();
         Notify(result.Events.Where(static e => e is not CampaignActionBlocked).ToArray());
+        ReopenPendingWindows();
+    }
+
+    /// <summary>
+    /// A loaded campaign may stop at a battle request, a base defense or landing confirmations; their
+    /// windows open again as they would have when the clock stopped.
+    /// </summary>
+    private void ReopenPendingWindows()
+    {
+        if (_session.Landings?.QueryDeploymentRequest() is { } request)
+        {
+            Notify([new DeploymentRequested(request)]);
+            return;
+        }
+        if (_session.BaseDefense?.QueryBaseDefense() is { } defense)
+        {
+            Notify([new BaseDefenseStarted(defense.BaseId, defense.UfoUniqueId, defense.InstaHyper)]);
+            return;
+        }
+        foreach (var landing in _session.Landings?.QueryLandingConfirmations() ?? [])
+            Notify([new LandingConfirmationRequested(landing.Confirmation, landing.BaseId, landing.CraftTypeId, landing.CraftId,
+                landing.Target, landing.MissionTexture, landing.GlobeTexture, landing.Shade)]);
     }
 
     /// <summary>Re-reads the world and repairs a selection whose target is gone.</summary>
@@ -571,8 +612,11 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     {
         _world = _session.World!.QueryWorld();
         _overview = _session.Queries.QueryOverview();
+        // The globe shades seasons as the campaign's globeSeasons option says, like the landing shades.
+        _options = _options with { Seasons = _world.GlobeSeasons };
         _scene = GlobeScene.Build(_world, _setup.Rules, _setup.Localize, _placing is null ? null : _hover);
         _targets = GlobeTargets.Build(_world, _setup.Localize);
+        RefreshInterceptions();
         if (_selected is not null) _selected = _targets.Find(_selected.Reference);
         RepairScreens();
         _globeDirty = true;
@@ -590,6 +634,7 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
         _frame.Clear(0);
         _frame.Blit(_renderer.Surface, 0, 0, transparent: false);
         DrawSidebar();
+        DrawInterceptions();
         if (_naming is not null) DrawPopup(NamingPopup());
         else if (PopupShown) DrawPopup(_popups[0].Popup);
         _revision++;
@@ -657,7 +702,7 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
         for (var index = 0; index < popup.Actions.Count; index++)
         {
             var (bx, by, bw, bh) = ButtonRectangle(popup, index);
-            var action = popup.Actions[index];
+            var action = _control && popup.Actions[index].ControlAlternative is { } alternative ? alternative : popup.Actions[index];
             _frame.FillRectangle(bx, by, bw, bh, action.Disabled is null ? ButtonColor : (byte)0);
             Text(action.Label, bx + 4, by + 3, action.Disabled is null ? (byte)0 : TextColor);
         }

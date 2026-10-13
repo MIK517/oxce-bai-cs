@@ -18,6 +18,10 @@ public sealed class GeoscapeNotificationsTests
         ["STR_NOT_ENOUGH_ITEM_TO_REARM_FACILITY_AT_BASE"] = "Not enough {0} to rearm {1} at {2}",
         ["STR_FUEL_ITEM"] = "Elerium",
         ["STR_LASER_DEFENSE"] = "Laser Defense",
+        ["STR_CRAFT_READY_TO_LAND_NEAR_DESTINATION"] = "{0} ready to land near {1}",
+        ["STR_BASE_UNDER_ATTACK"] = "{0} is under attack",
+        ["STR_ALIEN_MISSILES_HAVE_DESTROYED_OUR_BASE"] = "Missiles destroyed {0}",
+        ["STR_THE_ALIENS_HAVE_DESTROYED_THE_UNDEFENDED_BASE"] = "Aliens destroyed {0}",
     };
 
     private static readonly CampaignWorldOverview World = new(
@@ -211,5 +215,37 @@ public sealed class GeoscapeNotificationsTests
         };
         Assert.Equal("Way point-6", Assert.Single(GlobeTargets.Build(World with { Targets = [waypoint] }, Names).All,
             target => target.Kind == WorldTargetKind.Waypoint).Label);
+    }
+
+    [Fact]
+    public void LandingConfirmationAnswersYesOrNoAndPatrolWhileControlIsHeld()
+    {
+        var target = new WorldTargetReference(WorldTargetKind.Ufo, WorldTargetReference.UfoType, 7, 0.5, 0.2) { UniqueId = 70 };
+        var popup = Describe(new LandingConfirmationRequested(4, 1, "STR_INTERCEPTOR", 2, target, 3, 3, 0))!;
+        Assert.Equal("INTERCEPTOR-2 ready to land near UFO-7", popup.Title);
+        Assert.Equal(["STR_BEGIN_MISSION"], popup.Lines);
+        Assert.Equal([("STR_YES", true, false), ("STR_NO", false, true)],
+            popup.Actions.Select(action => (action.Label, action.OkKey, action.CancelKey)));
+        Assert.Equal(new AnswerLanding(4, LandingAnswer.Yes), popup.Actions[0].Command);
+        Assert.Equal(new AnswerLanding(4, LandingAnswer.No), popup.Actions[1].Command);
+        var patrol = popup.Actions[1].ControlAlternative!;
+        Assert.Equal(("STR_PATROL", true, new AnswerLanding(4, LandingAnswer.Patrol)), (patrol.Label, patrol.CancelKey, patrol.Command));
+    }
+
+    [Fact]
+    public void BaseAttackWindowsFireOrSkipAndReportTheOutcome()
+    {
+        var defense = Describe(new BaseDefenseStarted(1, 70, InstaHyper: false))!;
+        Assert.Equal("Alpha is under attack", defense.Title);
+        Assert.Equal(["STR_BASE_DEFENSES_INITIATED", "UFO-7"], defense.Lines);
+        Assert.Equal([new ResolveBaseDefense(1, Fire: true), new ResolveBaseDefense(1, Fire: false)],
+            defense.Actions.Select(action => action.Command));
+        Assert.Equal(["STR_UFO_DESTROYED"], Describe(new BaseDefenseResolved(1, 70, true, false))!.Lines);
+        Assert.Null(Describe(new BaseDefenseResolved(1, 70, false, false)));
+        Assert.Equal("Missiles destroyed Alpha", Describe(new BaseDestroyed(1, "Alpha", Missiles: true))!.Title);
+        Assert.Equal("Aliens destroyed Alpha", Describe(new BaseDestroyed(1, "Alpha"))!.Title);
+        Assert.Equal("The campaign is lost", Describe(new CampaignEnded(2))!.Title);
+        Assert.Equal("STR_ARMOR_NOT_ALLOWED_ONBOARD",
+            Describe(new LandingRefused(1, "STR_INTERCEPTOR", 2, "STR_ARMOR_NOT_ALLOWED_ONBOARD"))!.Title);
     }
 }

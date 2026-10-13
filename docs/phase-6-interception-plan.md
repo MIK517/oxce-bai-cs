@@ -280,3 +280,13 @@ instant retaliation born over the base, and stored vehicles among the defenders.
 missiles that damage facilities, stored vehicles competing for too little ammunition, and several
 final-mission research topics.
 
+### S8 — UI (in progress, 2026-10-13)
+
+Done: the geoscape windows for landing confirmation (Yes/No, Ctrl turning No into Patrol), a refused
+starting condition, base defense (start or skip firing, and a shot-down UFO), a destroyed base, the
+campaign's end and the "tactical combat is not available yet" screen for a battle request, and the
+Cydonia button; a loaded save reopens a pending battle request or base defense
+([status](strategic-interception-status.md#s8--ui-in-progress)). Since done: the interception windows
+(as text panels) with D3's dogfight timer, and the globe seasons option. Remaining: the windows'
+sprites and the base-defense round animation.
+

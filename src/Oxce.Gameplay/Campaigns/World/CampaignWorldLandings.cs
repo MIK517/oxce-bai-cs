@@ -69,7 +69,9 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery
         registry.Command<LaunchFinalMission>(LaunchFinalMission);
         // D4: the campaign waits at the launch point. Time stops in its preflight (above); every other
         // command except the Phase 7 seam refuses, so nothing changes the craft, crew or world first.
-        registry.CommandGate(command => _deploymentRequest is not null && command is not (World.TakeDeploymentRequest or AdvanceCampaignTime)
+        // EnterCampaignWorld is a no-op once the world has begun, which a pending request implies.
+        registry.CommandGate(command => _deploymentRequest is not null &&
+            command is not (World.TakeDeploymentRequest or AdvanceCampaignTime or EnterCampaignWorld)
             ? Blocked(WorldCommandReasons.DeploymentRequestPending) : null);
     }
 
@@ -87,24 +89,14 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery
             return Blocked(WorldCommandReasons.FinalMissionUnavailable);
         var rules = campaign.Content.RuntimeRules;
         var craft = owner.Crafts[index];
-        var rule = rules.Crafts[craft.Rule].Value;
-        if (craft.Logistics is not { } state || DispatchReason(owner, craft) is not null)
-            return Blocked(WorldCommandReasons.FinalMissionUnavailable);
-        var finals = rules.Research.Rules.Where(static research => research.Value.UnlockFinalMission).ToArray();
-        if (finals.Length > 1) return Blocked(WorldCommandReasons.FinalResearchAmbiguous);
-        var fuelled = rule.FuelMaximum > 0 && (int)Math.Floor((double)state.Fuel / rule.FuelMaximum * 100) >= 100;
-        if (!fuelled || !rule.Spacecraft || finals.Length == 1 && !campaign.ArcResearch.IsResearched(finals[0].Id))
-            return Blocked(WorldCommandReasons.FinalMissionUnavailable);
+        if (FinalMissionReason(owner, craft) is { } reason) return Blocked(reason);
+        var state = craft.Logistics!;
+        // SelectDestinationState::btnCydoniaClick does nothing for a craft without units.
+        if (!CraftHasUnits(owner, craft, state)) return Blocked(WorldCommandReasons.FinalMissionUnavailable);
         var final = rules.AlienDeployments.Rules.FirstOrDefault(static deployment => deployment.Value.FinalDestination);
         var type = command.CraftTypeId;
         bool Aboard(CampaignState.SoldierState soldier) =>
             soldier.Personal is { } personal && personal.CraftType == type && personal.CraftId == craft.Id;
-        if (final is not null && final.Value.StartingCondition.Length != 0 &&
-            rules.StartingConditions.TryGet(final.Value.StartingCondition, out var condition) &&
-            rules.StartingConditions[condition].Value.RequireCommanderOnboard &&
-            !owner.Soldiers.Any(soldier => Aboard(soldier) && soldier.Personal!.Rank == 5))
-            return Blocked(WorldCommandReasons.FinalMissionUnavailable);
-        if (!CraftHasUnits(owner, craft, state)) return Blocked(WorldCommandReasons.FinalMissionUnavailable);
         _deploymentRequest = new CampaignDeploymentRequest(final?.Id ?? "", final?.Id ?? "", "", "", final?.Value.Race ?? "",
             -1, -1, 0, new WorldTargetReference(WorldTargetKind.Base, WorldTargetReference.BaseType, owner.Id, owner.Longitude, owner.Latitude),
             owner.Id, type, craft.Id)
@@ -115,6 +107,35 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery
         };
         _deploymentRequestTaken = false;
         return new CampaignCommandResult([new DeploymentRequested(_deploymentRequest)]);
+    }
+
+    private string[]? _finalResearch;
+
+    /// <summary>
+    /// SelectDestinationState's Cydonia button visibility for a lone craft: a craft that can launch (pilots,
+    /// banned armor), fully fuelled, a spacecraft, with the final research done and a commander on board
+    /// when the final deployment's starting condition requires one.
+    /// </summary>
+    private string? FinalMissionReason(CampaignState.BaseState owner, CampaignState.CraftState craft)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        var rule = rules.Crafts[craft.Rule].Value;
+        if (craft.Logistics is not { } state || DispatchReason(owner, craft) is not null) return WorldCommandReasons.FinalMissionUnavailable;
+        var finals = _finalResearch ??= [.. rules.Research.Rules.Where(static research => research.Value.UnlockFinalMission)
+            .Select(static research => research.Id)];
+        if (finals.Length > 1) return WorldCommandReasons.FinalResearchAmbiguous;
+        var fuelled = rule.FuelMaximum > 0 && (int)Math.Floor((double)state.Fuel / rule.FuelMaximum * 100) >= 100;
+        if (!fuelled || !rule.Spacecraft || finals.Length == 1 && !campaign.ArcResearch.IsResearched(finals[0]))
+            return WorldCommandReasons.FinalMissionUnavailable;
+        var final = rules.AlienDeployments.Rules.FirstOrDefault(static deployment => deployment.Value.FinalDestination);
+        var type = rules.Crafts.GetExternalId(craft.Rule);
+        if (final is not null && final.Value.StartingCondition.Length != 0 &&
+            rules.StartingConditions.TryGet(final.Value.StartingCondition, out var condition) &&
+            rules.StartingConditions[condition].Value.RequireCommanderOnboard &&
+            !owner.Soldiers.Any(soldier => soldier.Personal is { } personal && personal.CraftType == type &&
+                personal.CraftId == craft.Id && personal.Rank == 5))
+            return WorldCommandReasons.FinalMissionUnavailable;
+        return null;
     }
 
     private CampaignCommandResult TakeDeploymentRequest()

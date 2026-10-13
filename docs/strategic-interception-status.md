@@ -540,3 +540,53 @@ A self-review of this diff against `spawnUfo`, `ufoReachedWaypoint`, `handleBase
 
 Validation: formatting, code map and Release build clean; root `dotnet test` ran 3,526 tests, all green.
 
+## S8 — UI (in progress)
+
+### Landing, base defense and battle request windows (2026-10-13)
+
+`GeoscapeNotifications` maps the branch 5 events to geoscape windows with the reference's texts and
+keys. `ConfirmLandingState`: the craft is ready to land near its target, Yes on Enter and No on Esc,
+and No reads Patrol while Ctrl is held (`GeoscapePopupAction.ControlAlternative`; the client tracks
+Ctrl and relabels the open window). A refused starting condition shows its message as
+`CraftErrorState` does. `BaseDefenseState` offers Start Firing and Skip Firing, each resolving the
+defense in one step (the round-by-round animation is not drawn yet); a shot-down UFO is reported, and
+an attack that goes on leads to the battle request or the destroyed-base window (undefended or nuclear
+wording). The campaign's end and a battle request get port windows in plain text, since there is no
+defeat cutscene or tactical combat yet. Queued landing windows are dropped when their confirmation
+closes or a battle request is pending; a loaded save reopens a pending battle request or base defense.
+`CampaignUiSession` carries the landing and base-defense queries, and `EnterCampaignWorld` passes the
+battle-request gate (it is a no-op once the world has begun).
+
+The destination sidebar shows the Cydonia button for a lone craft whose world view says
+`CanFlyFinalMission` (the same checks as `LaunchFinalMission`); a craft with units asks
+`ConfirmCydoniaState`, whose Yes launches the final mission and closes the selection.
+
+Tests: `GeoscapeNotificationsTests` (landing and base-attack windows), `StrategicLandingTests`
+(Ctrl+Esc patrols through the client; the battle request window reopens after a load),
+`StrategicFinalMissionTests` (the Cydonia button through the client).
+
+### Interception windows and the dogfight timer (2026-10-13)
+
+The geoscape draws a window for each open interception in four grid slots: craft and UFO names,
+distance and target distance, the status text, the five mode buttons (modes the interception does not
+offer are greyed), the minimize button (self-destruct for a defenceless craft) and a toggle per craft
+weapon with its ammunition. Minimized windows become icons at the globe's lower left showing the
+distance; clicking one restores it. D3 follows `GeoscapeState::think`: while interceptions exist and no
+popup is up, `AdvanceInterceptions` runs every `dogfightSpeed` (30 ms) of host time, banking at most
+one extra step; game time runs only when every window is minimized. A water-only craft's
+`InterceptionWaiting` shows the `DogfightErrorState` message. The reference's sprites, range bar and
+weapon icons are not drawn yet; the windows are text panels. `StrategicInterceptionTests` drives a
+window through the client: stepping with time held, mode buttons, minimize and time resuming, and the
+icon restoring the window.
+
+The globe now shades seasons from the campaign's `globeSeasons` option (`CampaignWorldOverview.GlobeSeasons`),
+so the drawn shadow and the landing shades agree. `StrategicWorldGeoscapeScenarioTests`' crewless-craft
+scenario now meets the interception window instead of the old halt.
+
+A self-review found the dogfight timer and windows still active under the destination choice, base
+placement and naming; as in the reference, whose think waits beneath those states, they now pause there.
+
+Validation: formatting, code map and Release build clean; root `dotnet test` ran 3,533 tests, all green.
+One earlier full run had `StrategicWorldEnduranceTests.PopulatedTicksScale...(detectionQueries: False)`
+fail its allocation bound under parallel load; it passed in the runs before and after, and S8 does not
+touch the time tick.

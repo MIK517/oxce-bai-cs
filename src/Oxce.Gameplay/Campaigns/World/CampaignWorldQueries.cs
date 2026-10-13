@@ -76,6 +76,10 @@ public sealed record CampaignWorldCraft(int BaseId, string TypeId, int Id, strin
     public bool MissionComplete { get; init; }
     /// <summary>RuleCraft::canAutoPatrol: Patrol becomes auto-patrol.</summary>
     public bool CanAutoPatrol { get; init; }
+    /// <summary>SelectDestinationState shows the Cydonia button when this craft flies alone.</summary>
+    public bool CanFlyFinalMission { get; init; }
+    /// <summary>Craft::getNumTotalUnits is not zero: the Cydonia button asks for confirmation.</summary>
+    public bool HasUnits { get; init; }
     /// <summary>
     /// Craft::getBaseRange in radians: how far the craft can fly out and still return, drawn while a
     /// grounded craft picks a destination. Infinite when the craft burns no fuel at maximum speed.
@@ -100,6 +104,8 @@ public sealed record CampaignWorldOverview(
     /// <summary>The campaign's country and region rules in saved order, as Globe::drawDetail visits them.</summary>
     public IReadOnlyList<string> CountryIds { get; init; } = [];
     public IReadOnlyList<string> RegionIds { get; init; } = [];
+    /// <summary>Options::globeSeasons as the campaign keeps it: the globe's seasonal shading and landing shades.</summary>
+    public bool GlobeSeasons { get; init; }
 }
 
 public interface ICampaignWorldQuery
