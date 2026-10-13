@@ -126,6 +126,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
             { Detected = true, HasCustomName = waypoint.Name.Length != 0 });
         return new CampaignWorldOverview(CampaignSnapshot.ReadOnly(targets), _missions.Count, _events.Count)
         {
+            GlobeSeasons = campaign.Options.GlobeSeasons,
             CountryIds = CampaignSnapshot.ReadOnly(campaign.CountryStates.Select(country =>
                 campaign.Content.RuntimeRules.Countries.GetExternalId(country.Rule))),
             RegionIds = CampaignSnapshot.ReadOnly(campaign.RegionStates.Select(region =>
@@ -151,6 +152,8 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
                     RadarRange = CraftRadarRange(craft),
                     DispatchUnavailable = dispatchReason is null ? null : WorldCommandReasons.For(dispatchReason),
                     PatrolRecallUnavailable = airborneReason is null ? null : WorldCommandReasons.For(airborneReason),
+                    CanFlyFinalMission = FinalMissionReason(owner, craft) is null,
+                    HasUnits = state is not null && CraftHasUnits(owner, craft, state),
                 };
                 return Details(summary, owner, craft);
             }))),

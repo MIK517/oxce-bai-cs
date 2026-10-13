@@ -19,6 +19,8 @@ public sealed record GeoscapePopupAction(string Label, bool ResetSpeed = false, 
     public ICampaignCommand? Command { get; init; }
     /// <summary>The button is shown but refuses with this reason (a hidden reference button).</summary>
     public string? Disabled { get; init; }
+    /// <summary>What the button becomes while Ctrl is held (ConfirmLandingState's No/Patrol toggle).</summary>
+    public GeoscapePopupAction? ControlAlternative { get; init; }
 }
 
 /// <summary>A geoscape screen a popup button leads to.</summary>
@@ -173,6 +175,62 @@ public static class GeoscapeNotifications
             case CampaignTrainingCompleted training:
                 return new(tr(training.Psi ? "STR_PSI_TRAINING" : "STR_TRAINING"),
                     [BaseName(training.BaseId), "#" + training.SoldierId.ToString(CultureInfo.InvariantCulture)], [OkCancelOnly()]);
+            case LandingConfirmationRequested landing:
+                {
+                    // ConfirmLandingState: Yes on Enter; No on Esc, which reads Patrol while Ctrl is held.
+                    var target = Find(landing.Target.Kind, landing.Target.Id);
+                    var name = target is null ? tr(landing.Target.TypeId) : GeoscapeScreens.TargetLabel(target, tr);
+                    var no = new GeoscapePopupAction(tr("STR_NO"), CancelKey: true)
+                    {
+                        Command = new AnswerLanding(landing.Confirmation, LandingAnswer.No),
+                        ControlAlternative = new(tr("STR_PATROL"), CancelKey: true)
+                        {
+                            Command = new AnswerLanding(landing.Confirmation, LandingAnswer.Patrol),
+                        },
+                    };
+                    return new(Format(tr("STR_CRAFT_READY_TO_LAND_NEAR_DESTINATION"),
+                            CraftName(landing.BaseId, landing.CraftTypeId, landing.CraftId), name),
+                        [tr("STR_BEGIN_MISSION")],
+                        [new(tr("STR_YES"), OkKey: true) { Command = new AnswerLanding(landing.Confirmation, LandingAnswer.Yes) }, no]);
+                }
+            case InterceptionWaiting waiting:
+                // DogfightErrorState: the craft cannot engage yet; its window waits minimized.
+                return new(tr(waiting.TextKey), [], [Ok()]);
+            case LandingRefused refused:
+                // CraftErrorState with the starting condition's message; the craft is already returning.
+                return new(tr(refused.TextKey), [CraftName(refused.BaseId, refused.CraftTypeId, refused.CraftId)],
+                    [OkCancelOnly(), OkFiveSeconds()]);
+            case BaseDefenseStarted defense:
+                {
+                    // BaseDefenseState: the defenses fire round by round, or the player skips them.
+                    var ufo = Ufo(defense.UfoUniqueId);
+                    var lines = new List<string> { tr("STR_BASE_DEFENSES_INITIATED") };
+                    if (ufo is not null) lines.Add(GeoscapeScreens.TargetLabel(ufo, tr));
+                    return new(Format(tr("STR_BASE_UNDER_ATTACK"), BaseName(defense.BaseId)), lines,
+                    [
+                        new(tr("STR_START_FIRING")) { Command = new ResolveBaseDefense(defense.BaseId, Fire: true) },
+                        new(tr("STR_SKIP_FIRING")) { Command = new ResolveBaseDefense(defense.BaseId, Fire: false) },
+                    ]);
+                }
+            case BaseDefenseResolved { UfoDestroyed: true } resolved:
+                return new(Format(tr("STR_BASE_UNDER_ATTACK"), BaseName(resolved.BaseId)), [tr("STR_UFO_DESTROYED")], [Ok()]);
+            case BaseDefenseResolved:
+                // The attack goes on: the battle request or the base's loss follows in its own window.
+                return null;
+            case BaseDestroyed destroyed:
+                return new(Format(tr(destroyed.Missiles ? "STR_ALIEN_MISSILES_HAVE_DESTROYED_OUR_BASE"
+                    : "STR_THE_ALIENS_HAVE_DESTROYED_THE_UNDEFENDED_BASE"), destroyed.Name), [], [Ok()]);
+            case CampaignEnded ended:
+                // The reference plays the defeat or victory cutscene; the port has none yet.
+                return new(ended.Ending == 2 ? "The campaign is lost" : "The campaign is won",
+                    ended.Ending == 2 ? ["No X-COM base remains."] : [], [Ok()]);
+            case DeploymentRequested deployment:
+                // Port screen (S8): Phase 7 runs the battle; until then the request waits in the save.
+                return new("Tactical combat is not available yet",
+                [
+                    tr(deployment.Request.MissionType),
+                    "The battle request is saved with the campaign. Time stays stopped until tactical combat can run it.",
+                ], [Ok()]);
             case CampaignActionBlocked blocked:
                 return new("Time cannot advance", [blocked.Reason], [Ok()]);
             default:

@@ -14,6 +14,8 @@ public sealed partial class GeoscapeClient
 {
     private const uint ShiftLeft = 0x400000E1;
     private const uint ShiftRight = 0x400000E5;
+    private const uint ControlLeft = 0x400000E0;
+    private const uint ControlRight = 0x400000E4;
     private const int InterceptTop = SpeedTop + 6 * SpeedHeight + 40;
     private const int CancelTop = SpeedTop;
 
@@ -26,6 +28,7 @@ public sealed partial class GeoscapeClient
     private readonly record struct PopupEntry(GeoscapePopup Popup, Action<int>? Chosen, int Group);
 
     private bool _shift;
+    private bool _control;
     private int _lastGroup;
     private SelectionState? _selecting;
     private ConfirmState? _confirm;
@@ -166,6 +169,26 @@ public sealed partial class GeoscapeClient
         _globeDirty = true;
     }
 
+    /// <summary>SelectDestinationState shows the Cydonia button for a lone craft able to fly the final mission.</summary>
+    private bool CydoniaShown(CampaignWorldCraft? leader) =>
+        _selecting is { Wing.Count: 1 } && leader is { CanFlyFinalMission: true };
+
+    /// <summary>
+    /// SelectDestinationState::btnCydoniaClick: a craft with units asks ConfirmCydoniaState, whose Yes launches
+    /// the final mission and closes the selection with it.
+    /// </summary>
+    private void ChooseCydonia()
+    {
+        var selection = _selecting!;
+        var leader = FindCraft(selection.Wing[0]);
+        if (!CydoniaShown(leader) || !leader!.HasUnits) return;
+        Push(new GeoscapePopup(_setup.Localize("STR_ARE_YOU_SURE_CYDONIA"), [],
+        [
+            new(_setup.Localize("STR_YES"), OkKey: true) { Command = new LaunchFinalMission(leader.BaseId, leader.TypeId, leader.Id) },
+            new(_setup.Localize("STR_NO"), CancelKey: true),
+        ]), group: selection.Group);
+    }
+
     private void CancelSelection()
     {
         if (_selecting is null) return;
@@ -234,10 +257,24 @@ public sealed partial class GeoscapeClient
         var world = _world;
         Refresh();
         CloseGroup(group);
+        PruneLandingPopups();
         if (blocked is not null)
             Push(new GeoscapePopup(RefusalText(blocked, command, world), [],
                 [new(_setup.Localize("STR_OK"), OkKey: true, CancelKey: true)]));
         else Notify(result.Events);
+    }
+
+    /// <summary>
+    /// Drops queued landing windows the campaign no longer asks about: closed confirmations, and every one
+    /// while a battle request is pending (they wait behind it and reopen when the save is loaded).
+    /// </summary>
+    private void PruneLandingPopups()
+    {
+        if (_session.Landings is not { } landings) return;
+        var pending = landings.QueryDeploymentRequest() is not null;
+        var open = landings.QueryLandingConfirmations().Select(static landing => landing.Confirmation).ToHashSet();
+        _popups.RemoveAll(entry => entry.Popup.Actions.Any(action => action.Command is AnswerLanding answer &&
+            (pending || !open.Contains(answer.Confirmation))));
     }
 
     /// <summary>The refusal in the reference's words when it has them.</summary>
@@ -289,6 +326,11 @@ public sealed partial class GeoscapeClient
         _frame.FillRectangle(GlobeWidth + 2, CancelTop, Width - GlobeWidth - 4, SpeedHeight - 2, ButtonColor);
         Text(_setup.Localize("STR_CANCEL_UC"), SidebarLeft, CancelTop + 4, 0);
         var leader = FindCraft(_selecting!.Wing[0]);
+        if (CydoniaShown(leader))
+        {
+            _frame.FillRectangle(GlobeWidth + 2, CancelTop + SpeedHeight, Width - GlobeWidth - 4, SpeedHeight - 2, ButtonColor);
+            Text(_setup.Localize("STR_CYDONIA"), SidebarLeft, CancelTop + SpeedHeight + 4, 0);
+        }
         Wrap(_setup.Localize("STR_SELECT_DESTINATION"), SidebarLeft, y, Width - SidebarLeft - 2, HighlightColor);
         if (leader is not null) Text(GeoscapeScreens.CraftName(leader, _setup.Localize), SidebarLeft, y + 28);
         if (_selecting.Wing.Count > 1)

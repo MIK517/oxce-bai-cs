@@ -14,7 +14,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Benchmarks](#oxcebenchmarks) | 17 | Engine, Formats, Mods, Rendering, Resources, Savegames |
 | [Oxce.App](#oxceapp) | 3 | Engine, Extensions, Formats, Mods, Platform.Sdl, Rendering, Savegames |
 | [Oxce.Core](#oxcecore) | 8 | - |
-| [Oxce.Engine](#oxceengine) | 28 | Core, Gameplay, Rendering, Resources |
+| [Oxce.Engine](#oxceengine) | 29 | Core, Gameplay, Rendering, Resources |
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
@@ -104,7 +104,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Engine
 
-`src/Oxce.Engine` - 28 files.
+`src/Oxce.Engine` - 29 files.
 
 ### `Oxce.Engine`
 
@@ -137,6 +137,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 - `GeoscapeAssets` (class) [GeoscapeAssets.cs](../src/Oxce.Engine/Geoscape/GeoscapeAssets.cs) - Indexed resources the globe draws with.
 - `GeoscapeClient` (class) [GeoscapeClient.Bases.cs](../src/Oxce.Engine/Geoscape/GeoscapeClient.Bases.cs) - Base placement on the globe: BuildNewBaseState (radar preview under the pointer), ConfirmNewBaseState (cost and area), BaseNameState and...
+- `GeoscapeClient` (class) [GeoscapeClient.Interceptions.cs](../src/Oxce.Engine/Geoscape/GeoscapeClient.Interceptions.cs) - The interception windows (DogfightState) over the globe and the dogfight timer of `GeoscapeState::think` (D3): while any window is open t...
 - `GeoscapeClient` (class) [GeoscapeClient.Screens.cs](../src/Oxce.Engine/Geoscape/GeoscapeClient.Screens.cs) - The craft and target screens: GeoscapeCraftState, InterceptState, SelectDestinationState, MultipleTargetsState, ConfirmDestinationState a...
 - `GeoscapeClientSetup` (record) [GeoscapeClient.cs](../src/Oxce.Engine/Geoscape/GeoscapeClient.cs) - What a geoscape client needs; persistence and the clock are supplied by the host.
 - `GeoscapeClient` (class) [GeoscapeClient.cs](../src/Oxce.Engine/Geoscape/GeoscapeClient.cs) - The geoscape: the globe on the left of a 640x400 frame (the reference 320x200 layout at 2x) and the clock and speed controls on the right.

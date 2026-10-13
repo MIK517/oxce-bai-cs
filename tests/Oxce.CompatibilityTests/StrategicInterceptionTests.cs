@@ -1,4 +1,7 @@
 using Oxce.Core.Random;
+using Oxce.Engine;
+using Oxce.Engine.Geoscape;
+using Oxce.Engine.Input;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -360,5 +363,39 @@ public sealed class StrategicInterceptionTests
         Assert.Equal(1, started.Interception);
         Assert.Equal((InterceptionMode.Standoff, false), (Single(world).Mode, Single(world).Minimized));
         AssertTimeBlocked(campaign, WorldCommandReasons.InterceptionsOpen);
+    }
+
+    [Fact]
+    public void TheGeoscapeStepsAnOpenWindowAndRunsTimeOnlyOnceItIsMinimized()
+    {
+        var (content, campaign, world) = Create();
+        Start(campaign, world);
+        var client = StrategicWorldGeoscapeScenarioTests.Client(content, CampaignUiSession.ForCampaign(campaign, campaign, campaign),
+            save: static () => { }, load: static () => throw new InvalidOperationException("No save to load."));
+        void Click(int x, int y) =>
+            client.HandleInput(GameInputEvent.PointerButtonChange(GameInputEventKind.PointerPressed, 0, 0, x, y, 1, 1));
+        Assert.Equal(640, Assert.Single(client.Interceptions).Distance);
+        Assert.False(client.TimeCanRun);
+
+        // GeoscapeState::think: the dogfight timer steps the open window; game time waits.
+        var time = campaign.Capture().Time;
+        for (var step = 0; step < 10; step++) client.Tick(GeoscapeClient.DogfightClock);
+        Assert.Equal(620, Assert.Single(client.Interceptions).Distance);
+        Assert.Equal(time, campaign.Capture().Time);
+
+        // The first window's mode column: Aggressive, then back to Standoff, then Minimise.
+        Click(165, 36 + 3 * 16 + 5);
+        Assert.Equal(InterceptionMode.Aggressive, client.Interceptions[0].Mode);
+        Click(165, 36 + 5);
+        Click(165, 36 + 5 * 16 + 6 + 5);
+        Assert.True(client.Interceptions[0].Minimized);
+        Assert.True(client.TimeCanRun);
+        client.Tick(GeoscapeTimeController.GeoClock);
+        Assert.NotEqual(time, campaign.Capture().Time);
+
+        // The minimized icon restores the window, which stops the clock again.
+        Click(10, GeoscapeClient.Height - 20);
+        Assert.False(client.Interceptions[0].Minimized);
+        Assert.False(client.TimeCanRun);
     }
 }

@@ -1,4 +1,7 @@
 using Oxce.Core.Random;
+using Oxce.Engine;
+using Oxce.Engine.Geoscape;
+using Oxce.Engine.Input;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -214,6 +217,53 @@ public sealed class StrategicLandingTests
         Assert.Equal(2, request.Items["SUPPLY"]);
         Assert.Equal(2, Ship(campaign).Items["SUPPLY"]);
     }
+
+    private static GeoscapeClient Client(RuntimeContent content, CampaignState campaign) =>
+        StrategicWorldGeoscapeScenarioTests.Client(content, CampaignUiSession.ForCampaign(campaign, campaign, campaign),
+            save: static () => { }, load: static () => throw new InvalidOperationException("No save to load."));
+
+    private static void Press(GeoscapeClient client, uint key, InputKeyModifiers modifiers = InputKeyModifiers.None) =>
+        client.HandleInput(GameInputEvent.Key(GameInputEventKind.KeyPressed, 0, 0, 0, key, modifiers));
+
+    [Fact]
+    public void TheGeoscapeAsksToLandAndControlEscapeAnswersPatrol()
+    {
+        var (content, campaign) = Create();
+        var client = Client(content, campaign);
+        var before = Ship(campaign);
+        client.Tick(GeoscapeTimeController.GeoClock);
+        var popup = Assert.Single(client.Popups);
+        Assert.Equal(["STR_YES", "STR_NO"], popup.Actions.Select(static action => action.Label));
+        // ConfirmLandingState::togglePatrolButton: held Ctrl turns No into Patrol, and Esc presses it.
+        Press(client, 0x400000E0, InputKeyModifiers.LeftControl);
+        Press(client, 27, InputKeyModifiers.LeftControl);
+        Assert.Empty(client.Popups);
+        Assert.Null(Ship(campaign).Destination);
+        Assert.Equal(before.Speed / 2, Ship(campaign).Speed);
+    }
+
+    [Fact]
+    public void TheGlobeShadesSeasonsAsTheCampaignOptionSays()
+    {
+        var (plainContent, plain) = Create();
+        Assert.False(Client(plainContent, plain).Options.Seasons);
+        var (content, campaign) = Create(seasons: true);
+        Assert.True(Client(content, campaign).Options.Seasons);
+    }
+
+    [Fact]
+    public void TheGeoscapeShowsTheBattleRequestAndReopensItAfterALoad()
+    {
+        var (content, campaign) = Create();
+        var client = Client(content, campaign);
+        client.Tick(GeoscapeTimeController.GeoClock);
+        Press(client, 13);
+        var popup = Assert.Single(client.Popups);
+        Assert.Equal("Tactical combat is not available yet", popup.Title);
+        Assert.Equal("STR_UFO_GROUND_ASSAULT", popup.Lines[0]);
+        var reloaded = Reload(content, campaign, 17, "deployment-ui.sav");
+        Assert.Equal("Tactical combat is not available yet", Assert.Single(Client(content, reloaded).Popups).Title);
+    }
 }
 
 /// <summary>Branch 5 S7: the Cydonia button and ConfirmCydoniaState record the final mission's battle.</summary>
@@ -233,8 +283,7 @@ public sealed class StrategicFinalMissionTests
 
         """;
 
-    [Fact]
-    public void ASpacecraftWithCrewFliesTheFinalMissionOnceItsResearchIsDone()
+    private static (RuntimeContent Content, CampaignSnapshot Snapshot) CreateCrewedSpacecraft()
     {
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], Rules);
         var snapshot = CreateSnapshot(content, "Final mission").WithCraft("SHIP", craft => craft with
@@ -242,11 +291,18 @@ public sealed class StrategicFinalMissionTests
             Logistics = craft.Logistics! with { Status = "STR_READY", Fuel = 100, Weapons = [null, null], Items = new Dictionary<string, int>() },
         });
         var owner = snapshot.Bases[0];
-        snapshot = snapshot with
+        return (content, snapshot with
         {
             Bases = [owner with { Soldiers = [owner.Soldiers[0] with { Personal = owner.Soldiers[0].Personal! with { CraftType = "SHIP", CraftId = 1 } },
                 .. owner.Soldiers.Skip(1)] }],
-        };
+        });
+    }
+
+    [Fact]
+    public void ASpacecraftWithCrewFliesTheFinalMissionOnceItsResearchIsDone()
+    {
+        var (content, snapshot) = CreateCrewedSpacecraft();
+        var owner = snapshot.Bases[0];
         var launch = new LaunchFinalMission(owner.Id, "SHIP", 1);
 
         var early = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(3));
@@ -259,5 +315,31 @@ public sealed class StrategicFinalMissionTests
             request.MissionTexture));
         Assert.Equal([owner.Soldiers[0].Id], request.Soldiers);
         AssertTimeBlocked(campaign, WorldCommandReasons.DeploymentRequestPending);
+    }
+
+    [Fact]
+    public void TheCydoniaButtonAppearsForTheReadySpacecraftAndItsConfirmationLaunches()
+    {
+        var (content, snapshot) = CreateCrewedSpacecraft();
+        var early = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(3));
+        Assert.False(early.GetQuery<ICampaignWorldQuery>()!.QueryWorld().Crafts.Single(static craft => craft.TypeId == "SHIP").CanFlyFinalMission);
+        var campaign = CampaignState.Restore(snapshot with { CompletedResearch = [.. snapshot.CompletedResearch, "FINAL_TOPIC"] }, content,
+            new SplitMix64RandomSource(3));
+        var client = StrategicWorldGeoscapeScenarioTests.Client(content, CampaignUiSession.ForCampaign(campaign, campaign, campaign),
+            save: static () => { }, load: static () => throw new InvalidOperationException("No save to load."));
+        Assert.True(client.World.Crafts.Single(static craft => craft.TypeId == "SHIP").CanFlyFinalMission);
+
+        // InterceptState launches the ship into SelectDestinationState; its Cydonia button asks ConfirmCydoniaState.
+        client.HandleInput(GameInputEvent.Key(GameInputEventKind.KeyPressed, 0, 0, 0, 'i', InputKeyModifiers.None));
+        var intercept = client.Popups[0].Actions;
+        client.Choose(intercept.ToList().FindIndex(static action => action.Intent is InterceptRowIntent { Craft.CraftTypeId: "SHIP" }));
+        Assert.NotNull(client.SelectingWing);
+        client.HandleInput(GameInputEvent.PointerButtonChange(GameInputEventKind.PointerPressed, 0, 0, GeoscapeClient.GlobeWidth + 10, 90, 1, 1));
+        var confirm = Assert.Single(client.Popups);
+        Assert.Equal("STR_ARE_YOU_SURE_CYDONIA", confirm.Title);
+        client.HandleInput(GameInputEvent.Key(GameInputEventKind.KeyPressed, 0, 0, 0, 13, InputKeyModifiers.None));
+        Assert.Null(client.SelectingWing);
+        Assert.Equal("Tactical combat is not available yet", Assert.Single(client.Popups).Title);
+        Assert.Equal("STR_FINAL_ASSAULT", campaign.GetQuery<ICampaignLandingQuery>()!.QueryDeploymentRequest()!.MissionType);
     }
 }
