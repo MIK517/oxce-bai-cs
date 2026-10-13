@@ -290,3 +290,10 @@ Cydonia button; a loaded save reopens a pending battle request or base defense
 (as text panels) with D3's dogfight timer, and the globe seasons option. Remaining: the windows'
 sprites and the base-defense round animation.
 
+### S9 — Scenarios (in progress, 2026-10-13)
+
+Done: dispatch-to-request through the geoscape client (interception, crash, landing, request, reload) and
+a defended base's window and a hunter-killer attack
+([status](strategic-interception-status.md#s9--scenarios-in-progress)). Remaining: escort fights, target loss, other base-defense variants, site and alien-base
+requests, TFTD depth cases, the staged saves and the SDL smoke run.
+

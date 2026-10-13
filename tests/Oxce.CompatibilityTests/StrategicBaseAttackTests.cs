@@ -1,4 +1,6 @@
 using Oxce.Core.Random;
+using Oxce.Engine;
+using Oxce.Engine.Geoscape;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -270,5 +272,23 @@ public sealed class StrategicBaseAttackTests
         var stores = new Dictionary<string, int> { ["VEHICLE"] = 1, ["VEHICLE_B"] = 1, ["VEHICLE_AMMO"] = 3 };
         var (_, campaign, _) = Create(defended: false, defenders: false, stores: stores);
         AssertTimeBlocked(campaign, WorldCommandReasons.StoredVehicleDefense);
+    }
+
+    [Fact]
+    public void TheGeoscapeOpensTheDefenseWindowAndStartFiringShootsTheUfoDown()
+    {
+        var (content, campaign, baseId) = Create(defended: true);
+        var client = StrategicWorldGeoscapeScenarioTests.Client(content, CampaignUiSession.ForCampaign(campaign, campaign, campaign),
+            save: static () => { }, load: static () => throw new InvalidOperationException("No save to load."));
+        client.Tick(GeoscapeTimeController.GeoClock);
+        var defense = Assert.Single(client.Popups);
+        Assert.Equal(["STR_START_FIRING", "STR_SKIP_FIRING"], defense.Actions.Select(static action => action.Label));
+        Assert.False(client.TimeCanRun);
+        client.Choose(0);
+        Assert.Equal(["STR_UFO_DESTROYED"], Assert.Single(client.Popups).Lines);
+        Assert.Null(Query(campaign).QueryBaseDefense());
+        client.Choose(0);
+        Assert.True(client.TimeCanRun);
+        Assert.Equal(baseId, campaign.Capture().Bases[0].Id);
     }
 }
