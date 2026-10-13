@@ -409,7 +409,7 @@ public sealed class StrategicWorldUfoLandingTests
     }
 
     [Fact]
-    public void DamagedGroundArrivalWithAPursuingCraftRemainsGuarded()
+    public void DamagedGroundArrivalWithAPursuingCraftCrashesAndTheCraftKeepsPursuing()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var snapshot = CreateCampaign(content).Capture();
@@ -429,8 +429,12 @@ public sealed class StrategicWorldUfoLandingTests
                 { UniqueId = source.UniqueId },
             },
         });
-        AssertTimeBlocked(RestoreUfos(content, snapshot, source),
-            "Crashed UFO arrival with followers requires interception simulation.");
+        // Branch 5 S6: the craft pass handles a crashed target (landing confirmation or return home), so
+        // the arrival runs; this distant craft simply keeps flying to the crash site.
+        var campaign = RestoreUfos(content, snapshot, source);
+        AdvanceUnblocked(campaign, 1);
+        Assert.Equal(UfoStatus.Crashed, Assert.Single(campaign.Capture().World.Ufos).Status);
+        Assert.Equal(WorldTargetKind.Ufo, campaign.Capture().Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP").Logistics!.Destination!.Kind);
     }
 
     [Fact]

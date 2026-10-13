@@ -371,3 +371,18 @@ landing answers are not yet refused while a request is pending.
 Validation: formatting, code map and Release build clean (compiler/cache revision 66 for the UFO
 `craftCustomDeploy` projection); root `dotnet test` ran 3,504 tests, all green.
 
+### Holds and the remaining landing cases (2026-10-13)
+
+The registry gained a command gate: while a deployment request is pending every command except the
+time advance (held by its preflight) and `TakeDeploymentRequest` refuses with `deployment.pending`, so
+nothing changes the craft, its crew or the world before the battle. `boundary.landing` is gone: a
+follower redirected to a site respawned by a UFO conversion may now ask to land there, and a damaged
+UFO that crashes on its ground arrival lets its pursuing crafts continue (they land or return home in
+the craft pass). Only escorts of such a UFO keep a refusal (escort loss of a crashed leader is not
+simulated). A Yes whose target no longer offers a mission closes the window with `landing.no-mission`
+where the reference throws. The private Rosigma `Early.sav` campaign now runs 6,290 ticks to a terror
+site landing, and Yes records its request (`STR_TERROR_MISSION` for the early Slaanesh cult, texture 3,
+night shade, ten soldiers) that then holds the campaign (`RosigmaEarlyReachesADeploymentRequest`).
+
+
+Validation: formatting, code map and Release build clean; root `dotnet test` ran 3505 tests, all green.

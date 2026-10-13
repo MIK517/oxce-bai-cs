@@ -25,7 +25,7 @@ public static class WorldCommandReasons
     internal const string TargetSelf = "A craft cannot escort itself.";
     internal const string ForeignBase = "A craft can return only to its own base; use a transfer to change bases.";
     internal const string InterceptionBoundary = "Craft interception requires strategic combat (Phase 6 branch 5).";
-    internal const string LandingBoundary = "Craft landing requires deployment (Phase 6 branch 5).";
+    internal const string LandingTargetGone = "The landing target no longer offers a mission.";
     internal const string NoInterception = "There is no such interception.";
     internal const string InterceptionsOpen = "Open interception windows stop the clock until they are minimized.";
     internal const string InterceptionMode = "The interception does not offer that mode.";
@@ -55,7 +55,7 @@ public static class WorldCommandReasons
         new("target.self", TargetSelf),
         new("target.foreign-base", ForeignBase),
         new("boundary.interception", InterceptionBoundary),
-        new("boundary.landing", LandingBoundary),
+        new("landing.no-mission", LandingTargetGone),
         new("interception.none", NoInterception),
         new("interception.open", InterceptionsOpen),
         new("interception.mode", InterceptionMode),

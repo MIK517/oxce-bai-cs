@@ -10,7 +10,6 @@ internal sealed partial class CampaignWorld
         Dictionary<string, int>? reservations = null;
         long work = 0;
         var last = _ufos.Count - 1;
-        var craftPassSkipped = false;
         for (var index = 0; index < _ufos.Count; index++)
         {
             var saved = _ufos[index];
@@ -24,7 +23,6 @@ internal sealed partial class CampaignWorld
                 return landingReason;
             if (!EndsUfoFlightPass(index, highest)) continue;
             last = index;
-            craftPassSkipped = true;
             break;
         }
         // Suppressed conversions must be known before forecasting any craft arrivals.
@@ -36,8 +34,8 @@ internal sealed partial class CampaignWorld
             if (!ArrivesAtSite(index, highest) || _pass.SuppressedUfoSites?.Contains(saved.UniqueId) == true) continue;
             var ufo = UfoForFlight(saved, highest);
             var mission = ForecastMission(ufo.MissionId, highest);
-            if (UfoSiteFollowersReason(ufo, MissionRule(mission), UfoSiteArea(ufo, mission, ufo.Destination!.Position),
-                    highest, craftPassSkipped, ref work) is { } reason) return reason;
+            if (UfoSiteFollowersReason(ufo, UfoSiteArea(ufo, mission, ufo.Destination!.Position), ref work) is { } reason)
+                return reason;
         }
         return null;
     }

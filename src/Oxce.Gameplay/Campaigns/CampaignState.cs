@@ -105,7 +105,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             if (!_handlers.TryGetCommand(command.GetType(), out var handler))
                 throw new ArgumentException($"Unsupported campaign command '{command.GetType().Name}'.",
                     nameof(command));
-            return handler(command);
+            return _handlers.CommandGate(command) ?? handler(command);
         }
     }
 

@@ -19,10 +19,11 @@ internal sealed partial class CampaignWorld
             personal.CraftType == type && personal.CraftId == craft.Id);
     }
 
-    private string? UfoSiteFollowersReason(UfoSnapshot ufo, RuntimeAlienMissionRule mission, MissionArea area,
-        CampaignTimeTrigger highest, bool craftPassSkipped, ref long work)
+    // Followers are redirected to the new site during the UFO pass; one that then reaches it queues a
+    // landing confirmation in the craft pass (branch 5 S6), so only the redirection itself is checked.
+    private string? UfoSiteFollowersReason(UfoSnapshot ufo, MissionArea area, ref long work)
     {
-        if (!TrySpawnArea(area, out var positions)) return "UFO site conversion coordinates require an unsupported latitude domain.";
+        if (!TrySpawnArea(area, out _)) return "UFO site conversion coordinates require an unsupported latitude domain.";
         foreach (var owner in campaign.BaseStates)
             foreach (var craft in owner.Crafts)
             {
@@ -32,17 +33,7 @@ internal sealed partial class CampaignWorld
                 if (state.Status != "STR_OUT" || !owner.IsPlaced)
                     return "UFO site follower craft cannot change destination.";
                 if (!CraftLogistics.TryEffectiveSpeedMaximum(campaign.Content.RuntimeRules.Crafts[craft.Rule].Value,
-                        state.Weapons, campaign.Content.RuntimeRules, out var maximum)) return SpeedRangeReason;
-                if (highest >= CampaignTimeTrigger.TenMinutes)
-                    state = AdvanceCraftFuel(owner, craft, state);
-                if (!FollowsUfo(state.Destination, ufo)) continue;
-                if (craftPassSkipped || !mission.RespawnUfoAfterSiteDespawn || !CraftHasUnits(owner, craft, state) || !CanLand(owner, craft, state)) continue;
-                // Conversion resets destination speed before the craft movement pass.
-                // The spherical rectangle radius bounds every possible random site.
-                var from = new WorldPosition(state.Longitude, state.Latitude);
-                var step = state.Takeoff > 0 ? 0 : WorldGeometry.RadianSpeed(maximum);
-                if (WorldGeometry.Distance(from, positions.Center) <= positions.Radius + step)
-                    return LandingReason;
+                        state.Weapons, campaign.Content.RuntimeRules, out _)) return SpeedRangeReason;
             }
         return null;
     }

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Oxce.Core.Random;
 using Oxce.Gameplay.Campaigns;
+using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Bootstrap;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.Savegames.Oxce;
@@ -138,6 +139,51 @@ public sealed class PrivateStrategicWorldTests
                 }
             }
             Assert.Equal(expected.OrderBy(pair => pair.Key).ToArray(), measured.OrderBy(pair => pair.Key).ToArray());
+        }
+        finally { cacheDirectory.Delete(recursive: true); }
+    }
+
+    /// <summary>
+    /// Branch 5 S6 acceptance: the Rosigma <c>Early.sav</c> campaign runs to its first landing, and Yes
+    /// records the deployment request that then holds the campaign.
+    /// </summary>
+    [Fact]
+    public void RosigmaEarlyReachesADeploymentRequest()
+    {
+        var installation = TestFixtures.RepositoryPath("artifacts", "private-install");
+        Assert.SkipUnless(File.Exists(Path.Combine(installation, ".oxce-private-install-manifest.json")),
+            "Owned installation is not staged.");
+        var cacheDirectory = Directory.CreateTempSubdirectory("oxce-private-landing-cache-");
+        try
+        {
+            var request = InstallationLoadRequest.ForMasterAndAddOn(installation, "40k", "40k_ROSIGMA_edits", new("Extended", "8.6.1.0"));
+            var loaded = InstallationContentLoader.Load(request, new() { Cache = new() { DirectoryPath = cacheDirectory.FullName } },
+                cancellationToken: TestContext.Current.CancellationToken);
+            Assert.True(loaded.IsSuccess, loaded.DescribeFailure());
+            var options = new OxceSaveLoadOptions(request.MasterId, request.ActiveMods.ToHashSet(StringComparer.Ordinal),
+                new Oxce.Formats.Yaml.YamlReadOptions { MaxBytes = 32 * 1024 * 1024, MaxNodes = 2_000_000 });
+            var file = TestFixtures.RepositoryPath("fixtures", "private", "saves", "modded/rosigma", "early", "Early.sav");
+            var campaign = OxceSaveAdapter.LoadFile(file, loaded.Content!, new SplitMix64RandomSource(17), options).Campaign;
+            LandingConfirmationRequested? landing = null;
+            var ticks = 0;
+            while (landing is null && ticks < 7000)
+            {
+                var result = campaign.Execute(new AdvanceCampaignTime(1440) { SelectedSpeed = CampaignTimeSpeed.OneDay });
+                Assert.DoesNotContain(result.Events, static item => item is CampaignActionBlocked);
+                ticks += result.Events.OfType<CampaignTimeAdvanced>().Single().Summary.TickCount;
+                landing = result.Events.OfType<LandingConfirmationRequested>().FirstOrDefault();
+            }
+            Assert.NotNull(landing);
+            Assert.Equal(6290, ticks);
+            var answer = campaign.Execute(new AnswerLanding(landing.Confirmation, LandingAnswer.Yes)).Events;
+            var deployment = Assert.IsType<DeploymentRequested>(Assert.Single(answer)).Request;
+            Assert.Equal((landing.BaseId, landing.CraftTypeId, landing.CraftId), (deployment.BaseId, deployment.CraftTypeId, deployment.CraftId));
+            // A terror site of the early Slaanesh cult, at night, with ten soldiers on board.
+            Assert.Equal(("STR_TERROR_MISSION", "STR_TERROR_MISSION", "STR_SLAANESH_CULT_EARLY", 3, 3, 0, 10),
+                (deployment.MissionType, deployment.DeploymentId, deployment.Race, deployment.MissionTexture, deployment.GlobeTexture,
+                    deployment.Shade, deployment.Soldiers.Count));
+            Assert.Equal(WorldCommandReasons.DeploymentRequestPending, Assert.IsType<CampaignActionBlocked>(
+                campaign.Execute(new AdvanceCampaignTime(1)).Events[^1]).Reason);
         }
         finally { cacheDirectory.Delete(recursive: true); }
     }
