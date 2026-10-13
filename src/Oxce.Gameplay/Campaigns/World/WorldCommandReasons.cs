@@ -35,6 +35,7 @@ public static class WorldCommandReasons
     internal const string NoDeploymentRequest = "There is no deployment request to take.";
     internal const string BaseDefenseOpen = "A base defense stops the clock until it is resolved.";
     internal const string NoBaseDefense = "That base is not under attack.";
+    internal const string StoredVehicleDefense = "Stored vehicles defending a base require vehicle ammunition rules (Phase 6 branch 5 S7).";
     internal const string MissileBaseAttack = "Missile attacks on bases require facility damage and base destruction (Phase 6 branch 5 S7).";
     internal const string ContactGone = "The UFO contact no longer exists or is not visible.";
     internal const string ContactLimit = "Ignored UFO contacts exceed the supported limit.";
@@ -69,6 +70,7 @@ public static class WorldCommandReasons
         new("base-defense.open", BaseDefenseOpen),
         new("base-defense.none", NoBaseDefense),
         new("boundary.base-missile", MissileBaseAttack),
+        new("boundary.base-stored-vehicles", StoredVehicleDefense),
         new("contact.gone", ContactGone),
         new("contact.limit", ContactLimit),
     }.ToFrozenDictionary(static reason => reason.Text, StringComparer.Ordinal);

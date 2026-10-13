@@ -484,3 +484,11 @@ spawned at the base, the final-destination (Cydonia) request (it needs the mod-o
 yet forced by a mod's fixed user options.
 
 Validation: root `dotnet test` ran 3,519 tests, all green.
+
+Code-review pass over S7 (2026-10-13): the base-assault branch skipped the next-zone validation that
+`CanAdvanceOrdinaryWaypoint` gives the waypoint draws; the preflight now validates it. A base whose only
+possible defenders are vehicles in its stores (which `setupDefenses` loads with clip ammunition) would
+have been destroyed instead of defended; until vehicle ammunition rules are projected it is refused
+(`boundary.base-stored-vehicles`).
+
+Validation: root `dotnet test` ran 3,519 tests, all green.

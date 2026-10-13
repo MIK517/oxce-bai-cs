@@ -182,7 +182,10 @@ internal sealed partial class CampaignWorld
                     }
                     if (IsBaseAssaultArrival(ufo, trajectory) && !IsSiteConversion(ufo, mission, trajectory))
                     {
-                        // The base assault ends this five-second pass (branch 5 S7).
+                        // The base assault ends this five-second pass (branch 5 S7). Its waypoint draws read
+                        // the next zone, which CanAdvanceOrdinaryWaypoint would otherwise have validated.
+                        ValidateWaypointAreas(campaign.Content.RuntimeRules.Regions[
+                            campaign.Content.RuntimeRules.Regions.GetRequired(mission.RegionId)].Value, trajectory.Zone(ufo.TrajectoryPoint + 1));
                         if (BaseAssaultReason(ufo, mission, destination.Position) is { } assaultReason) return assaultReason;
                     }
                     else if (!CanAdvanceOrdinaryWaypoint(ufo, mission, trajectory))

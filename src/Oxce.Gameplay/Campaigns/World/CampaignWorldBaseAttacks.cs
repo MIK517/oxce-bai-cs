@@ -83,12 +83,18 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
         return BaseDefenseOutcomeReason(owner, ufo);
     }
 
-    // handleBaseDefense's refusal: a missile UFO damages or destroys the base.
+    // handleBaseDefense's refusals: a missile UFO damages or destroys the base, and a base whose only
+    // defenders could be stored vehicles (Base::setupDefenses loads them with clip ammunition) is not
+    // decided by the port yet.
     private string? BaseDefenseOutcomeReason(CampaignState.BaseState owner, UfoSnapshot ufo)
     {
-        _ = owner;
         var rules = campaign.Content.RuntimeRules;
-        return rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value.MissilePower != 0 ? WorldCommandReasons.MissileBaseAttack : null;
+        if (rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value.MissilePower != 0) return WorldCommandReasons.MissileBaseAttack;
+        var defenders = BaseDefenders(owner);
+        if (defenders.Soldiers.Count == 0 && defenders.Vehicles.Count == 0 &&
+            owner.Items.Any(pair => pair.Value > 0 && rules.Items[pair.Key].Value.VehicleArmor is not null))
+            return WorldCommandReasons.StoredVehicleDefense;
+        return null;
     }
 
     // GeoscapeState::time5Seconds: game over when no base is left (D5: the reference rule).
