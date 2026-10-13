@@ -626,6 +626,13 @@ minimized waiting interception, and time running beside it.
 Validation: root `dotnet test` ran 3,542 tests, all green, before the depth scenario, which passes on its
 own; formatting clean.
 
+`PrivateStrategicWorldTests.ImportedWorldRunsPastBranchFiveChoicesToItsNextStop` reclassifies the 19
+staged saves with a headless player who declines every landing, disengages every interception and fires
+every base defense: Rosigma `Early.sav` now runs past its terror-site landing to the month boundary
+(435,988 ticks at one-day speed); every other strategic save keeps its stop (ten at the month boundary,
+Rosigma `Begining.sav` at the branch 6 event boundary after 580 ticks), and the eight tactical saves stay
+preservation-only. The original first-stop horizon test is unchanged and shares the runner.
+
 Remaining: the
 19 staged saves' reclassification and the SDL smoke run.
 

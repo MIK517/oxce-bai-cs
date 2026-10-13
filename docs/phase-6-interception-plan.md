@@ -295,6 +295,6 @@ sprites and the base-defense round animation.
 Done: dispatch-to-request through the geoscape client (interception, crash, landing, request, reload),
 the base-defense variants (fire, skip, base lost and campaign lost), a hunter-killer attack and escorts
 joining it, site and alien-base requests, and the TFTD depth wait; target loss is covered by the pursuit
-tests ([status](strategic-interception-status.md#s9--scenarios-in-progress)). Remaining: the 19 staged
-saves' reclassification and the SDL smoke run.
+tests ([status](strategic-interception-status.md#s9--scenarios-in-progress)). Since done: the 19 staged saves'
+reclassification with headless branch 5 choices. Remaining: the SDL smoke run.
 
