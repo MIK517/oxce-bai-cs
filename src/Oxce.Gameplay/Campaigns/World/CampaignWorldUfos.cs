@@ -191,10 +191,8 @@ internal sealed partial class CampaignWorld
                     else if (!CanAdvanceOrdinaryWaypoint(ufo, mission, trajectory))
                         return "UFO waypoint arrival requires mission simulation.";
                     // Crafts react to the new CRASHED status later in this time5Seconds pass: a landing
-                    // confirmation or the return home (branch 5 S6). Escorts losing a crashed leader
-                    // are not simulated yet.
-                    if (CrashesOnGroundArrival(ufo, mission, trajectory) && HasEscortFollowers(ufo))
-                        return "Crashed UFO arrival with escorts requires escort simulation.";
+                    // confirmation or the return home (branch 5 S6). Escorts keep following the crashed
+                    // leader until its removal sends them back to their own waypoints (Target::~Target).
                     var regionForWaypoint = campaign.Content.RuntimeRules.Regions[
                         campaign.Content.RuntimeRules.Regions.GetRequired(mission.RegionId)].Value;
                     var wave = rule.Waves[MissionWaveIndex(ufo, mission, rule)];

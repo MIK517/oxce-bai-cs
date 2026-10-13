@@ -5039,4 +5039,67 @@ public sealed partial class StrategicWorldHuntingTests
         Assert.All(started, static evt => Assert.True(evt.UfoAttacking));
         Assert.Equal(2, campaign.GetQuery<ICampaignInterceptionQuery>()!.QueryInterceptions().Count);
     }
+
+    [Fact]
+    public void EscortsFollowALeaderThatCrashesOnLandingUntilItsSiteExpires()
+    {
+        // A damaged leader reaching its ground waypoint crashes (AlienMission::ufoReachedWaypoint). Its escort
+        // keeps following the stationary wreck; the crash site's removal resets the escort to its own
+        // waypoint (Target::~Target, Ufo::resetOriginalDestination).
+        var content = Load();
+        var initial = CreateLifecycleSnapshot(content);
+        var landingPoint = new WorldPosition(Degrees(8), Degrees(2));
+        var leader = initial.World.Ufos[0] with
+        {
+            TrajectoryId = "TRAJ_LANDING",
+            TrajectoryPoint = 1,
+            Status = UfoStatus.Flying,
+            Altitude = "STR_HIGH_UC",
+            Speed = 1000,
+            Damage = 30,
+            SecondsRemaining = 0,
+            Longitude = landingPoint.Longitude,
+            Latitude = landingPoint.Latitude,
+            Destination = WorldTargetReference.ForWaypoint(0, landingPoint),
+        };
+        var own = new WorldPosition(1.0, 0.6);
+        var escort = new UfoSnapshot(10, "ESCORT_HUNTER", 4, "TRAJ_LANDING", 1, landingPoint.Longitude + 0.001, landingPoint.Latitude,
+            UfoStatus.Flying, "STR_HIGH_UC")
+        {
+            Id = 4,
+            MissionWaveNumber = 0,
+            Speed = 2200,
+            HunterKiller = true,
+            Escort = true,
+            Escorting = true,
+            OriginalWaypoint = own,
+            Destination = new WorldTargetReference(WorldTargetKind.Ufo, WorldTargetReference.UfoType, leader.Id,
+                leader.Longitude, leader.Latitude)
+            { UniqueId = leader.UniqueId },
+        };
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                Missions = [initial.World.Missions[0] with { LiveUfos = 2 }],
+                Ufos = [leader, escort],
+            },
+        };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        AdvanceUnblocked(campaign, 1);
+        var crashed = campaign.Capture().World.Ufos;
+        Assert.Equal(UfoStatus.Crashed, crashed[0].Status);
+        Assert.True(crashed[1].Escorting);
+        Assert.Equal(leader.UniqueId, crashed[1].Destination!.UniqueId);
+
+        // The escort reaches the wreck and waits over it; the site expires within 96 hours.
+        for (var hour = 0; hour < 100 && campaign.Capture().World.Ufos.Any(ufo => ufo.UniqueId == leader.UniqueId); hour++)
+        {
+            var result = campaign.Execute(new AdvanceCampaignTime(720));
+            Assert.DoesNotContain(result.Events, static evt => evt is CampaignActionBlocked);
+        }
+        var survivor = Assert.Single(campaign.Capture().World.Ufos);
+        Assert.Equal(escort.UniqueId, survivor.UniqueId);
+        Assert.False(survivor.Escorting);
+    }
 }
