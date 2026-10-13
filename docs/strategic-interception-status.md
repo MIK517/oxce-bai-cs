@@ -633,6 +633,10 @@ every base defense: Rosigma `Early.sav` now runs past its terror-site landing to
 Rosigma `Begining.sav` at the branch 6 event boundary after 580 ticks), and the eight tactical saves stay
 preservation-only. The original first-stop horizon test is unchanged and shares the runner.
 
-Remaining: the
-19 staged saves' reclassification and the SDL smoke run.
+The Windows SDL smoke (`--campaign-sdl-smoke artifacts/private-install xcom1 -`, 2026-10-13, Direct3D 11)
+ran with the branch 5 client: 481 ticks, 149 presented frames (average presentation 0.99 ms, maximum
+6.0 ms; conversion and upload 0.58 ms average), client tick p50 1.8 us and p95 5.2 ms, nine scripted
+inputs replayed, campaign time 12:00:00 to 12:35:30 and no popup left open.
+
+S9 is complete.
 
