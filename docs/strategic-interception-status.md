@@ -393,3 +393,24 @@ refusal; it now refuses without a change. Checked and matching: the commander ru
 the missing-deployment early return before the texture fallback, the base custom-mission fallback,
 crash recovery versus ground assault for expiring UFOs, and the order of item destruction and request.
 
+
+## S7 — Base defense, base loss and Cydonia (in progress)
+
+### Defense rounds (2026-10-13)
+
+`BaseDefense.Fire` resolves `BaseDefenseState::nextStep` headlessly: each defense facility (in
+`Base::setupDefenses` order) fires once per pass when it has ammunition (its own, or the ammunition
+item from base stores), rolls its hit ratio less the UFO's `avoidBonus2`, applies `applyDamage` on a
+hit (the unified damage formula with shield modifier, bleed-through and armor, or the vanilla 50-150%
+without bleed-through scaling) and spends ammunition on any shot; each grav shield adds a pass, and a
+destroyed UFO ends the rounds. `Ufo::setDamage` sets the crash or destroyed status and rolls the
+wave's interrupt chance on every damaging hit after that. Presentation steps draw no randomness. The
+`strategic-base-defense` oracle compiles `nextStep`, `applyDamage`, the Ufo damage and shield
+setters and `RuleDamageType::getRandomDamage` verbatim (`tools/capture-strategic-base-defense-reference.ps1`)
+over nine scenarios (misses and hits, destruction stopping the rounds, grav-shield passes, own and
+stored ammunition running out, shield modifiers 0/50/100/150/200, the unified formula with
+bleed-through and armor, the interrupt roll, an unmanned UFO); `StrategicBaseDefenseOracleTests`
+replays every one, including each random call. The base attack itself (the UFO reaching the base,
+`setupDefenses`, the outcomes and base loss) is next.
+
+Validation: formatting, code map and Release build clean; root `dotnet test` ran 3514 tests, all green.

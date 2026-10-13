@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 180 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 181 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 94 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 5 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 309 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 310 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 101 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -333,7 +333,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 180 files.
+`src/Oxce.Gameplay` - 181 files.
 
 ### `Oxce.Gameplay`
 
@@ -1139,7 +1139,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 309 files.
+`tests/Oxce.CompatibilityTests` - 310 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1147,7 +1147,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>306 test classes</summary>
+<details><summary>307 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1207,6 +1207,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StartingPersonnelFixtureTests` ([StartingPersonnelFixtureTests.cs](../tests/Oxce.CompatibilityTests/StartingPersonnelFixtureTests.cs))
 - `StrategicAdhocScriptTests` ([StrategicAdhocScriptTests.cs](../tests/Oxce.CompatibilityTests/StrategicAdhocScriptTests.cs))
 - `StrategicArcScriptTests` ([StrategicArcScriptTests.cs](../tests/Oxce.CompatibilityTests/StrategicArcScriptTests.cs))
+- `StrategicBaseDefenseOracleTests` ([StrategicBaseDefenseOracleTests.cs](../tests/Oxce.CompatibilityTests/StrategicBaseDefenseOracleTests.cs))
 - `StrategicDogfightOracleTests` ([StrategicDogfightOracleTests.cs](../tests/Oxce.CompatibilityTests/StrategicDogfightOracleTests.cs))
 - `StrategicEventSchedulingTests` ([StrategicEventSchedulingTests.cs](../tests/Oxce.CompatibilityTests/StrategicEventSchedulingTests.cs))
 - `StrategicEventScriptTests` ([StrategicEventScriptTests.cs](../tests/Oxce.CompatibilityTests/StrategicEventScriptTests.cs))
@@ -1721,6 +1722,7 @@ A test is listed when it names the manifest id or its expected file.
 | [strategic-alien-base-hunt-generation](../fixtures/manifests/strategic-alien-base-hunt-generation.json) | cpp-reference | `savegames/strategic-alien-base-hunt-generation.expected.json` | `StrategicGeneratedRetaliationTests` ([StrategicGeneratedRetaliationTests.cs](../tests/Oxce.CompatibilityTests/StrategicGeneratedRetaliationTests.cs))<br>`StrategicObjectiveBaseSpawnTests` ([StrategicObjectiveBaseSpawnTests.cs](../tests/Oxce.CompatibilityTests/StrategicObjectiveBaseSpawnTests.cs))<br>`StrategicRetaliationGenerationTests` ([StrategicRetaliationGenerationTests.cs](../tests/Oxce.CompatibilityTests/StrategicRetaliationGenerationTests.cs))<br>`StrategicWorldAlienBaseHuntingTests` ([StrategicWorldAlienBaseHuntingTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldAlienBaseHuntingTests.cs))<br>`StrategicWorldAlienBaseGenerationTests` ([StrategicWorldGeneratedDirectSiteTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGeneratedDirectSiteTests.cs))<br>`StrategicWorldAlienBaseGenerationTests` ([StrategicWorldGeneratedGroundReleaseTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGeneratedGroundReleaseTests.cs))<br>`StrategicWorldAlienBaseGenerationTests` ([StrategicWorldGeneratedObjectiveOpeningTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGeneratedObjectiveOpeningTests.cs))<br>`StrategicWorldAlienBaseGenerationTests` ([StrategicWorldGeneratedSiteObjectiveTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGeneratedSiteObjectiveTests.cs))<br>`StrategicWorldAlienBaseGenerationTests` ([StrategicWorldGeneratedVariantTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGeneratedVariantTests.cs))<br>`StrategicWorldAlienBaseGenerationTests` ([StrategicWorldGeneratedWaveTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGeneratedWaveTests.cs))<br>`StrategicWorldNewbornGroundStartTests` ([StrategicWorldNewbornGroundStartTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldNewbornGroundStartTests.cs))<br>`StrategicWorldNewbornRegionalArrivalTests` ([StrategicWorldNewbornRegionalArrivalTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldNewbornRegionalArrivalTests.cs))<br>`StrategicWorldNewbornRegionalGroundArrivalTests` ([StrategicWorldNewbornRegionalGroundArrivalTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldNewbornRegionalGroundArrivalTests.cs))<br>`StrategicWorldOptionalBaseGenerationTests` ([StrategicWorldOptionalBaseGenerationTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldOptionalBaseGenerationTests.cs))<br>`StrategicWorldOptionalPactResearchTests` ([StrategicWorldOptionalPactResearchTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldOptionalPactResearchTests.cs))<br>`StrategicWorldRetaliationResearchTests` ([StrategicWorldRetaliationResearchTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldRetaliationResearchTests.cs))<br>`StrategicWorldSiteResearchDirectBirthTests` ([StrategicWorldSiteResearchDirectBirthTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteResearchDirectBirthTests.cs))<br>`StrategicWorldSiteResearchGeneratedObjectiveTests` ([StrategicWorldSiteResearchGeneratedObjectiveTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteResearchGeneratedObjectiveTests.cs))<br>`StrategicWorldSiteResearchGeneratedSpawnTests` ([StrategicWorldSiteResearchGeneratedSpawnTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteResearchGeneratedSpawnTests.cs))<br>`StrategicWorldSiteResearchHuntingGenerationTests` ([StrategicWorldSiteResearchHuntingGenerationTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteResearchHuntingGenerationTests.cs)) |
 | [strategic-alien-base-hunt-timer](../fixtures/manifests/strategic-alien-base-hunt-timer.json) | cpp-reference | `savegames/strategic-alien-base-hunt-timer.expected.json` | `StrategicObjectiveBaseSpawnTests` ([StrategicObjectiveBaseSpawnTests.cs](../tests/Oxce.CompatibilityTests/StrategicObjectiveBaseSpawnTests.cs))<br>`StrategicWorldAlienBaseHuntingTests` ([StrategicWorldAlienBaseHuntingTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldAlienBaseHuntingTests.cs))<br>`StrategicWorldSiteResearchBaseTests` ([StrategicWorldSiteResearchBaseTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteResearchBaseTests.cs)) |
 | [strategic-alien-base-monthly](../fixtures/manifests/strategic-alien-base-monthly.json) | cpp-reference | `savegames/strategic-alien-base-monthly.expected.json` | `StrategicWorldAlienBaseMonthlyTests` ([StrategicWorldAlienBaseMonthlyTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldAlienBaseMonthlyTests.cs)) |
+| [strategic-base-defense](../fixtures/manifests/strategic-base-defense.json) | cpp-reference | `savegames/strategic-base-defense.expected.json` | `StrategicBaseDefenseOracleTests` ([StrategicBaseDefenseOracleTests.cs](../tests/Oxce.CompatibilityTests/StrategicBaseDefenseOracleTests.cs)) |
 | [strategic-crashed-ufo](../fixtures/manifests/strategic-crashed-ufo.json) | cpp-reference | `savegames/strategic-crashed-ufo.expected.json` | `StrategicWorldCrashedUfoTests` ([StrategicWorldCrashedUfoTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldCrashedUfoTests.cs))<br>`StrategicWorldPassiveLeaderFollowerTests` ([StrategicWorldPassiveLeaderFollowerTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldPassiveLeaderFollowerTests.cs)) |
 | [strategic-detection-damage](../fixtures/manifests/strategic-detection-damage.json) | cpp-reference | `savegames/strategic-detection-damage.expected.json` | `StrategicProductionPriceMetadataTests` ([StrategicProductionPriceDamageTests.cs](../tests/Oxce.CompatibilityTests/StrategicProductionPriceDamageTests.cs))<br>`StrategicWorldDetectionItemRulesTests` ([StrategicWorldDetectionItemRulesTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionItemRulesTests.cs))<br>`StrategicWorldDetectionTextLookupTests` ([StrategicWorldDetectionTextLookupTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionTextLookupTests.cs))<br>`StrategicWorldEnduranceTests` ([StrategicWorldEnduranceTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldEnduranceTests.cs)) |
 | [strategic-detection-inventory-cost](../fixtures/manifests/strategic-detection-inventory-cost.json) | cpp-reference | `savegames/strategic-detection-inventory-cost.expected.json` | `StrategicProductionPriceMetadataTests` ([StrategicProductionPriceInventoryTests.cs](../tests/Oxce.CompatibilityTests/StrategicProductionPriceInventoryTests.cs))<br>`StrategicWorldDetectionInventoryRulesTests` ([StrategicWorldDetectionInventoryRulesTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionInventoryRulesTests.cs))<br>`StrategicWorldDetectionTextLookupTests` ([StrategicWorldDetectionTextLookupTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionTextLookupTests.cs)) |
