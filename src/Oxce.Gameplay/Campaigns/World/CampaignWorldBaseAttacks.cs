@@ -12,6 +12,12 @@ public sealed record ResolveBaseDefense(int BaseId, bool Fire) : ICampaignComman
 /// <summary>The defense window closed: the UFO was shot down, or the attack went on to its battle.</summary>
 public sealed record BaseDefenseResolved(int BaseId, int UfoUniqueId, bool UfoDestroyed, bool RetaliationStopped) : ICampaignEvent;
 
+/// <summary>A base was destroyed by an attack (BaseDestroyedState); its crafts, crew and stores are lost.</summary>
+public sealed record BaseDestroyed(int BaseId, string Name) : ICampaignEvent;
+
+/// <summary>The campaign ended (SavedGame::setEnding): 2 is END_LOSE, when no base is left.</summary>
+public sealed record CampaignEnded(int Ending) : ICampaignEvent;
+
 /// <summary>The open base defense window.</summary>
 public sealed record CampaignBaseDefense(int BaseId, int UfoUniqueId, bool InstaHyper, int Defenses, int GravShields);
 
@@ -26,9 +32,9 @@ public interface ICampaignBaseDefenseQuery
 /// countdown, loses its destination and meets <c>Base::setupDefenses</c>. With defenses (and without
 /// <c>ignoreBaseDefenses</c>) the <c>BaseDefenseState</c> window opens; otherwise, or after the window,
 /// <c>handleBaseDefense</c> ends the attack: the UFO is spent, an instant retaliation ends, and the
-/// defenders' battle becomes the deployment request (D4). Either path ends the tick's five-second pass.
-/// Missile attacks and a base without defenders (base loss) are refused before anything changes until
-/// base destruction is implemented.
+/// defenders' battle becomes the deployment request (D4), or a base without defenders is destroyed.
+/// Either path ends the tick's five-second pass. Missile attacks are refused before anything changes
+/// until facility damage is implemented.
 /// </summary>
 internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
 {
@@ -38,6 +44,7 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
     private void RegisterBaseAttacks(CampaignCapabilityRegistry registry)
     {
         registry.Query<ICampaignBaseDefenseQuery>(this);
+        registry.Timed(CampaignTimeTrigger.FiveSeconds, CampaignTimeOrder.FiveSecondsCampaignEnding, "campaign ending", CheckCampaignEnding);
         registry.Command<ResolveBaseDefense>(ResolveBaseDefense);
         // The window is modal: time stops (landing preflight) and other commands wait.
         registry.CommandGate(command => _baseDefense is not null && command is not (World.ResolveBaseDefense or AdvanceCampaignTime)
@@ -76,12 +83,20 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
         return BaseDefenseOutcomeReason(owner, ufo);
     }
 
-    // handleBaseDefense's refusals: a missile UFO damages or destroys the base, and an undefended base is lost.
+    // handleBaseDefense's refusal: a missile UFO damages or destroys the base.
     private string? BaseDefenseOutcomeReason(CampaignState.BaseState owner, UfoSnapshot ufo)
     {
+        _ = owner;
         var rules = campaign.Content.RuntimeRules;
-        if (rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value.MissilePower != 0) return WorldCommandReasons.MissileBaseAttack;
-        return BaseDefenders(owner).Soldiers.Count == 0 && BaseDefenders(owner).Vehicles.Count == 0 ? WorldCommandReasons.BaseLossBoundary : null;
+        return rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value.MissilePower != 0 ? WorldCommandReasons.MissileBaseAttack : null;
+    }
+
+    // GeoscapeState::time5Seconds: game over when no base is left (D5: the reference rule).
+    private void CheckCampaignEnding(CampaignState.TimeEffects effects)
+    {
+        if (campaign.Ending != 0 || campaign.BaseStates.Count != 0 || campaign.MonthsPassed < 0) return;
+        campaign.EndCampaign(2);
+        effects.Notify(new CampaignEnded(2));
     }
 
     /// <summary>
@@ -144,6 +159,14 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
             return;
         }
         if (HandleBaseDefense(owner, index) is { } request) effects.Notify(new DeploymentRequested(request));
+        else if (TakeDestroyedBase() is { } destroyed) effects.Notify(destroyed);
+    }
+
+    private BaseDestroyed? TakeDestroyedBase()
+    {
+        if (_destroyedBase is not { } destroyed) return null;
+        _destroyedBase = null;
+        return new BaseDestroyed(destroyed.Id, destroyed.Name);
     }
 
     private CampaignCommandResult ResolveBaseDefense(ResolveBaseDefense command)
@@ -221,6 +244,10 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
         {
             events.Add(new DeploymentRequested(request));
         }
+        else if (TakeDestroyedBase() is { } destroyedBase)
+        {
+            events.Add(destroyedBase);
+        }
         events.Insert(0, new BaseDefenseResolved(owner.Id, open.UfoUniqueId, destroyed, stopped));
         return new CampaignCommandResult(events);
     }
@@ -237,6 +264,44 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
     private void StopRetaliation(CampaignState.BaseState owner)
     {
         owner.RetaliationTarget = false;
+        var mission = RetaliationMissionOf(owner);
+        if (mission is not null && MissionRule(mission).MultiUfoRetaliation)
+        {
+            var index = _missions.FindIndex(candidate => candidate.Id == mission.Id);
+            _missions[index] = _missions[index] with { MultiUfoRetaliationInProgress = true };
+            return;
+        }
+        DeleteRetaliationMission(mission, owner);
+    }
+
+    /// <summary>
+    /// BaseDestroyedState and its OK: the retaliation mission and its UFOs go, hunters of the base's crafts
+    /// return to their waypoints, crafts following them go home, and the base is removed with all it holds.
+    /// </summary>
+    private void DestroyBase(CampaignState.BaseState owner)
+    {
+        DeleteRetaliationMission(RetaliationMissionOf(owner), owner);
+        var rules = campaign.Content.RuntimeRules;
+        foreach (var craft in owner.Crafts.ToArray())
+        {
+            var type = rules.Crafts.GetExternalId(craft.Rule);
+            for (var index = 0; index < _ufos.Count; index++)
+                if (_ufos[index].Destination is { Kind: WorldTargetKind.Craft } target && target.TypeId == type && target.Id == craft.Id &&
+                    _ufos[index].OriginalWaypoint is not null)
+                    _ufos[index] = WorldHunting.Restore(_ufos[index]);
+            _interceptions.RemoveAll(dogfight => dogfight.Craft.Key is InterceptionCraftKey key && key.BaseId == owner.Id);
+            _pendingInterceptions.RemoveAll(dogfight => dogfight.Craft.Key is InterceptionCraftKey key && key.BaseId == owner.Id);
+        }
+        campaign.RemoveBase(owner);
+        foreach (var craft in owner.Crafts)
+            ((ICampaignCraftRemoval)this).Removed(rules.Crafts.GetExternalId(craft.Rule), craft.Id, null);
+        _destroyedBase = (owner.Id, owner.Name);
+    }
+
+    private (int Id, string Name)? _destroyedBase;
+
+    private AlienMissionSnapshot? RetaliationMissionOf(CampaignState.BaseState owner)
+    {
         var rules = campaign.Content.RuntimeRules;
         AlienMissionSnapshot? mission = owner.RetaliationMissionId is { } id ? FindMission(id) : null;
         if (mission is null)
@@ -249,13 +314,12 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
             mission = _missions.FirstOrDefault(candidate => candidate.RegionId == regionId &&
                 MissionRule(candidate).Objective == RuntimeMissionObjective.Retaliation);
         }
-        if (mission is not null && MissionRule(mission).MultiUfoRetaliation)
-        {
-            var index = _missions.FindIndex(candidate => candidate.Id == mission.Id);
-            _missions[index] = _missions[index] with { MultiUfoRetaliationInProgress = true };
-            return;
-        }
-        // SavedGame::deleteRetaliationMission: the mission and its UFOs go.
+        return mission;
+    }
+
+    // SavedGame::deleteRetaliationMission: the mission and its UFOs go.
+    private void DeleteRetaliationMission(AlienMissionSnapshot? mission, CampaignState.BaseState owner)
+    {
         if (mission is not null)
         {
             _ufos.RemoveAll(ufo => ufo.MissionId == mission.Id);
@@ -284,6 +348,12 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
         if (missionRule.Objective == RuntimeMissionObjective.InstantRetaliation)
             _missions[missionIndex] = _missions[missionIndex] with { Interrupted = true };
         var defenders = BaseDefenders(owner);
+        if (defenders.Soldiers.Count == 0 && defenders.Vehicles.Count == 0)
+        {
+            // "Please garrison your bases in future": BaseDestroyedState.
+            DestroyBase(owner);
+            return null;
+        }
         _deploymentRequest = new CampaignDeploymentRequest(BaseDefenseMissionType, "",
             stats.MissionCustomDeployment.Length != 0 && rules.AlienDeployments.TryGet(stats.MissionCustomDeployment, out _) ? stats.MissionCustomDeployment : "",
             "", mission.Race, texture, texture, shade, BaseReference(owner), owner.Id, "", 0)

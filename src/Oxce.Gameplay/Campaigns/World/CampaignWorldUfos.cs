@@ -209,6 +209,12 @@ internal sealed partial class CampaignWorld
     {
         _ufoArrivalEndedTick = false;
         _ufoIsAttackingThisTick = false;
+        // GeoscapeState::time5Seconds returns once the campaign has ended.
+        if (campaign.Ending != 0)
+        {
+            _ufoArrivalEndedTick = true;
+            return;
+        }
         for (var index = 0; index < _ufos.Count; index++)
         {
             var ufo = _ufos[index];

@@ -452,3 +452,16 @@ an undefended base's immediate request with reload, and the base-loss refusal.
 
 
 Validation: formatting, code map and Release build clean; root `dotnet test` ran 3,519 tests, all green.
+
+### Base loss and the campaign ending (2026-10-13)
+
+A base without defenders is destroyed (`BaseDestroyedState`): its retaliation mission is deleted
+with that mission's UFOs, UFOs hunting its crafts return to their waypoints, crafts following its
+crafts go home, its open or pending interceptions close, and the base is removed with everything it
+holds (`BaseDestroyed`). The campaign ending is the reference rule (D5): the next five-second tick
+that finds no base sets `END_LOSE` (`CampaignEnded`), ends that pass, and every later command
+refuses as for any ended campaign. A started campaign without bases is now a valid save, as in the
+reference. `boundary.base-loss` is gone; missile attacks keep `boundary.base-missile`.
+
+
+Validation: formatting, code map and Release build clean. Root `dotnet test` ran 3,519 tests: two expectation updates (the new five-second handler in the order list; a started campaign without bases is now valid) were corrected and re-run with the unit suite (820 pass) and their compatibility classes; two engine allocation tests (`GlobeRendererTests`) failed under the full parallel run and pass alone (9/9), a load-sensitive measurement unrelated to this change.

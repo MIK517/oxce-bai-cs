@@ -30,6 +30,7 @@ internal static class CampaignTimeOrder
 {
     // time5Seconds: UFO processing precedes craft movement.
     public const int FiveSecondsWorldUfoRetarget = 50;
+    public const int FiveSecondsCampaignEnding = 60;
     public const int FiveSecondsWorldUfos = 100;
     public const int FiveSecondsWorldCrafts = 200;
     public const int FiveSecondsWorldInterceptionStart = 250;
