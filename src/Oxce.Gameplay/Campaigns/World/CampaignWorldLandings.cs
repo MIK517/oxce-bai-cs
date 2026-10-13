@@ -262,13 +262,8 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery
                     CloseStaleLandings();
                     return new CampaignCommandResult([new LandingRefused(owner.Id, landing.CraftTypeId, landing.CraftId, refusal)]);
                 }
-                if (DeploymentRequestFor(owner, craft, landing) is not { } request)
-                {
-                    // The reference throws "No mission available!"; the port closes the window instead.
-                    _landings.RemoveAt(0);
-                    CloseStaleLandings();
-                    return Blocked(WorldCommandReasons.LandingTargetGone);
-                }
+                // The reference throws "No mission available!"; the port refuses Yes and leaves No and Patrol.
+                if (DeploymentRequestFor(owner, craft, landing) is not { } request) return Blocked(WorldCommandReasons.LandingTargetGone);
                 // Craft::destroyRequiredItems, then the request records the craft's load.
                 if (condition is { DestroyRequiredItems: true })
                 {
