@@ -687,3 +687,22 @@ of adoption, is MIT-licensed, actively maintained, and is used only by the execu
 benchmark project. It adds no production runtime, mod-compatibility, deployment, or
 Native AOT dependency. Version upgrades should be deliberate because harness changes
 can affect comparisons across historical results.
+
+### Interception steps in a populated world (branch 5 S10, 2026-10-13)
+
+`InterceptionStepBenchmarks` times `AdvanceInterceptions`, one dogfight timer step of a single open
+interception closing in at standoff, with 8 or 128 other flying UFOs in the world. Windows
+workstation, BenchmarkDotNet short job:
+
+| Other UFOs | Mean per step | Allocated per step |
+|---:|---:|---:|
+| 8 | 3.83 us | 2.68 KB |
+| 128 | 3.75 us | 2.68 KB |
+
+The step does not scale with world population, and against the reference's 30 ms dogfight timer it
+is negligible. Game time does not run while a window is open, so the time-advance profile above is
+unchanged by interceptions.
+
+```powershell
+dotnet run -c Release --project benchmarks/Oxce.Benchmarks -- --filter "*InterceptionStep*" --job short
+```
