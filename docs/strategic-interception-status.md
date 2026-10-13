@@ -640,3 +640,14 @@ inputs replayed, campaign time 12:00:00 to 12:35:30 and no popup left open.
 
 S9 is complete.
 
+## S10 — Closure (in progress)
+
+### Decision records (2026-10-13)
+
+[ADR 0034](decisions/0034-strategic-interception-and-deployment-boundary.md) records D2-D6 and the
+branch's intentional differences and named restrictions; [ADR 0032](decisions/0032-geoscape-ui-intentional-differences.md)
+gains the branch 5 window differences (text-panel interception windows, one-step base defense, port
+windows for the campaign's end and battle requests, the closed stale landing confirmation).
+Remaining: the populated interception performance and time profile, matrix and ownership updates and
+the acceptance mapping.
+

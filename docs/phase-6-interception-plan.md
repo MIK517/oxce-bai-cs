@@ -298,3 +298,10 @@ joining it, site and alien-base requests, and the TFTD depth wait; target loss i
 tests ([status](strategic-interception-status.md#s9--scenarios-in-progress)). Since done: the 19 staged saves'
 reclassification with headless branch 5 choices, and the Windows SDL smoke run. S9 is complete.
 
+### S10 — Closure (in progress, 2026-10-13)
+
+Done: [ADR 0034](decisions/0034-strategic-interception-and-deployment-boundary.md) and the branch 5
+additions to ADR 0032 ([status](strategic-interception-status.md#s10--closure-in-progress)).
+Remaining: the populated interception performance and time profile, matrix and ownership updates and
+the acceptance mapping.
+
