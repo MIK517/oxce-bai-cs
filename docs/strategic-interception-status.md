@@ -654,5 +654,10 @@ windows for the campaign's end and battle requests, the closed stale landing con
 UFOs ([performance baselines](performance-baselines.md)): flat in world population and negligible against
 the 30 ms dogfight timer; game time does not run while a window is open.
 
-Remaining: matrix and ownership updates and the acceptance mapping.
+### Ownership and acceptance (2026-10-13)
+
+The [ownership](phase-6-ownership.md#branch-5-interception-ownership-s2-2026-10-12) rows now record the
+S7 and S8 outcomes and the final mission, and the plan maps each acceptance criterion to its tests
+([plan](phase-6-interception-plan.md#acceptance)). Branch 5 is complete apart from the named refusals in
+[ADR 0034](decisions/0034-strategic-interception-and-deployment-boundary.md) and Phase 8 window polish.
 

@@ -197,6 +197,16 @@ Each slice is followed by an independent audit before the next.
 - Validation: Release build, unit and public compatibility tests, private corpus, formatting,
   checksums, code map and SDL smoke on Windows.
 
+Acceptance mapping (S10, 2026-10-13):
+
+| Criterion | Evidence |
+|---|---|
+| Combat outcomes, ammunition and fuel per mode; multi-craft and hunter-killer cases; transition reloads | `strategic-dogfight` oracle replay (`StrategicDogfightOracleTests`); `StrategicInterceptionTests` (modes, shoot-downs, tractor beam, destroyed craft, disengage, reloads); hunter-killer and escort cases in `StrategicWorldHuntingTests` |
+| No duplicate launch or double consumption; one request per confirmation, at most one pending; refused starting conditions return the craft | `StrategicLandingTests` (request taken once per load, every other command refused while pending, refusals send the craft home) |
+| Landed and crashed UFO, terror and custom site, alien base, final destination and base-defense requests | `StrategicLandingTests` (landed UFO, site, alien base), `StrategicInterceptionTests` (crash recovery through the client), `StrategicFinalMissionTests`, `StrategicBaseAttackTests`; Rosigma `Early.sav` terror site (`PrivateStrategicWorldTests`) |
+| Saving during combat drops combat on load; no fake battle or simulated victory | `StrategicInterceptionTests.RememberedWeaponTogglesPersistAndAReloadDropsTheInterception`; requests wait for Phase 7 (`TakeDeploymentRequest`) |
+| Validation | Root `dotnet test` (3,542 green on 2026-10-13, including the private corpus), formatting, code map and the Windows SDL smoke ([status](strategic-interception-status.md#s9--scenarios-in-progress)) |
+
 ## Progress
 
 ### S0 — Plan and baseline (2026-10-12)
@@ -302,6 +312,7 @@ reclassification with headless branch 5 choices, and the Windows SDL smoke run. 
 
 Done: [ADR 0034](decisions/0034-strategic-interception-and-deployment-boundary.md) and the branch 5
 additions to ADR 0032, and the populated interception step profile
-([status](strategic-interception-status.md#s10--closure-in-progress)). Remaining: matrix and ownership
-updates and the acceptance mapping.
+([status](strategic-interception-status.md#s10--closure-in-progress)), the ownership rows and the
+acceptance mapping above. Branch 5 is complete apart from the named refusals in ADR 0034 and Phase 8
+window polish.
 
