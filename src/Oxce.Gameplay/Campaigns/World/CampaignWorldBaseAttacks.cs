@@ -369,7 +369,7 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
     /// <summary>
     /// Base::getAvailableSoldiers(true, true) and the craft vehicles Base::setupDefenses collects: soldiers on
     /// crafts that are not out, and unassigned soldiers who are unwounded or fit enough (Soldier::canDefendBase
-    /// at the default <c>oxceWoundedDefendBaseIf</c> of 100%). Vehicles stored in the base are not counted yet.
+    /// with <c>oxceWoundedDefendBaseIf</c>). Vehicles stored in the base are not counted yet.
     /// </summary>
     private (IReadOnlyList<int> Soldiers, IReadOnlyList<string> Vehicles) BaseDefenders(CampaignState.BaseState owner)
     {
@@ -387,7 +387,8 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
             }
             var health = (int)personal.CurrentStats.GetValueOrDefault("health");
             var wounded = SoldierReadiness.IsWounded(personal, rules.Campaign.ManaWoundThreshold, rules.Campaign.HealthWoundThreshold);
-            var fit = health > 0 && Math.Max(0, health - (int)Math.Ceiling(personal.Recovery) - personal.HealthMissing) * 100 / health >= 100;
+            var fit = health > 0 && Math.Max(0, health - (int)Math.Ceiling(personal.Recovery) - personal.HealthMissing) * 100 / health >=
+                campaign.Options.WoundedDefendBaseIf;
             if (!wounded || fit) soldiers.Add(soldier.Id);
         }
         var vehicles = new List<string>();

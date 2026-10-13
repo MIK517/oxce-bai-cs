@@ -18,7 +18,7 @@ public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool Ca
     int MaximumBases = 8, bool AllowBuildingQueue = false, bool UfoLandingAlert = false,
     bool AggressiveRetaliation = true, bool CraftLaunchAlways = false, bool SuppressLandingWithoutEquipment = false,
     bool SuppressRedundantHunterAlert = true, bool RetainCorpses = false, bool DogfightAI = true,
-    bool RememberDisabledCraftWeapons = false, bool GlobeSeasons = false)
+    bool RememberDisabledCraftWeapons = false, bool GlobeSeasons = false, int WoundedDefendBaseIf = 100)
 {
     /// <summary>
     /// Mod::loadAll's fixedUserOptions pass: a loaded mod forces these user options for every
