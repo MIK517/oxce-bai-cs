@@ -90,7 +90,13 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     internal CampaignTimeProfile? ActiveTimeProfile => _timeProfile;
     public CampaignDifficulty Difficulty { get; }
     public CampaignTime Time { get; private set; }
-    public int Ending { get; }
+    public int Ending { get; private set; }
+
+    /// <summary>SavedGame::setEnding: 1 is END_WIN, 2 is END_LOSE.</summary>
+    internal void EndCampaign(int ending) => Ending = ending;
+
+    /// <summary>Removes a destroyed base with everything it holds (Base's destructor).</summary>
+    internal void RemoveBase(BaseState owner) => _bases.Remove(owner);
     public int MonthsPassed { get; private set; }
     public int DaysPassed { get; private set; }
 
@@ -401,7 +407,8 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         RequiredHistory(_researchScores, "research scores");
         if (MonthsPassed < -1) throw new ArgumentOutOfRangeException(nameof(MonthsPassed));
         if (DaysPassed < 0) throw new ArgumentOutOfRangeException(nameof(DaysPassed));
-        if (_bases.Count == 0) throw new InvalidDataException("A campaign must contain at least one base.");
+        // A started campaign may have lost its last base; the next five-second tick ends it.
+        if (_bases.Count == 0 && MonthsPassed < 0) throw new InvalidDataException("A campaign must contain at least one base.");
         EnsureUnique(_bases.Select(static item => item.Id), "base IDs");
         foreach (var pair in _nextIds)
         {

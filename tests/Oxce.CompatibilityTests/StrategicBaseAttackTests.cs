@@ -12,7 +12,8 @@ namespace Oxce.CompatibilityTests;
 /// <summary>
 /// Branch 5 S7: a retaliation assault UFO reaching the X-COM base. With defenses the base defense window
 /// opens; firing or skipping it ends in a shot-down UFO or the defenders' battle request; without
-/// defenses the battle is requested at once. A base without defenders is refused until base loss lands.
+/// defenses the battle is requested at once. A base without defenders is destroyed, and the last base's
+/// loss ends the campaign.
 /// </summary>
 public sealed class StrategicBaseAttackTests
 {
@@ -122,9 +123,24 @@ public sealed class StrategicBaseAttackTests
     }
 
     [Fact]
-    public void ABaseWithoutDefendersIsRefusedUntilBaseLossLands()
+    public void ABaseWithoutDefendersIsDestroyedAndLosingTheLastBaseEndsTheCampaign()
     {
-        var (_, campaign, _) = Create(defended: false, defenders: false);
-        AssertTimeBlocked(campaign, WorldCommandReasons.BaseLossBoundary);
+        var (content, campaign, baseId) = Create(defended: false, defenders: false);
+        var name = campaign.Capture().Bases[0].Name;
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Equal(new BaseDestroyed(baseId, name), Assert.Single(result.Events.OfType<BaseDestroyed>()));
+        var captured = campaign.Capture();
+        Assert.Empty(captured.Bases);
+        // BaseDestroyedState deletes the retaliation mission and its UFOs.
+        Assert.Empty(captured.World.Missions);
+        Assert.Empty(captured.World.Ufos);
+        Assert.Equal(0, captured.Ending);
+
+        // The next five-second tick finds no base: END_LOSE (D5), and the campaign accepts no more commands.
+        var reloaded = Reload(content, campaign, 11, "base-lost.sav");
+        Assert.Equal(new CampaignEnded(2), Assert.Single(reloaded.Execute(new AdvanceCampaignTime(1)).Events.OfType<CampaignEnded>()));
+        Assert.Equal(2, reloaded.Capture().Ending);
+        Assert.Equal("This campaign has ended.", Assert.IsType<CampaignActionBlocked>(Assert.Single(
+            reloaded.Execute(new AdvanceCampaignTime(1)).Events)).Reason);
     }
 }

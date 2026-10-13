@@ -59,7 +59,7 @@ public sealed class CampaignCapabilityRegistryTests
         Assert.Equal<string>(["world craft fuel", "UFO detection of XCOM bases", "alien base hunting timers",
             "UFO hunting and escort retargeting"],
             table.HandlerNames(CampaignTimeTrigger.TenMinutes));
-        Assert.Equal<string>(["fast UFO retargeting and target repair", "world UFO movement", "world craft movement",
+        Assert.Equal<string>(["fast UFO retargeting and target repair", "campaign ending", "world UFO movement", "world craft movement",
             "interception start", "destroyed UFO interception cleanup", "destroyed UFO cleanup", "interception waits"],
             table.HandlerNames(CampaignTimeTrigger.FiveSeconds));
         Assert.Equal<string>(

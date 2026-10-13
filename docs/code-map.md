@@ -521,6 +521,8 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BaseDefenseStarted` (record) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs) - A retaliation UFO reached an X-COM base with defenses: the base defense window opens and pauses time.
 - `ResolveBaseDefense` (record) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs) - Fires the base defenses (BaseDefenseState's Start) or skips them (Skip firing), then applies the outcome.
 - `BaseDefenseResolved` (record) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs) - The defense window closed: the UFO was shot down, or the attack went on to its battle.
+- `BaseDestroyed` (record) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs) - A base was destroyed by an attack (BaseDestroyedState); its crafts, crew and stores are lost.
+- `CampaignEnded` (record) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs) - The campaign ended (SavedGame::setEnding): 2 is END_LOSE, when no base is left.
 - `CampaignBaseDefense` (record) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs) - The open base defense window.
 - `ICampaignBaseDefenseQuery` (interface) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs)
 - `IgnoreUfoContact` (record) [CampaignWorldContacts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldContacts.cs) - Suppress future detected-contact alerts for this current UFO contact.

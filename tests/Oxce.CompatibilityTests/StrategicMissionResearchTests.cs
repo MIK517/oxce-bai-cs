@@ -152,7 +152,10 @@ public sealed class StrategicMissionResearchTests
         Assert.Null(campaign.MissionResearch.GrantReason("MISSING"));
         Assert.False(campaign.MissionResearch.Grant("MISSING", "DEPLOY_DIARY"));
         Assert.Equivalent(snapshot, campaign.Capture(), strict: true);
-        Assert.Throws<InvalidDataException>(() => CampaignState.Restore(snapshot with { Bases = [] }, content, new SplitMix64RandomSource(17)));
+        // A campaign that has not started still needs a base; a started one may have lost its last base
+        // (branch 5 S7), which ends it on the next tick.
+        Assert.Throws<InvalidDataException>(() => CampaignState.Restore(snapshot with { Bases = [], MonthsPassed = -1 }, content,
+            new SplitMix64RandomSource(17)));
     }
 
     [Theory]
