@@ -604,7 +604,16 @@ runs a defended base through its window, and
 `StrategicWorldHuntingTests.TheGeoscapeShowsTheHunterKillerAttackWindowWhichCannotBeMinimized` a
 hunter-killer attack (only its modes offered, minimize refused, the timer stepping it while time waits).
 Validation: root `dotnet test` ran 3,536 tests, all green, before the hunter-killer scenario, which passes
-on its own. Remaining: escort fights, target loss, the
-other base-defense variants, site and alien-base requests and TFTD depth cases through the client, the
+on its own.
+
+`StrategicLandingTests.LandingAtASiteOrAnAlienBaseRequestsItsDeploymentsBattle` lands at a terror site
+and at an alien base: each records its deployment as the mission type, the site its custom deployment
+and race, and both survive a reload. It found the alien-base request recording mission texture -1 where
+`ConfirmLandingState` calls `setWorldTexture(0, globeTexture)`; the request now records 0.
+
+Validation: formatting, code map and Release build clean; root `dotnet test` ran 3,538 tests, all green.
+
+Remaining: escort fights, target loss, the
+other base-defense variants and TFTD depth cases through the client, the
 19 staged saves' reclassification and the SDL smoke run.
 
