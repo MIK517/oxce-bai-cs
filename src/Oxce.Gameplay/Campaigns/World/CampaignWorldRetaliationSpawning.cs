@@ -23,8 +23,6 @@ internal sealed partial class CampaignWorld
         if (work > MaximumAlienBaseChecks) return "Retaliation target selection exceeds the supported work limit.";
         if (HasRetaliationTarget(mission, rule))
         {
-            if (rule.Objective == RuntimeMissionObjective.InstantRetaliation)
-                return "Retaliation assault arrival requires base-defense simulation.";
             var original = rule.Waves[mission.NextWave];
             if (original.Trajectory is not { } originalPath || rules.UfoTrajectories[originalPath].Value.Waypoints.Count == 0)
                 return "Retaliation assault spawning requires a source trajectory.";
@@ -34,6 +32,11 @@ internal sealed partial class CampaignWorld
                 return "Retaliation assault spawning requires the assault trajectory.";
             if (rules.UfoTrajectories[assault].Value.Waypoints.Count == 0 || rules.UfoTrajectories[assault].Value.Altitude(0) == 0)
                 return "Retaliation assault ground starts require lifecycle forecasts.";
+            // An instant retaliation attacks its base in the birth tick: name an unsupported attack outcome.
+            if (rule.Objective == RuntimeMissionObjective.InstantRetaliation)
+                foreach (var owner in RetaliationCandidates(mission, rule))
+                    if (BaseAssaultReason(SpawnWave(mission, rule).UfoType, rule, new WorldPosition(owner.Longitude, owner.Latitude)) is { } attackReason)
+                        return attackReason;
             return null;
         }
         if (rule.Objective == RuntimeMissionObjective.InstantRetaliation && mission.LiveUfos == 0 &&

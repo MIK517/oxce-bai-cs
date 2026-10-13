@@ -12,8 +12,11 @@ public sealed record ResolveBaseDefense(int BaseId, bool Fire) : ICampaignComman
 /// <summary>The defense window closed: the UFO was shot down, or the attack went on to its battle.</summary>
 public sealed record BaseDefenseResolved(int BaseId, int UfoUniqueId, bool UfoDestroyed, bool RetaliationStopped) : ICampaignEvent;
 
-/// <summary>A base was destroyed by an attack (BaseDestroyedState); its crafts, crew and stores are lost.</summary>
-public sealed record BaseDestroyed(int BaseId, string Name) : ICampaignEvent;
+/// <summary>
+/// A base was destroyed by an attack (BaseDestroyedState); its crafts, crew and stores are lost.
+/// <paramref name="Missiles"/> marks a nuclear missile strike rather than an undefended base.
+/// </summary>
+public sealed record BaseDestroyed(int BaseId, string Name, bool Missiles = false) : ICampaignEvent;
 
 /// <summary>The campaign ended (SavedGame::setEnding): 2 is END_LOSE, when no base is left.</summary>
 public sealed record CampaignEnded(int Ending) : ICampaignEvent;
@@ -75,26 +78,64 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
     }
 
     /// <summary>The preflight of a base assault arrival: only outcomes the port can apply may run.</summary>
-    private string? BaseAssaultReason(UfoSnapshot ufo, AlienMissionSnapshot mission, WorldPosition arrival)
+    private string? BaseAssaultReason(string ufoRuleId, RuntimeAlienMissionRule rule, WorldPosition arrival)
     {
         if (BaseAt(arrival) is not { } owner) return null;
-        var rule = MissionRule(mission);
         if (BaseDefenseSetup.For(owner, campaign.Content.RuntimeRules).Defenses.Count != 0 && !rule.IgnoreBaseDefenses) return null;
-        return BaseDefenseOutcomeReason(owner, ufo);
+        return BaseDefenseOutcomeReason(owner, ufoRuleId);
     }
 
-    // handleBaseDefense's refusals: a missile UFO damages or destroys the base, and a base whose only
-    // defenders could be stored vehicles (Base::setupDefenses loads them with clip ammunition) is not
-    // decided by the port yet.
-    private string? BaseDefenseOutcomeReason(CampaignState.BaseState owner, UfoSnapshot ufo)
+    // handleBaseDefense's refusals: missiles that damage facilities (Base::damageFacilities), and stored
+    // vehicles whose selection the reference leaves to its store order (see StoredDefenders).
+    private string? BaseDefenseOutcomeReason(CampaignState.BaseState owner, string ufoRuleId)
     {
         var rules = campaign.Content.RuntimeRules;
-        if (rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value.MissilePower != 0) return WorldCommandReasons.MissileBaseAttack;
-        var defenders = BaseDefenders(owner);
-        if (defenders.Soldiers.Count == 0 && defenders.Vehicles.Count == 0 &&
-            owner.Items.Any(pair => pair.Value > 0 && rules.Items[pair.Key].Value.VehicleArmor is not null))
-            return WorldCommandReasons.StoredVehicleDefense;
-        return null;
+        var missilePower = rules.Ufos[rules.Ufos.GetRequired(ufoRuleId)].Value.MissilePower;
+        if (missilePower > 0) return WorldCommandReasons.MissileBaseAttack;
+        if (missilePower < 0) return null;
+        return StoredDefenders(owner).Refusal;
+    }
+
+    /// <summary>
+    /// Base::setupDefenses's vehicles left on the base: each stored vehicle type without clip ammunition
+    /// joins in full; one with clip ammunition joins as far as the stores hold its loaded clips. The
+    /// reference walks its stores in RuleItem address order, so when two vehicle types draw on too little
+    /// of the same ammunition the choice is refused; so is a vehicle loading zero clips, which the reference
+    /// divides by. Returns the vehicles in rule order and what they take out of the stores.
+    /// </summary>
+    private (IReadOnlyList<string> Vehicles, IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int> Taken, string? Refusal)
+        StoredDefenders(CampaignState.BaseState owner)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        var vehicles = new List<string>();
+        var taken = new Dictionary<RuleHandle<ItemRuleFamily>, int>();
+        var wanted = new Dictionary<string, (int Types, long Clips)>(StringComparer.Ordinal);
+        foreach (var item in rules.Items.Rules)
+        {
+            if (item.Value.VehicleArmor is null) continue;
+            var handle = rules.Items.GetRequired(item.Id);
+            if (owner.Items.GetValueOrDefault(handle) is var quantity && quantity <= 0) continue;
+            var (ammo, perVehicle) = CraftLogistics.VehicleAmmunition(new CraftVehicleSnapshot(item.Id, 0), rules);
+            if (ammo.Length == 0)
+            {
+                vehicles.AddRange(Enumerable.Repeat(item.Id, quantity));
+                taken[handle] = quantity;
+                continue;
+            }
+            if (perVehicle <= 0) return ([], taken, WorldCommandReasons.StoredVehicleDefense);
+            var ammoHandle = rules.Items.GetRequired(ammo);
+            var stock = owner.Items.GetValueOrDefault(ammoHandle) - taken.GetValueOrDefault(ammoHandle);
+            var previous = wanted.GetValueOrDefault(ammo);
+            wanted[ammo] = (previous.Types + 1, previous.Clips + (long)quantity * perVehicle);
+            if (wanted[ammo].Types > 1 && wanted[ammo].Clips > owner.Items.GetValueOrDefault(ammoHandle))
+                return ([], taken, WorldCommandReasons.StoredVehicleDefense);
+            var added = Math.Min(quantity, stock / perVehicle);
+            if (added == 0) continue;
+            vehicles.AddRange(Enumerable.Repeat(item.Id, added));
+            taken[handle] = added;
+            taken[ammoHandle] = taken.GetValueOrDefault(ammoHandle) + added * perVehicle;
+        }
+        return (vehicles, taken, null);
     }
 
     // GeoscapeState::time5Seconds: game over when no base is left (D5: the reference rule).
@@ -130,8 +171,12 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
                     _ = WorldGeometry.RandomDouble(campaign.Random, candidate.Latitude - radius, candidate.Latitude + radius);
                     break;
                 }
-        _ = OrdinaryWaypoint(mission, trajectory, nextWaypoint, region, ufoRule, wave);
+        var waypoint = OrdinaryWaypoint(mission, trajectory, nextWaypoint, region, ufoRule, wave);
         var owner = BaseAt(position);
+        // setDestination recalculates the speed vector and direction: towards the new waypoint, which a UFO
+        // whose base is gone keeps, or none at all for the base it is standing on.
+        var next = WorldPosition.Create(waypoint.Longitude, waypoint.Latitude);
+        var vector = owner is null ? WorldGeometry.SpeedVector(position, next, ufo.SpeedRadian) : (Longitude: 0.0, Latitude: 0.0);
         var arrived = ufo with
         {
             TrajectoryPoint = nextWaypoint,
@@ -140,7 +185,12 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
             Altitude = WorldAltitudes.All[trajectory.Altitude(nextWaypoint)],
             Detected = false,
             Status = owner is null ? UfoStatus.Destroyed : ufo.Status,
-            Destination = owner is null ? ufo.Destination : BaseReference(owner),
+            Destination = owner is null
+                ? new WorldTargetReference(WorldTargetKind.Waypoint, WorldTargetReference.WaypointType, 0, next.Longitude, next.Latitude)
+                : BaseReference(owner),
+            SpeedLongitude = vector.Longitude,
+            SpeedLatitude = vector.Latitude,
+            Direction = WorldAltitudes.Direction(vector.Longitude, vector.Latitude),
         };
         // UfoLostState for a contact that disappeared from its followers' screens.
         if (ufo.Detected && HasArrivalContactFollowers(ufo))
@@ -172,7 +222,7 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
     {
         if (_destroyedBase is not { } destroyed) return null;
         _destroyedBase = null;
-        return new BaseDestroyed(destroyed.Id, destroyed.Name);
+        return new BaseDestroyed(destroyed.Id, destroyed.Name, destroyed.Missiles);
     }
 
     private CampaignCommandResult ResolveBaseDefense(ResolveBaseDefense command)
@@ -200,13 +250,17 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
             Damage = saved.Damage,
             Shield = saved.Shield,
         };
-        var storage = owner.Items.ToDictionary(pair => rules.Items.GetExternalId(pair.Key), pair => pair.Value, StringComparer.Ordinal);
+        // setupDefenses has already taken the stored vehicles and their clips out of the stores the defenses
+        // draw on; the port leaves them stored (battle generation moves them), so they are set aside here.
+        var stored = StoredDefenders(owner);
+        var storage = owner.Items.ToDictionary(pair => rules.Items.GetExternalId(pair.Key),
+            pair => pair.Value - stored.Taken.GetValueOrDefault(pair.Key), StringComparer.Ordinal);
         var interrupted = false;
         if (command.Fire)
             BaseDefense.Fire(defenses, gravShields, ufo, storage, random, () => WaveInterrupt(saved, missionRule),
                 () => interrupted = true);
         var destroyed = ufo.Status == DogfightUfoStatus.Destroyed;
-        if (!destroyed && BaseDefenseOutcomeReason(owner, saved) is { } refusal)
+        if (!destroyed && BaseDefenseOutcomeReason(owner, saved.RuleId) is { } refusal)
         {
             random.Restore(before);
             return Blocked(refusal);
@@ -217,7 +271,11 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
             owner.Facilities[defense.FacilityIndex] = owner.Facilities[defense.FacilityIndex] with { Ammo = defense.Ammo };
         foreach (var handle in owner.Items.Keys.ToArray())
             if (!storage.ContainsKey(rules.Items.GetExternalId(handle))) owner.Items.Remove(handle);
-        foreach (var (item, quantity) in storage) owner.Items[rules.Items.GetRequired(item)] = quantity;
+        foreach (var (item, quantity) in storage)
+        {
+            var handle = rules.Items.GetRequired(item);
+            owner.Items[handle] = quantity + stored.Taken.GetValueOrDefault(handle);
+        }
         _ufos[index] = saved with
         {
             Damage = ufo.Damage,
@@ -284,7 +342,7 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
     /// BaseDestroyedState and its OK: the retaliation mission and its UFOs go, hunters of the base's crafts
     /// return to their waypoints, crafts following them go home, and the base is removed with all it holds.
     /// </summary>
-    private void DestroyBase(CampaignState.BaseState owner)
+    private void DestroyBase(CampaignState.BaseState owner, bool missiles = false)
     {
         DeleteRetaliationMission(RetaliationMissionOf(owner), owner);
         var rules = campaign.Content.RuntimeRules;
@@ -301,10 +359,10 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
         campaign.RemoveBase(owner);
         foreach (var craft in owner.Crafts)
             ((ICampaignCraftRemoval)this).Removed(rules.Crafts.GetExternalId(craft.Rule), craft.Id, null);
-        _destroyedBase = (owner.Id, owner.Name);
+        _destroyedBase = (owner.Id, owner.Name, missiles);
     }
 
-    private (int Id, string Name)? _destroyedBase;
+    private (int Id, string Name, bool Missiles)? _destroyedBase;
 
     private AlienMissionSnapshot? RetaliationMissionOf(CampaignState.BaseState owner)
     {
@@ -335,8 +393,9 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
     }
 
     /// <summary>
-    /// GeoscapeState::handleBaseDefense after the preflight or command refused its missile and base-loss
-    /// outcomes: the UFO is spent and the defenders' battle is requested.
+    /// GeoscapeState::handleBaseDefense after the preflight or command refused facility-damaging missiles and
+    /// bases defended only by stored vehicles: the UFO is spent, and a nuclear strike or the lack of defenders
+    /// destroys the base; otherwise the defenders' battle is requested.
     /// </summary>
     private CampaignDeploymentRequest? HandleBaseDefense(CampaignState.BaseState owner, int index)
     {
@@ -353,6 +412,20 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
         var missionIndex = _missions.FindIndex(candidate => candidate.Id == mission.Id);
         if (missionRule.Objective == RuntimeMissionObjective.InstantRetaliation)
             _missions[missionIndex] = _missions[missionIndex] with { Interrupted = true };
+        var ufoRule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
+        if (ufoRule.MissilePower < 0)
+        {
+            // A nuclear warhead: BaseDestroyedState(missiles) deletes the retaliation mission at once.
+            DestroyBase(owner, missiles: true);
+            // "Continue mayhem?" The reference reads the deleted UFO's rules here; the roll is kept and only a
+            // mission that still exists is interrupted.
+            if (ufoRule.MissileStopChance > 0 && RandomChance.Percent(campaign.Random, ufoRule.MissileStopChance))
+            {
+                var stopped = _missions.FindIndex(candidate => candidate.Id == mission.Id);
+                if (stopped >= 0) _missions[stopped] = _missions[stopped] with { Interrupted = true };
+            }
+            return null;
+        }
         var defenders = BaseDefenders(owner);
         if (defenders.Soldiers.Count == 0 && defenders.Vehicles.Count == 0)
         {
@@ -375,7 +448,7 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
     /// <summary>
     /// Base::getAvailableSoldiers(true, true) and the craft vehicles Base::setupDefenses collects: soldiers on
     /// crafts that are not out, and unassigned soldiers who are unwounded or fit enough (Soldier::canDefendBase
-    /// with <c>oxceWoundedDefendBaseIf</c>). Vehicles stored in the base are not counted yet.
+    /// with <c>oxceWoundedDefendBaseIf</c>), then the vehicles of crafts at the base and those left on it.
     /// </summary>
     private (IReadOnlyList<int> Soldiers, IReadOnlyList<string> Vehicles) BaseDefenders(CampaignState.BaseState owner)
     {
@@ -401,6 +474,7 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
         foreach (var craft in owner.Crafts)
             if (craft.Logistics is { } state && state.Status != "STR_OUT")
                 vehicles.AddRange(state.Vehicles.Select(static vehicle => vehicle.RuleId));
+        vehicles.AddRange(StoredDefenders(owner).Vehicles);
         return (soldiers, vehicles);
     }
 }

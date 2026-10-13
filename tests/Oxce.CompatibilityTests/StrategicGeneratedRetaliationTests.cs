@@ -75,14 +75,26 @@ public sealed class StrategicGeneratedRetaliationTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void InstantRetaliationStopsAtBaseDefenseBeforeCreation(bool hunting)
+    public void GeneratedInstantRetaliationAttacksTheBaseInItsBirthTick(bool hunting)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
         TestFixtures.LoadVerifiedManifest("strategic-retaliation-spawn");
         var content = Content(hunting, false, instant: true);
-        AssertTimeBlocked(CampaignState.Restore(Initial(content, hunting, true), content, new SplitMix64RandomSource(17)),
-            "Retaliation assault arrival requires base-defense simulation.");
+        var campaign = CampaignState.Restore(Initial(content, hunting, true), content, new SplitMix64RandomSource(17));
+        var owner = campaign.Capture().Bases[0];
+        // AlienMission::spawnUfo places the ship over the base; the same five-second pass reaches it, and the
+        // undefended base's garrison is asked to fight.
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        var request = Assert.Single(result.Events.OfType<DeploymentRequested>()).Request;
+        Assert.Equal(("STR_BASE_DEFENSE", owner.Id, owner.Longitude, owner.Latitude),
+            (request.MissionType, request.BaseId, request.Target.Longitude, request.Target.Latitude));
+        var after = campaign.Capture();
+        var ufo = Assert.Single(after.World.Ufos);
+        Assert.Equal((UfoStatus.Destroyed, 1, "STR_NONE_UC", owner.Longitude, owner.Latitude),
+            (ufo.Status, ufo.TrajectoryPoint, ufo.Direction, ufo.Longitude, ufo.Latitude));
+        Assert.True(Assert.Single(after.World.Missions).Interrupted);
+        AssertTimeBlocked(campaign, WorldCommandReasons.DeploymentRequestPending);
     }
 
     [Theory]
