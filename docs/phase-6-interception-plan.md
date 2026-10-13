@@ -274,6 +274,7 @@ Done: the defense rounds (verbatim `strategic-base-defense` oracle), the facilit
 and `setupDefenses` list, the base assault arrival with the defense window, a shot-down retaliation
 (with `chanceToStopRetaliation`), the base-defense deployment request, base loss and `END_LOSE` (D5)
 ([status](strategic-interception-status.md#s7--base-defense-base-loss-and-cydonia-in-progress)).
-Remaining: missile attacks, an instant retaliation spawned at the base, the Cydonia request, stored
-vehicles among the defenders, the wounded-defender option, and the S7 code-review audit.
+Since done: the wounded-defender option, the S7 code-review pass and the Cydonia request (with a
+refusal when several research topics unlock the final mission). Remaining: missile attacks, an
+instant retaliation spawned at the base, and stored vehicles among the defenders (refused for now).
 

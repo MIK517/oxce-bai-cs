@@ -224,6 +224,7 @@ public static class RuntimeRuleLinker
                 Undetectable = rule.Value.Booleans["undetectable"],
                 PatrolWithoutFuel = rule.Value.Booleans["patrolWithoutFuel"],
                 AutoPatrol = rule.Value.Booleans["autoPatrol"],
+                Spacecraft = rule.Value.Booleans["spacecraft"],
                 FixedWeaponSlots = rule.Value.FixedWeapons,
                 Pilots = rule.Value.Integers["pilots"],
                 MaximumSoldiers = rule.Value.Integers["maxSoldiers"],
@@ -447,7 +448,8 @@ public static class RuntimeRuleLinker
                         : rule.Value.NeedItem && itemHandles.ContainsKey(rule.Id) ? rule.Id : null,
                     rule.Value.NeedItem,
                     rule.Value.DestroyItem, rule.Value.ReturnsItem, rule.Value.Repeatable,
-                    rule.Value.ListOrder, rule.Value.Events)),
+                    rule.Value.ListOrder, rule.Value.Events)
+                { UnlockFinalMission = rule.Value.UnlockFinalMission }),
             BuildFamily<ManufactureRuleFamily, ManufactureRule, RuntimeManufactureRule>(generation,
                 content.EquipmentProduction.Manufacture, rule => new(
                     rule.Value.Category, rule.Value.Requirements, rule.Value.RequiredBaseFunctions,
@@ -729,6 +731,7 @@ public static class RuntimeRuleLinker
                 Weights(id, "despawnEvents", source.DespawnEvents))
             {
                 StartingCondition = source.Strings["startingCondition"],
+                Race = source.Strings["race"],
                 AlienBaseDiscoveredMessage = source.Strings["alienBaseDiscoveredMessage"],
             };
         }

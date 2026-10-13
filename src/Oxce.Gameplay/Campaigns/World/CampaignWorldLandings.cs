@@ -66,6 +66,7 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery
                 : _landings.Count != 0 ? WorldCommandReasons.LandingConfirmationsOpen : null);
         registry.Command<AnswerLanding>(AnswerLanding);
         registry.Command<TakeDeploymentRequest>(_ => TakeDeploymentRequest());
+        registry.Command<LaunchFinalMission>(LaunchFinalMission);
         // D4: the campaign waits at the launch point. Time stops in its preflight (above); every other
         // command except the Phase 7 seam refuses, so nothing changes the craft, crew or world first.
         registry.CommandGate(command => _deploymentRequest is not null && command is not (World.TakeDeploymentRequest or AdvanceCampaignTime)
@@ -73,6 +74,48 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery
     }
 
     public CampaignDeploymentRequest? QueryDeploymentRequest() => campaign.Read(() => _deploymentRequest);
+
+    /// <summary>
+    /// The Cydonia button (SelectDestinationState) and ConfirmCydoniaState: a single craft that can launch,
+    /// fully fuelled, a spacecraft, with the final research done, a commander when the final deployment's
+    /// starting condition wants one, no banned armor, its pilots and some units on board, records the
+    /// battle of the first final-destination deployment with that deployment's race.
+    /// </summary>
+    private CampaignCommandResult LaunchFinalMission(LaunchFinalMission command)
+    {
+        if (!TryFindCraft(command.BaseId, command.CraftTypeId, command.CraftId, out var owner, out var index))
+            return Blocked(WorldCommandReasons.FinalMissionUnavailable);
+        var rules = campaign.Content.RuntimeRules;
+        var craft = owner.Crafts[index];
+        var rule = rules.Crafts[craft.Rule].Value;
+        if (craft.Logistics is not { } state || DispatchReason(owner, craft) is not null)
+            return Blocked(WorldCommandReasons.FinalMissionUnavailable);
+        var finals = rules.Research.Rules.Where(static research => research.Value.UnlockFinalMission).ToArray();
+        if (finals.Length > 1) return Blocked(WorldCommandReasons.FinalResearchAmbiguous);
+        var fuelled = rule.FuelMaximum > 0 && (int)Math.Floor((double)state.Fuel / rule.FuelMaximum * 100) >= 100;
+        if (!fuelled || !rule.Spacecraft || finals.Length == 1 && !campaign.ArcResearch.IsResearched(finals[0].Id))
+            return Blocked(WorldCommandReasons.FinalMissionUnavailable);
+        var final = rules.AlienDeployments.Rules.FirstOrDefault(static deployment => deployment.Value.FinalDestination);
+        var type = command.CraftTypeId;
+        bool Aboard(CampaignState.SoldierState soldier) =>
+            soldier.Personal is { } personal && personal.CraftType == type && personal.CraftId == craft.Id;
+        if (final is not null && final.Value.StartingCondition.Length != 0 &&
+            rules.StartingConditions.TryGet(final.Value.StartingCondition, out var condition) &&
+            rules.StartingConditions[condition].Value.RequireCommanderOnboard &&
+            !owner.Soldiers.Any(soldier => Aboard(soldier) && soldier.Personal!.Rank == 5))
+            return Blocked(WorldCommandReasons.FinalMissionUnavailable);
+        if (!CraftHasUnits(owner, craft, state)) return Blocked(WorldCommandReasons.FinalMissionUnavailable);
+        _deploymentRequest = new CampaignDeploymentRequest(final?.Id ?? "", final?.Id ?? "", "", "", final?.Value.Race ?? "",
+            -1, -1, 0, new WorldTargetReference(WorldTargetKind.Base, WorldTargetReference.BaseType, owner.Id, owner.Longitude, owner.Latitude),
+            owner.Id, type, craft.Id)
+        {
+            Soldiers = [.. owner.Soldiers.Where(Aboard).Select(static soldier => soldier.Id)],
+            Vehicles = [.. state.Vehicles.Select(static vehicle => vehicle.RuleId)],
+            Items = new System.Collections.ObjectModel.ReadOnlyDictionary<string, int>(new Dictionary<string, int>(state.Items, StringComparer.Ordinal)),
+        };
+        _deploymentRequestTaken = false;
+        return new CampaignCommandResult([new DeploymentRequested(_deploymentRequest)]);
+    }
 
     private CampaignCommandResult TakeDeploymentRequest()
     {

@@ -271,6 +271,8 @@ public sealed record RuntimeAlienDeploymentRule(
     IReadOnlyDictionary<string, ulong> DespawnEvents)
 {
     public string StartingCondition { get; init; } = string.Empty;
+    /// <summary>AlienDeployment::getRace: the fixed race of a final-destination battle.</summary>
+    public string Race { get; init; } = string.Empty;
 
     /// <summary>AlienDeployment::getAlienBaseDiscoveredMessage: AlienBaseState's title, or "" for the default.</summary>
     public string AlienBaseDiscoveredMessage { get; init; } = string.Empty;
