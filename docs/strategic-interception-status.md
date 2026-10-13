@@ -661,3 +661,10 @@ S7 and S8 outcomes and the final mission, and the plan maps each acceptance crit
 ([plan](phase-6-interception-plan.md#acceptance)). Branch 5 is complete apart from the named refusals in
 [ADR 0034](decisions/0034-strategic-interception-and-deployment-boundary.md) and Phase 8 window polish.
 
+D3's comparison is `StrategicLandingTests.SteppedAndChunkedRunsWithTheSameChoicesAgree`: a landing
+scenario run tick by tick and in one-hour chunks, answering the confirmation with Patrol in both, ends in
+the same campaign.
+
+Validation: Release build (no warnings), formatting and code map clean; root `dotnet test` ran 3,544 tests,
+all green, none skipped (private corpus included), before the D3 test, which passes on its own.
+

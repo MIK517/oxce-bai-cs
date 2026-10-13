@@ -290,6 +290,31 @@ public sealed class StrategicLandingTests
         Assert.Equivalent(request, Landings(reloaded).QueryDeploymentRequest(), strict: true);
     }
 
+    /// <summary>
+    /// D3: the same choices give the same campaign whether time runs tick by tick or in large chunks. The
+    /// landing confirmation pauses either run, Patrol answers it, and both continue to one in-game hour.
+    /// </summary>
+    [Fact]
+    public void SteppedAndChunkedRunsWithTheSameChoicesAgree()
+    {
+        CampaignSnapshot Run(int chunk)
+        {
+            var (_, campaign) = Create();
+            var remaining = 720;
+            while (remaining > 0)
+            {
+                var result = campaign.Execute(new AdvanceCampaignTime(Math.Min(chunk, remaining)));
+                remaining -= Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount;
+                foreach (var landing in result.Events.OfType<LandingConfirmationRequested>())
+                    Assert.Single(campaign.Execute(new AnswerLanding(landing.Confirmation, LandingAnswer.Patrol)).Events);
+                Assert.DoesNotContain(result.Events, static evt => evt is CampaignActionBlocked);
+            }
+            return campaign.Capture();
+        }
+
+        Assert.Equivalent(Run(1), Run(720), strict: true);
+    }
+
     [Fact]
     public void TheGlobeShadesSeasonsAsTheCampaignOptionSays()
     {
