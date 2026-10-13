@@ -61,6 +61,10 @@ mechanical translations with no executable acceptance test.
 
 - Target `net10.0`; use nullable reference types and keep warnings as errors.
 - Keep the core and compatibility libraries platform-independent.
+- Keep UI decoupled from gameplay logic so multiplayer, modding and other expansions stay
+  possible: gameplay owns every rule (availability, validation, outcomes) behind commands,
+  events and queries, and screens only lay out what queries return and send commands. No UI
+  types in gameplay projects and no gameplay decisions in UI code.
 - Native calls belong only in `Oxce.Platform.Sdl` or another explicitly approved
   platform project. Prefer source-generated `LibraryImport` and safe lifetime wrappers.
 - The canonical software surface is 8-bit indexed data. Do not make RGBA textures the
@@ -116,3 +120,10 @@ mechanical translations with no executable acceptance test.
 A subsystem is not complete because it compiles. It is complete when its agreed
 fixtures pass, malformed inputs fail intentionally, relevant plan/matrix entries are
 updated, and no compatibility behavior remains hidden in placeholder code.
+
+A branch is not ready to merge while it still has named refusals (time or a command stopping
+with a "requires ..." reason), unless a plan explicitly assigns the underlying work to a later
+phase or branch. Follow the reference; where its behavior is a bug (a crash or undefined
+behavior), choose a deterministic behavior and record it in an ADR. After the refusals are
+resolved, audit the whole branch (`git diff main...HEAD`) before reporting it ready. The
+maintainer pushes and merges branches; agents commit locally only.
