@@ -957,6 +957,8 @@ internal sealed class Dogfight
         var customRegion = _world.Settings.RetaliationBaseRegionOdds;
         if (customRegion.Count > _world.Difficulty) regionOdds = 100 - customRegion[_world.Difficulty];
         var targetRegion = Percent(regionOdds) ? _world.UfoMissionRegion(Ufo) : _world.CraftBaseRegion(Craft);
+        // A base outside every region crashes the reference here; the port starts no retaliation (ADR 0034).
+        if (targetRegion is null) return;
         if (!_world.RetaliationMissionExists(targetRegion, Ufo)) _world.StartRetaliation(targetRegion, Ufo);
     }
 

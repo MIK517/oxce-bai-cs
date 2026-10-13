@@ -70,8 +70,11 @@ internal interface IDogfightWorld
     /// <summary>The UFO mission's region.</summary>
     string UfoMissionRegion(DogfightUfo ufo);
 
-    /// <summary>The region containing the craft's base (SavedGame::locateRegion).</summary>
-    string CraftBaseRegion(DogfightCraft craft);
+    /// <summary>
+    /// The region containing the craft's base (SavedGame::locateRegion), or null for a base outside every
+    /// region, where the reference dereferences the missing region.
+    /// </summary>
+    string? CraftBaseRegion(DogfightCraft craft);
 
     /// <summary>SavedGame::findAlienMission(region, OBJECTIVE_RETALIATION, race).</summary>
     bool RetaliationMissionExists(string region, DogfightUfo ufo);
