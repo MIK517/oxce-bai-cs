@@ -465,3 +465,17 @@ reference. `boundary.base-loss` is gone; missile attacks keep `boundary.base-mis
 
 
 Validation: formatting, code map and Release build clean. Root `dotnet test` ran 3,519 tests: two expectation updates (the new five-second handler in the order list; a started campaign without bases is now valid) were corrected and re-run with the unit suite (820 pass) and their compatibility classes; two engine allocation tests (`GlobeRendererTests`) failed under the full parallel run and pass alone (9/9), a load-sensitive measurement unrelated to this change.
+
+### S7 review and what remains (2026-10-13)
+
+A self-review of the S7 source against `GeoscapeState::time5Seconds`, `BaseDefenseState`,
+`handleBaseDefense` and `BaseDestroyedState` checked the arrival snap to the base position, the
+detection loss and contact-lost alert, the wave countdown draw before the `isOver` check, the
+retaliation-mission link, the RNG rewind of a refused resolution, the write-back of ammunition and
+stores, the deleted mission's UFOs in open interceptions, and the ending check's place before UFO
+movement; no defect was found. The full code-review pass is still owed for S7. Remaining in S7: missile
+attacks (`Base::damageFacilities`, nuclear destruction, `missileStopChance`), an instant retaliation
+spawned at the base, the final-destination (Cydonia) request (it needs the mod-order offset that
+`Mod::_finalResearch` uses), stored vehicles among the defenders and the stores moves of
+`setupDefenses`, and the `oxceWoundedDefendBaseIf` option (read at its default).
+

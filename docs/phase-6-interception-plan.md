@@ -266,5 +266,14 @@ required-item destruction, the port-only save node and the once-per-load Phase 7
 `boundary.starting-condition` is gone. Remaining: refusing other world commands while a request is
 pending, the follower landing at a site respawned by a UFO conversion and the crashed-UFO ground
 arrival with followers (both still `boundary.landing`), the Rosigma `Early.sav` request, and the S6
-audit.
+audit. Update (2026-10-13): all of these are done; only escorts of a crashed leader keep a refusal.
+
+### S7 — Base defense, base loss and Cydonia (in progress, 2026-10-13)
+
+Done: the defense rounds (verbatim `strategic-base-defense` oracle), the facility defense projections
+and `setupDefenses` list, the base assault arrival with the defense window, a shot-down retaliation
+(with `chanceToStopRetaliation`), the base-defense deployment request, base loss and `END_LOSE` (D5)
+([status](strategic-interception-status.md#s7--base-defense-base-loss-and-cydonia-in-progress)).
+Remaining: missile attacks, an instant retaliation spawned at the base, the Cydonia request, stored
+vehicles among the defenders, the wounded-defender option, and the S7 code-review audit.
 
