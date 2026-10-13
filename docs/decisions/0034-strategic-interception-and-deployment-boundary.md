@@ -53,8 +53,8 @@ A started campaign without bases is a valid save.
 - An alien-base battle request records mission texture 0 (`setWorldTexture(0, globeTexture)`).
 - A UFO shot down by a craft from a base outside every region starts no retaliation against that base;
   the reference dereferences the missing region (`DogfightState::update`, `locateRegion`).
-- Crew death when evacuation could fail, a retaliation launched from an alien-base operation and escorts
-  of a crashed leader keep their named refusals.
+- Crew death when evacuation could fail and a retaliation launched from an alien-base operation keep
+  their named refusals.
 
 ## Consequences
 

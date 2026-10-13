@@ -685,3 +685,10 @@ retaliation inside a region and none outside.
 Validation: formatting and code map clean; root `dotnet test` ran 3,546 tests with one failure, the known
 `GlobeRendererTests` allocation flake under the parallel run, which passes alone (9/9).
 
+A leader that crashes on reaching its ground waypoint no longer stops time when it has escorts: as in the
+reference, the escorts keep following the wreck, and the crash site's removal sends them back to their own
+waypoints (`Target::~Target`, `Ufo::resetOriginalDestination`);
+`StrategicWorldHuntingTests.EscortsFollowALeaderThatCrashesOnLandingUntilItsSiteExpires`.
+Validation: code map clean; root `dotnet test` ran 3,547 tests, all green, none skipped; the test's formatting
+was fixed afterwards.
+
