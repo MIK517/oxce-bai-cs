@@ -35,6 +35,11 @@ public sealed record CampaignDeploymentRequest(
         new System.Collections.ObjectModel.ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
 }
 
+/// <summary>
+/// SelectDestinationState's Cydonia button and ConfirmCydoniaState's Yes: the craft flies the final mission.
+/// </summary>
+public sealed record LaunchFinalMission(int BaseId, string CraftTypeId, int CraftId) : ICampaignCommand;
+
 /// <summary>A confirmed landing recorded its deployment request; the campaign waits for the battle.</summary>
 public sealed record DeploymentRequested(CampaignDeploymentRequest Request) : ICampaignEvent;
 

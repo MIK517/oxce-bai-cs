@@ -215,3 +215,49 @@ public sealed class StrategicLandingTests
         Assert.Equal(2, Ship(campaign).Items["SUPPLY"]);
     }
 }
+
+/// <summary>Branch 5 S7: the Cydonia button and ConfirmCydoniaState record the final mission's battle.</summary>
+public sealed class StrategicFinalMissionTests
+{
+    private const string Rules = """
+        crafts:
+          - type: SHIP
+            spacecraft: true
+            fuelMax: 100
+        research:
+          - {name: FINAL_TOPIC, cost: 1, unlockFinalMission: true}
+        alienDeployments:
+          - type: STR_FINAL_ASSAULT
+            finalDestination: true
+            race: RACE_B
+
+        """;
+
+    [Fact]
+    public void ASpacecraftWithCrewFliesTheFinalMissionOnceItsResearchIsDone()
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], Rules);
+        var snapshot = CreateSnapshot(content, "Final mission").WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with { Status = "STR_READY", Fuel = 100, Weapons = [null, null], Items = new Dictionary<string, int>() },
+        });
+        var owner = snapshot.Bases[0];
+        snapshot = snapshot with
+        {
+            Bases = [owner with { Soldiers = [owner.Soldiers[0] with { Personal = owner.Soldiers[0].Personal! with { CraftType = "SHIP", CraftId = 1 } },
+                .. owner.Soldiers.Skip(1)] }],
+        };
+        var launch = new LaunchFinalMission(owner.Id, "SHIP", 1);
+
+        var early = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(3));
+        Assert.Equal(WorldCommandReasons.FinalMissionUnavailable, Assert.IsType<CampaignActionBlocked>(Assert.Single(early.Execute(launch).Events)).Reason);
+
+        var campaign = CampaignState.Restore(snapshot with { CompletedResearch = [.. snapshot.CompletedResearch, "FINAL_TOPIC"] }, content,
+            new SplitMix64RandomSource(3));
+        var request = Assert.IsType<DeploymentRequested>(Assert.Single(campaign.Execute(launch).Events)).Request;
+        Assert.Equal(("STR_FINAL_ASSAULT", "RACE_B", "SHIP", 1, -1), (request.MissionType, request.Race, request.CraftTypeId, request.CraftId,
+            request.MissionTexture));
+        Assert.Equal([owner.Soldiers[0].Id], request.Soldiers);
+        AssertTimeBlocked(campaign, WorldCommandReasons.DeploymentRequestPending);
+    }
+}

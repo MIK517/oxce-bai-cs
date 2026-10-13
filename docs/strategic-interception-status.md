@@ -475,8 +475,7 @@ retaliation-mission link, the RNG rewind of a refused resolution, the write-back
 stores, the deleted mission's UFOs in open interceptions, and the ending check's place before UFO
 movement; no defect was found. The full code-review pass is still owed for S7. Remaining in S7: missile
 attacks (`Base::damageFacilities`, nuclear destruction, `missileStopChance`), an instant retaliation
-spawned at the base, the final-destination (Cydonia) request (it needs the mod-order offset that
-`Mod::_finalResearch` uses), stored vehicles among the defenders and the stores moves of
+spawned at the base, the final-destination (Cydonia) request (done since, see below), stored vehicles among the defenders and the stores moves of
 `setupDefenses`, and (done since) the `oxceWoundedDefendBaseIf` option.
 
 `oxceWoundedDefendBaseIf` is now a campaign option (default 100, saved like the other options) and
@@ -492,3 +491,17 @@ have been destroyed instead of defended; until vehicle ammunition rules are proj
 (`boundary.base-stored-vehicles`).
 
 Validation: root `dotnet test` ran 3,519 tests, all green.
+
+### Final mission (2026-10-13)
+
+`LaunchFinalMission` is the Cydonia button of `SelectDestinationState` with `ConfirmCydoniaState`'s
+Yes: a single craft that can launch (the dispatch checks, including armor, items and pilots), fully
+fuelled, a `spacecraft`, with the `unlockFinalMission` research completed, a commander on board when
+the final deployment's starting condition requires one, and some units, records the deployment
+request of the first `finalDestination` deployment with that deployment's race (no world texture,
+shade 0). Research, craft and deployment rules project those fields (compiler/cache revision 68).
+When several research topics unlock the final mission, the reference picks the one from the latest
+mod; the port refuses that case (`boundary.final-research`) instead of guessing.
+`StrategicFinalMissionTests` covers the refusal before the research and the recorded request.
+
+Validation: formatting, code map and Release build clean; root `dotnet test` ran 3,520 tests, all green.

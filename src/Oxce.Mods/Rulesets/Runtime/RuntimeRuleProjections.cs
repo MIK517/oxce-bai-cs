@@ -49,7 +49,11 @@ public sealed record RuntimeResearchRule(
     bool ReturnsItem,
     bool Repeatable,
     int ListOrder,
-    IReadOnlyDictionary<string, ulong> Events);
+    IReadOnlyDictionary<string, ulong> Events)
+{
+    /// <summary>RuleResearch::unlockFinalMission: the research that shows the Cydonia button.</summary>
+    public bool UnlockFinalMission { get; init; }
+}
 
 public sealed record RuntimeManufactureMaterial(
     string Id,
@@ -237,6 +241,8 @@ public sealed record RuntimeCraftRule(
     public bool NotifyWhenRefueled { get; init; }
     public bool Undetectable { get; init; }
     public bool PatrolWithoutFuel { get; init; }
+    /// <summary>RuleCraft::getSpacecraft: the craft can fly the final mission.</summary>
+    public bool Spacecraft { get; init; }
     public bool AutoPatrol { get; init; }
     public IReadOnlyList<string> FixedWeaponSlots { get; init; } = [];
     public int Pilots { get; init; }
