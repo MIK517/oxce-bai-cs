@@ -11,7 +11,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 | Project | Files | References |
 | --- | ---: | --- |
-| [Oxce.Benchmarks](#oxcebenchmarks) | 17 | Engine, Formats, Mods, Rendering, Resources, Savegames |
+| [Oxce.Benchmarks](#oxcebenchmarks) | 18 | Engine, Formats, Mods, Rendering, Resources, Savegames |
 | [Oxce.App](#oxceapp) | 3 | Engine, Extensions, Formats, Mods, Platform.Sdl, Rendering, Savegames |
 | [Oxce.Core](#oxcecore) | 8 | - |
 | [Oxce.Engine](#oxceengine) | 29 | Core, Gameplay, Rendering, Resources |
@@ -34,7 +34,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Benchmarks
 
-`benchmarks/Oxce.Benchmarks` - 17 files.
+`benchmarks/Oxce.Benchmarks` - 18 files.
 
 ### `Oxce.Benchmarks`
 
@@ -42,6 +42,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CampaignTimeAdvanceBenchmarks` (class) [CampaignTimeAdvanceBenchmarks.cs](../benchmarks/Oxce.Benchmarks/CampaignTimeAdvanceBenchmarks.cs) - Geoscape time advance on public strategic fixtures.
 - `FrozenDictionaryBenchmarks` (class) [FrozenDictionaryBenchmarks.cs](../benchmarks/Oxce.Benchmarks/FrozenDictionaryBenchmarks.cs)
 - `GeoscapeFrameBenchmarks` (class) [GeoscapeFrameBenchmarks.cs](../benchmarks/Oxce.Benchmarks/GeoscapeFrameBenchmarks.cs) - Geoscape frame construction (performance target: interactive frame p95 &lt;= 8 ms).
+- `InterceptionStepBenchmarks` (class) [InterceptionStepBenchmarks.cs](../benchmarks/Oxce.Benchmarks/InterceptionStepBenchmarks.cs) - Branch 5 S10: dogfight timer steps (`AdvanceInterceptions`) of one open interception in a populated world.
 - `MixerBenchmarks` (class) [MixerBenchmarks.cs](../benchmarks/Oxce.Benchmarks/MixerBenchmarks.cs)
 - `MixerContentionBenchmarks` (class) [MixerBenchmarks.cs](../benchmarks/Oxce.Benchmarks/MixerBenchmarks.cs)
 - `Phase3ContentBenchmarks` (class) [Phase3ContentBenchmarks.cs](../benchmarks/Oxce.Benchmarks/Phase3ContentBenchmarks.cs)

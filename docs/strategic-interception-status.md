@@ -648,6 +648,11 @@ S9 is complete.
 branch's intentional differences and named restrictions; [ADR 0032](decisions/0032-geoscape-ui-intentional-differences.md)
 gains the branch 5 window differences (text-panel interception windows, one-step base defense, port
 windows for the campaign's end and battle requests, the closed stale landing confirmation).
-Remaining: the populated interception performance and time profile, matrix and ownership updates and
-the acceptance mapping.
+### Interception performance (2026-10-13)
+
+`InterceptionStepBenchmarks` measures one dogfight step at 3.8 us and 2.68 KB with 8 or 128 other flying
+UFOs ([performance baselines](performance-baselines.md)): flat in world population and negligible against
+the 30 ms dogfight timer; game time does not run while a window is open.
+
+Remaining: matrix and ownership updates and the acceptance mapping.
 

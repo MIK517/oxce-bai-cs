@@ -301,7 +301,7 @@ reclassification with headless branch 5 choices, and the Windows SDL smoke run. 
 ### S10 — Closure (in progress, 2026-10-13)
 
 Done: [ADR 0034](decisions/0034-strategic-interception-and-deployment-boundary.md) and the branch 5
-additions to ADR 0032 ([status](strategic-interception-status.md#s10--closure-in-progress)).
-Remaining: the populated interception performance and time profile, matrix and ownership updates and
-the acceptance mapping.
+additions to ADR 0032, and the populated interception step profile
+([status](strategic-interception-status.md#s10--closure-in-progress)). Remaining: matrix and ownership
+updates and the acceptance mapping.
 
