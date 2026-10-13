@@ -97,6 +97,10 @@ internal sealed partial class CampaignWorld : ICampaignInterceptionQuery
 
     internal IReadOnlyList<Dogfight> Interceptions => _interceptions;
 
+    /// <summary>The defenses and grav shields a UFO attacking the base meets (branch 5 S7).</summary>
+    internal (IReadOnlyList<BaseDefenseWeapon> Defenses, int GravShields) BaseDefenses(int baseId) => campaign.Read(() =>
+        BaseDefenseSetup.For(campaign.BaseStates.Single(owner => owner.Id == baseId), campaign.Content.RuntimeRules));
+
     /// <summary>
     /// Opens an interception window (the DogfightState constructor plus GeoscapeState::startDogfight's
     /// slot numbering). Returns the interception number.

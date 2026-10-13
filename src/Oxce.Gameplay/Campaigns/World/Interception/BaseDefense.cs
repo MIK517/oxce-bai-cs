@@ -37,6 +37,46 @@ internal sealed class BaseDefenseUfo
 }
 
 /// <summary>
+/// Base::setupDefenses and Base::getGravShields: the built facilities with a defense value, in facility
+/// order, with their own ammunition or the stores item they draw on, and the built grav shields.
+/// </summary>
+internal static class BaseDefenseSetup
+{
+    public static (IReadOnlyList<BaseDefenseWeapon> Defenses, int GravShields) For(CampaignState.BaseState owner,
+        Oxce.Mods.Rulesets.Runtime.RuntimeRuleCatalog rules)
+    {
+        var defenses = new List<BaseDefenseWeapon>();
+        var gravShields = 0;
+        foreach (var facility in owner.Facilities)
+        {
+            if (facility.BuildTime != 0) continue;
+            var rule = rules.Facilities[facility.Rule].Value;
+            if (rule.GravShield) gravShields++;
+            if (rule.DefenseValue == 0) continue;
+            var ammoItem = rule.AmmoItem is { } handle ? rules.Items.GetExternalId(handle) : null;
+            IDogfightDamageType? unified = null;
+            if (rule.UnifiedDamageFormula && rule.AmmoItem is { } item)
+            {
+                var damage = rules.Items[item].Value.Damage;
+                unified = new DogfightItemDamage(damage.RandomType, damage.ResistType, rules.Campaign.Interception);
+            }
+            defenses.Add(new BaseDefenseWeapon
+            {
+                HitRatio = rule.HitRatio,
+                DefenseValue = rule.DefenseValue,
+                AmmoNeeded = rule.AmmoNeeded,
+                HasOwnAmmo = rule.AmmoMaximum > 0,
+                AmmoItem = ammoItem,
+                ShieldDamageModifier = rule.ShieldDamageModifier,
+                UnifiedDamage = unified,
+                Ammo = facility.Ammo,
+            });
+        }
+        return (defenses, gravShields);
+    }
+}
+
+/// <summary>
 /// The firing rounds of <c>BaseDefenseState::nextStep</c> resolved headlessly: each defense in order
 /// fires once per pass when it has ammunition (own, or from base stores), rolls its hit ratio less the
 /// UFO's <c>avoidBonus2</c>, applies <c>applyDamage</c> on a hit and spends ammunition on any shot;
