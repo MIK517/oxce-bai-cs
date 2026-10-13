@@ -223,7 +223,7 @@ public sealed class StrategicDogfightOracleTests
         public int MissionRetaliationOdds(DogfightUfo ufo) => _world[3];
         public int RetaliationAggression(DogfightUfo ufo) => _world[4];
         public string UfoMissionRegion(DogfightUfo ufo) => "REGION_UFO";
-        public string CraftBaseRegion(DogfightCraft craft) => "REGION_BASE";
+        public string? CraftBaseRegion(DogfightCraft craft) => "REGION_BASE";
         public bool RetaliationMissionExists(string region, DogfightUfo ufo) => _world[7] == 1;
         // The probe's new AlienMission takes the next ID from the same counter as the crash site.
         public void StartRetaliation(string region, DogfightUfo ufo)

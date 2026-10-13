@@ -677,3 +677,11 @@ division by zero in the reference) stays in the stores. `boundary.base-stored-ve
 `StrategicBaseAttackTests.StoredVehiclesCompetingForTooFewClipsAreServedInRuleOrder`.
 Validation: formatting and code map clean; root `dotnet test` ran 3,544 tests, all green, none skipped.
 
+A UFO shot down by a craft whose base lies outside every region no longer stops the step: the reference
+dereferences the missing region there, and the port starts no retaliation against that base
+([ADR 0034](decisions/0034-strategic-interception-and-deployment-boundary.md));
+`StrategicInterceptionTests.AShotDownUfoRetaliatesAgainstTheCraftsBaseUnlessNoRegionHoldsIt` covers both the
+retaliation inside a region and none outside.
+Validation: formatting and code map clean; root `dotnet test` ran 3,546 tests with one failure, the known
+`GlobeRendererTests` allocation flake under the parallel run, which passes alone (9/9).
+

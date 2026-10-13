@@ -479,4 +479,31 @@ public sealed class StrategicInterceptionTests
         client.Tick(GeoscapeTimeController.GeoClock);
         Assert.NotEqual(time, campaign.Capture().Time);
     }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AShotDownUfoRetaliatesAgainstTheCraftsBaseUnlessNoRegionHoldsIt(bool outsideEveryRegion)
+    {
+        // Retaliation is certain and always targets the craft's base region. For a base outside every region
+        // the reference dereferences the missing region; the port starts no retaliation (ADR 0034).
+        var (content, campaign, _) = Create(ufoDamage: 24, longitude: Degrees(10), latitude: 0, extraRules: """
+
+            alienMissions:
+              - type: MISSION_SCOUT
+                retaliationOdds: 100
+            difficultyBasedRetaliationDelay: [0, 0, 0, 0, 0]
+            difficultyCoefficientOverrides:
+              retaliationBaseRegionOdds: [100, 100, 100, 100, 100]
+
+            """);
+        var snapshot = campaign.Capture();
+        if (outsideEveryRegion)
+            snapshot = snapshot with { Bases = [snapshot.Bases[0] with { Longitude = 3.5, Latitude = -1.2 }, .. snapshot.Bases.Skip(1)] };
+        campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(7));
+        var world = (CampaignWorld)campaign.GetQuery<ICampaignInterceptionQuery>()!;
+        FightToTheEnd(campaign, world, Start(campaign, world));
+        var retaliations = campaign.Capture().World.Missions.Count(static mission => mission.RuleId == "MISSION_RETALIATION");
+        Assert.Equal(outsideEveryRegion ? 0 : 1, retaliations);
+    }
 }

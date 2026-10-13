@@ -330,14 +330,13 @@ internal sealed partial class CampaignWorld
         public string UfoMissionRegion(DogfightUfo ufo) => Mission(ufo).RegionId;
 
         // SavedGame::locateRegion(craft base).
-        public string CraftBaseRegion(DogfightCraft craft)
+        public string? CraftBaseRegion(DogfightCraft craft)
         {
             var (owner, _, _) = Craft((InterceptionCraftKey)craft.Key);
             foreach (var region in world.Campaign.RegionStates)
                 if (WorldGeometry.InsideRegion(Rules.Regions[region.Rule].Value, new WorldPosition(owner.Longitude, owner.Latitude)))
                     return Rules.Regions.GetExternalId(region.Rule);
-            Fail("A retaliation against a base outside every region is undefined.");
-            return "";
+            return null;
         }
 
         // SavedGame::findAlienMission(region, OBJECTIVE_RETALIATION, race): by the race's retaliation
