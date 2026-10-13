@@ -520,6 +520,7 @@ public static partial class OxceSaveAdapter
         Pair("soldiers", Sequence(request.Soldiers.Select(static id => (YamlNode)Integer(id)))),
         Pair("vehicles", Sequence(request.Vehicles.Select(static id => (YamlNode)Scalar(id)))),
         Pair("items", IntMapping(request.Items.OrderBy(static pair => pair.Key, StringComparer.Ordinal))),
+        Pair("ufoDamagePercentage", request.UfoDamagePercentage == 0 ? null : Integer(request.UfoDamagePercentage)),
     ]);
 
     private static CampaignDeploymentRequest ReadDeploymentRequest(YamlMappingNode map, WorldMarkerIndex markers)
@@ -535,6 +536,7 @@ public static partial class OxceSaveAdapter
             Soldiers = Array.AsReadOnly(Sequence(map, "soldiers").Select(static node => YamlValueReader.ReadInt32(node)).ToArray()),
             Vehicles = Array.AsReadOnly(Sequence(map, "vehicles").Select(static node => YamlValueReader.ReadString(node)).ToArray()),
             Items = ReadIntMap(map, "items"),
+            UfoDamagePercentage = Integer(map, "ufoDamagePercentage", 0),
         };
     }
 

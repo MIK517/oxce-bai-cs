@@ -180,7 +180,12 @@ internal sealed partial class CampaignWorld
                         siteLinkWork += (long)campaign.BaseStates.Count * (1L + region.Areas.Count);
                         if (siteLinkWork > MaximumAlienBaseChecks) return "Aggressive retaliation base selection exceeds the supported work limit.";
                     }
-                    if (!CanAdvanceOrdinaryWaypoint(ufo, mission, trajectory))
+                    if (IsBaseAssaultArrival(ufo, trajectory) && !IsSiteConversion(ufo, mission, trajectory))
+                    {
+                        // The base assault ends this five-second pass (branch 5 S7).
+                        if (BaseAssaultReason(ufo, mission, destination.Position) is { } assaultReason) return assaultReason;
+                    }
+                    else if (!CanAdvanceOrdinaryWaypoint(ufo, mission, trajectory))
                         return "UFO waypoint arrival requires mission simulation.";
                     // Crafts react to the new CRASHED status later in this time5Seconds pass: a landing
                     // confirmation or the return home (branch 5 S6). Escorts losing a crashed leader
@@ -250,6 +255,12 @@ internal sealed partial class CampaignWorld
                     campaign.Content.RuntimeRules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value;
                 if (!mission.Interrupted && ufo.TrajectoryPoint + 1 < trajectory.Waypoints.Count)
                 {
+                    if (IsBaseAssaultArrival(ufo, trajectory) && !IsSiteConversion(ufo, mission, trajectory))
+                    {
+                        ArriveForBaseAssault(index, ufo, mission, trajectory, moved, effects);
+                        _ufoArrivalEndedTick = true;
+                        break;
+                    }
                     if (!CanAdvanceOrdinaryWaypoint(ufo, mission, trajectory))
                         throw new InvalidOperationException("UFO arrival changed after world preflight.");
                     var arrived = AdvanceOrdinaryWaypoint(ufo, mission, trajectory, moved);

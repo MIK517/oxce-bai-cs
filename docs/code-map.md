@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 181 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 182 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 94 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 5 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 310 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 311 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 101 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -333,7 +333,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 181 files.
+`src/Oxce.Gameplay` - 182 files.
 
 ### `Oxce.Gameplay`
 
@@ -518,6 +518,11 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `TakeDeploymentRequest` (record) [CampaignDeploymentRequest.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignDeploymentRequest.cs) - The Phase 7 seam: takes the pending deployment request, exactly once.
 - `DeploymentRequestTaken` (record) [CampaignDeploymentRequest.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignDeploymentRequest.cs) - The request taken by `TakeDeploymentRequest`.
 - `CampaignArcUnlocked` (record) [CampaignWorldArcScripts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldArcScripts.cs) - The article that GeoscapeState opens for one granted arc.
+- `BaseDefenseStarted` (record) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs) - A retaliation UFO reached an X-COM base with defenses: the base defense window opens and pauses time.
+- `ResolveBaseDefense` (record) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs) - Fires the base defenses (BaseDefenseState's Start) or skips them (Skip firing), then applies the outcome.
+- `BaseDefenseResolved` (record) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs) - The defense window closed: the UFO was shot down, or the attack went on to its battle.
+- `CampaignBaseDefense` (record) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs) - The open base defense window.
+- `ICampaignBaseDefenseQuery` (interface) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs)
 - `IgnoreUfoContact` (record) [CampaignWorldContacts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldContacts.cs) - Suppress future detected-contact alerts for this current UFO contact.
 - `UfoContactIgnored` (record) [CampaignWorldContacts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldContacts.cs)
 - `DispatchCraftToWaypoint` (record) [CampaignWorldCrafts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldCrafts.cs) - Send a ready craft to a new globe waypoint, as in GeoscapeCraftState.
@@ -1139,7 +1144,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 310 files.
+`tests/Oxce.CompatibilityTests` - 311 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1147,7 +1152,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>307 test classes</summary>
+<details><summary>308 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1207,6 +1212,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StartingPersonnelFixtureTests` ([StartingPersonnelFixtureTests.cs](../tests/Oxce.CompatibilityTests/StartingPersonnelFixtureTests.cs))
 - `StrategicAdhocScriptTests` ([StrategicAdhocScriptTests.cs](../tests/Oxce.CompatibilityTests/StrategicAdhocScriptTests.cs))
 - `StrategicArcScriptTests` ([StrategicArcScriptTests.cs](../tests/Oxce.CompatibilityTests/StrategicArcScriptTests.cs))
+- `StrategicBaseAttackTests` ([StrategicBaseAttackTests.cs](../tests/Oxce.CompatibilityTests/StrategicBaseAttackTests.cs))
 - `StrategicBaseDefenseOracleTests` ([StrategicBaseDefenseOracleTests.cs](../tests/Oxce.CompatibilityTests/StrategicBaseDefenseOracleTests.cs))
 - `StrategicDogfightOracleTests` ([StrategicDogfightOracleTests.cs](../tests/Oxce.CompatibilityTests/StrategicDogfightOracleTests.cs))
 - `StrategicEventSchedulingTests` ([StrategicEventSchedulingTests.cs](../tests/Oxce.CompatibilityTests/StrategicEventSchedulingTests.cs))

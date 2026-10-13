@@ -83,6 +83,7 @@ internal sealed partial class CampaignWorld : ICampaignInterceptionQuery
         RegisterInterceptionStart(registry);
         RegisterCraftLosses(registry);
         RegisterLandings(registry);
+        RegisterBaseAttacks(registry);
         registry.Command<AdvanceInterceptions>(_ => AdvanceInterceptionStep());
         registry.Command<SetInterceptionMode>(SetInterceptionMode);
         registry.Command<MinimizeInterception>(MinimizeInterception);

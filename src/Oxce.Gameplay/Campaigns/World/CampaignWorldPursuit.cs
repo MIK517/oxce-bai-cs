@@ -127,6 +127,8 @@ internal sealed partial class CampaignWorld
         if (IsSiteConversion(ufo, mission, trajectory))
             return (position, MissionRule(mission).RespawnUfoAfterSiteDespawn && _pass.SuppressedUfoSites?.Contains(ufo.UniqueId) != true
                 ? UfoStatus.IgnoreMe : UfoStatus.Destroyed, 0);
+        // A base assault ends the five-second pass like a terminal arrival (branch 5 S7).
+        if (IsBaseAssaultArrival(ufo, trajectory)) return (position, UfoStatus.Destroyed, 0);
         var rule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
         var landing = trajectory.Altitude(ufo.TrajectoryPoint + 1) == 0;
         return (position, landing ? UfoStatus.Landed : UfoStatus.Flying,
