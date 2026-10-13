@@ -66,7 +66,8 @@ public class InterceptionStepBenchmarks
                 Weapons = [new CraftWeaponSnapshot("BENCH_CANNON", 200, false, false), null],
                 Items = new Dictionary<string, int>(),
                 Destination = new WorldTargetReference(WorldTargetKind.Ufo, WorldTargetReference.UfoType, target.Id,
-                    target.Longitude, target.Latitude) { UniqueId = target.UniqueId },
+                    target.Longitude, target.Latitude)
+                { UniqueId = target.UniqueId },
             },
         }).ToArray();
         initial = initial with
