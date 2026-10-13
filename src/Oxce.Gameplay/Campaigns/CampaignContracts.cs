@@ -125,6 +125,12 @@ public sealed record SoldierSnapshot(string RuleId, int Id)
     public SoldierPersonalState? Personal { get; init; }
 }
 
+/// <summary>
+/// A soldier in the memorial (SavedGame deadSoldiers): the soldier as it was at death and the death time.
+/// The cause of a battle death stays in the save node until Phase 7 owns it.
+/// </summary>
+public sealed record DeadSoldierSnapshot(SoldierSnapshot Soldier, CampaignTime? DiedAt);
+
 public enum CampaignTransferKind { Item, Scientist, Engineer, Soldier, Craft }
 
 public sealed record TransferSnapshot(
@@ -182,6 +188,8 @@ public sealed record CampaignSnapshot(
     IReadOnlyList<ScriptValueEntry> ScriptValues)
 {
     public IReadOnlyList<CampaignRestriction> Restrictions { get; init; } = [];
+    /// <summary>The memorial, in death order.</summary>
+    public IReadOnlyList<DeadSoldierSnapshot> DeadSoldiers { get; init; } = [];
     public IReadOnlyList<string> CompletedResearch { get; init; } = [];
     public IReadOnlyList<ResearchDiaryEntrySnapshot> ResearchDiary { get; init; } = [];
     public ulong ResearchDiarySequence { get; init; }

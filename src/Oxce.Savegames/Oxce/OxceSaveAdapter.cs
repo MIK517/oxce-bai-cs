@@ -213,6 +213,7 @@ public static partial class OxceSaveAdapter
         {
             World = world,
             Restrictions = ReadRestrictions(body),
+            DeadSoldiers = ReadDeadSoldiers(body, content),
             // SavedGame::load accepts repeated topics; the port keeps one entry per topic.
             CompletedResearch = Array.AsReadOnly(Sequence(body, "discovered").Select(YamlValueReader.ReadString)
                 .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray()),
@@ -230,6 +231,46 @@ public static partial class OxceSaveAdapter
         return new LoadedOxceCampaign(campaign,
             new OxceSaveDocument(header, body, Array.AsReadOnly(modLabels), new OxceGlobeView(
                 Double(body, "globeLon", 0), Double(body, "globeLat", 0), Integer(body, "globeZoom", 0))));
+    }
+
+    // SavedGame deadSoldiers: each soldier as it died, with SoldierDeath's time; the cause stays in the node.
+    private static ReadOnlyCollection<DeadSoldierSnapshot> ReadDeadSoldiers(YamlMappingNode body, RuntimeContent content)
+    {
+        var defaultSoldier = content.RuntimeRules.Soldiers.Rules.Count == 0 ? string.Empty : content.RuntimeRules.Soldiers.Rules[0].Id;
+        return Array.AsReadOnly(Sequence(body, "deadSoldiers").Select(item =>
+        {
+            var map = RequireMap(item, "dead soldier");
+            var death = map.TryGet("death", out var deathNode) ? RequireMap(deathNode!, "soldier death") : null;
+            var time = death is not null && death.TryGet("time", out var timeNode) ? ReadTime(RequireMap(timeNode!, "death time")) : (CampaignTime?)null;
+            return new DeadSoldierSnapshot(ReadSoldier(map, defaultSoldier), time);
+        }).ToArray());
+    }
+
+    private static YamlSequenceNode? BuildDeadSoldiers(IReadOnlyList<DeadSoldierSnapshot> dead, YamlMappingNode? body)
+    {
+        if (dead.Count == 0) return null;
+        EnsureUnique(dead.Select(static item => item.Soldier.Id), "dead soldier ID");
+        var buried = new Dictionary<int, YamlMappingNode>();
+        foreach (var map in Maps(body, "deadSoldiers")) buried.TryAdd(Integer(map, "id", 0), map);
+        // A soldier who died in this session overlays its node from the living soldiers.
+        var living = IndexEntities(body).Soldiers;
+        var index = new SaveEntityIndex();
+        foreach (var item in dead)
+            if ((buried.GetValueOrDefault(item.Soldier.Id) ?? living.GetValueOrDefault(item.Soldier.Id)) is { } node)
+                index.Soldiers[item.Soldier.Id] = node;
+        return Sequence(dead.Select(item =>
+        {
+            var source = buried.GetValueOrDefault(item.Soldier.Id);
+            var death = source is not null && source.TryGet("death", out var savedDeath) ? savedDeath as YamlMappingNode : null;
+            var deathNode = item.DiedAt is not { } time ? death : Overlay(death, [Pair("time", Time(time))]);
+            // A soldier who died in this session leaves the live node behind: Soldier::die cleared its
+            // equipment layouts and promotion flag.
+            return Overlay(BuildSoldier(item.Soldier, index), source is not null ? [Pair("death", deathNode)] :
+            [
+                Pair("equipmentLayout", null), Pair("personalEquipmentLayout", null), Pair("recentlyPromoted", null),
+                Pair("death", deathNode),
+            ]);
+        }));
     }
 
     private static ReadOnlyCollection<CampaignRestriction> ReadRestrictions(YamlMappingNode body)
@@ -508,6 +549,7 @@ public static partial class OxceSaveAdapter
             // Legacy terror sites were imported as mission sites, so the legacy node is not rewritten.
             Pair("terrorSites", null),
             Pair("tags", ScriptValues(snapshot.ScriptValues)),
+            Pair("deadSoldiers", BuildDeadSoldiers(snapshot.DeadSoldiers, source?.Body)),
             Pair("discovered", snapshot.CompletedResearch.Count == 0 ? null : Sequence(snapshot.CompletedResearch.Select(Scalar))),
             Pair("researchRuleStatus", snapshot.ResearchRuleStatus.Count == 0 ? null :
                 IntMapping(snapshot.ResearchRuleStatus)),

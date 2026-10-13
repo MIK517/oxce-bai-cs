@@ -32,6 +32,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     private Dictionary<string, int> _manufactureRuleStatus = new(StringComparer.Ordinal);
     private Dictionary<string, int> _monthlyPurchaseLog = new(StringComparer.Ordinal);
     private bool _debugMode;
+    private readonly List<DeadSoldierSnapshot> _deadSoldiers = [];
     private CampaignTimeProfile? _timeProfile;
 
     internal CampaignState(
@@ -200,9 +201,38 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             CampaignSnapshot.ReadOnly(_scriptValues?.Capture() ?? []))
     {
         Restrictions = CampaignSnapshot.ReadOnly(_restrictions),
+        DeadSoldiers = CampaignSnapshot.ReadOnly(_deadSoldiers),
         DebugMode = _debugMode,
         Options = Options,
     });
+
+    /// <summary>
+    /// SavedGame::killSoldier with resetArmor and Soldier::die: the soldier leaves its base for the memorial in
+    /// its rule's default armor, without craft, training, wounds or recovery, dated now.
+    /// </summary>
+    internal void KillSoldier(BaseState owner, SoldierState soldier)
+    {
+        if (!owner.Soldiers.Remove(soldier)) throw new InvalidOperationException("The soldier is not at that base.");
+        var rules = _content.RuntimeRules;
+        var rule = rules.Soldiers[soldier.Rule].Value;
+        var personal = soldier.Personal is not { } alive ? null : alive with
+        {
+            Armor = rules.Armors.GetExternalId(rule.Armor),
+            ReplacedArmor = "",
+            TransformedArmor = "",
+            CraftType = "",
+            CraftId = 0,
+            PsiTraining = false,
+            Training = false,
+            ReturnToTrainingWhenHealed = false,
+            ManaMissing = 0,
+            HealthMissing = 0,
+            Recovery = 0,
+        };
+        _deadSoldiers.Add(new DeadSoldierSnapshot(
+            new SoldierSnapshot(rules.Soldiers.GetExternalId(soldier.Rule), soldier.Id) { PreservationKey = soldier.PreservationKey, Personal = personal },
+            Time));
+    }
 
     public static CampaignState Restore(
         CampaignSnapshot snapshot,
@@ -277,6 +307,11 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
                 // Mods that fix user options override the options a save was made with.
                 Options = snapshot.Options.WithFixedUserOptions(content.RuntimeRules.Campaign.FixedUserOptions),
             };
+            foreach (var dead in snapshot.DeadSoldiers)
+            {
+                ArgumentNullException.ThrowIfNull(dead?.Soldier);
+                campaign._deadSoldiers.Add(dead);
+            }
             campaign._handlers.Restore(snapshot);
             campaign._handlers.Validate();
             return campaign;

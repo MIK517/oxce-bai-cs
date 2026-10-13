@@ -375,6 +375,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `FacilitySnapshot` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
 - `CraftSnapshot` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
 - `SoldierSnapshot` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
+- `DeadSoldierSnapshot` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs) - A soldier in the memorial (SavedGame deadSoldiers): the soldier as it was at death and the death time.
 - `CampaignTransferKind` (enum) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
 - `TransferSnapshot` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
 - `CampaignRestriction` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)

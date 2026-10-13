@@ -8,7 +8,6 @@ namespace Oxce.Gameplay.Campaigns.World;
 /// </summary>
 internal sealed partial class CampaignWorld
 {
-    private const string CrewLossReason = "Crew lost with a destroyed craft require soldier deaths and the memorial.";
 
     private void RegisterCraftLosses(CampaignCapabilityRegistry registry)
     {
@@ -18,7 +17,8 @@ internal sealed partial class CampaignWorld
     }
 
     // Every input of a destroyed craft's loss is checked before the tick. Evacuation draws a percent roll
-    // for each crew member; a roll that can fail would kill a soldier, which the port does not own yet.
+    // for each crew member; those who fail die with the craft. Every crew member may be evacuated, so
+    // transfer identities are reserved for all of them.
     private string? DestroyedCraftReason()
     {
         var rules = campaign.Content.RuntimeRules;
@@ -34,9 +34,6 @@ internal sealed partial class CampaignWorld
                 foreach (var soldier in owner.Soldiers)
                 {
                     if (soldier.Personal is not { } personal || personal.CraftType != type || personal.CraftId != craft.Id) continue;
-                    var chance = state.Pilots.Contains(soldier.Id)
-                        ? settings.PilotsEmergencyEvacuationSurvivalChance : settings.CrewEmergencyEvacuationSurvivalChance;
-                    if (chance < 100) return CrewLossReason;
                     transfers++;
                 }
                 if (CraftLossActivityReason(state, rules.Crafts[craft.Rule].Value.Score) is { } activity) return activity;
@@ -74,17 +71,20 @@ internal sealed partial class CampaignWorld
         var type = rules.Crafts.GetExternalId(craft.Rule);
         AddXcomActivity(new WorldPosition(state.Longitude, state.Latitude), -rule.Score,
             static (_, _, history, change) => history[^1] = checked(history[^1] + change));
-        // Craft::evacuateCrew, in base soldier order.
+        // Craft::evacuateCrew, in base soldier order; then the crew still on board is killed. The reference kills
+        // them only for a craft with a unit limit and otherwise leaves them assigned to the deleted craft; the
+        // port kills them in either case (ADR 0034).
         var settings = rules.Campaign.Interception;
+        var lost = new List<CampaignState.SoldierState>();
         foreach (var soldier in owner.Soldiers.ToArray())
         {
             if (soldier.Personal is not { } personal || personal.CraftType != type || personal.CraftId != craft.Id) continue;
             var chance = state.Pilots.Contains(soldier.Id)
                 ? settings.PilotsEmergencyEvacuationSurvivalChance : settings.CrewEmergencyEvacuationSurvivalChance;
-            if (!RandomChance.Percent(campaign.Random, chance))
-                throw new InvalidOperationException("A crew member was lost after world preflight.");
-            campaign.QueueEvacuatedSoldier(owner, soldier);
+            if (RandomChance.Percent(campaign.Random, chance)) campaign.QueueEvacuatedSoldier(owner, soldier);
+            else lost.Add(soldier);
         }
+        foreach (var soldier in lost) campaign.KillSoldier(owner, soldier);
         // SavedGame::stopHuntingXcomCraft, then the craft's destructor returns its followers.
         for (var ufoIndex = 0; ufoIndex < _ufos.Count; ufoIndex++)
         {
