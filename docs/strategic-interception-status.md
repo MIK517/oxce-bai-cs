@@ -692,3 +692,12 @@ waypoints (`Target::~Target`, `Ufo::resetOriginalDestination`);
 Validation: code map clean; root `dotnet test` ran 3,547 tests, all green, none skipped; the test's formatting
 was fixed afterwards.
 
+Crew who fail a destroyed craft's evacuation roll now die instead of stopping time: `CampaignState.KillSoldier`
+follows `SavedGame::killSoldier` (default armor, no craft or training, wounds and recovery cleared) and keeps
+the soldier in the memorial with the death time. Saves read and write `deadSoldiers`, overlaying each entry
+on its saved node (or, for a death in this session, on the living soldier's node) so unmodelled fields and a
+battle death's cause survive ([ADR 0034](decisions/0034-strategic-interception-and-deployment-boundary.md));
+`StrategicInterceptionTests.CrewWhoFailTheEvacuationRollDieWithTheCraftAndJoinTheMemorial`.
+Validation: formatting and code map clean; root `dotnet test` ran 3,548 tests, all green, none skipped
+(the private saves, whose `deadSoldiers` nodes now load, included).
+

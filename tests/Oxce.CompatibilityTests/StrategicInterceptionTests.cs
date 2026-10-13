@@ -267,6 +267,31 @@ public sealed class StrategicInterceptionTests
     }
 
     [Fact]
+    public void CrewWhoFailTheEvacuationRollDieWithTheCraftAndJoinTheMemorial()
+    {
+        // Craft::evacuateCrew with a 0% survival chance, then SavedGame::killSoldier for the crew left aboard.
+        var (content, campaign, _) = Create(craftDamage: 100, singlePilot: true, extraRules: """
+
+            crewEmergencyEvacuationSurvivalChance: 0
+            pilotsEmergencyEvacuationSurvivalChance: 0
+
+            """);
+        var crew = campaign.Capture().Bases[0].Soldiers.Single(soldier => soldier.Personal!.CraftType == "SHIP");
+        var time = campaign.Capture().Time;
+        AdvanceUnblocked(campaign, 1);
+        var captured = campaign.Capture();
+        Assert.DoesNotContain(captured.Bases[0].Soldiers, soldier => soldier.Id == crew.Id);
+        Assert.DoesNotContain(captured.Bases[0].Transfers, transfer => transfer.Soldier?.Id == crew.Id);
+        var dead = Assert.Single(captured.DeadSoldiers);
+        Assert.Equal(crew.Id, dead.Soldier.Id);
+        Assert.NotEqual(time, dead.DiedAt);
+        Assert.Equal(("", 0, false, 0, 0), (dead.Soldier.Personal!.CraftType, dead.Soldier.Personal.CraftId, dead.Soldier.Personal.Training,
+            dead.Soldier.Personal.HealthMissing, dead.Soldier.Personal.Recovery));
+        // The memorial survives a reload with the death time.
+        Assert.Equivalent(captured.DeadSoldiers, Reload(content, campaign, 7, "memorial.sav").Capture().DeadSoldiers, strict: true);
+    }
+
+    [Fact]
     public void DisengagingReturnsTheCraftToBaseAndEndsTheInterception()
     {
         var (_, campaign, world) = Create();
