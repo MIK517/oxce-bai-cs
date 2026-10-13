@@ -398,4 +398,67 @@ public sealed class StrategicInterceptionTests
         Assert.False(client.Interceptions[0].Minimized);
         Assert.False(client.TimeCanRun);
     }
+
+    /// <summary>
+    /// Branch 5 S9: the whole chain through the geoscape client. The crewed ship reaches its UFO, the
+    /// interception window opens and fights it down over land, the ship then asks to land at the crash
+    /// site, Yes records the battle request, and a reload reopens its window.
+    /// </summary>
+    [Fact]
+    public void AnInterceptionShootsAUfoDownAndTheLandingRequestsItsBattleThroughTheGeoscape()
+    {
+        var (content, campaign, _) = Create(ufoDamage: 24, longitude: Degrees(10), latitude: 0, singlePilot: true);
+        var client = StrategicWorldGeoscapeScenarioTests.Client(content, CampaignUiSession.ForCampaign(campaign, campaign, campaign),
+            save: static () => { }, load: static () => throw new InvalidOperationException("No save to load."));
+        void Click(int x, int y) =>
+            client.HandleInput(GameInputEvent.PointerButtonChange(GameInputEventKind.PointerPressed, 0, 0, x, y, 1, 1));
+        // Closes the popups that only inform; returns the first one that asks something.
+        GeoscapePopup? Settle()
+        {
+            while (client.Popups.Count != 0)
+            {
+                var popup = client.Popups[0];
+                if (popup.Actions.Any(static action => action.Command is not null)) return popup;
+                client.Choose(popup.Actions.ToList().FindIndex(static action => action.Intent is null && action.Disabled is null));
+            }
+            return null;
+        }
+
+        // The first tick brings the ship to its UFO and opens the window.
+        client.Tick(GeoscapeTimeController.GeoClock);
+        Assert.Null(Settle());
+        var window = Assert.Single(client.Interceptions);
+        Assert.Equal(("SHIP", 9), (window.CraftTypeId, window.UfoUniqueId));
+
+        // Aggressive, then let the dogfight timer fight it out.
+        Click(165, 36 + 3 * 16 + 5);
+        for (var frame = 0; frame < 20_000 && client.Interceptions.Count != 0; frame++)
+        {
+            Assert.Null(Settle());
+            client.Tick(GeoscapeClient.DogfightClock);
+        }
+        Assert.Empty(client.Interceptions);
+        Assert.Equal(UfoStatus.Crashed, Assert.Single(campaign.Capture().World.Ufos).Status);
+
+        // Time runs again; the crewed ship over the crash site asks to land, and Yes requests the battle.
+        GeoscapePopup? landing = null;
+        for (var frame = 0; frame < 1_000 && landing is null; frame++)
+        {
+            landing = Settle();
+            if (landing is null) client.Tick(GeoscapeTimeController.GeoClock);
+        }
+        Assert.Equal(["STR_YES", "STR_NO"], landing!.Actions.Select(static action => action.Label));
+        client.HandleInput(GameInputEvent.Key(GameInputEventKind.KeyPressed, 0, 0, 0, 13, InputKeyModifiers.None));
+        Assert.Equal("Tactical combat is not available yet", Assert.Single(client.Popups).Title);
+        var request = campaign.GetQuery<ICampaignLandingQuery>()!.QueryDeploymentRequest()!;
+        Assert.Equal(("STR_UFO_CRASH_RECOVERY", WorldTargetKind.Ufo, 9), (request.MissionType, request.Target.Kind, request.Target.UniqueId));
+
+        // Ufo::load gives the crashed UFO a waypoint for its missing destination, so only the request is compared.
+        var reloaded = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(campaign.Capture()), content, 7,
+            "interception-scenario.sav").Campaign;
+        Assert.Equivalent(request, reloaded.GetQuery<ICampaignLandingQuery>()!.QueryDeploymentRequest(), strict: true);
+        var again = StrategicWorldGeoscapeScenarioTests.Client(content, CampaignUiSession.ForCampaign(reloaded, reloaded, reloaded),
+            save: static () => { }, load: static () => throw new InvalidOperationException("No save to load."));
+        Assert.Equal("Tactical combat is not available yet", Assert.Single(again.Popups).Title);
+    }
 }

@@ -590,3 +590,21 @@ Validation: formatting, code map and Release build clean; root `dotnet test` ran
 One earlier full run had `StrategicWorldEnduranceTests.PopulatedTicksScale...(detectionQueries: False)`
 fail its allocation bound under parallel load; it passed in the runs before and after, and S8 does not
 touch the time tick.
+
+## S9 — Scenarios (in progress)
+
+### Geoscape scenarios (2026-10-13)
+
+`StrategicInterceptionTests.AnInterceptionShootsAUfoDownAndTheLandingRequestsItsBattleThroughTheGeoscape`
+drives the whole chain through the client: the crewed ship reaches its UFO, the interception window
+opens, Aggressive and the dogfight timer bring the UFO down over land, time resumes, the ship asks to
+land at the crash site, Yes records the `STR_UFO_CRASH_RECOVERY` request, and a reload keeps the request
+and reopens its window. `StrategicBaseAttackTests.TheGeoscapeOpensTheDefenseWindowAndStartFiringShootsTheUfoDown`
+runs a defended base through its window, and
+`StrategicWorldHuntingTests.TheGeoscapeShowsTheHunterKillerAttackWindowWhichCannotBeMinimized` a
+hunter-killer attack (only its modes offered, minimize refused, the timer stepping it while time waits).
+Validation: root `dotnet test` ran 3,536 tests, all green, before the hunter-killer scenario, which passes
+on its own. Remaining: escort fights, target loss, the
+other base-defense variants, site and alien-base requests and TFTD depth cases through the client, the
+19 staged saves' reclassification and the SDL smoke run.
+

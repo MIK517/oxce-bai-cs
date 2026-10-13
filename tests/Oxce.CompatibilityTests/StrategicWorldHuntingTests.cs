@@ -3,6 +3,9 @@ using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Core.Random;
+using Oxce.Engine;
+using Oxce.Engine.Geoscape;
+using Oxce.Engine.Input;
 using Oxce.Mods.Rulesets.Content;
 using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
 using Oxce.TestSupport;
@@ -4933,5 +4936,46 @@ public sealed partial class StrategicWorldHuntingTests
         Assert.Equal(InterceptionMode.Aggressive, window.Mode);
         Assert.NotEmpty(campaign.Execute(new MinimizeInterception(window.Number)).Events);
         AssertTimeBlocked(campaign, WorldCommandReasons.InterceptionsOpen);
+    }
+
+    [Fact]
+    public void TheGeoscapeShowsTheHunterKillerAttackWindowWhichCannotBeMinimized()
+    {
+        var content = Load();
+        var initial = HuntingSnapshot(content);
+        var hunter = initial.World.Ufos[0] with
+        {
+            HunterKiller = true,
+            Hunting = true,
+            OriginalWaypoint = new(1, 0.6),
+            Longitude = 0.45,
+            Latitude = 0.21,
+            Destination = new(WorldTargetKind.Craft, "SHIP", 1, 0.45, 0.21),
+        };
+        var campaign = CampaignState.Restore(initial with { World = initial.World with { Ufos = [hunter] } }, content,
+            new SplitMix64RandomSource(81));
+        var client = StrategicWorldGeoscapeScenarioTests.Client(content, CampaignUiSession.ForCampaign(campaign, campaign, campaign),
+            save: static () => { }, load: static () => throw new InvalidOperationException("No save to load."));
+        client.Tick(GeoscapeTimeController.GeoClock);
+        while (client.Popups.Count != 0)
+            client.Choose(client.Popups[0].Actions.ToList().FindIndex(static action => action.CancelKey || action.OkKey));
+        var window = Assert.Single(client.Interceptions);
+        Assert.True(window.UfoAttacking);
+        Assert.False(client.TimeCanRun);
+
+        // Standoff is not offered, so its button does nothing; Minimise is refused with the reason.
+        void Click(int x, int y) =>
+            client.HandleInput(GameInputEvent.PointerButtonChange(GameInputEventKind.PointerPressed, 0, 0, x, y, 1, 1));
+        Click(165, 36 + 5);
+        Assert.Equal(InterceptionMode.Aggressive, client.Interceptions[0].Mode);
+        Click(165, 36 + 5 * 16 + 6 + 5);
+        Assert.False(client.Interceptions[0].Minimized);
+        client.Choose(Assert.Single(client.Popups).Actions.ToList().FindIndex(static action => action.OkKey));
+
+        // The dogfight timer steps the attack while game time waits.
+        var time = campaign.Capture().Time;
+        for (var step = 0; step < 20 && client.Popups.Count == 0 && client.Interceptions.Count != 0; step++)
+            client.Tick(GeoscapeClient.DogfightClock);
+        Assert.Equal(time, campaign.Capture().Time);
     }
 }
