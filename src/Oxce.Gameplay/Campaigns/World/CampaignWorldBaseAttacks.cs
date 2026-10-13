@@ -85,31 +85,30 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
         return BaseDefenseOutcomeReason(owner, ufoRuleId);
     }
 
-    // handleBaseDefense's refusals: missiles that damage facilities (Base::damageFacilities), and stored
-    // vehicles whose selection the reference leaves to its store order (see StoredDefenders).
+    // handleBaseDefense's refusal: missiles that damage facilities (Base::damageFacilities).
     private string? BaseDefenseOutcomeReason(CampaignState.BaseState owner, string ufoRuleId)
     {
         var rules = campaign.Content.RuntimeRules;
         var missilePower = rules.Ufos[rules.Ufos.GetRequired(ufoRuleId)].Value.MissilePower;
         if (missilePower > 0) return WorldCommandReasons.MissileBaseAttack;
-        if (missilePower < 0) return null;
-        return StoredDefenders(owner).Refusal;
+        _ = owner;
+        return null;
     }
 
     /// <summary>
     /// Base::setupDefenses's vehicles left on the base: each stored vehicle type without clip ammunition
-    /// joins in full; one with clip ammunition joins as far as the stores hold its loaded clips. The
-    /// reference walks its stores in RuleItem address order, so when two vehicle types draw on too little
-    /// of the same ammunition the choice is refused; so is a vehicle loading zero clips, which the reference
-    /// divides by. Returns the vehicles in rule order and what they take out of the stores.
+    /// joins in full; one with clip ammunition joins as far as the stores still hold its loaded clips.
+    /// The reference walks its stores in RuleItem address order, which follows the order rules were first
+    /// loaded; the port uses that rule order, so vehicle types sharing too little ammunition are served
+    /// first-loaded first (ADR 0034). A vehicle that loads zero clips, which the reference divides by, cannot
+    /// be loaded and stays in the stores. Returns the vehicles and what they take out of the stores.
     /// </summary>
-    private (IReadOnlyList<string> Vehicles, IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int> Taken, string? Refusal)
-        StoredDefenders(CampaignState.BaseState owner)
+    private (IReadOnlyList<string> Vehicles, IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int> Taken) StoredDefenders(
+        CampaignState.BaseState owner)
     {
         var rules = campaign.Content.RuntimeRules;
         var vehicles = new List<string>();
         var taken = new Dictionary<RuleHandle<ItemRuleFamily>, int>();
-        var wanted = new Dictionary<string, (int Types, long Clips)>(StringComparer.Ordinal);
         foreach (var item in rules.Items.Rules)
         {
             if (item.Value.VehicleArmor is null) continue;
@@ -122,20 +121,16 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
                 taken[handle] = quantity;
                 continue;
             }
-            if (perVehicle <= 0) return ([], taken, WorldCommandReasons.StoredVehicleDefense);
+            if (perVehicle <= 0) continue;
             var ammoHandle = rules.Items.GetRequired(ammo);
             var stock = owner.Items.GetValueOrDefault(ammoHandle) - taken.GetValueOrDefault(ammoHandle);
-            var previous = wanted.GetValueOrDefault(ammo);
-            wanted[ammo] = (previous.Types + 1, previous.Clips + (long)quantity * perVehicle);
-            if (wanted[ammo].Types > 1 && wanted[ammo].Clips > owner.Items.GetValueOrDefault(ammoHandle))
-                return ([], taken, WorldCommandReasons.StoredVehicleDefense);
             var added = Math.Min(quantity, stock / perVehicle);
             if (added == 0) continue;
             vehicles.AddRange(Enumerable.Repeat(item.Id, added));
             taken[handle] = added;
             taken[ammoHandle] = taken.GetValueOrDefault(ammoHandle) + added * perVehicle;
         }
-        return (vehicles, taken, null);
+        return (vehicles, taken);
     }
 
     // GeoscapeState::time5Seconds: game over when no base is left (D5: the reference rule).

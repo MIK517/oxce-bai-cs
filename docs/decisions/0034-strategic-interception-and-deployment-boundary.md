@@ -40,9 +40,10 @@ A started campaign without bases is a valid save.
 **Intentional differences and named restrictions.**
 - `handleBaseDefense` reads a nuclear UFO's `missileStopChance` after its mission and UFO were
   deleted; the port keeps the roll and interrupts the mission only if it still exists.
-- Stored vehicles join base defenders in rule order; where the reference's `RuleItem` address order
-  would decide (two vehicle types sharing too little ammunition) or divide by zero (no clips), the
-  attack is refused (`boundary.base-stored-vehicles`).
+- Stored vehicles join base defenders in rule order. The reference walks its stores in `RuleItem`
+  address order, which follows the order rules were first loaded, so vehicle types sharing too little
+  ammunition are served first-loaded first. A vehicle that loads zero clips, which the reference
+  divides by, cannot be loaded and stays in the stores.
 - Missiles that damage facilities (`Base::damageFacilities` and the facility destruction cascade) are
   refused (`boundary.base-missile`).
 - Several research topics marked `unlockFinalMission` are refused (`boundary.final-research`): the

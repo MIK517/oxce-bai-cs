@@ -668,3 +668,12 @@ the same campaign.
 Validation: Release build (no warnings), formatting and code map clean; root `dotnet test` ran 3,544 tests,
 all green, none skipped (private corpus included), before the D3 test, which passes on its own.
 
+### Refusals resolved before merge (2026-10-13)
+
+Stored vehicles sharing too little ammunition are now served in rule order, the first-loaded rule first,
+which is what the reference's `RuleItem` address order follows; a vehicle that loads zero clips (a
+division by zero in the reference) stays in the stores. `boundary.base-stored-vehicles` is gone
+([ADR 0034](decisions/0034-strategic-interception-and-deployment-boundary.md));
+`StrategicBaseAttackTests.StoredVehiclesCompetingForTooFewClipsAreServedInRuleOrder`.
+Validation: formatting and code map clean; root `dotnet test` ran 3,544 tests, all green, none skipped.
+

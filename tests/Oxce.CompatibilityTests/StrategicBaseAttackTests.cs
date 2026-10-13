@@ -267,11 +267,13 @@ public sealed class StrategicBaseAttackTests
     }
 
     [Fact]
-    public void StoredVehiclesCompetingForTooFewClipsStopTheClock()
+    public void StoredVehiclesCompetingForTooFewClipsAreServedInRuleOrder()
     {
+        // Three clips load one vehicle: the first-loaded vehicle rule takes them (ADR 0034).
         var stores = new Dictionary<string, int> { ["VEHICLE"] = 1, ["VEHICLE_B"] = 1, ["VEHICLE_AMMO"] = 3 };
         var (_, campaign, _) = Create(defended: false, defenders: false, stores: stores);
-        AssertTimeBlocked(campaign, WorldCommandReasons.StoredVehicleDefense);
+        var request = Assert.Single(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<DeploymentRequested>()).Request;
+        Assert.Equal(["VEHICLE"], request.Vehicles);
     }
 
     [Fact]
