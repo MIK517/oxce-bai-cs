@@ -27,6 +27,9 @@ public sealed record CampaignDeploymentRequest(
     /// <summary>Vehicles on board by rule id, in craft order.</summary>
     public IReadOnlyList<string> Vehicles { get; init; } = [];
 
+    /// <summary>BattlescapeGenerator::setUfoDamagePercentage for a base defense (lessAliensDuringBaseDefense).</summary>
+    public int UfoDamagePercentage { get; init; }
+
     /// <summary>Items on board after any required-item destruction.</summary>
     public IReadOnlyDictionary<string, int> Items { get; init; } =
         new System.Collections.ObjectModel.ReadOnlyDictionary<string, int>(new Dictionary<string, int>());

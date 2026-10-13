@@ -62,6 +62,7 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery
         // Popups pause the geoscape; time runs again once every confirmation is answered.
         registry.Preflight(CampaignPreflightOrder.Landings, "landing confirmations",
             (_, _, _) => _deploymentRequest is not null ? WorldCommandReasons.DeploymentRequestPending
+                : _baseDefense is not null ? WorldCommandReasons.BaseDefenseOpen
                 : _landings.Count != 0 ? WorldCommandReasons.LandingConfirmationsOpen : null);
         registry.Command<AnswerLanding>(AnswerLanding);
         registry.Command<TakeDeploymentRequest>(_ => TakeDeploymentRequest());

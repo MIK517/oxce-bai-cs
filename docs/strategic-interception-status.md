@@ -426,3 +426,29 @@ built grav shields (`StrategicBaseDefenseSetupTests`).
 
 
 Validation: formatting, code map and Release build clean; root `dotnet test` ran 3515 tests, all green.
+
+### Base attack (2026-10-13)
+
+`CampaignWorldBaseAttacks` runs the base assault of `time5Seconds`: a retaliation assault UFO
+reaching its ground waypoint makes `AlienMission::ufoReachedWaypoint`'s waypoint draws, loses its
+detection (contact-lost alert for followers) and, at the base whose coordinates match (`fmath`
+`AreSame`), draws the next wave's countdown, loses its destination and meets `Base::setupDefenses`
+(the base remembers the retaliation mission); without a base it is destroyed. Either way the
+five-second pass ends there, which the preflight's step forecast models as a terminal arrival. With
+defenses and without `ignoreBaseDefenses`, `BaseDefenseStarted` opens the modal window (time and other
+commands refuse with `base-defense.open`); `ResolveBaseDefense` fires the rounds (`BaseDefense.Fire`)
+or skips them. A UFO shot down ends the attack (an instant retaliation is interrupted; a retaliation
+may give up with `chanceToStopRetaliation`, deleting its mission and UFOs or, for multi-UFO
+retaliations, marking it in progress). Otherwise `handleBaseDefense` spends the UFO and records the
+`STR_BASE_DEFENSE` deployment request: the UFO's `missionCustomDeploy`, race, texture and shade at
+the base, the `lessAliensDuringBaseDefense` damage percentage, the defenders (soldiers on crafts that
+are not out and unassigned soldiers fit to defend at the default `oxceWoundedDefendBaseIf` of 100%)
+and the vehicles of crafts at the base. Named restrictions, refused before anything changes: missile
+UFOs (`boundary.base-missile`), an undefended base (`boundary.base-loss`), and an instant retaliation
+spawned at the base (its existing refusal). The base's stored vehicles are not counted yet, and the
+reference's store adjustments in `setupDefenses` are left to battle generation.
+`StrategicBaseAttackTests` covers the window and a shot-down UFO, skipping into the battle request,
+an undefended base's immediate request with reload, and the base-loss refusal.
+
+
+Validation: formatting, code map and Release build clean; root `dotnet test` ran 3,519 tests, all green.

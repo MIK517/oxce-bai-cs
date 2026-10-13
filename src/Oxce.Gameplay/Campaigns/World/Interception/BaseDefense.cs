@@ -16,6 +16,8 @@ internal sealed class BaseDefenseWeapon
     /// <summary>The ammunition item's damage type for the unified damage formula, or null for 50-150%.</summary>
     public IDogfightDamageType? UnifiedDamage { get; init; }
     public int Ammo { get; set; }
+    /// <summary>The facility's index in the base, to write its ammunition back.</summary>
+    public int FacilityIndex { get; init; }
 }
 
 /// <summary>The UFO attacking a base, with the Ufo fields the defense rounds read and change.</summary>
@@ -47,8 +49,9 @@ internal static class BaseDefenseSetup
     {
         var defenses = new List<BaseDefenseWeapon>();
         var gravShields = 0;
-        foreach (var facility in owner.Facilities)
+        for (var index = 0; index < owner.Facilities.Count; index++)
         {
+            var facility = owner.Facilities[index];
             if (facility.BuildTime != 0) continue;
             var rule = rules.Facilities[facility.Rule].Value;
             if (rule.GravShield) gravShields++;
@@ -70,6 +73,7 @@ internal static class BaseDefenseSetup
                 ShieldDamageModifier = rule.ShieldDamageModifier,
                 UnifiedDamage = unified,
                 Ammo = facility.Ammo,
+                FacilityIndex = index,
             });
         }
         return (defenses, gravShields);

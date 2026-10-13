@@ -594,7 +594,7 @@ Owners are branch 5 slices ([plan](phase-6-interception-plan.md)); evidence is r
 | Landing confirmation and starting conditions | S6 | `ConfirmLandingState`, `GeoscapeState::time5Seconds`, `Globe::getPolygonTextureAndShade` | Queue, answers and starting conditions implemented; shade pinned by the `strategic-landing-shade` oracle; `StrategicLandingTests` |
 | Deployment request (port-only `oxcePortDeploymentRequest`) | S6 (D4) | `ConfirmLandingState::btnYesClick`, `BattlescapeGenerator` inputs | Recorded, saved and taken once by the Phase 7 seam; `StrategicLandingTests` |
 | `globeSeasons` option | S6 | `Options::globeSeasons`, `Globe::getSunDirection` | Campaign option with save round-trip; read by the landing shade |
-| Base defense, missile damage, base loss | S7 | `BaseDefenseState`, `GeoscapeState::handleBaseDefense`, `Base::damageFacilities` | Defense rounds implemented and pinned by the `strategic-base-defense` oracle; the base attack and its outcomes remain |
+| Base defense, missile damage, base loss | S7 | `BaseDefenseState`, `GeoscapeState::handleBaseDefense`, `Base::damageFacilities` | Defense rounds pinned by the `strategic-base-defense` oracle; base assault arrival, defense window, shot-down and battle-request outcomes implemented (`StrategicBaseAttackTests`); missile damage and base loss refused until implemented |
 | Dogfight presentation (`dogfightSpeed`, sounds, blobs, distance in km, ocean indicator) | S8 | `DogfightState` drawing, `Options::dogfightSpeed` | UI only; no gameplay state |
 
 Option inventory on these paths: gameplay-affecting `dogfightAI` (UFO-faster distance rule),
