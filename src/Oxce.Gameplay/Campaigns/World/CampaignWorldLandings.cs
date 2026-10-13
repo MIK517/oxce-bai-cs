@@ -65,6 +65,10 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery
                 : _landings.Count != 0 ? WorldCommandReasons.LandingConfirmationsOpen : null);
         registry.Command<AnswerLanding>(AnswerLanding);
         registry.Command<TakeDeploymentRequest>(_ => TakeDeploymentRequest());
+        // D4: the campaign waits at the launch point. Time stops in its preflight (above); every other
+        // command except the Phase 7 seam refuses, so nothing changes the craft, crew or world first.
+        registry.CommandGate(command => _deploymentRequest is not null && command is not (World.TakeDeploymentRequest or AdvanceCampaignTime)
+            ? Blocked(WorldCommandReasons.DeploymentRequestPending) : null);
     }
 
     public CampaignDeploymentRequest? QueryDeploymentRequest() => campaign.Read(() => _deploymentRequest);
@@ -258,7 +262,13 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery
                     CloseStaleLandings();
                     return new CampaignCommandResult([new LandingRefused(owner.Id, landing.CraftTypeId, landing.CraftId, refusal)]);
                 }
-                if (DeploymentRequestFor(owner, craft, landing) is not { } request) return Blocked(LandingReason);
+                if (DeploymentRequestFor(owner, craft, landing) is not { } request)
+                {
+                    // The reference throws "No mission available!"; the port closes the window instead.
+                    _landings.RemoveAt(0);
+                    CloseStaleLandings();
+                    return Blocked(WorldCommandReasons.LandingTargetGone);
+                }
                 // Craft::destroyRequiredItems, then the request records the craft's load.
                 if (condition is { DestroyRequiredItems: true })
                 {

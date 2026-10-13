@@ -173,6 +173,11 @@ public sealed class StrategicLandingTests
         // The craft keeps its pre-battle state; the campaign waits for the battle.
         Assert.Equal(WorldTargetKind.Ufo, Ship(campaign).Destination!.Kind);
         AssertTimeBlocked(campaign, WorldCommandReasons.DeploymentRequestPending);
+        // Every other command waits too, so nothing changes the craft or the world before the battle.
+        var before = campaign.Capture();
+        Assert.Equal(WorldCommandReasons.DeploymentRequestPending, Assert.IsType<CampaignActionBlocked>(Assert.Single(
+            campaign.Execute(new RecallCraft(request.BaseId, "SHIP", 1)).Events)).Reason);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
 
         // The request survives a reload, and the Phase 7 seam takes it exactly once.
         var reloaded = Reload(content, campaign, 17, "deployment.sav");

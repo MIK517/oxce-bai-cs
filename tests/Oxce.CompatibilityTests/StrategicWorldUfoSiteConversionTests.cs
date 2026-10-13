@@ -434,9 +434,10 @@ public sealed class StrategicWorldUfoSiteConversionTests
         var campaign = CampaignState.Restore(initial, content, new QuarterChoices());
         if (respawn)
         {
-            // A follower landing at a respawned site during conversion keeps its refusal (the site
-            // follower landing is part of the deployment request, later in branch 5 S6).
-            AssertTimeBlocked(campaign, WorldCommandReasons.LandingBoundary);
+            // Branch 5 S6: the follower is redirected to the respawned site and may ask to land there.
+            Assert.DoesNotContain(campaign.Execute(new AdvanceCampaignTime(1)).Events, item => item is CampaignActionBlocked);
+            Assert.Equal(WorldTargetKind.MissionSite,
+                campaign.Capture().Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP").Logistics!.Destination!.Kind);
             return;
         }
         Assert.Contains(campaign.Execute(new AdvanceCampaignTime(1)).Events, item => item is MissionSiteDetected);

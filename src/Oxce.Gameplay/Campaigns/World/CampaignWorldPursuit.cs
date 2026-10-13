@@ -6,7 +6,6 @@ namespace Oxce.Gameplay.Campaigns.World;
 internal sealed partial class CampaignWorld
 {
     private const string InterceptionReason = WorldCommandReasons.InterceptionBoundary;
-    private const string LandingReason = WorldCommandReasons.LandingBoundary;
 
     private CampaignCommandResult DispatchTarget(DispatchCraftToTarget command)
     {

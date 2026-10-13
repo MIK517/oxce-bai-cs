@@ -182,10 +182,11 @@ internal sealed partial class CampaignWorld
                     }
                     if (!CanAdvanceOrdinaryWaypoint(ufo, mission, trajectory))
                         return "UFO waypoint arrival requires mission simulation.";
-                    // Crafts and escorts react to the new CRASHED status later in this
-                    // time5Seconds pass (landing confirmation, return or escort loss).
-                    if (CrashesOnGroundArrival(ufo, mission, trajectory) && HasArrivalContactFollowers(ufo))
-                        return "Crashed UFO arrival with followers requires interception simulation.";
+                    // Crafts react to the new CRASHED status later in this time5Seconds pass: a landing
+                    // confirmation or the return home (branch 5 S6). Escorts losing a crashed leader
+                    // are not simulated yet.
+                    if (CrashesOnGroundArrival(ufo, mission, trajectory) && HasEscortFollowers(ufo))
+                        return "Crashed UFO arrival with escorts requires escort simulation.";
                     var regionForWaypoint = campaign.Content.RuntimeRules.Regions[
                         campaign.Content.RuntimeRules.Regions.GetRequired(mission.RegionId)].Value;
                     var wave = rule.Waves[MissionWaveIndex(ufo, mission, rule)];
@@ -318,6 +319,13 @@ internal sealed partial class CampaignWorld
         long work = campaign.BaseStates.Count + maximumUfos;
         if (campaign.ProductionPreflight.CraftPopulationBound(highest, ref work, out var crafts) is { } reason) return reason;
         return work + crafts > MaximumAlienBaseChecks ? "UFO arrival follower checks exceed the supported work limit." : null;
+    }
+
+    private bool HasEscortFollowers(UfoSnapshot ufo)
+    {
+        foreach (var follower in _ufos)
+            if (FollowsUfo(follower.Destination, ufo)) return true;
+        return false;
     }
 
     private bool HasArrivalContactFollowers(UfoSnapshot ufo)
