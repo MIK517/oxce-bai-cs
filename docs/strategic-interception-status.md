@@ -414,3 +414,15 @@ replays every one, including each random call. The base attack itself (the UFO r
 `setupDefenses`, the outcomes and base loss) is next.
 
 Validation: formatting, code map and Release build clean; root `dotnet test` ran 3514 tests, all green.
+
+### Defense setup (2026-10-13)
+
+Base facilities project their base-defense fields (`defense`, `hitRatio`, `grav`, `ammoNeeded`,
+`unifiedDamageFormula`, `shieldDamageModifier`, with the reference defaults; compiler/cache revision
+67). `BaseDefenseSetup` builds what `Base::setupDefenses` and `getGravShields` give the defense
+window: the built facilities with a defense value in facility order, each with its own ammunition or
+the stores item it draws on (and that item's damage type for the unified formula), and the number of
+built grav shields (`StrategicBaseDefenseSetupTests`).
+
+
+Validation: formatting, code map and Release build clean; root `dotnet test` ran 3515 tests, all green.

@@ -93,3 +93,48 @@ public sealed class StrategicBaseDefenseOracleTests
         public double NextUnit() => throw new InvalidOperationException("Base defense draws inclusive ranges only.");
     }
 }
+
+/// <summary>Branch 5 S7: Base::setupDefenses and getGravShields over a base's facilities.</summary>
+public sealed class StrategicBaseDefenseSetupTests
+{
+    private const string Facilities = """
+        facilities:
+          - type: DEF_OWN
+            mapName: LOGISTICS
+            defense: 500
+            hitRatio: 60
+            ammoMax: 4
+            ammoNeeded: 2
+          - type: DEF_STORES
+            mapName: LOGISTICS
+            defense: 300
+            hitRatio: 50
+            ammoItem: SUPPLY
+            unifiedDamageFormula: true
+            shieldDamageModifier: 150
+          - type: DEF_GRAV
+            mapName: LOGISTICS
+            grav: true
+
+        """;
+
+    [Fact]
+    public void BuiltDefensesFireInFacilityOrderAndGravShieldsAddPasses()
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], Facilities);
+        var snapshot = StrategicWorldTestSupport.CreateSnapshot(content, "Base defense setup");
+        var owner = snapshot.Bases[0];
+        var added = new[] { ("DEF_STORES", 0), ("DEF_OWN", 0), ("DEF_OWN", 3), ("DEF_GRAV", 0), ("DEF_GRAV", 0) }
+            .Select((entry, index) => new Oxce.Gameplay.Campaigns.FacilitySnapshot(entry.Item1, index, 5, entry.Item2, 0, false, false, false));
+        snapshot = snapshot with { Bases = [owner with { Facilities = [.. owner.Facilities, .. added] }, .. snapshot.Bases.Skip(1)] };
+        var campaign = Oxce.Gameplay.Campaigns.CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(1));
+        var world = (Oxce.Gameplay.Campaigns.World.CampaignWorld)campaign.GetQuery<Oxce.Gameplay.Campaigns.World.ICampaignInterceptionQuery>()!;
+        var (defenses, gravShields) = world.BaseDefenses(snapshot.Bases[0].Id);
+        Assert.Equal(2, gravShields);
+        Assert.Collection(defenses,
+            stores => Assert.Equal((50, 300, 1, false, "SUPPLY", 150, true), (stores.HitRatio, stores.DefenseValue, stores.AmmoNeeded,
+                stores.HasOwnAmmo, stores.AmmoItem, stores.ShieldDamageModifier, stores.UnifiedDamage is not null)),
+            own => Assert.Equal((60, 500, 2, true, (string?)null, 100, false), (own.HitRatio, own.DefenseValue, own.AmmoNeeded,
+                own.HasOwnAmmo, own.AmmoItem, own.ShieldDamageModifier, own.UnifiedDamage is not null)));
+    }
+}

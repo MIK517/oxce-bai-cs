@@ -147,6 +147,12 @@ public static class RuntimeRuleLinker
             {
                 PrisonType = rule.Value.PrisonType,
                 AmmoMaximum = rule.Value.AmmoMaximum,
+                DefenseValue = rule.Value.Defense,
+                HitRatio = rule.Value.HitRatio,
+                GravShield = rule.Value.GravShield,
+                AmmoNeeded = rule.Value.AmmoNeeded,
+                UnifiedDamageFormula = rule.Value.UnifiedDamageFormula,
+                ShieldDamageModifier = rule.Value.ShieldDamageModifier,
                 RearmRate = rule.Value.RearmRate,
                 CanBeBuiltOver = rule.Value.CanBeBuiltOver,
                 FakeUnderwater = rule.Value.FakeUnderwater,

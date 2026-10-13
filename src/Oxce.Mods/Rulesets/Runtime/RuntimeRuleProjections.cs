@@ -153,6 +153,14 @@ public sealed record RuntimeFacilityRule(
 {
     public int PrisonType { get; init; }
     public int AmmoMaximum { get; init; }
+    /// <summary>RuleBaseFacility base-defense fields (BaseDefenseState): a non-zero defense value makes the
+    /// facility fire at an attacking UFO; a grav shield adds a firing pass.</summary>
+    public int DefenseValue { get; init; }
+    public int HitRatio { get; init; }
+    public bool GravShield { get; init; }
+    public int AmmoNeeded { get; init; }
+    public bool UnifiedDamageFormula { get; init; }
+    public int ShieldDamageModifier { get; init; } = 100;
     public int RearmRate { get; init; }
     public bool CanBeBuiltOver { get; init; }
     public int FakeUnderwater { get; init; }
