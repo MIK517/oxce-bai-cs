@@ -186,7 +186,7 @@ internal sealed partial class CampaignWorld
                         // the next zone, which CanAdvanceOrdinaryWaypoint would otherwise have validated.
                         ValidateWaypointAreas(campaign.Content.RuntimeRules.Regions[
                             campaign.Content.RuntimeRules.Regions.GetRequired(mission.RegionId)].Value, trajectory.Zone(ufo.TrajectoryPoint + 1));
-                        if (BaseAssaultReason(ufo, mission, destination.Position) is { } assaultReason) return assaultReason;
+                        if (BaseAssaultReason(ufo.RuleId, MissionRule(mission), destination.Position) is { } assaultReason) return assaultReason;
                     }
                     else if (!CanAdvanceOrdinaryWaypoint(ufo, mission, trajectory))
                         return "UFO waypoint arrival requires mission simulation.";

@@ -37,8 +37,8 @@ public static class WorldCommandReasons
     internal const string FinalResearchAmbiguous = "Several research topics unlock the final mission; the reference picks one by mod order (Phase 6 branch 5).";
     internal const string BaseDefenseOpen = "A base defense stops the clock until it is resolved.";
     internal const string NoBaseDefense = "That base is not under attack.";
-    internal const string StoredVehicleDefense = "Stored vehicles defending a base require vehicle ammunition rules (Phase 6 branch 5 S7).";
-    internal const string MissileBaseAttack = "Missile attacks on bases require facility damage and base destruction (Phase 6 branch 5 S7).";
+    internal const string StoredVehicleDefense = "Stored vehicles sharing too little ammunition, or loading no clips, depend on the reference's store order (Phase 6 branch 5 S7).";
+    internal const string MissileBaseAttack = "Missiles that damage base facilities require facility destruction (Phase 6 branch 5 S7).";
     internal const string ContactGone = "The UFO contact no longer exists or is not visible.";
     internal const string ContactLimit = "Ignored UFO contacts exceed the supported limit.";
 

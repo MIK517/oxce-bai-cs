@@ -505,3 +505,38 @@ mod; the port refuses that case (`boundary.final-research`) instead of guessing.
 `StrategicFinalMissionTests` covers the refusal before the research and the recorded request.
 
 Validation: formatting, code map and Release build clean; root `dotnet test` ran 3,520 tests, all green.
+
+### Nuclear missiles and instant retaliation (2026-10-13)
+
+A UFO with negative `missilePower` (a nuclear warhead) destroys the base it reaches, garrison or not,
+as `BaseDestroyedState` with missiles (`BaseDestroyed.Missiles`); `missileStopChance` is then rolled
+and interrupts the mission only if it still exists (the reference reads the deleted UFO there).
+Missiles that damage facilities (`missilePower` above zero: `Base::damageFacilities`, the facility
+destruction cascade and the stores check) keep `boundary.base-missile`.
+
+An instant retaliation (`objective: 6`) is born over its target base (`AlienMission::spawnUfo`
+draws the base, no position) and, since mission waves spawn in the half-hour handler before the
+five-second pass, reaches the base in the same tick. The wave preflight forecasts that assault for
+every candidate base (next-zone validation, waypoint land work and the attack outcome), and names an
+unsupported outcome such as facility missiles. A retaliation assault born within one step of its base
+takes the same path. The assault arrival now also leaves the reference's saved direction and speed
+vector: none at the base, or towards the new waypoint when the base is gone (which also becomes the
+spent UFO's destination). Waves without any UFO rule keep `Retaliation assault spawning requires a UFO
+rule.`, where the reference would dereference a missing rule.
+
+Stored vehicles now defend a base (`Base::setupDefenses`): after the vehicles of crafts at the base,
+each stored vehicle type without clip ammunition joins in full and one with clip ammunition joins as
+far as the stores hold its loaded clips. The defense rounds draw on the stores without those vehicles
+and clips; the port keeps them stored for battle generation to move. The reference walks its stores in
+`RuleItem` address order, so two vehicle types competing for too little of the same ammunition, or a
+vehicle that loads no clips (a division by zero there), keep `boundary.base-stored-vehicles`.
+`StrategicBaseAttackTests` covers the nuclear strike, the facility-missile refusal, an instant
+retaliation opening the defense window and its missile refusal, stored vehicles defending, and the
+competing-ammunition refusal. Several final-mission research topics remain refused: the reference picks
+the one last updated by mod order, which the compiled rules do not record.
+
+A self-review of this diff against `spawnUfo`, `ufoReachedWaypoint`, `handleBaseDefense`,
+`BaseDestroyedState` and `setupDefenses` found no defect.
+
+Validation: formatting, code map and Release build clean; root `dotnet test` ran 3,526 tests, all green.
+

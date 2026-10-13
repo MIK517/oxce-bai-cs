@@ -27,9 +27,21 @@ public sealed class StrategicBaseAttackTests
 
         """;
 
-    private static (RuntimeContent Content, CampaignState Campaign, int BaseId) Create(bool defended, bool defenders = true)
+    private static string Missiles(int power, int stopChance = 0) => $$"""
+
+        ufos:
+          - type: UFO_HUNTER
+            missilePower: {{power}}
+            missileStopChance: {{stopChance}}
+
+        """;
+
+    private static (RuntimeContent Content, CampaignState Campaign, int BaseId) Create(bool defended, bool defenders = true, string ufoRules = "",
+        IReadOnlyDictionary<string, int>? stores = null)
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], Defense);
+        var content = stores is null
+            ? StrategicReadinessTestContent.Load(["strategic-world.rul"], Defense + ufoRules)
+            : StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-bases.rul"], Defense + VehicleAmmo + ufoRules);
         var snapshot = CreateSnapshot(content, "Base attack");
         var owner = snapshot.Bases[0];
         var position = new WorldPosition(owner.Longitude, owner.Latitude);
@@ -48,6 +60,8 @@ public sealed class StrategicBaseAttackTests
                 ? [.. owner.Facilities, new FacilitySnapshot("DEF_CANNON", 5, 5, 0, 0, false, false, false)]
                 : owner.Facilities,
             Soldiers = defenders ? owner.Soldiers : [],
+            Items = stores is null ? owner.Items : new Dictionary<string, int>(owner.Items, StringComparer.Ordinal).Concat(stores)
+                .GroupBy(static pair => pair.Key).ToDictionary(static group => group.Key, static group => group.Last().Value, StringComparer.Ordinal),
             Crafts = defenders ? owner.Crafts : [.. owner.Crafts.Select(craft => craft.Logistics is null ? craft
                 : craft with { Logistics = craft.Logistics with { Vehicles = [] } })],
         };
@@ -142,5 +156,119 @@ public sealed class StrategicBaseAttackTests
         Assert.Equal(2, reloaded.Capture().Ending);
         Assert.Equal("This campaign has ended.", Assert.IsType<CampaignActionBlocked>(Assert.Single(
             reloaded.Execute(new AdvanceCampaignTime(1)).Events)).Reason);
+    }
+
+    [Fact]
+    public void ANuclearMissileDestroysAGarrisonedBase()
+    {
+        var (_, campaign, baseId) = Create(defended: false, ufoRules: Missiles(-1, stopChance: 100));
+        var name = campaign.Capture().Bases[0].Name;
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Empty(result.Events.OfType<DeploymentRequested>());
+        Assert.Equal(new BaseDestroyed(baseId, name, Missiles: true), Assert.Single(result.Events.OfType<BaseDestroyed>()));
+        var captured = campaign.Capture();
+        Assert.Empty(captured.Bases);
+        // The retaliation mission went with the base, so the stop chance has nothing left to interrupt.
+        Assert.Empty(captured.World.Missions);
+        Assert.Empty(captured.World.Ufos);
+    }
+
+    [Fact]
+    public void MissilesThatDamageFacilitiesStopTheClockBeforeTheAttack()
+    {
+        var (_, campaign, _) = Create(defended: false, ufoRules: Missiles(3));
+        AssertTimeBlocked(campaign, WorldCommandReasons.MissileBaseAttack);
+    }
+
+    private const string InstantRetaliation = """
+
+        alienMissions:
+          - type: MISSION_INSTANT
+            objective: 6
+            spawnUfo: UFO_HUNTER
+            raceWeights:
+              0: {RACE_A: 1}
+            waves:
+              - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 0}
+
+        """;
+
+    // An instant retaliation due at the next half-hour, instead of the saved assault UFO.
+    private static CampaignState CreateInstant(bool defended, string ufoRules = "")
+    {
+        var (content, campaign, _) = Create(defended, ufoRules: InstantRetaliation + ufoRules);
+        var snapshot = campaign.Capture();
+        snapshot = snapshot with
+        {
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+            World = snapshot.World with
+            {
+                Missions = [new AlienMissionSnapshot(5, "MISSION_INSTANT", "REGION", "RACE_A", 0, 0, 30, 0, -1)],
+                Ufos = [],
+            },
+        };
+        return CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(11));
+    }
+
+    [Fact]
+    public void AnInstantRetaliationIsBornOverTheBaseAndOpensItsDefenseInTheSameTick()
+    {
+        var campaign = CreateInstant(defended: true);
+        var owner = campaign.Capture().Bases[0];
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        var started = Assert.Single(result.Events.OfType<BaseDefenseStarted>());
+        Assert.Equal(owner.Id, started.BaseId);
+        var ufo = Assert.Single(campaign.Capture().World.Ufos);
+        Assert.Equal(("UFO_HUNTER", RuntimeTrajectory, 1, WorldAltitudes.Ground, owner.Longitude, owner.Latitude),
+            (ufo.RuleId, ufo.TrajectoryId, ufo.TrajectoryPoint, ufo.Altitude, ufo.Longitude, ufo.Latitude));
+        // The instant mission spawns one ship only; skipping the defenses spends it on the garrison's battle.
+        var resolved = campaign.Execute(new ResolveBaseDefense(owner.Id, Fire: false)).Events;
+        Assert.IsType<DeploymentRequested>(resolved[1]);
+        Assert.True(Assert.Single(campaign.Capture().World.Missions).Interrupted);
+    }
+
+    [Fact]
+    public void AnInstantRetaliationWithFacilityMissilesStopsTheClockBeforeItsBirth()
+    {
+        var campaign = CreateInstant(defended: false, ufoRules: Missiles(3));
+        AssertTimeBlocked(campaign, WorldCommandReasons.MissileBaseAttack);
+    }
+
+    // Both test vehicles fire VEHICLE_AMMO and load two clips of it.
+    private const string VehicleAmmo = """
+
+        items:
+          - type: VEHICLE_AMMO
+            clipSize: 2
+          - type: VEHICLE
+            compatibleAmmo: [VEHICLE_AMMO]
+            vehicleFixedAmmoSlot: 0
+          - type: VEHICLE_B
+            compatibleAmmo: [VEHICLE_AMMO]
+            vehicleFixedAmmoSlot: 0
+
+        """;
+
+    [Fact]
+    public void StoredVehiclesWithTheirClipsDefendAnUngarrisonedBase()
+    {
+        // Three clips load one vehicle of two; the stores themselves stay for battle generation to move.
+        var stores = new Dictionary<string, int> { ["VEHICLE"] = 2, ["VEHICLE_AMMO"] = 3 };
+        var (_, campaign, baseId) = Create(defended: false, defenders: false, stores: stores);
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        var request = Assert.Single(result.Events.OfType<DeploymentRequested>()).Request;
+        Assert.Equal(("STR_BASE_DEFENSE", baseId), (request.MissionType, request.BaseId));
+        Assert.Empty(request.Soldiers);
+        Assert.Equal(["VEHICLE"], request.Vehicles);
+        var items = campaign.Capture().Bases[0].Items;
+        Assert.Equal((2, 3), (items["VEHICLE"], items["VEHICLE_AMMO"]));
+    }
+
+    [Fact]
+    public void StoredVehiclesCompetingForTooFewClipsStopTheClock()
+    {
+        var stores = new Dictionary<string, int> { ["VEHICLE"] = 1, ["VEHICLE_B"] = 1, ["VEHICLE_AMMO"] = 3 };
+        var (_, campaign, _) = Create(defended: false, defenders: false, stores: stores);
+        AssertTimeBlocked(campaign, WorldCommandReasons.StoredVehicleDefense);
     }
 }

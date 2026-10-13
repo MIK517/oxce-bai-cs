@@ -56,7 +56,7 @@ public sealed class StrategicWorldObjectiveWaveTests
                 "REGION", "RACE_A", 0, 0, 0, 0, -1);
             var campaign = Restore(content, mission);
             if (objective == 6)
-                AssertTimeBlocked(campaign, "Retaliation assault arrival requires base-defense simulation.");
+                AssertTimeBlocked(campaign, "Retaliation assault spawning requires a UFO rule.");
             else if (objective == 1)
                 AssertTimeBlocked(campaign, "Immediate mission waves exceed the supported work limit.");
             else if (deployment != 0 && marker == 0 && objective == 3 && flag != 0)
@@ -137,7 +137,7 @@ public sealed class StrategicWorldObjectiveWaveTests
             if (row[3].GetInt32() != 0)
                 AssertTimeBlocked(campaign, "A mission tried to use zone -1, but the region only defines 7 zones.");
             else if (objective == 6)
-                AssertTimeBlocked(campaign, "Retaliation assault arrival requires base-defense simulation.");
+                AssertTimeBlocked(campaign, "Retaliation assault spawning requires a UFO rule.");
             else
             {
                 AdvanceOne(campaign);
@@ -171,7 +171,12 @@ public sealed class StrategicWorldObjectiveWaveTests
             if (row[3].GetInt32() != 0)
                 AssertTimeBlocked(campaign, "A mission tried to use zone -1, but the region only defines 7 zones.");
             else if (objective == 6)
-                AssertTimeBlocked(campaign, "Retaliation assault arrival requires base-defense simulation.");
+            {
+                // An instant retaliation is born over the base and attacks it in the same pass.
+                var request = Assert.Single(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<DeploymentRequested>()).Request;
+                Assert.Equal("STR_BASE_DEFENSE", request.MissionType);
+                Assert.Equal(UfoStatus.Destroyed, Assert.Single(campaign.Capture().World.Ufos).Status);
+            }
             else
             {
                 AdvanceOne(campaign);
