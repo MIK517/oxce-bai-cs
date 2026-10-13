@@ -73,9 +73,17 @@ sorting in the interception list, intercept row right-click, the dogfight "taili
 research "View reports" (no Ufopaedia), soldier names in training completion, `STR_AIRBORNE` for
 underwater UFOs over water, alert sounds and the random-production summary.
 
+**Branch 5 windows (S8).** Interception windows are text panels in four grid slots (names, distance,
+status, mode and minimize buttons, weapon toggles); the craft and UFO sprites, range bar and weapon
+icons are Phase 8 polish, and minimized windows are icons at the globe's lower left. Base defense
+resolves its rounds in one step after Start Firing or Skip Firing instead of animating them. The
+campaign's end and a battle request get plain-text port windows (no defeat cutscene, no tactical
+combat yet). A queued landing confirmation whose craft is heading home or has no destination is
+closed rather than shown, where the reference shows it and throws "No mission available!" on Yes
+(plan D4). The Cydonia button sits under Cancel in the destination sidebar.
+
 ## Consequences
 
 Each listed difference has a test or a named refusal, so a change in either direction is visible.
-Branch 5 owns interception combat and landing (`ConfirmLandingState`); until then the clock halts
-with the boundary reason. Phase 8 owns visual parity of windows, fonts and sounds. Removing an item
+Branch 5 added interception combat and landing (`ConfirmLandingState`) with the windows above. Phase 8 owns visual parity of windows, fonts and sounds. Removing an item
 from this record requires the reference behaviour and its fixture.
