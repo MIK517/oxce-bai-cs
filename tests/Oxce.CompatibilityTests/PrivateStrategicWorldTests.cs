@@ -79,26 +79,76 @@ public sealed class PrivateStrategicWorldTests
     /// boundary or a real branch 5/6 transition; tactical saves stay preservation-only.
     /// </summary>
     [Fact]
-    public void ImportedWorldRunsToItsNamedLongHorizonStop()
+    public void ImportedWorldRunsToItsNamedLongHorizonStop() => RunToLongHorizonStops(new()
+    {
+        [("vanilla-ufo", "early/Begining.sav")] = (525365, MonthStop),
+        [("vanilla-ufo", "early/IronMode.sav")] = (527039, MonthStop),
+        [("vanilla-ufo", "early/Middle.sav")] = (396541, MonthStop),
+        [("vanilla-ufo", "early/_autogeo_.asav")] = (396558, MonthStop),
+        [("vanilla-tftd", "early/Begining.sav")] = (526924, MonthStop),
+        [("vanilla-tftd", "early/IronMode.sav")] = (527039, MonthStop),
+        [("vanilla-tftd", "early/Middle.sav")] = (90174, MonthStop),
+        [("modded/rosigma", "early/Begining.sav")] = (580, "Strategic event consequences require campaign event execution (Phase 6 branch 6)."),
+        // Branch 5 S6: the landing tick now runs and queues a confirmation, which then holds the clock.
+        [("modded/rosigma", "early/Early.sav")] = (6290, "Landing confirmations stop the clock until they are answered."),
+        [("modded/rosigma", "early/Middle.sav")] = (429681, MonthStop),
+        [("modded/rosigma", "early/_autogeo_.asav")] = (429698, MonthStop),
+    }, answer: null);
+
+    /// <summary>
+    /// Branch 5 S9 reclassification: a headless player declines every landing, disengages every
+    /// interception and fires every base defense, so each staged save runs past its branch 5 windows to
+    /// the next stop that is not a player choice.
+    /// </summary>
+    [Fact]
+    public void ImportedWorldRunsPastBranchFiveChoicesToItsNextStop() => RunToLongHorizonStops(new()
+    {
+        [("vanilla-ufo", "early/Begining.sav")] = (525365, MonthStop),
+        [("vanilla-ufo", "early/IronMode.sav")] = (527039, MonthStop),
+        [("vanilla-ufo", "early/Middle.sav")] = (396541, MonthStop),
+        [("vanilla-ufo", "early/_autogeo_.asav")] = (396558, MonthStop),
+        [("vanilla-tftd", "early/Begining.sav")] = (526924, MonthStop),
+        [("vanilla-tftd", "early/IronMode.sav")] = (527039, MonthStop),
+        [("vanilla-tftd", "early/Middle.sav")] = (90174, MonthStop),
+        [("modded/rosigma", "early/Begining.sav")] = (580, "Strategic event consequences require campaign event execution (Phase 6 branch 6)."),
+        // Declining the terror-site landing lets the campaign run on to the month boundary.
+        [("modded/rosigma", "early/Early.sav")] = (435988, MonthStop),
+        [("modded/rosigma", "early/Middle.sav")] = (429681, MonthStop),
+        [("modded/rosigma", "early/_autogeo_.asav")] = (429698, MonthStop),
+    }, AnswerBranchFiveChoices);
+
+    private static bool AnswerBranchFiveChoices(CampaignState campaign, string reason)
+    {
+        if (reason == WorldCommandReasons.LandingConfirmationsOpen)
+        {
+            foreach (var landing in campaign.GetQuery<ICampaignLandingQuery>()!.QueryLandingConfirmations())
+                Assert.DoesNotContain(campaign.Execute(new AnswerLanding(landing.Confirmation, LandingAnswer.No)).Events,
+                    static evt => evt is CampaignActionBlocked);
+            return true;
+        }
+        if (reason == WorldCommandReasons.BaseDefenseOpen)
+        {
+            var defense = campaign.GetQuery<ICampaignBaseDefenseQuery>()!.QueryBaseDefense()!;
+            Assert.DoesNotContain(campaign.Execute(new ResolveBaseDefense(defense.BaseId, Fire: true)).Events,
+                static evt => evt is CampaignActionBlocked);
+            return true;
+        }
+        if (reason != WorldCommandReasons.InterceptionsOpen) return false;
+        var interceptions = campaign.GetQuery<ICampaignInterceptionQuery>()!;
+        foreach (var window in interceptions.QueryInterceptions())
+            if (window.AvailableModes.Contains(InterceptionMode.Disengage))
+                campaign.Execute(new SetInterceptionMode(window.Number, InterceptionMode.Disengage));
+        for (var step = 0; step < 100_000 && interceptions.QueryInterceptions().Any(static window => !window.Minimized); step++)
+            Assert.DoesNotContain(campaign.Execute(new AdvanceInterceptions()).Events, static evt => evt is CampaignActionBlocked);
+        return true;
+    }
+
+    private static void RunToLongHorizonStops(Dictionary<(string, string), (int Ticks, string Reason)> expected,
+        Func<CampaignState, string, bool>? answer)
     {
         var installation = TestFixtures.RepositoryPath("artifacts", "private-install");
         Assert.SkipUnless(File.Exists(Path.Combine(installation, ".oxce-private-install-manifest.json")),
             "Owned installation is not staged.");
-        var expected = new Dictionary<(string, string), (int Ticks, string Reason)>
-        {
-            [("vanilla-ufo", "early/Begining.sav")] = (525365, MonthStop),
-            [("vanilla-ufo", "early/IronMode.sav")] = (527039, MonthStop),
-            [("vanilla-ufo", "early/Middle.sav")] = (396541, MonthStop),
-            [("vanilla-ufo", "early/_autogeo_.asav")] = (396558, MonthStop),
-            [("vanilla-tftd", "early/Begining.sav")] = (526924, MonthStop),
-            [("vanilla-tftd", "early/IronMode.sav")] = (527039, MonthStop),
-            [("vanilla-tftd", "early/Middle.sav")] = (90174, MonthStop),
-            [("modded/rosigma", "early/Begining.sav")] = (580, "Strategic event consequences require campaign event execution (Phase 6 branch 6)."),
-            // Branch 5 S6: the landing tick now runs and queues a confirmation, which then holds the clock.
-            [("modded/rosigma", "early/Early.sav")] = (6290, "Landing confirmations stop the clock until they are answered."),
-            [("modded/rosigma", "early/Middle.sav")] = (429681, MonthStop),
-            [("modded/rosigma", "early/_autogeo_.asav")] = (429698, MonthStop),
-        };
         var cacheDirectory = Directory.CreateTempSubdirectory("oxce-private-horizon-cache-");
         try
         {
@@ -133,6 +183,7 @@ public sealed class PrivateStrategicWorldTests
                         ticks += advanced;
                         reason = result.Events.OfType<CampaignActionBlocked>().SingleOrDefault()?.Reason;
                         Assert.True(advanced > 0 || reason is not null, $"{family}/{name} neither advanced nor stopped.");
+                        if (reason is not null && answer is not null && answer(campaign, reason)) reason = null;
                     }
                     if (name.StartsWith("battlescape/", StringComparison.Ordinal)) Assert.Equal((0, TacticalStop), (ticks, reason));
                     else measured[(family, name)] = (ticks, reason ?? "limit");
