@@ -291,4 +291,33 @@ public sealed class StrategicBaseAttackTests
         Assert.True(client.TimeCanRun);
         Assert.Equal(baseId, campaign.Capture().Bases[0].Id);
     }
+
+    private static GeoscapeClient Client(RuntimeContent content, CampaignState campaign) =>
+        StrategicWorldGeoscapeScenarioTests.Client(content, CampaignUiSession.ForCampaign(campaign, campaign, campaign),
+            save: static () => { }, load: static () => throw new InvalidOperationException("No save to load."));
+
+    [Fact]
+    public void SkippingTheDefensesInTheGeoscapeShowsTheBattleRequest()
+    {
+        var (content, campaign, _) = Create(defended: true);
+        var client = Client(content, campaign);
+        client.Tick(GeoscapeTimeController.GeoClock);
+        client.Choose(1);
+        Assert.Equal("Tactical combat is not available yet", Assert.Single(client.Popups).Title);
+        Assert.Equal("STR_BASE_DEFENSE", Assert.Single(client.Popups).Lines[0]);
+    }
+
+    [Fact]
+    public void TheGeoscapeReportsTheLostBaseAndThenTheLostCampaign()
+    {
+        var (content, campaign, _) = Create(defended: false, defenders: false);
+        var client = Client(content, campaign);
+        client.Tick(GeoscapeTimeController.GeoClock);
+        Assert.Equal("STR_THE_ALIENS_HAVE_DESTROYED_THE_UNDEFENDED_BASE", Assert.Single(client.Popups).Title);
+        client.Choose(0);
+        // The next five-second tick finds no base: END_LOSE.
+        client.Tick(GeoscapeTimeController.GeoClock);
+        Assert.Equal("The campaign is lost", Assert.Single(client.Popups).Title);
+        Assert.Equal(2, campaign.Capture().Ending);
+    }
 }

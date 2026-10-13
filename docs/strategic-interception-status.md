@@ -613,7 +613,19 @@ and race, and both survive a reload. It found the alien-base request recording m
 
 Validation: formatting, code map and Release build clean; root `dotnet test` ran 3,538 tests, all green.
 
-Remaining: escort fights, target loss, the
-other base-defense variants and TFTD depth cases through the client, the
+`StrategicBaseAttackTests` adds skipping the defenses into the battle request window and an
+ungarrisoned base's destruction followed by the lost campaign, both through the client.
+`StrategicWorldHuntingTests.AnArmedCraftBesideTheHuntedOneJoinsTheHunterKillersFight` covers
+`escortsJoinFightAgainstHK`: an armed craft within escort range opens its own attack window beside the
+hunted one. Target loss is covered by the pursuit and crashed-UFO tests and the lost-UFO craft screen.
+
+`StrategicInterceptionTests.TheGeoscapeShowsTheDepthMessageAndLetsTimeRunBesideTheWaitingWindow` covers
+the TFTD depth case through the client: the water-only craft's `STR_UNABLE_TO_ENGAGE_DEPTH` window, the
+minimized waiting interception, and time running beside it.
+
+Validation: root `dotnet test` ran 3,542 tests, all green, before the depth scenario, which passes on its
+own; formatting clean.
+
+Remaining: the
 19 staged saves' reclassification and the SDL smoke run.
 

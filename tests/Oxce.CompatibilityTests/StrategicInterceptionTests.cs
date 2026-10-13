@@ -461,4 +461,22 @@ public sealed class StrategicInterceptionTests
             save: static () => { }, load: static () => throw new InvalidOperationException("No save to load."));
         Assert.Equal("Tactical combat is not available yet", Assert.Single(again.Popups).Title);
     }
+
+    [Fact]
+    public void TheGeoscapeShowsTheDepthMessageAndLetsTimeRunBesideTheWaitingWindow()
+    {
+        // TFTD depth: a water-only craft below the UFO's altitude gets DogfightErrorState's message; its
+        // window waits minimized, so the clock keeps running.
+        var (content, campaign, _) = Create(shipRules: "    maxAltitude: 1\n");
+        var client = StrategicWorldGeoscapeScenarioTests.Client(content, CampaignUiSession.ForCampaign(campaign, campaign, campaign),
+            save: static () => { }, load: static () => throw new InvalidOperationException("No save to load."));
+        client.Tick(GeoscapeTimeController.GeoClock);
+        Assert.Equal("STR_UNABLE_TO_ENGAGE_DEPTH", Assert.Single(client.Popups).Title);
+        client.Choose(0);
+        Assert.True(Assert.Single(client.Interceptions).Minimized);
+        Assert.True(client.TimeCanRun);
+        var time = campaign.Capture().Time;
+        client.Tick(GeoscapeTimeController.GeoClock);
+        Assert.NotEqual(time, campaign.Capture().Time);
+    }
 }
