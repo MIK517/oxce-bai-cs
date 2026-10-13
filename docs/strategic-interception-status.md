@@ -477,5 +477,10 @@ movement; no defect was found. The full code-review pass is still owed for S7. R
 attacks (`Base::damageFacilities`, nuclear destruction, `missileStopChance`), an instant retaliation
 spawned at the base, the final-destination (Cydonia) request (it needs the mod-order offset that
 `Mod::_finalResearch` uses), stored vehicles among the defenders and the stores moves of
-`setupDefenses`, and the `oxceWoundedDefendBaseIf` option (read at its default).
+`setupDefenses`, and (done since) the `oxceWoundedDefendBaseIf` option.
 
+`oxceWoundedDefendBaseIf` is now a campaign option (default 100, saved like the other options) and
+`Soldier::canDefendBase` reads it for unassigned wounded defenders; unlike the boolean options it is not
+yet forced by a mod's fixed user options.
+
+Validation: root `dotnet test` ran 3,519 tests, all green.

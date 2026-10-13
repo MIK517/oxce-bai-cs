@@ -533,7 +533,8 @@ public static partial class OxceSaveAdapter
                 Pair("retainCorpses", Boolean(snapshot.Options.RetainCorpses)),
                 Pair("dogfightAI", Boolean(snapshot.Options.DogfightAI)),
                 Pair("oxceRememberDisabledCraftWeapons", Boolean(snapshot.Options.RememberDisabledCraftWeapons)),
-                Pair("globeSeasons", Boolean(snapshot.Options.GlobeSeasons))])),
+                Pair("globeSeasons", Boolean(snapshot.Options.GlobeSeasons)),
+                Pair("oxceWoundedDefendBaseIf", Integer(snapshot.Options.WoundedDefendBaseIf))])),
         ]);
     }
 
@@ -815,7 +816,7 @@ public static partial class OxceSaveAdapter
 
     private static CampaignOptions ReadOptions(YamlMappingNode map)
     {
-        RejectDuplicateKnownKeys(map, ["storageLimitsEnforced", "canSellLiveAliens", "autoCombatDefaultSoldier", "anytimePsiTraining", "allowPsiStrengthImprovement", "maximumBases", "allowBuildingQueue", "oxceUfoLandingAlert", "aggressiveRetaliation", "craftLaunchAlways", "oxceGeoSuppressLandingWithoutEquipment", "oxceGeoSuppressRedundantHKAlert", "retainCorpses", "dogfightAI", "oxceRememberDisabledCraftWeapons", "globeSeasons"]);
+        RejectDuplicateKnownKeys(map, ["storageLimitsEnforced", "canSellLiveAliens", "autoCombatDefaultSoldier", "anytimePsiTraining", "allowPsiStrengthImprovement", "maximumBases", "allowBuildingQueue", "oxceUfoLandingAlert", "aggressiveRetaliation", "craftLaunchAlways", "oxceGeoSuppressLandingWithoutEquipment", "oxceGeoSuppressRedundantHKAlert", "retainCorpses", "dogfightAI", "oxceRememberDisabledCraftWeapons", "globeSeasons", "oxceWoundedDefendBaseIf"]);
         return new(Boolean(map, "storageLimitsEnforced", false), Boolean(map, "canSellLiveAliens", false),
             Boolean(map, "autoCombatDefaultSoldier", true), Boolean(map, "anytimePsiTraining", false),
             Boolean(map, "allowPsiStrengthImprovement", false), Integer(map, "maximumBases", 8),
@@ -823,7 +824,7 @@ public static partial class OxceSaveAdapter
             Boolean(map, "aggressiveRetaliation", true), Boolean(map, "craftLaunchAlways", false),
             Boolean(map, "oxceGeoSuppressLandingWithoutEquipment", false), Boolean(map, "oxceGeoSuppressRedundantHKAlert", true), Boolean(map, "retainCorpses", false),
             Boolean(map, "dogfightAI", true), Boolean(map, "oxceRememberDisabledCraftWeapons", false),
-            Boolean(map, "globeSeasons", false));
+            Boolean(map, "globeSeasons", false), Integer(map, "oxceWoundedDefendBaseIf", 100));
     }
 
     /// <summary>
