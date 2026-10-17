@@ -183,7 +183,14 @@ internal static class StrategicWorldTestSupport
         var result = campaign.Execute(new AdvanceCampaignTime(1));
         Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
         Assert.DoesNotContain(result.Events, static evt => evt is CampaignActionBlocked);
-        Assert.All(result.Events.OfType<InterceptionStarted>(), static started => Assert.True(started.UfoAttacking));
+        var ufos = campaign.Capture().World.Ufos;
+        foreach (var started in result.Events.OfType<InterceptionStarted>())
+        {
+            Assert.True(started.UfoAttacking);
+            // The window belongs to a hunter that targets this craft (escorts join its fight).
+            Assert.Contains(ufos, ufo => ufo.Hunting && ufo.Destination is { Kind: WorldTargetKind.Craft } target &&
+                target.TypeId == started.CraftTypeId && target.Id == started.CraftId);
+        }
     }
 
     /// <summary>Asserts that the next tick is refused with <paramref name="reason"/> and changes nothing.</summary>

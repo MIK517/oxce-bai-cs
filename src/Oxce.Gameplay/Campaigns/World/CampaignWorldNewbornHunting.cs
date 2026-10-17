@@ -86,8 +86,7 @@ internal sealed partial class CampaignWorld
                     return separationReason;
                 if (!separated)
                 {
-                    if (NewbornHuntReachReason(positions, rule, mission.Race, path, (int)radar,
-                            initializedEscort, canRemainIdle, ref _pass.HuntingForecastWork) is { } reachReason)
+                    if (NewbornHuntSpeedReason(rule, mission.Race, path, initializedEscort, canRemainIdle) is { } reachReason)
                         return reachReason;
                     possibleHunt = true;
                 }
@@ -115,8 +114,10 @@ internal sealed partial class CampaignWorld
         return null;
     }
 
-    private static string? NewbornHuntReachReason(IReadOnlyList<SpawnArea> positions, RuntimeUfoRule rule,
-        string race, RuntimeUfoTrajectoryRule path, int radar, bool initializedEscort, bool canRemainIdle, ref long work)
+    // A newborn hunter that selects a craft within its first step attacks it in the same five-second pass, as a
+    // saved hunter does (branch 5 S4); only the hunt speed's range needs proving here.
+    private static string? NewbornHuntSpeedReason(RuntimeUfoRule rule, string race, RuntimeUfoTrajectoryRule path,
+        bool initializedEscort, bool canRemainIdle)
     {
         var maximum = (long)rule.Stats.SpeedMaximum + rule.RaceBonus(race).SpeedMaximum;
         if (maximum is < 0 or > int.MaxValue) return "UFO hunting stats exceed the supported range.";
@@ -128,10 +129,7 @@ internal sealed partial class CampaignWorld
             Destination = WorldTargetReference.ForWaypoint(0, new(1, 0.6))
         };
         if (!WorldHunting.TryHunt(hypothetical, WorldTargetReference.ForWaypoint(0, new(1, 0.6)),
-                (int)maximum, rule.HuntSpeed, out var hunted)) return "UFO hunt speed exceeds the supported range.";
-        // A newborn hunter that selects a craft within its first step attacks it in the same five-second pass,
-        // as a saved hunter does (branch 5 S4); only the hunt speed's range needs proving here.
-        _ = (positions, radar, work);
+                (int)maximum, rule.HuntSpeed, out _)) return "UFO hunt speed exceeds the supported range.";
         return null;
     }
 

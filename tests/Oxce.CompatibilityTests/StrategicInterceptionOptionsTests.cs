@@ -34,9 +34,16 @@ public sealed class StrategicInterceptionOptionsTests
         {
             ["dogfightAI"] = "false",
             ["oxceRememberDisabledCraftWeapons"] = "true",
+            // OptionInfo::load reads an int with `ss >> std::dec`: leading blanks, digits up to the first other character.
+            ["oxceWoundedDefendBaseIf"] = " 75%",
         });
         Assert.False(forced.DogfightAI);
         Assert.True(forced.RememberDisabledCraftWeapons);
+        Assert.Equal(75, forced.WoundedDefendBaseIf);
+        Assert.Equal(0, defaults.WithFixedUserOptions(new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["oxceWoundedDefendBaseIf"] = "half",
+        }).WoundedDefendBaseIf);
     }
 
     [Fact]
@@ -50,11 +57,12 @@ public sealed class StrategicInterceptionOptionsTests
         if (end < 0) end = lines.Count;
         // SavedGame::save writes the player's options as this snapshot.
         lines.RemoveRange(start, end - start);
-        lines.InsertRange(start, ["options:", "  dogfightAI: false", "  oxceRememberDisabledCraftWeapons: true"]);
+        lines.InsertRange(start, ["options:", "  dogfightAI: false", "  oxceRememberDisabledCraftWeapons: true", "  oxceWoundedDefendBaseIf: 50"]);
 
         var options = TestFixtures.LoadLogisticsSave(string.Join('\n', lines), content, name: "reference-dogfight-options.sav").Campaign.Options;
 
         Assert.False(options.DogfightAI);
         Assert.True(options.RememberDisabledCraftWeapons);
+        Assert.Equal(50, options.WoundedDefendBaseIf);
     }
 }

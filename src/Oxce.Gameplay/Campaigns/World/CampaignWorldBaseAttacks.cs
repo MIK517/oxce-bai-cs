@@ -42,9 +42,8 @@ public interface ICampaignBaseDefenseQuery
 /// countdown, loses its destination and meets <c>Base::setupDefenses</c>. With defenses (and without
 /// <c>ignoreBaseDefenses</c>) the <c>BaseDefenseState</c> window opens; otherwise, or after the window,
 /// <c>handleBaseDefense</c> ends the attack: the UFO is spent, an instant retaliation ends, and the
-/// defenders' battle becomes the deployment request (D4), or a base without defenders is destroyed.
-/// Either path ends the tick's five-second pass. Missile attacks are refused before anything changes
-/// until facility damage is implemented.
+/// defenders' battle becomes the deployment request (D4), a base without defenders is destroyed, or
+/// missiles damage or destroy the base. Either path ends the tick's five-second pass.
 /// </summary>
 internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
 {
@@ -386,7 +385,7 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
             for (var index = 0; index < _ufos.Count; index++)
                 if (_ufos[index].Destination is { Kind: WorldTargetKind.Craft } target && target.TypeId == type && target.Id == craft.Id &&
                     _ufos[index].OriginalWaypoint is not null)
-                    _ufos[index] = WorldHunting.Restore(_ufos[index]);
+                    _ufos[index] = WorldHunting.RestoreAndAim(_ufos[index]);
         }
     }
 
@@ -419,9 +418,8 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
     }
 
     /// <summary>
-    /// GeoscapeState::handleBaseDefense after the preflight or command refused facility-damaging missiles and
-    /// bases defended only by stored vehicles: the UFO is spent, and a nuclear strike or the lack of defenders
-    /// destroys the base; otherwise the defenders' battle is requested.
+    /// GeoscapeState::handleBaseDefense: the UFO is spent; missiles damage the base's facilities, a nuclear
+    /// strike or the lack of defenders destroys the base, and otherwise the defenders' battle is requested.
     /// </summary>
     private CampaignDeploymentRequest? HandleBaseDefense(CampaignState.BaseState owner, int index)
     {
