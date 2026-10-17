@@ -531,4 +531,47 @@ public sealed class StrategicInterceptionTests
         var retaliations = campaign.Capture().World.Missions.Count(static mission => mission.RuleId == "MISSION_RETALIATION");
         Assert.Equal(outsideEveryRegion ? 0 : 1, retaliations);
     }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AnEarthBasedRetaliationStartsFromAnAlienBaseInTheRegionOrSpawnsOne(bool existingBase)
+    {
+        // AlienMission::start for a region operation that spawns a base if necessary: an alien base already in
+        // the region is chosen; without one a new base is spawned in the operation zone.
+        var (content, campaign, _) = Create(ufoDamage: 24, longitude: Degrees(10), latitude: 0, extraRules: """
+
+            alienMissions:
+              - type: MISSION_SCOUT
+                retaliationOdds: 100
+              - type: MISSION_RETALIATION
+                operationType: 3
+                operationBaseType: ALIEN_BASE_DEPLOY
+                operationSpawnZone: 0
+            difficultyBasedRetaliationDelay: [0, 0, 0, 0, 0]
+            difficultyCoefficientOverrides:
+              retaliationBaseRegionOdds: [100, 100, 100, 100, 100]
+
+            """);
+        var snapshot = campaign.Capture();
+        var owner = snapshot.Bases[0];
+        if (existingBase)
+            snapshot = snapshot with
+            {
+                World = snapshot.World with
+                {
+                    AlienBases = [new AlienBaseSnapshot(1, "ALIEN_BASE_DEPLOY", "RACE_A", owner.Longitude, owner.Latitude) { Discovered = false }],
+                },
+            };
+        var before = snapshot.World.AlienBases.Count;
+        campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(7));
+        var world = (CampaignWorld)campaign.GetQuery<ICampaignInterceptionQuery>()!;
+        FightToTheEnd(campaign, world, Start(campaign, world));
+        var captured = campaign.Capture();
+        var retaliation = Assert.Single(captured.World.Missions, static mission => mission.RuleId == "MISSION_RETALIATION");
+        Assert.False(retaliation.Interrupted);
+        var operationBase = Assert.Single(captured.World.AlienBases, alienBase => alienBase.Id == retaliation.AlienBase!.Id);
+        Assert.Equal(existingBase ? before : before + 1, captured.World.AlienBases.Count);
+        if (existingBase) Assert.Equal(1, operationBase.Id);
+    }
 }

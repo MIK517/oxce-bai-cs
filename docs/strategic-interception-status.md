@@ -708,3 +708,10 @@ topic is projected as unlocking the final mission (compiler/cache revision 69).
 `StrategicFinalMissionTests.OfSeveralFinalResearchTopicsTheReferencePickMustBeDone`.
 Validation: formatting and code map clean; root `dotnet test` ran 3,550 tests, all green, none skipped.
 
+A retaliation mission with an Earth-based operation type no longer stops the interception step: as in
+`AlienMission::start`, it picks an existing alien base (in its region for regional types) or spawns one in its
+operation zone, or is interrupted when an existing-base operation finds none. `PlanMissionOperation` makes the
+draws for both the live start and the step's forecast, which reserves a spawned base's marker ID and activity
+through `ReserveOperationBaseCreation`;
+`StrategicInterceptionTests.AnEarthBasedRetaliationStartsFromAnAlienBaseInTheRegionOrSpawnsOne`.
+Validation: formatting and code map clean; root `dotnet test` ran 3,552 tests, all green, none skipped.

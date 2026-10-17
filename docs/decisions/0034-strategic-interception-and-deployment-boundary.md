@@ -56,7 +56,9 @@ A started campaign without bases is a valid save.
 - Crew who fail the evacuation roll of a destroyed craft die (`SavedGame::killSoldier`) and join the
   memorial (`deadSoldiers`, with the death time). The reference kills them only for a craft with a unit
   limit and otherwise leaves them assigned to the deleted craft; the port kills them in either case.
-- A retaliation launched from an alien-base operation keeps its named refusal.
+- A retaliation run from an alien-base operation picks or spawns its operation base as `AlienMission::start`
+  does; the interception step's forecast makes the same draws and reserves a spawned base's marker ID and
+  activity as mission scripts do.
 
 ## Consequences
 

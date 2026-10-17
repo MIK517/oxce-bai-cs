@@ -377,9 +377,9 @@ internal sealed partial class CampaignWorld
                 Fail("A retaliation mission without waves cannot start.");
                 return;
             }
-            if (rule.OperationType != RuntimeMissionOperationType.Space)
+            if (rule.OperationType != RuntimeMissionOperationType.Space && world.MissionOperationReason(rule, region) is { } operationReason)
             {
-                Fail("Retaliation missions run from alien bases require operation-base simulation.");
+                Fail(operationReason);
                 return;
             }
             if (!Rules.Regions.TryGet(region, out var regionHandle))
@@ -398,8 +398,39 @@ internal sealed partial class CampaignWorld
             // AlienMission::start draws the countdown only for a zero timer.
             var countdown = spawnTimer == 0 ? WorldTrajectory.SpawnCountdown(0, Random) : (int)spawnTimer;
             var created = new AlienMissionSnapshot(id, ruleId, missionRegion, source.Race, 0, 0, countdown, 0, -1);
+            if (rule.OperationType != RuntimeMissionOperationType.Space)
+            {
+                // AlienMission::start then picks or spawns its operation base (Earth-based operations).
+                if (!forecast) created = world.InitializeMissionOperation(created, rule);
+                else if (OperationBaseReason(created, rule, region) is { } baseReason)
+                {
+                    Fail(baseReason);
+                    return;
+                }
+            }
             if (forecast) _createdMissions.Add(created);
             else world._missions.Add(created);
+        }
+
+        private Dictionary<string, int>? _baseMarkers;
+        private ActivityRange[]? _baseRegionScores;
+        private ActivityRange[]? _baseCountryScores;
+        private int _basePopulation = -1;
+        private long _baseWork;
+
+        // The forecast of AlienMission::start's operation base: the same draws as the live step, and a base about
+        // to be spawned reserves its marker ID and activity as mission scripts do. Several retaliations in one
+        // step share the reservation.
+        private string? OperationBaseReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, string region)
+        {
+            var (selected, spawn) = world.PlanMissionOperation(mission, rule);
+            if (selected is not null || spawn is null) return null;
+            _baseMarkers ??= new(StringComparer.Ordinal);
+            _baseRegionScores ??= world.Campaign.RegionStates.Select(static state => new ActivityRange(state.ActivityAlien[^1])).ToArray();
+            _baseCountryScores ??= world.Campaign.CountryStates.Select(static state => new ActivityRange(state.ActivityAlien[^1])).ToArray();
+            if (_basePopulation < 0) _basePopulation = world._alienBases.Count;
+            return world.ReserveOperationBaseCreation([(Rules.AlienMissions.GetRequired(mission.RuleId), region)], _baseMarkers,
+                _baseRegionScores, _baseCountryScores, ref _basePopulation, ref _baseWork);
         }
 
         private RuntimeAlienRaceRule? Race(string id)

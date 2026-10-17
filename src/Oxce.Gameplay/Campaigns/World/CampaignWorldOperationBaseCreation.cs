@@ -111,21 +111,4 @@ internal sealed partial class CampaignWorld
                 }
         }
     }
-
-    private AlienMissionSnapshot CreateMissionOperationBase(
-        AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, RuntimeRegionRule region)
-    {
-        var rules = campaign.Content.RuntimeRules;
-        var deployment = rules.AlienDeployments[rule.OperationBaseType!.Value].Value;
-        var raw = WorldOperationBaseSpawn.Select(region, rules.Campaign.Globe, rule.OperationSpawnZone,
-            deployment.FakeUnderwaterSpawnChance, rules.Campaign.AllowAlienBasesOnWrongTextures, campaign.Random);
-        if (raw is not { } point) return mission with { Interrupted = true };
-        var alienBase = SpawnMissionAlienBase(mission, rule, rule.OperationBaseType!.Value, point);
-        var position = alienBase.Position;
-        return mission with
-        {
-            AlienBase = new(WorldTargetKind.AlienBase, deployment.MarkerName, alienBase.Id,
-                position.Longitude, position.Latitude),
-        };
-    }
 }
