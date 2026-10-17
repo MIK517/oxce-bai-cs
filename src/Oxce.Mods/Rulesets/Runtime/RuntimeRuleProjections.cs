@@ -51,7 +51,10 @@ public sealed record RuntimeResearchRule(
     int ListOrder,
     IReadOnlyDictionary<string, ulong> Events)
 {
-    /// <summary>RuleResearch::unlockFinalMission: the research that shows the Cydonia button.</summary>
+    /// <summary>
+    /// Mod::getFinalResearch: true only for the one research that shows the Cydonia button. Of several topics
+    /// marked <c>unlockFinalMission</c>, the one whose last updating mod loads latest wins.
+    /// </summary>
     public bool UnlockFinalMission { get; init; }
 }
 

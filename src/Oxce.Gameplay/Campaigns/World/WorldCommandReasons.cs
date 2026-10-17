@@ -34,7 +34,6 @@ public static class WorldCommandReasons
     internal const string DeploymentRequestPending = "A confirmed landing waits for its battle (Phase 7 tactical execution).";
     internal const string NoDeploymentRequest = "There is no deployment request to take.";
     internal const string FinalMissionUnavailable = "The craft cannot fly the final mission.";
-    internal const string FinalResearchAmbiguous = "Several research topics unlock the final mission; the reference picks one by mod order (Phase 6 branch 5).";
     internal const string BaseDefenseOpen = "A base defense stops the clock until it is resolved.";
     internal const string NoBaseDefense = "That base is not under attack.";
     internal const string MissileBaseAttack = "Missiles that damage base facilities require facility destruction (Phase 6 branch 5 S7).";
@@ -69,7 +68,6 @@ public static class WorldCommandReasons
         new("deployment.pending", DeploymentRequestPending),
         new("deployment.none", NoDeploymentRequest),
         new("final-mission.unavailable", FinalMissionUnavailable),
-        new("boundary.final-research", FinalResearchAmbiguous),
         new("base-defense.open", BaseDefenseOpen),
         new("base-defense.none", NoBaseDefense),
         new("boundary.base-missile", MissileBaseAttack),

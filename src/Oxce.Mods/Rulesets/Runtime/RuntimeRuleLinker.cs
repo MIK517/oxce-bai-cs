@@ -51,6 +51,7 @@ public static class RuntimeRuleLinker
         var cancellationToken = options.CancellationToken;
         cancellationToken.ThrowIfCancellationRequested();
         var generation = resources.Generation;
+        var finalResearch = FinalResearch(content, resources);
         var issues = new List<RuntimeRuleLinkIssue>();
 
         var countryHandles = Handles<CountryRuleFamily, CountryRule>(generation, content.CampaignStart.Countries);
@@ -449,7 +450,7 @@ public static class RuntimeRuleLinker
                     rule.Value.NeedItem,
                     rule.Value.DestroyItem, rule.Value.ReturnsItem, rule.Value.Repeatable,
                     rule.Value.ListOrder, rule.Value.Events)
-                { UnlockFinalMission = rule.Value.UnlockFinalMission }),
+                { UnlockFinalMission = rule.Id == finalResearch }),
             BuildFamily<ManufactureRuleFamily, ManufactureRule, RuntimeManufactureRule>(generation,
                 content.EquipmentProduction.Manufacture, rule => new(
                     rule.Value.Category, rule.Value.Requirements, rule.Value.RequiredBaseFunctions,
@@ -1016,6 +1017,25 @@ public static class RuntimeRuleLinker
             .Select(static rule => (rule.Id, rule.Value.ReplaceBy, Key: Encoding.UTF8.GetBytes(rule.Id)))
             .OrderByDescending(static rule => rule.Key, byteOrder))
             result[rule.Id] = result.GetValueOrDefault(rule.ReplaceBy, rule.ReplaceBy);
+        return result;
+    }
+
+    /// <summary>
+    /// Mod::loadAll's final research: walking research by name, a topic marked <c>unlockFinalMission</c> replaces
+    /// the one found so far unless the mod that last updated it loads earlier (getModLastUpdatingRule offset).
+    /// </summary>
+    private static string? FinalResearch(Phase3ContentCatalog content, ResolvedResourceCatalog resources)
+    {
+        string? result = null;
+        var resultOffset = 0;
+        foreach (var rule in content.EquipmentProduction.Research.Rules.OrderBy(static rule => rule.Id, StringComparer.Ordinal))
+        {
+            if (!rule.Value.UnlockFinalMission) continue;
+            var offset = resources.ModOffsets.GetValueOrDefault(rule.LastUpdateSource.ModId);
+            if (result is not null && offset < resultOffset) continue;
+            result = rule.Id;
+            resultOffset = offset;
+        }
         return result;
     }
 
