@@ -415,4 +415,27 @@ public sealed class StrategicFinalMissionTests
         Assert.Equal("Tactical combat is not available yet", Assert.Single(client.Popups).Title);
         Assert.Equal("STR_FINAL_ASSAULT", campaign.GetQuery<ICampaignLandingQuery>()!.QueryDeploymentRequest()!.MissionType);
     }
+
+    [Theory]
+    [InlineData("FINAL_X", false)]
+    [InlineData("FINAL_Y", true)]
+    public void OfSeveralFinalResearchTopicsTheReferencePickMustBeDone(string completed, bool available)
+    {
+        // Mod::loadAll walks research by name; a later topic from a mod loaded no earlier replaces the pick, so
+        // FINAL_Y wins over FINAL_X and the
+        // fixture's FINAL_TOPIC from the same mod.
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], Rules, finalRules: """
+            research:
+              - {name: FINAL_X, cost: 1, unlockFinalMission: true}
+              - {name: FINAL_Y, cost: 1, unlockFinalMission: true}
+
+            """);
+        Assert.Equal(["FINAL_Y"], content.RuntimeRules.Research.Rules.Where(static rule => rule.Value.UnlockFinalMission)
+            .Select(static rule => rule.Id));
+        var (_, snapshot) = CreateCrewedSpacecraft();
+        var campaign = CampaignState.Restore(snapshot with { CompletedResearch = [.. snapshot.CompletedResearch, completed] }, content,
+            new SplitMix64RandomSource(3));
+        var events = campaign.Execute(new LaunchFinalMission(snapshot.Bases[0].Id, "SHIP", 1)).Events;
+        Assert.Equal(available, events.OfType<DeploymentRequested>().Any());
+    }
 }

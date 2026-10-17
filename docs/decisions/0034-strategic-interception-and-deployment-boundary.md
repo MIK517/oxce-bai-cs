@@ -46,8 +46,8 @@ A started campaign without bases is a valid save.
   divides by, cannot be loaded and stays in the stores.
 - Missiles that damage facilities (`Base::damageFacilities` and the facility destruction cascade) are
   refused (`boundary.base-missile`).
-- Several research topics marked `unlockFinalMission` are refused (`boundary.final-research`): the
-  reference picks the one last updated by mod order, which compiled rules do not record.
+- Of several research topics marked `unlockFinalMission`, the compiler keeps the reference's pick
+  (`Mod::loadAll`: by name, a topic whose last updating mod loads no earlier replaces the previous one).
 - Waves without a UFO rule for a retaliation assault are refused where the reference dereferences
   a missing rule.
 - An alien-base battle request records mission texture 0 (`setWorldTexture(0, globeTexture)`).

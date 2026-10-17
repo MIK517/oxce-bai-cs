@@ -701,3 +701,10 @@ battle death's cause survive ([ADR 0034](decisions/0034-strategic-interception-a
 Validation: formatting and code map clean; root `dotnet test` ran 3,548 tests, all green, none skipped
 (the private saves, whose `deadSoldiers` nodes now load, included).
 
+Several research topics marked `unlockFinalMission` no longer refuse the final mission: the runtime linker
+keeps the reference's pick (`Mod::loadAll`): walking research by name, a marked topic replaces the one found
+so far unless the mod that last updated it loads earlier (`getModLastUpdatingRule` offset), and only that
+topic is projected as unlocking the final mission (compiler/cache revision 69).
+`StrategicFinalMissionTests.OfSeveralFinalResearchTopicsTheReferencePickMustBeDone`.
+Validation: formatting and code map clean; root `dotnet test` ran 3,550 tests, all green, none skipped.
+

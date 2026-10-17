@@ -123,7 +123,6 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery
         if (craft.Logistics is not { } state || DispatchReason(owner, craft) is not null) return WorldCommandReasons.FinalMissionUnavailable;
         var finals = _finalResearch ??= [.. rules.Research.Rules.Where(static research => research.Value.UnlockFinalMission)
             .Select(static research => research.Id)];
-        if (finals.Length > 1) return WorldCommandReasons.FinalResearchAmbiguous;
         var fuelled = rule.FuelMaximum > 0 && (int)Math.Floor((double)state.Fuel / rule.FuelMaximum * 100) >= 100;
         if (!fuelled || !rule.Spacecraft || finals.Length == 1 && !campaign.ArcResearch.IsResearched(finals[0]))
             return WorldCommandReasons.FinalMissionUnavailable;
