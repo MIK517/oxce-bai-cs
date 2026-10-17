@@ -102,6 +102,51 @@ public sealed class ContentSnapshotTests
     }
 
     [Fact]
+    public void CountryNewMonthScriptsCompileOnTheirCountry()
+    {
+        // RuleCountry::load reads newMonthCountry from the rule's scripts node (ScriptGroup::load).
+        const string rules = """
+            countries:
+              - type: COUNTRY_A
+                scripts:
+                  newMonthCountry: |
+                    var int funding;
+                    country.getCurrentFunding funding;
+                    if gt totalXcomScore totalAlienScore;
+                      add fundingChange funding;
+                    end;
+                    return;
+            """;
+        using var fixture = new TemporaryModFixture(rules);
+
+        var snapshot = ContentSnapshotBuilder.Build(TestFixtures.CreatePlan(fixture.Root));
+
+        Assert.True(snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked), Diagnostics(snapshot));
+        var script = Assert.Single(snapshot.Scripts, script => script.Scope == ContentScriptScope.Rule &&
+            script.OwnerId == "COUNTRY_A" && script.ParserName == "newMonthCountry");
+        var countries = snapshot.Content.RuntimeRules.Countries;
+        var country = countries[countries.GetRequired("COUNTRY_A")].Value;
+        Assert.Contains(country.Scripts, handle => snapshot.Content.RuntimeRules.Scripts[handle].Value.Artifact == script);
+    }
+
+    [Fact]
+    public void AnEventResearchListMustNameKnownResearch()
+    {
+        // RuleEvent::afterLoad links researchList and fails the load on an unknown topic.
+        using var fixture = new TemporaryModFixture("""
+            events:
+              - name: STR_GIFT
+                researchList: [STR_MISSING]
+            """);
+
+        var snapshot = ContentSnapshotBuilder.Build(TestFixtures.CreatePlan(fixture.Root));
+
+        Assert.False(snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked));
+        Assert.Contains(snapshot.Diagnostics, diagnostic => diagnostic.Code == ModDiagnosticCodes.MissingRuleReference &&
+            diagnostic.Message.Contains("researchList", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void ScriptErrorsAndDroppedDiagnosticsCannotPublishFalseSuccess()
     {
         const string rules = """

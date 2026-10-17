@@ -160,7 +160,7 @@ public static partial class OxceSaveAdapter
         RejectDuplicateKnownKeys(header, ["name", "time", "mods", "ironman", "oxcePortCampaignId"]);
         RejectDuplicateKnownKeys(body,
             ["difficulty", "end", "monthsPassed", "daysPassed", "rng", "funds", "maintenance", "incomes",
-                "expenditures", "researchScores", "ids", "countries", "regions", "bases", "tags"]);
+                "expenditures", "researchScores", "ids", "countries", "regions", "bases", "tags", "warned"]);
 
         var modLabels = Sequence(header, "mods").Select(YamlValueReader.ReadString).ToArray();
         var modIds = modLabels.Select(SanitizeModName).ToArray();
@@ -223,6 +223,7 @@ public static partial class OxceSaveAdapter
             ManufactureRuleStatus = ReadIntMap(body, "manufactureRuleStatus"),
             MonthlyPurchaseLog = ReadIntMap(body, "monthlyPurchaseLimitLog"),
             DebugMode = Boolean(body, "debug", false),
+            Warned = Boolean(body, "warned", false),
             Options = body.TryGet("oxcePortOptions", out var optionsNode)
                 ? ReadOptions(RequireMap(optionsNode!, "oxcePortOptions"))
                 : ReadReferenceOptions(body),
@@ -559,6 +560,8 @@ public static partial class OxceSaveAdapter
                 IntMapping(snapshot.ManufactureRuleStatus)),
             Pair("monthlyPurchaseLimitLog", snapshot.MonthlyPurchaseLog.Count == 0 ? null : IntMapping(snapshot.MonthlyPurchaseLog)),
             Pair("debug", snapshot.DebugMode ? Boolean(true) : null),
+            // SavedGame::save always writes it.
+            Pair("warned", Boolean(snapshot.Warned)),
             Pair("oxcePortOptions", Mapping([
                 Pair("storageLimitsEnforced", Boolean(snapshot.Options.StorageLimitsEnforced)),
                 Pair("canSellLiveAliens", Boolean(snapshot.Options.CanSellLiveAliens)),
@@ -576,7 +579,10 @@ public static partial class OxceSaveAdapter
                 Pair("dogfightAI", Boolean(snapshot.Options.DogfightAI)),
                 Pair("oxceRememberDisabledCraftWeapons", Boolean(snapshot.Options.RememberDisabledCraftWeapons)),
                 Pair("globeSeasons", Boolean(snapshot.Options.GlobeSeasons)),
-                Pair("oxceWoundedDefendBaseIf", Integer(snapshot.Options.WoundedDefendBaseIf))])),
+                Pair("oxceWoundedDefendBaseIf", Integer(snapshot.Options.WoundedDefendBaseIf)),
+                Pair("psiStrengthEval", Boolean(snapshot.Options.PsiStrengthEval)),
+                Pair("oxceGeoscapeEventsInstantDelivery", Boolean(snapshot.Options.GeoscapeEventsInstantDelivery)),
+                Pair("autosave", Boolean(snapshot.Options.Autosave))])),
         ]);
     }
 
@@ -858,7 +864,7 @@ public static partial class OxceSaveAdapter
 
     private static CampaignOptions ReadOptions(YamlMappingNode map)
     {
-        RejectDuplicateKnownKeys(map, ["storageLimitsEnforced", "canSellLiveAliens", "autoCombatDefaultSoldier", "anytimePsiTraining", "allowPsiStrengthImprovement", "maximumBases", "allowBuildingQueue", "oxceUfoLandingAlert", "aggressiveRetaliation", "craftLaunchAlways", "oxceGeoSuppressLandingWithoutEquipment", "oxceGeoSuppressRedundantHKAlert", "retainCorpses", "dogfightAI", "oxceRememberDisabledCraftWeapons", "globeSeasons", "oxceWoundedDefendBaseIf"]);
+        RejectDuplicateKnownKeys(map, ["storageLimitsEnforced", "canSellLiveAliens", "autoCombatDefaultSoldier", "anytimePsiTraining", "allowPsiStrengthImprovement", "maximumBases", "allowBuildingQueue", "oxceUfoLandingAlert", "aggressiveRetaliation", "craftLaunchAlways", "oxceGeoSuppressLandingWithoutEquipment", "oxceGeoSuppressRedundantHKAlert", "retainCorpses", "dogfightAI", "oxceRememberDisabledCraftWeapons", "globeSeasons", "oxceWoundedDefendBaseIf", "psiStrengthEval", "oxceGeoscapeEventsInstantDelivery", "autosave"]);
         return new(Boolean(map, "storageLimitsEnforced", false), Boolean(map, "canSellLiveAliens", false),
             Boolean(map, "autoCombatDefaultSoldier", true), Boolean(map, "anytimePsiTraining", false),
             Boolean(map, "allowPsiStrengthImprovement", false), Integer(map, "maximumBases", 8),
@@ -866,7 +872,9 @@ public static partial class OxceSaveAdapter
             Boolean(map, "aggressiveRetaliation", true), Boolean(map, "craftLaunchAlways", false),
             Boolean(map, "oxceGeoSuppressLandingWithoutEquipment", false), Boolean(map, "oxceGeoSuppressRedundantHKAlert", true), Boolean(map, "retainCorpses", false),
             Boolean(map, "dogfightAI", true), Boolean(map, "oxceRememberDisabledCraftWeapons", false),
-            Boolean(map, "globeSeasons", false), Integer(map, "oxceWoundedDefendBaseIf", 100));
+            Boolean(map, "globeSeasons", false), Integer(map, "oxceWoundedDefendBaseIf", 100),
+            Boolean(map, "psiStrengthEval", false), Boolean(map, "oxceGeoscapeEventsInstantDelivery", true),
+            Boolean(map, "autosave", true));
     }
 
     /// <summary>
@@ -897,6 +905,9 @@ public static partial class OxceSaveAdapter
             DogfightAI = Snapshot("dogfightAI", defaults.DogfightAI),
             RememberDisabledCraftWeapons = Snapshot("oxceRememberDisabledCraftWeapons", defaults.RememberDisabledCraftWeapons),
             GlobeSeasons = Snapshot("globeSeasons", defaults.GlobeSeasons),
+            PsiStrengthEval = Snapshot("psiStrengthEval", defaults.PsiStrengthEval),
+            GeoscapeEventsInstantDelivery = Snapshot("oxceGeoscapeEventsInstantDelivery", defaults.GeoscapeEventsInstantDelivery),
+            Autosave = Snapshot("autosave", defaults.Autosave),
             WoundedDefendBaseIf = map.TryGet("oxceWoundedDefendBaseIf", out var wounded) &&
                 wounded is YamlScalarNode { Value: { } percent } &&
                 int.TryParse(percent, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed)

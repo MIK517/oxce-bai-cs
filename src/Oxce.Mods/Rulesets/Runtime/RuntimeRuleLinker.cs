@@ -477,7 +477,8 @@ public static class RuntimeRuleLinker
             BuildFamily<EventRuleFamily, EventRule, RuntimeEventRule>(generation, content.MissionEvents.Events,
                 static rule => new(rule.Value.Integers["timer"], rule.Value.Integers["timerRandom"],
                     rule.Value.Strings["interruptResearch"],
-                    Array.AsReadOnly(rule.Value.AdhocMissionScriptTags.ToArray()))),
+                    Array.AsReadOnly(rule.Value.AdhocMissionScriptTags.ToArray()))
+                { Payload = EventPayload(rule.Value) }),
             BuildFamily<UfoRuleFamily, UfoRule, RuntimeUfoRule>(generation, content.EquipmentProduction.Ufos,
                 rule => BuildUfo(rule.Id, rule.Value)),
             BuildFamily<UfoTrajectoryRuleFamily, UfoTrajectoryRule, RuntimeUfoTrajectoryRule>(generation,
@@ -1014,6 +1015,20 @@ public static class RuntimeRuleLinker
     private static RuleHandle<ItemRuleFamily>? OptionalItem(
         Dictionary<string, RuleHandle<ItemRuleFamily>> handles,
         string id) => id.Length != 0 && id != "STR_NONE" && handles.TryGetValue(id, out var handle) ? handle : null;
+
+    private static RuntimeEventPayload EventPayload(EventRule rule)
+    {
+        static IReadOnlyList<KeyValuePair<string, T>> Ordered<T>(IReadOnlyDictionary<string, T> map) =>
+            Array.AsReadOnly(map.OrderBy(static pair => Encoding.UTF8.GetBytes(pair.Key), Utf8ByteOrder).ToArray());
+        return new(rule.Strings["description"], rule.Strings["cutscene"], Array.AsReadOnly(rule.Regions.ToArray()),
+            rule.Booleans["city"], rule.Integers["points"], rule.Integers["funds"], rule.Strings["spawnedCraftType"],
+            rule.Integers["spawnedPersons"], rule.Strings["spawnedPersonType"], rule.Strings["spawnedPersonName"],
+            RuntimeSoldierTemplateLoader.Read(rule.SpawnedSoldier), Ordered(rule.EveryMultiItems),
+            Array.AsReadOnly(rule.EveryItems.ToArray()), Array.AsReadOnly(rule.RandomItems.ToArray()),
+            Array.AsReadOnly(rule.RandomMultiItems.Select(Ordered).ToArray()), Ordered(rule.WeightedItems),
+            Array.AsReadOnly(rule.Research.ToArray()), rule.Booleans["invert"], Ordered(rule.EveryMultiSoldiers),
+            Array.AsReadOnly(rule.RandomMultiSoldiers.Select(Ordered).ToArray()));
+    }
 
     // std::map<std::string> order: UTF-8 bytes, which differs from UTF-16 ordinal order above the BMP.
     private static readonly Comparer<byte[]> Utf8ByteOrder =

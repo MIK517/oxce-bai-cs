@@ -25,7 +25,6 @@ internal sealed class CountryRuleLoader(string sectionName) : IdOnlyTypedRuleFam
             builder.Areas.AddRange(YamlValueReader.ReadSequence(areas!, CampaignStartYaml.ReadArea));
         ApplyNames(reader, "provideBaseFunc", builder.ProvidedBaseFunctions, unique: true);
         ApplyNames(reader, "forbiddenBaseFunc", builder.ForbiddenBaseFunctions, unique: true);
-        reader.Defer("newMonthCountry", "compatible country script compilation belongs to Phase 4");
         reader.DeferRemaining("dynamic country script values require Phase 4 registration");
     }
 

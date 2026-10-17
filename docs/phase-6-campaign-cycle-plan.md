@@ -185,4 +185,10 @@ Each slice is followed by an independent audit before the next.
 
 This plan, [ADR 0035](decisions/0035-staged-ticks-on-a-shadow-copy.md) and the status corrections
 are recorded; baseline validation and the corpus stops branch 6 must lift are in
-[status S0](strategic-campaign-cycle-status.md#s0--plan-and-baseline-2026-10-17). S1 is next.
+[status S0](strategic-campaign-cycle-status.md#s0--plan-and-baseline-2026-10-17).
+
+### S1 — Evidence and projections (2026-10-17)
+
+The month rollover and event payload oracles, the monthly, cutscene and event projections, the three options and
+`warned` are recorded in [status S1](strategic-campaign-cycle-status.md#s1--evidence-and-projections-2026-10-17).
+Time still stops at the month boundary and before due event payloads.
