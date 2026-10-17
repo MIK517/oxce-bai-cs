@@ -356,8 +356,7 @@ public sealed class StrategicWorldEscortSpawnTests
         initial = initial.WithCraft("SHIP", craft => craft with
         { Logistics = craft.Logistics! with { Longitude = leader.Longitude, Latitude = leader.Latitude } });
         initial = initial with { Bases = [initial.Bases[0] with { Longitude = leader.Longitude, Latitude = leader.Latitude }] };
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
-            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+        AssertNewbornHuntRuns(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)));
     }
 
     [Fact]

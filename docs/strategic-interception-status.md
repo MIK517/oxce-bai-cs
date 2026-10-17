@@ -736,3 +736,14 @@ Validation: formatting and code map clean; root `dotnet test` ran 3,554 tests wi
 `GlobeRendererTests` allocation flake under the parallel run, which passes alone (9/9). With this change no
 named refusal from ADR 0034 remains.
 
+The last two interception refusals are gone. A newborn hunter-killer that may select and reach a craft in
+its birth tick no longer stops time: the preflight already forecasts the craft pass as if no hunter attacks
+(the attack only skips work), so the attack runs as a saved hunter's does
+(`StrategicWorldHuntingTests.AnAirborneHunterBornNearACraftCanAttackItInItsBirthTick`; twenty older tests that
+expected the refusal now check that the tick runs and any window it opens is the hunter's attack). Restoring a
+water-only craft's minimized window re-checks the UFO's depth and the craft's land position and keeps it
+waiting with `DogfightErrorState`'s message, as `DogfightState::btnMinimizedIconClick` does
+(`StrategicInterceptionTests.ACraftReachingItsUfoOpensAWindowThatAWaterOnlyCraftMustWaitIn`).
+`boundary.interception` is removed.
+Validation: formatting and code map clean; root `dotnet test` ran 3,554 tests, all green, none skipped.
+

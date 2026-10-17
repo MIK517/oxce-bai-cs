@@ -1644,7 +1644,7 @@ Prefer these over local copies (see AGENTS.md, *Test conventions*).
 ### [tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs)
 
 - `StrategicWorldTestSupport` (class) - Shared setup and assertions for the strategic-world compatibility tests.
-- members: `AssertDetectionReadScript`, `CreateSnapshot`, `CreateLifecycleSnapshot`, `CreateUfoTransitCampaign`, `Degrees`, `WithCraft`, `WithFacility`, `WithNextId`, `AdvanceOne`, `AdvanceUnblocked`, `AssertInterceptionStarts`, `AssertLandingRequested`, `AssertTimeBlocked`, `Reload`, `AssertSelectedNewbornArrival`, `AllocatedBytes`
+- members: `AssertDetectionReadScript`, `CreateSnapshot`, `CreateLifecycleSnapshot`, `CreateUfoTransitCampaign`, `Degrees`, `WithCraft`, `WithFacility`, `WithNextId`, `AdvanceOne`, `AdvanceUnblocked`, `AssertInterceptionStarts`, `AssertLandingRequested`, `AssertNewbornHuntRuns`, `AssertTimeBlocked`, `Reload`, `AssertSelectedNewbornArrival`, `AllocatedBytes`
 
 ### [tests/Oxce.TestExtension/ProbeExtension.cs](../tests/Oxce.TestExtension/ProbeExtension.cs)
 

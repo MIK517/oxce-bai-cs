@@ -174,6 +174,18 @@ internal static class StrategicWorldTestSupport
         return Assert.IsType<LandingConfirmationRequested>(result.Events.First(static evt => evt is LandingConfirmationRequested));
     }
 
+    /// <summary>
+    /// Branch 5: a newborn hunter-killer that may select and reach a craft in its birth tick no longer stops time;
+    /// the tick runs, and any interception it opens is the hunter's attack.
+    /// </summary>
+    public static void AssertNewbornHuntRuns(CampaignState campaign)
+    {
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.DoesNotContain(result.Events, static evt => evt is CampaignActionBlocked);
+        Assert.All(result.Events.OfType<InterceptionStarted>(), static started => Assert.True(started.UfoAttacking));
+    }
+
     /// <summary>Asserts that the next tick is refused with <paramref name="reason"/> and changes nothing.</summary>
     public static void AssertTimeBlocked(CampaignState campaign, string reason)
     {

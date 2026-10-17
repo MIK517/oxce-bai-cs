@@ -69,8 +69,7 @@ public sealed class StrategicWorldNewbornHuntingTests
         { Crafts = [.. initial.Bases[0].Crafts.Select(craft => craft with
         { Logistics = craft.Logistics! with { Longitude = origin.Longitude, Latitude = origin.Latitude } })] }]
         };
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
-            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+        AssertNewbornHuntRuns(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)));
     }
 
     [Theory]
@@ -175,8 +174,7 @@ public sealed class StrategicWorldNewbornHuntingTests
             Bases = [owner with { Crafts = [owner.Crafts[0] with
             { Logistics = owner.Crafts[0].Logistics! with { Longitude = Degrees(10), Latitude = Degrees(8) } }] }]
         };
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
-            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+        AssertNewbornHuntRuns(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)));
     }
 
     [Theory]
@@ -234,8 +232,7 @@ public sealed class StrategicWorldNewbornHuntingTests
         };
         // This craft is beyond the trajectory's 550-speed step but inside the
         // native initialized escort's 2200-speed step.
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
-            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+        AssertNewbornHuntRuns(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)));
         var state = initial.Bases[0].Crafts[0].Logistics!;
         initial = initial with
         {
@@ -270,8 +267,7 @@ public sealed class StrategicWorldNewbornHuntingTests
         };
         // The first ordinary birth can provide the next birth's leader, changing
         // its initial speed from 550 to 2200 within the same immediate wave.
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
-            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+        AssertNewbornHuntRuns(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)));
     }
 
     [Theory]
@@ -464,7 +460,7 @@ public sealed class StrategicWorldNewbornHuntingTests
                 81, "pending-newborn-before.sav");
             if (hourly && hours == 1)
             {
-                if (escort) AssertTimeBlocked(campaign, "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+                if (escort) AssertNewbornHuntRuns(campaign);
                 else
                 {
                     AdvanceUnblocked(campaign, 1);
@@ -526,7 +522,7 @@ public sealed class StrategicWorldNewbornHuntingTests
                 Assert.Equal(100, content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("SPATIAL_CRAFT")].Value.DamageMaximum);
                 if (near)
                 {
-                    AssertTimeBlocked(campaign, "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+                    AssertNewbornHuntRuns(campaign);
                     continue;
                 }
                 AdvanceUnblocked(campaign, 1);
@@ -574,7 +570,7 @@ public sealed class StrategicWorldNewbornHuntingTests
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "escort-spatial-before.sav");
             if (nearLeader)
             {
-                AssertTimeBlocked(campaign, "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+                AssertNewbornHuntRuns(campaign);
                 continue;
             }
             AdvanceUnblocked(campaign, 1);
@@ -663,7 +659,7 @@ public sealed class StrategicWorldNewbornHuntingTests
                 81, "grounded-birth-before.sav");
             if (escort && row[6].GetString() == "STR_OUT")
             {
-                AssertTimeBlocked(campaign, "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+                AssertNewbornHuntRuns(campaign);
                 continue;
             }
             AdvanceUnblocked(campaign, 1);
@@ -794,7 +790,7 @@ public sealed class StrategicWorldNewbornHuntingTests
             var airborne = row[4].GetString() == "STR_OUT" || row[6].GetString() == "STR_OUT";
             if (escort && airborne)
             {
-                AssertTimeBlocked(campaign, "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+                AssertNewbornHuntRuns(campaign);
                 continue;
             }
             AdvanceUnblocked(campaign, 1);

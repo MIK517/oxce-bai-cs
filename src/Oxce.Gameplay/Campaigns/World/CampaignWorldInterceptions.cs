@@ -229,8 +229,22 @@ internal sealed partial class CampaignWorld : ICampaignInterceptionQuery
     private CampaignCommandResult RestoreInterception(RestoreInterception command)
     {
         if (FindInterception(command.Interception) is not { Minimized: true } dogfight) return Blocked(WorldCommandReasons.NoInterception);
-        // DogfightState::btnMinimizedIconClick: water-only craft wait for depth or polygons (branch 5 S4).
-        if (CraftMaximumAltitude(dogfight.Craft) > -1) return Blocked(WorldCommandReasons.InterceptionBoundary);
+        // DogfightState::btnMinimizedIconClick: a water-only craft still below the UFO's altitude, or away from
+        // land, keeps waiting with DogfightErrorState's message.
+        var (_, craft) = FindInterceptionCraft((InterceptionCraftKey)dogfight.Craft.Key);
+        var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
+        var state = craft.Logistics!;
+        var ufo = _ufos[UfoIndex((int)dogfight.Ufo.Key)];
+        if (rule.IsWaterOnly && WorldAltitudes.Index(ufo.Altitude) > rule.MaximumAltitude)
+        {
+            dogfight.WaitForAltitude = true;
+            return new CampaignCommandResult([new InterceptionWaiting(dogfight.InterceptionNumber, "STR_UNABLE_TO_ENGAGE_DEPTH")]);
+        }
+        if (rule.IsWaterOnly && !WorldGeometry.InsideLand(campaign.Content.RuntimeRules.Campaign.Globe, new WorldPosition(state.Longitude, state.Latitude)))
+        {
+            dogfight.WaitForPoly = true;
+            return new CampaignCommandResult([new InterceptionWaiting(dogfight.InterceptionNumber, "STR_UNABLE_TO_ENGAGE_AIRBORNE")]);
+        }
         dogfight.Minimized = false;
         return new CampaignCommandResult([]);
     }

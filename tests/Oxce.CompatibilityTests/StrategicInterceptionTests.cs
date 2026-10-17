@@ -378,6 +378,10 @@ public sealed class StrategicInterceptionTests
         Assert.True(Single(world).Minimized);
         AdvanceOne(campaign);
         Assert.Single(world.QueryInterceptions());
+        // DogfightState::btnMinimizedIconClick: the craft is still too shallow, so the window keeps waiting.
+        Assert.Equal(new InterceptionWaiting(started.Interception, "STR_UNABLE_TO_ENGAGE_DEPTH"),
+            Assert.Single(campaign.Execute(new RestoreInterception(started.Interception)).Events));
+        Assert.True(Single(world).Minimized);
     }
 
     [Fact]
