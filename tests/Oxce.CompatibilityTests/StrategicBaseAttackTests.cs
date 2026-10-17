@@ -26,6 +26,13 @@ public sealed class StrategicBaseAttackTests
             defense: 2000
             hitRatio: 100
             ammoNeeded: 0
+          - type: TEST_LIFT
+            mapName: LOGISTICS
+            lift: true
+          - type: TEST_LAB
+            mapName: LOGISTICS
+            labs: 10
+            missileAttraction: 0
 
         """;
 
@@ -176,10 +183,48 @@ public sealed class StrategicBaseAttackTests
     }
 
     [Fact]
-    public void MissilesThatDamageFacilitiesStopTheClockBeforeTheAttack()
+    public void MissilesDestroyTheHitFacilityAndTheCraftItsHangarHolds()
     {
-        var (_, campaign, _) = Create(defended: false, ufoRules: Missiles(3));
-        AssertTimeBlocked(campaign, WorldCommandReasons.MissileBaseAttack);
+        // Base::damageFacilities: the only facility (a two-craft store without craft slots, where the base view
+        // places one craft) is hit; the next missile finds nothing destructible left.
+        var (_, campaign, baseId) = Create(defended: false, ufoRules: Missiles(3));
+        var before = campaign.Capture().Bases[0];
+        var parked = before.Crafts.First(static craft => craft.Logistics?.Status != "STR_OUT");
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        var damaged = Assert.Single(result.Events.OfType<BaseDamagedByMissiles>());
+        Assert.Equal((baseId, before.Name), (damaged.BaseId, damaged.Name));
+        Assert.Equal([new DestroyedFacilityCount("STORES", 1)], damaged.Destroyed);
+        var after = campaign.Capture();
+        var owner = Assert.Single(after.Bases);
+        Assert.Empty(owner.Facilities);
+        Assert.DoesNotContain(owner.Crafts, craft => craft.RuleId == parked.RuleId && craft.Id == parked.Id);
+        Assert.Equal(before.Crafts.Count - 1, owner.Crafts.Count);
+        Assert.DoesNotContain(owner.Soldiers, soldier => soldier.Personal!.CraftType == parked.RuleId && soldier.Personal.CraftId == parked.Id);
+        // The base survives, and its retaliation mission may strike again.
+        Assert.Single(after.World.Missions);
+        Assert.Empty(result.Events.OfType<BaseDestroyed>());
+    }
+
+    [Fact]
+    public void MissilesCutOffFacilitiesFromTheLiftAndThoseAreLostToo()
+    {
+        // The laboratory draws no missiles, but losing the stores between it and the lift disconnects it
+        // (Base::destroyDisconnectedFacilities, without a mod destroyed facility).
+        var (content, campaign, _) = Create(defended: false, ufoRules: Missiles(1));
+        var snapshot = campaign.Capture();
+        snapshot = snapshot with
+        {
+            Bases = [snapshot.Bases[0] with
+            {
+                Facilities = [new FacilitySnapshot("TEST_LIFT", 2, 2, 0, 0, false, false, false),
+                    new FacilitySnapshot("STORES", 3, 2, 0, 0, false, false, false),
+                    new FacilitySnapshot("TEST_LAB", 4, 2, 0, 0, false, false, false)],
+            }, .. snapshot.Bases.Skip(1)],
+        };
+        campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(11));
+        var damaged = Assert.Single(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<BaseDamagedByMissiles>());
+        Assert.Equivalent(new[] { new DestroyedFacilityCount("STORES", 1), new DestroyedFacilityCount("TEST_LAB", 1) }, damaged.Destroyed);
+        Assert.Equal(["TEST_LIFT"], campaign.Capture().Bases[0].Facilities.Select(static facility => facility.RuleId));
     }
 
     private const string InstantRetaliation = """
@@ -230,10 +275,12 @@ public sealed class StrategicBaseAttackTests
     }
 
     [Fact]
-    public void AnInstantRetaliationWithFacilityMissilesStopsTheClockBeforeItsBirth()
+    public void AnInstantRetaliationWithFacilityMissilesDamagesTheBaseInItsBirthTick()
     {
         var campaign = CreateInstant(defended: false, ufoRules: Missiles(3));
-        AssertTimeBlocked(campaign, WorldCommandReasons.MissileBaseAttack);
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.DoesNotContain(result.Events, static evt => evt is CampaignActionBlocked);
+        Assert.Single(result.Events.OfType<BaseDamagedByMissiles>());
     }
 
     // Both test vehicles fire VEHICLE_AMMO and load two clips of it.

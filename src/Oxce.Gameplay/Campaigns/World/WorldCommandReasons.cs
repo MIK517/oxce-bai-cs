@@ -36,7 +36,6 @@ public static class WorldCommandReasons
     internal const string FinalMissionUnavailable = "The craft cannot fly the final mission.";
     internal const string BaseDefenseOpen = "A base defense stops the clock until it is resolved.";
     internal const string NoBaseDefense = "That base is not under attack.";
-    internal const string MissileBaseAttack = "Missiles that damage base facilities require facility destruction (Phase 6 branch 5 S7).";
     internal const string ContactGone = "The UFO contact no longer exists or is not visible.";
     internal const string ContactLimit = "Ignored UFO contacts exceed the supported limit.";
 
@@ -70,7 +69,6 @@ public static class WorldCommandReasons
         new("final-mission.unavailable", FinalMissionUnavailable),
         new("base-defense.open", BaseDefenseOpen),
         new("base-defense.none", NoBaseDefense),
-        new("boundary.base-missile", MissileBaseAttack),
         new("contact.gone", ContactGone),
         new("contact.limit", ContactLimit),
     }.ToFrozenDictionary(static reason => reason.Text, StringComparer.Ordinal);

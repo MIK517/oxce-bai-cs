@@ -18,7 +18,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 182 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 183 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 94 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
@@ -335,7 +335,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 182 files.
+`src/Oxce.Gameplay` - 183 files.
 
 ### `Oxce.Gameplay`
 
@@ -344,6 +344,8 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 ### `Oxce.Gameplay.Campaigns`
 
 - `CampaignState` (class) [CampaignAccounting.cs](../src/Oxce.Gameplay/Campaigns/CampaignAccounting.cs)
+- `DestroyedFacilityCount` (record) [CampaignBaseFacilityDamage.cs](../src/Oxce.Gameplay/Campaigns/CampaignBaseFacilityDamage.cs) - A facility type a missile strike destroyed, and how many (Base::getDestroyedFacilitiesCache).
+- `CampaignState` (class) [CampaignBaseFacilityDamage.cs](../src/Oxce.Gameplay/Campaigns/CampaignBaseFacilityDamage.cs)
 - `CreateCampaignBase` (record) [CampaignBasePlacement.cs](../src/Oxce.Gameplay/Campaigns/CampaignBasePlacement.cs)
 - `CampaignBaseCreated` (record) [CampaignBasePlacement.cs](../src/Oxce.Gameplay/Campaigns/CampaignBasePlacement.cs)
 - `CampaignBaseSite` (record) [CampaignBasePlacement.cs](../src/Oxce.Gameplay/Campaigns/CampaignBasePlacement.cs)
@@ -526,6 +528,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `ResolveBaseDefense` (record) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs) - Fires the base defenses (BaseDefenseState's Start) or skips them (Skip firing), then applies the outcome.
 - `BaseDefenseResolved` (record) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs) - The defense window closed: the UFO was shot down, or the attack went on to its battle.
 - `BaseDestroyed` (record) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs) - A base was destroyed by an attack (BaseDestroyedState); its crafts, crew and stores are lost.
+- `BaseDamagedByMissiles` (record) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs) - Missiles damaged a base that survived (BaseDestroyedState with partial destruction): the facilities lost by type, and whether the stores...
 - `CampaignEnded` (record) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs) - The campaign ended (SavedGame::setEnding): 2 is END_LOSE, when no base is left.
 - `CampaignBaseDefense` (record) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs) - The open base defense window.
 - `ICampaignBaseDefenseQuery` (interface) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs)

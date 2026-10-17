@@ -44,8 +44,10 @@ A started campaign without bases is a valid save.
   address order, which follows the order rules were first loaded, so vehicle types sharing too little
   ammunition are served first-loaded first. A vehicle that loads zero clips, which the reference
   divides by, cannot be loaded and stays in the stores.
-- Missiles that damage facilities (`Base::damageFacilities` and the facility destruction cascade) are
-  refused (`boundary.base-missile`).
+- Missiles that damage facilities follow `Base::damageFacilities` and `destroyFacility`. Which crafts a
+  destroyed hangar holds comes, in the reference, from the last base view drawing (`BaseView::draw`), so it
+  depends on whether the player opened the base screen; the port places the crafts as that drawing would
+  at the moment of the strike.
 - Of several research topics marked `unlockFinalMission`, the compiler keeps the reference's pick
   (`Mod::loadAll`: by name, a topic whose last updating mod loads no earlier replaces the previous one).
 - Waves without a UFO rule for a retaliation assault are refused where the reference dereferences

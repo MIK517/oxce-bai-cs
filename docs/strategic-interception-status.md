@@ -715,3 +715,24 @@ draws for both the live start and the step's forecast, which reserves a spawned 
 through `ReserveOperationBaseCreation`;
 `StrategicInterceptionTests.AnEarthBasedRetaliationStartsFromAnAlienBaseInTheRegionOrSpawnsOne`.
 Validation: formatting and code map clean; root `dotnet test` ran 3,552 tests, all green, none skipped.
+
+Missiles that damage facilities no longer stop time. `CampaignState.DamageBaseFacilities` follows
+`Base::damageFacilities`: until the missile power (spent by facility size) runs out, a facility is chosen by
+missile attraction among those that are not the lift (`WeightedOptions` with index keys, the existing
+`WorldAlienMissionGeneration.Choose`), replaced by its destroyed form or the mod's 1x1 destroyed facility per
+cell, and destroyed with the reference cascade: the crafts its hangar holds are lost (crew stay, cargo to the
+stores), or productions and incoming crafts beyond the remaining hangars go; psi and training places,
+laboratory scientists and workshop engineers are released (an unstaffed production is cancelled); item and
+personnel transfers are dropped when stores or quarters no longer fit. Without a mod destroyed facility, parts
+cut off from the lift are destroyed (`getDisconnectedFacilities`). The base's hunters return to their
+waypoints first; `missileStopChance` may interrupt the mission, which otherwise goes on. Crafts are placed in
+hangars as the base view would draw them now ([ADR 0034](decisions/0034-strategic-interception-and-deployment-boundary.md)).
+Facilities now project `missileAttraction` and the drawn craft slots, and a one-craft hangar with several craft
+slots holds that many crafts (`RuleBaseFacility::afterLoad`; compiler/cache revision 70). The geoscape shows
+the damaged-base window with the lost facilities and, for overfull stores, the storage warning leading to the
+base screens. `StrategicBaseAttackTests` covers a destroyed hangar facility with its craft, the disconnected
+laboratory, and an instant retaliation's missiles; `GeoscapeNotificationsTests` the window.
+Validation: formatting and code map clean; root `dotnet test` ran 3,554 tests with one failure, the known
+`GlobeRendererTests` allocation flake under the parallel run, which passes alone (9/9). With this change no
+named refusal from ADR 0034 remains.
+

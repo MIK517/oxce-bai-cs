@@ -160,6 +160,10 @@ public sealed record RuntimeFacilityRule(
 {
     public int PrisonType { get; init; }
     public int AmmoMaximum { get; init; }
+    /// <summary>RuleBaseFacility::getMissileAttraction: the facility's weight as a missile target.</summary>
+    public int MissileAttraction { get; init; } = 100;
+    /// <summary>How many crafts the base view places in this hangar (its distinct leading craft slots).</summary>
+    public int DrawnCraftSlots { get; init; } = 1;
     /// <summary>RuleBaseFacility base-defense fields (BaseDefenseState): a non-zero defense value makes the
     /// facility fire at an attacking UFO; a grav shield adds a firing pass.</summary>
     public int DefenseValue { get; init; }
