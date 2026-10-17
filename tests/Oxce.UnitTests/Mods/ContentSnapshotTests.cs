@@ -132,7 +132,7 @@ public sealed class ContentSnapshotTests
     [Fact]
     public void AnEventResearchListMustNameKnownResearch()
     {
-        // RuleEvent::afterLoad links researchList and fails the load on an unknown topic.
+        // RuleEvent::afterLoad links researchList and fails the load on an unknown topic, once.
         using var fixture = new TemporaryModFixture("""
             events:
               - name: STR_GIFT
@@ -142,8 +142,39 @@ public sealed class ContentSnapshotTests
         var snapshot = ContentSnapshotBuilder.Build(TestFixtures.CreatePlan(fixture.Root));
 
         Assert.False(snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked));
-        Assert.Contains(snapshot.Diagnostics, diagnostic => diagnostic.Code == ModDiagnosticCodes.MissingRuleReference &&
+        Assert.Single(snapshot.Diagnostics, diagnostic => diagnostic.Code == ModDiagnosticCodes.MissingRuleReference &&
             diagnostic.Message.Contains("researchList", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void EventPayloadNamesAreCheckedOnceAndEmptyNamesNameNoRule()
+    {
+        // Mod::isEmptyRuleName ("" and STR_NULL) and STR_NONE for items name no rule; an unknown payload item or
+        // soldier only fails when the payload runs (one deferred warning each); spawnedPersonType is looked up
+        // without an error, so an unknown or special type is not reported.
+        using var fixture = new TemporaryModFixture("""
+            events:
+              - name: STR_GIFT
+                researchList: ["", STR_NULL]
+                regionList: [STR_NULL]
+                everyItemList: [STR_NONE, "", STR_MISSING_ITEM]
+                everyMultiSoldierList: {STR_MISSING_SOLDIER: 1}
+                spawnedPersonType: STR_SCIENTIST
+                spawnedPersons: 2
+              - name: STR_PERSON
+                spawnedPersonType: STR_NOBODY
+            """);
+
+        var snapshot = ContentSnapshotBuilder.Build(TestFixtures.CreatePlan(fixture.Root));
+
+        Assert.True(snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked), Diagnostics(snapshot));
+        var deferred = snapshot.Diagnostics.Where(static diagnostic => diagnostic.Code == ModDiagnosticCodes.DeferredRuleReference &&
+            diagnostic.Message.Contains("STR_", StringComparison.Ordinal)).Select(static diagnostic => diagnostic.Message).ToArray();
+        Assert.Single(deferred, message => message.Contains("STR_MISSING_ITEM", StringComparison.Ordinal));
+        Assert.Single(deferred, message => message.Contains("STR_MISSING_SOLDIER", StringComparison.Ordinal));
+        Assert.DoesNotContain(deferred, message => message.Contains("STR_NOBODY", StringComparison.Ordinal) ||
+            message.Contains("STR_SCIENTIST", StringComparison.Ordinal) || message.Contains("STR_NONE", StringComparison.Ordinal) ||
+            message.Contains("STR_NULL", StringComparison.Ordinal));
     }
 
     [Fact]

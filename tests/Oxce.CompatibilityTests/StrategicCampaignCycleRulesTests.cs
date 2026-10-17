@@ -78,6 +78,24 @@ public sealed class StrategicCampaignCycleRulesTests
     }
 
     [Fact]
+    public void MonthlyRatingsAndGameOverReadAsTheReferenceDoes()
+    {
+        // A repeated score keeps its first text (std::map emplace); a later null monthlyRatings clears the ratings;
+        // a gameOver split across layers keeps the earlier values it does not set, and a scalar gameOver reads nothing.
+        var duplicate = StrategicReadinessTestContent.Load(["strategic-world.rul"],
+            "monthlyRatings:\n  10: STR_FIRST\n  10: STR_SECOND\ngameOver:\n  loseDefeat: DEFEAT_VIDEO\n",
+            finalRules: "gameOver:\n  loseMoney: MONEY_VIDEO\n").RuntimeRules.Campaign.Monthly;
+        Assert.Equal([new CampaignMonthlyRating(10, "STR_FIRST")], duplicate.MonthlyRatings);
+        Assert.Equal(("MONEY_VIDEO", "loseGame", "DEFEAT_VIDEO"),
+            (duplicate.LoseMoneyCutscene, duplicate.LoseRatingCutscene, duplicate.LoseDefeatCutscene));
+
+        var cleared = StrategicReadinessTestContent.Load(["strategic-world.rul"], MonthlyRules,
+            finalRules: "monthlyRatings:\ngameOver: none\n").RuntimeRules.Campaign.Monthly;
+        Assert.Empty(cleared.MonthlyRatings);
+        Assert.Equal("MONEY_VIDEO", cleared.LoseMoneyCutscene);
+    }
+
+    [Fact]
     public void EventPayloadKeepsTheReferenceOrders()
     {
         var rules = StrategicReadinessTestContent.Load(["strategic-world.rul"], MonthlyRules + """
@@ -105,6 +123,9 @@ public sealed class StrategicCampaignCycleRulesTests
                 everyMultiSoldierList: {TEMPLATE_RECRUIT: 1, RECRUIT: 2}
                 randomMultiSoldierList: [{RECRUIT: 1}]
               - name: STR_PLAIN
+              # A BMP key above the surrogates sorts after a supplementary key in UTF-16 but before it in UTF-8.
+              - name: STR_BYTE_ORDER
+                everyMultiItemList: {"\U0001F600": 1, "～": 2, A: 3}
             """).RuntimeRules;
 
         var payload = rules.Events[rules.Events.GetRequired("STR_GIFT")].Value.Payload;
@@ -131,6 +152,9 @@ public sealed class StrategicCampaignCycleRulesTests
             plain.Funds, plain.Invert));
         Assert.Null(plain.SpawnedSoldierTemplate);
         Assert.Empty(plain.Research);
+
+        var bytes = rules.Events[rules.Events.GetRequired("STR_BYTE_ORDER")].Value.Payload;
+        Assert.Equal(["A", "～", "\U0001F600"], bytes.EveryMultiItems.Select(static pair => pair.Key));
     }
 
     [Fact]

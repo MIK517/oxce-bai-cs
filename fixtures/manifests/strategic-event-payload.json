@@ -15,9 +15,9 @@
   },
   "inputs": [
     {
-      "size": 28213,
+      "size": 29554,
       "path": "fixtures/reference-probes/savegames/strategic_event_payload_probe.cpp",
-      "sha256": "008757e487854669f143ff9b577c8dcb74ebce28e299e40cfec91e524f49d4cc"
+      "sha256": "06830e38ef55d99e41c66f93e0b3f69a79503e0e21e6b2caaaa57d5e3d584cba"
     },
     {
       "size": 3684,

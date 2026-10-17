@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <map>
 #include <set>
+#include <stdexcept>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -180,10 +181,21 @@ public:
     std::map<std::string, RuleCraft*> crafts; std::map<std::string, RuleVideo> videos; RuleInterface interface_;
     int hireByCountryOdds = 0, hireByRegionOdds = 0;
     mutable int soldierIds = 0;
-    RuleRegion* getRegion(const std::string& id, bool) const { auto i = regions.find(id); return i == regions.end() ? nullptr : i->second; }
-    RuleSoldier* getSoldier(const std::string& id, bool = false) const { auto i = soldiers.find(id); return i == soldiers.end() ? nullptr : i->second; }
-    RuleItem* getItem(const std::string& id, bool = false) const { auto i = items.find(id); return i == items.end() ? nullptr : i->second; }
-    RuleCraft* getCraft(const std::string& id, bool = false) const { auto i = crafts.find(id); return i == crafts.end() ? nullptr : i->second; }
+    // Mod::getRule: an empty name or STR_NULL names no rule; another unknown name throws when error is set.
+    static bool isEmptyRuleName(const std::string& s) { return s.empty() || s == "STR_NULL"; }
+    template<class T> static T* getRule(const std::string& id, const std::string& name, const std::map<std::string, T*>& map, bool error)
+    {
+        if (isEmptyRuleName(id)) return nullptr;
+        auto i = map.find(id);
+        if (i != map.end()) return i->second;
+        if (error) throw std::runtime_error(name + " " + id + " not found");
+        return nullptr;
+    }
+    RuleRegion* getRegion(const std::string& id, bool error) const { return getRule(id, "Region", regions, error); }
+    RuleSoldier* getSoldier(const std::string& id, bool error = false) const { return getRule(id, "Soldier", soldiers, error); }
+    // Mod::getItem: Armor::NONE (STR_NONE) names no item either.
+    RuleItem* getItem(const std::string& id, bool error = false) const { return id == "STR_NONE" ? nullptr : getRule(id, "Item", items, error); }
+    RuleCraft* getCraft(const std::string& id, bool error = false) const { return getRule(id, "Craft", crafts, error); }
     const RuleVideo* getVideo(const std::string& id, bool) const { return &videos.at(id); }
     RuleInterface* getInterface(const std::string&) { return &interface_; }
     int getHireByCountryOdds() const { return hireByCountryOdds; } int getHireByRegionOdds() const { return hireByRegionOdds; }
@@ -317,17 +329,24 @@ int main()
     }
     {
         auto e = event("STR_SOLDIER_LISTS"); e._regionList = {"STR_NORTH_AMERICA"}; e._city = true;
-        e._everyMultiSoldierList = {{"STR_SOLDIER", 1}, {"STR_HYBRID", 1}, {"STR_UNKNOWN", 2}};
+        e._everyMultiSoldierList = {{"STR_SOLDIER", 1}, {"STR_HYBRID", 1}, {"STR_NULL", 2}};
         e._randomMultiSoldierList = {{{"STR_SOLDIER", 1}}, {{"STR_HYBRID", 2}, {"STR_SOLDIER", 1}}};
         scenarios.push_back({"multi-soldier-lists-merge-by-rule-and-locate-nationality", e, true, false, false, 2, END_NONE, 50, 100, {}, {}, {},
             {0, 0, 1, 10, 99, 4, 30, 2, 0, 80, 5}});
     }
     {
-        auto e = event("STR_ITEMS"); e._everyMultiItemList = {{"STR_RIFLE", 2}, {"STR_UNKNOWN", 5}}; e._everyItemList = {"STR_RIFLE", "STR_GRENADE", "STR_RIFLE"};
+        auto e = event("STR_ITEMS"); e._everyMultiItemList = {{"STR_RIFLE", 2}, {"STR_NONE", 5}, {"", 1}}; e._everyItemList = {"STR_RIFLE", "STR_GRENADE", "STR_RIFLE"};
         e._randomItemList = {"STR_MEDI_KIT", "STR_RIFLE_CLIP"}; e._randomMultiItemList = {{{"STR_RIFLE_CLIP", 4}}, {{"STR_GRENADE", 3}, {"STR_RIFLE", 1}}};
         e._weightedItemList._choices = {{"STR_ELERIUM_115", 3}, {"STR_GRENADE", 1}}; e._weightedItemList._totalWeight = 4;
         scenarios.push_back({"items-instant-delivery", e, true, false, false, 2, END_NONE, 0, 0, {}, {}, {}, {1, 1, 2}});
         scenarios.push_back({"items-by-transfer", e, false, false, false, 2, END_NONE, 0, 0, {}, {}, {}, {0, 0, 3}});
+    }
+    {
+        // Mod::getItem(name, true) throws for an unknown item after the score and funds have changed; the
+        // reference game stops there. An unknown spawnedPersonType is looked up without an error: nobody spawns.
+        auto e = event("STR_BAD_ITEM"); e._points = 7; e._funds = 500; e._everyItemList = {"STR_RIFLE", "STR_BOGUS"};
+        e._spawnedPersons = 2; e._spawnedPersonType = "STR_NOBODY";
+        scenarios.push_back({"unknown-item-throws-after-score-and-funds", e, true, false, false, 2, END_NONE, 0, 0, {}, {}, {}, {}});
     }
     {
         auto e = event("STR_THEFT"); e._invert = true; e._everyMultiItemList = {{"STR_RIFLE", 7}, {"STR_ELERIUM_115", 50}, {"STR_GRENADE", 1}};
@@ -389,10 +408,11 @@ int main()
         Country usaCountry{&usa}, canadaCountry{&canada}; save.countries = {&usaCountry, &canadaCountry};
         Game game{&save, &mod};
         GeoscapeEventState state(&game, s.rule);
-        state.eventLogic();
+        std::string exception;
+        try { state.eventLogic(); } catch (const std::runtime_error& error) { exception = error.what(); }
         std::string logic = trace.str();
         trace.str(""); trace.clear();
-        state.btnOkClick(nullptr);
+        if (exception.empty()) state.btnOkClick(nullptr);
         std::string ok = trace.str();
         std::printf("%s{\"name\":\"%s\",\"instantDelivery\":%s,\"storageLimitsEnforced\":%s,\"hqOverfull\":%s,\"monthsPassed\":%d,"
             "\"endingBefore\":%d,\"hireByCountryOdds\":%d,\"hireByRegionOdds\":%d,\"rng\":[", first ? "" : ",", s.name,
@@ -428,8 +448,9 @@ int main()
             std::printf("%s[\"%s\",\"%s\"]", i ? "," : "", state._lstTransfers->rows[i].first.c_str(), state._lstTransfers->rows[i].second.c_str());
         std::printf("],\"diary\":[");
         for (size_t i = 0; i < save.diary.size(); ++i) std::printf("%s\"%s\"", i ? "," : "", save.diary[i].c_str());
-        std::printf("],\"researchName\":\"%s\",\"bonusResearchName\":\"%s\",\"ending\":%d,\"logic\":[%s],\"ok\":[%s],\"rngCalls\":[%s]}",
-            state._researchName.c_str(), state._bonusResearchName.c_str(), save.ending, logic.c_str(), ok.c_str(), RNG::calls.str().c_str());
+        std::printf("],\"researchName\":\"%s\",\"bonusResearchName\":\"%s\",\"ending\":%d,\"exception\":\"%s\",\"logic\":[%s],\"ok\":[%s],\"rngCalls\":[%s]}",
+            state._researchName.c_str(), state._bonusResearchName.c_str(), save.ending, exception.c_str(), logic.c_str(), ok.c_str(),
+            RNG::calls.str().c_str());
         first = false;
     }
 

@@ -77,15 +77,22 @@ public sealed class MissionEventRuleCatalog
         { foreach (var id in arc.Value.Sequential) DeferRequired(arc, "sequentialArcs", id, equipment.Research); foreach (var id in arc.Value.Random.Keys) DeferRequired(arc, "randomArcs", id, equipment.Research); ValidateTriggers(arc); }
         foreach (var rule in Events.Rules)
         {
-            foreach (var id in rule.Value.Regions) DeferRequired(rule, "regionList", id, campaign.Regions);
-            foreach (var id in rule.Value.EveryMultiItems.Keys.Concat(rule.Value.EveryItems).Concat(rule.Value.RandomItems).Concat(rule.Value.WeightedItems.Keys)) DeferRequired(rule, "items", id, items.Items);
-            foreach (var map in rule.Value.RandomMultiItems) foreach (var id in map.Keys) DeferRequired(rule, "randomMultiItemList", id, items.Items);
-            foreach (var id in rule.Value.Research) Require(rule, "researchList", id, equipment.Research);
+            // RuleEvent::afterLoad links researchList and fails the load on an unknown topic. The payload looks up
+            // regions, items, crafts and soldiers with errors only when it runs (Mod::getRule throws then), so those
+            // are deferred. Mod::isEmptyRuleName ("" or STR_NULL), and STR_NONE for items, names no rule.
+            // spawnedPersonType is looked up without an error: an unknown type spawns nobody.
+            foreach (var id in rule.Value.Regions) if (!IsEmptyRuleName(id)) DeferRequired(rule, "regionList", id, campaign.Regions);
+            foreach (var id in rule.Value.EveryMultiItems.Keys) DeferItem(rule, "everyMultiItemList", id);
+            foreach (var id in rule.Value.EveryItems) DeferItem(rule, "everyItemList", id);
+            foreach (var id in rule.Value.RandomItems) DeferItem(rule, "randomItemList", id);
+            foreach (var map in rule.Value.RandomMultiItems) foreach (var id in map.Keys) DeferItem(rule, "randomMultiItemList", id);
+            foreach (var id in rule.Value.WeightedItems.Keys) DeferItem(rule, "weightedItemList", id);
+            foreach (var id in rule.Value.Research) if (!IsEmptyRuleName(id)) Require(rule, "researchList", id, equipment.Research);
             DeferOptional(rule, "interruptResearch", rule.Value.Strings["interruptResearch"], equipment.Research);
-            DeferOptional(rule, "spawnedCraftType", rule.Value.Strings["spawnedCraftType"], equipment.Crafts);
-            DeferOptional(rule, "spawnedPersonType", rule.Value.Strings["spawnedPersonType"], personnel.Soldiers);
-            foreach (var id in rule.Value.EveryMultiSoldiers.Keys) DeferRequired(rule, "everyMultiSoldierList", id, personnel.Soldiers);
-            foreach (var map in rule.Value.RandomMultiSoldiers) foreach (var id in map.Keys) DeferRequired(rule, "randomMultiSoldierList", id, personnel.Soldiers);
+            if (!IsEmptyRuleName(rule.Value.Strings["spawnedCraftType"]))
+                DeferRequired(rule, "spawnedCraftType", rule.Value.Strings["spawnedCraftType"], equipment.Crafts);
+            foreach (var id in rule.Value.EveryMultiSoldiers.Keys) if (!IsEmptyRuleName(id)) DeferRequired(rule, "everyMultiSoldierList", id, personnel.Soldiers);
+            foreach (var map in rule.Value.RandomMultiSoldiers) foreach (var id in map.Keys) if (!IsEmptyRuleName(id)) DeferRequired(rule, "randomMultiSoldierList", id, personnel.Soldiers);
         }
         foreach (var article in Ufopaedia)
         {
@@ -110,6 +117,9 @@ public sealed class MissionEventRuleCatalog
         { foreach (var script in scripts) { foreach (var entry in script.Value.MissionWeights) foreach (var id in entry.Weights.Keys) DeferRequired(script, "missionWeights", id, AlienMissions); foreach (var entry in script.Value.RaceWeights) foreach (var id in entry.Weights.Keys) DeferRequired(script, "raceWeights", id, terrain.AlienRaces); foreach (var entry in script.Value.RegionWeights) foreach (var id in entry.Weights.Keys) DeferRequired(script, "regionWeights", id, campaign.Regions); if (validateEvents) { foreach (var id in script.Value.Sequential) DeferRequired(script, "oneTimeSequentialEvents", id, Events); foreach (var id in script.Value.Random.Keys) DeferRequired(script, "oneTimeRandomEvents", id, Events); foreach (var entry in script.Value.EventWeights) foreach (var id in entry.Weights.Keys) DeferRequired(script, "eventWeights", id, Events); } ValidateTriggers(script); } }
         void ValidateTriggers(TypedRule<StrategicScriptRule> script)
         { foreach (var pair in script.Value.Triggers) foreach (var id in pair.Value.Keys) { if (pair.Key == "researchTriggers") DeferRequired(script, pair.Key, id, equipment.Research); else if (pair.Key == "itemTriggers") DeferRequired(script, pair.Key, id, items.Items); else if (pair.Key == "facilityTriggers") DeferRequired(script, pair.Key, id, campaign.Facilities); else if (pair.Key == "soldierTypeTriggers") DeferRequired(script, pair.Key, id, personnel.Soldiers); else if (pair.Key == "xcomBaseInRegionTriggers") DeferRequired(script, pair.Key, id, campaign.Regions); else if (pair.Key is "xcomBaseInCountryTriggers" or "pactCountryTriggers") DeferRequired(script, pair.Key, id, campaign.Countries); } }
+        void DeferItem<T>(TypedRule<T> owner, string property, string id) where T : notnull
+        { if (!IsEmptyRuleName(id) && id != "STR_NONE") DeferRequired(owner, property, id, items.Items); }
+        static bool IsEmptyRuleName(string id) => id.Length == 0 || id == "STR_NULL";
         void DeferArticle<TRule>(KeyValuePair<string, UfopaediaArticleRule> article, TypedRuleSection<TRule> section) where TRule : notnull
         { if (!section.TryGet(article.Key, out _)) DeferSpecial(article.Value, article.Key, "id", article.Key, section); }
         void DeferSpecial<TRule>(UfopaediaArticleRule owner, string ownerId, string property, string id, TypedRuleSection<TRule> section) where TRule : notnull
