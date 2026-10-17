@@ -109,6 +109,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         ArgumentNullException.ThrowIfNull(command);
         lock (_transactionGate)
         {
+            if (_faulted is { } faulted) return new CampaignCommandResult([new CampaignActionBlocked(faulted)]);
             var restriction = _restrictions.FirstOrDefault(r => r.BaseId is null && r.BlocksLogistics && r.BlocksTime);
             if (restriction is not null) return new CampaignCommandResult([new CampaignActionBlocked(restriction.Feature)]);
             if (Ending != 0) return new CampaignCommandResult([new CampaignActionBlocked("This campaign has ended.")]);
@@ -390,6 +391,103 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             campaign._handlers.Apply(trigger, this, campaign._timeProfile);
             return Events is not null;
         }
+
+        public int StagePoints(CampaignTime nextTime, CampaignTimeTrigger highestTrigger) =>
+            campaign._handlers.StagePoints(nextTime, highestTrigger) |
+            (StageEveryTick && highestTrigger > CampaignTimeTrigger.FiveSeconds ? 1 << (int)highestTrigger : 0);
+
+        /// <summary>Verification only: the shadow's snapshots at each stage point, compared by <see cref="Restage"/>.</summary>
+        private Queue<string>? _stagedSnapshots;
+
+        // ADR 0035: the shadow runs the tick down to each stage point and preflights the rest there. It shares the
+        // random source, whose state is put back afterwards, so the real tick draws the same values.
+        public string? PreflightStages(CampaignTime nextTime, CampaignTimeTrigger highestTrigger, int stagePoints)
+        {
+            var randomState = campaign._random.State;
+            try
+            {
+                var shadow = campaign.CreateShadow();
+                StagedTicksOnThisThread++;
+                if (VerifyStagedSnapshots)
+                {
+                    StagingVerification.AssertSame(StagingVerification.Canonical(campaign.Capture(), campaign._content), shadow.Capture(),
+                        campaign._content, "a new shadow copy");
+                    _stagedSnapshots = new();
+                }
+                var effects = new TimeEffects(shadow, SelectedSpeed);
+                // Execution reads the pass its own preflight builds, so the shadow needs the same first preflight.
+                if (effects.Preflight(nextTime, highestTrigger) is { } first)
+                    throw new InvalidOperationException($"A shadow campaign disagreed with its original's preflight: {first}");
+                for (var trigger = (int)highestTrigger; trigger > 0; trigger--)
+                {
+                    effects.Apply(nextTime, (CampaignTimeTrigger)trigger);
+                    if ((stagePoints & (1 << trigger)) == 0) continue;
+                    _stagedSnapshots?.Enqueue(StagingVerification.Canonical(shadow.Capture(), campaign._content));
+                    if (effects.Preflight(nextTime, (CampaignTimeTrigger)(trigger - 1)) is { } reason) return reason;
+                    if ((stagePoints & ((1 << trigger) - 1)) == 0) break;
+                }
+                return null;
+            }
+            finally
+            {
+                campaign._random.Restore(randomState);
+            }
+        }
+
+        public void Restage(CampaignTime current, CampaignTimeTrigger remainingHighestTrigger)
+        {
+            if (_stagedSnapshots is { Count: > 0 } snapshots)
+                StagingVerification.AssertSame(snapshots.Dequeue(), campaign.Capture(), campaign._content, "its shadow copy at a stage point");
+            if (Preflight(current, remainingHighestTrigger) is { } reason)
+            {
+                // The higher levels already ran, so the campaign is mid-tick: refuse every later command.
+                campaign._faulted = $"A staged time preflight disagreed with its shadow copy: {reason}";
+                throw new InvalidOperationException(campaign._faulted);
+            }
+        }
+    }
+
+    private static readonly AsyncLocal<bool?> StageEveryTickOnThisFlow = new();
+
+    /// <summary>
+    /// Test-only (ADR 0035): stage every tick after its highest level, so verification runs exercise the shadow
+    /// copy everywhere. It never changes a result; a difference is a defect in the copy or in a forecast. Setting it
+    /// applies to the current async flow, ahead of <see cref="StageEveryTickEverywhere"/>, so a test that measures
+    /// unstaged cost can turn it off.
+    /// </summary>
+    internal static bool StageEveryTick
+    {
+        get => StageEveryTickOnThisFlow.Value ?? StageEveryTickEverywhere;
+        set => StageEveryTickOnThisFlow.Value = value;
+    }
+
+    /// <summary>Test-only: <see cref="StageEveryTick"/> for every campaign in the process (verification runs).</summary>
+    internal static bool StageEveryTickEverywhere { get; set; }
+
+    /// <summary>Test-only: staged ticks on this thread, which shows that a test actually staged.</summary>
+    [ThreadStatic] internal static long StagedTicksOnThisThread;
+
+    /// <summary>
+    /// Test-only: compare the shadow's snapshot with the original when it is created and at every stage point. The
+    /// test assemblies enable it for every test; it never changes a result.
+    /// </summary>
+    internal static bool VerifyStagedSnapshots { get; set; }
+
+    /// <summary>Set when a staged recheck disagreed after the tick's higher levels ran; every later command refuses.</summary>
+    private string? _faulted;
+
+    /// <summary>A copy for staged preflights: the save-neutral state, this random source and transient state.</summary>
+    internal CampaignState CreateShadow()
+    {
+        var previous = TestCapabilities.Value;
+        TestCapabilities.Value = _testCapabilities;
+        try
+        {
+            var shadow = Restore(Capture(), _content, _random);
+            _handlers.CopyTransientTo(shadow._handlers);
+            return shadow;
+        }
+        finally { TestCapabilities.Value = previous; }
     }
 
     private void RegisterCalendar(CampaignCapabilityRegistry registry)

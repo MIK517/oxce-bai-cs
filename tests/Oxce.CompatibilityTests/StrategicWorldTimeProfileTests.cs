@@ -11,6 +11,8 @@ public sealed class StrategicWorldTimeProfileTests
     [Fact]
     public void AProfileTimesEveryPhaseWithoutChangingTheCampaign()
     {
+        // Counts the calls of unstaged ticks, also in a staging verification run (ADR 0035).
+        CampaignState.StageEveryTick = false;
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var snapshot = CreateSnapshot(content, "Profile").WithCraft("SHIP", craft => craft with
         {

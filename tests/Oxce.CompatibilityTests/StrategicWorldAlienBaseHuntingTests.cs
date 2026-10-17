@@ -15,6 +15,8 @@ public sealed class StrategicWorldAlienBaseHuntingTests
     [Fact]
     public void HuntingTimersAndSafeChoicesMatchExtractedReference()
     {
+        // Records every random draw, also in a staging verification run (ADR 0035).
+        CampaignState.StageEveryTick = false;
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-hunt-timer");
         var content = Load();
         Assert.False(content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("SHIP")].Value.Undetectable);
@@ -161,6 +163,8 @@ public sealed class StrategicWorldAlienBaseHuntingTests
     [Fact]
     public void DelayedHuntingCreationMatchesReferenceAndPersists()
     {
+        // Records every random draw, also in a staging verification run (ADR 0035).
+        CampaignState.StageEveryTick = false;
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-hunt-generation");
         var content = Load();
         var rows = new List<object[]>();
@@ -219,6 +223,8 @@ public sealed class StrategicWorldAlienBaseHuntingTests
     [Fact]
     public void ImmediateNoObjectHuntingPreservesOneThinkAndDefersCleanupUntilHalfHour()
     {
+        // Records every random draw, also in a staging verification run (ADR 0035).
+        CampaignState.StageEveryTick = false;
         var content = Load();
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-hunt-generation");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "immediateRows"))

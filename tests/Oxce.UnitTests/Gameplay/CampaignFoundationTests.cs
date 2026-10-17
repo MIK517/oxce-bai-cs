@@ -130,6 +130,8 @@ public sealed class CampaignFoundationTests
     [Fact]
     public void TimeAdvanceRetainsConstantSizeSummaryAndReplaysOrderedTriggers()
     {
+        // Measures unstaged ticks, also in a staging verification run (ADR 0035).
+        CampaignState.StageEveryTick = false;
         var content = LoadFixture();
         var populated = CampaignFactory.Create(
             content, Request(), new SplitMix64RandomSource(7), new FixedClock());
@@ -158,6 +160,8 @@ public sealed class CampaignFoundationTests
     [Fact]
     public void PopulatedReadinessAdvanceHasABoundedPerDayAllocationBudget()
     {
+        // Measures unstaged ticks, also in a staging verification run (ADR 0035).
+        CampaignState.StageEveryTick = false;
         var campaign = CampaignFactory.Create(
             LoadFixture(), Request(), new SplitMix64RandomSource(7), new FixedClock());
         campaign.Execute(new AdvanceCampaignTime(1));

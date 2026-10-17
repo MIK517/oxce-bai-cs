@@ -706,3 +706,19 @@ unchanged by interceptions.
 ```powershell
 dotnet run -c Release --project benchmarks/Oxce.Benchmarks -- --filter "*InterceptionStep*" --job short
 ```
+
+### Staged ticks on a shadow copy (branch 6 S2, 2026-10-17)
+
+`StagedTickBenchmarks` times one midnight tick of a world with 8 or 128 flying UFOs, run directly and staged
+after its day level on a shadow copy ([ADR 0035](decisions/0035-staged-ticks-on-a-shadow-copy.md)). Windows
+workstation, BenchmarkDotNet short job, one invocation per iteration so that every measurement is a fresh
+midnight tick (which makes each one a cold, single tick):
+
+| Flying UFOs | Direct | Staged | Direct allocation | Staged allocation |
+|---:|---:|---:|---:|---:|
+| 8 | 470 us | 1,666 us | 9 KB | 101 KB |
+| 128 | 1,693 us | 3,432 us | 77 KB | 238 KB |
+
+A stage point adds about 1.2 ms with 8 UFOs and 1.7 ms with 128 (about 92 KB and 161 KB): one capture, one
+restore and the shadow's preflights and day handlers. Month ticks pay it once a month and event-payload ticks once per due event, so the
+one-day-speed target is unaffected. Ordinary ticks have no stage point and are unchanged.
