@@ -7,8 +7,9 @@ Status (scope revised 2026-09-26): branches 1–3 have bounded acceptance docume
 [research and production status](strategic-research-production-status.md).
 Branch 4a supplies the bounded world foundation; branch 4b satisfies its revised
 ordinary-lifecycle closure gate and merged in `e10d96f` (PR #72).
-Branches 4c (PR #73) and 4d (PR #74) merged; branch 5 is in progress
-([branch 5 plan](phase-6-interception-plan.md)) and branch 6 remains planned.
+Branches 4c (PR #73), 4d (PR #74) and 5 (PR #75,
+[branch 5 plan](phase-6-interception-plan.md)) merged; branch 6 is in progress
+([branch 6 plan](phase-6-campaign-cycle-plan.md)).
 This is not a Phase 6 completion claim.
 
 ## Goal and scope
@@ -59,7 +60,7 @@ Every branch carries its own integration and closure work.
 | 4c | `codex/strategic-world-integration` | Complete headless mission/arc/event scheduling, broader world lifecycles, pursuit and scripts | Scope by vertical slices |
 | 4d | `claude/strategic-world-ui` | Globe controls and combined branch 4 acceptance | Scope by vertical slices |
 | 5 | `claude/strategic-interception-deployment` | Resolve interceptions and commit/reload a validated deployment handoff | Scope by vertical slices |
-| 6 | `codex/strategic-campaign-cycle` | Complete monthly evaluation, campaign events/endings, and integrated strategic closure | 6 |
+| 6 | `claude/strategic-campaign-cycle` | Complete monthly evaluation, campaign events/endings, and integrated strategic closure | 6 |
 
 Commit counts are review units, not quotas. Combine adjacent small commits, or split a
 large one locally without adding PRs. Keep commits buildable; pair each behavior with
@@ -477,6 +478,12 @@ existing mission/training monthly hooks in reference order; it must not reapply 
 `MonthlyReportState.cpp`, `GeoscapeEventState.cpp`, `FundingState.cpp`;
 `Savegame/SavedGame.cpp`, `Country.cpp`, `Region.cpp`, `AlienStrategy.cpp`,
 `GeoscapeEvent.cpp`; corresponding event/arc/mission rules and strategic ending callers.
+
+**Delivery:** the approved [branch 6 plan](phase-6-campaign-cycle-plan.md) delivers this branch as
+slices S0–S9, records its decisions (staged ticks on a shadow copy,
+[ADR 0035](decisions/0035-staged-ticks-on-a-shadow-copy.md); modal acknowledgements; monthly
+commendations; endings; refusal classification at closure) and maps the commit purposes below to
+those slices.
 
 **Commit purposes:**
 
