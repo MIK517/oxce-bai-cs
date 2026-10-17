@@ -44,10 +44,15 @@ internal static class CampaignTimeOrder
     public const int TenMinutesWorldAlienBaseHunting = 300;
     public const int TenMinutesWorldUfoRetarget = 400;
 
-    // time1Month: SavedGame::addMonth runs first.
+    // time1Month: SavedGame::addMonth (months, purchase log), determineAlienMissions, psi training, funding,
+    // the monthly report, then the monthly alien-base detection.
     public const int MonthCalendar = 100;
+    public const int MonthPurchaseLimits = 102;
     public const int MonthWorldScheduling = 105;
-    public const int MonthPurchaseLimits = 110;
+    public const int MonthPsiTraining = 110;
+    public const int MonthFunding = 120;
+    public const int MonthReport = 130;
+    public const int MonthWorldAlienBaseDetection = 140;
 
     // time1Day: GeoscapeState::time1Day base loop (construction, research, soldier recovery and training).
     public const int DayCalendar = 100;
@@ -81,7 +86,7 @@ internal static class CampaignPreflightOrder
     public const int DestroyedCrafts = 125;
     public const int WorldSimulation = 150;
     public const int CraftMovement = 200;
-    public const int MonthBoundary = 300;
+    public const int MonthlyReport = 124;
     public const int MonthlyWorldScheduling = 350;
     public const int Servicing = 400;
     public const int ResearchProduction = 500;

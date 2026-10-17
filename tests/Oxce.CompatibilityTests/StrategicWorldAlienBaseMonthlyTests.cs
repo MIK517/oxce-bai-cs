@@ -288,16 +288,17 @@ public sealed class StrategicWorldAlienBaseMonthlyTests
     }
 
     [Fact]
-    public void MonthlyOperationDoesNotRemoveCampaignMonthGuard()
+    public void TheCampaignMonthRunsTheMonthlyOperation()
     {
+        // Branch 6 S3: the month tick runs determineAlienMissions, whose last phase is this operation.
         var content = Load();
         var snapshot = Snapshot(content, "MONTHLY_noWeights") with { Time = new(1, 31, 1, 1999, 23, 59, 55) };
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(40));
-        var before = campaign.Capture();
         var result = campaign.Execute(new AdvanceCampaignTime(1));
-        Assert.Equal(0, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
-        Assert.Contains(result.Events, value => value is CampaignActionBlocked);
-        Assert.Equivalent(before, campaign.Capture(), strict: true);
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.Single(result.Events.OfType<MonthlyReportReady>());
+        Assert.Equal(snapshot.MonthsPassed + 1, campaign.MonthsPassed);
+        Reload(content, campaign, 40, "monthly-operation-in-month.sav");
     }
 
     private static void AssertBlocked(RuntimeContent content, CampaignSnapshot snapshot, string reason)

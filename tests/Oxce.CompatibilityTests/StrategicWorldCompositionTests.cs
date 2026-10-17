@@ -109,7 +109,7 @@ public sealed class StrategicWorldCompositionTests
     }
 
     [Fact]
-    public void IntegratedMonthBoundaryRemainsBlockedBeforeTheAffectedTick()
+    public void IntegratedMonthBoundaryRunsTheMonthAndOpensTheReport()
     {
         var content = StrategicReadinessTestContent.Load(
             ["strategic-world.rul", "strategic-world-composition.rul"],
@@ -117,7 +117,12 @@ public sealed class StrategicWorldCompositionTests
         var snapshot = CreateSnapshot(content, "Guarded month composition") with
         { Time = new CampaignTime(1, 31, 1, 1999, 23, 59, 55), RandomState = 17 };
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
-        AssertTimeBlocked(campaign, "Monthly campaign simulation is not implemented yet; time stopped before the month boundary.");
+        // Branch 6 S3: the month tick runs, staged on a shadow copy, and its report then holds the clock.
+        var result = campaign.Execute(new AdvanceCampaignTime(2));
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.Single(result.Events.OfType<MonthlyReportReady>());
+        Assert.Equal(1, campaign.Capture().MonthsPassed);
+        AssertTimeBlocked(campaign, CampaignState.MonthlyReportOpen);
     }
 
     [Fact]
@@ -232,7 +237,7 @@ public sealed class StrategicWorldCompositionTests
     }
 
     [Fact]
-    public void IsolatedMonthlyHandlerAdvancesMonthThenSchedulesBeforePurchaseReset()
+    public void IsolatedMonthlyHandlerAdvancesMonthAndResetsPurchasesBeforeScheduling()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-composition");
         var row = TestFixtures.Rows(oracle.RootElement, "rows")
@@ -242,10 +247,10 @@ public sealed class StrategicWorldCompositionTests
         var snapshot = CreateSnapshot(content, "Isolated monthly caller") with
         { RandomState = 17, MonthlyPurchaseLog = new Dictionary<string, int> { ["SUPPLY"] = 3 }, ResearchScores = [0] };
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
-        Assert.Equal(["months passed", "monthly world scheduling", "purchase limits"],
-            campaign.Handlers.HandlerNames(CampaignTimeTrigger.OneMonth));
-        // Acceptance seam applies the registered subsystem handler, not campaign time.
-        // The ordinary dispatcher still stops before this month tick.
+        // SavedGame::addMonth clears the purchase log before determineAlienMissions.
+        Assert.Equal(["months passed", "purchase limits", "monthly world scheduling", "monthly psi training", "monthly funding",
+            "monthly report", "monthly alien base detection"], campaign.Handlers.HandlerNames(CampaignTimeTrigger.OneMonth));
+        // Applies the month handlers alone, without the rest of the tick.
         var effects = new CampaignState.TimeEffects(campaign);
         campaign.Handlers.Apply(CampaignTimeTrigger.OneMonth, effects);
         var after = campaign.Capture();
@@ -254,7 +259,8 @@ public sealed class StrategicWorldCompositionTests
         Assert.Equal(row.GetProperty("runs").GetInt32(), after.World.Strategy.MissionRuns.Single(pair => pair.Key == "RUN").Value);
         Assert.Single(after.World.Events);
         Assert.Empty(after.MonthlyPurchaseLog);
-        Assert.Equal(["R2", "R3"], effects.Events!.Cast<CampaignArcUnlocked>().Select(entry => entry.ArticleId));
+        Assert.Equal(["R2", "R3"], effects.Events!.OfType<CampaignArcUnlocked>().Select(entry => entry.ArticleId));
+        Assert.Single(effects.Events!.OfType<MonthlyReportReady>());
         Assert.Equal(snapshot.Time, after.Time);
         Reload(content, campaign, 17, "isolated-monthly-handler.sav");
     }

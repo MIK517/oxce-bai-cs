@@ -200,3 +200,68 @@ interception objects are only read by levels a shadow runs. Fixes:
   skipped (private corpus included), and again with `OXCE_VERIFY_STAGING=1`, all 3,581 green.
 - Not changed: tests that record every random draw keep turning staging off. A forked random source would remove that,
   but scripted test sources cannot be forked faithfully, and sharing with an exact restore is equivalent.
+
+## S3 — The month in reference order (2026-10-17)
+
+### Part 1: the month rollover
+
+The month boundary no longer refuses. `GeoscapeState::time1Month` runs in order: `addMonth` (months passed, then
+the purchase log; the reset now precedes scheduling as in `SavedGame::addMonth`), `determineAlienMissions` (the
+existing world scheduling), monthly psi training (`SoldierReadiness.TrainPsiMonthly`, skipped with
+`anytimePsiTraining`; stat strings are presentation), `monthlyFunding`, the monthly report and the monthly alien-base
+roll. The month tick is a stage point ([ADR 0035](decisions/0035-staged-ticks-on-a-shadow-copy.md)), so the rest of
+the tick is preflighted on a shadow copy that has run the month; a month handler that finds input it cannot use
+(malformed histories, overflow, a country script the port cannot run) refuses the tick there before anything changes.
+
+- `MonthlyCycle` (gameplay) ports `monthlyFunding`, `calculateChanges`, `Region::newMonth`, `Country::newMonth`,
+  `Mod::getRandomMission` and the report constructor's rating, performance bonus, debt warning and game over;
+  `StrategicMonthlyReportOracleTests` replays all 17 `strategic-monthly-report` scenarios exactly, every random call
+  included.
+- The report (`CampaignMonthlyReport`, `MonthlyReportReady`) is a modal hold ([ADR 0036](decisions/0036-campaign-cycle-intentional-differences.md)):
+  it holds the clock from the next tick (the opening tick's later levels still run, as a popup pauses after the
+  tick), refuses every command but `AcknowledgeMonthlyReport`, is copied to shadows and dropped by a reload. A
+  game-over report's acknowledgement plays the lose cutscene, which ends the campaign when its video is `loseGame`.
+- `newMonthCountry` runs at its call site with the global event scripts around the country's own script, through
+  the price-script bindings with a live (non-forecast) context: Country, RuleCountry, GeoscapeGame, RuleMod and tag
+  reads. A binding the port does not support refuses the month.
+- Signed and cancelled pacts schedule the countries' `signedPactEvent` and `rejoinedXcomEvent`.
+- The monthly alien-base roll draws only while an alien base exists and discovers the first undiscovered one, after
+  the report.
+- Country draws over negative ranges, a missing country and an undefined lose cutscene are recorded in ADR 0036.
+
+Tests: `StrategicMonthlyReportOracleTests`, `StrategicMonthlyCycleTests` (reference order, the modal hold, monthly psi
+with and without `anytimePsiTraining`, a country script's funding change and pact event, an unsupported country
+binding refusing before anything changes, a two-bad-months game over ending the campaign, the monthly alien-base
+roll). Tests that pinned the old month refusal now run the month: `StrategicWorldCompositionTests`,
+`StrategicEventScriptTests`, `StrategicWorldArrivalResearchEnduranceTests`, and the allocation budgets in
+`CampaignFoundationTests` now stop before the month tick.
+
+Corpus (`PrivateStrategicWorldTests`, one-day speed): every vanilla UFO and TFTD save now runs its month and stops on
+the open report. Acknowledging every report, six of the seven run to the 40-day limit and TFTD `Middle.sav`
+(Superhuman, `defeatScore` -900, rated -982 and -974) loses the campaign at its second report, as the reference
+would. Rosigma's saves stopped at the month boundary until part 2.
+
+### Part 2: missions without waves and real-globe work bounds
+
+- A mission rule without waves is valid for mission scripts. Rosigma's `STR_ORK_BASE_START` (and its other
+  base-starting missions) has none: `AlienMission::start` places or picks the operation base, `think` has nothing to
+  spawn, and the mission ends on its next pass. With a script delay the port follows the reference exactly; without
+  one the reference reads past the wave list, and the port takes a zero timer (ADR 0036).
+- The forecast work bounds were calibrated on fixture globes. On Rosigma's 3,253-point globe one base objective is
+  charged about 650,000 alien-base checks, its monthly scripts about 1,180,000 checks for site and base targeting and
+  over 10,000,000 for the possible operation-base searches, and one month tick of `Early.sav` about 183,000,000 land
+  work (each newborn replacement about 5,560,000). The production bounds are now 100,000,000 alien-base checks,
+  100,000,000 mission-script checks and 1,000,000,000 land work. They limit what the forecasts admit as a worst case
+  (every land selection retried 100 times), not the work a tick does.
+- The fixture tests keep the calibrated bounds (1,000,000 and 10,000,000 for land) through a test-only seam,
+  `CampaignWorld.FixtureWorkBoundsEverywhere`, set by the test assemblies; tests that load real mods set
+  `CampaignWorld.ProductionWorkBounds` on their flow. The bound tests therefore still reach their refusals with
+  small workloads.
+
+Tests: `StrategicMonthlyCycleTests` gains a zero-wave mission started by a script: it picks the region's existing
+base, survives a reload and ends on its next pass.
+
+Corpus after part 2: unanswered, Rosigma `Middle.sav` and `_autogeo_.asav` stop on their open report (429682,
+429699), `Early.sav` on its landing (6290) and `Begining.sav` on an event with consequences (580, S5). Answering every
+window, Rosigma `Middle.sav` and `_autogeo_.asav` run to the 40-day limit and `Early.sav` runs through its month to an
+event with consequences (436348, S5). The records are written to `artifacts/private-horizon-stops*.json` on every run.

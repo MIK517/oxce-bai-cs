@@ -197,3 +197,9 @@ Time still stops at the month boundary and before due event payloads.
 
 Stage points, shadow copies and the real recheck are in place with tests and a verification run that stages every
 tick ([status S2](strategic-campaign-cycle-status.md#s2--staged-ticks-2026-10-17)); no production stage point yet.
+
+### S3 — The month in reference order (2026-10-17)
+
+The month rollover runs, staged, with its report as a modal hold and the country script at its call site; missions
+without waves run and the forecast work bounds fit real globes
+([status S3](strategic-campaign-cycle-status.md#s3--the-month-in-reference-order-2026-10-17)).

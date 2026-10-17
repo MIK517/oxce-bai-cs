@@ -737,7 +737,10 @@ internal sealed partial class CampaignWorld
 
     private readonly record struct SpawnArea(WorldPosition Center, double Radius);
 
-    private const long MaximumSpawnLandWork = 10_000_000;
+    // A bound on the worst case the land forecasts admit (100 tries scanning every polygon per selection). Real
+    // globes need far more than the fixture globes did: on Rosigma's 3,253-point globe each newborn replacement is
+    // charged about 5,560,000 and one month tick of Early.sav about 183,000,000 (branch 6 S3).
+    private static long MaximumSpawnLandWork => FixtureWorkBounds ? 10_000_000 : 1_000_000_000;
 
     private long SpawnOriginLandWork(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
         RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region)

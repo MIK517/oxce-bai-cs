@@ -420,7 +420,10 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
                     throw new InvalidOperationException($"A shadow campaign disagreed with its original's preflight: {first}");
                 for (var trigger = (int)highestTrigger; trigger > 0; trigger--)
                 {
-                    effects.Apply(nextTime, (CampaignTimeTrigger)trigger);
+                    // A handler that finds input it cannot use (malformed histories, arithmetic the reference leaves
+                    // undefined, a script it cannot run) refuses the tick here, before the real campaign changes.
+                    try { effects.Apply(nextTime, (CampaignTimeTrigger)trigger); }
+                    catch (Exception error) when (error is InvalidDataException or OverflowException) { return error.Message; }
                     if ((stagePoints & (1 << trigger)) == 0) continue;
                     _stagedSnapshots?.Enqueue(StagingVerification.Canonical(shadow.Capture(), campaign._content));
                     if (effects.Preflight(nextTime, (CampaignTimeTrigger)(trigger - 1)) is { } reason) return reason;
@@ -501,10 +504,6 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
                 if (restriction.BlocksTime) return restriction.Feature;
             return null;
         });
-        registry.Preflight(CampaignPreflightOrder.MonthBoundary, "month boundary", static (_, highest) =>
-            highest >= CampaignTimeTrigger.OneMonth
-                ? "Monthly campaign simulation is not implemented yet; time stopped before the month boundary."
-                : null);
         registry.Timed(CampaignTimeTrigger.OneMonth, CampaignTimeOrder.MonthCalendar, "months passed",
             _ => MonthsPassed++);
         registry.Timed(CampaignTimeTrigger.OneDay, CampaignTimeOrder.DayCalendar, "days passed",
@@ -867,7 +866,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         public List<int> Funding { get; } = funding;
         public List<int> ActivityXcom { get; } = activityXcom;
         public List<int> ActivityAlien { get; } = activityAlien;
-        public bool Pact { get; } = pact;
+        public bool Pact { get; set; } = pact;
         public bool NewPact { get; set; } = newPact;
         public bool CancelPact { get; set; } = cancelPact;
         public ScriptValueState? ScriptValues { get; } = scriptValues;
