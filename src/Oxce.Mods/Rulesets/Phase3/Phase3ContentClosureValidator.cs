@@ -85,6 +85,22 @@ internal static class Phase3ContentClosureValidator
 
         foreach (var soldier in content.Personnel.Soldiers.Rules)
             DeferEach(soldier, "requires", soldier.Value.Requirements, content.Equipment.Research);
+        foreach (var gameEvent in content.Missions.Events.Rules)
+        {
+            // RuleEvent::afterLoad links researchList; the payload looks the other names up with errors when it runs.
+            Each(gameEvent, "researchList", gameEvent.Value.Research, content.Equipment.Research);
+            DeferEach(gameEvent, "regionList", gameEvent.Value.Regions, content.Campaign.Regions);
+            DeferEach(gameEvent, "everyMultiItemList", gameEvent.Value.EveryMultiItems.Keys, content.Items.Items);
+            DeferEach(gameEvent, "everyItemList", gameEvent.Value.EveryItems, content.Items.Items);
+            DeferEach(gameEvent, "randomItemList", gameEvent.Value.RandomItems, content.Items.Items);
+            foreach (var items in gameEvent.Value.RandomMultiItems)
+                DeferEach(gameEvent, "randomMultiItemList", items.Keys, content.Items.Items);
+            DeferEach(gameEvent, "weightedItemList", gameEvent.Value.WeightedItems.Keys, content.Items.Items);
+            DeferOptional(gameEvent, "spawnedCraftType", gameEvent.Value.Strings["spawnedCraftType"], content.Equipment.Crafts);
+            DeferEach(gameEvent, "everyMultiSoldierList", gameEvent.Value.EveryMultiSoldiers.Keys, content.Personnel.Soldiers);
+            foreach (var soldiers in gameEvent.Value.RandomMultiSoldiers)
+                DeferEach(gameEvent, "randomMultiSoldierList", soldiers.Keys, content.Personnel.Soldiers);
+        }
         foreach (var transformation in content.Personnel.Transformations.Rules)
             DeferEach(transformation, "events", transformation.Value.Events.Keys, content.Missions.Events);
 

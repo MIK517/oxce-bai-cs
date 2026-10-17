@@ -32,6 +32,9 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     private Dictionary<string, int> _manufactureRuleStatus = new(StringComparer.Ordinal);
     private Dictionary<string, int> _monthlyPurchaseLog = new(StringComparer.Ordinal);
     private bool _debugMode;
+
+    /// <summary>SavedGame::getWarned/setWarned, read and changed by the monthly report.</summary>
+    internal bool Warned { get; set; }
     private readonly List<DeadSoldierSnapshot> _deadSoldiers = [];
     private CampaignTimeProfile? _timeProfile;
 
@@ -203,6 +206,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         Restrictions = CampaignSnapshot.ReadOnly(_restrictions),
         DeadSoldiers = CampaignSnapshot.ReadOnly(_deadSoldiers),
         DebugMode = _debugMode,
+        Warned = Warned,
         Options = Options,
     });
 
@@ -304,6 +308,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             {
                 _restrictions = CampaignSnapshot.ReadOnly(snapshot.Restrictions),
                 _debugMode = snapshot.DebugMode,
+                Warned = snapshot.Warned,
                 // Mods that fix user options override the options a save was made with.
                 Options = snapshot.Options.WithFixedUserOptions(content.RuntimeRules.Campaign.FixedUserOptions),
             };

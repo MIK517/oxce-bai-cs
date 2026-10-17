@@ -604,3 +604,20 @@ Option inventory on these paths: gameplay-affecting `dogfightAI` (UFO-faster dis
 `craftLaunchAlways` (interception list, already an option); presentation-only `dogfightSpeed`,
 `psiStrengthEval` (stat strings after experience), `oxceInterceptGuiMaintenanceTime`,
 `oxceInterceptTableSize`, `oxceShowETAMode`, `oxceGeoSortCraftByDistanceToTarget`.
+
+## Branch 6 campaign-cycle ownership (S1, 2026-10-17)
+
+Owners are branch 6 slices ([plan](phase-6-campaign-cycle-plan.md)); evidence is recorded in
+[strategic campaign cycle status](strategic-campaign-cycle-status.md#s1--evidence-and-projections-2026-10-17).
+
+| Behavior/state | Owner | Reference | Evidence/status |
+|---|---|---|---|
+| Month rollover order: `addMonth`, scheduling, monthly psi, funding, report, monthly alien-base detection | S2 (staging), S3 | `GeoscapeState::time1Month`, `SavedGame::addMonth/monthlyFunding` | `strategic-monthly-report` verbatim oracle (17 scenarios); executes in S3 |
+| Monthly report evaluation: region/country `newMonth`, research bonus, pacts, rating, performance bonus, `warned`, game over, pact events | S3 | `MonthlyReportState` constructor and `calculateChanges`, `Country::newMonth`, `Mod::getRandomMission` | Same oracle; `warned` is typed and always written (`StrategicCampaignCycleRulesTests`) |
+| `newMonthCountry` script | S3 (call site) | `Country::newMonth`, `NewMonthCountryParser`, `Country::ScriptRegister` | Compiles on the country's `scripts:` node into `RuntimeCountryRule.Scripts` (`ContentSnapshotTests.CountryNewMonthScriptsCompileOnTheirCountry`); the stale top-level deferral is removed |
+| Monthly-report acknowledgement: monthly service, commendations, psi reminder, autosave/ironman, lose cutscenes | S4 | `MonthlyReportState::btnOkClick`, `SoldierDiary` | Ending paths in the same oracle; commendations captured in S4 |
+| Monthly rules: `chanceToDetectAlienBaseEachMonth`, `gameOver`, `monthlyRatings`, `defeatScore`, `defeatFunds` | S1 | `Mod::loadFile` | Projected with reference defaults and map replacement (compiler/cache revision 72); `StrategicCampaignCycleRulesTests` |
+| Event payload | S5 | `GeoscapeEventState::eventLogic`, `SavedGame::canSpawnInstantEvent/selectSoldierNationalityByLocation`, `WeightedOptions::choose` | `strategic-event-payload` verbatim oracle (16 scenarios plus instant-event checks); payload fields projected in reference order; `researchList` fails the load on unknown topics as `RuleEvent::afterLoad` does, other payload names are deferred diagnostics |
+| Event acknowledgement: cutscene endings, storage-overfull flow, articles | S5, S6 | `GeoscapeEventState::btnOkClick` | Same oracle |
+| Research, event and monthly cutscene endings | S6 | `GeoscapeState::time1Day`, `GeoscapeEventState::btnOkClick`, `MonthlyReportState::btnOkClick`, `RuleVideo` | Research `cutscene` and every video's `winGame`/`loseGame` projected (revision 72) |
+| `psiStrengthEval`, `oxceGeoscapeEventsInstantDelivery`, `autosave` | S1 (read in S3–S5) | `Options` | Campaign options with save round-trip, reference snapshot seeding and fixed user options; `psiStrengthEval` only feeds stat strings (Phase 8 presentation) |
