@@ -153,22 +153,17 @@ internal static class CampaignStartSettingsComposer
     private static void ApplyMonthly(YamlMappingNode root, CampaignMonthlySettingsBuilder b)
     {
         b.ChanceToDetectAlienBaseEachMonth = Read(root, "chanceToDetectAlienBaseEachMonth", b.ChanceToDetectAlienBaseEachMonth);
-        if (root.TryGet("gameOver", out var gameOver))
+        // A gameOver node that is not a mapping has no children to read (YamlNodeReader::getChildNode).
+        if (root.TryGet("gameOver", out var gameOver) && gameOver is YamlMappingNode mapping)
         {
-            if (gameOver is not YamlMappingNode mapping)
-                throw new YamlFormatException("Global rule 'gameOver' must be a mapping.", gameOver!.Span);
             b.LoseMoneyCutscene = Read(mapping, "loseMoney", b.LoseMoneyCutscene);
             b.LoseRatingCutscene = Read(mapping, "loseRating", b.LoseRatingCutscene);
             b.LoseDefeatCutscene = Read(mapping, "loseDefeat", b.LoseDefeatCutscene);
         }
-        if (!root.TryGet("monthlyRatings", out var ratings)) return;
-        if (ratings is not YamlMappingNode ratingMap)
-            throw new YamlFormatException("Global rule 'monthlyRatings' must be a mapping.", ratings!.Span);
-        // The reference's std::map read clears the map, then emplace keeps the first value of a repeated key.
-        var replacement = new SortedDictionary<int, string>();
-        foreach (var entry in ratingMap.Entries)
-            replacement.TryAdd(YamlValueReader.ReadInt32(entry.Key), YamlValueReader.ReadString(entry.Value));
-        b.MonthlyRatings = replacement;
+        // The reference's std::map read clears the map and emplaces each child, so the first value of a repeated
+        // key stays and a node without children (null or a scalar) leaves no ratings.
+        if (root.TryGet("monthlyRatings", out var ratings))
+            b.MonthlyRatings = YamlValueReader.ReadMap(ratings!, YamlValueReader.ReadInt32, YamlValueReader.ReadString);
     }
 
     // YamlNodeReader::tryRead into a std::vector replaces the whole list.

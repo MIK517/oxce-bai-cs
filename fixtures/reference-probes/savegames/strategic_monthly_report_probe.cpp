@@ -84,7 +84,7 @@ struct RuleCountry
 struct RuleAlienMission
 {
     std::string type; MissionObjective objective = OBJECTIVE_INFILTRATION; int points = 0;
-    std::vector<std::pair<size_t, int>> _weights;
+    std::map<size_t, int> _weights;
     MissionObjective getObjective() const { return objective; }
     int getPoints() const { return points; }
     int getWeight(const size_t monthsPassed) const;
@@ -317,7 +317,7 @@ struct CountryInput
     const char* type; int fundingCap; std::vector<int> funding, xcom, alien; bool pact, newPact, cancelPact;
     const char* signedPactEvent; const char* rejoinedEvent; std::optional<std::tuple<int, int, int, int>> script;
 };
-struct MissionInput { const char* type; int points; std::vector<std::pair<size_t, int>> weights; };
+struct MissionInput { const char* type; int points; std::map<size_t, int> weights; };
 struct Scenario
 {
     const char* name; int difficulty, monthsPassed;
@@ -515,8 +515,9 @@ int main()
         for (size_t i = 0; i < s.missions.size(); ++i)
         {
             std::printf("%s{\"type\":\"%s\",\"points\":%d,\"weights\":[", i ? "," : "", s.missions[i].type, s.missions[i].points);
-            for (size_t j = 0; j < s.missions[i].weights.size(); ++j)
-                std::printf("%s[%zu,%d]", j ? "," : "", s.missions[i].weights[j].first, s.missions[i].weights[j].second);
+            bool firstWeight = true;
+            for (const auto& weight : s.missions[i].weights)
+            { std::printf("%s[%zu,%d]", firstWeight ? "" : ",", weight.first, weight.second); firstWeight = false; }
             std::printf("]}");
         }
         std::printf("],\"alienBasesDiscovered\":[");

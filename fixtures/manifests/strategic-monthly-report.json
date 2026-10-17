@@ -15,9 +15,9 @@
   },
   "inputs": [
     {
-      "size": 32441,
+      "size": 32436,
       "path": "fixtures/reference-probes/savegames/strategic_monthly_report_probe.cpp",
-      "sha256": "707b01209bfa3aff1478c3e58972de43e772a9682464ee34cfeef701f75982d7"
+      "sha256": "8320f5e6ddca4deafd94290667b8b2f7c54970c5ad5ba7dd19bb99cc116c417f"
     },
     {
       "size": 5315,
