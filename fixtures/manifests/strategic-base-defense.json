@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-base-defense",
+  "description": "Base defense rounds from the verbatim BaseDefenseState::nextStep and applyDamage, Ufo::setDamage/setShield/isCrashed/isDestroyed and RuleDamageType::getRandomDamage; scripted raw RNG through RandomState::generate, stubbed text and sound.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "Geoscape/BaseDefenseState.cpp; Savegame/Ufo.cpp; Mod/RuleDamageType.cpp",
+      "probe": "fixtures/reference-probes/savegames/strategic_base_defense_probe.cpp",
+      "capture": "tools/capture-strategic-base-defense-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; reference statements inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "size": 11328,
+      "path": "fixtures/reference-probes/savegames/strategic_base_defense_probe.cpp",
+      "sha256": "62c853d9d0fce6ddfd8feef9dab883850716db2c9006831975800adbc701921f"
+    },
+    {
+      "size": 4072,
+      "path": "tools/capture-strategic-base-defense-reference.ps1",
+      "sha256": "234fe4fb64a6d71299e864a6625d66947b1b49dba98e1e151d9acef219b95488"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-base-defense.expected.json"
+}

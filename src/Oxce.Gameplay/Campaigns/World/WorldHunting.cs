@@ -94,6 +94,23 @@ internal static class WorldHunting
         Escorting = false,
     } : ufo;
 
+    /// <summary>
+    /// Ufo::resetOriginalDestination's setDestination: the waypoint is restored and calculateSpeed aims the
+    /// speed vector and direction at it.
+    /// </summary>
+    internal static UfoSnapshot RestoreAndAim(UfoSnapshot ufo)
+    {
+        var restored = Restore(ufo);
+        if (restored.Destination is not { } destination) return restored;
+        var vector = WorldGeometry.SpeedVector(restored.Position, destination.Position, restored.SpeedRadian);
+        return restored with
+        {
+            SpeedLongitude = vector.Longitude,
+            SpeedLatitude = vector.Latitude,
+            Direction = WorldAltitudes.Direction(vector.Longitude, vector.Latitude),
+        };
+    }
+
     internal static bool TryAttraction(int mode, bool allowLanding, int units, int speed, int damage, int damageMaximum,
         out int attraction)
     {

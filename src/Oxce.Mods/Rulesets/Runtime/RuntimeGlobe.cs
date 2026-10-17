@@ -13,6 +13,8 @@ namespace Oxce.Mods.Rulesets.Runtime;
 public sealed record RuntimeGlobeTexture(bool IsOcean = false, bool FakeUnderwater = false)
 {
     public IReadOnlyDictionary<string, ulong> Deployments { get; init; } = EmptyDeployments;
+    /// <summary>Texture::getStartingCondition: used when the deployment names none.</summary>
+    public string StartingCondition { get; init; } = string.Empty;
 
     internal static readonly IReadOnlyDictionary<string, ulong> EmptyDeployments =
         new ReadOnlyDictionary<string, ulong>(new Dictionary<string, ulong>(StringComparer.Ordinal));
@@ -123,6 +125,8 @@ internal static class RuntimeGlobeLoader
                         {
                             Deployments = map.TryGet("deployments", out var deployments)
                                 ? ReadDeployments(deployments!) : previous.Deployments,
+                            StartingCondition = map.TryGet("startingCondition", out var condition)
+                                ? YamlValueReader.ReadString(condition!) : previous.StartingCondition,
                         };
                     }
                     else if (map.TryGet("delete", out var deleted)) textures.Remove(YamlValueReader.ReadInt32(deleted!));

@@ -17,7 +17,8 @@ public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool Ca
     bool AutoCombatDefaultSoldier = true, bool AnytimePsiTraining = false, bool AllowPsiStrengthImprovement = false,
     int MaximumBases = 8, bool AllowBuildingQueue = false, bool UfoLandingAlert = false,
     bool AggressiveRetaliation = true, bool CraftLaunchAlways = false, bool SuppressLandingWithoutEquipment = false,
-    bool SuppressRedundantHunterAlert = true, bool RetainCorpses = false)
+    bool SuppressRedundantHunterAlert = true, bool RetainCorpses = false, bool DogfightAI = true,
+    bool RememberDisabledCraftWeapons = false, bool GlobeSeasons = false, int WoundedDefendBaseIf = 100)
 {
     /// <summary>
     /// Mod::loadAll's fixedUserOptions pass: a loaded mod forces these user options for every
@@ -42,10 +43,33 @@ public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool Ca
             SuppressLandingWithoutEquipment = Fixed("oxceGeoSuppressLandingWithoutEquipment", SuppressLandingWithoutEquipment),
             SuppressRedundantHunterAlert = Fixed("oxceGeoSuppressRedundantHKAlert", SuppressRedundantHunterAlert),
             RetainCorpses = Fixed("retainCorpses", RetainCorpses),
+            DogfightAI = Fixed("dogfightAI", DogfightAI),
+            RememberDisabledCraftWeapons = Fixed("oxceRememberDisabledCraftWeapons", RememberDisabledCraftWeapons),
+            GlobeSeasons = Fixed("globeSeasons", GlobeSeasons),
+            WoundedDefendBaseIf = fixedOptions.TryGetValue("oxceWoundedDefendBaseIf", out var wounded)
+                ? ReadFixedInteger(wounded) : WoundedDefendBaseIf,
         };
 
         bool Fixed(string id, bool current) =>
             fixedOptions.TryGetValue(id, out var value) ? ReadFixedBoolean(value) : current;
+    }
+
+    // OptionInfo::load's `ss >> std::dec >> i`: leading whitespace, an optional sign and decimal digits; a failed
+    // extraction stores 0 and an out-of-range value the nearest limit.
+    private static int ReadFixedInteger(string value)
+    {
+        var text = value.AsSpan();
+        var index = 0;
+        while (index < text.Length && char.IsWhiteSpace(text[index]) && text[index] <= ' ') index++;
+        var negative = index < text.Length && text[index] == '-';
+        if (index < text.Length && text[index] is '-' or '+') index++;
+        long magnitude = 0;
+        var digits = 0;
+        for (; index < text.Length && char.IsAsciiDigit(text[index]); index++, digits++)
+            magnitude = Math.Min(magnitude * 10 + (text[index] - '0'), (long)int.MaxValue + 1);
+        if (digits == 0) return 0;
+        var signed = negative ? -magnitude : magnitude;
+        return (int)Math.Clamp(signed, int.MinValue, int.MaxValue);
     }
 
     private static bool ReadFixedBoolean(string value)
@@ -121,6 +145,12 @@ public sealed record SoldierSnapshot(string RuleId, int Id)
     public SoldierPersonalState? Personal { get; init; }
 }
 
+/// <summary>
+/// A soldier in the memorial (SavedGame deadSoldiers): the soldier as it was at death and the death time.
+/// The cause of a battle death stays in the save node until Phase 7 owns it.
+/// </summary>
+public sealed record DeadSoldierSnapshot(SoldierSnapshot Soldier, CampaignTime? DiedAt);
+
 public enum CampaignTransferKind { Item, Scientist, Engineer, Soldier, Craft }
 
 public sealed record TransferSnapshot(
@@ -178,6 +208,8 @@ public sealed record CampaignSnapshot(
     IReadOnlyList<ScriptValueEntry> ScriptValues)
 {
     public IReadOnlyList<CampaignRestriction> Restrictions { get; init; } = [];
+    /// <summary>The memorial, in death order.</summary>
+    public IReadOnlyList<DeadSoldierSnapshot> DeadSoldiers { get; init; } = [];
     public IReadOnlyList<string> CompletedResearch { get; init; } = [];
     public IReadOnlyList<ResearchDiaryEntrySnapshot> ResearchDiary { get; init; } = [];
     public ulong ResearchDiarySequence { get; init; }

@@ -18,6 +18,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     private readonly List<MissionSiteSnapshot> _sites = [];
     private readonly List<AlienBaseSnapshot> _alienBases = [];
     private ulong _alienBaseBirthSequence;
+    private int _craftLostDogfight;
     private readonly List<GeoscapeEventSnapshot> _events = [];
     private AlienStrategyState _strategy = new();
 
@@ -47,6 +48,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         RegisterAdhocScripts(registry);
         RegisterArcScripts(registry);
         RegisterWorldScheduling(registry);
+        RegisterInterceptions(registry);
     }
 
     internal AlienStrategyState Strategy => _strategy;
@@ -81,8 +83,6 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
                 SecondsRemaining = ufo.SecondsRemaining,
                 Reference = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, ufo.Id, ufo.Longitude, ufo.Latitude)
                 { UniqueId = ufo.UniqueId },
-                UnavailableActionReason = ufo.Status == UfoStatus.Flying ? InterceptionReason : LandingReason,
-                ActionUnavailable = WorldCommandReasons.For(ufo.Status == UfoStatus.Flying ? InterceptionReason : LandingReason),
                 HunterKiller = ufo.HunterKiller,
                 HyperDetected = ufo.HyperDetected,
                 RadarRange = UfoRadarRange(ufo),
@@ -101,8 +101,6 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
                 SecondsRemaining = site.SecondsRemaining,
                 Status = site.City,
                 Reference = new(WorldTargetKind.MissionSite, MarkerName(site.DeploymentId), site.Id, site.Longitude, site.Latitude),
-                UnavailableActionReason = LandingReason,
-                ActionUnavailable = WorldCommandReasons.For(LandingReason),
             });
         foreach (var alienBase in _alienBases.Where(static alienBase => alienBase.Discovered))
             targets.Add(new CampaignWorldTarget(WorldTargetKind.AlienBase, alienBase.Id, alienBase.DeploymentId,
@@ -114,8 +112,6 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
                 Detected = alienBase.Discovered,
                 Reference = new(WorldTargetKind.AlienBase, MarkerName(alienBase.DeploymentId), alienBase.Id,
                     alienBase.Longitude, alienBase.Latitude),
-                UnavailableActionReason = LandingReason,
-                ActionUnavailable = WorldCommandReasons.For(LandingReason),
                 CountryId = CountryAt(alienBase.Position),
                 RegionId = RegionAt(alienBase.Position),
                 DiscoveredMessage = campaign.Content.RuntimeRules.AlienDeployments.TryGet(alienBase.DeploymentId, out var deployment)
@@ -130,6 +126,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
             { Detected = true, HasCustomName = waypoint.Name.Length != 0 });
         return new CampaignWorldOverview(CampaignSnapshot.ReadOnly(targets), _missions.Count, _events.Count)
         {
+            GlobeSeasons = campaign.Options.GlobeSeasons,
             CountryIds = CampaignSnapshot.ReadOnly(campaign.CountryStates.Select(country =>
                 campaign.Content.RuntimeRules.Countries.GetExternalId(country.Rule))),
             RegionIds = CampaignSnapshot.ReadOnly(campaign.RegionStates.Select(region =>
@@ -155,6 +152,8 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
                     RadarRange = CraftRadarRange(craft),
                     DispatchUnavailable = dispatchReason is null ? null : WorldCommandReasons.For(dispatchReason),
                     PatrolRecallUnavailable = airborneReason is null ? null : WorldCommandReasons.For(airborneReason),
+                    CanFlyFinalMission = FinalMissionReason(owner, craft) is null,
+                    HasUnits = state is not null && CraftHasUnits(owner, craft, state),
                 };
                 return Details(summary, owner, craft);
             }))),
@@ -266,6 +265,8 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         Events = CampaignSnapshot.ReadOnly(_events),
         GeneratedEvents = CampaignSnapshot.ReadOnlyIds(_generatedEvents),
         Strategy = CaptureStrategy(),
+        CraftLostDogfight = _craftLostDogfight,
+        DeploymentRequest = _deploymentRequest,
     };
 
     private AlienStrategySnapshot CaptureStrategy() => new()
@@ -290,6 +291,9 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         _sites.Clear();
         _alienBases.Clear();
         _alienBaseBirthSequence = snapshot.World.AlienBaseBirthSequence;
+        _craftLostDogfight = snapshot.World.CraftLostDogfight;
+        _deploymentRequest = snapshot.World.DeploymentRequest;
+        _deploymentRequestTaken = false;
         _events.Clear();
         _generatedEvents.Clear();
         foreach (var pair in snapshot.World.GeneratedEvents) _generatedEvents.Add(pair.Key, pair.Value);
@@ -591,6 +595,30 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         steps.Mark(Step + nameof(SiteResearchUfoWorkReason));
         if (PrepareHuntingGeneratedWaveForecasts(highest, guaranteedResearch) is { } huntBirthReason) return huntBirthReason;
         steps.Mark(Step + nameof(PrepareHuntingGeneratedWaveForecasts));
+        // The hunting and new-leader forecasts are final here. The UFO steps up to the half-hour step
+        // share one flight projection per UFO (ADR 0033); the window closes before the flight fuel
+        // step swaps the hunting craft forecast that projections read, and on every refusal.
+        _pass.SharedFlightsReady = true;
+        try
+        {
+            if (SharedFlightStepsReason(highest, guaranteedResearch, ref steps) is { } sharedReason) return sharedReason;
+        }
+        finally
+        {
+            _pass.SharedFlightsReady = false;
+        }
+        if (FlightFuelRefundReason(highest) is { } fuelRefundReason) return fuelRefundReason;
+        steps.Mark(Step + nameof(FlightFuelRefundReason));
+        var eventReason = EventSchedulingReason(highest);
+        steps.Mark(Step + nameof(EventSchedulingReason));
+        return eventReason;
+    }
+
+    /// <summary>The world preflight steps that read the shared flight projection (ADR 0033).</summary>
+    private string? SharedFlightStepsReason(CampaignTimeTrigger highest, IReadOnlySet<string>? guaranteedResearch,
+        ref CampaignTimeProfile.Steps steps)
+    {
+        const string Step = CampaignTimeProfile.WorldPrefix;
         var ufoReason = UfoMovementReason(highest);
         steps.Mark(Step + nameof(UfoMovementReason));
         if (ufoReason is not null) return ufoReason;
@@ -614,12 +642,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         steps.Mark(Step + nameof(ObjectiveBasePatrolReason));
         var detectionReason = UfoHalfHourReason(highest, guaranteedResearch);
         steps.Mark(Step + nameof(UfoHalfHourReason));
-        if (detectionReason is not null) return detectionReason;
-        if (FlightFuelRefundReason(highest) is { } fuelRefundReason) return fuelRefundReason;
-        steps.Mark(Step + nameof(FlightFuelRefundReason));
-        var eventReason = EventSchedulingReason(highest);
-        steps.Mark(Step + nameof(EventSchedulingReason));
-        return eventReason;
+        return detectionReason;
     }
 
     private CampaignWorldUfoDetails UfoDetails(UfoSnapshot ufo)

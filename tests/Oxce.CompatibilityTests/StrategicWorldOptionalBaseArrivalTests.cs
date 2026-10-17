@@ -100,8 +100,7 @@ public sealed class StrategicWorldOptionalBaseArrivalTests
                 Soldiers = [soldier with { Personal = soldier.Personal! with { CraftType = "SHIP", CraftId = 1 } }],
             }],
         };
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
-            "Craft landing requires deployment (Phase 6 branch 5).");
+        AssertLandingRequested(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)));
     }
 
     private static int DestinationKind(CraftLogisticsState state) => state.Destination?.Kind switch

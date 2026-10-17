@@ -42,7 +42,8 @@ public sealed class RuntimeRuleCatalog
         RuntimeRuleFamily<UfoTrajectoryRuleFamily, RuntimeUfoTrajectoryRule> ufoTrajectories,
         RuntimeRuleFamily<AlienMissionRuleFamily, RuntimeAlienMissionRule> alienMissions,
         RuntimeRuleFamily<AlienDeploymentRuleFamily, RuntimeAlienDeploymentRule> alienDeployments,
-        RuntimeRuleFamily<AlienRaceRuleFamily, RuntimeIdentityRule> alienRaces,
+        RuntimeRuleFamily<AlienRaceRuleFamily, RuntimeAlienRaceRule> alienRaces,
+        RuntimeRuleFamily<StartingConditionRuleFamily, RuntimeStartingCondition> startingConditions,
         RuntimeRuleFamily<MissionScriptRuleFamily, RuntimeMissionScriptRule> missionScripts,
         RuntimeRuleFamily<AdhocScriptRuleFamily, RuntimeMissionScriptRule> adhocScripts,
         RuntimeRuleFamily<ArcScriptRuleFamily, RuntimeArcScriptRule> arcScripts,
@@ -77,6 +78,7 @@ public sealed class RuntimeRuleCatalog
         AlienMissions = alienMissions;
         AlienDeployments = alienDeployments;
         AlienRaces = alienRaces;
+        StartingConditions = startingConditions;
         MissionScripts = missionScripts;
         AdhocScripts = adhocScripts;
         ArcScripts = arcScripts;
@@ -109,7 +111,8 @@ public sealed class RuntimeRuleCatalog
     public RuntimeRuleFamily<UfoTrajectoryRuleFamily, RuntimeUfoTrajectoryRule> UfoTrajectories { get; }
     public RuntimeRuleFamily<AlienMissionRuleFamily, RuntimeAlienMissionRule> AlienMissions { get; }
     public RuntimeRuleFamily<AlienDeploymentRuleFamily, RuntimeAlienDeploymentRule> AlienDeployments { get; }
-    public RuntimeRuleFamily<AlienRaceRuleFamily, RuntimeIdentityRule> AlienRaces { get; }
+    public RuntimeRuleFamily<AlienRaceRuleFamily, RuntimeAlienRaceRule> AlienRaces { get; }
+    public RuntimeRuleFamily<StartingConditionRuleFamily, RuntimeStartingCondition> StartingConditions { get; }
     public RuntimeRuleFamily<MissionScriptRuleFamily, RuntimeMissionScriptRule> MissionScripts { get; }
     public RuntimeRuleFamily<AdhocScriptRuleFamily, RuntimeMissionScriptRule> AdhocScripts { get; }
     public RuntimeRuleFamily<ArcScriptRuleFamily, RuntimeArcScriptRule> ArcScripts { get; }

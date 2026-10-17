@@ -29,6 +29,8 @@ public sealed record CraftLogisticsState(int Fuel, int Damage, string Status,
     public bool MissionComplete { get; init; }
     /// <summary>Craft::_interceptionOrder, shown by the interception list.</summary>
     public int InterceptionOrder { get; init; }
+    /// <summary>Craft::_pilots: soldier IDs chosen to fly, rewritten by Craft::getPilotList.</summary>
+    public IReadOnlyList<int> Pilots { get; init; } = [];
     /// <summary>Craft::_lonAuto / _latAuto: the remembered auto-patrol point.</summary>
     public double AutoPatrolLongitude { get; init; }
     public double AutoPatrolLatitude { get; init; }

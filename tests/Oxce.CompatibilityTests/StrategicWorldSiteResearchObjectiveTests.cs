@@ -79,13 +79,13 @@ public sealed class StrategicWorldSiteResearchObjectiveTests
     }
 
     [Fact]
-    public void InstantRetaliationWithATargetKeepsTheBaseDefenseBoundary()
+    public void InstantRetaliationWithATargetNeedsAUfoRule()
     {
         var content = Content(6);
         var initial = Snapshot(content, 6);
         initial = initial with { World = initial.World with { Missions = [initial.World.Missions[0] with { RegionId = "REGION" }] } };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(66)),
-            "Retaliation assault arrival requires base-defense simulation.");
+            "Retaliation assault spawning requires a UFO rule.");
     }
 
     [Theory]

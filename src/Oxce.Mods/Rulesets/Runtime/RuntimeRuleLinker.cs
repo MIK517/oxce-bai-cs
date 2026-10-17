@@ -51,6 +51,7 @@ public static class RuntimeRuleLinker
         var cancellationToken = options.CancellationToken;
         cancellationToken.ThrowIfCancellationRequested();
         var generation = resources.Generation;
+        var finalResearch = FinalResearch(content, resources);
         var issues = new List<RuntimeRuleLinkIssue>();
 
         var countryHandles = Handles<CountryRuleFamily, CountryRule>(generation, content.CampaignStart.Countries);
@@ -120,7 +121,8 @@ public static class RuntimeRuleLinker
                 rule.Value.Storage,
                 rule.Value.Personnel,
                 rule.Value.Aliens,
-                rule.Value.Crafts,
+                // RuleBaseFacility::afterLoad: a one-craft hangar with several slots holds that many crafts.
+                rule.Value.Crafts == 1 && rule.Value.CraftSlots.Count > 1 ? rule.Value.CraftSlots.Count : rule.Value.Crafts,
                 rule.Value.Laboratories,
                 rule.Value.Workshops,
                 rule.Value.PsiLaboratories,
@@ -147,6 +149,14 @@ public static class RuntimeRuleLinker
             {
                 PrisonType = rule.Value.PrisonType,
                 AmmoMaximum = rule.Value.AmmoMaximum,
+                MissileAttraction = rule.Value.MissileAttraction,
+                DrawnCraftSlots = DrawnCraftSlots(rule.Value.Crafts, rule.Value.CraftSlots),
+                DefenseValue = rule.Value.Defense,
+                HitRatio = rule.Value.HitRatio,
+                GravShield = rule.Value.GravShield,
+                AmmoNeeded = rule.Value.AmmoNeeded,
+                UnifiedDamageFormula = rule.Value.UnifiedDamageFormula,
+                ShieldDamageModifier = rule.Value.ShieldDamageModifier,
                 RearmRate = rule.Value.RearmRate,
                 CanBeBuiltOver = rule.Value.CanBeBuiltOver,
                 FakeUnderwater = rule.Value.FakeUnderwater,
@@ -206,6 +216,9 @@ public static class RuntimeRuleLinker
                 ShieldCapacity = rule.Value.Stats.Get("shieldCapacity"),
                 ShieldRechargeInGeoscape = rule.Value.Stats.Get("shieldRechargeInGeoscape"),
                 ShieldRechargeAtBase = rule.Value.Integers["shieldRechargedAtBase"],
+                MissilePower = rule.Value.Integers["missilePower"],
+                Score = rule.Value.Integers["score"],
+                MaximumAltitude = rule.Value.Integers["maxAltitude"],
                 SightRange = rule.Value.Stats.Get("sightRange"),
                 RadarRange = rule.Value.Stats.Get("radarRange"),
                 RadarChance = rule.Value.Stats.Get("radarChance"),
@@ -215,6 +228,7 @@ public static class RuntimeRuleLinker
                 Undetectable = rule.Value.Booleans["undetectable"],
                 PatrolWithoutFuel = rule.Value.Booleans["patrolWithoutFuel"],
                 AutoPatrol = rule.Value.Booleans["autoPatrol"],
+                Spacecraft = rule.Value.Booleans["spacecraft"],
                 FixedWeaponSlots = rule.Value.FixedWeapons,
                 Pilots = rule.Value.Integers["pilots"],
                 MaximumSoldiers = rule.Value.Integers["maxSoldiers"],
@@ -330,6 +344,7 @@ public static class RuntimeRuleLinker
                 MaximumStats = rule.Value.MaximumStats.Values,
                 StatCaps = rule.Value.StatCaps.Values,
                 TrainingStatCaps = rule.Value.TrainingStatCaps.Values,
+                DogfightExperience = rule.Value.DogfightExperience.Values,
                 FemaleFrequency = rule.Value.Integers["femaleFrequency"],
                 NamePools = options.SoldierNamePools.GetValueOrDefault(rule.Id) ?? [],
                 SpawnedTemplate = RuntimeSoldierTemplateLoader.Read(rule.Value.SpawnedSoldierTemplate),
@@ -358,6 +373,7 @@ public static class RuntimeRuleLinker
             AllowCountriesToCancelAlienPact = content.CampaignStart.Settings.AllowCountriesToCancelAlienPact,
             BuildInfiltrationBaseCloseToTheCountry = content.CampaignStart.Settings.BuildInfiltrationBaseCloseToTheCountry,
             InfiltrateRandomCountryInTheRegion = content.CampaignStart.Settings.InfiltrateRandomCountryInTheRegion,
+            Interception = content.CampaignStart.Settings.Interception,
         };
         var compatibility = new RuntimeRuleCompatibilitySidecar(CompatibilityEntries(content));
         var catalog = new RuntimeRuleCatalog(
@@ -372,6 +388,19 @@ public static class RuntimeRuleLinker
                 {
                     StatisticalBulletSaving = rule.Value.Booleans["bulletSaving"],
                     BonusStorageSpace = rule.Value.Stats.MaximumStorageSpace,
+                    Damage = rule.Value.Integers["damage"],
+                    ShieldDamageModifier = rule.Value.Integers["shieldDamageModifier"],
+                    Range = rule.Value.Integers["range"],
+                    Accuracy = rule.Value.Integers["accuracy"],
+                    ReloadCautious = rule.Value.Integers["reloadCautious"],
+                    ReloadStandard = rule.Value.Integers["reloadStandard"],
+                    ReloadAggressive = rule.Value.Integers["reloadAggressive"],
+                    ProjectileType = rule.Value.Integers["projectileType"],
+                    ProjectileSpeed = rule.Value.Integers["projectileSpeed"],
+                    WeaponType = rule.Value.Integers["weaponType"],
+                    TractorBeamPower = rule.Value.Integers["tractorBeamPower"],
+                    UnifiedDamageFormula = rule.Value.Booleans["unifiedDamageFormula"],
+                    UnderwaterOnly = rule.Value.Booleans["underwaterOnly"],
                 }),
             items,
             soldiers,
@@ -423,7 +452,8 @@ public static class RuntimeRuleLinker
                         : rule.Value.NeedItem && itemHandles.ContainsKey(rule.Id) ? rule.Id : null,
                     rule.Value.NeedItem,
                     rule.Value.DestroyItem, rule.Value.ReturnsItem, rule.Value.Repeatable,
-                    rule.Value.ListOrder, rule.Value.Events)),
+                    rule.Value.ListOrder, rule.Value.Events)
+                { UnlockFinalMission = rule.Id == finalResearch }),
             BuildFamily<ManufactureRuleFamily, ManufactureRule, RuntimeManufactureRule>(generation,
                 content.EquipmentProduction.Manufacture, rule => new(
                     rule.Value.Category, rule.Value.Requirements, rule.Value.RequiredBaseFunctions,
@@ -451,7 +481,19 @@ public static class RuntimeRuleLinker
                 content.MissionEvents.AlienMissions, rule => BuildAlienMission(rule.Id, rule.Value)),
             BuildFamily<AlienDeploymentRuleFamily, AlienDeploymentRule, RuntimeAlienDeploymentRule>(generation,
                 content.TerrainDeployment.AlienDeployments, rule => BuildAlienDeployment(rule.Id, rule.Value)),
-            IdentityFamily<AlienRaceRuleFamily, AlienRaceRule>(generation, content.TerrainDeployment.AlienRaces),
+            BuildFamily<AlienRaceRuleFamily, AlienRaceRule, RuntimeAlienRaceRule>(generation, content.TerrainDeployment.AlienRaces,
+                static rule => new RuntimeAlienRaceRule(rule.Id, rule.Value.RetaliationAggression,
+                    Array.AsReadOnly(rule.Value.RetaliationMissionWeights.Select(static entry =>
+                        new RuntimeWeightedTimeline(entry.Key, entry.Value)).ToArray()))
+                {
+                    BaseCustomDeploy = rule.Value.BaseCustomDeploy,
+                    BaseCustomMission = rule.Value.BaseCustomMission,
+                }),
+            BuildFamily<StartingConditionRuleFamily, StartingConditionRule, RuntimeStartingCondition>(generation,
+                content.TerrainDeployment.StartingConditions, static rule => new RuntimeStartingCondition(
+                    rule.Value.NameCollections["allowedCraft"], rule.Value.NameCollections["forbiddenCraft"],
+                    rule.Value.NameCollections["allowedSoldierTypes"], rule.Value.NameCollections["forbiddenSoldierTypes"],
+                    rule.Value.RequiredItems, rule.Value.DestroyRequiredItems, rule.Value.RequireCommanderOnboard)),
             BuildFamily<MissionScriptRuleFamily, StrategicScriptRule, RuntimeMissionScriptRule>(generation,
                 content.MissionEvents.MissionScripts, rule => BuildMissionScript(rule, "missionScripts")),
             BuildFamily<AdhocScriptRuleFamily, StrategicScriptRule, RuntimeMissionScriptRule>(generation,
@@ -550,6 +592,20 @@ public static class RuntimeRuleLinker
                 WeaponRange = source.Integers["range"],
                 WeaponPower = source.Integers["power"],
                 WeaponReload = source.Integers["reload"],
+                Score = source.Integers["score"],
+                BreakOffTime = source.Integers["breakOffTime"],
+                SoftlockThreshold = source.Integers["softlockThreshold"],
+                MissilePower = source.Integers["missilePower"],
+                MissileStopChance = source.Integers["missileStopChance"],
+                SplashdownSurvivalChance = source.Integers["splashdownSurvivalChance"],
+                BlobSize = source.Integers["blobSize"] is > -1 and < 8 ? source.Integers["blobSize"] : source.Size switch
+                {
+                    "STR_VERY_SMALL" => 0,
+                    "STR_SMALL" => 1,
+                    "STR_MEDIUM_UC" => 2,
+                    "STR_LARGE" => 3,
+                    _ => 4,
+                },
             };
         }
 
@@ -566,6 +622,7 @@ public static class RuntimeRuleLinker
             source.MissionCustomDeployment)
         {
             FuelMaximum = source.Craft.Get("fuelMax"),
+            CraftCustomDeployment = source.CraftCustomDeployment,
             HitBonus = source.Craft.Get("hitBonus"),
             AvoidBonus = source.Craft.Get("avoidBonus"),
             AvoidBonus2 = source.Craft.Get("avoidBonus2"),
@@ -678,6 +735,7 @@ public static class RuntimeRuleLinker
                 Weights(id, "despawnEvents", source.DespawnEvents))
             {
                 StartingCondition = source.Strings["startingCondition"],
+                Race = source.Strings["race"],
                 AlienBaseDiscoveredMessage = source.Strings["alienBaseDiscoveredMessage"],
             };
         }
@@ -950,18 +1008,62 @@ public static class RuntimeRuleLinker
         Dictionary<string, RuleHandle<ItemRuleFamily>> handles,
         string id) => id.Length != 0 && id != "STR_NONE" && handles.TryGetValue(id, out var handle) ? handle : null;
 
+    // std::map<std::string> order: UTF-8 bytes, which differs from UTF-16 ordinal order above the BMP.
+    private static readonly Comparer<byte[]> Utf8ByteOrder =
+        Comparer<byte[]>.Create(static (left, right) => left.AsSpan().SequenceCompareTo(right));
+
     private static Dictionary<string, string> ItemCategoryReplacements(Phase3ContentCatalog content)
     {
         var result = new Dictionary<string, string>(StringComparer.Ordinal);
         // C++ applies each std::map replacement once in UTF-8 byte order. Resolve
         // the same forward-only chains in reverse order, avoiding a scan of every
         // replacement for every item category. Backward links and cycles stop.
-        var byteOrder = Comparer<byte[]>.Create(static (left, right) => left.AsSpan().SequenceCompareTo(right));
         foreach (var rule in content.EquipmentProduction.ItemCategories.Rules
             .Where(static rule => rule.Value.ReplaceBy.Length != 0)
             .Select(static rule => (rule.Id, rule.Value.ReplaceBy, Key: Encoding.UTF8.GetBytes(rule.Id)))
-            .OrderByDescending(static rule => rule.Key, byteOrder))
+            .OrderByDescending(static rule => rule.Key, Utf8ByteOrder))
             result[rule.Id] = result.GetValueOrDefault(rule.ReplaceBy, rule.ReplaceBy);
+        return result;
+    }
+
+    /// <summary>
+    /// How many crafts BaseView::draw places in a hangar: its craft slots after RuleBaseFacility::afterLoad
+    /// pads a short list with centre positions (or adds one centre slot to an empty list), up to the first
+    /// position already used, where the drawing loop stops.
+    /// </summary>
+    private static int DrawnCraftSlots(int crafts, IReadOnlyList<CampaignStart.FacilityPosition> declared)
+    {
+        var centre = new CampaignStart.FacilityPosition(0, 0, 0);
+        var slots = declared.ToList();
+        if (crafts > 1 && slots.Count != crafts)
+            while (slots.Count < crafts) slots.Add(centre);
+        if (slots.Count == 0) slots.Add(centre);
+        var drawn = new List<CampaignStart.FacilityPosition>();
+        foreach (var slot in slots)
+        {
+            if (drawn.Contains(slot)) break;
+            drawn.Add(slot);
+        }
+        return drawn.Count;
+    }
+
+    /// <summary>
+    /// Mod::loadAll's final research: walking research by name, a topic marked <c>unlockFinalMission</c> replaces
+    /// the one found so far unless the mod that last updated it loads earlier (getModLastUpdatingRule offset).
+    /// </summary>
+    private static string? FinalResearch(Phase3ContentCatalog content, ResolvedResourceCatalog resources)
+    {
+        string? result = null;
+        var resultOffset = 0;
+        foreach (var rule in content.EquipmentProduction.Research.Rules
+            .OrderBy(static rule => Encoding.UTF8.GetBytes(rule.Id), Utf8ByteOrder))
+        {
+            if (!rule.Value.UnlockFinalMission) continue;
+            var offset = resources.ModOffsets.GetValueOrDefault(rule.LastUpdateSource.ModId);
+            if (result is not null && offset < resultOffset) continue;
+            result = rule.Id;
+            resultOffset = offset;
+        }
         return result;
     }
 

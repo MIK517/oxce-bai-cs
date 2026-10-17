@@ -213,6 +213,7 @@ public static partial class OxceSaveAdapter
         {
             World = world,
             Restrictions = ReadRestrictions(body),
+            DeadSoldiers = ReadDeadSoldiers(body, content),
             // SavedGame::load accepts repeated topics; the port keeps one entry per topic.
             CompletedResearch = Array.AsReadOnly(Sequence(body, "discovered").Select(YamlValueReader.ReadString)
                 .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray()),
@@ -230,6 +231,46 @@ public static partial class OxceSaveAdapter
         return new LoadedOxceCampaign(campaign,
             new OxceSaveDocument(header, body, Array.AsReadOnly(modLabels), new OxceGlobeView(
                 Double(body, "globeLon", 0), Double(body, "globeLat", 0), Integer(body, "globeZoom", 0))));
+    }
+
+    // SavedGame deadSoldiers: each soldier as it died, with SoldierDeath's time; the cause stays in the node.
+    private static ReadOnlyCollection<DeadSoldierSnapshot> ReadDeadSoldiers(YamlMappingNode body, RuntimeContent content)
+    {
+        var defaultSoldier = content.RuntimeRules.Soldiers.Rules.Count == 0 ? string.Empty : content.RuntimeRules.Soldiers.Rules[0].Id;
+        return Array.AsReadOnly(Sequence(body, "deadSoldiers").Select(item =>
+        {
+            var map = RequireMap(item, "dead soldier");
+            var death = map.TryGet("death", out var deathNode) ? RequireMap(deathNode!, "soldier death") : null;
+            var time = death is not null && death.TryGet("time", out var timeNode) ? ReadTime(RequireMap(timeNode!, "death time")) : (CampaignTime?)null;
+            return new DeadSoldierSnapshot(ReadSoldier(map, defaultSoldier), time);
+        }).ToArray());
+    }
+
+    private static YamlSequenceNode? BuildDeadSoldiers(IReadOnlyList<DeadSoldierSnapshot> dead, YamlMappingNode? body)
+    {
+        if (dead.Count == 0) return null;
+        EnsureUnique(dead.Select(static item => item.Soldier.Id), "dead soldier ID");
+        var buried = new Dictionary<int, YamlMappingNode>();
+        foreach (var map in Maps(body, "deadSoldiers")) buried.TryAdd(Integer(map, "id", 0), map);
+        // A soldier who died in this session overlays its node from the living soldiers.
+        var living = IndexEntities(body).Soldiers;
+        var index = new SaveEntityIndex();
+        foreach (var item in dead)
+            if ((buried.GetValueOrDefault(item.Soldier.Id) ?? living.GetValueOrDefault(item.Soldier.Id)) is { } node)
+                index.Soldiers[item.Soldier.Id] = node;
+        return Sequence(dead.Select(item =>
+        {
+            var source = buried.GetValueOrDefault(item.Soldier.Id);
+            var death = source is not null && source.TryGet("death", out var savedDeath) ? savedDeath as YamlMappingNode : null;
+            var deathNode = item.DiedAt is not { } time ? death : Overlay(death, [Pair("time", Time(time))]);
+            // A soldier who died in this session leaves the live node behind: Soldier::die cleared its
+            // equipment layouts and promotion flag.
+            return Overlay(BuildSoldier(item.Soldier, index), source is not null ? [Pair("death", deathNode)] :
+            [
+                Pair("equipmentLayout", null), Pair("personalEquipmentLayout", null), Pair("recentlyPromoted", null),
+                Pair("death", deathNode),
+            ]);
+        }));
     }
 
     private static ReadOnlyCollection<CampaignRestriction> ReadRestrictions(YamlMappingNode body)
@@ -501,11 +542,14 @@ public static partial class OxceSaveAdapter
                 ])))),
             Pair("alienStrategy", BuildAlienStrategy(snapshot.World.Strategy, originalStrategy)),
             Pair("generatedEvents", IntMapping(snapshot.World.GeneratedEvents)),
+            Pair("craftLostDogfight", Integer(snapshot.World.CraftLostDogfight)),
+            Pair("oxcePortDeploymentRequest", BuildDeploymentRequest(snapshot.World.DeploymentRequest)),
             Pair("oxcePortAlienBaseBirthSequence", snapshot.World.AlienBaseBirthSequence == 0
                 ? null : ULong(snapshot.World.AlienBaseBirthSequence)),
             // Legacy terror sites were imported as mission sites, so the legacy node is not rewritten.
             Pair("terrorSites", null),
             Pair("tags", ScriptValues(snapshot.ScriptValues)),
+            Pair("deadSoldiers", BuildDeadSoldiers(snapshot.DeadSoldiers, source?.Body)),
             Pair("discovered", snapshot.CompletedResearch.Count == 0 ? null : Sequence(snapshot.CompletedResearch.Select(Scalar))),
             Pair("researchRuleStatus", snapshot.ResearchRuleStatus.Count == 0 ? null :
                 IntMapping(snapshot.ResearchRuleStatus)),
@@ -528,7 +572,11 @@ public static partial class OxceSaveAdapter
                 Pair("craftLaunchAlways", Boolean(snapshot.Options.CraftLaunchAlways)),
                 Pair("oxceGeoSuppressLandingWithoutEquipment", Boolean(snapshot.Options.SuppressLandingWithoutEquipment)),
                 Pair("oxceGeoSuppressRedundantHKAlert", Boolean(snapshot.Options.SuppressRedundantHunterAlert)),
-                Pair("retainCorpses", Boolean(snapshot.Options.RetainCorpses))])),
+                Pair("retainCorpses", Boolean(snapshot.Options.RetainCorpses)),
+                Pair("dogfightAI", Boolean(snapshot.Options.DogfightAI)),
+                Pair("oxceRememberDisabledCraftWeapons", Boolean(snapshot.Options.RememberDisabledCraftWeapons)),
+                Pair("globeSeasons", Boolean(snapshot.Options.GlobeSeasons)),
+                Pair("oxceWoundedDefendBaseIf", Integer(snapshot.Options.WoundedDefendBaseIf))])),
         ]);
     }
 
@@ -621,6 +669,11 @@ public static partial class OxceSaveAdapter
             Pair("kills", Integer(personal.Kills)),
             Pair("stuns", Integer(personal.Stuns)),
             Pair("diary", BuildSoldierDiary(source, personal)),
+            Pair("dailyDogfightExperienceCache", personal.DailyDogfightExperience.IsEmpty ? null : Overlay(
+                source is not null && source.TryGet("dailyDogfightExperienceCache", out var cache) ? RequireMap(cache!, "dogfight experience") : null,
+                [Pair("firing", Integer(personal.DailyDogfightExperience.Firing)),
+                    Pair("reactions", Integer(personal.DailyDogfightExperience.Reactions)),
+                    Pair("bravery", Integer(personal.DailyDogfightExperience.Bravery))])),
             Pair("manaMissing", Integer(personal.ManaMissing)),
             Pair("healthMissing", Integer(personal.HealthMissing)),
             Pair("improvement", Integer(personal.Improvement)),
@@ -671,6 +724,7 @@ public static partial class OxceSaveAdapter
             Pair("takeoff", state.Takeoff == 0 ? null : Integer(state.Takeoff)),
             Pair("mission", state.MissionComplete ? Boolean(true) : null),
             Pair("interceptionOrder", state.InterceptionOrder == 0 ? null : Integer(state.InterceptionOrder)),
+            Pair("pilots", state.Pilots.Count == 0 ? null : Sequence(state.Pilots.Select(Integer))),
             Pair("lonAuto", Real(state.AutoPatrolLongitude)), Pair("latAuto", Real(state.AutoPatrolLatitude)),
             Pair("speed", Integer(state.Speed)),
             Pair("speedLon", Real(state.SpeedLongitude)), Pair("speedLat", Real(state.SpeedLatitude)),
@@ -714,7 +768,8 @@ public static partial class OxceSaveAdapter
     private static YamlMappingNode? BuildSoldierDiary(YamlMappingNode? source, SoldierPersonalState personal)
     {
         var diary = source is not null && source.TryGet("diary", out var node) ? RequireMap(node!, "soldier diary") : null;
-        if (diary is null && personal.Commendations.Count == 0) return null;
+        if (diary is null && personal.Commendations.Count == 0 && personal.UfosShotDownTotal == 0 && personal.UfosDamageTotal == 0)
+            return null;
         var previous = Maps(diary, "commendations").ToArray();
         var commendations = personal.Commendations.Select((commendation, index) =>
         {
@@ -727,7 +782,12 @@ public static partial class OxceSaveAdapter
                 Pair("decorationLevel", Integer(commendation.DecorationLevel)),
             ]);
         });
-        var result = Overlay(diary, [Pair("commendations", Sequence(commendations))]);
+        var result = Overlay(diary,
+        [
+            Pair("commendations", Sequence(commendations)),
+            Pair("ufosShotDownTotal", personal.UfosShotDownTotal == 0 ? null : Integer(personal.UfosShotDownTotal)),
+            Pair("ufosDamageTotal", personal.UfosDamageTotal == 0 ? null : Integer(personal.UfosDamageTotal)),
+        ]);
         return diary is null ? Overlay(result, [Pair("killList", Sequence([]))]) : result;
     }
 
@@ -762,6 +822,12 @@ public static partial class OxceSaveAdapter
             TransformationBonuses = ReadIntMap(map, "transformationBonuses"),
             Commendations = Array.AsReadOnly(Maps(diary, "commendations").Select(c => new SoldierCommendation(
                 RequiredString(c, "commendationName"), String(c, "noun", "noNoun"), Integer(c, "decorationLevel", 0))).ToArray()),
+            UfosShotDownTotal = diary is null ? 0 : Integer(diary, "ufosShotDownTotal", 0),
+            UfosDamageTotal = diary is null ? 0 : Integer(diary, "ufosDamageTotal", 0),
+            DailyDogfightExperience = map.TryGet("dailyDogfightExperienceCache", out var cacheNode) &&
+                RequireMap(cacheNode!, "dogfight experience") is var cache
+                ? new(Integer(cache, "firing", 0), Integer(cache, "reactions", 0), Integer(cache, "bravery", 0))
+                : SoldierDogfightExperience.None,
             ReplacedArmor = String(map, "replacedArmor", ""),
             TransformedArmor = String(map, "transformedArmor", ""),
             PersonalEquipmentArmor = String(map, "personalEquipmentArmor", ""),
@@ -792,20 +858,23 @@ public static partial class OxceSaveAdapter
 
     private static CampaignOptions ReadOptions(YamlMappingNode map)
     {
-        RejectDuplicateKnownKeys(map, ["storageLimitsEnforced", "canSellLiveAliens", "autoCombatDefaultSoldier", "anytimePsiTraining", "allowPsiStrengthImprovement", "maximumBases", "allowBuildingQueue", "oxceUfoLandingAlert", "aggressiveRetaliation", "craftLaunchAlways", "oxceGeoSuppressLandingWithoutEquipment", "oxceGeoSuppressRedundantHKAlert", "retainCorpses"]);
+        RejectDuplicateKnownKeys(map, ["storageLimitsEnforced", "canSellLiveAliens", "autoCombatDefaultSoldier", "anytimePsiTraining", "allowPsiStrengthImprovement", "maximumBases", "allowBuildingQueue", "oxceUfoLandingAlert", "aggressiveRetaliation", "craftLaunchAlways", "oxceGeoSuppressLandingWithoutEquipment", "oxceGeoSuppressRedundantHKAlert", "retainCorpses", "dogfightAI", "oxceRememberDisabledCraftWeapons", "globeSeasons", "oxceWoundedDefendBaseIf"]);
         return new(Boolean(map, "storageLimitsEnforced", false), Boolean(map, "canSellLiveAliens", false),
             Boolean(map, "autoCombatDefaultSoldier", true), Boolean(map, "anytimePsiTraining", false),
             Boolean(map, "allowPsiStrengthImprovement", false), Integer(map, "maximumBases", 8),
             Boolean(map, "allowBuildingQueue", false), Boolean(map, "oxceUfoLandingAlert", false),
             Boolean(map, "aggressiveRetaliation", true), Boolean(map, "craftLaunchAlways", false),
-            Boolean(map, "oxceGeoSuppressLandingWithoutEquipment", false), Boolean(map, "oxceGeoSuppressRedundantHKAlert", true), Boolean(map, "retainCorpses", false));
+            Boolean(map, "oxceGeoSuppressLandingWithoutEquipment", false), Boolean(map, "oxceGeoSuppressRedundantHKAlert", true), Boolean(map, "retainCorpses", false),
+            Boolean(map, "dogfightAI", true), Boolean(map, "oxceRememberDisabledCraftWeapons", false),
+            Boolean(map, "globeSeasons", false), Integer(map, "oxceWoundedDefendBaseIf", 100));
     }
 
     /// <summary>
     /// A reference save has no port options, but SavedGame::save writes a debugging snapshot of
     /// the player's options. The reference never reads it back; it is the best record of the
-    /// options the campaign was played with, so matching boolean entries seed the session
-    /// options. Anything unreadable falls back to the defaults instead of rejecting the save.
+    /// options the campaign was played with, so matching boolean entries (and the wounded-defender
+    /// percentage) seed the session options. Anything unreadable falls back to the defaults instead
+    /// of rejecting the save.
     /// </summary>
     private static CampaignOptions ReadReferenceOptions(YamlMappingNode body)
     {
@@ -825,6 +894,13 @@ public static partial class OxceSaveAdapter
             SuppressLandingWithoutEquipment = Snapshot("oxceGeoSuppressLandingWithoutEquipment", defaults.SuppressLandingWithoutEquipment),
             SuppressRedundantHunterAlert = Snapshot("oxceGeoSuppressRedundantHKAlert", defaults.SuppressRedundantHunterAlert),
             RetainCorpses = Snapshot("retainCorpses", defaults.RetainCorpses),
+            DogfightAI = Snapshot("dogfightAI", defaults.DogfightAI),
+            RememberDisabledCraftWeapons = Snapshot("oxceRememberDisabledCraftWeapons", defaults.RememberDisabledCraftWeapons),
+            GlobeSeasons = Snapshot("globeSeasons", defaults.GlobeSeasons),
+            WoundedDefendBaseIf = map.TryGet("oxceWoundedDefendBaseIf", out var wounded) &&
+                wounded is YamlScalarNode { Value: { } percent } &&
+                int.TryParse(percent, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed)
+                ? parsed : defaults.WoundedDefendBaseIf,
         };
 
         bool Snapshot(string key, bool fallback) =>
@@ -858,6 +934,7 @@ public static partial class OxceSaveAdapter
             Takeoff = Integer(map, "takeoff", 0),
             MissionComplete = Boolean(map, "mission", false),
             InterceptionOrder = Integer(map, "interceptionOrder", 0),
+            Pilots = IntHistory(map, "pilots", []),
             AutoPatrolLongitude = Double(map, "lonAuto", 0),
             AutoPatrolLatitude = Double(map, "latAuto", 0),
             Speed = Integer(map, "speed", 0),

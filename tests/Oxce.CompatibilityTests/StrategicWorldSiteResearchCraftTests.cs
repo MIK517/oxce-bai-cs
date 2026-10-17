@@ -93,8 +93,7 @@ public sealed class StrategicWorldSiteResearchCraftTests
                 Soldiers = [owner.Soldiers[0] with { Personal = owner.Soldiers[0].Personal! with { CraftType = "SHIP", CraftId = 1 } }, .. owner.Soldiers.Skip(1)],
             }],
         };
-        AssertTimeBlocked(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17)),
-            "Craft landing requires deployment (Phase 6 branch 5).");
+        AssertLandingRequested(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17)));
     }
 
     [Fact]

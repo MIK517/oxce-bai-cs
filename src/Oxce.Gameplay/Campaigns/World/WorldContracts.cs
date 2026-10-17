@@ -218,11 +218,16 @@ public sealed record WorldSnapshot
     public IReadOnlyDictionary<string, int> GeneratedEvents { get; init; } =
         new System.Collections.ObjectModel.ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
     public AlienStrategySnapshot Strategy { get; init; } = AlienStrategySnapshot.Empty;
+    /// <summary>The pending deployment request of a confirmed landing (port-only, D4).</summary>
+    public CampaignDeploymentRequest? DeploymentRequest { get; init; }
+    /// <summary>SavedGame::_craftLostDogfight: crafts destroyed in interceptions.</summary>
+    public int CraftLostDogfight { get; init; }
 
     public static WorldSnapshot Empty { get; } = new();
 
     public bool IsEmpty =>
         Missions.Count == 0 && Ufos.Count == 0 && Waypoints.Count == 0 &&
         MissionSites.Count == 0 && AlienBases.Count == 0 && Events.Count == 0 &&
-        GeneratedEvents.Count == 0 && AlienBaseBirthSequence == 0 && Strategy.IsEmpty;
+        GeneratedEvents.Count == 0 && AlienBaseBirthSequence == 0 && Strategy.IsEmpty &&
+        CraftLostDogfight == 0 && DeploymentRequest is null;
 }

@@ -148,6 +148,51 @@ internal static class StrategicWorldTestSupport
         }
     }
 
+    /// <summary>
+    /// Branch 5 S4: the tick where a craft and a UFO meet runs and opens an interception, which pauses
+    /// time. This replaces the earlier atomic interception guard at the same tick.
+    /// </summary>
+    public static InterceptionStarted AssertInterceptionStarts(CampaignState campaign, bool? ufoAttacking = null)
+    {
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.DoesNotContain(result.Events, static evt => evt is CampaignActionBlocked);
+        var started = Assert.IsType<InterceptionStarted>(result.Events.First(static evt => evt is InterceptionStarted));
+        if (ufoAttacking is { } attacking) Assert.Equal(attacking, started.UfoAttacking);
+        return started;
+    }
+
+    /// <summary>
+    /// Branch 5 S6: the tick where a craft that may land reaches its landing target runs and queues a
+    /// landing confirmation, which pauses time. This replaces the earlier landing guard at the same tick.
+    /// </summary>
+    public static LandingConfirmationRequested AssertLandingRequested(CampaignState campaign)
+    {
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.DoesNotContain(result.Events, static evt => evt is CampaignActionBlocked);
+        return Assert.IsType<LandingConfirmationRequested>(result.Events.First(static evt => evt is LandingConfirmationRequested));
+    }
+
+    /// <summary>
+    /// Branch 5: a newborn hunter-killer that may select and reach a craft in its birth tick no longer stops time;
+    /// the tick runs, and any interception it opens is the hunter's attack.
+    /// </summary>
+    public static void AssertNewbornHuntRuns(CampaignState campaign)
+    {
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.DoesNotContain(result.Events, static evt => evt is CampaignActionBlocked);
+        var ufos = campaign.Capture().World.Ufos;
+        foreach (var started in result.Events.OfType<InterceptionStarted>())
+        {
+            Assert.True(started.UfoAttacking);
+            // The window belongs to a hunter that targets this craft (escorts join its fight).
+            Assert.Contains(ufos, ufo => ufo.Hunting && ufo.Destination is { Kind: WorldTargetKind.Craft } target &&
+                target.TypeId == started.CraftTypeId && target.Id == started.CraftId);
+        }
+    }
+
     /// <summary>Asserts that the next tick is refused with <paramref name="reason"/> and changes nothing.</summary>
     public static void AssertTimeBlocked(CampaignState campaign, string reason)
     {

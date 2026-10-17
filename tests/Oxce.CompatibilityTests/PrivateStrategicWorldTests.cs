@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Oxce.Core.Random;
 using Oxce.Gameplay.Campaigns;
+using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Bootstrap;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.Savegames.Oxce;
@@ -78,25 +79,76 @@ public sealed class PrivateStrategicWorldTests
     /// boundary or a real branch 5/6 transition; tactical saves stay preservation-only.
     /// </summary>
     [Fact]
-    public void ImportedWorldRunsToItsNamedLongHorizonStop()
+    public void ImportedWorldRunsToItsNamedLongHorizonStop() => RunToLongHorizonStops(new()
+    {
+        [("vanilla-ufo", "early/Begining.sav")] = (525365, MonthStop),
+        [("vanilla-ufo", "early/IronMode.sav")] = (527039, MonthStop),
+        [("vanilla-ufo", "early/Middle.sav")] = (396541, MonthStop),
+        [("vanilla-ufo", "early/_autogeo_.asav")] = (396558, MonthStop),
+        [("vanilla-tftd", "early/Begining.sav")] = (526924, MonthStop),
+        [("vanilla-tftd", "early/IronMode.sav")] = (527039, MonthStop),
+        [("vanilla-tftd", "early/Middle.sav")] = (90174, MonthStop),
+        [("modded/rosigma", "early/Begining.sav")] = (580, "Strategic event consequences require campaign event execution (Phase 6 branch 6)."),
+        // Branch 5 S6: the landing tick now runs and queues a confirmation, which then holds the clock.
+        [("modded/rosigma", "early/Early.sav")] = (6290, "Landing confirmations stop the clock until they are answered."),
+        [("modded/rosigma", "early/Middle.sav")] = (429681, MonthStop),
+        [("modded/rosigma", "early/_autogeo_.asav")] = (429698, MonthStop),
+    }, answer: null);
+
+    /// <summary>
+    /// Branch 5 S9 reclassification: a headless player declines every landing, disengages every
+    /// interception and fires every base defense, so each staged save runs past its branch 5 windows to
+    /// the next stop that is not a player choice.
+    /// </summary>
+    [Fact]
+    public void ImportedWorldRunsPastBranchFiveChoicesToItsNextStop() => RunToLongHorizonStops(new()
+    {
+        [("vanilla-ufo", "early/Begining.sav")] = (525365, MonthStop),
+        [("vanilla-ufo", "early/IronMode.sav")] = (527039, MonthStop),
+        [("vanilla-ufo", "early/Middle.sav")] = (396541, MonthStop),
+        [("vanilla-ufo", "early/_autogeo_.asav")] = (396558, MonthStop),
+        [("vanilla-tftd", "early/Begining.sav")] = (526924, MonthStop),
+        [("vanilla-tftd", "early/IronMode.sav")] = (527039, MonthStop),
+        [("vanilla-tftd", "early/Middle.sav")] = (90174, MonthStop),
+        [("modded/rosigma", "early/Begining.sav")] = (580, "Strategic event consequences require campaign event execution (Phase 6 branch 6)."),
+        // Declining the terror-site landing lets the campaign run on to the month boundary.
+        [("modded/rosigma", "early/Early.sav")] = (435988, MonthStop),
+        [("modded/rosigma", "early/Middle.sav")] = (429681, MonthStop),
+        [("modded/rosigma", "early/_autogeo_.asav")] = (429698, MonthStop),
+    }, AnswerBranchFiveChoices);
+
+    private static bool AnswerBranchFiveChoices(CampaignState campaign, string reason)
+    {
+        if (reason == WorldCommandReasons.LandingConfirmationsOpen)
+        {
+            foreach (var landing in campaign.GetQuery<ICampaignLandingQuery>()!.QueryLandingConfirmations())
+                Assert.DoesNotContain(campaign.Execute(new AnswerLanding(landing.Confirmation, LandingAnswer.No)).Events,
+                    static evt => evt is CampaignActionBlocked);
+            return true;
+        }
+        if (reason == WorldCommandReasons.BaseDefenseOpen)
+        {
+            var defense = campaign.GetQuery<ICampaignBaseDefenseQuery>()!.QueryBaseDefense()!;
+            Assert.DoesNotContain(campaign.Execute(new ResolveBaseDefense(defense.BaseId, Fire: true)).Events,
+                static evt => evt is CampaignActionBlocked);
+            return true;
+        }
+        if (reason != WorldCommandReasons.InterceptionsOpen) return false;
+        var interceptions = campaign.GetQuery<ICampaignInterceptionQuery>()!;
+        foreach (var window in interceptions.QueryInterceptions())
+            if (window.AvailableModes.Contains(InterceptionMode.Disengage))
+                campaign.Execute(new SetInterceptionMode(window.Number, InterceptionMode.Disengage));
+        for (var step = 0; step < 100_000 && interceptions.QueryInterceptions().Any(static window => !window.Minimized); step++)
+            Assert.DoesNotContain(campaign.Execute(new AdvanceInterceptions()).Events, static evt => evt is CampaignActionBlocked);
+        return true;
+    }
+
+    private static void RunToLongHorizonStops(Dictionary<(string, string), (int Ticks, string Reason)> expected,
+        Func<CampaignState, string, bool>? answer)
     {
         var installation = TestFixtures.RepositoryPath("artifacts", "private-install");
         Assert.SkipUnless(File.Exists(Path.Combine(installation, ".oxce-private-install-manifest.json")),
             "Owned installation is not staged.");
-        var expected = new Dictionary<(string, string), (int Ticks, string Reason)>
-        {
-            [("vanilla-ufo", "early/Begining.sav")] = (525365, MonthStop),
-            [("vanilla-ufo", "early/IronMode.sav")] = (527039, MonthStop),
-            [("vanilla-ufo", "early/Middle.sav")] = (396541, MonthStop),
-            [("vanilla-ufo", "early/_autogeo_.asav")] = (396558, MonthStop),
-            [("vanilla-tftd", "early/Begining.sav")] = (526924, MonthStop),
-            [("vanilla-tftd", "early/IronMode.sav")] = (527039, MonthStop),
-            [("vanilla-tftd", "early/Middle.sav")] = (90174, MonthStop),
-            [("modded/rosigma", "early/Begining.sav")] = (580, "Strategic event consequences require campaign event execution (Phase 6 branch 6)."),
-            [("modded/rosigma", "early/Early.sav")] = (6289, "Craft landing requires deployment (Phase 6 branch 5)."),
-            [("modded/rosigma", "early/Middle.sav")] = (429681, MonthStop),
-            [("modded/rosigma", "early/_autogeo_.asav")] = (429698, MonthStop),
-        };
         var cacheDirectory = Directory.CreateTempSubdirectory("oxce-private-horizon-cache-");
         try
         {
@@ -131,12 +183,58 @@ public sealed class PrivateStrategicWorldTests
                         ticks += advanced;
                         reason = result.Events.OfType<CampaignActionBlocked>().SingleOrDefault()?.Reason;
                         Assert.True(advanced > 0 || reason is not null, $"{family}/{name} neither advanced nor stopped.");
+                        if (reason is not null && answer is not null && answer(campaign, reason)) reason = null;
                     }
                     if (name.StartsWith("battlescape/", StringComparison.Ordinal)) Assert.Equal((0, TacticalStop), (ticks, reason));
                     else measured[(family, name)] = (ticks, reason ?? "limit");
                 }
             }
             Assert.Equal(expected.OrderBy(pair => pair.Key).ToArray(), measured.OrderBy(pair => pair.Key).ToArray());
+        }
+        finally { cacheDirectory.Delete(recursive: true); }
+    }
+
+    /// <summary>
+    /// Branch 5 S6 acceptance: the Rosigma <c>Early.sav</c> campaign runs to its first landing, and Yes
+    /// records the deployment request that then holds the campaign.
+    /// </summary>
+    [Fact]
+    public void RosigmaEarlyReachesADeploymentRequest()
+    {
+        var installation = TestFixtures.RepositoryPath("artifacts", "private-install");
+        Assert.SkipUnless(File.Exists(Path.Combine(installation, ".oxce-private-install-manifest.json")),
+            "Owned installation is not staged.");
+        var cacheDirectory = Directory.CreateTempSubdirectory("oxce-private-landing-cache-");
+        try
+        {
+            var request = InstallationLoadRequest.ForMasterAndAddOn(installation, "40k", "40k_ROSIGMA_edits", new("Extended", "8.6.1.0"));
+            var loaded = InstallationContentLoader.Load(request, new() { Cache = new() { DirectoryPath = cacheDirectory.FullName } },
+                cancellationToken: TestContext.Current.CancellationToken);
+            Assert.True(loaded.IsSuccess, loaded.DescribeFailure());
+            var options = new OxceSaveLoadOptions(request.MasterId, request.ActiveMods.ToHashSet(StringComparer.Ordinal),
+                new Oxce.Formats.Yaml.YamlReadOptions { MaxBytes = 32 * 1024 * 1024, MaxNodes = 2_000_000 });
+            var file = TestFixtures.RepositoryPath("fixtures", "private", "saves", "modded/rosigma", "early", "Early.sav");
+            var campaign = OxceSaveAdapter.LoadFile(file, loaded.Content!, new SplitMix64RandomSource(17), options).Campaign;
+            LandingConfirmationRequested? landing = null;
+            var ticks = 0;
+            while (landing is null && ticks < 7000)
+            {
+                var result = campaign.Execute(new AdvanceCampaignTime(1440) { SelectedSpeed = CampaignTimeSpeed.OneDay });
+                Assert.DoesNotContain(result.Events, static item => item is CampaignActionBlocked);
+                ticks += result.Events.OfType<CampaignTimeAdvanced>().Single().Summary.TickCount;
+                landing = result.Events.OfType<LandingConfirmationRequested>().FirstOrDefault();
+            }
+            Assert.NotNull(landing);
+            Assert.Equal(6290, ticks);
+            var answer = campaign.Execute(new AnswerLanding(landing.Confirmation, LandingAnswer.Yes)).Events;
+            var deployment = Assert.IsType<DeploymentRequested>(Assert.Single(answer)).Request;
+            Assert.Equal((landing.BaseId, landing.CraftTypeId, landing.CraftId), (deployment.BaseId, deployment.CraftTypeId, deployment.CraftId));
+            // A terror site of the early Slaanesh cult, at night, with ten soldiers on board.
+            Assert.Equal(("STR_TERROR_MISSION", "STR_TERROR_MISSION", "STR_SLAANESH_CULT_EARLY", 3, 3, 0, 10),
+                (deployment.MissionType, deployment.DeploymentId, deployment.Race, deployment.MissionTexture, deployment.GlobeTexture,
+                    deployment.Shade, deployment.Soldiers.Count));
+            Assert.Equal(WorldCommandReasons.DeploymentRequestPending, Assert.IsType<CampaignActionBlocked>(
+                campaign.Execute(new AdvanceCampaignTime(1)).Events[^1]).Reason);
         }
         finally { cacheDirectory.Delete(recursive: true); }
     }

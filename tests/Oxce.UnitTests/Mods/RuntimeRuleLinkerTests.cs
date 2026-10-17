@@ -225,6 +225,35 @@ public sealed class RuntimeRuleLinkerTests
         Assert.Empty(scratch.AsSpan().ToArray());
     }
 
+    [Theory]
+    [InlineData(false, "FINAL_A")]
+    [InlineData(true, "FINAL_Z")]
+    public void FinalResearchFollowsTheLoadOrderOfTheModThatLastUpdatedIt(bool addOnUpdatesLaterTopic, string expected)
+    {
+        // Mod::loadAll walks research by name; a marked topic replaces the pick unless the mod that last updated it
+        // loads earlier. The master's FINAL_Z comes after the add-on's FINAL_A by name but loses to it, unless the
+        // add-on updates FINAL_Z too.
+        var root = Path.Combine(Path.GetTempPath(), $"oxce-final-research-{Guid.NewGuid():N}");
+        try
+        {
+            TestFixtures.CopyDirectory(TestFixtures.PublicModsPath("runtime-rule-linking"), root);
+            File.WriteAllText(Path.Combine(root, "runtime-master", "Ruleset", "final.rul"),
+                "research: [{name: FINAL_Z, cost: 1, unlockFinalMission: true}]");
+            File.WriteAllText(Path.Combine(root, "runtime-addon", "Ruleset", "final.rul"), addOnUpdatesLaterTopic
+                ? "research: [{name: FINAL_A, cost: 1, unlockFinalMission: true}, {name: FINAL_Z, cost: 2}]"
+                : "research: [{name: FINAL_A, cost: 1, unlockFinalMission: true}]");
+            var snapshot = ContentSnapshotBuilder.Build(
+                TestFixtures.CreatePlan(root, TestFixtures.RuntimeRuleLinkingMods[0], TestFixtures.RuntimeRuleLinkingMods));
+            Assert.True(snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked), Diagnostics(snapshot));
+            Assert.Equal([expected], snapshot.Content.RuntimeRules.Research.Rules
+                .Where(static rule => rule.Value.UnlockFinalMission).Select(static rule => rule.Id));
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
     private static string Diagnostics(ContentSnapshot snapshot) => string.Join(
         Environment.NewLine,
         snapshot.Diagnostics.Select(static diagnostic => diagnostic.Message));

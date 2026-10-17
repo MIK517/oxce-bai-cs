@@ -86,8 +86,7 @@ internal sealed partial class CampaignWorld
                     return separationReason;
                 if (!separated)
                 {
-                    if (NewbornHuntReachReason(positions, rule, mission.Race, path, (int)radar,
-                            initializedEscort, canRemainIdle, ref _pass.HuntingForecastWork) is { } reachReason)
+                    if (NewbornHuntSpeedReason(rule, mission.Race, path, initializedEscort, canRemainIdle) is { } reachReason)
                         return reachReason;
                     possibleHunt = true;
                 }
@@ -115,8 +114,10 @@ internal sealed partial class CampaignWorld
         return null;
     }
 
-    private string? NewbornHuntReachReason(IReadOnlyList<SpawnArea> positions, RuntimeUfoRule rule,
-        string race, RuntimeUfoTrajectoryRule path, int radar, bool initializedEscort, bool canRemainIdle, ref long work)
+    // A newborn hunter that selects a craft within its first step attacks it in the same five-second pass, as a
+    // saved hunter does (branch 5 S4); only the hunt speed's range needs proving here.
+    private static string? NewbornHuntSpeedReason(RuntimeUfoRule rule, string race, RuntimeUfoTrajectoryRule path,
+        bool initializedEscort, bool canRemainIdle)
     {
         var maximum = (long)rule.Stats.SpeedMaximum + rule.RaceBonus(race).SpeedMaximum;
         if (maximum is < 0 or > int.MaxValue) return "UFO hunting stats exceed the supported range.";
@@ -128,30 +129,7 @@ internal sealed partial class CampaignWorld
             Destination = WorldTargetReference.ForWaypoint(0, new(1, 0.6))
         };
         if (!WorldHunting.TryHunt(hypothetical, WorldTargetReference.ForWaypoint(0, new(1, 0.6)),
-                (int)maximum, rule.HuntSpeed, out var hunted)) return "UFO hunt speed exceeds the supported range.";
-        var reach = WorldGeometry.RadianSpeed(hunted.Speed);
-        var rules = campaign.Content.RuntimeRules;
-        // Selection may depend on random constructor modes and spawn positions.
-        // Prove safety for every eligible target without forecasting RNG or IDs.
-        foreach (var owner in campaign.BaseStates)
-        {
-            if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
-            foreach (var craft in _pass.HuntingCraftSources![owner.Id])
-            {
-                if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
-                var state = _pass.HuntingCraftForecast![(rules.Crafts.GetExternalId(craft.Rule), craft.Id)];
-                var craftRule = rules.Crafts[craft.Rule].Value;
-                if (state.Status != "STR_OUT" || craftRule.Undetectable || WorldHunting.IsIgnored(state.LowFuel, state.MissionComplete) ||
-                    state.Damage >= CraftLogistics.EffectiveDamageMaximum(state, craftRule, rules)) continue;
-                foreach (var position in positions)
-                {
-                    if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
-                    var nearest = WorldGeometry.Distance(position.Center, new(state.Longitude, state.Latitude)) - position.Radius;
-                    if (nearest <= WorldGeometry.Nautical(radar) + 1e-12 && nearest <= reach + 1e-12)
-                        return HuntCombatReason;
-                }
-            }
-        }
+                (int)maximum, rule.HuntSpeed, out _)) return "UFO hunt speed exceeds the supported range.";
         return null;
     }
 

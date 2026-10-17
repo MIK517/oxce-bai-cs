@@ -54,8 +54,6 @@ internal sealed partial class CampaignWorld
             if (target.Kind == WorldTargetKind.Base && members.Where((_, slot) => slot == 0 || !command.FollowLeader)
                     .Any(member => member.Owner.Id != target.Id))
                 return Blocked(WorldCommandReasons.ForeignBase);
-            if (TargetDeployment(resolved) is { StartingCondition.Length: > 0 })
-                return Blocked(WorldCommandReasons.StartingConditionBoundary);
             destination = resolved;
         }
         foreach (var member in members)

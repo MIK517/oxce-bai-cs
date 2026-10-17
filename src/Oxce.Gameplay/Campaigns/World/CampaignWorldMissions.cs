@@ -383,7 +383,7 @@ internal sealed partial class CampaignWorld
 
     private bool CanSpawnOrdinaryUfoWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, bool requireHuntingForecast = true)
     {
-        if (rule.Objective == RuntimeMissionObjective.InstantRetaliation || mission.LiveUfos == int.MaxValue)
+        if (InstantRetaliationWithoutTarget(mission, rule) || mission.LiveUfos == int.MaxValue)
             return false;
         var wave = SpawnWave(mission, rule);
         if (wave.Ufo is not { } ufoHandle || wave.Trajectory is not { } trajectoryHandle ||
@@ -416,10 +416,31 @@ internal sealed partial class CampaignWorld
             return false;
         // Landed births consume their ground timer, including a possible lift,
         // without moving in this pass. Their next tick uses saved-UFO proofs.
+        // An assault birth within one step of its base attacks it in this pass (branch 5 S7).
+        if (trajectory.Altitude(0) != 0 && FirstWaypointReachable(positions, destinations, speed) &&
+            HasRetaliationTarget(mission, rule))
+            return CanForecastNewbornAssault(mission, rule, wave, trajectory, region) && CanAdvanceWaveCounters(mission, rule, wave);
         if (trajectory.Altitude(0) != 0 && FirstWaypointReachable(positions, destinations, speed) &&
             !CanAdvanceNewbornAirborneWaypoint(mission, rule, wave, trajectory, region, stats.SpeedMaximum,
                 destinations, requireHuntingForecast)) return false;
         return CanAdvanceWaveCounters(mission, rule, wave);
+    }
+
+    /// <summary>
+    /// A retaliation assault born within one step of its target (always so for an instant retaliation, which
+    /// spawns over the base) reaches it in the same five-second pass: ArriveForBaseAssault's waypoint draws,
+    /// then the attack on whichever candidate base the birth selects. Every candidate must be supported.
+    /// </summary>
+    private bool CanForecastNewbornAssault(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, RuntimeMissionWave wave,
+        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region)
+    {
+        if (trajectory.Altitude(1) != 0 || mission.MissionSiteZoneArea != -1 && rule.Waves[mission.NextWave].Objective) return false;
+        if (WorldGeometry.MissionAreas(region, trajectory.Zone(1)).Count > 256) return false;
+        ValidateWaypointAreas(region, trajectory.Zone(1));
+        if (NewbornReplacementLandWork(mission, rule, trajectory, region) > MaximumSpawnLandWork) return false;
+        foreach (var owner in RetaliationCandidates(mission, rule))
+            if (BaseAssaultReason(wave.UfoType, rule, new WorldPosition(owner.Longitude, owner.Latitude)) is not null) return false;
+        return true;
     }
 
     private static bool TryNewbornInitialSpeed(RuntimeUfoTrajectoryRule trajectory, int maximum, out int speed)
@@ -610,6 +631,12 @@ internal sealed partial class CampaignWorld
         RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region, out IReadOnlyList<SpawnArea> positions)
     {
         var assault = HasRetaliationTarget(mission, rule);
+        if (assault && rule.Objective == RuntimeMissionObjective.InstantRetaliation)
+        {
+            // An instant retaliation is born over its target base.
+            positions = RetaliationCandidates(mission, rule).Select(owner => new SpawnArea(new(owner.Longitude, owner.Latitude), 0)).ToArray();
+            return positions.All(static area => area.Center.IsNormalized);
+        }
         if (assault) trajectory = campaign.Content.RuntimeRules.UfoTrajectories[rule.Waves[mission.NextWave].Trajectory!.Value].Value;
         var source = rule.OperationType == RuntimeMissionOperationType.Space ? null : MissionSourceBase(mission);
         if (source is not null && (rule.Objective == RuntimeMissionObjective.Supply || assault))
@@ -716,6 +743,7 @@ internal sealed partial class CampaignWorld
         RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region)
     {
         var assault = HasRetaliationTarget(mission, rule);
+        if (assault && rule.Objective == RuntimeMissionObjective.InstantRetaliation) return 0;
         if (assault)
         {
             if (rule.OperationType != RuntimeMissionOperationType.Space && MissionSourceBase(mission) is not null) return 0;
@@ -793,13 +821,16 @@ internal sealed partial class CampaignWorld
             : WorldHunting.Initialize(wave.HunterKillerPercentage == -1 ? ufoRule.HunterKillerPercentage : wave.HunterKillerPercentage,
                 wave.HuntMode == -1 ? ufoRule.HuntMode : wave.HuntMode,
                 wave.HuntBehavior == -1 ? ufoRule.HuntBehavior : wave.HuntBehavior, campaign.Random);
-        var position = source is not null && (assault || missionRule.Objective == RuntimeMissionObjective.Supply)
+        // AlienMission::spawnUfo places an instant retaliation over its target base.
+        var instant = target is not null && missionRule.Objective == RuntimeMissionObjective.InstantRetaliation;
+        var position = instant ? new WorldPosition(target!.Longitude, target.Latitude)
+            : source is not null && (assault || missionRule.Objective == RuntimeMissionObjective.Supply)
             ? source.Position
             : assault ? RetaliationSpawnPosition(mission, original, region, ufoRule)
             : NormalizeWaypoint(missionRule.Objective == RuntimeMissionObjective.Supply
                 ? WorldGeometry.RandomPoint(region, trajectory.Zone(0), -1, campaign.Random)
                 : OrdinaryWaypoint(mission, trajectory, 0, region, ufoRule, wave));
-        if (source is not null) position = source.Position;
+        if (source is not null && !instant) position = source.Position;
         var destination = target is not null ? new WorldPosition(target.Longitude, target.Latitude) : NormalizeWaypoint(missionRule.Objective == RuntimeMissionObjective.Supply
             ? SupplySpawnDestination(mission, wave, trajectory, region, ufoRule)
             : OrdinaryWaypoint(mission, trajectory, 1, region, ufoRule, wave));

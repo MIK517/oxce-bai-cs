@@ -63,8 +63,7 @@ public sealed class StrategicWorldOptionalSupplyHunterBirthTests
     {
         var content = StrategicWorldOptionalSupplySourceTests.Content(6, radarRange: 20000);
         var initial = Target(StrategicWorldOptionalSupplySourceTests.Snapshot(content, 17, 6), true);
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
-            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+        AssertNewbornHuntRuns(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)));
         initial = Target(StrategicWorldOptionalSupplySourceTests.Snapshot(content, 17, 6), false)
             .WithNextId("STR_UFO", int.MaxValue);
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),

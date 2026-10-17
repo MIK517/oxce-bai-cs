@@ -227,8 +227,7 @@ public sealed class StrategicWorldSiteResearchSpawnTests
                 Latitude = Degrees(8)
             }
         });
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
-            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+        AssertNewbornHuntRuns(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)));
     }
 
     internal static RuntimeContent Content(string trajectory, bool final = false, string interrupt = "CORE", string extra = "", string ufo = "UFO_SCOUT") =>

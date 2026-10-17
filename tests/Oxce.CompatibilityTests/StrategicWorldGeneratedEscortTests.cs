@@ -146,8 +146,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
                 Bases = [owner with { Crafts = [owner.Crafts[0] with
             { Logistics = owner.Crafts[0].Logistics! with { Longitude = origin.Longitude, Latitude = origin.Latitude } }] }]
             };
-            AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
-                "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+            AssertNewbornHuntRuns(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)));
         }
     }
 
@@ -204,8 +203,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
                     Bases = [owner with { Crafts = [craft with
                 { Logistics = craft.Logistics! with { Longitude = origin.Longitude + WorldGeometry.RadianSpeed(1000) } }] }]
                 };
-                AssertTimeBlocked(CampaignState.Restore(close, content, new SplitMix64RandomSource(81)),
-                    "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+                AssertNewbornHuntRuns(CampaignState.Restore(close, content, new SplitMix64RandomSource(81)));
                 var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
                 AdvanceUnblocked(campaign, 1);
                 var born = Assert.Single(campaign.Capture().World.Ufos, ufo => ufo.RuleId == "GENERATED_ESCORT");

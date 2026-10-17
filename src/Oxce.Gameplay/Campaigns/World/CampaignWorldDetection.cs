@@ -25,9 +25,10 @@ internal sealed partial class CampaignWorld
         var detectionCraftSources = -1;
         var detectionWeaponSlots = 0;
         var hasUfoWork = false;
-        foreach (var ufo in _ufos)
+        for (var index = 0; index < _ufos.Count; index++)
         {
-            if (ArrivesAtSite(ufo, highest) || halfHour && ufo.Status is UfoStatus.Flying or UfoStatus.Landed ||
+            var ufo = _ufos[index];
+            if (ArrivesAtSite(index, highest) || halfHour && ufo.Status is UfoStatus.Flying or UfoStatus.Landed ||
                 ufo.Status == UfoStatus.Landed && ufo.SecondsRemaining == 5 ||
                 ufo.Detected && ufo.LandId == 0 && ArrivesOnGround(ufo, highest))
             {
@@ -290,13 +291,14 @@ internal sealed partial class CampaignWorld
         // time5Seconds applies takeoff mission points AFTER all half-hour scoring.
         // Share these totals so individually safe awards cannot overflow together.
         var terminalArrival = false;
-        foreach (var ufo in _ufos)
+        for (var index = 0; index < _ufos.Count; index++)
         {
+            var ufo = _ufos[index];
             if (ufo.Status == UfoStatus.Landed && ufo.SecondsRemaining == 5 &&
                 TryLiftUfo(ufo, fromSite: false, out _, out var points) && points != 0 &&
                 CheckActivityScore(ufo.Position, points, regionTotals, countryTotals) is { } reason)
                 return reason;
-            if (ArrivesAtSite(ufo, highest))
+            if (ArrivesAtSite(index, highest))
             {
                 var mission = ForecastMission(ufo.MissionId, highest);
                 var rule = MissionRule(mission);
@@ -304,7 +306,7 @@ internal sealed partial class CampaignWorld
                     CheckActivityScore(UfoAfterTimedTransitions(ufo, highest).Destination!.Position, rule.Points,
                         regionTotals, countryTotals) is { } conversionReason) return conversionReason;
             }
-            if (EndsUfoFlightPass(ufo, highest))
+            if (EndsUfoFlightPass(index, highest))
             {
                 terminalArrival = true;
                 break;

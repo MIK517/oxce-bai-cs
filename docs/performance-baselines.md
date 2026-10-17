@@ -638,6 +638,28 @@ the compositor, so it is not comparable with the 4 ms presentation target. The s
 the average and maximum conversion and upload time without the present call (the host keeps no
 per-frame samples, so no p95) and the client tick p50/p95/maximum.
 
+### Shared per-tick flight projection (branch 5 S1, 2026-10-12)
+
+Before S1, Flight128 projected each UFO's flight (`ProjectFlightTarget(UfoForFlight(...))`) seven
+times per tick and looked up the distance memo seven times (one miss), checked site arrival three
+times and the flight-pass end twice; no UFO arrived, and for ordinary UFOs the projection is the
+identity. The cost was the repeated memo hashing and call overhead. S1 shares one projection and
+its distance per saved UFO across the movement, site-conversion and half-hour steps
+([ADR 0033](decisions/0033-shared-per-tick-flight-projection.md)).
+
+Windows workstation, `--time-profile Flight128 Flight32 --seconds 6`, three alternating runs of
+`main` (`5a78fe3d`) and S1; the machine was noisy, so the pairs are the comparison:
+
+| Scenario (one-day speed) | `main` | S1 | Change |
+|---|---:|---:|---:|
+| 128 flying UFOs | 61.4–65.6 us/tick | 45.1–47.1 us/tick | about -28% |
+| 32 flying UFOs | 15.8–16.4 us/tick | 11.5–11.7 us/tick | about -28% |
+
+In the profiled run the site-conversion step fell from about 10 to 3–4 us/tick and the half-hour
+step from about 3.4 to 0.9; the movement step (first projection, distance and validation per UFO,
+about 12–16 us) and the movement itself (about 18 us) remain. On the kickoff's quiet baseline of
+50.2 us/tick this is about 36 us/tick, 0.63 s per in-game day.
+
 ### Windows x64 publish-size baseline
 
 The distribution profiles were measured on 2026-09-04 with .NET SDK 10.0.302 on
@@ -665,3 +687,22 @@ of adoption, is MIT-licensed, actively maintained, and is used only by the execu
 benchmark project. It adds no production runtime, mod-compatibility, deployment, or
 Native AOT dependency. Version upgrades should be deliberate because harness changes
 can affect comparisons across historical results.
+
+### Interception steps in a populated world (branch 5 S10, 2026-10-13)
+
+`InterceptionStepBenchmarks` times `AdvanceInterceptions`, one dogfight timer step of a single open
+interception closing in at standoff, with 8 or 128 other flying UFOs in the world. Windows
+workstation, BenchmarkDotNet short job:
+
+| Other UFOs | Mean per step | Allocated per step |
+|---:|---:|---:|
+| 8 | 3.83 us | 2.68 KB |
+| 128 | 3.75 us | 2.68 KB |
+
+The step does not scale with world population, and against the reference's 30 ms dogfight timer it
+is negligible. Game time does not run while a window is open, so the time-advance profile above is
+unchanged by interceptions.
+
+```powershell
+dotnet run -c Release --project benchmarks/Oxce.Benchmarks -- --filter "*InterceptionStep*" --job short
+```

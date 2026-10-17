@@ -74,7 +74,7 @@ public sealed class StrategicWorldPursuitTests
         };
         snapshot = snapshot.WithCraft("SHIP", craft => craft with { Logistics = craft.Logistics! with { Fuel = fuel } });
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(92));
-        AssertTimeBlocked(campaign, "Craft interception requires strategic combat (Phase 6 branch 5).");
+        AssertInterceptionStarts(campaign);
     }
 
     [Fact]
@@ -148,7 +148,8 @@ public sealed class StrategicWorldPursuitTests
         Assert.Equal(42, target.Id);
         Assert.Equal(9, target.Reference.UniqueId);
         Assert.Equal(3, target.Reference.Id);
-        Assert.Contains("branch 5", target.UnavailableActionReason);
+        // Branch 5 S4-S6: interception and landing are available, so the target names no restriction.
+        Assert.Null(target.UnavailableActionReason);
         Assert.Contains(query.Bases, owner => owner.Id == snapshot.Bases[0].Id && owner.Name == "Alpha");
         Assert.Null(Assert.Single(query.Crafts, craft => craft.TypeId == "SHIP").DispatchUnavailableReason);
         var result = campaign.Execute(new DispatchCraftToTarget(snapshot.Bases[0].Id, "SHIP", 1, target.Reference));
@@ -170,7 +171,7 @@ public sealed class StrategicWorldPursuitTests
         snapshot = snapshot.WithCraft("SHIP", craft => craft with
         { Logistics = craft.Logistics! with { Takeoff = takingOff ? 60 : 0 } });
         campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(92));
-        AssertTimeBlocked(campaign, "Craft interception requires strategic combat (Phase 6 branch 5).");
+        AssertInterceptionStarts(campaign);
     }
 
     [Fact]
@@ -235,9 +236,9 @@ public sealed class StrategicWorldPursuitTests
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(92));
         campaign = Reload(content, campaign, 92, "landing-option.sav");
         if (timer == 5)
-            AssertTimeBlocked(campaign, "Craft interception requires strategic combat (Phase 6 branch 5).");
+            AssertInterceptionStarts(campaign);
         else if (!suppressEmptyLanding)
-            AssertTimeBlocked(campaign, "Craft landing requires deployment (Phase 6 branch 5).");
+            AssertLandingRequested(campaign);
         else
         {
             AdvanceOne(campaign);
@@ -371,7 +372,7 @@ public sealed class StrategicWorldPursuitTests
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(92));
         if (!terminal)
         {
-            AssertTimeBlocked(campaign, "Craft interception requires strategic combat (Phase 6 branch 5).");
+            AssertInterceptionStarts(campaign);
             return;
         }
         AdvanceOne(campaign);
@@ -388,21 +389,28 @@ public sealed class StrategicWorldPursuitTests
     [Fact]
     public void RepeatedRefusedTicksLeaveNoPreflightStateBehind()
     {
-        // A refused tick is retried, the cause is removed by a command, and time then advances.
-        // The result must match a campaign that never attempted the refused tick.
+        // A craft reaching its UFO opens an interception, which stops the clock. Retrying time while the
+        // window is open must leave no preflight state behind.
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var snapshot = TwoPursuerSnapshot(content, terminal: false);
         var retried = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(92));
-        AssertTimeBlocked(retried, "Craft interception requires strategic combat (Phase 6 branch 5).");
-        AssertTimeBlocked(retried, "Craft interception requires strategic combat (Phase 6 branch 5).");
         var direct = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(92));
-        foreach (var campaign in new[] { retried, direct })
-        {
-            Assert.DoesNotContain(campaign.Execute(new RecallCraft(snapshot.Bases[0].Id, "SHIP", 2)).Events,
-                notification => notification is CampaignActionBlocked);
-            AdvanceUnblocked(campaign, 12);
-        }
+        AssertInterceptionStarts(retried);
+        AssertInterceptionStarts(direct);
+        AssertTimeBlocked(retried, WorldCommandReasons.InterceptionsOpen);
+        AssertTimeBlocked(retried, WorldCommandReasons.InterceptionsOpen);
         Assert.Equivalent(direct.Capture(), retried.Capture(), strict: true);
+        Assert.Equal(direct.GetQuery<ICampaignInterceptionQuery>()!.QueryInterceptions(),
+            retried.GetQuery<ICampaignInterceptionQuery>()!.QueryInterceptions(), InterceptionComparer.Instance);
+    }
+
+    private sealed class InterceptionComparer : IEqualityComparer<CampaignInterception>
+    {
+        public static InterceptionComparer Instance { get; } = new();
+        public bool Equals(CampaignInterception? x, CampaignInterception? y) => x is not null && y is not null &&
+            (x with { AvailableModes = [], Weapons = [] }) == (y with { AvailableModes = [], Weapons = [] }) &&
+            x.AvailableModes.SequenceEqual(y.AvailableModes) && x.Weapons.SequenceEqual(y.Weapons);
+        public int GetHashCode(CampaignInterception obj) => obj.Number;
     }
 
     private static CampaignSnapshot TwoPursuerSnapshot(RuntimeContent content, bool terminal)

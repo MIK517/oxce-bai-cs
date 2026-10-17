@@ -162,8 +162,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             };
             // The first area is outside radar; the second starts on the craft.
             // Both share the unallocated mission ID, rule, race and source.
-            AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(41)),
-                "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+            AssertNewbornHuntRuns(CampaignState.Restore(initial, content, new SplitMix64RandomSource(41)));
         }
     }
 
