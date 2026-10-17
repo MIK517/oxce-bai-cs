@@ -45,6 +45,8 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     [Fact]
     public void DuplicateTargetBaseRegionsReserveOneBirthWithoutChangingNativeChoice()
     {
+        // Records every random draw, also in a staging verification run (ADR 0035).
+        CampaignState.StageEveryTick = false;
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         var content = GeneratedVariantContent("{0: {RACE_A: 1}}", targetOdds: 100);
         var initial = VariantSnapshot(content, hunting: false);

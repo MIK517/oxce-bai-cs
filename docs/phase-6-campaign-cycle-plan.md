@@ -192,3 +192,8 @@ are recorded; baseline validation and the corpus stops branch 6 must lift are in
 The month rollover and event payload oracles, the monthly, cutscene and event projections, the three options and
 `warned` are recorded in [status S1](strategic-campaign-cycle-status.md#s1--evidence-and-projections-2026-10-17).
 Time still stops at the month boundary and before due event payloads.
+
+### S2 — Staged ticks (2026-10-17)
+
+Stage points, shadow copies and the real recheck are in place with tests and a verification run that stages every
+tick ([status S2](strategic-campaign-cycle-status.md#s2--staged-ticks-2026-10-17)); no production stage point yet.

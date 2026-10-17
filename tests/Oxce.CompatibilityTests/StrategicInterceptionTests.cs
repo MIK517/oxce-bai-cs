@@ -311,6 +311,34 @@ public sealed class StrategicInterceptionTests
     }
 
     [Fact]
+    public void AShadowCopyKeepsAMinimizedInterceptionAndTimeRunsTheSameStaged()
+    {
+        // Branch 6 S2 (ADR 0035): interceptions are transient; a staged tick's shadow must see them, because
+        // ten-minute hunting reads which crafts are in a dogfight.
+        var (_, campaign, world) = Create();
+        var number = Start(campaign, world);
+        Assert.Empty(campaign.Execute(new MinimizeInterception(number)).Events);
+
+        var shadow = campaign.CreateShadow();
+        Assert.Equivalent(world.QueryInterceptions(), shadow.GetQuery<ICampaignInterceptionQuery>()!.QueryInterceptions(), strict: true);
+
+        var (_, direct, directWorld) = Create();
+        Assert.Empty(direct.Execute(new MinimizeInterception(Start(direct, directWorld))).Events);
+        var previous = CampaignState.StageEveryTick;
+        try
+        {
+            CampaignState.StageEveryTick = false;
+            var expected = direct.Execute(new AdvanceCampaignTime(240));
+            CampaignState.StageEveryTick = true;
+            var actual = campaign.Execute(new AdvanceCampaignTime(240));
+            Assert.Equal(expected.Events.Select(static e => e.ToString()), actual.Events.Select(static e => e.ToString()));
+        }
+        finally { CampaignState.StageEveryTick = previous; }
+        Assert.Equivalent(direct.Capture(), campaign.Capture(), strict: true);
+        Assert.Equivalent(directWorld.QueryInterceptions(), world.QueryInterceptions(), strict: true);
+    }
+
+    [Fact]
     public void MinimizeWorksOnlyAtStandoffAndAWeaponToggleIsRememberedWhenTheOptionIsOn()
     {
         var (_, campaign, world) = Create();

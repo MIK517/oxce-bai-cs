@@ -16,6 +16,8 @@ public interface IRandomSource
 /// <summary>
 /// A reproducible source whose state can cross the save-neutral gameplay boundary.
 /// The state is an implementation detail and is not expected to match OXCE's RNG stream.
+/// <see cref="State"/> must capture everything the next draws depend on: <see cref="Restore"/> of it
+/// repeats them exactly. Saves and staged ticks (ADR 0035) rely on that.
 /// </summary>
 public interface IStatefulRandomSource : IRandomSource
 {

@@ -17,6 +17,8 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     [Fact]
     public void GenerationAndRandomRangesMatchExtractedReference()
     {
+        // Records every random draw, also in a staging verification run (ADR 0035).
+        CampaignState.StageEveryTick = false;
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-generation");
         var content = Load();
         var rows = new List<object[]>();

@@ -156,6 +156,8 @@ public sealed class StrategicWorldEnduranceTests
     [InlineData(true)]
     public void PopulatedTicksScaleAndRecordSimulationAndPersistenceCosts(bool detectionQueries)
     {
+        // Measures unstaged ticks, also in a staging verification run (ADR 0035).
+        CampaignState.StageEveryTick = false;
         if (detectionQueries) VerifyQueryEvidence();
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], extraRules: detectionQueries ? QueryRules : null);
         List<object> measurements = [];

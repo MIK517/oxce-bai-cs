@@ -32,6 +32,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         registry.Restore(Restore);
         registry.Validate(Validate);
         registry.Initialize(Initialize);
+        registry.Transient("world windows and queues", this, static (source, shadow) => source.CopyTransientTo(shadow));
         registry.Preflight(CampaignPreflightOrder.WorldSimulation, "world simulation", (_, highest, speed) => LiveWorldReason(highest, speed));
         RegisterUfoOperations(registry);
         RegisterHunting(registry);
@@ -52,6 +53,40 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     }
 
     internal AlienStrategyState Strategy => _strategy;
+
+    /// <summary>
+    /// State that saves drop, for a staged preflight's shadow copy (ADR 0035): open and pending interceptions with
+    /// their UFOs and wait messages, the landing queue and its numbering, the request hand-off flag and ignored
+    /// contacts. Interceptions are shared, not cloned: only five-second handlers and dogfight steps change them, and
+    /// a shadow runs neither. The base-attack notices are set and taken within one five-second handler. Loading also
+    /// turns live destinations into what a save can hold (a UFO following a site gets an anonymous waypoint, see
+    /// <see cref="NormalizeDestinations"/>), so the shadow takes the live UFO records and craft destinations; both
+    /// are immutable records.
+    /// </summary>
+    private void CopyTransientTo(CampaignWorld shadow)
+    {
+        if (shadow._ufos.Count != _ufos.Count) throw new InvalidOperationException("A shadow copy lost UFOs.");
+        shadow._ufos.Clear();
+        shadow._ufos.AddRange(_ufos);
+        var bases = campaign.BaseStates;
+        var shadowBases = shadow.Campaign.BaseStates;
+        for (var baseIndex = 0; baseIndex < bases.Count; baseIndex++)
+            for (var craftIndex = 0; craftIndex < bases[baseIndex].Crafts.Count; craftIndex++)
+            {
+                var live = bases[baseIndex].Crafts[craftIndex];
+                var copy = shadowBases[baseIndex].Crafts[craftIndex];
+                if (copy.Logistics is { } logistics && live.Logistics?.Destination != logistics.Destination)
+                    shadowBases[baseIndex].Crafts[craftIndex] = copy with { Logistics = logistics with { Destination = live.Logistics!.Destination } };
+            }
+        shadow._interceptions.AddRange(_interceptions);
+        shadow._pendingInterceptions.AddRange(_pendingInterceptions);
+        foreach (var pair in _pendingInterceptionErrors) shadow._pendingInterceptionErrors.Add(pair.Key, pair.Value);
+        foreach (var pair in _interceptionUfos) shadow._interceptionUfos[pair.Key] = pair.Value;
+        shadow._landings.AddRange(_landings);
+        shadow._nextLanding = _nextLanding;
+        shadow._deploymentRequestTaken = _deploymentRequestTaken;
+        shadow._ignoredUfoContacts.UnionWith(_ignoredUfoContacts);
+    }
 
     internal IReadOnlyList<AlienMissionSnapshot> Missions => _missions;
 
