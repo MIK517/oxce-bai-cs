@@ -28,12 +28,23 @@ the mod defines no `loseRating` or `loseMoney` video. The port plays nothing and
 video without `loseGame`.
 
 **The monthly report is a modal hold (S3, plan D2).** The report's decisions are made inside the month tick, as the
-reference's report constructor makes them; the popup then holds the clock from the next tick and refuses every
-command except its acknowledgement, which the reference's modal window enforces through its input. A reload drops
-an open report, as the reference keeps popups unsaved. Saving with a report open is refused from S4.
+reference's report constructor makes them; the popup then holds the clock from the next tick (the time preflight
+refuses) and refuses every other command except its acknowledgement, which the reference's modal window enforces
+through its input. `time1Month` queues the report before any window the same tick's later levels open (a base
+defense, landings, dogfights), and the popup is pushed over them, so the report is answered first: its preflight
+precedes theirs and their gates let its acknowledgement through. A reload drops an open report, as the reference
+keeps popups unsaved. Saving with a report open is refused from S4.
+
+**An out-of-range performance bonus (S3).** `Mod::getPerformanceBonus` converts `score * factor` to `int`, which is
+undefined outside the `int` range (and for NaN). The port takes x86's truncating conversion, `int.MinValue`, so the
+report pays no bonus there, as the reference pays only a positive one.
 
 **A mission without waves started without a delay (S3).** `AlienMission::start` reads the first wave's timer when
 the mission script gives no start delay; a mission with no waves then reads past its wave list. With a delay (as
 Rosigma's base-starting missions use) nothing is read and the port follows the reference exactly. Without one, the
 port takes a zero timer: the countdown draw is made over a zero range, and the mission ends on its next pass like any
 other mission without waves.
+
+**A site script naming a mission without waves (S3).** `GeoscapeState::processCommand`'s site branch reads the
+mission's first wave (`getWave(0)`) to pick the site's deployment, which reads past an empty wave list. The port
+keeps refusing such a script with its mission-script boundary reason rather than inventing a deployment.

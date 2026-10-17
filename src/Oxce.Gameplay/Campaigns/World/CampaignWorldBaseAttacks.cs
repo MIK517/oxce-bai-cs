@@ -56,7 +56,9 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
         registry.Timed(CampaignTimeTrigger.FiveSeconds, CampaignTimeOrder.FiveSecondsCampaignEnding, "campaign ending", CheckCampaignEnding);
         registry.Command<ResolveBaseDefense>(ResolveBaseDefense);
         // The window is modal: time stops (landing preflight) and other commands wait.
-        registry.CommandGate(command => _baseDefense is not null && command is not (World.ResolveBaseDefense or AdvanceCampaignTime)
+        // time1Month queues the monthly report before a base defense of the same tick, so the report is answered first.
+        registry.CommandGate(command => _baseDefense is not null &&
+            command is not (World.ResolveBaseDefense or AdvanceCampaignTime or AcknowledgeMonthlyReport)
             ? Blocked(WorldCommandReasons.BaseDefenseOpen) : null);
     }
 

@@ -81,12 +81,13 @@ internal static class CampaignTimeOrder
 internal static class CampaignPreflightOrder
 {
     public const int Restrictions = 100;
+    // The report's popup is pushed over the geoscape and its dogfights, so it is answered before any other window.
+    public const int MonthlyReport = 110;
     public const int Interceptions = 120;
     public const int Landings = 122;
     public const int DestroyedCrafts = 125;
     public const int WorldSimulation = 150;
     public const int CraftMovement = 200;
-    public const int MonthlyReport = 124;
     public const int MonthlyWorldScheduling = 350;
     public const int Servicing = 400;
     public const int ResearchProduction = 500;

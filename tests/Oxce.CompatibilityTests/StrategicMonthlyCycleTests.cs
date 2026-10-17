@@ -120,6 +120,59 @@ public sealed class StrategicMonthlyCycleTests
     }
 
     [Fact]
+    public void ALaterCountryScriptSeesAnEarlierCountrysNewPact()
+    {
+        // Country::newMonth sets the pact before the next country's script runs.
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
+            countries:
+              - type: COUNTRY
+                scripts:
+                  newMonthCountry: |
+                    set formPact 1;
+                    return;
+              - type: COUNTRY_B
+                scripts:
+                  newMonthCountry: |
+                    var int pacts;
+                    var int value;
+                    loop var other geoscape_game.getCountries.list;
+                      other.getPact value;
+                      add pacts value;
+                    end;
+                    if eq pacts 1;
+                      set formPact 1;
+                    end;
+                    return;
+            defeatScore: -100000
+            """, extraRulesAfterOverlays: true);
+        var snapshot = CreateSnapshot(content, "Pact order");
+        snapshot = snapshot with { Time = MonthEnd, Countries = [.. snapshot.Countries, snapshot.Countries[0] with { RuleId = "COUNTRY_B" }] };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(5));
+
+        var report = Assert.Single(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<MonthlyReportReady>()).Report;
+
+        Assert.Equal(["COUNTRY", "COUNTRY_B"], report.SignedPacts);
+        Assert.All(campaign.Capture().Countries, static country => Assert.True(country.Pact));
+    }
+
+    [Fact]
+    public void AReloadDropsAnOpenReportAndKeepsTheMonthsEffects()
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], PsiLab);
+        var campaign = CampaignState.Restore(CreateSnapshot(content, "Open report") with { Time = MonthEnd }, content,
+            new SplitMix64RandomSource(11));
+        Assert.Single(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<MonthlyReportReady>());
+        var month = campaign.Capture();
+
+        // The reference keeps popups unsaved: the reloaded campaign has no report and its clock runs (ADR 0036).
+        var reloaded = Reload(content, campaign, 11, "open-report.sav");
+        Assert.Null(reloaded.GetQuery<ICampaignMonthlyReportQuery>()!.QueryMonthlyReport());
+        Assert.Equal(month.MonthsPassed, reloaded.Capture().MonthsPassed);
+        Assert.Equal(month.Funds, reloaded.Capture().Funds);
+        AdvanceUnblocked(reloaded, 3);
+    }
+
+    [Fact]
     public void ACountryScriptThePortCannotRunRefusesTheMonthBeforeAnythingChanges()
     {
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
@@ -170,6 +223,32 @@ public sealed class StrategicMonthlyCycleTests
         var acknowledged = campaign.Execute(new AcknowledgeMonthlyReport()).Events;
         Assert.Equal([new MonthlyReportAcknowledged("loseGame"), new CampaignEnded(2)], acknowledged);
         Assert.Equal(2, campaign.Ending);
+    }
+
+    [Fact]
+    public void AnUndefinedLoseVideoLetsPlayGoOn()
+    {
+        // Mod::getVideo throws for the undefined video; the port plays nothing (ADR 0036).
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], "");
+        var snapshot = CreateSnapshot(content, "No lose video");
+        var region = snapshot.Regions[0];
+        snapshot = snapshot with
+        {
+            Time = MonthEnd,
+            MonthsPassed = 3,
+            Funds = [100_000, 100_000],
+            Maintenance = [0, 0],
+            Incomes = [0, 0],
+            Expenditures = [0, 0],
+            ResearchScores = [0, 0],
+            Regions = [region with { ActivityXcom = [0, 0], ActivityAlien = [900, 900] }, .. snapshot.Regions.Skip(1)],
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(5));
+
+        Assert.Equal(1, Assert.Single(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<MonthlyReportReady>()).Report.GameOver);
+        Assert.Equal([new MonthlyReportAcknowledged(null)], campaign.Execute(new AcknowledgeMonthlyReport()).Events);
+        Assert.Equal(0, campaign.Ending);
+        AdvanceUnblocked(campaign, 3);
     }
 
     [Fact]

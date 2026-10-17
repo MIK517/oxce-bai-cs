@@ -135,18 +135,19 @@ public sealed partial class CampaignState : ICampaignMonthlyReportQuery
         var regions = _regions.Select(static region => new MonthlyRegion(region.ActivityXcom, region.ActivityAlien)).ToArray();
         var campaign = _content.RuntimeRules.Campaign;
         var warned = Warned;
-        var evaluation = MonthlyCycle.Evaluate(Ledger, regions, countries, Infiltrations(), MonthsPassed,
-            new MonthlyReportRules(campaign.DefeatScore, campaign.DefeatFunds, campaign.Interception.MonthlyRatingThresholds,
-                campaign.Monthly.MonthlyRatings, campaign.PerformanceBonusFactor,
-                campaign.Interception.DifficultyCoefficient((int)Difficulty), (int)Difficulty),
-            _random, ref warned, RunNewMonthCountry);
-        Warned = warned;
-        for (var index = 0; index < countries.Length; index++)
+        _monthlyCountries = countries;
+        MonthlyEvaluation evaluation;
+        try
         {
-            _countries[index].Pact = countries[index].Pact;
-            _countries[index].NewPact = countries[index].NewPact;
-            _countries[index].CancelPact = countries[index].CancelPact;
+            evaluation = MonthlyCycle.Evaluate(Ledger, regions, countries, Infiltrations(), MonthsPassed,
+                new MonthlyReportRules(campaign.DefeatScore, campaign.DefeatFunds, campaign.Interception.MonthlyRatingThresholds,
+                    campaign.Monthly.MonthlyRatings, campaign.PerformanceBonusFactor,
+                    campaign.Interception.DifficultyCoefficient((int)Difficulty), (int)Difficulty),
+                _random, ref warned, RunNewMonthCountry);
         }
+        finally { _monthlyCountries = null; }
+        Warned = warned;
+        SyncMonthlyPacts(countries);
         // Modders' handles on the political situation: the pact events of the countries in the lists.
         var events = _handlers.Operation<ICampaignEventScheduling>();
         try
@@ -191,10 +192,25 @@ public sealed partial class CampaignState : ICampaignMonthlyReportQuery
         var monthly = _content.RuntimeRules.Campaign.Monthly;
         var cutscene = report.GameOver == 1 ? monthly.LoseRatingCutscene : monthly.LoseMoneyCutscene;
         // Mod::getVideo throws for an undefined cutscene; the port plays nothing and play goes on (ADR 0036).
-        if (!_content.RuntimeRules.Campaign.Cutscenes.TryGetValue(cutscene, out var video) || !video.LoseGame)
-            return new([new MonthlyReportAcknowledged(cutscene)]);
+        if (!_content.RuntimeRules.Campaign.Cutscenes.TryGetValue(cutscene, out var video))
+            return new([new MonthlyReportAcknowledged(null)]);
+        if (!video.LoseGame) return new([new MonthlyReportAcknowledged(cutscene)]);
         EndCampaign(2);
         return new([new MonthlyReportAcknowledged(cutscene), new CampaignEnded(2)]);
+    }
+
+    // The countries of the report being evaluated: Country::newMonth sets its pact at once, so a later country's
+    // script reads the earlier countries' new pacts.
+    private MonthlyCountry[]? _monthlyCountries;
+
+    private void SyncMonthlyPacts(MonthlyCountry[] countries)
+    {
+        for (var index = 0; index < countries.Length; index++)
+        {
+            _countries[index].Pact = countries[index].Pact;
+            _countries[index].NewPact = countries[index].NewPact;
+            _countries[index].CancelPact = countries[index].CancelPact;
+        }
     }
 
     /// <summary>
@@ -204,6 +220,7 @@ public sealed partial class CampaignState : ICampaignMonthlyReportQuery
     /// </summary>
     private CountryMonthOutputs RunNewMonthCountry(MonthlyCountry country, int xcomTotal, int alienTotal, CountryMonthOutputs current)
     {
+        if (_monthlyCountries is { } evaluating) SyncMonthlyPacts(evaluating);
         var rules = _content.RuntimeRules;
         var countryRule = rules.Countries[rules.Countries.GetRequired(country.Type)].Value;
         var artifact = countryRule.Scripts.Select(handle => rules.Scripts[handle].Value.Artifact)
