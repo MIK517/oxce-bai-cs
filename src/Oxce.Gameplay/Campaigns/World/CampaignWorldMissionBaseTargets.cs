@@ -4,7 +4,10 @@ namespace Oxce.Gameplay.Campaigns.World;
 
 internal sealed partial class CampaignWorld
 {
-    private const long MaximumMissionScriptChecks = 1_000_000;
+    // A bound on the forecast's own work and on the worst case it admits. Rosigma's monthly scripts need about
+    // 1,180,000 checks for site and base targeting and over 10,000,000 for the possible operation-base searches on its
+    // 3,253-point globe (each charged as 100 tries scanning every polygon) (branch 6 S3).
+    private static long MaximumMissionScriptChecks => FixtureWorkBounds ? 1_000_000 : 100_000_000;
     private const string MissionScriptWorkReason = "Mission script base targeting exceeds the supported work limit.";
 
     /// <summary>GeoscapeState::processCommand: uniform mission-list entry, circular retry, duplicate base regions.</summary>

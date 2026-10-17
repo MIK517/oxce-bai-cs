@@ -12,6 +12,9 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class PrivateStrategicWorldTests
 {
+    // Real mods run with the production forecast work bounds (branch 6 S3).
+    public PrivateStrategicWorldTests() => Oxce.Gameplay.Campaigns.World.CampaignWorld.ProductionWorkBounds = true;
+
     [Fact]
     public void ImportedWorldContinuationHasEquivalentFreshAndCachedClassifications()
     {
@@ -70,55 +73,63 @@ public sealed class PrivateStrategicWorldTests
         finally { cacheDirectory.Delete(recursive: true); }
     }
 
-    private const string MonthStop = "Monthly campaign simulation is not implemented yet; time stopped before the month boundary.";
+    private const string ReportStop = "The monthly report is open.";
     private const string TacticalStop = "Active tactical battle is preserved; tactical continuation is unavailable.";
+    private const string EventStop = "Strategic event consequences require campaign event execution (Phase 6 branch 6).";
+    private const string LimitStop = "limit";
 
     /// <summary>
-    /// Branch 4c closure horizon: at the one-day speed, resuming after every pause, each
-    /// staged save runs until its named first stop. Strategic saves reach the month
-    /// boundary or a real branch 5/6 transition; tactical saves stay preservation-only.
+    /// At the one-day speed, resuming after every pause, each staged save runs until its named first stop. Branch 6
+    /// S3: the month boundary runs and its report holds the clock; tactical saves stay preservation-only.
     /// </summary>
     [Fact]
     public void ImportedWorldRunsToItsNamedLongHorizonStop() => RunToLongHorizonStops(new()
     {
-        [("vanilla-ufo", "early/Begining.sav")] = (525365, MonthStop),
-        [("vanilla-ufo", "early/IronMode.sav")] = (527039, MonthStop),
-        [("vanilla-ufo", "early/Middle.sav")] = (396541, MonthStop),
-        [("vanilla-ufo", "early/_autogeo_.asav")] = (396558, MonthStop),
-        [("vanilla-tftd", "early/Begining.sav")] = (526924, MonthStop),
-        [("vanilla-tftd", "early/IronMode.sav")] = (527039, MonthStop),
-        [("vanilla-tftd", "early/Middle.sav")] = (90174, MonthStop),
-        [("modded/rosigma", "early/Begining.sav")] = (580, "Strategic event consequences require campaign event execution (Phase 6 branch 6)."),
+        [("vanilla-ufo", "early/Begining.sav")] = (525366, ReportStop),
+        [("vanilla-ufo", "early/IronMode.sav")] = (527040, ReportStop),
+        [("vanilla-ufo", "early/Middle.sav")] = (396542, ReportStop),
+        [("vanilla-ufo", "early/_autogeo_.asav")] = (396559, ReportStop),
+        [("vanilla-tftd", "early/Begining.sav")] = (526925, ReportStop),
+        [("vanilla-tftd", "early/IronMode.sav")] = (527040, ReportStop),
+        [("vanilla-tftd", "early/Middle.sav")] = (90175, ReportStop),
+        [("modded/rosigma", "early/Begining.sav")] = (580, EventStop),
         // Branch 5 S6: the landing tick now runs and queues a confirmation, which then holds the clock.
         [("modded/rosigma", "early/Early.sav")] = (6290, "Landing confirmations stop the clock until they are answered."),
-        [("modded/rosigma", "early/Middle.sav")] = (429681, MonthStop),
-        [("modded/rosigma", "early/_autogeo_.asav")] = (429698, MonthStop),
+        [("modded/rosigma", "early/Middle.sav")] = (429682, ReportStop),
+        [("modded/rosigma", "early/_autogeo_.asav")] = (429699, ReportStop),
     }, answer: null);
 
     /// <summary>
-    /// Branch 5 S9 reclassification: a headless player declines every landing, disengages every
-    /// interception and fires every base defense, so each staged save runs past its branch 5 windows to
-    /// the next stop that is not a player choice.
+    /// A headless player declines every landing, disengages every interception, fires every base defense and
+    /// acknowledges every monthly report (branch 5 S9, branch 6 S3), so each staged save runs past those windows to the
+    /// next stop that is not a player choice, or to the 40-day limit.
     /// </summary>
     [Fact]
     public void ImportedWorldRunsPastBranchFiveChoicesToItsNextStop() => RunToLongHorizonStops(new()
     {
-        [("vanilla-ufo", "early/Begining.sav")] = (525365, MonthStop),
-        [("vanilla-ufo", "early/IronMode.sav")] = (527039, MonthStop),
-        [("vanilla-ufo", "early/Middle.sav")] = (396541, MonthStop),
-        [("vanilla-ufo", "early/_autogeo_.asav")] = (396558, MonthStop),
-        [("vanilla-tftd", "early/Begining.sav")] = (526924, MonthStop),
-        [("vanilla-tftd", "early/IronMode.sav")] = (527039, MonthStop),
-        [("vanilla-tftd", "early/Middle.sav")] = (90174, MonthStop),
-        [("modded/rosigma", "early/Begining.sav")] = (580, "Strategic event consequences require campaign event execution (Phase 6 branch 6)."),
-        // Declining the terror-site landing lets the campaign run on to the month boundary.
-        [("modded/rosigma", "early/Early.sav")] = (435988, MonthStop),
-        [("modded/rosigma", "early/Middle.sav")] = (429681, MonthStop),
-        [("modded/rosigma", "early/_autogeo_.asav")] = (429698, MonthStop),
+        [("vanilla-ufo", "early/Begining.sav")] = (691200, LimitStop),
+        [("vanilla-ufo", "early/IronMode.sav")] = (691200, LimitStop),
+        [("vanilla-ufo", "early/Middle.sav")] = (691200, LimitStop),
+        [("vanilla-ufo", "early/_autogeo_.asav")] = (691200, LimitStop),
+        [("vanilla-tftd", "early/Begining.sav")] = (691200, LimitStop),
+        [("vanilla-tftd", "early/IronMode.sav")] = (691200, LimitStop),
+        // Superhuman with defeatScore -900: two months rated below -500 lose the campaign.
+        [("vanilla-tftd", "early/Middle.sav")] = (591295, "This campaign has ended."),
+        [("modded/rosigma", "early/Begining.sav")] = (580, EventStop),
+        // Declining the terror-site landing lets the campaign run through its month to an event with consequences (S5).
+        [("modded/rosigma", "early/Early.sav")] = (436348, EventStop),
+        [("modded/rosigma", "early/Middle.sav")] = (691200, LimitStop),
+        [("modded/rosigma", "early/_autogeo_.asav")] = (691200, LimitStop),
     }, AnswerBranchFiveChoices);
 
     private static bool AnswerBranchFiveChoices(CampaignState campaign, string reason)
     {
+        // Branch 6 S3: the monthly report is acknowledged like any other window.
+        if (reason == CampaignState.MonthlyReportOpen)
+        {
+            Assert.DoesNotContain(campaign.Execute(new AcknowledgeMonthlyReport()).Events, static evt => evt is CampaignActionBlocked);
+            return true;
+        }
         if (reason == WorldCommandReasons.LandingConfirmationsOpen)
         {
             foreach (var landing in campaign.GetQuery<ICampaignLandingQuery>()!.QueryLandingConfirmations())
@@ -142,6 +153,8 @@ public sealed class PrivateStrategicWorldTests
             Assert.DoesNotContain(campaign.Execute(new AdvanceInterceptions()).Events, static evt => evt is CampaignActionBlocked);
         return true;
     }
+
+    private static readonly System.Text.Json.JsonSerializerOptions IndentedJson = new() { WriteIndented = true };
 
     private static void RunToLongHorizonStops(Dictionary<(string, string), (int Ticks, string Reason)> expected,
         Func<CampaignState, string, bool>? answer)
@@ -189,6 +202,12 @@ public sealed class PrivateStrategicWorldTests
                     else measured[(family, name)] = (ticks, reason ?? "limit");
                 }
             }
+            // The measured stops, for updating the expectations when a slice moves them.
+            var record = TestFixtures.RepositoryPath("artifacts", answer is null ? "private-horizon-stops.json" : "private-horizon-stops-answered.json");
+            Directory.CreateDirectory(Path.GetDirectoryName(record)!);
+            File.WriteAllText(record, System.Text.Json.JsonSerializer.Serialize(measured.OrderBy(pair => pair.Key)
+                .Select(static pair => new { Family = pair.Key.Item1, Save = pair.Key.Item2, pair.Value.Ticks, pair.Value.Reason }),
+                IndentedJson));
             Assert.Equal(expected.OrderBy(pair => pair.Key).ToArray(), measured.OrderBy(pair => pair.Key).ToArray());
         }
         finally { cacheDirectory.Delete(recursive: true); }

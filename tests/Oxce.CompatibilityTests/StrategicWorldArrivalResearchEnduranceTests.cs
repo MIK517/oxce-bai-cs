@@ -73,8 +73,10 @@ public sealed class StrategicWorldArrivalResearchEnduranceTests
             AssertTimeBlocked(CampaignState.Restore(due, content, new SplitMix64RandomSource(seed)),
                 "Strategic event consequences require campaign event execution (Phase 6 branch 6).");
             var month = end with { Time = new(1, 31, 1, 1999, 23, 59, 55) };
-            AssertTimeBlocked(CampaignState.Restore(month, content, new SplitMix64RandomSource(seed)),
-                "Monthly campaign simulation is not implemented yet; time stopped before the month boundary.");
+            // Branch 6 S3: the month runs and its report holds the clock.
+            var monthly = CampaignState.Restore(month, content, new SplitMix64RandomSource(seed));
+            Assert.Single(monthly.Execute(new AdvanceCampaignTime(1)).Events.OfType<MonthlyReportReady>());
+            AssertTimeBlocked(monthly, CampaignState.MonthlyReportOpen);
         }
     }
 

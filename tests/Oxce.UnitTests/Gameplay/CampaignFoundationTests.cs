@@ -14,7 +14,7 @@ public sealed class CampaignFoundationTests
     [InlineData(1999, 1, 31, true)]
     [InlineData(2000, 2, 29, true)]
     [InlineData(1999, 12, 31, true)]
-    public void ReadinessAdvancesDailyButStillBlocksAtMonthlyBoundary(int year, int month, int day, bool monthly)
+    public void ReadinessAdvancesDailyAndRunsTheMonth(int year, int month, int day, bool monthly)
     {
         var content = LoadFixture();
         var original = Create(content);
@@ -26,15 +26,17 @@ public sealed class CampaignFoundationTests
         };
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(0));
         var result = campaign.Execute(new AdvanceCampaignTime(2));
-        Assert.Equal(monthly ? 30 : 31, campaign.DaysPassed);
-        Assert.Equal(2, campaign.MonthsPassed);
+        // Branch 6 S3: the month tick runs the day as well, then the monthly report pauses time.
+        Assert.Equal(31, campaign.DaysPassed);
+        Assert.Equal(monthly ? 3 : 2, campaign.MonthsPassed);
         var advanced = Assert.Single(result.Events.OfType<CampaignTimeAdvanced>());
-        Assert.Equal(monthly ? 1 : 0, result.Events.OfType<CampaignActionBlocked>().Count());
-        Assert.Equal(0, advanced.Summary.OneMonth);
+        Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+        Assert.Equal(monthly ? 1 : 0, result.Events.OfType<MonthlyReportReady>().Count());
+        Assert.Equal(monthly ? 1 : 0, advanced.Summary.OneMonth);
         Assert.Equal(monthly ? 0 : 1, advanced.Summary.OneDay);
         snapshot.Time.Advance(out var expectedBoundary);
         Assert.Equal(monthly ? CampaignTimeTrigger.OneMonth : CampaignTimeTrigger.OneDay, expectedBoundary);
-        Assert.Equal(monthly ? 0 : 2, advanced.Triggers.Count);
+        Assert.Equal(monthly ? 1 : 2, advanced.Triggers.Count);
     }
 
     [Fact]
@@ -141,15 +143,18 @@ public sealed class CampaignFoundationTests
             Bases = snapshot.Bases.Select(state => state with { Crafts = [], Soldiers = [], Transfers = [] }).ToArray()
         }, content, new SplitMix64RandomSource(7));
         campaign.Execute(new AdvanceCampaignTime(1));
+        // Up to the month boundary: the month tick is staged and opens the monthly report (branch 6 S3).
+        var ticks = TicksBeforeMonth(campaign.Time);
         var allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
 
-        var result = campaign.Execute(new AdvanceCampaignTime(CampaignState.MaximumCommandTicks));
+        var result = campaign.Execute(new AdvanceCampaignTime(ticks));
 
         var allocated = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
         var advanced = Assert.Single(result.Events.OfType<CampaignTimeAdvanced>());
-        Assert.Single(result.Events.OfType<CampaignActionBlocked>());
+        Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
         Assert.InRange(allocated, 0, 16_384);
-        Assert.InRange(advanced.Summary.TickCount, 1, CampaignState.MaximumCommandTicks - 1);
+        Assert.Equal(ticks, advanced.Summary.TickCount);
+        Assert.Single(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<MonthlyReportReady>());
         var replayed = new int[Enum.GetValues<CampaignTimeTrigger>().Length];
         foreach (var trigger in advanced.Triggers) replayed[(int)trigger]++;
         foreach (var trigger in Enum.GetValues<CampaignTimeTrigger>())
@@ -166,14 +171,28 @@ public sealed class CampaignFoundationTests
             LoadFixture(), Request(), new SplitMix64RandomSource(7), new FixedClock());
         campaign.Execute(new AdvanceCampaignTime(1));
         var daysBefore = campaign.DaysPassed;
+        // Up to the month boundary, whose staged tick has its own cost (branch 6 S3).
+        var ticks = TicksBeforeMonth(campaign.Time);
         var allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
 
-        campaign.Execute(new AdvanceCampaignTime(CampaignState.MaximumCommandTicks));
+        campaign.Execute(new AdvanceCampaignTime(ticks));
 
         var allocated = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
         var simulatedDays = campaign.DaysPassed - daysBefore;
         Assert.True(simulatedDays > 0);
         Assert.InRange(allocated, 0, 16_384L * (simulatedDays + 1));
+    }
+
+    /// <summary>Five-second ticks from <paramref name="time"/> up to, not including, the next month boundary.</summary>
+    private static int TicksBeforeMonth(CampaignTime time)
+    {
+        var ticks = 0;
+        while (true)
+        {
+            time = time.Advance(out var highest);
+            if (highest == CampaignTimeTrigger.OneMonth) return ticks;
+            ticks++;
+        }
     }
 
     internal static RuntimeContent LoadFixture() =>

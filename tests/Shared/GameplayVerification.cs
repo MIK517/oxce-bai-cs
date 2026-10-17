@@ -18,6 +18,8 @@ internal static class GameplayVerification
     {
         CampaignWorld.VerifySharedFlights = true;
         CampaignState.VerifyStagedSnapshots = true;
+        // Fixture-sized forecast work bounds; tests on real mods switch to the production bounds.
+        CampaignWorld.FixtureWorkBoundsEverywhere = true;
         CampaignState.StageEveryTickEverywhere = Environment.GetEnvironmentVariable("OXCE_VERIFY_STAGING") == "1";
     }
 }
