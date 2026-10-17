@@ -134,7 +134,9 @@ public sealed class ManagedAudioMixerTests
         deadline.CancelAfter(TimeSpan.FromSeconds(15));
         using var updateReady = new SemaphoreSlim(0);
         using var callbackComplete = new SemaphoreSlim(0);
-        var control = Task.Run(() =>
+        // The control and audio callback threads are dedicated threads, as in the engine, so each hand-off
+        // depends only on the mixer and never on a free thread-pool thread under a parallel test run.
+        var control = Task.Factory.StartNew(() =>
         {
             var gain = 0d;
             for (var index = 0; index < iterations; index++)
@@ -146,18 +148,22 @@ public sealed class ManagedAudioMixerTests
             }
 
             return iterations;
-        }, deadline.Token);
-        var output = new short[512];
-
-        for (var index = 0; index < iterations; index++)
+        }, deadline.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        var callback = Task.Factory.StartNew(() =>
         {
-            await updateReady.WaitAsync(deadline.Token);
-            mixer.Mix(output);
-            callbackComplete.Release();
-        }
-        var completedUpdates = await control;
+            var output = new short[512];
+            for (var index = 0; index < iterations; index++)
+            {
+                updateReady.Wait(deadline.Token);
+                mixer.Mix(output);
+                callbackComplete.Release();
+            }
 
-        Assert.Equal(iterations, completedUpdates);
+            return iterations;
+        }, deadline.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        var completed = await Task.WhenAll(control, callback);
+
+        Assert.Equal([iterations, iterations], completed);
         Assert.True(playback.IsPlaying);
     }
 }
