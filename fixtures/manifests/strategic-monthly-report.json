@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-monthly-report",
+  "description": "Month rollover from the verbatim GeoscapeState::time1Month: addMonth, monthly psi calls, monthlyFunding, the MonthlyReportState constructor (calculateChanges, Region/Country::newMonth, getRandomMission, rating, performance bonus, debt warning, game over, pact events), btnOkClick endings and the monthly alien-base detection; scripted raw RNG through RandomState::generate, stubbed widgets, states and newMonthCountry outputs.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "Geoscape/GeoscapeState.cpp; Geoscape/MonthlyReportState.cpp; Savegame/SavedGame.cpp; Savegame/Region.cpp; Savegame/Country.cpp; Mod/Mod.cpp; Mod/RuleAlienMission.cpp",
+      "probe": "fixtures/reference-probes/savegames/strategic_monthly_report_probe.cpp",
+      "capture": "tools/capture-strategic-monthly-report-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; reference statements inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "size": 32441,
+      "path": "fixtures/reference-probes/savegames/strategic_monthly_report_probe.cpp",
+      "sha256": "707b01209bfa3aff1478c3e58972de43e772a9682464ee34cfeef701f75982d7"
+    },
+    {
+      "size": 5315,
+      "path": "tools/capture-strategic-monthly-report-reference.ps1",
+      "sha256": "8058af37aa6dff43acf6f994d4663e23d6f2ca1a32f78d6b15f070f8adcadbe1"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-monthly-report.expected.json"
+}

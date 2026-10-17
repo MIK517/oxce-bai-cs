@@ -70,6 +70,7 @@ public sealed class CampaignStartSettings
         SellPriceCoefficients = Array.AsReadOnly((int[])builder.SellPriceCoefficients.Clone());
         FixedUserOptions = Sorted(builder.FixedUserOptions);
         Interception = builder.Interception.Build();
+        Monthly = builder.Monthly.Build();
     }
 
     [System.Text.Json.Serialization.JsonConstructor]
@@ -110,10 +111,11 @@ public sealed class CampaignStartSettings
         IReadOnlyDictionary<string, string>? fixedUserOptions = null, int escortRange = 20,
         double performanceBonusFactor = 0, bool allowCountriesToCancelAlienPact = false, bool hunterKillerFastRetarget = true, bool allowAlienBasesOnWrongTextures = true,
         bool buildInfiltrationBaseCloseToTheCountry = false, bool infiltrateRandomCountryInTheRegion = false, int maximumViewDistance = 20, int maximumDarknessToSeeUnits = 9,
-        int drawEnemyRadarCircles = 1, CampaignInterceptionSettings? interception = null)
+        int drawEnemyRadarCircles = 1, CampaignInterceptionSettings? interception = null, CampaignMonthlySettings? monthly = null)
     {
         DrawEnemyRadarCircles = drawEnemyRadarCircles;
         Interception = interception ?? CampaignInterceptionSettings.Default;
+        Monthly = monthly ?? CampaignMonthlySettings.Default;
         FixedUserOptions = Sorted(fixedUserOptions ?? new Dictionary<string, string>());
         BuildTimeReductionScaling = buildTimeReductionScaling;
         CustomTrainingFactor = customTrainingFactor;
@@ -217,6 +219,9 @@ public sealed class CampaignStartSettings
     /// <summary>Global rules read by interception, landing and base defense.</summary>
     public CampaignInterceptionSettings Interception { get; }
 
+    /// <summary>Global rules read by the month rollover and the monthly report.</summary>
+    public CampaignMonthlySettings Monthly { get; }
+
     private static ReadOnlyDictionary<string, string> Sorted(IEnumerable<KeyValuePair<string, string>> values) =>
         new ReadOnlyDictionary<string, string>(new SortedDictionary<string, string>(
             values.ToDictionary(static pair => pair.Key, static pair => pair.Value, StringComparer.Ordinal),
@@ -284,4 +289,5 @@ internal sealed class CampaignStartSettingsBuilder
     public List<string> OperationNamesLast { get; } = [];
     public Dictionary<string, string> FixedUserOptions { get; } = new(StringComparer.Ordinal);
     public CampaignInterceptionSettingsBuilder Interception { get; } = new();
+    public CampaignMonthlySettingsBuilder Monthly { get; } = new();
 }
