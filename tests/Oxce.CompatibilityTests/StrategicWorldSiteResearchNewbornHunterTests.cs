@@ -46,8 +46,7 @@ public sealed class StrategicWorldSiteResearchNewbornHunterTests
         Reload(content, campaign, 17, "research-hunter-following.sav");
         var combat = initial.WithCraft("SHIP", craft => craft with
         { Logistics = craft.Logistics! with { Longitude = Degrees(10), Latitude = Degrees(8) } });
-        AssertTimeBlocked(CampaignState.Restore(combat, content, new SplitMix64RandomSource(17)),
-            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+        AssertNewbornHuntRuns(CampaignState.Restore(combat, content, new SplitMix64RandomSource(17)));
     }
 
     internal static CampaignSnapshot TargetSnapshot(CampaignSnapshot initial) => initial.WithCraft("SHIP", craft => craft with

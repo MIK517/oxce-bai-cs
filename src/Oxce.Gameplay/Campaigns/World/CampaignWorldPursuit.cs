@@ -5,7 +5,6 @@ namespace Oxce.Gameplay.Campaigns.World;
 /// <summary>GeoscapeState::time5Seconds craft pursuit and target-loss handling.</summary>
 internal sealed partial class CampaignWorld
 {
-    private const string InterceptionReason = WorldCommandReasons.InterceptionBoundary;
 
     private CampaignCommandResult DispatchTarget(DispatchCraftToTarget command)
     {

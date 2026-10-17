@@ -115,7 +115,7 @@ internal sealed partial class CampaignWorld
         return null;
     }
 
-    private string? NewbornHuntReachReason(IReadOnlyList<SpawnArea> positions, RuntimeUfoRule rule,
+    private static string? NewbornHuntReachReason(IReadOnlyList<SpawnArea> positions, RuntimeUfoRule rule,
         string race, RuntimeUfoTrajectoryRule path, int radar, bool initializedEscort, bool canRemainIdle, ref long work)
     {
         var maximum = (long)rule.Stats.SpeedMaximum + rule.RaceBonus(race).SpeedMaximum;
@@ -129,29 +129,9 @@ internal sealed partial class CampaignWorld
         };
         if (!WorldHunting.TryHunt(hypothetical, WorldTargetReference.ForWaypoint(0, new(1, 0.6)),
                 (int)maximum, rule.HuntSpeed, out var hunted)) return "UFO hunt speed exceeds the supported range.";
-        var reach = WorldGeometry.RadianSpeed(hunted.Speed);
-        var rules = campaign.Content.RuntimeRules;
-        // Selection may depend on random constructor modes and spawn positions.
-        // Prove safety for every eligible target without forecasting RNG or IDs.
-        foreach (var owner in campaign.BaseStates)
-        {
-            if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
-            foreach (var craft in _pass.HuntingCraftSources![owner.Id])
-            {
-                if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
-                var state = _pass.HuntingCraftForecast![(rules.Crafts.GetExternalId(craft.Rule), craft.Id)];
-                var craftRule = rules.Crafts[craft.Rule].Value;
-                if (state.Status != "STR_OUT" || craftRule.Undetectable || WorldHunting.IsIgnored(state.LowFuel, state.MissionComplete) ||
-                    state.Damage >= CraftLogistics.EffectiveDamageMaximum(state, craftRule, rules)) continue;
-                foreach (var position in positions)
-                {
-                    if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
-                    var nearest = WorldGeometry.Distance(position.Center, new(state.Longitude, state.Latitude)) - position.Radius;
-                    if (nearest <= WorldGeometry.Nautical(radar) + 1e-12 && nearest <= reach + 1e-12)
-                        return HuntCombatReason;
-                }
-            }
-        }
+        // A newborn hunter that selects a craft within its first step attacks it in the same five-second pass,
+        // as a saved hunter does (branch 5 S4); only the hunt speed's range needs proving here.
+        _ = (positions, radar, work);
         return null;
     }
 

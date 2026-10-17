@@ -38,6 +38,9 @@ A started campaign without bases is a valid save.
 **Managed extension state stays refused (D6).**
 
 **Intentional differences and named restrictions.**
+- A newborn hunter-killer that selects and reaches a craft in its birth tick attacks it as a saved hunter
+  does; restoring a water-only craft's waiting window re-checks depth and land as
+  `DogfightState::btnMinimizedIconClick` does.
 - `handleBaseDefense` reads a nuclear UFO's `missileStopChance` after its mission and UFO were
   deleted; the port keeps the roll and interrupts the mission only if it still exists.
 - Stored vehicles join base defenders in rule order. The reference walks its stores in `RuleItem`

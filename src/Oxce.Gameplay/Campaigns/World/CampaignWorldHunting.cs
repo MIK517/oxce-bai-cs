@@ -5,7 +5,6 @@ public sealed record UfoStartedHunting(int UniqueId, string CraftTypeId, int Cra
 internal sealed partial class CampaignWorld
 {
     private const string HuntStateReason = "UFO hunting or escort state requires a valid original waypoint.";
-    private const string HuntCombatReason = "UFO hunting interception requires strategic combat (Phase 6 branch 5).";
     // Execution has its own buffer: daily/hourly handlers may change the craft population
     // and state after preflight. Each hunter replaces the contents before selection.
     private readonly List<WorldHuntCraft> _huntingCandidates = [];

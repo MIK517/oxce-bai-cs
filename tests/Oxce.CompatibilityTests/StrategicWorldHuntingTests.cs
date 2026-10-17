@@ -1036,7 +1036,7 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Fact]
-    public void AirborneHunterSpawnStopsBeforeCreationTimeCombat()
+    public void AnAirborneHunterBornNearACraftCanAttackItInItsBirthTick()
     {
         var content = Load();
         var snapshot = HuntingSnapshot(content);
@@ -1053,8 +1053,20 @@ public sealed partial class StrategicWorldHuntingTests
         snapshot = snapshot.WithCraft("SHIP", craft => craft with
         { Logistics = craft.Logistics! with { Longitude = Degrees(10), Latitude = Degrees(8), Fuel = 1000 } });
         snapshot = snapshot with { Bases = [snapshot.Bases[0] with { Longitude = Degrees(10), Latitude = Degrees(8) }] };
-        AssertTimeBlocked(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(81)),
-            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+        AssertNewbornHuntRuns(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(81)));
+        // A hunter born within reach of the ship selects it and attacks in the same tick on some seed.
+        var attacked = false;
+        for (ulong seed = 1; seed <= 64 && !attacked; seed++)
+        {
+            var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(seed));
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+            Assert.DoesNotContain(result.Events, static evt => evt is CampaignActionBlocked);
+            if (result.Events.OfType<InterceptionStarted>().SingleOrDefault() is not { UfoAttacking: true } started) continue;
+            attacked = true;
+            Assert.Equal("SHIP", started.CraftTypeId);
+            Assert.True(Assert.Single(campaign.GetQuery<ICampaignInterceptionQuery>()!.QueryInterceptions()).UfoAttacking);
+        }
+        Assert.True(attacked);
     }
 
     [Theory]
