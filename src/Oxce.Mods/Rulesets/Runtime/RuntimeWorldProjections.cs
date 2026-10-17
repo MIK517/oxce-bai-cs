@@ -19,6 +19,8 @@ public sealed record RuntimeUfoStats(
     string MissionCustomDeployment)
 {
     public int FuelMaximum { get; init; }
+    /// <summary>RuleCraftStats::craftCustomDeploy: the battle deployment of the UFO's crew.</summary>
+    public string CraftCustomDeployment { get; init; } = string.Empty;
     public int HitBonus { get; init; }
     public int AvoidBonus { get; init; }
     public int AvoidBonus2 { get; init; }
@@ -47,6 +49,7 @@ public sealed record RuntimeUfoStats(
         bonus.MissionCustomDeployment.Length != 0 ? bonus.MissionCustomDeployment : MissionCustomDeployment)
     {
         FuelMaximum = unchecked(FuelMaximum + bonus.FuelMaximum),
+        CraftCustomDeployment = bonus.CraftCustomDeployment.Length != 0 ? bonus.CraftCustomDeployment : CraftCustomDeployment,
         HitBonus = unchecked(HitBonus + bonus.HitBonus),
         AvoidBonus = unchecked(AvoidBonus + bonus.AvoidBonus),
         AvoidBonus2 = unchecked(AvoidBonus2 + bonus.AvoidBonus2),
@@ -86,6 +89,16 @@ public sealed record RuntimeUfoRule(
     public int WeaponRange { get; init; }
     public int WeaponPower { get; init; }
     public int WeaponReload { get; init; }
+
+    // Dogfight and shoot-down properties (RuleUfo).
+    public int Score { get; init; }
+    public int BreakOffTime { get; init; }
+    public int SoftlockThreshold { get; init; } = 100;
+    public int MissilePower { get; init; }
+    public int MissileStopChance { get; init; }
+    public int SplashdownSurvivalChance { get; init; } = 100;
+    /// <summary>RuleUfo::getBlobSize: the declared size 0-7, or one derived from the size class.</summary>
+    public int BlobSize { get; init; } = 4;
 
     /// <summary>RuleUfo::getRaceBonus: the unnamed bonus is the fallback.</summary>
     public RuntimeUfoStats RaceBonus(string race) =>
@@ -189,7 +202,32 @@ public sealed record RuntimeAlienMissionRule(
 }
 
 /// <summary>A month-keyed weighted table. Reference: <c>WeightedOptions</c> timelines in the mod rules.</summary>
+/// <summary>
+/// The landing checks of a starting condition (RuleStartingCondition, ConfirmLandingState::checkStartingCondition).
+/// A forbidden list, when present, wins over the allowed list.
+/// </summary>
+public sealed record RuntimeStartingCondition(IReadOnlyList<string> AllowedCraft, IReadOnlyList<string> ForbiddenCraft,
+    IReadOnlyList<string> AllowedSoldierTypes, IReadOnlyList<string> ForbiddenSoldierTypes,
+    IReadOnlyDictionary<string, int> RequiredItems, bool DestroyRequiredItems, bool RequireCommanderOnboard)
+{
+    public bool IsCraftPermitted(string craftType) => Permitted(AllowedCraft, ForbiddenCraft, craftType);
+
+    public bool IsSoldierTypePermitted(string soldierType) => Permitted(AllowedSoldierTypes, ForbiddenSoldierTypes, soldierType);
+
+    private static bool Permitted(IReadOnlyList<string> allowed, IReadOnlyList<string> forbidden, string type) =>
+        forbidden.Count != 0 ? !forbidden.Contains(type) : allowed.Count == 0 || allowed.Contains(type);
+}
+
 public sealed record RuntimeWeightedTimeline(ulong FirstMonth, IReadOnlyDictionary<string, ulong> Weights);
+
+/// <summary>The strategic projection of an alien race: retaliation aggression and the retaliation
+/// mission timeline in rule order (AlienRace::retaliationMissionWeights).</summary>
+public sealed record RuntimeAlienRaceRule(string Id, int RetaliationAggression, IReadOnlyList<RuntimeWeightedTimeline> RetaliationMissionWeights)
+{
+    /// <summary>AlienRace::getBaseCustomDeploy and getBaseCustomMission: alien-base battle deployments.</summary>
+    public string BaseCustomDeploy { get; init; } = string.Empty;
+    public string BaseCustomMission { get; init; } = string.Empty;
+}
 
 /// <summary>
 /// The strategic projection of an alien deployment: site and alien-base bookkeeping only.
@@ -233,6 +271,8 @@ public sealed record RuntimeAlienDeploymentRule(
     IReadOnlyDictionary<string, ulong> DespawnEvents)
 {
     public string StartingCondition { get; init; } = string.Empty;
+    /// <summary>AlienDeployment::getRace: the fixed race of a final-destination battle.</summary>
+    public string Race { get; init; } = string.Empty;
 
     /// <summary>AlienDeployment::getAlienBaseDiscoveredMessage: AlienBaseState's title, or "" for the default.</summary>
     public string AlienBaseDiscoveredMessage { get; init; } = string.Empty;

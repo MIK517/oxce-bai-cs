@@ -89,8 +89,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             Bases = [owner with { Crafts = [owner.Crafts[0] with
         { Logistics = owner.Crafts[0].Logistics! with { Longitude = Degrees(10), Latitude = Degrees(8) } }] }]
         };
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
-            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+        AssertNewbornHuntRuns(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)));
     }
 
     [Fact]
@@ -109,8 +108,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
              new(3, "GENERATED_HUNTER_BASE", "RACE_A", target.Longitude, target.Latitude)]
             },
         };
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
-            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+        AssertNewbornHuntRuns(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)));
     }
 
     [Theory]

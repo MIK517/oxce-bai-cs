@@ -82,8 +82,7 @@ public sealed class StrategicWorldDailyMissionResearchTests
             }, initial.World.Ufos[1]]
             },
         };
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
-            "Craft interception requires strategic combat (Phase 6 branch 5).");
+        AssertInterceptionStarts(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)));
     }
 
     internal static RuntimeContent Content(int path, string interrupt = "BONUS") =>

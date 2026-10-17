@@ -5,8 +5,6 @@ namespace Oxce.Gameplay.Campaigns.World;
 /// <summary>GeoscapeState::time5Seconds craft pursuit and target-loss handling.</summary>
 internal sealed partial class CampaignWorld
 {
-    private const string InterceptionReason = WorldCommandReasons.InterceptionBoundary;
-    private const string LandingReason = WorldCommandReasons.LandingBoundary;
 
     private CampaignCommandResult DispatchTarget(DispatchCraftToTarget command)
     {
@@ -20,8 +18,6 @@ internal sealed partial class CampaignWorld
             return Blocked(WorldCommandReasons.TargetSelf);
         if (target.Kind == WorldTargetKind.Base && target.Id != owner.Id)
             return Blocked(WorldCommandReasons.ForeignBase);
-        if (TargetDeployment(resolved) is { StartingCondition.Length: > 0 })
-            return Blocked(WorldCommandReasons.StartingConditionBoundary);
         var state = craft.Logistics!;
         var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
         CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons, campaign.Content.RuntimeRules, out var speed);
@@ -88,21 +84,6 @@ internal sealed partial class CampaignWorld
         _ => false,
     };
 
-    private RuntimeAlienDeploymentRule? TargetDeployment(WorldTargetReference reference)
-    {
-        var id = reference.Kind switch
-        {
-            WorldTargetKind.Ufo => TargetUfo(reference)?.RuleId,
-            WorldTargetKind.MissionSite => _sites.Find(site => site.Id == reference.Id &&
-                MarkerName(site.DeploymentId) == reference.TypeId)?.DeploymentId,
-            WorldTargetKind.AlienBase => _alienBases.Find(alienBase => alienBase.Id == reference.Id &&
-                MarkerName(alienBase.DeploymentId) == reference.TypeId)?.DeploymentId,
-            _ => null,
-        };
-        return id is not null && campaign.Content.RuntimeRules.AlienDeployments.TryGet(id, out var rule)
-            ? campaign.Content.RuntimeRules.AlienDeployments[rule].Value : null;
-    }
-
     private bool CanLand(CampaignState.BaseState owner, CampaignState.CraftState craft, CraftLogisticsState state)
     {
         if (!campaign.Content.RuntimeRules.Crafts[craft.Rule].Value.AllowLanding ||
@@ -116,12 +97,8 @@ internal sealed partial class CampaignWorld
     // Only deterministic position/status projection is needed here. Random waypoint selection
     // happens after the UFO reaches its old destination and cannot change that arrival position.
     // Preflight neither executes scripts nor consumes RNG.
-    private (WorldPosition Position, UfoStatus Status, int Speed) ForecastUfo(UfoSnapshot ufo,
-        CampaignTimeTrigger highest, bool needPosition = true) =>
-        ForecastUfoStep(ProjectFlightTarget(UfoForFlight(ufo, highest), highest), highest, needPosition);
-
     private (WorldPosition Position, UfoStatus Status, int Speed) ForecastUfoStep(UfoSnapshot ufo,
-        CampaignTimeTrigger highest, bool needPosition = true)
+        CampaignTimeTrigger highest, bool needPosition = true, double? knownDistance = null)
     {
         if (ufo.Status == UfoStatus.Landed)
             return ufo.SecondsRemaining == 5 ? (ufo.Position, UfoStatus.Flying,
@@ -132,7 +109,7 @@ internal sealed partial class CampaignWorld
                                 FindMission(ufo.MissionId)!.Race).SpeedMaximum)) : (ufo.Position, ufo.Status, ufo.Speed);
         if (ufo.Status != UfoStatus.Flying) return (ufo.Position, ufo.Status, ufo.Speed);
         var speedRadian = WorldGeometry.RadianSpeed(ufo.Speed);
-        var distance = UfoDestinationDistance(ufo);
+        var distance = knownDistance ?? UfoDestinationDistance(ufo);
         var destination = ufo.Destination!.Position;
         // Status-only callers skip MovingTarget::move. The speed vector is only used for a step
         // that does not reach the destination; an arriving step snaps to it.
@@ -149,154 +126,29 @@ internal sealed partial class CampaignWorld
         if (IsSiteConversion(ufo, mission, trajectory))
             return (position, MissionRule(mission).RespawnUfoAfterSiteDespawn && _pass.SuppressedUfoSites?.Contains(ufo.UniqueId) != true
                 ? UfoStatus.IgnoreMe : UfoStatus.Destroyed, 0);
+        // A base assault ends the five-second pass like a terminal arrival (branch 5 S7).
+        if (IsBaseAssaultArrival(ufo, trajectory)) return (position, UfoStatus.Destroyed, 0);
         var rule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
         var landing = trajectory.Altitude(ufo.TrajectoryPoint + 1) == 0;
         return (position, landing ? UfoStatus.Landed : UfoStatus.Flying,
             landing ? 0 : trajectory.Speed(ufo.TrajectoryPoint + 1, rule.StatsForRace(mission.Race).SpeedMaximum));
     }
 
-    /// <summary>Whether any UFO's arrival ends this tick's flight pass; independent of the craft asking.</summary>
-    private bool AnyUfoEndsFlightPass(CampaignTimeTrigger highest)
+    /// <summary>Whether the saved UFO at <paramref name="index"/> ends this tick's flight pass (its arrival
+    /// destroys it), through the shared flight projection. The step's status is not shared: a suppressed
+    /// site conversion changes it during the pass.</summary>
+    private bool EndsUfoFlightPass(int index, CampaignTimeTrigger highest)
     {
-        foreach (var candidate in _ufos)
-            if (EndsUfoFlightPass(candidate, highest)) return true;
-        return false;
+        var ufo = SharedFlightAt(index, highest, out var distance);
+        return ufo.Status == UfoStatus.Flying &&
+            ForecastUfoStep(ufo, highest, needPosition: false, distance).Status == UfoStatus.Destroyed;
     }
 
-    private bool EndsUfoFlightPass(UfoSnapshot ufo, CampaignTimeTrigger highest) =>
-        UfoForFlight(ufo, highest).Status == UfoStatus.Flying &&
-        ForecastUfo(ufo, highest, needPosition: false).Status == UfoStatus.Destroyed;
-
-    private string? CraftArrivalReason(CampaignState.BaseState owner, CampaignState.CraftState craft,
-        CraftLogisticsState state, CampaignTimeTrigger highest, ref bool? terminalUfoArrival)
-    {
-        if (state.Destination is { Kind: WorldTargetKind.Craft } escort && escort.Id == craft.Id &&
-            escort.TypeId == campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule))
-            return WorldCommandReasons.TargetSelf;
-        if (state.Destination is not { } destination ||
-            destination.Kind is WorldTargetKind.Base or WorldTargetKind.Waypoint or WorldTargetKind.Craft) return null;
-        if (highest >= CampaignTimeTrigger.OneDay && destination.Kind == WorldTargetKind.AlienBase)
-        {
-            var guaranteed = GuaranteedDailyResearch();
-            foreach (var alienBase in _alienBases)
-                if (FollowsAlienBase(destination, alienBase) && BaseDestroyedAfterDailyResearch(alienBase, guaranteed))
-                    return null;
-        }
-        // processMissionSite runs before time5Seconds craft movement on a half-hour tick.
-        if (highest >= CampaignTimeTrigger.ThirtyMinutes && destination.Kind == WorldTargetKind.MissionSite &&
-            ReturnsFromSiteBeforeMovement(destination, highest)) return null;
-        if (highest >= CampaignTimeTrigger.TenMinutes &&
-            AdvanceCraftFuel(owner, craft, state).Destination is { Kind: WorldTargetKind.Base }) return null;
-        if (!TryGetCraftDestinationPosition(destination, out var targetPosition)) return null;
-        (WorldPosition Position, UfoStatus Status, int Speed)? projectedUfo = null;
-        if (destination.Kind == WorldTargetKind.Ufo)
-        {
-            var original = TargetUfo(destination);
-            // Dormant UFOs miss the radar pass before processMissionSite. Only a
-            // later hunter retarget can reveal that hidden contact before craft movement.
-            var ufo = original is null ? null : UfoForFlight(original, highest);
-            if (original is { Status: UfoStatus.IgnoreMe, Detected: false } && ufo?.Detected != true) return null;
-            // Detection may reveal an imported hidden destination at the half-hour boundary.
-            if (ufo is null || !ufo.Detected && highest < CampaignTimeTrigger.ThirtyMinutes ||
-                ufo.Status is UfoStatus.Destroyed or UfoStatus.IgnoreMe) return null;
-            // Regional attachment has no exact target position. Its owning
-            // preflight has proved every pursuing craft outside the full movement
-            // envelope (or returning home), so no arrival can occur this tick.
-            if (_pass.InexactNewLeaderFlights?.Contains(ufo.UniqueId) == true) return null;
-            // Conversion's new site position and reset speed are forecast by the world capability.
-            if (ArrivesAtSite(ufo, highest)) return null;
-            projectedUfo = ForecastUfo(ufo, highest);
-            targetPosition = projectedUfo.Value.Position;
-        }
-        // A terminal UFO arrival skips the entire craft pass, regardless of list order.
-        // The answer is the same for every craft, so the craft-movement preflight computes it once.
-        terminalUfoArrival ??= AnyUfoEndsFlightPass(highest);
-        if (terminalUfoArrival.Value) return null;
-        var from = new WorldPosition(state.Longitude, state.Latitude);
-        var position = state.Takeoff > 0 ? from : WorldGeometry.Move(from, targetPosition, WorldGeometry.RadianSpeed(state.Speed));
-        if (!WorldGeometry.ReachedDestination(position, targetPosition)) return null;
-        if (projectedUfo is { Status: UfoStatus.Flying } projected)
-        {
-            CraftLogistics.TryEffectiveSpeedMaximum(campaign.Content.RuntimeRules.Crafts[craft.Rule].Value,
-                state.Weapons, campaign.Content.RuntimeRules, out var maximum);
-            return projected.Speed <= maximum ? InterceptionReason : null;
-        }
-        if (!CanLand(owner, craft, state)) return null;
-        if (destination.Kind == WorldTargetKind.AlienBase &&
-            TargetAlienBase(destination) is { Discovered: false } undiscoveredBase)
-        {
-            if (ArrivalBaseDiscoveryReason(undiscoveredBase, highest, out var possible) is { } discoveryReason) return discoveryReason;
-            if (!possible) return null;
-        }
-        return LandingReason;
-    }
-
-    // Facility sight runs after daily construction; patrol sight runs after ten-minute
-    // fuel. Reserve deployment if either can reveal this saved target before arrival.
-    // No RNG/script execution or speculative state mutation is needed.
-    private string? ArrivalBaseDiscoveryReason(AlienBaseSnapshot alienBase, CampaignTimeTrigger highest, out bool possible)
-    {
-        possible = false;
-        if (highest < CampaignTimeTrigger.TenMinutes) return null;
-        var key = (MarkerName(alienBase.DeploymentId), alienBase.Id);
-        if (_arrivalBaseDiscovery.TryGetValue(key, out possible)) return null;
-        var rules = campaign.Content.RuntimeRules;
-        foreach (var owner in campaign.BaseStates)
-        {
-            if (++_arrivalBaseDiscoveryWork > MaximumAlienBaseChecks) return AlienBaseWorkReason;
-            if (highest >= CampaignTimeTrigger.OneDay)
-            {
-                var distance = WorldGeometry.Distance(new(owner.Longitude, owner.Latitude), alienBase.Position);
-                foreach (var facility in owner.Facilities)
-                {
-                    if (++_arrivalBaseDiscoveryWork > MaximumAlienBaseChecks) return AlienBaseWorkReason;
-                    var rule = rules.Facilities[facility.Rule].Value;
-                    if (WorldAlienBaseSight.FacilityChance(distance, rule.SightRange, rule.SightChance,
-                            Math.Max(0, facility.BuildTime - 1)) is > 0)
-                    {
-                        possible = true;
-                        _arrivalBaseDiscovery[key] = true;
-                        return null;
-                    }
-                }
-            }
-            foreach (var craft in owner.Crafts)
-            {
-                if (++_arrivalBaseDiscoveryWork > MaximumAlienBaseChecks) return AlienBaseWorkReason;
-                var state = _pass.HuntingCraftForecast is { } forecast
-                    ? forecast.GetValueOrDefault((rules.Crafts.GetExternalId(craft.Rule), craft.Id))
-                    : craft.Logistics;
-                if (state is not { Status: "STR_OUT", Destination: null }) continue;
-                _arrivalBaseDiscoveryWork += (_pass.HuntingCraftForecast is null ? 4L : 1L) * state.Weapons.Count;
-                if (_arrivalBaseDiscoveryWork > MaximumAlienBaseChecks) return AlienBaseWorkReason;
-                if (_pass.HuntingCraftForecast is null) state = AdvanceCraftFuel(owner, craft, state);
-                if (state.Destination is not null) continue;
-                if (!CraftLogistics.TryEffectiveSightRange(rules.Crafts[craft.Rule].Value, state.Weapons, rules, out var range))
-                    return "Craft weapon sight bonuses exceed the supported range.";
-                var distance = WorldGeometry.Distance(new(state.Longitude, state.Latitude), alienBase.Position);
-                if (WorldAlienBaseSight.CraftChance(distance, range) is not > 0) continue;
-                // Production precedes patrol discovery. Without a hunter, no other
-                // caller may have requested the ordered craft-removal projection.
-                if (_pass.HuntingCraftForecast is null && highest >= CampaignTimeTrigger.OneHour && owner.Productions.Count != 0)
-                {
-                    if (ForecastHuntingCrafts(highest, ref _arrivalBaseDiscoveryWork) is { } forecastReason) return forecastReason;
-                    state = _pass.HuntingCraftForecast!.GetValueOrDefault((rules.Crafts.GetExternalId(craft.Rule), craft.Id));
-                    if (state is not { Status: "STR_OUT", Destination: null }) continue;
-                    _arrivalBaseDiscoveryWork += state.Weapons.Count;
-                    if (_arrivalBaseDiscoveryWork > MaximumAlienBaseChecks) return AlienBaseWorkReason;
-                    if (!CraftLogistics.TryEffectiveSightRange(rules.Crafts[craft.Rule].Value, state.Weapons, rules, out range))
-                        return "Craft weapon sight bonuses exceed the supported range.";
-                    distance = WorldGeometry.Distance(new(state.Longitude, state.Latitude), alienBase.Position);
-                    if (WorldAlienBaseSight.CraftChance(distance, range) is not > 0) continue;
-                }
-                possible = true;
-                _arrivalBaseDiscovery[key] = true;
-                return null;
-            }
-        }
-        _arrivalBaseDiscovery[key] = false;
-        return null;
-    }
+    // Arrivals need no refusal since branch 5 S4-S6: a flying UFO opens an interception and a landing
+    // target queues a confirmation. Only a craft told to escort itself is refused.
+    private string? CraftArrivalReason(CampaignState.CraftState craft, CraftLogisticsState state) =>
+        state.Destination is { Kind: WorldTargetKind.Craft } escort && escort.Id == craft.Id &&
+        escort.TypeId == campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule) ? WorldCommandReasons.TargetSelf : null;
 
     private CraftLogisticsState RepairCraftPursuit(CampaignState.BaseState owner, CampaignState.CraftState craft,
         CraftLogisticsState state, CampaignState.TimeEffects effects)
@@ -330,18 +182,37 @@ internal sealed partial class CampaignWorld
         };
     }
 
+    /// <summary>
+    /// The craft pass reaching a UFO that is not flying, a mission site, an alien base or a craft. A craft
+    /// that may land queues a landing confirmation; otherwise it returns home where the reference does.
+    /// </summary>
     private CraftLogisticsState ArriveAtWorldTarget(CampaignState.BaseState owner, CampaignState.CraftState craft,
-        CraftLogisticsState state, WorldTargetReference destination)
+        CraftLogisticsState state, WorldTargetReference destination, CampaignState.TimeEffects effects)
     {
-        var returnHome = destination.Kind switch
+        var returnHome = false;
+        switch (destination.Kind)
         {
-            WorldTargetKind.Craft => TargetCraft(destination)?.Logistics?.Status != "STR_OUT",
-            WorldTargetKind.Ufo => TargetUfo(destination)?.Status == UfoStatus.Crashed && !CanLand(owner, craft, state),
-            WorldTargetKind.MissionSite => !CanLand(owner, craft, state),
-            WorldTargetKind.AlienBase => TargetAlienBase(destination) is
-            { Discovered: true } && !CanLand(owner, craft, state),
-            _ => false,
-        };
+            case WorldTargetKind.Craft:
+                returnHome = TargetCraft(destination)?.Logistics?.Status != "STR_OUT";
+                break;
+            case WorldTargetKind.Ufo when TargetUfo(destination) is { Status: UfoStatus.Landed or UfoStatus.Crashed or UfoStatus.Destroyed } ufo:
+                if (CanLand(owner, craft, state))
+                {
+                    if (!CraftInDogfight(owner.Id, campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id))
+                        QueueLanding(owner, craft, destination, ufo.Position, -1, effects);
+                }
+                else returnHome = ufo.Status != UfoStatus.Landed;
+                break;
+            case WorldTargetKind.MissionSite when _sites.Find(site => site.Id == destination.Id &&
+                MarkerName(site.DeploymentId) == destination.TypeId) is { } site:
+                if (CanLand(owner, craft, state)) QueueLanding(owner, craft, destination, site.Position, site.Texture, effects);
+                else returnHome = true;
+                break;
+            case WorldTargetKind.AlienBase when TargetAlienBase(destination) is { Discovered: true } alienBase:
+                if (CanLand(owner, craft, state)) QueueLanding(owner, craft, destination, alienBase.Position, -1, effects);
+                else returnHome = true;
+                break;
+        }
         if (!returnHome) return state;
         CraftLogistics.TryEffectiveSpeedMaximum(campaign.Content.RuntimeRules.Crafts[craft.Rule].Value,
             state.Weapons, campaign.Content.RuntimeRules, out var maximum);

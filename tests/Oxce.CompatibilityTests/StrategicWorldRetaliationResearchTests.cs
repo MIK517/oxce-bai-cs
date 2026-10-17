@@ -83,11 +83,18 @@ public sealed class StrategicWorldRetaliationResearchTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void SiteResearchCannotBypassGeneratedBaseDefenseOrInvalidRetainedLinks(bool hunting)
+    public void SiteResearchInterruptsAGeneratedInstantRetaliationOnlyBeforeItsAssault(bool hunting)
     {
         var content = StrategicGeneratedRetaliationTests.Content(hunting, false, instant: true, interrupt: "CORE");
-        AssertTimeBlocked(CampaignState.Restore(WithSite(StrategicGeneratedRetaliationTests.Initial(content, hunting, true)), content, new SplitMix64RandomSource(17)),
-            "Retaliation assault arrival requires base-defense simulation.");
+        var campaign = CampaignState.Restore(WithSite(StrategicGeneratedRetaliationTests.Initial(content, hunting, true)), content,
+            new SplitMix64RandomSource(17));
+        var events = campaign.Execute(new AdvanceCampaignTime(1)).Events;
+        var ufo = Assert.Single(campaign.Capture().World.Ufos);
+        Assert.Equal(UfoStatus.Destroyed, ufo.Status);
+        // The daily research interrupts the mission born the same day before its ship arrives; the
+        // half-hour hunting birth attacks first.
+        Assert.Equal(hunting ? 1 : 0, events.OfType<DeploymentRequested>().Count());
+        Assert.Equal(hunting ? 1 : 0, ufo.TrajectoryPoint);
         if (hunting) return;
         content = StrategicGeneratedRetaliationTests.Content(false, false, interrupt: "MISSING_RESEARCH");
         AssertTimeBlocked(CampaignState.Restore(WithSite(StrategicGeneratedRetaliationTests.Initial(content, false, false)), content, new SplitMix64RandomSource(17)),

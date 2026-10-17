@@ -49,7 +49,14 @@ public sealed record RuntimeResearchRule(
     bool ReturnsItem,
     bool Repeatable,
     int ListOrder,
-    IReadOnlyDictionary<string, ulong> Events);
+    IReadOnlyDictionary<string, ulong> Events)
+{
+    /// <summary>
+    /// Mod::getFinalResearch: true only for the one research that shows the Cydonia button. Of several topics
+    /// marked <c>unlockFinalMission</c>, the one whose last updating mod loads latest wins.
+    /// </summary>
+    public bool UnlockFinalMission { get; init; }
+}
 
 public sealed record RuntimeManufactureMaterial(
     string Id,
@@ -153,6 +160,18 @@ public sealed record RuntimeFacilityRule(
 {
     public int PrisonType { get; init; }
     public int AmmoMaximum { get; init; }
+    /// <summary>RuleBaseFacility::getMissileAttraction: the facility's weight as a missile target.</summary>
+    public int MissileAttraction { get; init; } = 100;
+    /// <summary>How many crafts the base view places in this hangar (its distinct leading craft slots).</summary>
+    public int DrawnCraftSlots { get; init; } = 1;
+    /// <summary>RuleBaseFacility base-defense fields (BaseDefenseState): a non-zero defense value makes the
+    /// facility fire at an attacking UFO; a grav shield adds a firing pass.</summary>
+    public int DefenseValue { get; init; }
+    public int HitRatio { get; init; }
+    public bool GravShield { get; init; }
+    public int AmmoNeeded { get; init; }
+    public bool UnifiedDamageFormula { get; init; }
+    public int ShieldDamageModifier { get; init; } = 100;
     public int RearmRate { get; init; }
     public bool CanBeBuiltOver { get; init; }
     public int FakeUnderwater { get; init; }
@@ -212,6 +231,15 @@ public sealed record RuntimeCraftRule(
     public int ShieldCapacity { get; init; }
     public int ShieldRechargeInGeoscape { get; init; }
     public int ShieldRechargeAtBase { get; init; }
+    /// <summary>RuleCraft::_missilePower; a positive value makes the craft a missile (RuleCraft::isMissile).</summary>
+    public int MissilePower { get; init; }
+    /// <summary>RuleCraft::getScore: the X-COM activity lost when the craft is destroyed.</summary>
+    public int Score { get; init; }
+    /// <summary>RuleCraft::_maxAltitude; above -1 the craft is water-only (RuleCraft::isWaterOnly) and cannot
+    /// engage a UFO above this altitude.</summary>
+    public int MaximumAltitude { get; init; } = -1;
+    public bool IsMissile => MissilePower > 0;
+    public bool IsWaterOnly => MaximumAltitude > -1;
     public int SightRange { get; init; }
     public int RadarRange { get; init; }
     public int RadarChance { get; init; }
@@ -220,6 +248,8 @@ public sealed record RuntimeCraftRule(
     public bool NotifyWhenRefueled { get; init; }
     public bool Undetectable { get; init; }
     public bool PatrolWithoutFuel { get; init; }
+    /// <summary>RuleCraft::getSpacecraft: the craft can fly the final mission.</summary>
+    public bool Spacecraft { get; init; }
     public bool AutoPatrol { get; init; }
     public IReadOnlyList<string> FixedWeaponSlots { get; init; } = [];
     public int Pilots { get; init; }
@@ -244,6 +274,23 @@ public sealed record RuntimeCraftWeaponRule(int AmmoMaximum, int RearmRate, stri
 {
     public bool StatisticalBulletSaving { get; init; }
     public double BonusStorageSpace { get; init; }
+
+    // Dogfight properties (RuleCraftWeapon; read by DogfightState and CraftWeaponProjectile).
+    public int Damage { get; init; }
+    public int ShieldDamageModifier { get; init; } = 100;
+    public int Range { get; init; }
+    public int Accuracy { get; init; }
+    public int ReloadCautious { get; init; }
+    public int ReloadStandard { get; init; }
+    public int ReloadAggressive { get; init; }
+    /// <summary>CraftWeaponProjectileType: 0 stingray missile, 1 avalanche missile, 2 cannon round
+    /// (default), 3 fusion ball, 4 laser beam, 5 plasma beam.</summary>
+    public int ProjectileType { get; init; } = 2;
+    public int ProjectileSpeed { get; init; }
+    public int WeaponType { get; init; }
+    public int TractorBeamPower { get; init; }
+    public bool UnifiedDamageFormula { get; init; }
+    public bool UnderwaterOnly { get; init; }
 }
 
 /// <summary>Raw rule action accuracy before tactical bonuses and random rolls.</summary>
@@ -365,6 +412,8 @@ public sealed record RuntimeSoldierRule(
     public int RankCount { get; init; }
     public IReadOnlyDictionary<string, short> StatCaps { get; init; } = new ReadOnlyDictionary<string, short>(new Dictionary<string, short>());
     public IReadOnlyDictionary<string, short> TrainingStatCaps { get; init; } = new ReadOnlyDictionary<string, short>(new Dictionary<string, short>());
+    /// <summary>RuleSoldier::getDogfightExperience: percent chances per interception win.</summary>
+    public IReadOnlyDictionary<string, short> DogfightExperience { get; init; } = new ReadOnlyDictionary<string, short>(new Dictionary<string, short>());
 }
 
 public sealed record RuntimeSoldierBonusRule(int ListOrder, IReadOnlyDictionary<string, short> Stats);
@@ -469,6 +518,8 @@ public sealed record RuntimeCampaignSettings(
     public int HireByCountryOdds { get; init; }
     public int HireByRegionOdds { get; init; }
     public double PerformanceBonusFactor { get; init; }
+    /// <summary>Global rules read by interception, landing and base defense.</summary>
+    public CampaignInterceptionSettings Interception { get; init; } = CampaignInterceptionSettings.Default;
     /// <summary>Mod::getFixedUserOptions: options that the loaded mods force for every campaign.</summary>
     public IReadOnlyDictionary<string, string> FixedUserOptions { get; init; } =
         new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(new Dictionary<string, string>());

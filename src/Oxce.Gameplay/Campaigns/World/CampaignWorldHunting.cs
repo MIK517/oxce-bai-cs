@@ -5,7 +5,6 @@ public sealed record UfoStartedHunting(int UniqueId, string CraftTypeId, int Cra
 internal sealed partial class CampaignWorld
 {
     private const string HuntStateReason = "UFO hunting or escort state requires a valid original waypoint.";
-    private const string HuntCombatReason = "UFO hunting interception requires strategic combat (Phase 6 branch 5).";
     // Execution has its own buffer: daily/hourly handlers may change the craft population
     // and state after preflight. Each hunter replaces the contents before selection.
     private readonly List<WorldHuntCraft> _huntingCandidates = [];
@@ -184,6 +183,60 @@ internal sealed partial class CampaignWorld
     private UfoSnapshot UfoForFlight(UfoSnapshot ufo, CampaignTimeTrigger highest) =>
         _pass.NewLeaderFlightForecast?.GetValueOrDefault(ufo.UniqueId) ??
         _pass.RetargetForecast?.GetValueOrDefault(ufo.UniqueId) ?? UfoAfterTimedTransitions(ufo, highest);
+
+    /// <summary>Test-only: recompute every shared flight read and fail on a difference (ADR 0033).
+    /// The test assemblies enable it for every test; it never changes a result.</summary>
+    internal static bool VerifySharedFlights { get; set; }
+
+    [ThreadStatic] private static long _verifiedSharedFlightReads;
+
+    /// <summary>Test-only: stored shared flight reads verified on the current thread, which shows that
+    /// the shared projection is actually used.</summary>
+    internal static long VerifiedSharedFlightReads => _verifiedSharedFlightReads;
+
+    /// <summary>
+    /// <c>ProjectFlightTarget(UfoForFlight(_ufos[index]))</c> and the distance to its destination,
+    /// shared by the UFO movement, site conversion and half-hour steps (ADR 0033). Outside that
+    /// window, and for hunting or escorting UFOs, it computes directly.
+    /// </summary>
+    private UfoSnapshot SharedFlightAt(int index, CampaignTimeTrigger highest, out double distance)
+    {
+        var saved = _ufos[index];
+        if (!_pass.SharedFlightsReady) return ComputeFlight(saved, highest, memoize: true, out distance);
+        if (_pass.SharedFlights is null || _pass.SharedFlights.Length < _ufos.Count)
+            Array.Resize(ref _pass.SharedFlights, _ufos.Count);
+        ref var entry = ref _pass.SharedFlights[index];
+        if (!ReferenceEquals(entry.Source, saved))
+        {
+            var projected = ProjectFlightTarget(UfoForFlight(saved, highest), highest);
+            var shared = !projected.Hunting && !projected.Escorting;
+            // A stored entry holds its own distance, so it bypasses the distance memo.
+            distance = FlightDistance(projected, memoize: !shared);
+            if (shared) entry = new SharedFlight { Source = saved, Projected = projected, Distance = distance };
+            return projected;
+        }
+        if (VerifySharedFlights)
+        {
+            var expected = ComputeFlight(saved, highest, memoize: false, out var expectedDistance);
+            if (!expected.Equals(entry.Projected) ||
+                BitConverter.DoubleToInt64Bits(expectedDistance) != BitConverter.DoubleToInt64Bits(entry.Distance))
+                throw new InvalidOperationException($"Shared flight of UFO {saved.UniqueId} differs from its recomputation.");
+            _verifiedSharedFlightReads++;
+        }
+        distance = entry.Distance;
+        return entry.Projected;
+    }
+
+    private UfoSnapshot ComputeFlight(UfoSnapshot saved, CampaignTimeTrigger highest, bool memoize, out double distance)
+    {
+        var projected = ProjectFlightTarget(UfoForFlight(saved, highest), highest);
+        distance = FlightDistance(projected, memoize);
+        return projected;
+    }
+
+    private double FlightDistance(UfoSnapshot projected, bool memoize) =>
+        projected.Destination is not { } destination ? double.NaN :
+        memoize ? UfoDestinationDistance(projected) : WorldGeometry.Distance(projected.Position, destination.Position);
 
     private bool PlannedHuntMarker(UfoSnapshot ufo) => ufo.Id == 0 &&
         _pass.RetargetForecast?.TryGetValue(ufo.UniqueId, out var projected) == true && projected.Detected;

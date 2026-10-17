@@ -73,9 +73,7 @@ public sealed class StrategicRetaliationGenerationTests
                     var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
                     if (targeted)
                     {
-                        AssertTimeBlocked(campaign, objective == 6
-                            ? "Retaliation assault arrival requires base-defense simulation."
-                            : "Retaliation assault spawning requires a UFO rule.");
+                        AssertTimeBlocked(campaign, "Retaliation assault spawning requires a UFO rule.");
                         continue;
                     }
                     AdvanceUnblocked(campaign, 1);

@@ -87,7 +87,7 @@ internal sealed partial class CampaignWorld
         {
             if (_ufos[index] is { Status: UfoStatus.Crashed, InBattlescape: true })
                 return "Crashed UFO battlescape transitions require tactical simulation.";
-            var ufo = ProjectFlightTarget(UfoForFlight(_ufos[index], highest), highest);
+            var ufo = SharedFlightAt(index, highest, out var destinationDistance);
             if (_ufos[index].Status == UfoStatus.Crashed && ufo.Status == UfoStatus.Destroyed)
             {
                 siteLinkWork += _sites.Count;
@@ -143,18 +143,21 @@ internal sealed partial class CampaignWorld
                     siteLinkWork += 2L * _ufos.Count;
                     if (siteLinkWork > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
                 }
-                if (!movementEnded && ufo.Hunting && ForecastHuntingTarget(destination) is { Logistics: { } targetState } targetCraft &&
+                // A hunter-killer reaching its craft starts an interception (branch 5 S4); the craft pass
+                // then neither moves, recharges shields nor arrives this tick. While another hunter-killer
+                // fight is open the attacker only waits, so the craft pass runs as usual.
+                if (!movementEnded && ufo.Hunting && !_interceptions.Any(static d => d.UfoIsAttacking) && ForecastHuntingTarget(destination) is { Logistics: { } targetState } targetCraft &&
                     targetState.Damage < CraftLogistics.EffectiveDamageMaximum(targetState,
                         campaign.Content.RuntimeRules.Crafts[targetCraft.Rule].Value, campaign.Content.RuntimeRules) &&
                     WorldGeometry.Distance(ufo.Position, destination.Position) <= WorldGeometry.RadianSpeed(ufo.Speed))
-                    return HuntCombatReason;
+                    _pass.HunterAttackForecast = true;
                 continue;
             }
-            if (!movementEnded && EndsUfoFlightPass(ufo, highest)) movementEnded = true;
+            if (!movementEnded && EndsUfoFlightPass(index, highest)) movementEnded = true;
             var speedRadian = WorldGeometry.RadianSpeed(ufo.Speed);
             // MovingTarget::move snaps to this stationary waypoint when distance is
             // not greater than one step, including the reference's NaN fallback.
-            if (!(UfoDestinationDistance(ufo) > speedRadian))
+            if (!(destinationDistance > speedRadian))
             {
                 _pass.ArrivalLossFollowerScanRequired = true;
                 if (FindMission(ufo.MissionId) is null) return "UFO mission link requires world simulation.";
@@ -177,12 +180,19 @@ internal sealed partial class CampaignWorld
                         siteLinkWork += (long)campaign.BaseStates.Count * (1L + region.Areas.Count);
                         if (siteLinkWork > MaximumAlienBaseChecks) return "Aggressive retaliation base selection exceeds the supported work limit.";
                     }
-                    if (!CanAdvanceOrdinaryWaypoint(ufo, mission, trajectory))
+                    if (IsBaseAssaultArrival(ufo, trajectory) && !IsSiteConversion(ufo, mission, trajectory))
+                    {
+                        // The base assault ends this five-second pass (branch 5 S7). Its waypoint draws read
+                        // the next zone, which CanAdvanceOrdinaryWaypoint would otherwise have validated.
+                        ValidateWaypointAreas(campaign.Content.RuntimeRules.Regions[
+                            campaign.Content.RuntimeRules.Regions.GetRequired(mission.RegionId)].Value, trajectory.Zone(ufo.TrajectoryPoint + 1));
+                        if (BaseAssaultReason(ufo.RuleId, MissionRule(mission), destination.Position) is { } assaultReason) return assaultReason;
+                    }
+                    else if (!CanAdvanceOrdinaryWaypoint(ufo, mission, trajectory))
                         return "UFO waypoint arrival requires mission simulation.";
-                    // Crafts and escorts react to the new CRASHED status later in this
-                    // time5Seconds pass (landing confirmation, return or escort loss).
-                    if (CrashesOnGroundArrival(ufo, mission, trajectory) && HasArrivalContactFollowers(ufo))
-                        return "Crashed UFO arrival with followers requires interception simulation.";
+                    // Crafts react to the new CRASHED status later in this time5Seconds pass: a landing
+                    // confirmation or the return home (branch 5 S6). Escorts keep following the crashed
+                    // leader until its removal sends them back to their own waypoints (Target::~Target).
                     var regionForWaypoint = campaign.Content.RuntimeRules.Regions[
                         campaign.Content.RuntimeRules.Regions.GetRequired(mission.RegionId)].Value;
                     var wave = rule.Waves[MissionWaveIndex(ufo, mission, rule)];
@@ -199,6 +209,13 @@ internal sealed partial class CampaignWorld
     private void MoveUfos(CampaignState.TimeEffects effects)
     {
         _ufoArrivalEndedTick = false;
+        _ufoIsAttackingThisTick = false;
+        // GeoscapeState::time5Seconds returns once the campaign has ended.
+        if (campaign.Ending != 0)
+        {
+            _ufoArrivalEndedTick = true;
+            return;
+        }
         for (var index = 0; index < _ufos.Count; index++)
         {
             var ufo = _ufos[index];
@@ -222,6 +239,22 @@ internal sealed partial class CampaignWorld
             var vector = WorldGeometry.SpeedVector(ufo.Position, destination.Position, speedRadian);
             var distance = WorldGeometry.Distance(ufo.Position, destination.Position);
             var moved = WorldGeometry.Move(ufo.Position, destination.Position, speedRadian, vector, distance);
+            if (ufo.Hunting && !(distance > speedRadian))
+            {
+                // A hunter-killer reached its craft: the attack starts and the UFO skips its shield recharge.
+                var arrived = _ufos[index];
+                _ufos[index] = ufo with
+                {
+                    Longitude = moved.Longitude,
+                    Latitude = moved.Latitude,
+                    SpeedRadian = speedRadian,
+                    SpeedLongitude = vector.Longitude,
+                    SpeedLatitude = vector.Latitude,
+                    Direction = WorldAltitudes.Direction(vector.Longitude, vector.Latitude),
+                };
+                if (TryHunterKillerAttack(index)) continue;
+                _ufos[index] = arrived;
+            }
             if (!ufo.Hunting && !ufo.Escorting && !(distance > speedRadian))
             {
                 var mission = FindMission(ufo.MissionId)!;
@@ -229,6 +262,12 @@ internal sealed partial class CampaignWorld
                     campaign.Content.RuntimeRules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value;
                 if (!mission.Interrupted && ufo.TrajectoryPoint + 1 < trajectory.Waypoints.Count)
                 {
+                    if (IsBaseAssaultArrival(ufo, trajectory) && !IsSiteConversion(ufo, mission, trajectory))
+                    {
+                        ArriveForBaseAssault(index, ufo, mission, trajectory, moved, effects);
+                        _ufoArrivalEndedTick = true;
+                        break;
+                    }
                     if (!CanAdvanceOrdinaryWaypoint(ufo, mission, trajectory))
                         throw new InvalidOperationException("UFO arrival changed after world preflight.");
                     var arrived = AdvanceOrdinaryWaypoint(ufo, mission, trajectory, moved);
@@ -298,6 +337,13 @@ internal sealed partial class CampaignWorld
         long work = campaign.BaseStates.Count + maximumUfos;
         if (campaign.ProductionPreflight.CraftPopulationBound(highest, ref work, out var crafts) is { } reason) return reason;
         return work + crafts > MaximumAlienBaseChecks ? "UFO arrival follower checks exceed the supported work limit." : null;
+    }
+
+    private bool HasEscortFollowers(UfoSnapshot ufo)
+    {
+        foreach (var follower in _ufos)
+            if (FollowsUfo(follower.Destination, ufo)) return true;
+        return false;
     }
 
     private bool HasArrivalContactFollowers(UfoSnapshot ufo)

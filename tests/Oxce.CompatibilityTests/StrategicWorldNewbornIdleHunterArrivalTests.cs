@@ -113,9 +113,9 @@ public sealed class StrategicWorldNewbornIdleHunterArrivalTests
                     Destination = WorldTargetReference.ForWaypoint(5, new(Degrees(30), Degrees(2))),
                 },
             });
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
-            escort ? "UFO unique IDs are exhausted or collide with a saved UFO." :
-                "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+        var restored = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        if (escort) AssertTimeBlocked(restored, "UFO unique IDs are exhausted or collide with a saved UFO.");
+        else AssertNewbornHuntRuns(restored);
     }
 
     [Fact]

@@ -70,13 +70,13 @@ public sealed class StrategicWorldGeoscapeScenarioTests
         Assert.Equal(WorldTargetKind.Ufo, Ship(client).Destination!.Kind);
 
         // The ship carries no crew, so it waits over the landing (no ConfirmLandingState). When the UFO
-        // lifts off the ship meets a flying UFO: interception needs strategic combat (branch 5), so the
-        // clock stops with the reason in a popup and stays halted.
+        // lifts off the ship meets a flying UFO and an interception window opens; it holds the clock while
+        // the dogfight timer steps it (D3).
         Key(client, '2');
-        var seen = Drive(client, () => campaign, 4 * 60, () => client.Time.HaltReason is not null);
-        Assert.Equal(["Time cannot advance: " + WorldCommandReasons.InterceptionBoundary], seen);
-        Assert.Contains(WorldCommandReasons.InterceptionBoundary, client.Time.HaltReason, StringComparison.Ordinal);
-        Assert.False(client.Time.Running);
+        var seen = Drive(client, () => campaign, 4 * 60, () => client.Interceptions.Count != 0);
+        Assert.DoesNotContain(seen, static text => text.StartsWith("Time cannot advance", StringComparison.Ordinal));
+        Assert.False(Assert.Single(client.Interceptions).Minimized);
+        Assert.False(client.TimeCanRun);
         var stopped = campaign.QueryOverview().Time;
         client.Tick(GeoscapeTimeController.GeoClock);
         Assert.Equal(stopped, campaign.QueryOverview().Time);
@@ -87,6 +87,9 @@ public sealed class StrategicWorldGeoscapeScenarioTests
         OpenCraft(client, ship);
         client.Choose(0);
         Assert.Equal(WorldTargetKind.Base, Ship(client).Destination!.Kind);
+        // The client's next dogfight step ends the window of a craft that no longer targets its UFO.
+        client.Tick(GeoscapeClient.DogfightClock);
+        Assert.Empty(client.Interceptions);
         Key(client, '2');
         Assert.True(client.TimeCanRun);
         Drive(client, () => campaign, 3 * 24 * 60, () => Ship(client).Status != "STR_OUT");
@@ -180,7 +183,7 @@ public sealed class StrategicWorldGeoscapeScenarioTests
             client.Choose(targets.Actions.ToList().FindIndex(action => action.Label == GeoscapeScreens.CraftName(craft, static text => text)));
     }
 
-    private static GeoscapeClient Client(RuntimeContent content, CampaignUiSession session, Action save, Func<CampaignUiSession> load)
+    internal static GeoscapeClient Client(RuntimeContent content, CampaignUiSession session, Action save, Func<CampaignUiSession> load)
     {
         var texture = new IndexedSurface(32, 32);
         texture.Clear(0x41);

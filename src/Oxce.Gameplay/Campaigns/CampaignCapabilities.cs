@@ -30,9 +30,13 @@ internal static class CampaignTimeOrder
 {
     // time5Seconds: UFO processing precedes craft movement.
     public const int FiveSecondsWorldUfoRetarget = 50;
+    public const int FiveSecondsCampaignEnding = 60;
     public const int FiveSecondsWorldUfos = 100;
     public const int FiveSecondsWorldCrafts = 200;
+    public const int FiveSecondsWorldInterceptionStart = 250;
+    public const int FiveSecondsWorldInterceptionCleanup = 290;
     public const int FiveSecondsWorldUfoCleanup = 300;
+    public const int FiveSecondsWorldInterceptionWaits = 350;
 
     // time10Minutes: craft fuel consumption precedes detection and retargeting.
     public const int TenMinutesWorldCraftFuel = 100;
@@ -50,6 +54,7 @@ internal static class CampaignTimeOrder
     public const int DayBases = 200;
     public const int DayWorldMissionInterruption = 250;
     public const int DayWorldAlienBases = 300;
+    public const int DayDogfightExperience = 400;
 
     // time1Hour: craft servicing loop, transfers, then production.
     public const int HourCraftServicing = 100;
@@ -71,6 +76,9 @@ internal static class CampaignTimeOrder
 internal static class CampaignPreflightOrder
 {
     public const int Restrictions = 100;
+    public const int Interceptions = 120;
+    public const int Landings = 122;
+    public const int DestroyedCrafts = 125;
     public const int WorldSimulation = 150;
     public const int CraftMovement = 200;
     public const int MonthBoundary = 300;
@@ -93,6 +101,7 @@ internal sealed class CampaignCapabilityRegistry
     private readonly List<Action> _initializers = [];
     private readonly Dictionary<Type, object> _queries = [];
     private readonly Dictionary<Type, object> _operations = [];
+    private readonly List<Func<ICampaignCommand, CampaignCommandResult?>> _commandGates = [];
 
     internal const int TriggerCount = (int)CampaignTimeTrigger.OneMonth + 1;
 
@@ -104,6 +113,16 @@ internal sealed class CampaignCapabilityRegistry
             throw new ArgumentException("Commands are dispatched by their exact concrete type.", nameof(handler));
         if (!_commands.TryAdd(typeof(TCommand), command => handler((TCommand)command)))
             throw new InvalidOperationException($"Command '{typeof(TCommand).Name}' has more than one handler.");
+    }
+
+    /// <summary>
+    /// A check every command passes before its handler; a non-null result refuses the command. Used for
+    /// campaign-wide holds such as a pending deployment request.
+    /// </summary>
+    public void CommandGate(Func<ICampaignCommand, CampaignCommandResult?> gate)
+    {
+        ArgumentNullException.ThrowIfNull(gate);
+        _commandGates.Add(gate);
     }
 
     public void Preflight(int order, string name, CampaignTimePreflight check)
@@ -170,7 +189,8 @@ internal sealed class CampaignCapabilityRegistry
         [.. _validators],
         [.. _initializers],
         _queries.ToFrozenDictionary(),
-        _operations.ToFrozenDictionary());
+        _operations.ToFrozenDictionary(),
+        [.. _commandGates]);
 
     /// <summary>Internal operations run only within the caller's existing campaign transaction.</summary>
     public void Operation<TOperation>(TOperation implementation) where TOperation : class
@@ -206,8 +226,17 @@ internal sealed class CampaignHandlerTable(
     Action[] validators,
     Action[] initializers,
     FrozenDictionary<Type, object> queries,
-    FrozenDictionary<Type, object> operations)
+    FrozenDictionary<Type, object> operations,
+    Func<ICampaignCommand, CampaignCommandResult?>[] commandGates)
 {
+    /// <summary>The first gate refusal for the command, or null.</summary>
+    public CampaignCommandResult? CommandGate(ICampaignCommand command)
+    {
+        foreach (var gate in commandGates)
+            if (gate(command) is { } refused) return refused;
+        return null;
+    }
+
     public bool TryGetCommand(Type type, out Func<ICampaignCommand, CampaignCommandResult> handler) =>
         commands.TryGetValue(type, out handler!);
 

@@ -3,6 +3,9 @@ using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Core.Random;
+using Oxce.Engine;
+using Oxce.Engine.Geoscape;
+using Oxce.Engine.Input;
 using Oxce.Mods.Rulesets.Content;
 using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
 using Oxce.TestSupport;
@@ -193,7 +196,7 @@ public sealed partial class StrategicWorldHuntingTests
             Assert.Equal(UfoStatus.Destroyed, after.World.Ufos[0].Status);
             campaign = Reload(content, campaign, 81, "deferred-hunter-after.sav");
         }
-        AssertTimeBlocked(campaign, "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+        AssertInterceptionStarts(campaign);
     }
 
     [Fact]
@@ -1033,7 +1036,7 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Fact]
-    public void AirborneHunterSpawnStopsBeforeCreationTimeCombat()
+    public void AnAirborneHunterBornNearACraftCanAttackItInItsBirthTick()
     {
         var content = Load();
         var snapshot = HuntingSnapshot(content);
@@ -1050,8 +1053,20 @@ public sealed partial class StrategicWorldHuntingTests
         snapshot = snapshot.WithCraft("SHIP", craft => craft with
         { Logistics = craft.Logistics! with { Longitude = Degrees(10), Latitude = Degrees(8), Fuel = 1000 } });
         snapshot = snapshot with { Bases = [snapshot.Bases[0] with { Longitude = Degrees(10), Latitude = Degrees(8) }] };
-        AssertTimeBlocked(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(81)),
-            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+        AssertNewbornHuntRuns(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(81)));
+        // A hunter born within reach of the ship selects it and attacks in the same tick on some seed.
+        var attacked = false;
+        for (ulong seed = 1; seed <= 64 && !attacked; seed++)
+        {
+            var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(seed));
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+            Assert.DoesNotContain(result.Events, static evt => evt is CampaignActionBlocked);
+            if (result.Events.OfType<InterceptionStarted>().SingleOrDefault() is not { UfoAttacking: true } started) continue;
+            attacked = true;
+            Assert.Equal("SHIP", started.CraftTypeId);
+            Assert.True(Assert.Single(campaign.GetQuery<ICampaignInterceptionQuery>()!.QueryInterceptions()).UfoAttacking);
+        }
+        Assert.True(attacked);
     }
 
     [Theory]
@@ -1523,8 +1538,7 @@ public sealed partial class StrategicWorldHuntingTests
             Transfers = [new(1, 1, CampaignTransferKind.Craft, "CLOSE_INCOMING_HUNT", 1, Craft: incoming)],
         }]
         };
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
-            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+        AssertInterceptionStarts(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)));
     }
 
     [Fact]
@@ -2118,7 +2132,7 @@ public sealed partial class StrategicWorldHuntingTests
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "disabled-refund-hunt.sav");
         if (close)
         {
-            AssertTimeBlocked(campaign, "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+            AssertInterceptionStarts(campaign);
             return;
         }
         Assert.Empty(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<CampaignActionBlocked>());
@@ -2409,7 +2423,7 @@ public sealed partial class StrategicWorldHuntingTests
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "queued-stocks-before.sav");
             if (close)
             {
-                AssertTimeBlocked(campaign, "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+                AssertInterceptionStarts(campaign);
                 continue;
             }
             Assert.Empty(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<CampaignActionBlocked>());
@@ -2904,7 +2918,7 @@ public sealed partial class StrategicWorldHuntingTests
             World = initial.World with { Ufos = [initial.World.Ufos[0] with { Longitude = 0.45, Latitude = 0.21 }] },
         };
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "production-combat-before.sav");
-        AssertTimeBlocked(campaign, "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+        AssertInterceptionStarts(campaign);
     }
 
     [Fact]
@@ -4809,9 +4823,9 @@ public sealed partial class StrategicWorldHuntingTests
             }
         };
         if (marker) initial = initial.WithNextId("STR_UFO", int.MaxValue);
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), marker
-            ? "UFO contact marker IDs are exhausted or collide with a saved UFO."
-            : "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        if (marker) AssertTimeBlocked(campaign, "UFO contact marker IDs are exhausted or collide with a saved UFO.");
+        else AssertInterceptionStarts(campaign, ufoAttacking: true);
     }
 
     [Theory]
@@ -4897,8 +4911,7 @@ public sealed partial class StrategicWorldHuntingTests
                 Destination = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, 3, 0.4, 0.2) { UniqueId = 9 },
             }
         });
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
-            "Craft interception requires strategic combat (Phase 6 branch 5).");
+        AssertInterceptionStarts(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)));
     }
 
     [Theory]
@@ -4907,4 +4920,198 @@ public sealed partial class StrategicWorldHuntingTests
     public void UndefinedIntermediateAttractionOverflowIsRejected(int units, int speed, int damage, int damageMaximum) =>
         Assert.False(WorldHunting.TryAttraction(0, true, units, speed, damage, damageMaximum, out _));
 
+
+    [Fact]
+    public void AHunterKillerReachingItsCraftOpensAnAttackWindowAndStopsTheClock()
+    {
+        // Branch 5 S4: GeoscapeState::time5Seconds starts a hunter-killer dogfight when the hunting UFO
+        // reaches its craft; the window offers only the hunter-killer modes and cannot be minimized.
+        var content = Load();
+        var initial = HuntingSnapshot(content);
+        var hunter = initial.World.Ufos[0] with
+        {
+            HunterKiller = true,
+            Hunting = true,
+            OriginalWaypoint = new(1, 0.6),
+            Longitude = 0.45,
+            Latitude = 0.21,
+            Destination = new(WorldTargetKind.Craft, "SHIP", 1, 0.45, 0.21),
+        };
+        initial = initial with { World = initial.World with { Ufos = [hunter] } };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        var started = AssertInterceptionStarts(campaign, ufoAttacking: true);
+        Assert.Equal((1, "SHIP", 1, hunter.UniqueId), (started.Interception, started.CraftTypeId, started.CraftId, started.UfoUniqueId));
+        var window = Assert.Single(campaign.GetQuery<ICampaignInterceptionQuery>()!.QueryInterceptions());
+        Assert.True(window.UfoAttacking);
+        Assert.DoesNotContain(InterceptionMode.Standoff, window.AvailableModes);
+        Assert.DoesNotContain(InterceptionMode.Standard, window.AvailableModes);
+        Assert.Equal(InterceptionMode.Aggressive, window.Mode);
+        Assert.NotEmpty(campaign.Execute(new MinimizeInterception(window.Number)).Events);
+        AssertTimeBlocked(campaign, WorldCommandReasons.InterceptionsOpen);
+    }
+
+    [Fact]
+    public void TheGeoscapeShowsTheHunterKillerAttackWindowWhichCannotBeMinimized()
+    {
+        var content = Load();
+        var initial = HuntingSnapshot(content);
+        var hunter = initial.World.Ufos[0] with
+        {
+            HunterKiller = true,
+            Hunting = true,
+            OriginalWaypoint = new(1, 0.6),
+            Longitude = 0.45,
+            Latitude = 0.21,
+            Destination = new(WorldTargetKind.Craft, "SHIP", 1, 0.45, 0.21),
+        };
+        var campaign = CampaignState.Restore(initial with { World = initial.World with { Ufos = [hunter] } }, content,
+            new SplitMix64RandomSource(81));
+        var client = StrategicWorldGeoscapeScenarioTests.Client(content, CampaignUiSession.ForCampaign(campaign, campaign, campaign),
+            save: static () => { }, load: static () => throw new InvalidOperationException("No save to load."));
+        client.Tick(GeoscapeTimeController.GeoClock);
+        while (client.Popups.Count != 0)
+            client.Choose(client.Popups[0].Actions.ToList().FindIndex(static action => action.CancelKey || action.OkKey));
+        var window = Assert.Single(client.Interceptions);
+        Assert.True(window.UfoAttacking);
+        Assert.False(client.TimeCanRun);
+
+        // Standoff is not offered, so its button does nothing; Minimise is refused with the reason.
+        void Click(int x, int y) =>
+            client.HandleInput(GameInputEvent.PointerButtonChange(GameInputEventKind.PointerPressed, 0, 0, x, y, 1, 1));
+        Click(165, 36 + 5);
+        Assert.Equal(InterceptionMode.Aggressive, client.Interceptions[0].Mode);
+        Click(165, 36 + 5 * 16 + 6 + 5);
+        Assert.False(client.Interceptions[0].Minimized);
+        client.Choose(Assert.Single(client.Popups).Actions.ToList().FindIndex(static action => action.OkKey));
+
+        // The dogfight timer steps the attack while game time waits.
+        var time = campaign.Capture().Time;
+        for (var step = 0; step < 20 && client.Popups.Count == 0 && client.Interceptions.Count != 0; step++)
+            client.Tick(GeoscapeClient.DogfightClock);
+        Assert.Equal(time, campaign.Capture().Time);
+    }
+
+    [Fact]
+    public void AnArmedCraftBesideTheHuntedOneJoinsTheHunterKillersFight()
+    {
+        // GeoscapeState::time5Seconds with escortsJoinFightAgainstHK: crafts within escortRange that have a
+        // loaded weapon and are not returning join the attack in their own windows.
+        var content = Load("""
+            crafts:
+              - type: INTERCEPTOR
+                weapons: 1
+                damageMax: 100
+              - type: SHIP
+                damageMax: 100
+            craftWeapons:
+              - type: ESCORT_CANNON
+                launcher: SUPPLY
+                ammoMax: 50
+                damage: 10
+                range: 10
+                accuracy: 25
+                reloadCautious: 24
+                reloadStandard: 16
+                reloadAggressive: 8
+                projectileType: 2
+                projectileSpeed: 8
+
+            """);
+        var initial = HuntingSnapshot(content);
+        var hunter = initial.World.Ufos[0] with
+        {
+            HunterKiller = true,
+            Hunting = true,
+            OriginalWaypoint = new(1, 0.6),
+            Longitude = 0.45,
+            Latitude = 0.21,
+            Destination = new(WorldTargetKind.Craft, "SHIP", 1, 0.45, 0.21),
+        };
+        initial = (initial with { World = initial.World with { Ufos = [hunter] } }).WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with { Weapons = [new CraftWeaponSnapshot("ESCORT_CANNON", 50, false, false), null] },
+        }).WithCraft("INTERCEPTOR", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_OUT",
+                Fuel = 300,
+                Longitude = 0.4501,
+                Latitude = 0.2101,
+                Destination = null,
+                Weapons = [new CraftWeaponSnapshot("ESCORT_CANNON", 50, false, false)],
+            },
+        });
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.DoesNotContain(result.Events, static evt => evt is CampaignActionBlocked);
+        var started = result.Events.OfType<InterceptionStarted>().ToArray();
+        // The hunter may retarget the armed interceptor first; either way the other craft joins the fight.
+        Assert.Equal(["INTERCEPTOR", "SHIP"], started.Select(static evt => evt.CraftTypeId).Order());
+        Assert.All(started, static evt => Assert.True(evt.UfoAttacking));
+        Assert.Equal(2, campaign.GetQuery<ICampaignInterceptionQuery>()!.QueryInterceptions().Count);
+    }
+
+    [Fact]
+    public void EscortsFollowALeaderThatCrashesOnLandingUntilItsSiteExpires()
+    {
+        // A damaged leader reaching its ground waypoint crashes (AlienMission::ufoReachedWaypoint). Its escort
+        // keeps following the stationary wreck; the crash site's removal resets the escort to its own
+        // waypoint (Target::~Target, Ufo::resetOriginalDestination).
+        var content = Load();
+        var initial = CreateLifecycleSnapshot(content);
+        var landingPoint = new WorldPosition(Degrees(8), Degrees(2));
+        var leader = initial.World.Ufos[0] with
+        {
+            TrajectoryId = "TRAJ_LANDING",
+            TrajectoryPoint = 1,
+            Status = UfoStatus.Flying,
+            Altitude = "STR_HIGH_UC",
+            Speed = 1000,
+            Damage = 30,
+            SecondsRemaining = 0,
+            Longitude = landingPoint.Longitude,
+            Latitude = landingPoint.Latitude,
+            Destination = WorldTargetReference.ForWaypoint(0, landingPoint),
+        };
+        var own = new WorldPosition(1.0, 0.6);
+        var escort = new UfoSnapshot(10, "ESCORT_HUNTER", 4, "TRAJ_LANDING", 1, landingPoint.Longitude + 0.001, landingPoint.Latitude,
+            UfoStatus.Flying, "STR_HIGH_UC")
+        {
+            Id = 4,
+            MissionWaveNumber = 0,
+            Speed = 2200,
+            HunterKiller = true,
+            Escort = true,
+            Escorting = true,
+            OriginalWaypoint = own,
+            Destination = new WorldTargetReference(WorldTargetKind.Ufo, WorldTargetReference.UfoType, leader.Id,
+                leader.Longitude, leader.Latitude)
+            { UniqueId = leader.UniqueId },
+        };
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                Missions = [initial.World.Missions[0] with { LiveUfos = 2 }],
+                Ufos = [leader, escort],
+            },
+        };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        AdvanceUnblocked(campaign, 1);
+        var crashed = campaign.Capture().World.Ufos;
+        Assert.Equal(UfoStatus.Crashed, crashed[0].Status);
+        Assert.True(crashed[1].Escorting);
+        Assert.Equal(leader.UniqueId, crashed[1].Destination!.UniqueId);
+
+        // The escort reaches the wreck and waits over it; the site expires within 96 hours.
+        for (var hour = 0; hour < 100 && campaign.Capture().World.Ufos.Any(ufo => ufo.UniqueId == leader.UniqueId); hour++)
+        {
+            var result = campaign.Execute(new AdvanceCampaignTime(720));
+            Assert.DoesNotContain(result.Events, static evt => evt is CampaignActionBlocked);
+        }
+        var survivor = Assert.Single(campaign.Capture().World.Ufos);
+        Assert.Equal(escort.UniqueId, survivor.UniqueId);
+        Assert.False(survivor.Escorting);
+    }
 }

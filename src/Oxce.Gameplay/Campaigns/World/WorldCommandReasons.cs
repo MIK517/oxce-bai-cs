@@ -24,9 +24,17 @@ public static class WorldCommandReasons
     internal const string TargetGone = "The destination no longer exists or is not visible.";
     internal const string TargetSelf = "A craft cannot escort itself.";
     internal const string ForeignBase = "A craft can return only to its own base; use a transfer to change bases.";
-    internal const string StartingConditionBoundary = "Target starting conditions require deployment validation (Phase 6 branch 5).";
-    internal const string InterceptionBoundary = "Craft interception requires strategic combat (Phase 6 branch 5).";
-    internal const string LandingBoundary = "Craft landing requires deployment (Phase 6 branch 5).";
+    internal const string LandingTargetGone = "The landing target no longer offers a mission.";
+    internal const string NoInterception = "There is no such interception.";
+    internal const string InterceptionsOpen = "Open interception windows stop the clock until they are minimized.";
+    internal const string InterceptionMode = "The interception does not offer that mode.";
+    internal const string LandingConfirmationsOpen = "Landing confirmations stop the clock until they are answered.";
+    internal const string NoLandingConfirmation = "That landing confirmation is not the one shown.";
+    internal const string DeploymentRequestPending = "A confirmed landing waits for its battle (Phase 7 tactical execution).";
+    internal const string NoDeploymentRequest = "There is no deployment request to take.";
+    internal const string FinalMissionUnavailable = "The craft cannot fly the final mission.";
+    internal const string BaseDefenseOpen = "A base defense stops the clock until it is resolved.";
+    internal const string NoBaseDefense = "That base is not under attack.";
     internal const string ContactGone = "The UFO contact no longer exists or is not visible.";
     internal const string ContactLimit = "Ignored UFO contacts exceed the supported limit.";
 
@@ -48,9 +56,17 @@ public static class WorldCommandReasons
         new("target.gone", TargetGone),
         new("target.self", TargetSelf),
         new("target.foreign-base", ForeignBase),
-        new("boundary.starting-condition", StartingConditionBoundary),
-        new("boundary.interception", InterceptionBoundary),
-        new("boundary.landing", LandingBoundary),
+        new("landing.no-mission", LandingTargetGone),
+        new("interception.none", NoInterception),
+        new("interception.open", InterceptionsOpen),
+        new("interception.mode", InterceptionMode),
+        new("landing.open", LandingConfirmationsOpen),
+        new("landing.none", NoLandingConfirmation),
+        new("deployment.pending", DeploymentRequestPending),
+        new("deployment.none", NoDeploymentRequest),
+        new("final-mission.unavailable", FinalMissionUnavailable),
+        new("base-defense.open", BaseDefenseOpen),
+        new("base-defense.none", NoBaseDefense),
         new("contact.gone", ContactGone),
         new("contact.limit", ContactLimit),
     }.ToFrozenDictionary(static reason => reason.Text, StringComparer.Ordinal);

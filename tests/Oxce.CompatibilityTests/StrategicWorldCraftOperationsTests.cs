@@ -208,8 +208,9 @@ public sealed class StrategicWorldCraftOperationsTests
 
     [Theory]
     [InlineData("STR_OUT")]
+    [InlineData("STR_REFUELLING")]
     [InlineData("STR_REPAIRS")]
-    public void DestroyedCraftStopsTimeBeforeItsRemoval(string status)
+    public void DestroyedCraftIsLostOnTheNextTickInAnyStatus(string status)
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var snapshot = ReadyCampaign(content).Capture();
@@ -221,7 +222,13 @@ public sealed class StrategicWorldCraftOperationsTests
             Logistics = craft.Logistics! with { Status = status, Damage = 100, Weapons = [null, null] },
         }), content, new SplitMix64RandomSource(42));
 
-        AssertTimeBlocked(campaign, "Destroyed craft removal requires world simulation.");
+        // Branch 5 S5: time5Seconds removes the destroyed craft at the start of the craft pass. This tick
+        // also crosses an hour, and the hourly handlers fall through to time5Seconds, so a craft under
+        // repair is mended to 99 first and survives.
+        Assert.DoesNotContain(campaign.Execute(new AdvanceCampaignTime(1)).Events, item => item is CampaignActionBlocked);
+        var lost = status != "STR_REPAIRS";
+        Assert.Equal(lost, !campaign.Capture().Bases[0].Crafts.Any(craft => craft.RuleId == "SHIP"));
+        Assert.Equal(lost ? 1 : 0, campaign.Capture().World.CraftLostDogfight);
 
         var damaged = CampaignState.Restore(snapshot.WithCraft("SHIP", craft => craft with
         {

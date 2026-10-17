@@ -69,6 +69,7 @@ public sealed class CampaignStartSettings
         BuyPriceCoefficients = Array.AsReadOnly((int[])builder.BuyPriceCoefficients.Clone());
         SellPriceCoefficients = Array.AsReadOnly((int[])builder.SellPriceCoefficients.Clone());
         FixedUserOptions = Sorted(builder.FixedUserOptions);
+        Interception = builder.Interception.Build();
     }
 
     [System.Text.Json.Serialization.JsonConstructor]
@@ -109,9 +110,10 @@ public sealed class CampaignStartSettings
         IReadOnlyDictionary<string, string>? fixedUserOptions = null, int escortRange = 20,
         double performanceBonusFactor = 0, bool allowCountriesToCancelAlienPact = false, bool hunterKillerFastRetarget = true, bool allowAlienBasesOnWrongTextures = true,
         bool buildInfiltrationBaseCloseToTheCountry = false, bool infiltrateRandomCountryInTheRegion = false, int maximumViewDistance = 20, int maximumDarknessToSeeUnits = 9,
-        int drawEnemyRadarCircles = 1)
+        int drawEnemyRadarCircles = 1, CampaignInterceptionSettings? interception = null)
     {
         DrawEnemyRadarCircles = drawEnemyRadarCircles;
+        Interception = interception ?? CampaignInterceptionSettings.Default;
         FixedUserOptions = Sorted(fixedUserOptions ?? new Dictionary<string, string>());
         BuildTimeReductionScaling = buildTimeReductionScaling;
         CustomTrainingFactor = customTrainingFactor;
@@ -212,6 +214,9 @@ public sealed class CampaignStartSettings
     /// <summary>Mod::_fixedUserOptions: option IDs forced to these textual values by the loaded mods.</summary>
     public IReadOnlyDictionary<string, string> FixedUserOptions { get; }
 
+    /// <summary>Global rules read by interception, landing and base defense.</summary>
+    public CampaignInterceptionSettings Interception { get; }
+
     private static ReadOnlyDictionary<string, string> Sorted(IEnumerable<KeyValuePair<string, string>> values) =>
         new ReadOnlyDictionary<string, string>(new SortedDictionary<string, string>(
             values.ToDictionary(static pair => pair.Key, static pair => pair.Value, StringComparer.Ordinal),
@@ -278,4 +283,5 @@ internal sealed class CampaignStartSettingsBuilder
     public List<string> OperationNamesFirst { get; } = [];
     public List<string> OperationNamesLast { get; } = [];
     public Dictionary<string, string> FixedUserOptions { get; } = new(StringComparer.Ordinal);
+    public CampaignInterceptionSettingsBuilder Interception { get; } = new();
 }

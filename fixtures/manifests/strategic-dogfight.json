@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-dogfight",
+  "description": "Dogfight steps from the verbatim DogfightState think/update, mode handlers, weapon fire and distance helpers, constructor countdown and pilot blocks, CraftWeaponProjectile, CraftWeapon fire/ammo, Craft pilot bonuses and Ufo/Craft damage setters; scripted raw RNG through RandomState::generate, stubbed drawing and globe.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "Geoscape/DogfightState.cpp; Savegame/CraftWeaponProjectile.h/.cpp, CraftWeapon.cpp, Craft.cpp, Ufo.cpp",
+      "probe": "fixtures/reference-probes/savegames/strategic_dogfight_probe.cpp",
+      "capture": "tools/capture-strategic-dogfight-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; reference statements inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "size": 39438,
+      "path": "fixtures/reference-probes/savegames/strategic_dogfight_probe.cpp",
+      "sha256": "03fcebd63f336c95d4fb67d4cc2d6d3de48886c38a3cd95b772a6f7915fffbb6"
+    },
+    {
+      "size": 7405,
+      "path": "tools/capture-strategic-dogfight-reference.ps1",
+      "sha256": "6b823cc706d564f463d79f3898ef3e7cf15e94f72e077308b6e30a42cfe8659c"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-dogfight.expected.json"
+}

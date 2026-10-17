@@ -18,6 +18,12 @@ public sealed record CampaignUiSession(ICampaignQuery Queries, ICampaignCommandT
     public ICampaignResearchProductionQuery? ResearchProduction { get; init; } =
         Queries as ICampaignResearchProductionQuery;
     public ICampaignWorldQuery? World { get; init; } = Queries as ICampaignWorldQuery;
+    /// <summary>Landing confirmations and the pending battle request, reopened when a save is loaded.</summary>
+    public ICampaignLandingQuery? Landings { get; init; } = Queries as ICampaignLandingQuery;
+    /// <summary>The open base defense window, reopened when a save is loaded.</summary>
+    public ICampaignBaseDefenseQuery? BaseDefense { get; init; } = Queries as ICampaignBaseDefenseQuery;
+    /// <summary>The open interception windows.</summary>
+    public ICampaignInterceptionQuery? Interceptions { get; init; } = Queries as ICampaignInterceptionQuery;
     /// <summary>Where the geoscape globe looked when the campaign was saved (SavedGame globe fields).</summary>
     public Geoscape.GlobeViewState? GlobeView { get; init; }
 
@@ -31,6 +37,9 @@ public sealed record CampaignUiSession(ICampaignQuery Queries, ICampaignCommandT
             Readiness = campaign,
             ResearchProduction = campaign,
             World = campaign.GetQuery<ICampaignWorldQuery>(),
+            Landings = campaign.GetQuery<ICampaignLandingQuery>(),
+            BaseDefense = campaign.GetQuery<ICampaignBaseDefenseQuery>(),
+            Interceptions = campaign.GetQuery<ICampaignInterceptionQuery>(),
         };
     }
 }
