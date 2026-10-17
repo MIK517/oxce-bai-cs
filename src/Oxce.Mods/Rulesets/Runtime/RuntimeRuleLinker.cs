@@ -374,6 +374,13 @@ public static class RuntimeRuleLinker
             BuildInfiltrationBaseCloseToTheCountry = content.CampaignStart.Settings.BuildInfiltrationBaseCloseToTheCountry,
             InfiltrateRandomCountryInTheRegion = content.CampaignStart.Settings.InfiltrateRandomCountryInTheRegion,
             Interception = content.CampaignStart.Settings.Interception,
+            Monthly = content.CampaignStart.Settings.Monthly,
+            DefeatScore = content.CampaignStart.Settings.DefeatScore,
+            DefeatFunds = content.CampaignStart.Settings.DefeatFunds,
+            Cutscenes = new ReadOnlyDictionary<string, RuntimeCutscene>(new SortedDictionary<string, RuntimeCutscene>(
+                content.Presentation.Videos.Rules.ToDictionary(static rule => rule.Id,
+                    static rule => new RuntimeCutscene(rule.Value.WinGame, rule.Value.LoseGame), StringComparer.Ordinal),
+                StringComparer.Ordinal)),
         };
         var compatibility = new RuntimeRuleCompatibilitySidecar(CompatibilityEntries(content));
         var catalog = new RuntimeRuleCatalog(
@@ -453,7 +460,7 @@ public static class RuntimeRuleLinker
                     rule.Value.NeedItem,
                     rule.Value.DestroyItem, rule.Value.ReturnsItem, rule.Value.Repeatable,
                     rule.Value.ListOrder, rule.Value.Events)
-                { UnlockFinalMission = rule.Id == finalResearch }),
+                { UnlockFinalMission = rule.Id == finalResearch, Cutscene = rule.Value.Cutscene }),
             BuildFamily<ManufactureRuleFamily, ManufactureRule, RuntimeManufactureRule>(generation,
                 content.EquipmentProduction.Manufacture, rule => new(
                     rule.Value.Category, rule.Value.Requirements, rule.Value.RequiredBaseFunctions,

@@ -56,7 +56,13 @@ public sealed record RuntimeResearchRule(
     /// marked <c>unlockFinalMission</c>, the one whose last updating mod loads latest wins.
     /// </summary>
     public bool UnlockFinalMission { get; init; }
+
+    /// <summary>RuleResearch::getCutscene: the video shown on discovery, whose flags may end the campaign.</summary>
+    public string Cutscene { get; init; } = string.Empty;
 }
+
+/// <summary>RuleVideo::getWinGame/getLoseGame: whether showing the cutscene ends the campaign.</summary>
+public sealed record RuntimeCutscene(bool WinGame, bool LoseGame);
 
 public sealed record RuntimeManufactureMaterial(
     string Id,
@@ -520,6 +526,15 @@ public sealed record RuntimeCampaignSettings(
     public double PerformanceBonusFactor { get; init; }
     /// <summary>Global rules read by interception, landing and base defense.</summary>
     public CampaignInterceptionSettings Interception { get; init; } = CampaignInterceptionSettings.Default;
+    /// <summary>Global rules read by the month rollover and the monthly report.</summary>
+    public CampaignMonthlySettings Monthly { get; init; } = CampaignMonthlySettings.Default;
+    /// <summary>Mod::getDefeatScore: the monthly rating threshold before the difficulty term.</summary>
+    public int DefeatScore { get; init; }
+    /// <summary>Mod::getDefeatFunds: funds at or below which the monthly report warns, then ends the campaign.</summary>
+    public int DefeatFunds { get; init; }
+    /// <summary>Every <c>cutscenes</c> rule by ID (Mod::getVideo), for the endings its flags trigger.</summary>
+    public IReadOnlyDictionary<string, RuntimeCutscene> Cutscenes { get; init; } =
+        new System.Collections.ObjectModel.ReadOnlyDictionary<string, RuntimeCutscene>(new Dictionary<string, RuntimeCutscene>());
     /// <summary>Mod::getFixedUserOptions: options that the loaded mods force for every campaign.</summary>
     public IReadOnlyDictionary<string, string> FixedUserOptions { get; init; } =
         new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(new Dictionary<string, string>());

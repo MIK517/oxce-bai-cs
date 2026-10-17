@@ -113,6 +113,7 @@ internal static class CampaignStartSettingsComposer
         if (root.TryGet("fixedUserOptions", out var fixedOptions))
             CampaignStartYaml.ApplyEditableNameMap(b.FixedUserOptions, fixedOptions!, "fixedUserOptions");
         ApplyInterception(root, b.Interception);
+        ApplyMonthly(root, b.Monthly);
     }
 
     // Mod::loadFile order and defaults; see CampaignInterceptionSettings.
@@ -146,6 +147,28 @@ internal static class CampaignStartSettingsComposer
         b.RetaliationTriggerOdds = ReadList(overrides, "retaliationTriggerOdds", b.RetaliationTriggerOdds);
         b.RetaliationBaseRegionOdds = ReadList(overrides, "retaliationBaseRegionOdds", b.RetaliationBaseRegionOdds);
         b.AliensFacingCraftOdds = ReadList(overrides, "aliensFacingCraftOdds", b.AliensFacingCraftOdds);
+    }
+
+    // Mod::loadFile order and defaults; see CampaignMonthlySettings.
+    private static void ApplyMonthly(YamlMappingNode root, CampaignMonthlySettingsBuilder b)
+    {
+        b.ChanceToDetectAlienBaseEachMonth = Read(root, "chanceToDetectAlienBaseEachMonth", b.ChanceToDetectAlienBaseEachMonth);
+        if (root.TryGet("gameOver", out var gameOver))
+        {
+            if (gameOver is not YamlMappingNode mapping)
+                throw new YamlFormatException("Global rule 'gameOver' must be a mapping.", gameOver!.Span);
+            b.LoseMoneyCutscene = Read(mapping, "loseMoney", b.LoseMoneyCutscene);
+            b.LoseRatingCutscene = Read(mapping, "loseRating", b.LoseRatingCutscene);
+            b.LoseDefeatCutscene = Read(mapping, "loseDefeat", b.LoseDefeatCutscene);
+        }
+        if (!root.TryGet("monthlyRatings", out var ratings)) return;
+        if (ratings is not YamlMappingNode ratingMap)
+            throw new YamlFormatException("Global rule 'monthlyRatings' must be a mapping.", ratings!.Span);
+        // The reference's std::map read clears the map, then emplace keeps the first value of a repeated key.
+        var replacement = new SortedDictionary<int, string>();
+        foreach (var entry in ratingMap.Entries)
+            replacement.TryAdd(YamlValueReader.ReadInt32(entry.Key), YamlValueReader.ReadString(entry.Value));
+        b.MonthlyRatings = replacement;
     }
 
     // YamlNodeReader::tryRead into a std::vector replaces the whole list.
