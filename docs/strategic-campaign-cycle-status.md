@@ -215,8 +215,9 @@ the tick is preflighted on a shadow copy that has run the month; a month handler
 
 - `MonthlyCycle` (gameplay) ports `monthlyFunding`, `calculateChanges`, `Region::newMonth`, `Country::newMonth`,
   `Mod::getRandomMission` and the report constructor's rating, performance bonus, debt warning and game over;
-  `StrategicMonthlyReportOracleTests` replays all 17 `strategic-monthly-report` scenarios exactly, every random call
-  included.
+  `StrategicMonthlyReportOracleTests` replays all 17 `strategic-monthly-report` scenarios exactly, with every
+  random call of the report (the probe's `spawnEvent` stub makes no draw, so the pact events' timer draws are pinned
+  by the campaign tests only).
 - The report (`CampaignMonthlyReport`, `MonthlyReportReady`) is a modal hold ([ADR 0036](decisions/0036-campaign-cycle-intentional-differences.md)):
   it holds the clock from the next tick (the opening tick's later levels still run, as a popup pauses after the
   tick), refuses every command but `AcknowledgeMonthlyReport`, is copied to shadows and dropped by a reload. A
@@ -265,3 +266,29 @@ Corpus after part 2: unanswered, Rosigma `Middle.sav` and `_autogeo_.asav` stop 
 429699), `Early.sav` on its landing (6290) and `Begining.sav` on an event with consequences (580, S5). Answering every
 window, Rosigma `Middle.sav` and `_autogeo_.asav` run to the 40-day limit and `Early.sav` runs through its month to an
 event with consequences (436348, S5). The records are written to `artifacts/private-horizon-stops*.json` on every run.
+
+### S3 audit (2026-10-18)
+
+An independent review of ff847989 confirmed the month's order, monthly psi, the alien-base roll, the report's
+decisions, the country arithmetic, the script's inputs and atomic refusal, the pact events, the zero-wave missions
+against `AlienMission::start`/`isOver`, and the work-bound seam. Fixes:
+
+- A base defense opened by the month tick's later levels deadlocked with the report: each window's gate refused the
+  other's answer while the report held the clock. The report is now answered first, as its popup is queued first:
+  its preflight precedes the interception and landing ones, and the base-defense gate passes its acknowledgement
+  (ADR 0036). A pending deployment request already stops time, so no report opens beside one.
+- A later country's `newMonthCountry` read the earlier countries' pacts from before the month; `Country::newMonth`
+  sets each pact at once, so the pacts are now written back before every country script.
+- A performance bonus outside the `int` range refused the month; it now pays nothing (ADR 0036).
+- An undefined lose video named its cutscene in the acknowledgement; it now names none, as nothing plays.
+- New tests: the report and a base defense in the same tick, a later country script seeing an earlier new pact (it
+  fails without the fix), a reload dropping an open report, an undefined lose video, out-of-range bonuses.
+
+Refusal owners: the new country-script refusals ("Country script requires unsupported binding ...", "Country
+scripts exceed the supported event execution limit.", "Country scripts exceed the supported work limit.") and the
+zero-wave refusals that remain in alien-base generation, hunting and site research are S9's inventory (D5); a site
+script naming a mission without waves is recorded in ADR 0036. Interim gaps with owners: saving while a report is
+open (a game-over report then escapes on reload) is refused in S4; the app does not yet show or answer the report
+(`MonthlyReportReady`) or model `timerReset()` before `monthlyFunding`, which is S7. Not changed: the private test
+classes set the production bounds in their constructors, which relies on xUnit carrying the constructor's
+execution context into the test; a class that forgets it runs with fixture bounds and stops at a work limit.

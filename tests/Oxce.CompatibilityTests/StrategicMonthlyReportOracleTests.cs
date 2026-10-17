@@ -117,6 +117,14 @@ public sealed class StrategicMonthlyReportOracleTests
             expected.GetProperty("rngCalls").GetArrayLength() - random.Calls.Count);
     }
 
+    [Theory]
+    [InlineData(int.MinValue, 2.0)]
+    [InlineData(int.MaxValue, 2.0)]
+    [InlineData(1, double.NaN)]
+    public void AnOutOfRangeBonusPaysNothing(int score, double factor) =>
+        // x86's truncating conversion gives int.MinValue, which the report does not pay (ADR 0036).
+        Assert.Equal(int.MinValue, MonthlyCycle.PerformanceBonus(score, factor));
+
     /// <summary>The report text the probe records: the council text, then the debt warning and the country lists.</summary>
     private static string Description(MonthlyEvaluation evaluation)
     {

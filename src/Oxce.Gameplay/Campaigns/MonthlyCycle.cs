@@ -218,13 +218,14 @@ internal static class MonthlyCycle
         return total;
     }
 
-    /// <summary>Mod::getPerformanceBonus: <c>(int)(score * factor)</c>.</summary>
+    /// <summary>
+    /// Mod::getPerformanceBonus: <c>(int)(score * factor)</c>. A product outside <c>int</c> converts to
+    /// <c>int.MinValue</c>, as x86's truncating conversion does, so it pays no bonus (ADR 0036).
+    /// </summary>
     public static int PerformanceBonus(int score, double factor)
     {
         var product = Math.Truncate(score * factor);
-        if (!double.IsFinite(product) || product < int.MinValue || product > int.MaxValue)
-            throw new OverflowException("The monthly performance bonus exceeds the supported range.");
-        return (int)product;
+        return double.IsFinite(product) && product >= int.MinValue && product <= int.MaxValue ? (int)product : int.MinValue;
     }
 
     /// <summary>Mod::getRandomMission(OBJECTIVE_INFILTRATION, monthsPassed) over missions in std::map name order.</summary>

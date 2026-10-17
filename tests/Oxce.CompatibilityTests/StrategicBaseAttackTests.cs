@@ -47,7 +47,7 @@ public sealed class StrategicBaseAttackTests
 
     // facilities: more entries for the Defense facility list; ufoRules: further top-level rules.
     private static (RuntimeContent Content, CampaignState Campaign, int BaseId) Create(bool defended, bool defenders = true, string ufoRules = "",
-        IReadOnlyDictionary<string, int>? stores = null, string facilities = "")
+        IReadOnlyDictionary<string, int>? stores = null, string facilities = "", CampaignTime? time = null)
     {
         var content = stores is null
             ? StrategicReadinessTestContent.Load(["strategic-world.rul"], Defense + facilities + ufoRules)
@@ -77,7 +77,7 @@ public sealed class StrategicBaseAttackTests
         };
         snapshot = snapshot with
         {
-            Time = new CampaignTime(1, 1, 1, 1999, 1, 0, 5),
+            Time = time ?? new CampaignTime(1, 1, 1, 1999, 1, 0, 5),
             Bases = [owner, .. snapshot.Bases.Skip(1)],
             World = snapshot.World with
             {
@@ -91,6 +91,24 @@ public sealed class StrategicBaseAttackTests
     private const string RuntimeTrajectory = "__RETALIATION_ASSAULT_RUN";
 
     private static ICampaignBaseDefenseQuery Query(CampaignState campaign) => campaign.GetQuery<ICampaignBaseDefenseQuery>()!;
+
+    [Fact]
+    public void AMonthlyReportOpenedInTheSameTickIsAnsweredBeforeTheBaseDefense()
+    {
+        // time1Month queues MonthlyReportState before time5Seconds queues BaseDefenseState; popups show in order.
+        var (_, campaign, baseId) = Create(defended: true, time: new CampaignTime(1, 31, 1, 1999, 23, 59, 55));
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Single(result.Events.OfType<MonthlyReportReady>());
+        Assert.Single(result.Events.OfType<BaseDefenseStarted>());
+
+        AssertTimeBlocked(campaign, CampaignState.MonthlyReportOpen);
+        Assert.Equal(CampaignState.MonthlyReportOpen, Assert.IsType<CampaignActionBlocked>(Assert.Single(
+            campaign.Execute(new ResolveBaseDefense(baseId, Fire: true)).Events)).Reason);
+        Assert.IsType<MonthlyReportAcknowledged>(Assert.Single(campaign.Execute(new AcknowledgeMonthlyReport()).Events));
+
+        AssertTimeBlocked(campaign, WorldCommandReasons.BaseDefenseOpen);
+        Assert.IsType<BaseDefenseResolved>(Assert.Single(campaign.Execute(new ResolveBaseDefense(baseId, Fire: true)).Events));
+    }
 
     [Fact]
     public void ADefendedBaseOpensTheDefenseWindowAndItsCannonShootsTheUfoDown()
