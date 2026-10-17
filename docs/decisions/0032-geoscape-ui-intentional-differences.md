@@ -80,7 +80,8 @@ resolves its rounds in one step after Start Firing or Skip Firing instead of ani
 campaign's end and a battle request get plain-text port windows (no defeat cutscene, no tactical
 combat yet). A queued landing confirmation whose craft is heading home or has no destination is
 closed rather than shown, where the reference shows it and throws "No mission available!" on Yes
-(plan D4). The Cydonia button sits under Cancel in the destination sidebar.
+(plan D4). The Cydonia button sits under Cancel in the destination sidebar. After missiles damage a base whose stores no longer fit,
+the window's OK opens the base screens instead of forcing the reference's sell screen.
 
 ## Consequences
 

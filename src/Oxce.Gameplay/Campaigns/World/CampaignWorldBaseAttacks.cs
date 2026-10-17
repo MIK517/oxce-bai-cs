@@ -18,6 +18,13 @@ public sealed record BaseDefenseResolved(int BaseId, int UfoUniqueId, bool UfoDe
 /// </summary>
 public sealed record BaseDestroyed(int BaseId, string Name, bool Missiles = false) : ICampaignEvent;
 
+/// <summary>
+/// Missiles damaged a base that survived (BaseDestroyedState with partial destruction): the facilities lost
+/// by type, and whether the stores no longer fit (the reference then opens the sell screen).
+/// </summary>
+public sealed record BaseDamagedByMissiles(int BaseId, string Name, IReadOnlyList<DestroyedFacilityCount> Destroyed,
+    bool StoresOverfull) : ICampaignEvent;
+
 /// <summary>The campaign ended (SavedGame::setEnding): 2 is END_LOSE, when no base is left.</summary>
 public sealed record CampaignEnded(int Ending) : ICampaignEvent;
 
@@ -85,13 +92,22 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
         return BaseDefenseOutcomeReason(owner, ufoRuleId);
     }
 
-    // handleBaseDefense's refusal: missiles that damage facilities (Base::damageFacilities).
+    // The checks of handleBaseDefense's missile damage: any craft in the base's hangars may be destroyed, and
+    // the base's hunters return to their waypoints (SavedGame::stopHuntingXcomCrafts).
     private string? BaseDefenseOutcomeReason(CampaignState.BaseState owner, string ufoRuleId)
     {
         var rules = campaign.Content.RuntimeRules;
-        var missilePower = rules.Ufos[rules.Ufos.GetRequired(ufoRuleId)].Value.MissilePower;
-        if (missilePower > 0) return WorldCommandReasons.MissileBaseAttack;
-        _ = owner;
+        if (rules.Ufos[rules.Ufos.GetRequired(ufoRuleId)].Value.MissilePower <= 0) return null;
+        var crafts = owner.Crafts.Where(static craft => craft.Logistics?.Status != "STR_OUT")
+            .Select(craft => (rules.Crafts.GetExternalId(craft.Rule), craft.Id)).ToArray();
+        if (((ICampaignCraftRemoval)this).PlanReason(crafts) is { } removal) return removal;
+        foreach (var craft in owner.Crafts)
+        {
+            var type = rules.Crafts.GetExternalId(craft.Rule);
+            foreach (var ufo in _ufos)
+                if (ufo.Destination is { Kind: WorldTargetKind.Craft } target && target.TypeId == type && target.Id == craft.Id &&
+                    ufo.OriginalWaypoint is not { IsNormalized: true }) return HuntStateReason;
+        }
         return null;
     }
 
@@ -210,15 +226,23 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
             return;
         }
         if (HandleBaseDefense(owner, index) is { } request) effects.Notify(new DeploymentRequested(request));
-        else if (TakeDestroyedBase() is { } destroyed) effects.Notify(destroyed);
+        else if (TakeBaseOutcome() is { } outcome) effects.Notify(outcome);
     }
 
-    private BaseDestroyed? TakeDestroyedBase()
+    // The window an attack without a battle leaves: the base destroyed or damaged by missiles.
+    private ICampaignEvent? TakeBaseOutcome()
     {
+        if (_damagedBase is { } damaged)
+        {
+            _damagedBase = null;
+            return damaged;
+        }
         if (_destroyedBase is not { } destroyed) return null;
         _destroyedBase = null;
         return new BaseDestroyed(destroyed.Id, destroyed.Name, destroyed.Missiles);
     }
+
+    private BaseDamagedByMissiles? _damagedBase;
 
     private CampaignCommandResult ResolveBaseDefense(ResolveBaseDefense command)
     {
@@ -303,9 +327,9 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
         {
             events.Add(new DeploymentRequested(request));
         }
-        else if (TakeDestroyedBase() is { } destroyedBase)
+        else if (TakeBaseOutcome() is { } outcome)
         {
-            events.Add(destroyedBase);
+            events.Add(outcome);
         }
         events.Insert(0, new BaseDefenseResolved(owner.Id, open.UfoUniqueId, destroyed, stopped));
         return new CampaignCommandResult(events);
@@ -341,16 +365,9 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
     {
         DeleteRetaliationMission(RetaliationMissionOf(owner), owner);
         var rules = campaign.Content.RuntimeRules;
-        foreach (var craft in owner.Crafts.ToArray())
-        {
-            var type = rules.Crafts.GetExternalId(craft.Rule);
-            for (var index = 0; index < _ufos.Count; index++)
-                if (_ufos[index].Destination is { Kind: WorldTargetKind.Craft } target && target.TypeId == type && target.Id == craft.Id &&
-                    _ufos[index].OriginalWaypoint is not null)
-                    _ufos[index] = WorldHunting.Restore(_ufos[index]);
-            _interceptions.RemoveAll(dogfight => dogfight.Craft.Key is InterceptionCraftKey key && key.BaseId == owner.Id);
-            _pendingInterceptions.RemoveAll(dogfight => dogfight.Craft.Key is InterceptionCraftKey key && key.BaseId == owner.Id);
-        }
+        StopHuntingBaseCrafts(owner);
+        _interceptions.RemoveAll(dogfight => dogfight.Craft.Key is InterceptionCraftKey key && key.BaseId == owner.Id);
+        _pendingInterceptions.RemoveAll(dogfight => dogfight.Craft.Key is InterceptionCraftKey key && key.BaseId == owner.Id);
         campaign.RemoveBase(owner);
         foreach (var craft in owner.Crafts)
             ((ICampaignCraftRemoval)this).Removed(rules.Crafts.GetExternalId(craft.Rule), craft.Id, null);
@@ -358,6 +375,20 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
     }
 
     private (int Id, string Name, bool Missiles)? _destroyedBase;
+
+    // SavedGame::stopHuntingXcomCrafts: UFOs hunting the base's crafts return to their waypoints.
+    private void StopHuntingBaseCrafts(CampaignState.BaseState owner)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        foreach (var craft in owner.Crafts)
+        {
+            var type = rules.Crafts.GetExternalId(craft.Rule);
+            for (var index = 0; index < _ufos.Count; index++)
+                if (_ufos[index].Destination is { Kind: WorldTargetKind.Craft } target && target.TypeId == type && target.Id == craft.Id &&
+                    _ufos[index].OriginalWaypoint is not null)
+                    _ufos[index] = WorldHunting.Restore(_ufos[index]);
+        }
+    }
 
     private AlienMissionSnapshot? RetaliationMissionOf(CampaignState.BaseState owner)
     {
@@ -408,6 +439,17 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
         if (missionRule.Objective == RuntimeMissionObjective.InstantRetaliation)
             _missions[missionIndex] = _missions[missionIndex] with { Interrupted = true };
         var ufoRule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
+        if (ufoRule.MissilePower > 0)
+        {
+            // Missiles damage facilities; the base survives and its retaliation mission may strike again.
+            StopHuntingBaseCrafts(owner);
+            var (destroyedFacilities, overfull) = campaign.DamageBaseFacilities(owner, ufoRule.MissilePower, craft =>
+                ((ICampaignCraftRemoval)this).Removed(rules.Crafts.GetExternalId(craft.Rule), craft.Id, null));
+            _damagedBase = new BaseDamagedByMissiles(owner.Id, owner.Name, destroyedFacilities, overfull);
+            if (ufoRule.MissileStopChance > 0 && RandomChance.Percent(campaign.Random, ufoRule.MissileStopChance))
+                _missions[missionIndex] = _missions[missionIndex] with { Interrupted = true };
+            return null;
+        }
         if (ufoRule.MissilePower < 0)
         {
             // A nuclear warhead: BaseDestroyedState(missiles) deletes the retaliation mission at once.

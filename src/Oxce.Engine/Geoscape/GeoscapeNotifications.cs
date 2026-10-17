@@ -220,6 +220,15 @@ public static class GeoscapeNotifications
             case BaseDestroyed destroyed:
                 return new(Format(tr(destroyed.Missiles ? "STR_ALIEN_MISSILES_HAVE_DESTROYED_OUR_BASE"
                     : "STR_THE_ALIENS_HAVE_DESTROYED_THE_UNDEFENDED_BASE"), destroyed.Name), [], [Ok()]);
+            case BaseDamagedByMissiles damaged:
+                {
+                    // BaseDestroyedState with partial destruction: the facilities lost, then the storage warning that
+                    // opens the sell screen in the reference (here the base screens).
+                    var lines = damaged.Destroyed.Select(item => tr(item.RuleId) + " " + item.Count.ToString(CultureInfo.InvariantCulture)).ToList();
+                    if (damaged.StoresOverfull) lines.Add(Format(tr("STR_STORAGE_EXCEEDED"), damaged.Name));
+                    return new(Format(tr("STR_ALIEN_MISSILES_HAVE_DAMAGED_OUR_BASE"), damaged.Name), lines,
+                        damaged.StoresOverfull ? [GoToBase(damaged.BaseId, "STR_OK", okKey: true)] : [Ok()]);
+                }
             case CampaignEnded ended:
                 // The reference plays the defeat or victory cutscene; the port has none yet.
                 return new(ended.Ending == 2 ? "The campaign is lost" : "The campaign is won",

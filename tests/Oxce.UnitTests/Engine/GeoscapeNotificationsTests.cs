@@ -248,4 +248,16 @@ public sealed class GeoscapeNotificationsTests
         Assert.Equal("STR_ARMOR_NOT_ALLOWED_ONBOARD",
             Describe(new LandingRefused(1, "STR_INTERCEPTOR", 2, "STR_ARMOR_NOT_ALLOWED_ONBOARD"))!.Title);
     }
+
+    [Fact]
+    public void AMissileDamagedBaseListsItsLostFacilitiesAndSendsAnOverfullStoreToTheBase()
+    {
+        var damaged = Describe(new BaseDamagedByMissiles(1, "Alpha", [new("STR_LASER_DEFENSE", 2)], StoresOverfull: false))!;
+        Assert.Equal("STR_ALIEN_MISSILES_HAVE_DAMAGED_OUR_BASE", damaged.Title);
+        Assert.Equal(["Laser Defense 2"], damaged.Lines);
+        Assert.Null(damaged.Actions.Single().Intent);
+        var overfull = Describe(new BaseDamagedByMissiles(1, "Alpha", [], StoresOverfull: true))!;
+        Assert.Equal(["STR_STORAGE_EXCEEDED"], overfull.Lines);
+        Assert.Equal(new BaseIntent(1), overfull.Actions.Single().Intent);
+    }
 }

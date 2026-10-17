@@ -121,7 +121,8 @@ public static class RuntimeRuleLinker
                 rule.Value.Storage,
                 rule.Value.Personnel,
                 rule.Value.Aliens,
-                rule.Value.Crafts,
+                // RuleBaseFacility::afterLoad: a one-craft hangar with several slots holds that many crafts.
+                rule.Value.Crafts == 1 && rule.Value.CraftSlots.Count > 1 ? rule.Value.CraftSlots.Count : rule.Value.Crafts,
                 rule.Value.Laboratories,
                 rule.Value.Workshops,
                 rule.Value.PsiLaboratories,
@@ -148,6 +149,8 @@ public static class RuntimeRuleLinker
             {
                 PrisonType = rule.Value.PrisonType,
                 AmmoMaximum = rule.Value.AmmoMaximum,
+                MissileAttraction = rule.Value.MissileAttraction,
+                DrawnCraftSlots = DrawnCraftSlots(rule.Value.Crafts, rule.Value.CraftSlots),
                 DefenseValue = rule.Value.Defense,
                 HitRatio = rule.Value.HitRatio,
                 GravShield = rule.Value.GravShield,
@@ -1018,6 +1021,27 @@ public static class RuntimeRuleLinker
             .OrderByDescending(static rule => rule.Key, byteOrder))
             result[rule.Id] = result.GetValueOrDefault(rule.ReplaceBy, rule.ReplaceBy);
         return result;
+    }
+
+    /// <summary>
+    /// How many crafts BaseView::draw places in a hangar: its craft slots after RuleBaseFacility::afterLoad
+    /// pads a short list with centre positions (or adds one centre slot to an empty list), up to the first
+    /// position already used, where the drawing loop stops.
+    /// </summary>
+    private static int DrawnCraftSlots(int crafts, IReadOnlyList<CampaignStart.FacilityPosition> declared)
+    {
+        var centre = new CampaignStart.FacilityPosition(0, 0, 0);
+        var slots = declared.ToList();
+        if (crafts > 1 && slots.Count != crafts)
+            while (slots.Count < crafts) slots.Add(centre);
+        if (slots.Count == 0) slots.Add(centre);
+        var drawn = new List<CampaignStart.FacilityPosition>();
+        foreach (var slot in slots)
+        {
+            if (drawn.Contains(slot)) break;
+            drawn.Add(slot);
+        }
+        return drawn.Count;
     }
 
     /// <summary>
