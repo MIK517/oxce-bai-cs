@@ -293,7 +293,7 @@ Validation on the Windows workstation: formatting, code map and Release build cl
 `dotnet test` ran 3,495 tests with one expectation failure (the new daily handler and preflight in
 the order lists), corrected and re-run with the unit suite (820 pass); everything else green.
 
-## S6 — Landing and deployment request (in progress)
+## S6 — Landing and deployment request (2026-10-13)
 
 ### Landing-site shade (2026-10-13)
 
@@ -394,7 +394,7 @@ the missing-deployment early return before the texture fallback, the base custom
 crash recovery versus ground assault for expiring UFOs, and the order of item destruction and request.
 
 
-## S7 — Base defense, base loss and Cydonia (in progress)
+## S7 — Base defense, base loss and Cydonia (2026-10-13)
 
 ### Defense rounds (2026-10-13)
 
@@ -540,7 +540,7 @@ A self-review of this diff against `spawnUfo`, `ufoReachedWaypoint`, `handleBase
 
 Validation: formatting, code map and Release build clean; root `dotnet test` ran 3,526 tests, all green.
 
-## S8 — UI (in progress)
+## S8 — UI (2026-10-13)
 
 ### Landing, base defense and battle request windows (2026-10-13)
 
@@ -591,7 +591,7 @@ One earlier full run had `StrategicWorldEnduranceTests.PopulatedTicksScale...(de
 fail its allocation bound under parallel load; it passed in the runs before and after, and S8 does not
 touch the time tick.
 
-## S9 — Scenarios (in progress)
+## S9 — Scenarios (2026-10-13)
 
 ### Geoscape scenarios (2026-10-13)
 
@@ -640,7 +640,7 @@ inputs replayed, campaign time 12:00:00 to 12:35:30 and no popup left open.
 
 S9 is complete.
 
-## S10 — Closure (in progress)
+## S10 — Closure (2026-10-17)
 
 ### Decision records (2026-10-13)
 
@@ -747,3 +747,41 @@ waiting with `DogfightErrorState`'s message, as `DogfightState::btnMinimizedIcon
 `boundary.interception` is removed.
 Validation: formatting and code map clean; root `dotnet test` ran 3,554 tests, all green, none skipped.
 
+### Branch audit (2026-10-17)
+
+With no named refusal left, the whole branch (`git diff main...HEAD`) was reviewed at high effort, with extra
+attention to forecast/live parity in the interception, base-attack, instant-retaliation and newborn-hunter
+preflights, the facility damage port (which has no reference probe), the new save nodes and options, the
+compiler revisions, migrated tests, UI/logic separation, per-tick cost and these records. The facility damage
+cascade was compared line by line with `Base::damageFacilities`, `damageFacility`, `destroyFacility`,
+`getDisconnectedFacilities`, `storesOverfull`, `Collections::deleteIf` and the hangar placement of
+`BaseView::draw`, and matches. Fixes:
+
+- Hunters released by a missile strike or a destroyed base (`SavedGame::stopHuntingXcomCrafts`) now get their
+  speed vector and direction aimed at the restored waypoint, as `setDestination` does; a save written before
+  their next move kept the old vector. `WorldHunting.RestoreAndAim` is shared with the craft-loss and
+  interception-outcome paths, which recomputed the vector but not the direction.
+- `oxceWoundedDefendBaseIf` is read from a reference save's options snapshot and from a mod's
+  `fixedUserOptions` (`OptionInfo::load`'s integer extraction: leading blanks, digits, 0 on failure, limits on
+  overflow), like the boolean options.
+- The final research walks research names in UTF-8 byte order, as `std::map<std::string>` does
+  (compiler/cache revision 71); the order differs from UTF-16 ordinal only above the BMP.
+- The newborn-hunter preflight lost its unused reach parameters (`NewbornHuntSpeedReason`).
+- New tests: `StrategicBaseAttackTests` covers a hangar replaced by its destroyed form keeping its crafts and the
+  craft-slot capacity and drawn slots of `RuleBaseFacility::afterLoad`, the mod's rubble filling each cell
+  without the disconnected pass, labs, workshops and gyms releasing staff and trainees, and an empty hangar's
+  loss cancelling craft production with lost storage dropping item transfers; the wounded-defender rule with
+  the option at 100 and 50, and its save round-trip;
+  `RuntimeRuleLinkerTests.FinalResearchFollowsTheLoadOrderOfTheModThatLastUpdatedIt` covers the mod-order
+  rule across a master and an add-on (the existing test used one mod); `StrategicInterceptionOptionsTests`
+  covers the option's snapshot and fixed values. The twenty tests migrated from the newborn-hunter refusal now
+  also check that every window the tick opens belongs to a hunter targeting that craft.
+- Stale comments and records were corrected: the base-attack summaries, the plan's S4-S10 scope paragraphs and
+  headings, these headings, the ownership row and ADR 0034, which listed reference behaviour (the newborn
+  attack, the restore re-check) among its differences.
+
+No per-tick cost was added outside the event paths: the new preflights run per arriving UFO, per destroyed craft
+or per candidate base. The client's interception panels allocate a few small objects per redraw (at most once
+per 30 ms dogfight step), which is negligible and confined to open windows.
+Validation: Release build without warnings, `dotnet format --verify-no-changes` and `tools/generate-code-map.py --check`
+clean; root `dotnet test` ran 3,562 tests, all green, none skipped (private corpus included).

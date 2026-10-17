@@ -300,9 +300,7 @@ internal sealed partial class CampaignWorld
                 Fail(HuntStateReason);
                 return;
             }
-            var restored = WorldHunting.Restore(ufo);
-            var vector = WorldGeometry.SpeedVector(restored.Position, restored.Destination!.Position, restored.SpeedRadian);
-            SetUfo(restored with { SpeedLongitude = vector.Longitude, SpeedLatitude = vector.Latitude });
+            SetUfo(WorldHunting.RestoreAndAim(ufo));
         }
 
         // Ufo::setDestination(0): followers keep following; MovingTarget::calculateSpeed stops the vector.

@@ -205,7 +205,7 @@ Acceptance mapping (S10, 2026-10-13):
 | No duplicate launch or double consumption; one request per confirmation, at most one pending; refused starting conditions return the craft | `StrategicLandingTests` (request taken once per load, every other command refused while pending, refusals send the craft home) |
 | Landed and crashed UFO, terror and custom site, alien base, final destination and base-defense requests | `StrategicLandingTests` (landed UFO, site, alien base), `StrategicInterceptionTests` (crash recovery through the client), `StrategicFinalMissionTests`, `StrategicBaseAttackTests`; Rosigma `Early.sav` terror site (`PrivateStrategicWorldTests`) |
 | Saving during combat drops combat on load; no fake battle or simulated victory | `StrategicInterceptionTests.RememberedWeaponTogglesPersistAndAReloadDropsTheInterception`; requests wait for Phase 7 (`TakeDeploymentRequest`) |
-| Validation | Root `dotnet test` (3,542 green on 2026-10-13, including the private corpus), formatting, code map and the Windows SDL smoke ([status](strategic-interception-status.md#s9--scenarios-in-progress)) |
+| Validation | Root `dotnet test` (all green at the branch audit, including the private corpus), formatting, code map ([status](strategic-interception-status.md#branch-audit-2026-10-17)) and the Windows SDL smoke ([status](strategic-interception-status.md#s9--scenarios-2026-10-13)) |
 
 ## Progress
 
@@ -250,7 +250,7 @@ UFOs with the four-window limit and water-only waits, the destroyed-UFO cleanup 
 checks; time runs while every window is minimized
 ([status](strategic-interception-status.md#s4--interception-start-2026-10-12)). `InterceptionBoundary`
 and the flight-pass `HuntCombatReason` are gone; a hunter-killer reaching a craft on its birth tick
-keeps its refusal. No native start-rule probe was captured; the start rules are pinned by focused
+kept its refusal until the pre-merge pass (S10). No native start-rule probe was captured; the start rules are pinned by focused
 tests from the reference statements.
 
 ### S5 — Interception outcomes in the world (2026-10-13)
@@ -263,56 +263,59 @@ crafts with crew evacuation and `craftLostDogfight`
 `InterceptionOutcomeBoundary` is gone. Named restrictions remain for crew who could die with their
 craft (soldier deaths and the memorial are not owned), retaliation missions run from alien bases and
 a retaliation against a base outside every region. The crashed-UFO ground arrival with followers
-keeps its refusal until S6, where crafts reaching a crash site are handled.
+kept its refusal until S6, where crafts reaching a crash site are handled. All were resolved before
+merge (S10).
 
-### S6 — Landing and deployment request (in progress, 2026-10-13)
+### S6 — Landing and deployment request (2026-10-13)
 
 Done: the landing-site shade in gameplay with a verbatim globe shading oracle; landing confirmations
 queued by the craft pass with texture and shade (`globeSeasons` is now a campaign option), held time,
 `init` closing, No and Patrol; starting conditions on Yes (runtime family, texture fallback, race
 custom base missions) with the refusal sending the craft home; the deployment request with
 required-item destruction, the port-only save node and the once-per-load Phase 7 seam
-([status](strategic-interception-status.md#s6--landing-and-deployment-request-in-progress)).
+([status](strategic-interception-status.md#s6--landing-and-deployment-request-2026-10-13)).
 `boundary.starting-condition` is gone. Remaining: refusing other world commands while a request is
 pending, the follower landing at a site respawned by a UFO conversion and the crashed-UFO ground
 arrival with followers (both still `boundary.landing`), the Rosigma `Early.sav` request, and the S6
 audit. Update (2026-10-13): all of these are done; only escorts of a crashed leader keep a refusal.
 
-### S7 — Base defense, base loss and Cydonia (in progress, 2026-10-13)
+### S7 — Base defense, base loss and Cydonia (2026-10-13)
 
 Done: the defense rounds (verbatim `strategic-base-defense` oracle), the facility defense projections
 and `setupDefenses` list, the base assault arrival with the defense window, a shot-down retaliation
 (with `chanceToStopRetaliation`), the base-defense deployment request, base loss and `END_LOSE` (D5)
-([status](strategic-interception-status.md#s7--base-defense-base-loss-and-cydonia-in-progress)).
+([status](strategic-interception-status.md#s7--base-defense-base-loss-and-cydonia-2026-10-13)).
 Since done: the wounded-defender option, the S7 code-review pass and the Cydonia request (with a
 refusal when several research topics unlock the final mission). Since done: nuclear missiles, an
-instant retaliation born over the base, and stored vehicles among the defenders. Remaining refusals:
-missiles that damage facilities, stored vehicles competing for too little ammunition, and several
-final-mission research topics.
+instant retaliation born over the base, and stored vehicles among the defenders. The last three
+refusals (missiles that damage facilities, stored vehicles competing for too little ammunition, and
+several final-mission research topics) were resolved before merge (S10).
 
-### S8 — UI (in progress, 2026-10-13)
+### S8 — UI (2026-10-13)
 
 Done: the geoscape windows for landing confirmation (Yes/No, Ctrl turning No into Patrol), a refused
 starting condition, base defense (start or skip firing, and a shot-down UFO), a destroyed base, the
 campaign's end and the "tactical combat is not available yet" screen for a battle request, and the
 Cydonia button; a loaded save reopens a pending battle request or base defense
-([status](strategic-interception-status.md#s8--ui-in-progress)). Since done: the interception windows
+([status](strategic-interception-status.md#s8--ui-2026-10-13)). Since done: the interception windows
 (as text panels) with D3's dogfight timer, and the globe seasons option. Remaining: the windows'
 sprites and the base-defense round animation.
 
-### S9 — Scenarios (in progress, 2026-10-13)
+### S9 — Scenarios (2026-10-13)
 
 Done: dispatch-to-request through the geoscape client (interception, crash, landing, request, reload),
 the base-defense variants (fire, skip, base lost and campaign lost), a hunter-killer attack and escorts
 joining it, site and alien-base requests, and the TFTD depth wait; target loss is covered by the pursuit
-tests ([status](strategic-interception-status.md#s9--scenarios-in-progress)). Since done: the 19 staged saves'
+tests ([status](strategic-interception-status.md#s9--scenarios-2026-10-13)). Since done: the 19 staged saves'
 reclassification with headless branch 5 choices, and the Windows SDL smoke run. S9 is complete.
 
-### S10 — Closure (in progress, 2026-10-13)
+### S10 — Closure (2026-10-17)
 
 Done: [ADR 0034](decisions/0034-strategic-interception-and-deployment-boundary.md) and the branch 5
 additions to ADR 0032, and the populated interception step profile
-([status](strategic-interception-status.md#s10--closure-in-progress)), the ownership rows and the
-acceptance mapping above. Branch 5 is complete apart from the named refusals in ADR 0034 and Phase 8
-window polish.
+([status](strategic-interception-status.md#s10--closure-2026-10-17)), the ownership rows and the
+acceptance mapping above. The named refusals were then resolved, and the whole-branch audit
+(2026-10-17) fixed its findings
+([status](strategic-interception-status.md#branch-audit-2026-10-17)). No named refusal remains;
+branch 5 is complete apart from Phase 8 window polish (sprites, range bar, defense round animation).
 

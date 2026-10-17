@@ -90,9 +90,7 @@ internal sealed partial class CampaignWorld
         {
             var ufo = _ufos[ufoIndex];
             if (ufo.Destination is not { Kind: WorldTargetKind.Craft } target || target.TypeId != type || target.Id != craft.Id) continue;
-            var restored = WorldHunting.Restore(ufo);
-            var vector = WorldGeometry.SpeedVector(restored.Position, restored.Destination!.Position, restored.SpeedRadian);
-            _ufos[ufoIndex] = restored with { SpeedLongitude = vector.Longitude, SpeedLatitude = vector.Latitude };
+            _ufos[ufoIndex] = WorldHunting.RestoreAndAim(ufo);
         }
         owner.Crafts.RemoveAt(index);
         // Its window has ended by now; never keep one that points at a removed craft.

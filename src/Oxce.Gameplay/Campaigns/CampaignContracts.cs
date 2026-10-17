@@ -46,10 +46,30 @@ public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool Ca
             DogfightAI = Fixed("dogfightAI", DogfightAI),
             RememberDisabledCraftWeapons = Fixed("oxceRememberDisabledCraftWeapons", RememberDisabledCraftWeapons),
             GlobeSeasons = Fixed("globeSeasons", GlobeSeasons),
+            WoundedDefendBaseIf = fixedOptions.TryGetValue("oxceWoundedDefendBaseIf", out var wounded)
+                ? ReadFixedInteger(wounded) : WoundedDefendBaseIf,
         };
 
         bool Fixed(string id, bool current) =>
             fixedOptions.TryGetValue(id, out var value) ? ReadFixedBoolean(value) : current;
+    }
+
+    // OptionInfo::load's `ss >> std::dec >> i`: leading whitespace, an optional sign and decimal digits; a failed
+    // extraction stores 0 and an out-of-range value the nearest limit.
+    private static int ReadFixedInteger(string value)
+    {
+        var text = value.AsSpan();
+        var index = 0;
+        while (index < text.Length && char.IsWhiteSpace(text[index]) && text[index] <= ' ') index++;
+        var negative = index < text.Length && text[index] == '-';
+        if (index < text.Length && text[index] is '-' or '+') index++;
+        long magnitude = 0;
+        var digits = 0;
+        for (; index < text.Length && char.IsAsciiDigit(text[index]); index++, digits++)
+            magnitude = Math.Min(magnitude * 10 + (text[index] - '0'), (long)int.MaxValue + 1);
+        if (digits == 0) return 0;
+        var signed = negative ? -magnitude : magnitude;
+        return (int)Math.Clamp(signed, int.MinValue, int.MaxValue);
     }
 
     private static bool ReadFixedBoolean(string value)

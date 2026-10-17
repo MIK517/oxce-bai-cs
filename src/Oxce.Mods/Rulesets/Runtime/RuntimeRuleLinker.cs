@@ -1008,17 +1008,20 @@ public static class RuntimeRuleLinker
         Dictionary<string, RuleHandle<ItemRuleFamily>> handles,
         string id) => id.Length != 0 && id != "STR_NONE" && handles.TryGetValue(id, out var handle) ? handle : null;
 
+    // std::map<std::string> order: UTF-8 bytes, which differs from UTF-16 ordinal order above the BMP.
+    private static readonly Comparer<byte[]> Utf8ByteOrder =
+        Comparer<byte[]>.Create(static (left, right) => left.AsSpan().SequenceCompareTo(right));
+
     private static Dictionary<string, string> ItemCategoryReplacements(Phase3ContentCatalog content)
     {
         var result = new Dictionary<string, string>(StringComparer.Ordinal);
         // C++ applies each std::map replacement once in UTF-8 byte order. Resolve
         // the same forward-only chains in reverse order, avoiding a scan of every
         // replacement for every item category. Backward links and cycles stop.
-        var byteOrder = Comparer<byte[]>.Create(static (left, right) => left.AsSpan().SequenceCompareTo(right));
         foreach (var rule in content.EquipmentProduction.ItemCategories.Rules
             .Where(static rule => rule.Value.ReplaceBy.Length != 0)
             .Select(static rule => (rule.Id, rule.Value.ReplaceBy, Key: Encoding.UTF8.GetBytes(rule.Id)))
-            .OrderByDescending(static rule => rule.Key, byteOrder))
+            .OrderByDescending(static rule => rule.Key, Utf8ByteOrder))
             result[rule.Id] = result.GetValueOrDefault(rule.ReplaceBy, rule.ReplaceBy);
         return result;
     }
@@ -1052,7 +1055,8 @@ public static class RuntimeRuleLinker
     {
         string? result = null;
         var resultOffset = 0;
-        foreach (var rule in content.EquipmentProduction.Research.Rules.OrderBy(static rule => rule.Id, StringComparer.Ordinal))
+        foreach (var rule in content.EquipmentProduction.Research.Rules
+            .OrderBy(static rule => Encoding.UTF8.GetBytes(rule.Id), Utf8ByteOrder))
         {
             if (!rule.Value.UnlockFinalMission) continue;
             var offset = resources.ModOffsets.GetValueOrDefault(rule.LastUpdateSource.ModId);

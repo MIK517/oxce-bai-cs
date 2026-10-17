@@ -872,8 +872,9 @@ public static partial class OxceSaveAdapter
     /// <summary>
     /// A reference save has no port options, but SavedGame::save writes a debugging snapshot of
     /// the player's options. The reference never reads it back; it is the best record of the
-    /// options the campaign was played with, so matching boolean entries seed the session
-    /// options. Anything unreadable falls back to the defaults instead of rejecting the save.
+    /// options the campaign was played with, so matching boolean entries (and the wounded-defender
+    /// percentage) seed the session options. Anything unreadable falls back to the defaults instead
+    /// of rejecting the save.
     /// </summary>
     private static CampaignOptions ReadReferenceOptions(YamlMappingNode body)
     {
@@ -896,6 +897,10 @@ public static partial class OxceSaveAdapter
             DogfightAI = Snapshot("dogfightAI", defaults.DogfightAI),
             RememberDisabledCraftWeapons = Snapshot("oxceRememberDisabledCraftWeapons", defaults.RememberDisabledCraftWeapons),
             GlobeSeasons = Snapshot("globeSeasons", defaults.GlobeSeasons),
+            WoundedDefendBaseIf = map.TryGet("oxceWoundedDefendBaseIf", out var wounded) &&
+                wounded is YamlScalarNode { Value: { } percent } &&
+                int.TryParse(percent, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed)
+                ? parsed : defaults.WoundedDefendBaseIf,
         };
 
         bool Snapshot(string key, bool fallback) =>
