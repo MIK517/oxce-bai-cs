@@ -111,7 +111,7 @@ mechanical translations with no executable acceptance test.
   `docs/strategic-*-status.md`; cross-cutting checkpoints, current scope and remaining guards
   belong in the Progress section of the branch's delivery plan
   (`docs/phase-6-world-integration-plan.md` for branch 4, `docs/phase-6-interception-plan.md`
-  for branch 5).
+  for branch 5, `docs/phase-6-campaign-cycle-plan.md` for branch 6).
   `docs/phase-6-ownership.md` keeps the ownership and fixture ledger, and
   `docs/implementation-plan.md` keeps phase-level status; both link to those records.
 
