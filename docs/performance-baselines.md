@@ -725,17 +725,18 @@ one-day-speed target is unaffected. Ordinary ticks have no stage point and are u
 
 ## Campaign-cycle months (branch 6 S8, 2026-10-18)
 
-Measured by `ImportedCampaignsPlayThreeMonthsAcrossReloadsAtEveryReport` (Debug build, one-day speed, the medians of
-each save's commands; recorded in `artifacts/private-campaign-cycle-measurements.json`). A day is one command of
-17,280 ticks; the month command is the day whose month tick runs the rollover, staged, with its report.
+Measured by `ImportedCampaignsPlayThreeMonthsAcrossReloadsAtEveryReport` (Debug build, one-day speed; recorded in
+`artifacts/private-campaign-cycle-measurements.json`). The scenario advances to the last tick before each month
+boundary and runs the month tick as its own command, so the month tick (staged, with its rollover and report) is
+timed alone; other commands are timed per tick. Each value is the lower middle of the save's samples (two or three
+month ticks and one or two reloads per save).
 
-| Save | Day command (ms) | Month command (ms) | Save and reload (ms) |
+| Save | Ordinary tick (µs) | Month tick (ms) | Save and reload (ms) |
 |---|---|---|---|
-| UFO `Middle.sav` | 54 | 35 | 8 |
-| TFTD `IronMode.sav` | 59 | 47 | 5 |
-| Rosigma `Begining.sav` | 85 | 168 | 9 |
-| Rosigma `Early.sav` | 82 | 521 | 10 |
+| UFO `Middle.sav` | 3.0 | 6.6 | 7.2 |
+| TFTD `IronMode.sav` | 3.3 | 7.8 | 4.1 |
+| Rosigma `Begining.sav` | 5.0 | 150.9 | 10.0 |
+| Rosigma `Early.sav` | 25.7 | 62.8 | 12.9 |
 
-The month's own cost is the month command less a day command: from nothing (vanilla, whose shorter month days run
-fewer UFO passes) to about 440 ms in Rosigma `Early.sav`, whose month scripts start many missions and whose land
-selection is charged in full (S5). Saving and reloading a campaign takes about 5 to 14 ms.
+Saving and reloading a campaign takes about 4 to 13 ms; the first reload of the run (UFO `Begining.sav`, 69 ms)
+includes JIT warm-up.
