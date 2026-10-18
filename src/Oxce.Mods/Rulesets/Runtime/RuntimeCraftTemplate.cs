@@ -25,23 +25,20 @@ internal static class RuntimeCraftTemplateLoader
         if (map.TryGet("items", out var node) && node is YamlMappingNode itemMap)
             foreach (var pair in itemMap.Entries)
                 if (pair.ScalarKey is { } key) items.Add(key, YamlValueReader.ReadInt32(pair.Value));
-        return new(String(map, "name", ""), Integer(map, "fuel"), Integer(map, "damage"), String(map, "status", "STR_READY"),
-            Integer(map, "excessFuel"), Boolean(map, "lowFuel"),
-            Array.AsReadOnly(Maps("weapons").Select(w => String(w, "type", "0") == "0" ? null :
-                new RuntimeCraftTemplateWeapon(String(w, "type", ""), Integer(w, "ammo"), Boolean(w, "rearming"), Boolean(w, "disabled"))).ToArray()),
+        return new(map.ReadString("name", ""), map.ReadInt32("fuel", 0), map.ReadInt32("damage", 0), map.ReadString("status", "STR_READY"),
+            map.ReadInt32("excessFuel", 0), map.ReadBoolean("lowFuel", false),
+            Array.AsReadOnly(Maps("weapons").Select(w => w.ReadString("type", "0") == "0" ? null :
+                new RuntimeCraftTemplateWeapon(w.ReadString("type", ""), w.ReadInt32("ammo", 0), w.ReadBoolean("rearming", false), w.ReadBoolean("disabled", false))).ToArray()),
             new ReadOnlyDictionary<string, int>(items), Array.AsReadOnly(Maps("vehicles").Select(v =>
-                new RuntimeCraftTemplateVehicle(String(v, "type", ""), Integer(v, "ammo"))
+                new RuntimeCraftTemplateVehicle(v.ReadString("type", ""), v.ReadInt32("ammo", 0))
                 {
-                    Size = v.TryGet("size", out _) ? Integer(v, "size") : null,
-                    SpaceOccupied = v.TryGet("spaceOccupied", out _) ? Integer(v, "spaceOccupied") : null,
+                    Size = v.TryGet("size", out _) ? v.ReadInt32("size", 0) : null,
+                    SpaceOccupied = v.TryGet("spaceOccupied", out _) ? v.ReadInt32("spaceOccupied", 0) : null,
                 }).ToArray()))
-        { Shield = Integer(map, "shield") };
+        { Shield = map.ReadInt32("shield", 0) };
 
         IEnumerable<YamlMappingNode> Maps(string key) => map.TryGet(key, out var value) && value is YamlSequenceNode sequence
             ? sequence.Items.Select(v => v as YamlMappingNode ?? throw new InvalidDataException($"Starting craft {key} requires mappings.")) : [];
     }
 
-    private static int Integer(YamlMappingNode map, string key) => map.TryGet(key, out var node) ? YamlValueReader.ReadInt32(node!) : 0;
-    private static bool Boolean(YamlMappingNode map, string key) => map.TryGet(key, out var node) && YamlValueReader.ReadBoolean(node!);
-    private static string String(YamlMappingNode map, string key, string fallback) => map.TryGet(key, out var node) ? YamlValueReader.ReadString(node!) : fallback;
 }

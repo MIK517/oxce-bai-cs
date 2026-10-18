@@ -258,7 +258,7 @@ internal sealed partial class CampaignWorld
             {
                 if (transfer.Delivered || transfer.Hours > 1 || transfer.Craft?.Logistics is not { } state) continue;
                 var rules = campaign.Content.RuntimeRules;
-                var rule = rules.Crafts[rules.Crafts.GetRequired(transfer.Craft.RuleId)].Value;
+                var rule = rules.Crafts.GetRequiredValue(transfer.Craft.RuleId);
                 if (CraftConditionReason(state, rule) is { } reason) return reason;
                 if (state.IsAutoPatrolling && rule.AutoPatrol) possibleRelaunches++;
             }

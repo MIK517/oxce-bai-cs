@@ -34,73 +34,73 @@ public static partial class OxceSaveAdapter
             Missions = Array.AsReadOnly(Maps(body, "alienMissions").Select(map => ReadAlienMission(map, markers)).ToArray()),
             Ufos = Array.AsReadOnly(Maps(body, "ufos").Select(map => ReadUfo(map, content, markers)).ToArray()),
             Waypoints = Array.AsReadOnly(Maps(body, "waypoints").Select(static map => new WaypointSnapshot(
-                Integer(map, "id", 0), Double(map, "lon", 0), Double(map, "lat", 0))
-            { Name = String(map, "name", string.Empty) }).ToArray()),
+                map.ReadInt32("id", 0), map.ReadDouble("lon", 0), map.ReadDouble("lat", 0))
+            { Name = map.ReadString("name", string.Empty) }).ToArray()),
             MissionSites = Array.AsReadOnly(sites),
             AlienBases = Array.AsReadOnly(alienBases),
-            AlienBaseBirthSequence = ULong(body, "oxcePortAlienBaseBirthSequence", 0),
+            AlienBaseBirthSequence = body.ReadUInt64("oxcePortAlienBaseBirthSequence", 0),
             Events = Array.AsReadOnly(Maps(body, "geoscapeEvents").Select(static (map, index) => new GeoscapeEventSnapshot(
-                RequiredString(map, "name"), Integer(map, "spawnCountdown", 0))
+                RequiredString(map, "name"), map.ReadInt32("spawnCountdown", 0))
             {
-                Over = Boolean(map, "over", false),
-                PreservationKey = String(map, "oxcePortEntityKey", $"event:legacy:{index}"),
+                Over = map.ReadBoolean("over", false),
+                PreservationKey = map.ReadString("oxcePortEntityKey", $"event:legacy:{index}"),
             }).ToArray()),
             Strategy = ReadAlienStrategy(body),
             GeneratedEvents = ReadIntMap(body, "generatedEvents"),
-            CraftLostDogfight = Integer(body, "craftLostDogfight", 0),
+            CraftLostDogfight = body.ReadInt32("craftLostDogfight", 0),
             DeploymentRequest = body.TryGet("oxcePortDeploymentRequest", out var request) && request is YamlMappingNode requestMap
                 ? ReadDeploymentRequest(requestMap, markers) : null,
         };
     }
 
     private static MissionSiteSnapshot ReadMissionSite(YamlMappingNode map, bool legacy) => new(
-        Integer(map, "id", 0),
+        map.ReadInt32("id", 0),
         legacy ? LegacyTerrorMission : RequiredString(map, "type"),
-        legacy ? LegacyTerrorDeployment : String(map, "deployment", LegacyTerrorDeployment),
-        String(map, "race", string.Empty),
-        Double(map, "lon", 0),
-        Double(map, "lat", 0),
-        Integer(map, "secondsRemaining", 0))
+        legacy ? LegacyTerrorDeployment : map.ReadString("deployment", LegacyTerrorDeployment),
+        map.ReadString("race", string.Empty),
+        map.ReadDouble("lon", 0),
+        map.ReadDouble("lat", 0),
+        map.ReadInt32("secondsRemaining", 0))
     {
-        Name = String(map, "name", string.Empty),
-        CustomDeploymentId = String(map, "missionCustomDeploy", string.Empty),
-        Texture = Integer(map, "texture", -1),
-        City = String(map, "city", string.Empty),
-        Detected = Boolean(map, "detected", false),
-        InBattlescape = Boolean(map, "inBattlescape", false),
-        UfoUniqueId = Integer(map, "ufoUniqueId", -1) > 0 ? Integer(map, "ufoUniqueId", -1) : 0,
+        Name = map.ReadString("name", string.Empty),
+        CustomDeploymentId = map.ReadString("missionCustomDeploy", string.Empty),
+        Texture = map.ReadInt32("texture", -1),
+        City = map.ReadString("city", string.Empty),
+        Detected = map.ReadBoolean("detected", false),
+        InBattlescape = map.ReadBoolean("inBattlescape", false),
+        UfoUniqueId = map.ReadInt32("ufoUniqueId", -1) > 0 ? map.ReadInt32("ufoUniqueId", -1) : 0,
     };
 
     private static AlienBaseSnapshot ReadAlienBase(YamlMappingNode map) => new(
-        Integer(map, "id", 0),
-        String(map, "deployment", "STR_ALIEN_BASE_ASSAULT"),
-        String(map, "race", string.Empty),
-        Double(map, "lon", 0),
-        Double(map, "lat", 0))
+        map.ReadInt32("id", 0),
+        map.ReadString("deployment", "STR_ALIEN_BASE_ASSAULT"),
+        map.ReadString("race", string.Empty),
+        map.ReadDouble("lon", 0),
+        map.ReadDouble("lat", 0))
     {
-        PreservationKey = String(map, "oxcePortEntityKey", AlienBasePreservationKey(map)),
-        Name = String(map, "name", string.Empty),
-        Discovered = Boolean(map, "discovered", false),
-        InBattlescape = Boolean(map, "inBattlescape", false),
-        StartMonth = Integer(map, "startMonth", 0),
-        GenMissionCount = Integer(map, "genMissionCount", 0),
-        MinutesSinceLastHuntMissionGeneration = Integer(map, "minutesSinceLastHuntMissionGeneration", 0),
-        PactCountryId = String(map, "pactCountry", string.Empty),
+        PreservationKey = map.ReadString("oxcePortEntityKey", AlienBasePreservationKey(map)),
+        Name = map.ReadString("name", string.Empty),
+        Discovered = map.ReadBoolean("discovered", false),
+        InBattlescape = map.ReadBoolean("inBattlescape", false),
+        StartMonth = map.ReadInt32("startMonth", 0),
+        GenMissionCount = map.ReadInt32("genMissionCount", 0),
+        MinutesSinceLastHuntMissionGeneration = map.ReadInt32("minutesSinceLastHuntMissionGeneration", 0),
+        PactCountryId = map.ReadString("pactCountry", string.Empty),
     };
 
     private static AlienMissionSnapshot ReadAlienMission(YamlMappingNode map, WorldMarkerIndex markers) => new(
-        Integer(map, "uniqueID", 0),
+        map.ReadInt32("uniqueID", 0),
         RequiredString(map, "type"),
-        String(map, "region", string.Empty),
-        String(map, "race", string.Empty),
-        Integer(map, "nextWave", 0),
-        Integer(map, "nextUfoCounter", 0),
-        Integer(map, "spawnCountdown", 0),
-        Integer(map, "liveUfos", 0),
-        Integer(map, "missionSiteZone", -1))
+        map.ReadString("region", string.Empty),
+        map.ReadString("race", string.Empty),
+        map.ReadInt32("nextWave", 0),
+        map.ReadInt32("nextUfoCounter", 0),
+        map.ReadInt32("spawnCountdown", 0),
+        map.ReadInt32("liveUfos", 0),
+        map.ReadInt32("missionSiteZone", -1))
     {
-        Interrupted = Boolean(map, "interrupted", false),
-        MultiUfoRetaliationInProgress = Boolean(map, "multiUfoRetaliationInProgress", false),
+        Interrupted = map.ReadBoolean("interrupted", false),
+        MultiUfoRetaliationInProgress = map.ReadBoolean("multiUfoRetaliationInProgress", false),
         AlienBase = ReadAlienBaseReference(map, markers),
     };
 
@@ -110,7 +110,7 @@ public static partial class OxceSaveAdapter
         if (!map.TryGet("alienBase", out var node)) return null;
         var (id, type) = node switch
         {
-            YamlMappingNode mapping => (Integer(mapping, "id", 0), String(mapping, "type", "STR_ALIEN_BASE")),
+            YamlMappingNode mapping => (mapping.ReadInt32("id", 0), mapping.ReadString("type", "STR_ALIEN_BASE")),
             _ => (YamlValueReader.ReadInt32(node!), "STR_ALIEN_BASE"),
         };
         var target = markers.AlienBase(type, id);
@@ -119,50 +119,50 @@ public static partial class OxceSaveAdapter
 
     private static UfoSnapshot ReadUfo(YamlMappingNode map, RuntimeContent content, WorldMarkerIndex markers)
     {
-        var longitude = Double(map, "lon", 0);
-        var latitude = Double(map, "lat", 0);
+        var longitude = map.ReadDouble("lon", 0);
+        var latitude = map.ReadDouble("lat", 0);
         return new UfoSnapshot(
-            Integer(map, "uniqueId", 0),
+            map.ReadInt32("uniqueId", 0),
             RequiredString(map, "type"),
-            Integer(map, "mission", 0),
-            String(map, "trajectory", string.Empty),
-            Integer(map, "trajectoryPoint", 0),
+            map.ReadInt32("mission", 0),
+            map.ReadString("trajectory", string.Empty),
+            map.ReadInt32("trajectoryPoint", 0),
             longitude,
             latitude,
-            (UfoStatus)Integer(map, "status", 0),
-            String(map, "altitude", "STR_HIGH_UC"))
+            (UfoStatus)map.ReadInt32("status", 0),
+            map.ReadString("altitude", "STR_HIGH_UC"))
         {
-            Id = Integer(map, "id", 0),
-            LandId = Integer(map, "landId", 0),
-            CrashId = Integer(map, "crashId", 0),
-            MissionWaveNumber = Integer(map, "missionWaveNumber", -1),
-            Direction = String(map, "direction", "STR_NORTH"),
-            Damage = Integer(map, "damage", 0),
-            Shield = Integer(map, "shield", -1),
-            ShieldRechargeHandle = Integer(map, "shieldRechargeHandle", 0),
-            SecondsRemaining = Integer(map, "secondsRemaining", 0),
-            Detected = Boolean(map, "detected", false),
-            HyperDetected = Boolean(map, "hyperDetected", false),
-            InBattlescape = Boolean(map, "inBattlescape", false),
-            HunterKiller = Boolean(map, "isHunterKiller", false),
-            Escort = Boolean(map, "isEscort", false),
-            HuntMode = Integer(map, "huntMode", 0),
-            HuntBehavior = Integer(map, "huntBehavior", 0),
-            Hunting = Boolean(map, "isHunting", false),
-            Escorting = Boolean(map, "isEscorting", false),
-            SoftlockShotCounter = Integer(map, "softlockShotCounter", 0),
-            FireCountdown = Integer(map, "fireCountdown", 0),
-            EscapeCountdown = Integer(map, "escapeCountdown", 0),
-            Speed = Integer(map, "speed", 0),
-            SpeedLongitude = Double(map, "speedLon", 0),
-            SpeedLatitude = Double(map, "speedLat", 0),
-            SpeedRadian = Double(map, "speedRadian", 0),
+            Id = map.ReadInt32("id", 0),
+            LandId = map.ReadInt32("landId", 0),
+            CrashId = map.ReadInt32("crashId", 0),
+            MissionWaveNumber = map.ReadInt32("missionWaveNumber", -1),
+            Direction = map.ReadString("direction", "STR_NORTH"),
+            Damage = map.ReadInt32("damage", 0),
+            Shield = map.ReadInt32("shield", -1),
+            ShieldRechargeHandle = map.ReadInt32("shieldRechargeHandle", 0),
+            SecondsRemaining = map.ReadInt32("secondsRemaining", 0),
+            Detected = map.ReadBoolean("detected", false),
+            HyperDetected = map.ReadBoolean("hyperDetected", false),
+            InBattlescape = map.ReadBoolean("inBattlescape", false),
+            HunterKiller = map.ReadBoolean("isHunterKiller", false),
+            Escort = map.ReadBoolean("isEscort", false),
+            HuntMode = map.ReadInt32("huntMode", 0),
+            HuntBehavior = map.ReadInt32("huntBehavior", 0),
+            Hunting = map.ReadBoolean("isHunting", false),
+            Escorting = map.ReadBoolean("isEscorting", false),
+            SoftlockShotCounter = map.ReadInt32("softlockShotCounter", 0),
+            FireCountdown = map.ReadInt32("fireCountdown", 0),
+            EscapeCountdown = map.ReadInt32("escapeCountdown", 0),
+            Speed = map.ReadInt32("speed", 0),
+            SpeedLongitude = map.ReadDouble("speedLon", 0),
+            SpeedLatitude = map.ReadDouble("speedLat", 0),
+            SpeedRadian = map.ReadDouble("speedRadian", 0),
             // Ufo::load always builds a destination waypoint, falling back to its own position.
             Destination = ReadTargetReference(map, markers, longitude, latitude) ??
                 new WorldTargetReference(WorldTargetKind.Waypoint, WorldTargetReference.WaypointType, 0,
                     longitude, latitude),
             OriginalWaypoint = map.TryGet("origWaypoint", out var origin) && origin is YamlMappingNode waypoint
-                ? new WorldPosition(Double(waypoint, "lon", 0), Double(waypoint, "lat", 0))
+                ? new WorldPosition(waypoint.ReadDouble("lon", 0), waypoint.ReadDouble("lat", 0))
                 : null,
             ScriptValues = ReadScriptValues(map, content, "Ufo"),
         };
@@ -173,11 +173,11 @@ public static partial class OxceSaveAdapter
         YamlMappingNode owner, WorldMarkerIndex markers, double fallbackLongitude, double fallbackLatitude)
     {
         if (!owner.TryGet("dest", out var node) || node is not YamlMappingNode map) return null;
-        var type = String(map, "type", WorldTargetReference.WaypointType);
-        var id = Integer(map, "id", 0);
-        var longitude = Double(map, "lon", fallbackLongitude);
-        var latitude = Double(map, "lat", fallbackLatitude);
-        var uniqueId = Integer(map, "uniqueId", 0);
+        var type = map.ReadString("type", WorldTargetReference.WaypointType);
+        var id = map.ReadInt32("id", 0);
+        var longitude = map.ReadDouble("lon", fallbackLongitude);
+        var latitude = map.ReadDouble("lat", fallbackLatitude);
+        var uniqueId = map.ReadInt32("uniqueId", 0);
         var kind = type switch
         {
             WorldTargetReference.BaseType => WorldTargetKind.Base,
@@ -256,8 +256,8 @@ public static partial class OxceSaveAdapter
             foreach (var owner in Maps(body, "bases"))
                 foreach (var craft in Maps(owner, "crafts"))
                 {
-                    var type = String(craft, "type", string.Empty);
-                    if (content.RuntimeRules.Crafts.TryGet(type, out _)) _crafts.Add((type, Integer(craft, "id", 0)));
+                    var type = craft.ReadString("type", string.Empty);
+                    if (content.RuntimeRules.Crafts.TryGet(type, out _)) _crafts.Add((type, craft.ReadInt32("id", 0)));
                 }
         }
 
@@ -299,10 +299,10 @@ public static partial class OxceSaveAdapter
         for (var index = 0; index < originals.Length; index++)
         {
             var map = originals[index];
-            var key = String(map, "oxcePortEntityKey", AlienBasePreservationKey(map));
+            var key = map.ReadString("oxcePortEntityKey", AlienBasePreservationKey(map));
             if (key.Length != 0 && !byKey.TryAdd(key, index))
                 throw new InvalidDataException("Duplicate alien base preservation keys.");
-            byIdentity.TryAdd((String(map, "deployment", "STR_ALIEN_BASE_ASSAULT"), Integer(map, "id", 0)), index);
+            byIdentity.TryAdd((map.ReadString("deployment", "STR_ALIEN_BASE_ASSAULT"), map.ReadInt32("id", 0)), index);
         }
         var used = new bool[originals.Length];
         var matches = new YamlMappingNode?[bases.Count];
@@ -312,7 +312,7 @@ public static partial class OxceSaveAdapter
             var matched = current.PreservationKey.Length != 0
                 ? byKey.TryGetValue(current.PreservationKey, out var keyed) ? keyed : -1
                 : byIdentity.TryGetValue((current.DeploymentId, current.Id), out var legacy) ? legacy : -1;
-            if (matched < 0 || used[matched] || Integer(originals[matched], "id", 0) != current.Id) continue;
+            if (matched < 0 || used[matched] || YamlValueReader.ReadInt32(originals[matched], "id", 0) != current.Id) continue;
             matches[index] = originals[matched];
             used[matched] = true;
         }
@@ -320,7 +320,7 @@ public static partial class OxceSaveAdapter
     }
 
     private static string AlienBasePreservationKey(YamlMappingNode map) =>
-        $"alien-base:identity:{String(map, "deployment", "STR_ALIEN_BASE_ASSAULT")}:{Integer(map, "id", 0)}";
+        $"alien-base:identity:{map.ReadString("deployment", "STR_ALIEN_BASE_ASSAULT")}:{map.ReadInt32("id", 0)}";
 
     /// <summary>
     /// Imported and newly scheduled events have a persistent sidecar key. Unkeyed synthetic
@@ -338,11 +338,11 @@ public static partial class OxceSaveAdapter
         for (var index = 0; index < originals.Length; index++)
         {
             var map = originals[index];
-            var preservationKey = String(map, "oxcePortEntityKey", $"event:legacy:{index}");
+            var preservationKey = map.ReadString("oxcePortEntityKey", $"event:legacy:{index}");
             if (preservationKey.Length != 0 && !byKey.TryAdd(preservationKey, index))
                 throw new InvalidDataException("Duplicate scheduled event preservation keys.");
-            var ruleId = String(map, "name", string.Empty);
-            var key = (ruleId, Integer(map, "spawnCountdown", 0), Boolean(map, "over", false));
+            var ruleId = map.ReadString("name", string.Empty);
+            var key = (ruleId, map.ReadInt32("spawnCountdown", 0), map.ReadBoolean("over", false));
             if (!exact.TryGetValue(key, out var exactMatches)) exact[key] = exactMatches = new Queue<int>();
             exactMatches.Enqueue(index);
             if (!byRule.TryGetValue(ruleId, out var ruleMatches)) byRule[ruleId] = ruleMatches = new Queue<int>();
@@ -357,7 +357,7 @@ public static partial class OxceSaveAdapter
             if (scheduled.PreservationKey.Length != 0)
             {
                 if (byKey.TryGetValue(scheduled.PreservationKey, out var original) && !used[original] &&
-                    String(originals[original], "name", string.Empty) == scheduled.RuleId)
+                    YamlValueReader.ReadString(originals[original], "name", string.Empty) == scheduled.RuleId)
                 {
                     matches[index] = originals[original];
                     used[original] = true;
@@ -481,7 +481,7 @@ public static partial class OxceSaveAdapter
     {
         if (strategy.IsEmpty && source is null) return null;
         var originalRegions = FirstByKey(Maps(source, "possibleMissions"),
-            static region => String(region, "region", string.Empty));
+            static region => region.ReadString("region", string.Empty));
         return Overlay(source,
     [
         Pair("regions", WeightMapping(strategy.RegionChances)),
@@ -527,16 +527,16 @@ public static partial class OxceSaveAdapter
     {
         var craft = map.TryGet("craft", out var node) && node is YamlMappingNode craftMap ? craftMap
             : throw new InvalidDataException("A deployment request needs its craft.");
-        return new CampaignDeploymentRequest(String(map, "missionType", ""), String(map, "deployment", ""),
-            String(map, "alienCustomDeploy", ""), String(map, "alienCustomMission", ""), String(map, "race", ""),
-            Integer(map, "missionTexture", -1), Integer(map, "globeTexture", -1), Integer(map, "shade", 0),
+        return new CampaignDeploymentRequest(map.ReadString("missionType", ""), map.ReadString("deployment", ""),
+            map.ReadString("alienCustomDeploy", ""), map.ReadString("alienCustomMission", ""), map.ReadString("race", ""),
+            map.ReadInt32("missionTexture", -1), map.ReadInt32("globeTexture", -1), map.ReadInt32("shade", 0),
             ReadTargetReference(map, markers, 0, 0) ?? throw new InvalidDataException("A deployment request needs its target."),
-            Integer(map, "base", 0), RequiredString(craft, "type"), Integer(craft, "id", 0))
+            map.ReadInt32("base", 0), RequiredString(craft, "type"), craft.ReadInt32("id", 0))
         {
             Soldiers = Array.AsReadOnly(Sequence(map, "soldiers").Select(static node => YamlValueReader.ReadInt32(node)).ToArray()),
             Vehicles = Array.AsReadOnly(Sequence(map, "vehicles").Select(static node => YamlValueReader.ReadString(node)).ToArray()),
             Items = ReadIntMap(map, "items"),
-            UfoDamagePercentage = Integer(map, "ufoDamagePercentage", 0),
+            UfoDamagePercentage = map.ReadInt32("ufoDamagePercentage", 0),
         };
     }
 

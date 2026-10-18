@@ -10,20 +10,20 @@ public sealed partial class CampaignState
         if (highest < CampaignTimeTrigger.OneHour) return null;
         foreach (var owner in _bases)
         {
-            if (++work > 1_000_000) return "Mission research exceeds the supported discovery work limit.";
+            if (++work > ForecastLimits.Work) return ForecastLimits.MissionResearchDiscoveryWork;
             if (ForecastProductionAssignments(owner, highest, out var assignments, ref work) is { } staffingReason) return staffingReason;
             for (var index = 0; index < owner.Productions.Count; index++)
             {
-                if (++work > 1_000_000) return "Mission research exceeds the supported discovery work limit.";
+                if (++work > ForecastLimits.Work) return ForecastLimits.MissionResearchDiscoveryWork;
                 var project = owner.Productions[index];
                 var rule = _content.RuntimeRules.Manufacture[project.Rule].Value;
                 if (rule.Points == 0) continue;
                 work += 2L * rule.RequiredMaterials.Count + 2L * rule.ProducedMaterials.Count + rule.RandomProducedItems.Count + (long)rule.Events.Count;
-                if (work > 1_000_000) return "Mission research exceeds the supported discovery work limit.";
+                if (work > ForecastLimits.Work) return ForecastLimits.MissionResearchDiscoveryWork;
                 foreach (var output in rule.RandomProducedItems)
                 {
                     work += output.Items.Count;
-                    if (work > 1_000_000) return "Mission research exceeds the supported discovery work limit.";
+                    if (work > ForecastLimits.Work) return ForecastLimits.MissionResearchDiscoveryWork;
                 }
                 if (ProductionRuleInvalid(rule) is { } invalidReason) return invalidReason;
                 var units = ProductionProgress.Requested(rule.Time, project.Spent, assignments[index], project.Amount, project.Infinite);
@@ -32,7 +32,7 @@ public sealed partial class CampaignState
                 // interval includes zero and never credits an optional offset.
                 var lower = (Int128)minimum + Math.Min(0, change);
                 var upper = (Int128)maximum + Math.Max(0, change);
-                if (lower < long.MinValue || upper > long.MaxValue) return "Mission research score exceeds the supported range.";
+                if (lower < long.MinValue || upper > long.MaxValue) return ForecastLimits.MissionResearchScoreRange;
                 minimum = (long)lower;
                 maximum = (long)upper;
             }
@@ -55,14 +55,14 @@ public sealed partial class CampaignState
         const string rangeReason = "Research and production scores exceed the supported range.";
         const string workReason = "Research score forecasts exceed the supported work limit.";
         if (!ResearchPreflight.TryForecastDailyWorldStocks(ref work, out var forecast))
-            return work > 1_000_000 ? workReason : rangeReason;
+            return work > ForecastLimits.Work ? workReason : rangeReason;
         var prefix = capacity;
         if (!prefix.Reserve(forecast.MinimumScorePrefix!.Value, forecast.MaximumScorePrefix!.Value)) return rangeReason;
         var minimum = forecast.ScoreChange ?? long.MaxValue;
         var maximum = forecast.ScoreChange ?? long.MinValue;
         foreach (var branch in forecast.DiscoveryAlternatives)
         {
-            if (++work > 1_000_000) return workReason;
+            if (++work > ForecastLimits.Work) return workReason;
             minimum = Math.Min(minimum, branch.ScoreChange!.Value);
             maximum = Math.Max(maximum, branch.ScoreChange!.Value);
         }
@@ -79,7 +79,7 @@ public sealed partial class CampaignState
         long automaticNegative = 0;
         foreach (var entry in rules.Rules)
         {
-            if (++work > 1_000_000) return "Research score forecasts exceed the supported work limit.";
+            if (++work > ForecastLimits.Work) return ForecastLimits.ResearchScoreForecastsWork;
             if (entry.Value.Cost != 0) continue;
             automaticPositive += Math.Max(0, (long)entry.Value.Points);
             automaticNegative += Math.Min(0, (long)entry.Value.Points);
@@ -87,7 +87,7 @@ public sealed partial class CampaignState
         foreach (var owner in _bases)
             foreach (var project in owner.Research)
             {
-                if (++work > 1_000_000) return "Research score forecasts exceed the supported work limit.";
+                if (++work > ForecastLimits.Work) return ForecastLimits.ResearchScoreForecastsWork;
                 if ((long)project.Spent + project.Assigned < project.Cost) continue;
                 var rule = rules[project.Rule].Value;
                 var primary = Bounds(rule);
@@ -96,17 +96,17 @@ public sealed partial class CampaignState
                 // Earlier completions can expose protected/free choices, or re-enable them.
                 // Reserve each possible reward without selecting it or consuming RNG.
                 work += rule.GetOneFreeProtected.Count;
-                if (work > 1_000_000) return "Research score forecasts exceed the supported work limit.";
+                if (work > ForecastLimits.Work) return ForecastLimits.ResearchScoreForecastsWork;
                 foreach (var id in rule.GetOneFree.Concat(rule.GetOneFreeProtected.SelectMany(group => group.Topics)))
                 {
-                    if (++work > 1_000_000) return "Research score forecasts exceed the supported work limit.";
+                    if (++work > ForecastLimits.Work) return ForecastLimits.ResearchScoreForecastsWork;
                     if (!rules.TryGet(id, out var reward)) continue;
                     var bonus = Bounds(rules[reward].Value);
                     bonusPositive = Math.Max(bonusPositive, bonus.Positive);
                     bonusNegative = Math.Min(bonusNegative, bonus.Negative);
                 }
                 if (!capacity.Reserve(primary.Negative + bonusNegative, primary.Positive + bonusPositive))
-                    return "Research and production scores exceed the supported range.";
+                    return ForecastLimits.ResearchAndProductionScoresRange;
             }
         return null;
 

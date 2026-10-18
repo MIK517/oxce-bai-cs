@@ -26,7 +26,7 @@ public sealed partial class CampaignState
         if (_priceTagNames is null)
         {
             forecast.Work += _content.Tags.Types.Count + (long)_content.Tags.Tags.Count + _content.InitialValues.Count;
-            if (forecast.Work > 1_000_000)
+            if (forecast.Work > ForecastLimits.Work)
                 return ScriptBindingResult.Failure("Production price tag initialization exceeds the supported work limit.");
             var types = _content.Tags.Types.ToDictionary(type => type.Id.Value, type => type.Name);
             _priceTagNames = [];

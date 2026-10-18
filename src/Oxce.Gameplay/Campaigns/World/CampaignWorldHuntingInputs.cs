@@ -17,12 +17,12 @@ internal sealed partial class CampaignWorld
             if (rules.Crafts[craft.Rule].Value.RefuelItem is { } item) fuelItems.Add(item);
         foreach (var transfer in owner.Transfers)
             if (!transfer.Delivered && transfer.Hours <= 1 && transfer.Craft is { } incoming &&
-                rules.Crafts[rules.Crafts.GetRequired(incoming.RuleId)].Value.RefuelItem is { } item) fuelItems.Add(item);
+                rules.Crafts.GetRequiredValue(incoming.RuleId).RefuelItem is { } item) fuelItems.Add(item);
         foreach (var project in owner.Productions)
         {
             var product = rules.Manufacture[project.Rule].Value;
             work += 1L + product.ProducedMaterials.Count;
-            if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+            if (work > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
             if (product.TransferTimes.Count > 2 && product.TransferTimes[2] > 0) continue;
             foreach (var material in product.ProducedMaterials)
                 if (material.Craft is { } craft && material.Quantity > 0 && rules.Crafts[craft].Value.RefuelItem is { } fuel)
@@ -34,12 +34,12 @@ internal sealed partial class CampaignWorld
         // Spawned items also arrive/reuse before refuelling, even for non-item-fuel craft.
         if (researchMayChangeStocks && sources.Any(craft => craft.Logistics is { Status: not "STR_OUT" } state &&
             state.Weapons.Any(weapon => weapon is { Disabled: false } &&
-                rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value is { Clip.Length: > 0 } weaponRule &&
+                rules.CraftWeapons.GetRequiredValue(weapon.RuleId) is { Clip.Length: > 0 } weaponRule &&
                 weapon.Ammo < weaponRule.AmmoMaximum)))
             return "UFO retargeting requires daily research ammunition-reuse forecasts.";
 
         work += stocks.Count;
-        if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+        if (work > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
         Dictionary<string, int>? minimumServiceStocks = null;
         var serviceStocks = stocks.ToDictionary(pair => rules.Items.GetExternalId(pair.Key), pair => pair.Value, StringComparer.Ordinal);
         for (var index = 0; index < sources.Count; index++)
@@ -50,7 +50,7 @@ internal sealed partial class CampaignWorld
             if (state.Status == "STR_REPAIRS")
             {
                 if (rule.RepairRate < 0 || (long)state.Damage - rule.RepairRate < int.MinValue)
-                    return "Craft service rate exceeds the supported range.";
+                    return ForecastLimits.CraftServiceRateRange;
                 state = CraftServicing.Repair(state, rule);
             }
             else if (state.Status == "STR_REARMING")
@@ -58,7 +58,7 @@ internal sealed partial class CampaignWorld
                 try
                 {
                     work += 1L + state.Weapons.Count * 4L;
-                    if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                    if (work > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
                     if (!CraftServicing.TryForecastRearmRange(state, rules, serviceStocks, out var upper))
                         return "UFO retargeting requires stochastic craft ammunition transition forecasts.";
                     var lower = upper;
@@ -75,7 +75,7 @@ internal sealed partial class CampaignWorld
                         if (maximum != minimum && minimumServiceStocks is null)
                         {
                             work += serviceStocks.Count;
-                            if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                            if (work > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
                             minimumServiceStocks = new(serviceStocks, StringComparer.Ordinal);
                         }
                         stocks[clip] = serviceStocks[upper.Clip] = maximum;
@@ -86,13 +86,13 @@ internal sealed partial class CampaignWorld
                     state = upper.State;
                 }
                 catch (Exception exception) when (exception is OverflowException or InvalidDataException or ArgumentOutOfRangeException)
-                { return "Craft weapon service values exceed the supported range."; }
+                { return ForecastLimits.CraftWeaponServiceValuesRange; }
             }
             sources[index] = craft with { Logistics = state };
         }
         foreach (var facility in owner.Facilities)
         {
-            if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+            if (++work > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
             var rule = rules.Facilities[facility.Rule].Value;
             if (rule.RearmRate < 0 || facility.Ammo < 0) return "Facility service values cannot be negative.";
             var result = FacilityServicing.Rearm(facility.Ammo, rule.AmmoMaximum, rule.RearmRate,
@@ -126,7 +126,7 @@ internal sealed partial class CampaignWorld
                 var handle = rules.Crafts.GetRequired(incoming.RuleId);
                 var rule = rules.Crafts[handle].Value;
                 if (!CraftLogistics.TryEffectiveServiceCapacities(rule, logistics.Weapons, rules, out var capacities) ||
-                    capacities.FuelMaximum < 0) return "Craft service capacity exceeds the supported range.";
+                    capacities.FuelMaximum < 0) return ForecastLimits.CraftServiceCapacityRange;
                 sources.Add(new(handle, incoming.Id)
                 { Logistics = CraftLogistics.Arrive(logistics, rule, rules, owner.Longitude, owner.Latitude) });
             }
@@ -143,32 +143,32 @@ internal sealed partial class CampaignWorld
         if (researchArrivals is not null)
             foreach (var arrival in researchArrivals)
             {
-                if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                if (++work > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
                 var item = rules.Items.GetRequired(arrival.Key);
                 var quantity = (long)stocks.GetValueOrDefault(item) + arrival.Value;
-                if (quantity > int.MaxValue) return "Research arrivals exceed the supported stock range.";
+                if (quantity > int.MaxValue) return ForecastLimits.ResearchArrivalsStockRange;
                 stocks[item] = (int)quantity;
                 if (rules.Items[item].Value.BattleType == 0) reusableItems.Add(item);
             }
         if (researchUncertainty is not null)
             foreach (var delta in researchUncertainty)
             {
-                if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                if (++work > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
                 var item = rules.Items.GetRequired(delta.Key);
                 var combined = (long)uncertainty.GetValueOrDefault(item) + delta.Value;
                 if (combined > int.MaxValue || combined > stocks.GetValueOrDefault(item))
-                    return "Research arrivals exceed the supported stock range.";
+                    return ForecastLimits.ResearchArrivalsStockRange;
                 uncertainty[item] = (int)combined;
             }
         work += reusableItems.Count * (long)sources.Count;
-        if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+        if (work > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
         foreach (var item in reusableItems)
             for (var index = 0; index < sources.Count; index++)
             {
                 var craft = sources[index];
                 var rule = rules.Crafts[craft.Rule].Value;
                 if (!CraftLogistics.TryEffectiveServiceCapacities(rule, craft.Logistics!.Weapons, rules, out _))
-                    return "Craft service capacity exceeds the supported range.";
+                    return ForecastLimits.CraftServiceCapacityRange;
                 sources[index] = craft with { Logistics = CraftServicing.ReuseItem(craft.Logistics, rule, rules, item) };
             }
         return null;

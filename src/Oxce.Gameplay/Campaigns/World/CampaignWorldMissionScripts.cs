@@ -36,7 +36,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
     private CampaignCommandResult ScheduleMissionScriptCommands(
         RuntimeRule<RuntimeMissionScriptRule>[] available, int month)
     {
-        if (available.Length > 4096) return Blocked("Mission scripts exceed the supported work limit.");
+        if (available.Length > 4096) return Blocked(ForecastLimits.MissionScriptsWork);
         if (MissionScriptReason(available, month) is { } reason) return Blocked(reason);
 
         return RunMissionScriptCommands(available, month);
@@ -306,7 +306,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
         if ((long)_missions.Count + possible > 100_000 || next <= 0 ||
             (long)next + possible > int.MaxValue ||
             _missions.Any(mission => mission.Id >= next && mission.Id < (long)next + possible))
-            return "Alien mission IDs or population exceed the supported limit.";
+            return ForecastLimits.AlienMissionIdsOrPopulationLimit;
         if (maximumMarkers is not null) maximumMarkers["ALIEN_MISSIONS"] = (long)next + possible - 1;
         return null;
 
@@ -426,7 +426,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
         foreach (var choice in choices)
         {
             if (choice.Weight > (ulong)int.MaxValue - total)
-                throw new InvalidDataException("Strategic script weights exceed the supported range.");
+                throw new InvalidDataException(ForecastLimits.StrategicScriptWeightsRange);
             total += choice.Weight;
             if (choice.Weight != 0 && !valid(choice.Rule)) return MissionScriptBoundary;
         }

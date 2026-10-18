@@ -195,7 +195,7 @@ public sealed partial class CampaignState : ICampaignMonthlyReportQuery
     }
 
     private RuntimeCountryRule CountryRule(string id) =>
-        _content.RuntimeRules.Countries[_content.RuntimeRules.Countries.GetRequired(id)].Value;
+        _content.RuntimeRules.Countries.GetRequiredValue(id);
 
     /// <summary>The infiltration missions in std::map name order (UTF-8 bytes), as Mod::getRandomMission walks them.</summary>
     private MonthlyInfiltration[] Infiltrations() =>
@@ -300,7 +300,7 @@ public sealed partial class CampaignState : ICampaignMonthlyReportQuery
     {
         if (_monthlyCountries is { } evaluating) SyncMonthlyPacts(evaluating);
         var rules = _content.RuntimeRules;
-        var countryRule = rules.Countries[rules.Countries.GetRequired(country.Type)].Value;
+        var countryRule = rules.Countries.GetRequiredValue(country.Type);
         var artifact = countryRule.Scripts.Select(handle => rules.Scripts[handle].Value.Artifact)
             .FirstOrDefault(static candidate => candidate.ParserName == NewMonthCountryParser);
         var plan = _content.EventPlans.FirstOrDefault(static candidate => candidate.ParserName == NewMonthCountryParser)?.Plan;
@@ -330,7 +330,7 @@ public sealed partial class CampaignState : ICampaignMonthlyReportQuery
         {
             foreach (var program in invocation.Programs)
             {
-                var remaining = 1_000_000 - forecast.Work;
+                var remaining = ForecastLimits.Work - forecast.Work;
                 if (remaining <= 0) throw new InvalidDataException("Country scripts exceed the supported work limit.");
                 _countryScriptFrame.Prepare(program);
                 var options = new ScriptExecutionOptions { MaximumSteps = (int)Math.Min(remaining, ScriptExecutionOptions.Default.MaximumSteps) };

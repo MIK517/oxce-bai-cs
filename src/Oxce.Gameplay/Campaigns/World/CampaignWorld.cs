@@ -462,7 +462,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
             if (mission.Id <= 0) throw new InvalidDataException("Alien mission IDs must be positive.");
             if (mission.NextWave < 0 || mission.NextUfoCounter < 0 || mission.SpawnCountdown < 0 || mission.LiveUfos < 0)
                 throw new InvalidDataException("Alien mission counters cannot be negative.");
-            var rule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
+            var rule = rules.AlienMissions.GetRequiredValue(mission.RuleId);
             if (mission.NextWave > rule.Waves.Count)
                 throw new InvalidDataException($"Alien mission '{mission.RuleId}' has no wave {mission.NextWave}.");
             // AlienMission::load throws when the referenced alien base is missing.

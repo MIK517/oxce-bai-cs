@@ -17,14 +17,14 @@ internal sealed partial class CampaignWorld
         foreach (var site in _sites)
         {
             if (!SiteExpiresThisTick(site, highest)) continue;
-            var deployment = rules.AlienDeployments[rules.AlienDeployments.GetRequired(site.DeploymentId)].Value;
+            var deployment = rules.AlienDeployments.GetRequiredValue(site.DeploymentId);
             if (!rules.Research.TryGet(deployment.UnlockedResearchOnDespawnId, out _)) continue;
             found = true;
         }
         if (!found)
         {
             try { if (!HasImmediateSiteResearch(highest)) return null; }
-            catch (InvalidDataException error) when (error.Message is WaveWorkReason or "Direct mission site creation exceeds the supported work limit.")
+            catch (InvalidDataException error) when (error.Message is WaveWorkReason or ForecastLimits.DirectMissionSiteCreationWork)
             { return error.Message; }
         }
         // These boundaries name the still-unprojected caller phases. Research-only
@@ -85,12 +85,12 @@ internal sealed partial class CampaignWorld
             firstBaseUncertainty = uncertainty;
             foreach (var entry in rules.Research.Rules)
             {
-                if (++itemWork > MaximumAlienBaseChecks) return "Mission research exceeds the supported discovery work limit.";
+                if (++itemWork > MaximumWorldWork) return ForecastLimits.MissionResearchDiscoveryWork;
                 if (entry.Value.Cost != 0 || !entry.Value.NeedItem || entry.Value.NeededItem is not { } needed ||
                     !rules.Items.TryGet(needed, out var item)) continue;
                 var upper = firstBaseItems.GetValueOrDefault(item);
                 var lower = upper - (uncertainty?.GetValueOrDefault(item) ?? 0);
-                if (lower < 0) return "Mission site research item stocks exceed the supported range.";
+                if (lower < 0) return ForecastLimits.MissionSiteResearchItemStocksRange;
                 if (lower == 0 && upper != 0)
                     (uncertainItems ??= []).Add(item);
             }
@@ -100,7 +100,7 @@ internal sealed partial class CampaignWorld
         foreach (var site in _sites)
         {
             if (!SiteExpiresThisTick(site, highest)) continue;
-            var deployment = rules.AlienDeployments[rules.AlienDeployments.GetRequired(site.DeploymentId)].Value;
+            var deployment = rules.AlienDeployments.GetRequiredValue(site.DeploymentId);
             if (forecast.Advance(deployment.UnlockedResearchOnDespawnId) is { } reason) return reason;
             afterSites.Add((site.DeploymentId, site.Id), forecast.GuaranteedResearch);
             if (SiteDespawnReason(deployment, forecast.GuaranteedResearch) is { } eventReason) return eventReason;
@@ -194,8 +194,8 @@ internal sealed partial class CampaignWorld
         // Reserve bounded geometry and source lookups before the spawn predicate's
         // Cartesian distance checks. This proof does not select a point or draw RNG.
         work += 8L * _alienBases.Count;
-        if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
-        var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+        if (work > MaximumWorldWork) return AlienBaseWorkReason;
+        var region = rules.Regions.GetRequiredValue(mission.RegionId);
         if (!TryOrdinarySpawnPositions(mission, rule, trajectory, region, out var origins) ||
             !TryOrdinarySpawnDestinations(mission, rule, trajectory, region, out var destinations)) return SiteResearchWaveReason;
         work += (long)origins.Count * destinations.Count + origins.Count + destinations.Count;
@@ -203,14 +203,14 @@ internal sealed partial class CampaignWorld
             TryNewbornInitialSpeed(trajectory, rules.Ufos[wave.Ufo!.Value].Value.StatsForRace(mission.Race).SpeedMaximum,
                 out var speed) && FirstWaypointReachable(origins, destinations, speed))
             work += NewbornLandingGeometryWork(destinations);
-        if (work > MaximumAlienBaseChecks) return "Alien mission spawn geometry exceeds the supported work limit.";
+        if (work > MaximumWorldWork) return ForecastLimits.AlienMissionSpawnGeometryWork;
         landWork += SpawnOriginLandWork(mission, rule, trajectory, region);
         landWork += SpawnDestinationLandWork(mission, rule, trajectory, region);
         if (trajectory.Altitude(0) != 0 && TryNewbornInitialSpeed(trajectory,
                 rules.Ufos[wave.Ufo!.Value].Value.StatsForRace(mission.Race).SpeedMaximum, out var firstSpeed) &&
             FirstWaypointReachable(origins, destinations, firstSpeed))
             landWork += NewbornReplacementLandWork(mission, rule, trajectory, region);
-        if (landWork > MaximumSpawnLandWork) return "Alien mission land selection exceeds the supported work limit.";
+        if (landWork > MaximumSpawnLandWork) return ForecastLimits.AlienMissionLandSelectionWork;
         // The owning mission preflight proves retargeting after site research has
         // populated its forecast, still before the transaction mutates anything.
         return CanSpawnOrdinaryUfoWave(mission, rule, requireHuntingForecast: false) ? null : SiteResearchWaveReason;
@@ -236,7 +236,7 @@ internal sealed partial class CampaignWorld
                 if (wave.ObjectiveOnXcomBase)
                 {
                     selectionWork += DirectSiteBaseWork(step);
-                    if (selectionWork > MaximumAlienBaseChecks) throw new InvalidDataException("Direct mission site creation exceeds the supported work limit.");
+                    if (selectionWork > MaximumWorldWork) throw new InvalidDataException(ForecastLimits.DirectMissionSiteCreationWork);
                     if (DirectSiteBases(step).Count == 0) continue;
                 }
                 var areas = DirectSiteAreas(step, rule);
@@ -244,10 +244,10 @@ internal sealed partial class CampaignWorld
                 foreach (var area in areas)
                 {
                     selectionWork += SiteDeploymentSelectionWork(wave, rule, area);
-                    if (selectionWork > MaximumAlienBaseChecks) throw new InvalidDataException("Direct mission site creation exceeds the supported work limit.");
+                    if (selectionWork > MaximumWorldWork) throw new InvalidDataException(ForecastLimits.DirectMissionSiteCreationWork);
                     var candidates = SiteDeploymentCandidates(wave, rule, area);
                     selectionWork += candidates.Count;
-                    if (selectionWork > MaximumAlienBaseChecks) throw new InvalidDataException("Direct mission site creation exceeds the supported work limit.");
+                    if (selectionWork > MaximumWorldWork) throw new InvalidDataException(ForecastLimits.DirectMissionSiteCreationWork);
                     foreach (var handle in candidates)
                         if (rules.AlienDeployments[handle].Value.DurationMinimum == 0 &&
                             rules.Research.TryGet(rules.AlienDeployments[handle].Value.UnlockedResearchOnDespawnId, out _)) return true;
@@ -265,7 +265,7 @@ internal sealed partial class CampaignWorld
         if (wave.ObjectiveOnXcomBase)
         {
             work += DirectSiteBaseWork(mission);
-            if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
+            if (work > MaximumWorldWork) return ForecastLimits.DirectMissionSiteCreationWork;
             if (DirectSiteBases(mission).Count == 0) return null;
         }
         var areas = DirectSiteAreas(mission, rule);
@@ -278,10 +278,10 @@ internal sealed partial class CampaignWorld
         foreach (var area in areas)
         {
             work += SiteDeploymentSelectionWork(wave, rule, area);
-            if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
+            if (work > MaximumWorldWork) return ForecastLimits.DirectMissionSiteCreationWork;
             var candidates = SiteDeploymentCandidates(wave, rule, area);
             work += candidates.Count;
-            if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
+            if (work > MaximumWorldWork) return ForecastLimits.DirectMissionSiteCreationWork;
             deterministic &= candidates.Count != 0 && !SiteDeploymentMayBeSuppressed(wave, rule, area);
             foreach (var candidate in candidates)
             {
@@ -319,7 +319,7 @@ internal sealed partial class CampaignWorld
     private string? SiteResearchUfoWorkReason(CampaignTimeTrigger highest)
     {
         if (_pass.SiteResearchForecast is null) return null;
-        if ((long)_ufos.Count * (_missions.Count + (highest >= CampaignTimeTrigger.OneDay ? (long)_alienBases.Count : 0)) > MaximumAlienBaseChecks)
+        if ((long)_ufos.Count * (_missions.Count + (highest >= CampaignTimeTrigger.OneDay ? (long)_alienBases.Count : 0)) > MaximumWorldWork)
             return "Mission site research UFO link checks exceed the supported work limit.";
         // Continuing arrivals use the ordinary waypoint, conversion and landing-
         // base owners' proofs. Selected interruption destroys before those effects
@@ -350,7 +350,7 @@ internal sealed partial class CampaignWorld
             if (highest >= CampaignTimeTrigger.OneDay && BaseDestroyedAfterDailyResearch(alienBase, _pass.DailyResearchForecast)) continue;
             var rule = AlienBaseRule(alienBase);
             work += rule.GenMission.Count + (long)rule.HuntMissions.Count;
-            if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+            if (work > MaximumWorldWork) return AlienBaseWorkReason;
             if (highest >= CampaignTimeTrigger.OneDay && rule.GenMissionFrequency > 0 && alienBase.GenMissionCount < rule.GenMissionLimit)
             {
                 var canGenerate = false;
@@ -376,13 +376,13 @@ internal sealed partial class CampaignWorld
                     HashSet<string> grantingChoices = new(StringComparer.Ordinal);
                     for (var index = firstBirth; index < dailyImmediateBirths.Count; index++)
                     {
-                        if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                        if (++work > MaximumWorldWork) return AlienBaseWorkReason;
                         grantingChoices.Add(dailyImmediateBirths[index].Mission.RuleId);
                     }
                     if (rule.GenMission.Any(choice => choice.Value != 0 && !grantingChoices.Contains(choice.Key)))
                         for (var index = firstBirth; index < dailyImmediateBirths.Count; index++)
                         {
-                            if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                            if (++work > MaximumWorldWork) return AlienBaseWorkReason;
                             dailyImmediateBirths[index] = dailyImmediateBirths[index] with { GenerationOptional = true };
                         }
                 }
@@ -394,7 +394,7 @@ internal sealed partial class CampaignWorld
             try { choices = WorldAlienBaseHunting.Weights(rule.HuntMissions, unchecked((ulong)campaign.MonthsPassed)); }
             catch (InvalidDataException error) { return error.Message; }
             work += choices.Count;
-            if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+            if (work > MaximumWorldWork) return AlienBaseWorkReason;
             foreach (var choice in choices)
             {
                 if (choice.Key.Length == 0 || choice.Value == 0) continue;
@@ -440,7 +440,7 @@ internal sealed partial class CampaignWorld
             var survivingUfos = false;
             foreach (var step in DueWaveSteps(candidate, mission))
             {
-                if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                if (++work > MaximumWorldWork) return AlienBaseWorkReason;
                 if (!CanAdvanceNoObjectWave(step, mission))
                 {
                     if (!hunting)
@@ -498,7 +498,7 @@ internal sealed partial class CampaignWorld
         var skippedPath = false;
         foreach (var birth in candidates)
         {
-            if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+            if (++work > MaximumWorldWork) return AlienBaseWorkReason;
             if (birth.Hunting || birth.Mission.RuleId != missionId || !FollowsAlienBase(birth.Mission.AlienBase, source)) continue;
             found = true;
             List<SiteResearchBirth> candidateBirths = [];
@@ -506,7 +506,7 @@ internal sealed partial class CampaignWorld
             var surviving = false;
             foreach (var step in DueWaveSteps(birth.Mission, rule))
             {
-                if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                if (++work > MaximumWorldWork) return AlienBaseWorkReason;
                 if (RetaliationWaveReason(step, rule, ref work) is { } retaliationReason) return retaliationReason;
                 completed = InstantRetaliationWithoutTarget(step, rule) ||
                     (ulong)step.NextUfoCounter + 1 >= rule.Waves[step.NextWave].UfoCount && step.NextWave + 1 == rule.Waves.Count;
@@ -528,7 +528,7 @@ internal sealed partial class CampaignWorld
         if (skippedPath)
             for (var index = firstBirth; index < immediateBirths.Count; index++)
             {
-                if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                if (++work > MaximumWorldWork) return AlienBaseWorkReason;
                 immediateBirths[index] = immediateBirths[index] with { GenerationOptional = true };
             }
         // Prepared candidates retain every reachable region/race/area alternative.

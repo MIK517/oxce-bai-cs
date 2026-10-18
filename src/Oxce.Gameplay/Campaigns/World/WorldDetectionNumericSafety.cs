@@ -21,9 +21,9 @@ internal static class WorldDetectionNumericSafety
         if (!program.Instructions.Any(instruction => ConsumedOperand((CoreScriptOperation)instruction.Operation.Value) >= 0))
             return null;
         var references = WorldDetectionReferenceForecast.Build(program, rules, visits, maximumWork);
-        if (references is null) return "Detection numeric safety forecast exceeds the supported work limit.";
+        if (references is null) return ForecastLimits.DetectionNumericSafetyForecastWork;
         var values = WorldDetectionScalarForecast.Build(program, rules, references, visits, maximumWork);
-        if (values is null) return "Detection numeric safety forecast exceeds the supported work limit.";
+        if (values is null) return ForecastLimits.DetectionNumericSafetyForecastWork;
         for (var index = 0; index < program.Instructions.Count; index++)
         {
             if (visits[index] == 0 || !references.Reachable(index) || !values.Reachable(index)) continue;

@@ -13,7 +13,7 @@ internal static class WorldDetectionScriptSafety
         foreach (var binding in program.Bindings)
             if (!bindingSupported(binding)) return $"Detection script requires unsupported binding {binding.Name}.";
         if (program.Instructions.Count > ScriptExecutionOptions.Default.MaximumSteps)
-            return "Detection script exceeds the supported instruction limit.";
+            return ForecastLimits.DetectionScriptInstructions;
         var loops = new Dictionary<int, (int End, long Iterations)>();
         for (var index = 1; index < program.Instructions.Count - 1; index++)
             if (TryLiteralLoop(program, index, out var end, out var limit) ||
@@ -43,11 +43,11 @@ internal static class WorldDetectionScriptSafety
             {
                 var bound = visits[index] * (index == start ? loop.Iterations + 1 : loop.Iterations);
                 if (bound > ScriptExecutionOptions.Default.MaximumSteps)
-                    return "Detection script exceeds the supported instruction limit.";
+                    return ForecastLimits.DetectionScriptInstructions;
                 visits[index] = (int)bound;
             }
         if (visits.Sum(static count => (long)count) > ScriptExecutionOptions.Default.MaximumSteps)
-            return "Detection script exceeds the supported instruction limit.";
+            return ForecastLimits.DetectionScriptInstructions;
         return null;
     }
 

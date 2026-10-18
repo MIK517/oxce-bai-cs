@@ -5,10 +5,11 @@ namespace Oxce.Gameplay.Campaigns.World;
 /// <summary>Alien-base activity and discovery, after the daily player-base loop.</summary>
 internal sealed partial class CampaignWorld
 {
-    // A bound on the forecasts' own work and the worst case they admit. Geometry terms grow with the globe: one base
+    // The world forecasts' shared work budget (ForecastLimits.Work is the campaign forecasts'): a bound on the
+    // forecasts' own work and the worst case they admit. Geometry terms grow with the globe: one base
     // objective on Rosigma's 3,253-point globe is charged about 650,000 (branch 6 S3), so the fixture-calibrated
     // 1,000,000 stopped real campaigns.
-    private static long MaximumAlienBaseChecks => FixtureWorkBounds ? 1_000_000 : 100_000_000;
+    private static long MaximumWorldWork => FixtureWorkBounds ? 1_000_000 : 100_000_000;
 
     private static readonly AsyncLocal<bool?> ProductionWorkBoundsOnThisFlow = new();
 
@@ -45,7 +46,7 @@ internal sealed partial class CampaignWorld
         if (_alienBases.Count == 0 && _pass.ObjectiveBaseHuntingMissions == 0 || highest < CampaignTimeTrigger.TenMinutes) return null;
         var daily = highest >= CampaignTimeTrigger.OneDay;
         var work = daily ? _alienBases.Count * (1L + campaign.RegionStates.Count + campaign.CountryStates.Count) : 0;
-        if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+        if (work > MaximumWorldWork) return AlienBaseWorkReason;
         var undiscovered = 0;
         var possibleMissions = _pass.ObjectiveBaseHuntingMissions;
         foreach (var alienBase in _alienBases)
@@ -57,13 +58,13 @@ internal sealed partial class CampaignWorld
             if (canHunt) possibleMissions++;
             if (highest < CampaignTimeTrigger.OneDay) continue;
             work += rule.GenMission.Count;
-            if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+            if (work > MaximumWorldWork) return AlienBaseWorkReason;
             ulong total = 0;
             var canGenerate = false;
             foreach (var choice in rule.GenMission)
             {
                 if (choice.Value > (ulong)int.MaxValue - total)
-                    return "Alien base mission weights exceed the supported range.";
+                    return ForecastLimits.AlienBaseMissionWeightsRange;
                 total += choice.Value;
                 if (choice.Value == 0 || choice.Key.Length == 0) continue;
                 if (!campaign.Content.RuntimeRules.AlienMissions.TryGet(choice.Key, out var mission))
@@ -87,15 +88,15 @@ internal sealed partial class CampaignWorld
             var next = campaign.PeekNextId("ALIEN_MISSIONS");
             if ((long)_missions.Count + possibleMissions > 100_000 || next <= 0 ||
                 (long)next + possibleMissions > int.MaxValue)
-                return "Alien mission IDs or population exceed the supported limit.";
+                return ForecastLimits.AlienMissionIdsOrPopulationLimit;
             foreach (var mission in _missions)
                 if (mission.Id >= next && mission.Id < (long)next + possibleMissions)
-                    return "Alien mission IDs or population exceed the supported limit.";
+                    return ForecastLimits.AlienMissionIdsOrPopulationLimit;
             // Both generation callers precede the ten-minute retarget pass.
             // Existing hunters then search the enlarged mission list; reserve
             // that work even for delayed/no-object newly created missions.
             work += _ufos.Count;
-            if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+            if (work > MaximumWorldWork) return AlienBaseWorkReason;
             var retargetWork = Math.Max(_pass.HuntingForecastWork, _pass.HuntingRetargetWorkBound) +
                 (long)_pass.NewFlyingHunterBirths * possibleMissions;
             var escortActors = _pass.EscortMissionLookupActors;
@@ -106,7 +107,7 @@ internal sealed partial class CampaignWorld
                 if (projected.Escorting) escortActors = Math.Max(escortActors, _ufos.Count);
             }
             retargetWork += escortActors * possibleMissions;
-            if (retargetWork > MaximumAlienBaseChecks)
+            if (retargetWork > MaximumWorldWork)
                 return "UFO retargeting with generated missions exceeds the supported work limit.";
         }
         foreach (var owner in campaign.BaseStates)
@@ -114,7 +115,7 @@ internal sealed partial class CampaignWorld
             if (daily)
             {
                 work += (long)undiscovered * owner.Facilities.Count;
-                if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                if (work > MaximumWorldWork) return AlienBaseWorkReason;
             }
             foreach (var craft in owner.Crafts)
                 if (craft.Logistics is { Status: "STR_OUT", Destination: null } state)
@@ -124,7 +125,7 @@ internal sealed partial class CampaignWorld
                         return "Craft weapon sight bonuses exceed the supported range.";
                     if (range <= 0) continue;
                     work += _alienBases.Count;
-                    if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                    if (work > MaximumWorldWork) return AlienBaseWorkReason;
                 }
         }
         return null;

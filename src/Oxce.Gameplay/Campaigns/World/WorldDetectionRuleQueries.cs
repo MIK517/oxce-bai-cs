@@ -42,8 +42,8 @@ internal static class WorldDetectionRuleQueries
             "RuleInventory.isRightHand" => inventory.Hand == 2 ? 1 : 0,
             _ => inventory.Hand == 1 ? 1 : 0,
         },
-        string id => name == "RuleResearch.getCost" ? rules.Research[rules.Research.GetRequired(id)].Value.Cost
-            : rules.Research[rules.Research.GetRequired(id)].Value.Points,
+        string id => name == "RuleResearch.getCost" ? rules.Research.GetRequiredValue(id).Cost
+            : rules.Research.GetRequiredValue(id).Points,
         RuntimeRuleCatalog => name == "RuleMod.getMaxViewDistance" ? rules.Campaign.MaximumViewDistance
             : rules.Campaign.MaximumDarknessToSeeUnits,
         _ => throw new InvalidOperationException("Detection immutable rule receiver was not preflighted."),

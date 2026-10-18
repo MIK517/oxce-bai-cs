@@ -7,7 +7,7 @@ internal sealed partial class CampaignWorld
     private List<CampaignState.BaseState> RetaliationCandidates(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
     {
         var rules = campaign.Content.RuntimeRules;
-        var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+        var region = rules.Regions.GetRequiredValue(mission.RegionId);
         return WorldRetaliation.Candidates(campaign.BaseStates, region, rule.Objective,
             rule.SkipScoutingPhase, rule.MultiUfoRetaliation,
             static owner => new(owner.Longitude, owner.Latitude), static owner => owner.RetaliationTarget);
@@ -17,10 +17,10 @@ internal sealed partial class CampaignWorld
     {
         if (rule.Objective is not (RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation)) return null;
         var rules = campaign.Content.RuntimeRules;
-        var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+        var region = rules.Regions.GetRequiredValue(mission.RegionId);
         // Reserve repeated classification in counter, geometry, score and executor forecasts.
         work += 32L * campaign.BaseStates.Count * (region.Areas.Count + 1L);
-        if (work > MaximumAlienBaseChecks) return "Retaliation target selection exceeds the supported work limit.";
+        if (work > MaximumWorldWork) return "Retaliation target selection exceeds the supported work limit.";
         if (HasRetaliationTarget(mission, rule))
         {
             var original = rule.Waves[mission.NextWave];
@@ -47,7 +47,7 @@ internal sealed partial class CampaignWorld
     {
         if (rule.Objective is not (RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation)) return false;
         var rules = campaign.Content.RuntimeRules;
-        var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+        var region = rules.Regions.GetRequiredValue(mission.RegionId);
         foreach (var owner in campaign.BaseStates)
             if ((rule.Objective != RuntimeMissionObjective.Retaliation || rule.SkipScoutingPhase || owner.RetaliationTarget) &&
                 WorldGeometry.InsideRegion(region, new(owner.Longitude, owner.Latitude))) return true;

@@ -77,7 +77,7 @@ public static class CraftServicing
         for (var slot = 0; slot < weapons.Length; slot++)
         {
             if (weapons[slot] is not { } weapon || weapon.Disabled) continue;
-            var weaponRule = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
+            var weaponRule = rules.CraftWeapons.GetRequiredValue(weapon.RuleId);
             if (weapon.Ammo >= weaponRule.AmmoMaximum || weaponRule.Clip.Length == 0 ||
                 rules.Items.GetRequired(weaponRule.Clip) != item) continue;
             weapons[slot] = weapon with { Rearming = true };
@@ -124,10 +124,10 @@ public static class CraftServicing
         for (var slot = 0; slot < state.Weapons.Count; slot++)
         {
             if (state.Weapons[slot] is not { Rearming: true } weapon) continue;
-            var rule = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
+            var rule = rules.CraftWeapons.GetRequiredValue(weapon.RuleId);
             var available = stores.GetValueOrDefault(rule.Clip);
             var result = rule.Clip.Length == 0 || available > 0
-                ? RearmWeapon(weapon, rule, available, rule.Clip.Length == 0 ? 0 : rules.Items[rules.Items.GetRequired(rule.Clip)].Value.ClipSize, random)
+                ? RearmWeapon(weapon, rule, available, rule.Clip.Length == 0 ? 0 : rules.Items.GetRequiredValue(rule.Clip).ClipSize, random)
                 : (Weapon: weapon, ClipsUsed: 0);
             var missing = rule.Clip.Length != 0 && (available == 0 || result.ClipsUsed == available && result.Weapon.Rearming);
             var weapons = state.Weapons.ToArray();

@@ -14,7 +14,7 @@ internal sealed partial class CampaignWorld
         canInitialize = false;
         canRemainIdle = true;
         work += _ufos.Count + (long)_missions.Count;
-        if (work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
+        if (work > MaximumWorldWork) return NewbornEscortOriginWorkReason;
         if (WorldHunting.EscortLeader(mission.Id, _ufos) is { } leader)
         {
             positions = [new(leader.Position, 0)];
@@ -28,13 +28,13 @@ internal sealed partial class CampaignWorld
         List<SpawnArea>? possible = null;
         foreach (var earlier in DueWaveSteps(saved, missionRule))
         {
-            if (++work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
+            if (++work > MaximumWorldWork) return NewbornEscortOriginWorkReason;
             if (earlier.NextWave == mission.NextWave && earlier.NextUfoCounter == mission.NextUfoCounter)
             {
                 if (possible is not null)
                 {
                     work += nominal.Count;
-                    if (work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
+                    if (work > MaximumWorldWork) return NewbornEscortOriginWorkReason;
                     possible.AddRange(nominal);
                     positions = possible;
                 }
@@ -43,11 +43,11 @@ internal sealed partial class CampaignWorld
             // These earlier steps have already passed mission preflight. A failed
             // hunter constructor produces an ordinary UFO at its nominal origin,
             // even when its wave requested escort initialization.
-            var region = rules.Regions[rules.Regions.GetRequired(earlier.RegionId)].Value;
+            var region = rules.Regions.GetRequiredValue(earlier.RegionId);
             work += 3L * _alienBases.Count + 1;
             if (missionRule.Objective is RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation)
                 work += 8L * campaign.BaseStates.Count * (region.Areas.Count + 1L);
-            if (work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
+            if (work > MaximumWorldWork) return NewbornEscortOriginWorkReason;
             var wave = SpawnWave(earlier, missionRule);
             if (wave.Ufo is not { } handle || CanAdvanceNoObjectWave(earlier, missionRule)) continue;
             var percentage = missionRule.Objective == RuntimeMissionObjective.Supply && wave.Objective ? 0 :
@@ -57,7 +57,7 @@ internal sealed partial class CampaignWorld
                     rules.UfoTrajectories[path].Value, region, out var origins))
                 return "New UFO escorts require craft retarget forecasts.";
             work += origins.Count + (long)_alienBases.Count;
-            if (work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
+            if (work > MaximumWorldWork) return NewbornEscortOriginWorkReason;
             (possible ??= []).AddRange(origins);
             canInitialize = true;
             // Losing a Space source can omit an objective supply constructor.

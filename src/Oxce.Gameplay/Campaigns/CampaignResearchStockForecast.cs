@@ -50,7 +50,7 @@ public sealed partial class CampaignState
         if (!includeDiscoveries && DailyItemsUnchanged(ref work)) return true;
         var rules = _content.RuntimeRules;
         work += rules.Research.Count + (long)_completedResearch.Count + _researchRuleStatus.Count;
-        if (work > 1_000_000) return false;
+        if (work > ForecastLimits.Work) return false;
         var completed = new HashSet<string>(_completedResearch, StringComparer.Ordinal);
         var statuses = new Dictionary<string, int>(_researchRuleStatus, StringComparer.Ordinal);
         var discovery = new ResearchDiscoveryProgress(rules, completed, statuses);
@@ -65,7 +65,7 @@ public sealed partial class CampaignState
         foreach (var owner in _bases)
         {
             work += owner.Research.Count;
-            if (work > 1_000_000) return false;
+            if (work > ForecastLimits.Work) return false;
             projects.Add(owner.Id, new(owner.Research));
             changes.Add(owner.Id, new(StringComparer.Ordinal));
             arrivals.Add(owner.Id, []);
@@ -74,7 +74,7 @@ public sealed partial class CampaignState
         {
             var local = projects[owner.Id];
             work += local.Count * 4L;
-            if (work > 1_000_000) return false;
+            if (work > ForecastLimits.Work) return false;
             for (var index = 0; index < local.Count; index++)
             {
                 var project = local[index];
@@ -88,7 +88,7 @@ public sealed partial class CampaignState
             {
                 var functions = rules.Facilities[facility.Rule].Value.ProvidedBaseFunctions;
                 work += functions.Count;
-                if (work > 1_000_000) return false;
+                if (work > ForecastLimits.Work) return false;
                 // Daily construction advances before research in this base.
                 if (facility.BuildTime <= 1) provided.UnionWith(functions);
             }
@@ -96,7 +96,7 @@ public sealed partial class CampaignState
             {
                 var rule = rules.Countries[country.Rule].Value;
                 work += 1L + rule.Areas.Count + rule.ProvidedBaseFunctions.Count;
-                if (work > 1_000_000) return false;
+                if (work > ForecastLimits.Work) return false;
                 if (!rule.Areas.Any(area => AreaContains(area, owner.Longitude, owner.Latitude))) continue;
                 provided.UnionWith(rule.ProvidedBaseFunctions);
                 break;
@@ -105,7 +105,7 @@ public sealed partial class CampaignState
             {
                 var rule = rules.Regions[region.Rule].Value;
                 work += 1L + rule.Areas.Count + rule.ProvidedBaseFunctions.Count;
-                if (work > 1_000_000) return false;
+                if (work > ForecastLimits.Work) return false;
                 if (!rule.Areas.Any(area => AreaContains(area, owner.Longitude, owner.Latitude))) continue;
                 provided.UnionWith(rule.ProvidedBaseFunctions);
                 break;
@@ -116,16 +116,16 @@ public sealed partial class CampaignState
                 var rule = rules.Research[project.Rule].Value;
                 Recover(owner.Id, rule, rules.Research.GetExternalId(project.Rule), finished: true, dailyCompletion: true);
                 work += local.Count;
-                if (work > 1_000_000) return false;
+                if (work > ForecastLimits.Work) return false;
                 local.Remove(project);
                 RecordDiary(rules.Research.GetExternalId(project.Rule));
                 RecordDiary(rule.Lookup);
                 work += rule.GetOneFree.Count;
                 foreach (var group in rule.GetOneFreeProtected) work += 1L + group.Topics.Count;
-                if (work > 1_000_000) return false;
+                if (work > ForecastLimits.Work) return false;
                 var candidates = discovery.RewardCandidates(rule);
                 work += candidates.Count;
-                if (work > 1_000_000) return false;
+                if (work > ForecastLimits.Work) return false;
                 var selected = 0;
                 if (candidates.Count > 1 && !rule.SequentialGetOneFree && candidates.Any(id => id != candidates[0]))
                 {
@@ -172,7 +172,7 @@ public sealed partial class CampaignState
                     minimumScorePrefix = Math.Min(minimumScorePrefix, scoreChange);
                     maximumScorePrefix = Math.Max(maximumScorePrefix, scoreChange);
                     if (discoveredId != id) diaryEntries++;
-                }, ref localWork, 1_000_000 - projectionWork);
+                }, ref localWork, ForecastLimits.Work - projectionWork);
                 projectionWork += localWork;
                 return supported;
             }
@@ -183,31 +183,31 @@ public sealed partial class CampaignState
                     diaryEntries++;
             }
             work += rules.Research.Count;
-            if (work > 1_000_000) return false;
+            if (work > ForecastLimits.Work) return false;
             foreach (var entry in rules.Research.Rules)
             {
                 if (!sideEffects.Contains(rules.Research.GetRequired(entry.Id))) continue;
                 work += entry.Value.GetOneFree.Count + (long)entry.Value.Unlocks.Count;
                 foreach (var group in entry.Value.GetOneFreeProtected) work += 1L + group.Topics.Count;
-                if (work > 1_000_000) return false;
+                if (work > ForecastLimits.Work) return false;
                 if (!discovery.HasRemainingReward(entry.Value) && !discovery.HasProtectedUnlock(entry.Value))
                     foreach (var other in _bases)
                     {
                         work += projects[other.Id].Count * 2L;
-                        if (work > 1_000_000) return false;
+                        if (work > ForecastLimits.Work) return false;
                         var project = projects[other.Id].FirstOrDefault(project => project.Rule == rules.Research.GetRequired(entry.Id));
                         if (project is null) continue;
                         Recover(other.Id, entry.Value, entry.Id, project.Spent >= project.Cost, dailyCompletion: false);
                         projects[other.Id].Remove(project);
                     }
                 work += entry.Value.SpawnedItemList.Count + 1L;
-                if (work > 1_000_000) return false;
+                if (work > ForecastLimits.Work) return false;
                 if (entry.Value.SpawnedItem.Length != 0 && rules.Items.TryGet(entry.Value.SpawnedItem, out _))
                     arrivals[owner.Id].Add(new(entry.Value.SpawnedItem, Math.Max(1, entry.Value.SpawnedItemCount)));
                 foreach (var id in entry.Value.SpawnedItemList)
                     if (rules.Items.TryGet(id, out _)) arrivals[owner.Id].Add(new(id, 1));
                 work += entry.Value.IncreaseCounters.Count + (long)entry.Value.DecreaseCounters.Count;
-                if (work > 1_000_000) return false;
+                if (work > ForecastLimits.Work) return false;
                 foreach (var id in entry.Value.IncreaseCounters)
                     if (id.Length != 0) (counters ??= []).Add(new(id, true));
                 foreach (var id in entry.Value.DecreaseCounters)
@@ -219,7 +219,7 @@ public sealed partial class CampaignState
         foreach (var owner in _bases)
         {
             work += projects[owner.Id].Count;
-            if (work > 1_000_000) return false;
+            if (work > ForecastLimits.Work) return false;
             foreach (var project in projects[owner.Id])
             {
                 var entry = rules.Research[project.Rule];
@@ -232,7 +232,7 @@ public sealed partial class CampaignState
         if (arrivalCount != 0)
         {
             work += _bases.Sum(owner => (long)owner.Transfers.Count);
-            if (work > 1_000_000) return false;
+            if (work > ForecastLimits.Work) return false;
             if ((long)NextTransferId() + arrivalCount > int.MaxValue)
             {
                 forecast = EmptyResearchStockForecast with { UnavailableReason = "Research arrivals exhaust the transfer identity range." };
@@ -244,7 +244,7 @@ public sealed partial class CampaignState
         if (includeDiscoveries)
         {
             work += completed.Count + (long)statuses.Count + projects.Values.Sum(local => (long)local.Count) + projects.Count;
-            if (work > 1_000_000) return false;
+            if (work > ForecastLimits.Work) return false;
         }
         forecast = new(new ReadOnlyDictionary<int, IReadOnlyDictionary<string, int>>(changes.ToDictionary(
             pair => pair.Key, pair => (IReadOnlyDictionary<string, int>)new ReadOnlyDictionary<string, int>(pair.Value))),
@@ -289,20 +289,20 @@ public sealed partial class CampaignState
             // Charge the scan before reading labels. An already ordered reusable
             // list needs neither a sort nor scratch allocations.
             work += 1L + count;
-            if (work > 1_000_000) return false;
+            if (work > ForecastLimits.Work) return false;
             if (count < 2) continue;
             var otherCount = 0;
             foreach (var item in owner.Value)
-                if (rules.Items[rules.Items.GetRequired(item.Key)].Value.BattleType != 0) otherCount++;
+                if (rules.Items.GetRequiredValue(item.Key).BattleType != 0) otherCount++;
             if (otherCount == 0) continue;
             var levels = 0;
             for (var remaining = otherCount; remaining > 1; remaining = (remaining + 1) / 2) levels++;
             // Bound allocations, sort comparisons and copying before work.
             work += count * 4L + otherCount * (long)levels;
-            if (work > 1_000_000) return false;
+            if (work > ForecastLimits.Work) return false;
             List<KeyValuePair<string, int>> reusable = new(count - otherCount), other = new(otherCount);
             foreach (var item in owner.Value)
-                (rules.Items[rules.Items.GetRequired(item.Key)].Value.BattleType == 0 ? reusable : other).Add(item);
+                (rules.Items.GetRequiredValue(item.Key).BattleType == 0 ? reusable : other).Add(item);
             other.Sort(static (first, second) =>
             {
                 var identity = StringComparer.Ordinal.Compare(first.Key, second.Key);
@@ -322,7 +322,7 @@ public sealed partial class CampaignState
         foreach (var owner in _bases)
             foreach (var project in owner.Research)
             {
-                if (++work > 1_000_000) return true;
+                if (++work > ForecastLimits.Work) return true;
                 if (_researchRuleStatus.GetValueOrDefault(_content.RuntimeRules.Research.GetExternalId(project.Rule)) == 2) return true;
             }
         return false;
@@ -335,29 +335,29 @@ public sealed partial class CampaignState
         foreach (var owner in _bases)
             foreach (var project in owner.Research)
             {
-                if (++work > 1_000_000) return false;
+                if (++work > ForecastLimits.Work) return false;
                 // Cancellation in any base can refund a held item in another base.
                 if (HoldsResearchItem(rules.Research[project.Rule].Value)) return false;
                 if ((long)project.Spent + project.Assigned < project.Cost) continue;
                 var entry = rules.Research[project.Rule];
                 sideEffects.Add(entry.Id);
                 work += entry.Value.GetOneFree.Count;
-                if (work > 1_000_000) return false;
+                if (work > ForecastLimits.Work) return false;
                 sideEffects.UnionWith(entry.Value.GetOneFree);
                 foreach (var group in entry.Value.GetOneFreeProtected)
                 {
                     work += group.Topics.Count;
-                    if (work > 1_000_000) return false;
+                    if (work > ForecastLimits.Work) return false;
                     sideEffects.UnionWith(group.Topics);
                 }
             }
         foreach (var id in sideEffects)
         {
-            if (++work > 1_000_000) return false;
+            if (++work > ForecastLimits.Work) return false;
             if (!rules.Research.TryGet(id, out var handle)) continue;
             var rule = rules.Research[handle].Value;
             work += rule.IncreaseCounters.Count + (long)rule.DecreaseCounters.Count;
-            if (work > 1_000_000) return false;
+            if (work > ForecastLimits.Work) return false;
             foreach (var name in rule.IncreaseCounters)
                 if (name.Length != 0) return false;
             foreach (var name in rule.DecreaseCounters)
@@ -365,12 +365,12 @@ public sealed partial class CampaignState
             if (rule.SpawnedItem.Length != 0 && rules.Items.TryGet(rule.SpawnedItem, out _)) return false;
             foreach (var item in rule.SpawnedItemList)
             {
-                if (++work > 1_000_000) return false;
+                if (++work > ForecastLimits.Work) return false;
                 if (rules.Items.TryGet(item, out _)) return false;
             }
         }
         // Lookup and automatic discoveries use addFinishedResearch only; primary
         // item/event side effects belong to direct completions and the free topic.
-        return work <= 1_000_000;
+        return work <= ForecastLimits.Work;
     }
 }

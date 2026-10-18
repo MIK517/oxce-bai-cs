@@ -10,24 +10,24 @@ public sealed partial class CampaignState
         Dictionary<string, long> maximumRandom = new(StringComparer.Ordinal);
         foreach (var set in rule.RandomProducedItems)
         {
-            if (++work > 1_000_000) return "Random production history exceeds the supported work limit.";
+            if (++work > ForecastLimits.Work) return ForecastLimits.RandomProductionHistoryWork;
             if (set.Weight == 0) continue;
             foreach (var item in set.Items)
             {
-                if (++work > 1_000_000) return "Random production history exceeds the supported work limit.";
+                if (++work > ForecastLimits.Work) return ForecastLimits.RandomProductionHistoryWork;
                 maximumRandom[item.Key] = Math.Max(maximumRandom.GetValueOrDefault(item.Key), item.Value);
             }
         }
         if (!project.Sell)
             foreach (var material in rule.ProducedMaterials)
             {
-                if (++work > 1_000_000) return "Random production history exceeds the supported work limit.";
+                if (++work > ForecastLimits.Work) return ForecastLimits.RandomProductionHistoryWork;
                 if (material.Item is not null)
                     maximumRandom[material.Id] = maximumRandom.GetValueOrDefault(material.Id) + material.Quantity;
             }
         foreach (var item in maximumRandom)
         {
-            if (++work > 1_000_000) return "Random production history exceeds the supported work limit.";
+            if (++work > ForecastLimits.Work) return ForecastLimits.RandomProductionHistoryWork;
             if ((Int128)project.RandomProductionInfo.GetValueOrDefault(item.Key) + (Int128)item.Value * units > int.MaxValue)
                 return "Random production history exceeds the supported range.";
         }

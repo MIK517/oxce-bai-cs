@@ -10,7 +10,7 @@ public sealed partial class CampaignState
         if (owner.Productions.Count == 0) return null;
         var rules = _content.RuntimeRules;
         work += owner.Facilities.Count + (long)owner.Transfers.Count + owner.Productions.Count;
-        if (work > 1_000_000) return "Production staffing exceeds the supported work limit.";
+        if (work > ForecastLimits.Work) return "Production staffing exceeds the supported work limit.";
         long workshops = 0;
         foreach (var facility in owner.Facilities)
             if (facility.BuildTime == 0 || highest >= CampaignTimeTrigger.OneDay && facility.BuildTime == 1)
@@ -44,7 +44,7 @@ public sealed partial class CampaignState
                 }
             }
             if ((long)project.Spent + assigned > int.MaxValue)
-                return "Production progress exceeds the supported range.";
+                return ForecastLimits.ProductionProgressRange;
             assignments[index] = assigned;
         }
         return null;

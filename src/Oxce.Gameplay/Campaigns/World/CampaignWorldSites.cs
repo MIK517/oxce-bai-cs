@@ -86,8 +86,8 @@ internal sealed partial class CampaignWorld
         long despawnWork = 0;
         foreach (var site in _sites)
         {
-            var mission = rules.AlienMissions[rules.AlienMissions.GetRequired(site.MissionRuleId)].Value;
-            var deployment = rules.AlienDeployments[rules.AlienDeployments.GetRequired(site.DeploymentId)].Value;
+            var mission = rules.AlienMissions.GetRequiredValue(site.MissionRuleId);
+            var deployment = rules.AlienDeployments.GetRequiredValue(site.DeploymentId);
             var transition = WorldSiteTimer.Advance(SiteSecondsAfterDiscovery(site, discovered), SiteHasFollowers(site),
                 mission.DespawnEvenIfTargeted, deployment.Points, deployment.DespawnPenalty);
             if (transition.ReturnFollowers)
@@ -115,7 +115,7 @@ internal sealed partial class CampaignWorld
             if (transition.Remove)
             {
                 despawnWork += 6 + 2L * deployment.DespawnEvents.Count;
-                if (despawnWork > MaximumAlienBaseChecks) return "Mission site despawn checks exceed the supported work limit.";
+                if (despawnWork > MaximumWorldWork) return "Mission site despawn checks exceed the supported work limit.";
                 if (SiteDespawnReason(deployment, SiteResearchAfter(site)) is { } despawnReason) return despawnReason;
             }
             if (transition.Remove)
@@ -152,8 +152,8 @@ internal sealed partial class CampaignWorld
         for (var index = 0; index < _sites.Count;)
         {
             var site = _sites[index];
-            var mission = rules.AlienMissions[rules.AlienMissions.GetRequired(site.MissionRuleId)].Value;
-            var deployment = rules.AlienDeployments[rules.AlienDeployments.GetRequired(site.DeploymentId)].Value;
+            var mission = rules.AlienMissions.GetRequiredValue(site.MissionRuleId);
+            var deployment = rules.AlienDeployments.GetRequiredValue(site.DeploymentId);
             var transition = WorldSiteTimer.Advance(site.SecondsRemaining, SiteHasFollowers(site),
                 mission.DespawnEvenIfTargeted, deployment.Points, deployment.DespawnPenalty);
             if (transition.ReturnFollowers)
@@ -214,20 +214,20 @@ internal sealed partial class CampaignWorld
             work += campaign.BaseStates.Count;
             foreach (var owner in campaign.BaseStates) followers += owner.Crafts.Count + 1L;
             work += followers * _sites.Count;
-            if (work > MaximumAlienBaseChecks) return reason;
+            if (work > MaximumWorldWork) return reason;
             var changes = new List<CustomCounterChange>(6);
             foreach (var site in _sites)
             {
                 if (!SiteExpiresThisTick(site, highest)) continue;
                 work += 12; // Six fields plus their ordered forecast copies.
-                if (work > MaximumAlienBaseChecks) return reason;
+                if (work > MaximumWorldWork) return reason;
                 changes.Clear();
                 var rules = campaign.Content.RuntimeRules;
-                AddSiteCounterChanges(changes, rules.AlienDeployments[rules.AlienDeployments.GetRequired(site.DeploymentId)].Value);
+                AddSiteCounterChanges(changes, rules.AlienDeployments.GetRequiredValue(site.DeploymentId));
                 foreach (var change in changes) forecasts.Add(new(change, true));
             }
             work += (_pass.SiteBirthExpiryIncreases?.Count ?? 0) + (long)(_pass.SiteBirthExpiryDecreases?.Count ?? 0);
-            if (work > MaximumAlienBaseChecks) return reason;
+            if (work > MaximumWorldWork) return reason;
             if (_pass.SiteBirthExpiryIncreases is not null)
                 foreach (var change in _pass.SiteBirthExpiryIncreases) forecasts.Add(new(change, false));
             if (_pass.SiteBirthExpiryDecreases is not null)
@@ -242,7 +242,7 @@ internal sealed partial class CampaignWorld
         const string workReason = "Mission site marker forecasts exceed the supported work limit.";
         if (PrepareBeforeHuntingSiteCounters(highest, ref work) is { } reason) return reason;
         work += 2L * _pass.BeforeHuntingSiteCounterForecast!.Count;
-        if (work > MaximumAlienBaseChecks) return workReason;
+        if (work > MaximumWorldWork) return workReason;
         if (!_pass.BeforeHuntingSiteCounterForecast.Any(forecast => forecast.Change.Name == marker && !forecast.Change.Increase))
             return null;
         var target = baseAllocation ? "base" : "site";
@@ -275,7 +275,7 @@ internal sealed partial class CampaignWorld
         {
             if (!SiteExpiresThisTick(site, highest)) continue;
             work += _ufos.Count;
-            if (work > MaximumAlienBaseChecks) return "Mission site UFO follower repair exceeds the supported work limit.";
+            if (work > MaximumWorldWork) return "Mission site UFO follower repair exceeds the supported work limit.";
             foreach (var ufo in _ufos)
                 if (FollowsSite(ufo.Destination, site) && ufo.OriginalWaypoint is null)
                     return SiteUfoFollowerBoundary;
@@ -288,7 +288,7 @@ internal sealed partial class CampaignWorld
         if (highest < CampaignTimeTrigger.ThirtyMinutes || _sites.Count == 0) return null;
         long followers = _ufos.Count + 1L;
         foreach (var owner in campaign.BaseStates) followers += owner.Crafts.Count;
-        return followers * _sites.Count > MaximumAlienBaseChecks
+        return followers * _sites.Count > MaximumWorldWork
             ? "Mission site follower lookups exceed the supported work limit." : null;
     }
 

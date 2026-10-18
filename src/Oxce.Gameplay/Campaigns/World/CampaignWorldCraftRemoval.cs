@@ -41,7 +41,7 @@ internal sealed partial class CampaignWorld : ICampaignCraftRemoval
         if (targets.Count == 0) return null;
         long work = targets.Count + (long)_ufos.Count;
         foreach (var owner in campaign.BaseStates) work += owner.Crafts.Count + (long)owner.Transfers.Count;
-        if (work > MaximumAlienBaseChecks) return "Craft target removal exceeds the supported work limit.";
+        if (work > MaximumWorldWork) return ForecastLimits.CraftTargetRemovalWork;
         var keys = targets.ToHashSet();
         foreach (var owner in campaign.BaseStates)
         {
@@ -52,7 +52,7 @@ internal sealed partial class CampaignWorld : ICampaignCraftRemoval
             foreach (var transfer in owner.Transfers)
                 if (!transfer.Delivered && transfer.Hours <= 1 && transfer.Craft is { Logistics: { Destination: { Kind: WorldTargetKind.Craft } target } state } arriving &&
                     keys.Contains((target.TypeId, target.Id)) && RemovedFollowerReason(owner,
-                        campaign.Content.RuntimeRules.Crafts[campaign.Content.RuntimeRules.Crafts.GetRequired(arriving.RuleId)].Value, state) is { } reason)
+                        campaign.Content.RuntimeRules.Crafts.GetRequiredValue(arriving.RuleId), state) is { } reason)
                     return reason;
         }
         foreach (var ufo in _ufos)
@@ -89,7 +89,7 @@ internal sealed partial class CampaignWorld : ICampaignCraftRemoval
         {
             var sources = crafts[owner.Id];
             work += sources.Count;
-            if (work > MaximumAlienBaseChecks) return "Craft target removal exceeds the supported work limit.";
+            if (work > MaximumWorldWork) return ForecastLimits.CraftTargetRemovalWork;
             for (var index = 0; index < sources.Count; index++)
             {
                 var craft = sources[index];

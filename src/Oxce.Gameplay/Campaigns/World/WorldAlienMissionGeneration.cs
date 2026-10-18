@@ -39,7 +39,7 @@ internal static class WorldAlienMissionGeneration
         foreach (var choice in weights)
         {
             if (choice.Value > (ulong)int.MaxValue - total)
-                throw new InvalidDataException("Alien base mission weights exceed the supported range.");
+                throw new InvalidDataException(ForecastLimits.AlienBaseMissionWeightsRange);
             total += choice.Value;
         }
         return (int)total;

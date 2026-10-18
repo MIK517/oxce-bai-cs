@@ -73,15 +73,15 @@ internal sealed partial class CampaignWorld
         sightRange = 0;
         if (ufo.Status == UfoStatus.IgnoreMe || ufo.TrajectoryPoint <= 1) return false;
         var rules = campaign.Content.RuntimeRules;
-        var trajectory = rules.UfoTrajectories[rules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value;
+        var trajectory = rules.UfoTrajectories.GetRequiredValue(ufo.TrajectoryId);
         if (trajectory.Zone(ufo.TrajectoryPoint) == 5) return false;
         var mission = FindMission(ufo.MissionId) ??
             throw new InvalidDataException("UFO base detection requires a valid mission link.");
-        var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
+        var missionRule = rules.AlienMissions.GetRequiredValue(mission.RuleId);
         if (!campaign.Options.AggressiveRetaliation && missionRule.Objective != RuntimeMissionObjective.Retaliation ||
             ufo.TrajectoryId == RuntimeUfoTrajectoryRule.RetaliationAssaultRun)
             return false;
-        var rule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
+        var rule = rules.Ufos.GetRequiredValue(ufo.RuleId);
         var bonus = rule.RaceBonus(mission.Race);
         var damageMaximum = checked(rule.Stats.DamageMaximum + bonus.DamageMaximum);
         // isCrashed tests damage, not saved status: a healthy terminal-departure UFO

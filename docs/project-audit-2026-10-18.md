@@ -339,3 +339,34 @@ Each item is cheap to adopt now and expensive to retrofit:
    - the session project, the public contract layer and the protocol (M2);
    - per-actor quotes;
    - the server clock with speed arbitration.
+
+## Progress
+
+### Cleanup branch (`claude/audit-cleanup`, step 1)
+
+Behaviour-preserving; no refusal text, limit, save output or oracle changes.
+
+- **E6, documentation drift.** `architecture.md` describes the engine as it is. The implementation plan and the
+  Phase 6 plan record branch 6 as merged. The 28 commit hashes in the documents that the history rewrite
+  removed from `main` now point at the `main` commits with the same subject. One measurement baseline
+  (`c094c28`, performance baselines) is in neither repository and stays as recorded. The examples in E6
+  above keep the old hashes on purpose.
+- **D1.1, work limits.** `ForecastLimits` names the campaign forecasts' work budget (`Work`, which replaces 151
+  literal `1_000_000` budget uses) and the 69 refusal sentences that more than one forecast repeated (300
+  lines). `MaximumAlienBaseChecks` is renamed `MaximumWorldWork`, the world forecasts' shared budget. The
+  production stock forecast names the reason it borrows from UFO retargeting (`StockWorkReason`).
+  - *Deviation:* not a single `WorkBudget` value. A `ref long work` counter passes between the world and the
+    campaign forecasts, and each side compares it with its own limit (100,000,000 or 1,000,000). A single
+    budget object would change which limit applies, so the limits stay where they are and are named instead.
+- **D2, rule lookup.** `RuntimeRuleFamily.GetRequiredValue(id)` replaces 208 `x[x.GetRequired(id)].Value`
+  lookups.
+- **D3, options.** `CampaignOptions.Fields` lists every option once: key, kind, and whether it is a reference
+  user option. Mod-fixed options, the port options node (read and written in the same order) and a reference
+  save's options snapshot all use it.
+- **D4, YAML and validation.** Keyed `ReadString/ReadInt32/ReadInt64/ReadUInt64/ReadDouble/ReadBoolean`
+  extensions on `YamlMappingNode` replace the forwarding wrappers in the save adapter, five rule composers or
+  loaders, mod metadata and the UI assets. Wrappers with their own semantics (`RequiredString`, the linker's
+  helpers that accept any node) stay. `RuleValidationIssue` and `RuleValidation` replace five per-group pairs
+  and the personnel issue type; `PersonnelTacticalValidation` keeps its derived caches.
+- **Not done here:** the shared test scenario builders (D5). They need test-by-test review and belong in a
+  separate change.

@@ -190,12 +190,12 @@ public sealed class ContentBuildSession
 }
 
 public sealed record Phase3ContentValidation(
-    CampaignStartValidation CampaignStart,
-    ItemRuleValidation Items,
-    EquipmentProductionValidation EquipmentProduction,
+    RuleValidation CampaignStart,
+    RuleValidation Items,
+    RuleValidation EquipmentProduction,
     PersonnelTacticalValidation PersonnelTactical,
-    TerrainDeploymentValidation TerrainDeployment,
-    MissionEventValidation MissionEvents,
+    RuleValidation TerrainDeployment,
+    RuleValidation MissionEvents,
     Phase3ContentClosureValidation Closure)
 {
     public bool IsValid => CampaignStart.IsValid && Items.IsValid && EquipmentProduction.IsValid &&

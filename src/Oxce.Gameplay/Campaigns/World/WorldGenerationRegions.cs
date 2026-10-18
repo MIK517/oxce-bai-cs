@@ -21,7 +21,7 @@ internal static class WorldGenerationRegions
         foreach (var (_, rule) in regions)
             foreach (var boundary in rule.Areas)
             {
-                if (++work > 1_000_000) throw new InvalidDataException("New base hunting region forecasts exceed the supported work limit.");
+                if (++work > ForecastLimits.Work) throw new InvalidDataException(ForecastLimits.NewBaseHuntingRegionForecastsWork);
                 scans++;
                 Add(longitudes, boundary.LongitudeMinimum, left, right);
                 Add(longitudes, boundary.LongitudeMaximum, left, right);
@@ -30,8 +30,8 @@ internal static class WorldGenerationRegions
             }
         var xCount = 2L * longitudes.Count - 1;
         var yCount = 2L * latitudes.Count - 1;
-        if (!FitsWork(xCount, yCount, scans, 1_000_000 - work))
-            throw new InvalidDataException("New base hunting region forecasts exceed the supported work limit.");
+        if (!FitsWork(xCount, yCount, scans, ForecastLimits.Work - work))
+            throw new InvalidDataException(ForecastLimits.NewBaseHuntingRegionForecastsWork);
         work += xCount * yCount * scans;
         var xs = Samples(longitudes);
         var ys = Samples(latitudes);

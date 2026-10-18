@@ -79,7 +79,7 @@ public sealed class PersonnelTacticalRuleCatalog
         ArgumentNullException.ThrowIfNull(items);
         ArgumentNullException.ThrowIfNull(equipment);
         diagnostics ??= NullDiagnosticSink.Instance;
-        var issues = new List<PersonnelTacticalValidationIssue>();
+        var issues = new List<RuleValidationIssue>();
         ValidateInventories();
         ValidateArmors();
         ValidateSkills();
@@ -270,7 +270,7 @@ public sealed class PersonnelTacticalRuleCatalog
 
         void Report<T>(TypedRule<T> owner, string property, string? id, string message, string code) where T : notnull
         {
-            issues.Add(new PersonnelTacticalValidationIssue(owner.Id, property, id, message));
+            issues.Add(new RuleValidationIssue(owner.Id, property, id, message));
             diagnostics.Report(new DiagnosticEvent(
                 code,
                 DiagnosticSeverity.Error,
@@ -304,18 +304,13 @@ public sealed class PersonnelTacticalRuleCatalog
     ];
 }
 
-public sealed record PersonnelTacticalValidationIssue(
-    string RuleId,
-    string Property,
-    string? RelatedId,
-    string Message);
 
 public sealed record PersonnelDerivedCaches(
     IReadOnlyList<string> ArmorsForSoldiers,
     IReadOnlyList<string> ArmorStorageItems);
 
 public sealed record PersonnelTacticalValidation(
-    IReadOnlyList<PersonnelTacticalValidationIssue> Issues,
+    IReadOnlyList<RuleValidationIssue> Issues,
     PersonnelDerivedCaches Caches)
 {
     public bool IsValid => Issues.Count == 0;

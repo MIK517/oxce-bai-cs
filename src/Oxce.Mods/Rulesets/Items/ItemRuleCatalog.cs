@@ -39,10 +39,10 @@ public sealed class ItemRuleCatalog
         return new ItemRuleCatalog(new ItemRuleLoader().Load(section!, diagnostics, typedOptions));
     }
 
-    public ItemRuleValidation ValidateInternalRelationships(IDiagnosticSink? diagnostics = null)
+    public RuleValidation ValidateInternalRelationships(IDiagnosticSink? diagnostics = null)
     {
         diagnostics ??= NullDiagnosticSink.Instance;
-        var issues = new List<ItemRuleValidationIssue>();
+        var issues = new List<RuleValidationIssue>();
         foreach (var item in Items.Rules)
         {
             ValidateWeaponAmmo(item);
@@ -64,7 +64,7 @@ public sealed class ItemRuleCatalog
                         "Recovery transformation values cannot be empty.");
             }
         }
-        return new ItemRuleValidation(Array.AsReadOnly(issues.ToArray()));
+        return new RuleValidation(Array.AsReadOnly(issues.ToArray()));
 
         void ValidateWeaponAmmo(TypedRule<ItemRule> item)
         {
@@ -87,7 +87,7 @@ public sealed class ItemRuleCatalog
 
         void ReportMissing(TypedRule<ItemRule> owner, string property, string id)
         {
-            issues.Add(new ItemRuleValidationIssue(owner.Id, property, id, "Referenced item does not exist."));
+            issues.Add(new RuleValidationIssue(owner.Id, property, id, "Referenced item does not exist."));
             diagnostics.Report(new DiagnosticEvent(
                 ModDiagnosticCodes.MissingRuleReference,
                 DiagnosticSeverity.Error,
@@ -98,7 +98,7 @@ public sealed class ItemRuleCatalog
 
         void ReportInvalid(TypedRule<ItemRule> owner, string property, string? id, string message)
         {
-            issues.Add(new ItemRuleValidationIssue(owner.Id, property, id, message));
+            issues.Add(new RuleValidationIssue(owner.Id, property, id, message));
             diagnostics.Report(new DiagnosticEvent(
                 ModDiagnosticCodes.InvalidRuleRelationship,
                 DiagnosticSeverity.Error,
@@ -117,11 +117,4 @@ public sealed class ItemRuleCatalog
 
     private static RuleSectionDefinition RequiredDefinition() =>
         RuleSectionRegistry.TryGetNamed("items", out var section) ? section! : throw new InvalidOperationException();
-}
-
-public sealed record ItemRuleValidationIssue(string RuleId, string Property, string? RelatedId, string Message);
-
-public sealed record ItemRuleValidation(IReadOnlyList<ItemRuleValidationIssue> Issues)
-{
-    public bool IsValid => Issues.Count == 0;
 }

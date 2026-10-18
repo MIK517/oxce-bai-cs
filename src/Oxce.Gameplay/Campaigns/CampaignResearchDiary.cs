@@ -58,30 +58,30 @@ public sealed partial class CampaignState
             long automatic = 0;
             foreach (var entry in _content.RuntimeRules.Research.Rules)
             {
-                if (++work > 1_000_000) return "Research diary forecasts exceed the supported work limit.";
+                if (++work > ForecastLimits.Work) return ForecastLimits.ResearchDiaryForecastsWork;
                 if (entry.Value.Cost == 0) automatic++;
             }
             additions = 0;
             foreach (var owner in _bases)
                 foreach (var project in owner.Research)
                 {
-                    if (++work > 1_000_000) return "Research diary forecasts exceed the supported work limit.";
+                    if (++work > ForecastLimits.Work) return ForecastLimits.ResearchDiaryForecastsWork;
                     if ((long)project.Spent + project.Assigned < project.Cost) continue;
                     var rule = _content.RuntimeRules.Research[project.Rule].Value;
                     var calls = 1 + (rule.Lookup.Length == 0 ? 0 : 1);
                     var bonusCalls = 0;
                     work += rule.GetOneFreeProtected.Count;
-                    if (work > 1_000_000) return "Research diary forecasts exceed the supported work limit.";
+                    if (work > ForecastLimits.Work) return ForecastLimits.ResearchDiaryForecastsWork;
                     foreach (var id in rule.GetOneFree.Concat(rule.GetOneFreeProtected.SelectMany(group => group.Topics)))
                     {
-                        if (++work > 1_000_000) return "Research diary forecasts exceed the supported work limit.";
+                        if (++work > ForecastLimits.Work) return ForecastLimits.ResearchDiaryForecastsWork;
                         if (_content.RuntimeRules.Research.TryGet(id, out var handle))
                             bonusCalls = Math.Max(bonusCalls, 1 + (_content.RuntimeRules.Research[handle].Value.Lookup.Length == 0 ? 0 : 1));
                     }
                     additions += (calls + bonusCalls) * (automatic + (_debugMode ? 0 : 1));
                 }
         }
-        if (work > 1_000_000) return "Research diary forecasts exceed the supported work limit.";
+        if (work > ForecastLimits.Work) return ForecastLimits.ResearchDiaryForecastsWork;
         if (ResearchDiaryCapacityFits(additions)) return null;
         // Entries only accumulate. If the conservative bound cannot fit, the
         // bounded world proof may exclude unreachable automatic/lookup paths.
@@ -90,12 +90,12 @@ public sealed partial class CampaignState
             additions = forecast.DiaryEntries ?? 0;
             foreach (var branch in forecast.DiscoveryAlternatives)
             {
-                if (++work > 1_000_000) return "Research diary forecasts exceed the supported work limit.";
+                if (++work > ForecastLimits.Work) return ForecastLimits.ResearchDiaryForecastsWork;
                 additions = Math.Max(additions, branch.DiaryEntries!.Value);
             }
             if (ResearchDiaryCapacityFits(additions)) return null;
         }
-        return work > 1_000_000 ? "Research diary forecasts exceed the supported work limit." :
+        return work > ForecastLimits.Work ? ForecastLimits.ResearchDiaryForecastsWork :
             "Research diary exceeds its supported population or identity range.";
     }
 

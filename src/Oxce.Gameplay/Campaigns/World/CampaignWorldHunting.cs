@@ -49,7 +49,7 @@ internal sealed partial class CampaignWorld
                 work += 4L * _ufos.Count * _ufos.Count + (long)_ufos.Count * _missions.Count;
                 break;
             }
-        if (work > MaximumAlienBaseChecks)
+        if (work > MaximumWorldWork)
             return "UFO escort movement exceeds the supported work limit.";
         _pass.HuntingForecastWork = work;
         return CanAllocateUfoMarkerIds(_pass.PossibleHuntMarkerIds)
@@ -72,24 +72,24 @@ internal sealed partial class CampaignWorld
         }
         if (!due || !ufo.HunterKiller) return null;
         var rules = campaign.Content.RuntimeRules;
-        var rule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
+        var rule = rules.Ufos.GetRequiredValue(ufo.RuleId);
         work += _missions.Count;
-        if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+        if (work > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
         var mission = missionForecast ?? FindMission(ufo.MissionId);
         if (mission is null) return "UFO mission link requires world simulation.";
         var maximum = (long)rule.Stats.SpeedMaximum + rule.RaceBonus(mission.Race).SpeedMaximum;
         var radar = (long)rule.Stats.RadarRange + rule.RaceBonus(mission.Race).RadarRange;
         if (maximum is < 0 or > int.MaxValue || radar is < int.MinValue or > int.MaxValue)
-            return "UFO hunting stats exceed the supported range.";
+            return ForecastLimits.UfoHuntingStatsRange;
         var crafts = forecastFuel ? _pass.HuntingCandidates : _huntingCandidates;
         var factsCache = forecastFuel ? _pass.HuntingFacts : _huntingFacts;
         crafts.Clear();
         foreach (var owner in campaign.BaseStates)
         {
-            if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+            if (++work > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
             foreach (var craft in forecastFuel ? _pass.HuntingCraftSources![owner.Id] : owner.Crafts)
             {
-                if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                if (++work > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
                 if (craft.Logistics is not { } state) continue;
                 var craftRule = rules.Crafts[craft.Rule].Value;
                 if (forecastFuel) state = _pass.HuntingCraftForecast!.GetValueOrDefault(
@@ -126,7 +126,7 @@ internal sealed partial class CampaignWorld
             if (original?.TypeId != selected.TypeId || original.Id != selected.Id)
             {
                 if (!WorldHunting.TryHunt(projected, selected, (int)maximum, rule.HuntSpeed, out projected))
-                    return "UFO hunt speed exceeds the supported range.";
+                    return ForecastLimits.UfoHuntSpeedRange;
                 projected = projected with { Detected = true };
                 alert = true;
             }
@@ -135,7 +135,7 @@ internal sealed partial class CampaignWorld
         if (ufo.Escort && !projected.Hunting && !projected.Escorting)
         {
             work += _ufos.Count;
-            if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+            if (work > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
             foreach (var target in _ufos)
             {
                 if (target.MissionId != ufo.MissionId || target.HunterKiller) continue;

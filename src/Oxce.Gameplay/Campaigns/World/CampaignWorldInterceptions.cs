@@ -299,7 +299,7 @@ internal sealed partial class CampaignWorld : ICampaignInterceptionQuery
             return existing;
         }
         var rules = campaign.Content.RuntimeRules;
-        var rule = rules.Ufos[rules.Ufos.GetRequired(snapshot.RuleId)].Value;
+        var rule = rules.Ufos.GetRequiredValue(snapshot.RuleId);
         var stats = rule.StatsForRace(FindMission(snapshot.MissionId)?.Race ?? "");
         var ufo = new DogfightUfo
         {
@@ -361,7 +361,7 @@ internal sealed partial class CampaignWorld : ICampaignInterceptionQuery
         {
             long value = rule.DefaultStats.GetValueOrDefault(key);
             foreach (var weapon in state.Weapons)
-                if (weapon is not null) value += rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats.GetValueOrDefault(key);
+                if (weapon is not null) value += rules.CraftWeapons.GetRequiredValue(weapon.RuleId).BonusStats.GetValueOrDefault(key);
             return value;
         }
         int Bounded(string key) => (int)Math.Clamp(Stat(key), int.MinValue, int.MaxValue);
@@ -369,12 +369,12 @@ internal sealed partial class CampaignWorld : ICampaignInterceptionQuery
         for (var slot = 0; slot < weapons.Length; slot++)
         {
             if (state.Weapons[slot] is not { } saved) continue;
-            var weaponRule = rules.CraftWeapons[rules.CraftWeapons.GetRequired(saved.RuleId)].Value;
+            var weaponRule = rules.CraftWeapons.GetRequiredValue(saved.RuleId);
             IDogfightDamageType? unified = null;
             if (weaponRule.UnifiedDamageFormula)
             {
                 var itemId = weaponRule.Clip.Length != 0 ? weaponRule.Clip : weaponRule.Launcher;
-                var damage = rules.Items[rules.Items.GetRequired(itemId)].Value.Damage;
+                var damage = rules.Items.GetRequiredValue(itemId).Damage;
                 unified = new DogfightItemDamage(damage.RandomType, damage.ResistType, rules.Campaign.Interception);
             }
             weapons[slot] = new DogfightWeapon(new DogfightWeaponRule(weaponRule.Damage, weaponRule.ShieldDamageModifier, weaponRule.Range,

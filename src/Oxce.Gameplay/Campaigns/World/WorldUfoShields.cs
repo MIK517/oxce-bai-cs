@@ -12,7 +12,7 @@ public static class WorldUfoShields
     public static int Recharge(int shield, int capacity, int recharge, IRandomSource random)
     {
         ArgumentNullException.ThrowIfNull(random);
-        if (!IsValid(shield, capacity, recharge)) throw new InvalidDataException("UFO shield arithmetic exceeds the supported range.");
+        if (!IsValid(shield, capacity, recharge)) throw new InvalidDataException(ForecastLimits.UfoShieldArithmeticRange);
         if (shield == -1) return capacity;
         if (shield >= capacity) return shield;
         if (recharge == -1) return capacity;

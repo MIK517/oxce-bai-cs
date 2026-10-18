@@ -128,7 +128,7 @@ internal sealed partial class CampaignWorld
             if (!halfHour && !forecast.Hunting) continue;
             var mission = forecast.Mission;
             var rules = campaign.Content.RuntimeRules;
-            var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
+            var missionRule = rules.AlienMissions.GetRequiredValue(mission.RuleId);
             if (IsOver(mission, missionRule) || mission.Interrupted ||
                 mission.MultiUfoRetaliationInProgress && !missionRule.MultiUfoRetaliationExtra ||
                 mission.NextWave >= missionRule.Waves.Count || mission.SpawnCountdown > 30)
@@ -144,7 +144,7 @@ internal sealed partial class CampaignWorld
             if (missionRule.Waves.Any(wave => NewEscortWave(missionRule, wave)))
             {
                 activityWork += _ufos.Count;
-                if (activityWork > MaximumAlienBaseChecks) return "Alien mission activity forecasts exceed the supported work limit.";
+                if (activityWork > MaximumWorldWork) return ForecastLimits.AlienMissionActivityForecastsWork;
                 leaderOrigins = [];
                 if (WorldHunting.EscortLeader(mission.Id, _ufos) is { } leader)
                 {
@@ -157,7 +157,7 @@ internal sealed partial class CampaignWorld
                 if (!CanSpawnOrdinaryUfoWave(step, missionRule)) continue;
                 var wave = SpawnWave(step, missionRule);
                 var trajectory = rules.UfoTrajectories[wave.Trajectory!.Value].Value;
-                var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+                var region = rules.Regions.GetRequiredValue(mission.RegionId);
                 if (!TryOrdinarySpawnPositions(step, missionRule, trajectory, region, out var positions))
                     return "Alien mission wave spawning requires world simulation.";
                 var ordinaryOrigins = positions;
@@ -170,7 +170,7 @@ internal sealed partial class CampaignWorld
                 if (NewEscortWave(missionRule, wave) && leaderOrigins is { Count: > 0 })
                     positions = percentage >= 100 && certainLeader ? leaderOrigins : [.. positions, .. leaderOrigins];
                 activityWork += (long)positions.Count * (regionTotals.Length + countryTotals.Length) * 2;
-                if (activityWork > MaximumAlienBaseChecks) return "Alien mission activity forecasts exceed the supported work limit.";
+                if (activityWork > MaximumWorldWork) return ForecastLimits.AlienMissionActivityForecastsWork;
                 var grounded = trajectory.Altitude(0) == 0;
                 if (!forecast.Hunting)
                 {
@@ -190,7 +190,7 @@ internal sealed partial class CampaignWorld
                 if (!certainLeader && leaderOrigins is not null && percentage < 100)
                 {
                     activityWork += ordinaryOrigins.Count;
-                    if (activityWork > MaximumAlienBaseChecks) return "Alien mission activity forecasts exceed the supported work limit.";
+                    if (activityWork > MaximumWorldWork) return ForecastLimits.AlienMissionActivityForecastsWork;
                     leaderOrigins.AddRange(ordinaryOrigins);
                     certainLeader = percentage <= 0;
                 }
@@ -246,8 +246,8 @@ internal sealed partial class CampaignWorld
             foreach (var site in _sites)
             {
                 var rules = campaign.Content.RuntimeRules;
-                var mission = rules.AlienMissions[rules.AlienMissions.GetRequired(site.MissionRuleId)].Value;
-                var deployment = rules.AlienDeployments[rules.AlienDeployments.GetRequired(site.DeploymentId)].Value;
+                var mission = rules.AlienMissions.GetRequiredValue(site.MissionRuleId);
+                var deployment = rules.AlienDeployments.GetRequiredValue(site.DeploymentId);
                 var transition = WorldSiteTimer.Advance(SiteSecondsAfterDiscovery(site, discoveredSite), SiteHasFollowers(site),
                     mission.DespawnEvenIfTargeted, deployment.Points, deployment.DespawnPenalty);
                 if (CheckActivityScore(site.Position, transition.Score, regionTotals, countryTotals) is { } reason)
@@ -279,7 +279,7 @@ internal sealed partial class CampaignWorld
                     {
                         if ((generatedDirectActivity ??= new()).Begin(mission.AlienBase!, false, regionTotals, countryTotals,
                                 ref activityWork, out regions, out countries,
-                                "Mission site activity forecasts exceed the supported work limit.") is { } choiceReason) return choiceReason;
+                                ForecastLimits.MissionSiteActivityForecastsWork) is { } choiceReason) return choiceReason;
                         directCandidate = true;
                     }
                     if (DirectSiteActivityReason(step, rule, regions, countries, ref activityWork,
@@ -352,10 +352,10 @@ internal sealed partial class CampaignWorld
         ActivityRange[] regionTotals, ActivityRange[] countryTotals, int scoreMultiplier = 1)
     {
         var rules = campaign.Content.RuntimeRules;
-        var ufoRule = rules.Ufos[rules.Ufos.GetRequired(ruleId)].Value;
+        var ufoRule = rules.Ufos.GetRequiredValue(ruleId);
         var score = (long)ufoRule.MissionScore * scoreMultiplier;
         if (score is < int.MinValue or > int.MaxValue)
-            return "UFO alien activity exceeds the supported range.";
+            return ForecastLimits.UfoAlienActivityRange;
         return CheckActivityScore(position, (int)score, regionTotals, countryTotals);
     }
 
@@ -399,7 +399,7 @@ internal sealed partial class CampaignWorld
                 CollectCraftRadars(craftRadars);
             }
             var rules = campaign.Content.RuntimeRules;
-            var ufoRule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
+            var ufoRule = rules.Ufos.GetRequiredValue(ufo.RuleId);
             ScoreUfoActivity(ufo.Position, checked(ufoRule.MissionScore * (ufo.Status == UfoStatus.Landed ? 2 : 1)), rules);
             if (!radarsProjected)
             {
@@ -433,7 +433,7 @@ internal sealed partial class CampaignWorld
             var region = campaign.RegionStates[index];
             if (!WorldGeometry.InsideRegion(rules.Regions[region.Rule].Value, position)) continue;
             if (!regionTotals[index].Add(score, certain))
-                return "UFO alien activity exceeds the supported range.";
+                return ForecastLimits.UfoAlienActivityRange;
             break;
         }
         for (var index = 0; index < campaign.CountryStates.Count; index++)
@@ -441,7 +441,7 @@ internal sealed partial class CampaignWorld
             var country = campaign.CountryStates[index];
             if (!WorldGeometry.InsideCountry(rules.Countries[country.Rule].Value, position)) continue;
             if (!countryTotals[index].Add(score, certain))
-                return "UFO alien activity exceeds the supported range.";
+                return ForecastLimits.UfoAlienActivityRange;
             break;
         }
         return null;
@@ -470,9 +470,9 @@ internal sealed partial class CampaignWorld
         ActivityRange[] regions, ActivityRange[] countries, int multiplier, bool guaranteedAward = true)
     {
         var rules = campaign.Content.RuntimeRules;
-        var rule = rules.Ufos[rules.Ufos.GetRequired(ruleId)].Value;
+        var rule = rules.Ufos.GetRequiredValue(ruleId);
         var score = (long)rule.MissionScore * multiplier;
-        if (score is < int.MinValue or > int.MaxValue) return "UFO alien activity exceeds the supported range.";
+        if (score is < int.MinValue or > int.MaxValue) return ForecastLimits.UfoAlienActivityRange;
         return CheckPossibleActivity(positions, (int)score, regions, countries, guaranteedAward);
     }
 
@@ -502,10 +502,10 @@ internal sealed partial class CampaignWorld
         }
         for (var index = 0; index < regions.Length; index++)
             if (regionHits[index] != 0 && !regions[index].Add(score, guaranteedAward && regionHits[index] == positions.Count))
-                return "UFO alien activity exceeds the supported range.";
+                return ForecastLimits.UfoAlienActivityRange;
         for (var index = 0; index < countries.Length; index++)
             if (countryHits[index] != 0 && !countries[index].Add(score, guaranteedAward && countryHits[index] == positions.Count))
-                return "UFO alien activity exceeds the supported range.";
+                return ForecastLimits.UfoAlienActivityRange;
         return null;
     }
 
@@ -585,7 +585,7 @@ internal sealed partial class CampaignWorld
     private bool IsInstantRetaliation(AlienMissionSnapshot mission)
     {
         var rules = campaign.Content.RuntimeRules.AlienMissions;
-        return rules[rules.GetRequired(mission.RuleId)].Value.Objective ==
+        return rules.GetRequiredValue(mission.RuleId).Objective ==
             RuntimeMissionObjective.InstantRetaliation;
     }
 }

@@ -34,7 +34,7 @@ public sealed partial class CampaignState
         Dictionary<RuleHandle<ItemRuleFamily>, long> added = [];
         AddRecovered(added, recovered);
         return added.Any(pair => pair.Value + owner.Items.GetValueOrDefault(pair.Key) > int.MaxValue)
-            ? "Research refunds exceed the supported stock range." : null;
+            ? ForecastLimits.ResearchRefundsStockRange : null;
     }
 
     private string? PreflightResearchRecovery(ref long work)
@@ -49,11 +49,11 @@ public sealed partial class CampaignState
         var rules = _content.RuntimeRules.Research;
         foreach (var id in possible)
         {
-            if (++work > 1_000_000) return "Research recovery exceeds the supported work limit.";
+            if (++work > ForecastLimits.Work) return ForecastLimits.ResearchRecoveryWork;
             if (!rules.TryGet(id, out var handle)) continue;
             var disables = rules[handle].Value.Disables;
             work += disables.Count;
-            if (work > 1_000_000) return "Research recovery exceeds the supported work limit.";
+            if (work > ForecastLimits.Work) return ForecastLimits.ResearchRecoveryWork;
             disabled.UnionWith(disables);
         }
         foreach (var owner in _bases)
@@ -61,7 +61,7 @@ public sealed partial class CampaignState
             Dictionary<RuleHandle<ItemRuleFamily>, long> added = [];
             foreach (var project in owner.Research)
             {
-                if (++work > 1_000_000) return "Research recovery exceeds the supported work limit.";
+                if (++work > ForecastLimits.Work) return ForecastLimits.ResearchRecoveryWork;
                 var entry = rules[project.Rule];
                 Dictionary<RuleHandle<ItemRuleFamily>, long> maximum = [];
                 if ((long)project.Spent + project.Assigned >= project.Cost)
@@ -75,7 +75,7 @@ public sealed partial class CampaignState
                 foreach (var item in maximum) added[item.Key] = added.GetValueOrDefault(item.Key) + item.Value;
             }
             if (added.Any(pair => pair.Value + owner.Items.GetValueOrDefault(pair.Key) > int.MaxValue))
-                return "Research refunds exceed the supported stock range.";
+                return ForecastLimits.ResearchRefundsStockRange;
         }
         return null;
     }

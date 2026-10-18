@@ -183,7 +183,7 @@ internal sealed partial class CampaignWorld : ICampaignEventScheduling
         {
             var scheduled = WorldEventTiming.Think(_events[index]);
             _events[index] = scheduled;
-            if (scheduled.Over && !IsEventInterrupted(rules[rules.GetRequired(scheduled.RuleId)].Value))
+            if (scheduled.Over && !IsEventInterrupted(rules.GetRequiredValue(scheduled.RuleId)))
                 campaign.RunEventPayload(scheduled.RuleId, effects);
         }
         _events.RemoveAll(static scheduled => scheduled.Over);

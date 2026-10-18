@@ -19,7 +19,7 @@ internal sealed partial class CampaignWorld
     private bool ValidUfoShields(UfoSnapshot ufo, AlienMissionSnapshot mission)
     {
         var rules = campaign.Content.RuntimeRules.Ufos;
-        var rule = rules[rules.GetRequired(ufo.RuleId)].Value;
+        var rule = rules.GetRequiredValue(ufo.RuleId);
         var bonus = rule.RaceBonus(mission.Race);
         var capacity = (long)rule.Stats.ShieldCapacity + bonus.ShieldCapacity;
         var recharge = (long)rule.Stats.ShieldRechargeInGeoscape + bonus.ShieldRechargeInGeoscape;
@@ -30,7 +30,7 @@ internal sealed partial class CampaignWorld
     private UfoSnapshot RechargeUfoShield(UfoSnapshot ufo)
     {
         var rules = campaign.Content.RuntimeRules.Ufos;
-        var rule = rules[rules.GetRequired(ufo.RuleId)].Value;
+        var rule = rules.GetRequiredValue(ufo.RuleId);
         var bonus = rule.RaceBonus(FindMission(ufo.MissionId)!.Race);
         var shield = WorldUfoShields.Recharge(ufo.Shield,
             checked(rule.Stats.ShieldCapacity + bonus.ShieldCapacity),
@@ -56,21 +56,21 @@ internal sealed partial class CampaignWorld
         // Keep this guard live and allocation-free; destroyed UFOs normally survive one tick.
         if (HasDestroyedUfoAfterTransitions(highest))
         {
-            if ((long)_missions.Count * _ufos.Count > MaximumAlienBaseChecks)
-                return "Destroyed UFO cleanup exceeds the supported work limit.";
+            if ((long)_missions.Count * _ufos.Count > MaximumWorldWork)
+                return ForecastLimits.DestroyedUfoCleanupWork;
             var terminal = 0;
             foreach (var target in _ufos)
             {
                 if (!UfoDestroyedAfterTimers(target, highest)) continue;
                 terminal++;
-                if ((long)terminal * _ufos.Count > MaximumAlienBaseChecks)
-                    return "Destroyed UFO follower cleanup exceeds the supported work limit.";
+                if ((long)terminal * _ufos.Count > MaximumWorldWork)
+                    return ForecastLimits.DestroyedUfoFollowerCleanupWork;
                 foreach (var follower in _ufos)
                     if (follower.Escorting && FollowsUfo(follower.Destination, target) &&
                         follower.OriginalWaypoint is not { IsNormalized: true }) return HuntStateReason;
             }
-            if ((long)terminal * _ufos.Count > MaximumAlienBaseChecks)
-                return "Destroyed UFO follower cleanup exceeds the supported work limit.";
+            if ((long)terminal * _ufos.Count > MaximumWorldWork)
+                return ForecastLimits.DestroyedUfoFollowerCleanupWork;
             foreach (var mission in _missions)
             {
                 var destroyed = 0;
@@ -91,7 +91,7 @@ internal sealed partial class CampaignWorld
             if (_ufos[index].Status == UfoStatus.Crashed && ufo.Status == UfoStatus.Destroyed)
             {
                 siteLinkWork += _sites.Count;
-                if (siteLinkWork > MaximumAlienBaseChecks) return "Destroyed UFO cleanup exceeds the supported work limit.";
+                if (siteLinkWork > MaximumWorldWork) return ForecastLimits.DestroyedUfoCleanupWork;
                 foreach (var site in _sites)
                     if (site.UfoUniqueId == ufo.UniqueId)
                         return "Crashed UFO cannot expire while a mission site references it.";
@@ -117,7 +117,7 @@ internal sealed partial class CampaignWorld
             if (campaign.MonthsPassed == -1 && FindMission(ufo.MissionId) is null)
                 return "UFO mission link requires world simulation.";
             if (FindMission(ufo.MissionId) is { } shieldMission && !ValidUfoShields(ufo, shieldMission))
-                return "UFO shield arithmetic exceeds the supported range.";
+                return ForecastLimits.UfoShieldArithmeticRange;
             if (ufo.Speed < 0)
                 return "UFO speed is invalid.";
             if (ufo.Status == UfoStatus.Landed)
@@ -141,7 +141,7 @@ internal sealed partial class CampaignWorld
                 if (ufo.Escorting && TargetUfo(destination) is { } escorted)
                 {
                     siteLinkWork += 2L * _ufos.Count;
-                    if (siteLinkWork > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                    if (siteLinkWork > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
                 }
                 // A hunter-killer reaching its craft starts an interception (branch 5 S4); the craft pass
                 // then neither moves, recharges shields nor arrives this tick. While another hunter-killer
@@ -167,7 +167,7 @@ internal sealed partial class CampaignWorld
                 if (mission.AlienBase is not null)
                 {
                     siteLinkWork += _alienBases.Count;
-                    if (siteLinkWork > MaximumAlienBaseChecks)
+                    if (siteLinkWork > MaximumWorldWork)
                         return "UFO operation-base lookup exceeds the supported work limit.";
                 }
                 if (!mission.Interrupted && ufo.TrajectoryPoint + 1 < trajectory.Waypoints.Count)
@@ -176,9 +176,9 @@ internal sealed partial class CampaignWorld
                     if (rule.Objective == RuntimeMissionObjective.Retaliation && campaign.Options.AggressiveRetaliation &&
                         trajectory.Zone(ufo.TrajectoryPoint + 1) != 5)
                     {
-                        var region = campaign.Content.RuntimeRules.Regions[campaign.Content.RuntimeRules.Regions.GetRequired(mission.RegionId)].Value;
+                        var region = campaign.Content.RuntimeRules.Regions.GetRequiredValue(mission.RegionId);
                         siteLinkWork += (long)campaign.BaseStates.Count * (1L + region.Areas.Count);
-                        if (siteLinkWork > MaximumAlienBaseChecks) return "Aggressive retaliation base selection exceeds the supported work limit.";
+                        if (siteLinkWork > MaximumWorldWork) return "Aggressive retaliation base selection exceeds the supported work limit.";
                     }
                     if (IsBaseAssaultArrival(ufo, trajectory) && !IsSiteConversion(ufo, mission, trajectory))
                     {
@@ -199,7 +199,7 @@ internal sealed partial class CampaignWorld
                     _pass.UfoWaypointLandWork += 2 * OrdinaryWaypointLandWork(mission, rule, wave, trajectory,
                         regionForWaypoint, ufo.TrajectoryPoint + 1);
                     if (_pass.UfoWaypointLandWork > MaximumSpawnLandWork)
-                        return "UFO waypoint land selection exceeds the supported work limit.";
+                        return ForecastLimits.UfoWaypointLandSelectionWork;
                 }
             }
         }
@@ -336,7 +336,7 @@ internal sealed partial class CampaignWorld
             ? 100_000L : _ufos.Count;
         long work = campaign.BaseStates.Count + maximumUfos;
         if (campaign.ProductionPreflight.CraftPopulationBound(highest, ref work, out var crafts) is { } reason) return reason;
-        return work + crafts > MaximumAlienBaseChecks ? "UFO arrival follower checks exceed the supported work limit." : null;
+        return work + crafts > MaximumWorldWork ? "UFO arrival follower checks exceed the supported work limit." : null;
     }
 
     private bool HasEscortFollowers(UfoSnapshot ufo)
@@ -365,7 +365,7 @@ internal sealed partial class CampaignWorld
         if (altitude < 0 || altitude >= WorldAltitudes.All.Count)
             return false;
         var rules = campaign.Content.RuntimeRules;
-        var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
+        var missionRule = rules.AlienMissions.GetRequiredValue(mission.RuleId);
         var waveIndex = MissionWaveIndex(ufo, mission, missionRule);
         if ((uint)waveIndex >= (uint)missionRule.Waves.Count) return false;
         var wave = missionRule.Waves[waveIndex];
@@ -377,11 +377,11 @@ internal sealed partial class CampaignWorld
         var conversion = IsSiteConversion(ufo, mission, trajectory);
         if (altitude == 0 && ufo.TrajectoryId == RuntimeUfoTrajectoryRule.RetaliationAssaultRun && !conversion)
             return false;
-        var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+        var region = rules.Regions.GetRequiredValue(mission.RegionId);
         ValidateWaypointAreas(region, zone);
         if (mission.MissionSiteZoneArea != -1 && wave.Objective && zone == missionRule.SpawnZone)
             _ = SelectedMissionArea(region, zone, mission.MissionSiteZoneArea);
-        var ufoRule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
+        var ufoRule = rules.Ufos.GetRequiredValue(ufo.RuleId);
         if (altitude == 0)
         {
             if (!conversion && LandingAllowed(ufo.Destination!.Position, ufoRule) &&
@@ -400,7 +400,7 @@ internal sealed partial class CampaignWorld
         if (next >= trajectory.Waypoints.Count || trajectory.Altitude(next) != 0 ||
             IsSiteConversion(ufo, mission, trajectory)) return false;
         var rules = campaign.Content.RuntimeRules;
-        var ufoRule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
+        var ufoRule = rules.Ufos.GetRequiredValue(ufo.RuleId);
         return IsCrashed(ufo, ufoRule, ufoRule.StatsForRace(mission.Race).DamageMaximum);
     }
 
@@ -429,8 +429,8 @@ internal sealed partial class CampaignWorld
     {
         var rules = campaign.Content.RuntimeRules;
         var nextWaypoint = ufo.TrajectoryPoint + 1;
-        var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
-        var ufoRule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
+        var region = rules.Regions.GetRequiredValue(mission.RegionId);
+        var ufoRule = rules.Ufos.GetRequiredValue(ufo.RuleId);
         // The pinned ufoReachedWaypoint calls getWaypoint twice: the first result is
         // discarded on the ordinary path, and the second becomes the destination.
         // Preserve both selections, including land retries and their random choices.
@@ -485,7 +485,7 @@ internal sealed partial class CampaignWorld
         int point, RuntimeRegionRule region, RuntimeUfoRule ufoRule, RuntimeMissionWave wave)
     {
         var rules = campaign.Content.RuntimeRules;
-        var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
+        var missionRule = rules.AlienMissions.GetRequiredValue(mission.RuleId);
         // getWaypoint validates the zone before choosing the final operation-base destination.
         var areas = WorldGeometry.MissionAreas(region, trajectory.Zone(point));
         if (mission.MissionSiteZoneArea != -1 && wave.Objective && trajectory.Zone(point) == missionRule.SpawnZone)
@@ -516,7 +516,7 @@ internal sealed partial class CampaignWorld
             UfoDestinationDistance(ufo) > WorldGeometry.RadianSpeed(ufo.Speed))
             return false;
         var rules = campaign.Content.RuntimeRules;
-        var trajectory = rules.UfoTrajectories[rules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value;
+        var trajectory = rules.UfoTrajectories.GetRequiredValue(ufo.TrajectoryId);
         var next = ufo.TrajectoryPoint + 1;
         var mission = ForecastMission(ufo.MissionId, highest);
         if (IsSiteConversion(ufo, mission, trajectory)) return false;
@@ -551,7 +551,7 @@ internal sealed partial class CampaignWorld
     {
         speed = 0;
         var rules = campaign.Content.RuntimeRules;
-        var rule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
+        var rule = rules.Ufos.GetRequiredValue(ufo.RuleId);
         if (!rules.UfoTrajectories.TryGet(ufo.TrajectoryId, out var trajectoryId)) return false;
         var trajectory = rules.UfoTrajectories[trajectoryId].Value;
         if ((uint)ufo.TrajectoryPoint >= (uint)trajectory.Waypoints.Count) return false;
@@ -570,7 +570,7 @@ internal sealed partial class CampaignWorld
         var mission = FindMission(ufo.MissionId);
         if (mission is null || !TryUfoLiftSpeed(ufo, mission, out var speed)) return false;
         var rules = campaign.Content.RuntimeRules;
-        var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
+        var missionRule = rules.AlienMissions.GetRequiredValue(mission.RuleId);
         (lifted, score) = WorldUfoLift.Advance(ufo, speed, missionRule.Points, missionRule.Objective, fromSite);
         return true;
     }
@@ -584,7 +584,7 @@ internal sealed partial class CampaignWorld
             if (campaign.ProductionPreflight.CraftPopulationBound(highest, ref work, out var crafts) is { } reason) return reason;
             work += crafts + campaign.BaseStates.Count;
         }
-        return work > MaximumAlienBaseChecks ? "UFO takeoff target lookup exceeds the supported work limit." : null;
+        return work > MaximumWorldWork ? "UFO takeoff target lookup exceeds the supported work limit." : null;
     }
 
     private UfoSnapshot LiftUfo(UfoSnapshot ufo, bool fromSite = false)

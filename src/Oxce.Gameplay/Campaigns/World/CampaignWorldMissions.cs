@@ -63,7 +63,7 @@ internal sealed partial class CampaignWorld
                 if (step.AlienBase is not null)
                 {
                     sourceBaseWork += _alienBases.Count;
-                    if (sourceBaseWork > MaximumAlienBaseChecks) return "Alien mission source base lookups exceed the supported work limit.";
+                    if (sourceBaseWork > MaximumWorldWork) return "Alien mission source base lookups exceed the supported work limit.";
                 }
                 if (CompletesInfiltration(step, rule, rule.Waves[step.NextWave]))
                 {
@@ -113,21 +113,21 @@ internal sealed partial class CampaignWorld
                 if (NewEscortWave(rule, SpawnWave(step, rule)))
                 {
                     escortSelectionWork += _ufos.Count;
-                    if (escortSelectionWork > MaximumAlienBaseChecks)
-                        return "New UFO escort selection exceeds the supported work limit.";
+                    if (escortSelectionWork > MaximumWorldWork)
+                        return ForecastLimits.NewUfoEscortSelectionWork;
                 }
                 if (NewEscortSpawnReason(step, rule) is { } escortReason) return escortReason;
                 if (CanSpawnOrdinaryUfoWave(step, rule))
                 {
                     var trajectory = campaign.Content.RuntimeRules.UfoTrajectories[SpawnWave(step, rule).Trajectory!.Value].Value;
-                    var region = campaign.Content.RuntimeRules.Regions[campaign.Content.RuntimeRules.Regions.GetRequired(step.RegionId)].Value;
+                    var region = campaign.Content.RuntimeRules.Regions.GetRequiredValue(step.RegionId);
                     landWork += SpawnOriginLandWork(step, rule, trajectory, region);
                     landWork += SpawnDestinationLandWork(step, rule, trajectory, region);
-                    if (landWork > MaximumSpawnLandWork) return "Alien mission land selection exceeds the supported work limit.";
+                    if (landWork > MaximumSpawnLandWork) return ForecastLimits.AlienMissionLandSelectionWork;
                     TryOrdinarySpawnPositions(step, rule, trajectory, region, out var origins);
                     TryOrdinarySpawnDestinations(step, rule, trajectory, region, out var destinations);
                     geometryWork += (long)origins.Count * destinations.Count;
-                    if (geometryWork > MaximumAlienBaseChecks) return "Alien mission spawn geometry exceeds the supported work limit.";
+                    if (geometryWork > MaximumWorldWork) return ForecastLimits.AlienMissionSpawnGeometryWork;
                     if (trajectory.Altitude(0) != 0 && FirstWaypointReachable(origins, destinations, trajectory.Speed(0,
                             campaign.Content.RuntimeRules.Ufos[SpawnWave(step, rule).Ufo!.Value].Value.StatsForRace(step.Race).SpeedMaximum)))
                     {
@@ -135,10 +135,10 @@ internal sealed partial class CampaignWorld
                         // any land retries independently from waypoint lookup work.
                         geometryWork += 2L * (WorldGeometry.MissionAreas(region, trajectory.Zone(1)).Count + _alienBases.Count + 1);
                         landWork += NewbornReplacementLandWork(step, rule, trajectory, region);
-                        if (landWork > MaximumSpawnLandWork) return "Alien mission land selection exceeds the supported work limit.";
+                        if (landWork > MaximumSpawnLandWork) return ForecastLimits.AlienMissionLandSelectionWork;
                         if (trajectory.Altitude(1) == 0)
                             geometryWork += NewbornLandingGeometryWork(destinations);
-                        if (geometryWork > MaximumAlienBaseChecks) return "Alien mission spawn geometry exceeds the supported work limit.";
+                        if (geometryWork > MaximumWorldWork) return ForecastLimits.AlienMissionSpawnGeometryWork;
                     }
                     if (forecast.Generated) missionUfoSpawns++;
                     else ufoSpawns++;
@@ -204,9 +204,9 @@ internal sealed partial class CampaignWorld
         }
         var finalUfoCount = (long)_ufos.Count + ufoSpawns;
         var escortWork = 2L * newEscorts * finalUfoCount + (long)savedIdleEscorts * ufoSpawns;
-        if (_pass.HuntingForecastWork + escortWork + newbornFollowerWork > MaximumAlienBaseChecks)
-            return "New UFO escort selection exceeds the supported work limit.";
-        if (2L * (savedMovingEscorts + newEscorts) * finalUfoCount > MaximumAlienBaseChecks)
+        if (_pass.HuntingForecastWork + escortWork + newbornFollowerWork > MaximumWorldWork)
+            return ForecastLimits.NewUfoEscortSelectionWork;
+        if (2L * (savedMovingEscorts + newEscorts) * finalUfoCount > MaximumWorldWork)
             return "New UFO escort movement exceeds the supported work limit.";
         _pass.EscortMissionLookupActors = savedMovingEscorts + newEscorts != 0 ? finalUfoCount : 0;
         _pass.NewFlyingHunterBirths = newFlyingHunters;
@@ -216,8 +216,8 @@ internal sealed partial class CampaignWorld
             var terminal = 0;
             foreach (var ufo in _ufos)
                 if (UfoDestroyedAfterTimers(ufo, highest)) terminal++;
-            if ((_missions.Count + (long)(_pass.GeneratedWaveMissions?.Count ?? 0)) * finalUfoCount > MaximumAlienBaseChecks ||
-                (long)terminal * finalUfoCount > MaximumAlienBaseChecks)
+            if ((_missions.Count + (long)(_pass.GeneratedWaveMissions?.Count ?? 0)) * finalUfoCount > MaximumWorldWork ||
+                (long)terminal * finalUfoCount > MaximumWorldWork)
                 return "Destroyed UFO cleanup with new waves exceeds the supported work limit.";
         }
         if (newFlyingHunters != 0)
@@ -226,7 +226,7 @@ internal sealed partial class CampaignWorld
             if (campaign.ProductionPreflight.CraftPopulationBound(highest, ref retargetWork, out var possibleCrafts) is { } populationReason)
                 return populationReason;
             _pass.HuntingRetargetWorkBound = retargetWork + (possibleCrafts + campaign.BaseStates.Count + (long)_missions.Count) * newFlyingHunters;
-            if (_pass.HuntingRetargetWorkBound > MaximumAlienBaseChecks)
+            if (_pass.HuntingRetargetWorkBound > MaximumWorldWork)
                 return "New UFO retargeting exceeds the supported work limit.";
         }
         if ((long)_ufos.Count + ufoSpawns > 100_000) return "World UFO population exceeds the supported limit.";
@@ -238,7 +238,7 @@ internal sealed partial class CampaignWorld
         // Check both existing completion and completion forecast within this tick.
         // Saved live counts alone cannot prove that deleting the mission is safe.
         work += _ufos.Count + (long)campaign.BaseStates.Count;
-        if (work > MaximumAlienBaseChecks) return "Retaliation mission cleanup exceeds the supported work limit.";
+        if (work > MaximumWorldWork) return "Retaliation mission cleanup exceeds the supported work limit.";
         foreach (var ufo in _ufos)
             if (ufo.MissionId == mission.Id) return "Alien mission cannot expire while UFOs still reference it.";
         return rule.Objective != RuntimeMissionObjective.Retaliation &&
@@ -307,12 +307,12 @@ internal sealed partial class CampaignWorld
         { AlienBase = new(WorldTargetKind.AlienBase, deployment.MarkerName, source.Id, source.Longitude, source.Latitude) };
         foreach (var step in DueWaveSteps(candidate, rule))
         {
-            if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+            if (++work > MaximumWorldWork) return AlienBaseWorkReason;
             if (rule.Objective is RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation)
             {
-                var region = campaign.Content.RuntimeRules.Regions[campaign.Content.RuntimeRules.Regions.GetRequired(step.RegionId)].Value;
+                var region = campaign.Content.RuntimeRules.Regions.GetRequiredValue(step.RegionId);
                 work += 8L * campaign.BaseStates.Count * (region.Areas.Count + 1L);
-                if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                if (work > MaximumWorldWork) return AlienBaseWorkReason;
             }
             if (CompletesBaseObjective(step, rule, rule.Waves[step.NextWave]) ||
                 CompletesInfiltration(step, rule, rule.Waves[step.NextWave]) || !CanAdvanceNoObjectWave(step, rule)) return boundary;
@@ -410,7 +410,7 @@ internal sealed partial class CampaignWorld
         // The half-hour UFO handler scores and detects this ship after spawning.
         if (!WorldUfoShields.IsValid(-1, stats.ShieldCapacity, stats.ShieldRechargeInGeoscape) || speed < 0)
             return false;
-        var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+        var region = rules.Regions.GetRequiredValue(mission.RegionId);
         if (!TryOrdinarySpawnPositions(mission, rule, trajectory, region, out var positions) ||
             !TryOrdinarySpawnDestinations(mission, rule, trajectory, region, out var destinations))
             return false;
@@ -481,7 +481,7 @@ internal sealed partial class CampaignWorld
         if (trajectory.Altitude(1) == 0)
         {
             var ufoRule = campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value;
-            if (NewbornLandingGeometryWork(destinations) > MaximumAlienBaseChecks ||
+            if (NewbornLandingGeometryWork(destinations) > MaximumWorldWork ||
                 ufoRule.StatsForRace(mission.Race).DamageMaximum <= 0 ||
                 wave.TrajectoryId == RuntimeUfoTrajectoryRule.RetaliationAssaultRun ||
                 mission.MissionSiteZoneArea != -1 && wave.Objective && trajectory.Zone(0) == rule.SpawnZone) return false;
@@ -578,7 +578,7 @@ internal sealed partial class CampaignWorld
         var ufoRule = campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value;
         var path = campaign.Content.RuntimeRules.UfoTrajectories[trajectory].Value;
         var maximum = (long)ufoRule.Stats.SpeedMaximum + ufoRule.RaceBonus(mission.Race).SpeedMaximum;
-        if (maximum is < 0 or > int.MaxValue) return "UFO escort speed exceeds the supported range.";
+        if (maximum is < 0 or > int.MaxValue) return ForecastLimits.UfoEscortSpeedRange;
         if (requireHuntingForecast && path.Waypoints.Count != 0 && path.Altitude(0) != 0 && !NewbornHuntingIsForecast(mission, wave))
             return "New UFO escorts require craft retarget forecasts.";
         return null;
@@ -594,7 +594,7 @@ internal sealed partial class CampaignWorld
         foreach (var owner in campaign.BaseStates)
         {
             work += owner.Crafts.Count + (long)owner.Transfers.Count;
-            if (work > MaximumAlienBaseChecks) return false;
+            if (work > MaximumWorldWork) return false;
             foreach (var craft in owner.Crafts)
                 if (!campaign.Content.RuntimeRules.Crafts[craft.Rule].Value.Undetectable &&
                     craft.Logistics is { } state &&
@@ -806,7 +806,7 @@ internal sealed partial class CampaignWorld
     private UfoSnapshot SpawnOrdinaryUfo(AlienMissionSnapshot mission, RuntimeMissionWave wave)
     {
         var rules = campaign.Content.RuntimeRules;
-        var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
+        var missionRule = rules.AlienMissions.GetRequiredValue(mission.RuleId);
         var assault = HasRetaliationTarget(mission, missionRule);
         var original = wave;
         CampaignState.BaseState? target = null;
@@ -818,7 +818,7 @@ internal sealed partial class CampaignWorld
         }
         var ufoRule = rules.Ufos[wave.Ufo!.Value].Value;
         var trajectory = rules.UfoTrajectories[wave.Trajectory!.Value].Value;
-        var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+        var region = rules.Regions.GetRequiredValue(mission.RegionId);
         var source = missionRule.OperationType == RuntimeMissionOperationType.Space ? null : MissionSourceBase(mission);
         var hunter = assault || missionRule.Objective == RuntimeMissionObjective.Supply && wave.Objective
             ? (HunterKiller: false, Mode: 0, Behavior: 0)

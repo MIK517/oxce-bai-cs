@@ -16,10 +16,10 @@ public static partial class OxceSaveAdapter
             if (index >= CampaignState.MaximumResearchDiaryEntries)
                 throw new InvalidDataException("Research diary exceeds the supported population limit.");
             var slot = index++;
-            var id = String(map, "name", string.Empty);
+            var id = map.ReadString("name", string.Empty);
             // SavedGame::load skips removed topics before loading their diary data.
             if (!content.RuntimeRules.Research.TryGet(id, out _)) continue;
-            var key = String(map, "oxcePortEntityKey", $"research-diary:legacy:{slot}");
+            var key = map.ReadString("oxcePortEntityKey", $"research-diary:legacy:{slot}");
             if (!map.TryGet("date", out var dateNode) || dateNode is not YamlSequenceNode date || date.Items.Count < 3)
                 throw new InvalidDataException("Research diary date requires three unsigned values.");
             if (!map.TryGet("sourceType", out var sourceNode))
@@ -27,7 +27,7 @@ public static partial class OxceSaveAdapter
             var source = YamlValueReader.ReadUInt64(sourceNode!);
             if (source > byte.MaxValue) throw new InvalidDataException("Research diary source type exceeds its byte range.");
             result.Add(new(id, DiaryDate(date.Items[0]), DiaryDate(date.Items[1]), DiaryDate(date.Items[2]),
-                (byte)source, String(map, "sourceName", string.Empty))
+                (byte)source, map.ReadString("sourceName", string.Empty))
             { PreservationKey = key });
         }
         return Array.AsReadOnly(result.ToArray());
@@ -62,9 +62,9 @@ public static partial class OxceSaveAdapter
                 if (index >= CampaignState.MaximumResearchDiaryEntries)
                     throw new InvalidDataException("Research diary exceeds the supported population limit.");
                 var slot = index++;
-                var id = String(map, "name", string.Empty);
+                var id = map.ReadString("name", string.Empty);
                 if (!currentRuleIds.Contains(id)) continue;
-                var key = String(map, "oxcePortEntityKey", $"research-diary:legacy:{slot}");
+                var key = map.ReadString("oxcePortEntityKey", $"research-diary:legacy:{slot}");
                 if (!currentRules.TryGetValue(key, out var currentId) || id != currentId) continue;
                 if (key.Length != 0 && !sources.TryAdd(key, map))
                     throw new InvalidDataException("Duplicate research diary preservation keys.");
@@ -72,7 +72,7 @@ public static partial class OxceSaveAdapter
         return Sequence(diary.Select(entry =>
         {
             var source = entry.PreservationKey.Length != 0 && sources.TryGetValue(entry.PreservationKey, out var candidate) &&
-                String(candidate, "name", string.Empty) == entry.RuleId ? candidate : null;
+                candidate.ReadString("name", string.Empty) == entry.RuleId ? candidate : null;
             return Overlay(source,
             [
                 Pair("name", Scalar(entry.RuleId)),

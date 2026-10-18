@@ -117,7 +117,7 @@ internal sealed partial class CampaignWorld
                 break;
             case "Ufo.getRules":
             case "Ufo.getRuleUfo":
-                args[1] = ScriptRuntimeValue.FromReference(ufo is null ? null : rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value);
+                args[1] = ScriptRuntimeValue.FromReference(ufo is null ? null : rules.Ufos.GetRequiredValue(ufo.RuleId));
                 break;
             case "Craft.getRuleCraft":
                 args[1] = ScriptRuntimeValue.FromReference(craft is null ? null : rules.Crafts[craft.Rule].Value);
@@ -153,7 +153,7 @@ internal sealed partial class CampaignWorld
             case "RuleMod.getRuleInventoryBelt":
             case "RuleMod.getRuleInventoryGround":
                 args[1] = ScriptRuntimeValue.FromReference(receiver is null ? null :
-                    rules.Inventories[rules.Inventories.GetRequired(DetectionInventoryRole(name)!)].Value);
+                    rules.Inventories.GetRequiredValue(DetectionInventoryRole(name)!));
                 break;
             case "RuleMod.getRuleInventory":
                 args[1] = ScriptRuntimeValue.FromReference(receiver is null ? null : DetectionRule(rules.Inventories, args[2].Text));
@@ -175,13 +175,13 @@ internal sealed partial class CampaignWorld
                 args[1] = ScriptRuntimeValue.FromReference(receiver is null ? null : DetectionRule(rules.Skills, args[2].Text));
                 break;
             case "RuleResearch.getNeededItem":
-                var researchRule = receiver is string neededTopic ? rules.Research[rules.Research.GetRequired(neededTopic)].Value : null;
+                var researchRule = receiver is string neededTopic ? rules.Research.GetRequiredValue(neededTopic) : null;
                 args[1] = ScriptRuntimeValue.FromReference(researchRule is { NeedItem: true } && researchRule.NeededItem != "STR_NONE"
                     ? DetectionRule(rules.Items, researchRule.NeededItem) : null);
                 break;
             case "RuleResearch.getLookup":
                 args[1] = ScriptRuntimeValue.FromReference(receiver is string researchId
-                    ? DetectionResearchRule(rules.Research[rules.Research.GetRequired(researchId)].Value.Lookup) : null);
+                    ? DetectionResearchRule(rules.Research.GetRequiredValue(researchId).Lookup) : null);
                 break;
             case "GeoscapeGame.isResearched":
                 args[1] = ScriptRuntimeValue.FromScalar(receiver is not null && args[2].Reference is string research &&
@@ -250,7 +250,7 @@ internal sealed partial class CampaignWorld
             case "Ufo.getHuntBehavior": return ufo.HuntBehavior;
         }
         var rules = campaign.Content.RuntimeRules;
-        var rule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
+        var rule = rules.Ufos.GetRequiredValue(ufo.RuleId);
         if (name == "Ufo.getVisibility") return WorldAltitudes.Visibility(rule.DefaultVisibility, ufo.Altitude);
         var capacity = _detectionShieldCapacity;
         return name switch
@@ -291,7 +291,7 @@ internal sealed partial class CampaignWorld
         var rules = campaign.Content.RuntimeRules;
         for (var index = 0; index < state.Weapons.Count; index++)
             if (state.Weapons[index] is { } weapon)
-                value += rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats.GetValueOrDefault(key);
+                value += rules.CraftWeapons.GetRequiredValue(weapon.RuleId).BonusStats.GetValueOrDefault(key);
         return value;
     }
 

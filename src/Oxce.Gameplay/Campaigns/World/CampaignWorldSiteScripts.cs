@@ -29,11 +29,11 @@ internal sealed partial class CampaignWorld
         RuntimeMissionScriptRule script, int month, string missionId, bool targetBase)
     {
         var rules = campaign.Content.RuntimeRules;
-        var mission = rules.AlienMissions[rules.AlienMissions.GetRequired(missionId)].Value;
+        var mission = rules.AlienMissions.GetRequiredValue(missionId);
         var regions = new List<WorldSiteScriptRegion>();
         foreach (var regionId in SiteScriptRegionIds(script, month))
         {
-            var region = rules.Regions[rules.Regions.GetRequired(regionId)].Value;
+            var region = rules.Regions.GetRequiredValue(regionId);
             if (targetBase && !campaign.BaseStates.Any(owner =>
                     LocateGenerationRegion(new(owner.Longitude, owner.Latitude)) == regionId)) continue;
             regions.Add(new(regionId, region.MissionZones,
@@ -106,7 +106,7 @@ internal sealed partial class CampaignWorld
             if (mission.SpawnZone < 0) return "Cannot spawn mission site, invalid spawn zone.";
             foreach (var regionId in regionIds)
             {
-                var region = rules.Regions[rules.Regions.GetRequired(regionId)].Value;
+                var region = rules.Regions.GetRequiredValue(regionId);
                 // Bound preflight plus runtime scans and every possible repeat lookup.
                 work += 3L * (1L + _missions.Count + batchSize + campaign.BaseStates.Count * baseRegionWork);
                 if (mission.SpawnZone < region.MissionZones.Count)

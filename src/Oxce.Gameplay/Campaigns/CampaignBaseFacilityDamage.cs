@@ -136,7 +136,7 @@ public sealed partial class CampaignState
                     return true;
                 });
                 DeleteIf(owner.Transfers, remove, transfer => !transfer.Delivered && transfer.Kind == CampaignTransferKind.Craft &&
-                    transfer.Craft is { } incoming && rules.Crafts[rules.Crafts.GetRequired(incoming.RuleId)].Value.HangarType == rule.HangarType);
+                    transfer.Craft is { } incoming && rules.Crafts.GetRequiredValue(incoming.RuleId).HangarType == rule.HangarType);
             }
         }
         if (rule.PsiLaboratories > 0)

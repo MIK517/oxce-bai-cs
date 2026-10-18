@@ -24,7 +24,7 @@ internal sealed partial class CampaignWorld
             _pass.BaseHuntingCraftPopulationBound = population;
         }
         work += campaign.BaseStates.Count + _pass.BaseHuntingCraftPopulationBound.Value;
-        return work > MaximumAlienBaseChecks ? boundary : null;
+        return work > MaximumWorldWork ? boundary : null;
     }
 
     private string? AlienBaseHuntingReason(AlienBaseSnapshot alienBase, RuntimeAlienDeploymentRule deployment, CampaignTimeTrigger highest, ref long work, out bool canGenerate)
@@ -38,7 +38,7 @@ internal sealed partial class CampaignWorld
         foreach (var owner in campaign.BaseStates)
         {
             work += owner.Crafts.Count;
-            if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+            if (work > MaximumWorldWork) return AlienBaseWorkReason;
             foreach (var craft in owner.Crafts)
             {
                 if (craft.Logistics is not { } state) continue;
@@ -86,7 +86,7 @@ internal sealed partial class CampaignWorld
             if (highest >= CampaignTimeTrigger.OneHour)
             {
                 work += owner.Transfers.Count;
-                if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                if (work > MaximumWorldWork) return AlienBaseWorkReason;
                 foreach (var transfer in owner.Transfers)
                 {
                     if (transfer.Delivered || transfer.Hours > 1 || transfer.Craft?.Logistics is not { IsAutoPatrolling: true }) continue;
@@ -117,7 +117,7 @@ internal sealed partial class CampaignWorld
         {
             var choices = WorldAlienBaseHunting.Weights(deployment.HuntMissions, unchecked((ulong)campaign.MonthsPassed));
             work += choices.Count;
-            if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+            if (work > MaximumWorldWork) return AlienBaseWorkReason;
             _ = WorldAlienMissionGeneration.Total(choices);
             foreach (var choice in choices)
             {
@@ -192,7 +192,7 @@ internal sealed partial class CampaignWorld
         if (mayCollect)
         {
             work += mission.Waves.Count;
-            if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+            if (work > MaximumWorldWork) return AlienBaseWorkReason;
         }
         var collect = mayCollect && HasGeneratedCreationWave(mission);
         if (steps / 2 <= 1 && !collect && _pass.HuntingGeneratedWaveProofs?.Contains(proofKey) != true &&
@@ -203,17 +203,17 @@ internal sealed partial class CampaignWorld
             var weights = WorldAlienMissionGeneration.WeightsAt(mission.RaceWeights,
                 unchecked((ulong)campaign.MonthsPassed), race: true);
             work += weights.Count;
-            if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+            if (work > MaximumWorldWork) return AlienBaseWorkReason;
             _ = WorldAlienMissionGeneration.Total(weights);
         }
         work += campaign.RegionStates.Count + (long)_alienBases.Count;
-        if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+        if (work > MaximumWorldWork) return AlienBaseWorkReason;
         if (!newborn && _alienBases.Count(other => other.Id == source.Id && MarkerName(other.DeploymentId) == MarkerName(source.DeploymentId)) != 1)
             return "Alien base hunting source identity is ambiguous.";
         if ((sourceRegion ?? LocateGenerationRegion(source.Position)) is not { } regionName)
             return "Alien base hunting cannot locate its source region.";
         var regions = campaign.Content.RuntimeRules.Regions;
-        var region = regions[regions.GetRequired(regionName)].Value;
+        var region = regions.GetRequiredValue(regionName);
         if (region.MissionRegionId.Length != 0)
         {
             if (region.MissionRegion is not { } remap) return "Alien base hunting references an undefined fallback region.";
@@ -246,17 +246,17 @@ internal sealed partial class CampaignWorld
         foreach (var owner in campaign.BaseStates)
         {
             work += region.Areas.Count + 1L;
-            if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+            if (work > MaximumWorldWork) return AlienBaseWorkReason;
             if (owner.RetaliationTarget || !WorldGeometry.InsideRegion(region, new(owner.Longitude, owner.Latitude))) continue;
             foreach (var saved in _ufos)
             {
                 work += _sites.Count + (long)_missions.Count + _alienBases.Count + 1;
-                if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                if (work > MaximumWorldWork) return AlienBaseWorkReason;
                 var scanner = UfoAfterTimedTransitions(saved, highest);
                 if (!UfoCanScanBases(scanner, out var range) ||
                     WorldGeometry.Distance(new(owner.Longitude, owner.Latitude), scanner.Position) >= WorldGeometry.Nautical(range)) continue;
                 work += owner.Facilities.Count;
-                if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                if (work > MaximumWorldWork) return AlienBaseWorkReason;
                 if (!TryBaseDetectionChance(owner, highest, out var chance)) return "Base detection inputs are outside the supported range.";
                 if (chance > 0) return "Immediate hunting retaliation requires base-discovery forecasts.";
             }
@@ -267,9 +267,9 @@ internal sealed partial class CampaignWorld
     private void GenerateHuntingMission(AlienBaseSnapshot source, RuntimeAlienDeploymentRule deployment, string missionName)
     {
         var rules = campaign.Content.RuntimeRules;
-        var rule = rules.AlienMissions[rules.AlienMissions.GetRequired(missionName)].Value;
+        var rule = rules.AlienMissions.GetRequiredValue(missionName);
         var regionId = LocateGenerationRegion(source.Position)!;
-        var region = rules.Regions[rules.Regions.GetRequired(regionId)].Value;
+        var region = rules.Regions.GetRequiredValue(regionId);
         if (region.MissionRegionId.Length != 0) regionId = region.MissionRegionId;
         var id = campaign.NextId("ALIEN_MISSIONS");
         var race = !deployment.HuntMissionRaceFromAlienBase && rule.HasRaceWeights
@@ -278,7 +278,7 @@ internal sealed partial class CampaignWorld
         var area = -1;
         if (rule.Objective == RuntimeMissionObjective.Site)
         {
-            var areas = rules.Regions[rules.Regions.GetRequired(regionId)].Value.MissionZones[rule.SpawnZone].Areas;
+            var areas = rules.Regions.GetRequiredValue(regionId).MissionZones[rule.SpawnZone].Areas;
             if (areas.Count != 0) area = campaign.Random.NextInclusive(0, areas.Count - 1);
         }
         var countdown = WorldTrajectory.SpawnCountdown(checked((int)rule.Waves[0].SpawnTimer), campaign.Random);

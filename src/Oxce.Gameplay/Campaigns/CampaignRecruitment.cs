@@ -50,9 +50,9 @@ public sealed partial class CampaignState
 
     private int MonthlyLimit(LogisticsRow row) => row.Kind switch
     {
-        CampaignTransferKind.Soldier => _content.RuntimeRules.Soldiers[_content.RuntimeRules.Soldiers.GetRequired(row.RuleId)].Value.Purchase.MonthlyLimit,
-        CampaignTransferKind.Item => _content.RuntimeRules.Items[_content.RuntimeRules.Items.GetRequired(row.RuleId)].Value.Purchase.MonthlyLimit,
-        CampaignTransferKind.Craft => _content.RuntimeRules.Crafts[_content.RuntimeRules.Crafts.GetRequired(row.RuleId)].Value.Purchase.MonthlyLimit,
+        CampaignTransferKind.Soldier => _content.RuntimeRules.Soldiers.GetRequiredValue(row.RuleId).Purchase.MonthlyLimit,
+        CampaignTransferKind.Item => _content.RuntimeRules.Items.GetRequiredValue(row.RuleId).Purchase.MonthlyLimit,
+        CampaignTransferKind.Craft => _content.RuntimeRules.Crafts.GetRequiredValue(row.RuleId).Purchase.MonthlyLimit,
         _ => 0,
     };
 

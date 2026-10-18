@@ -96,10 +96,10 @@ internal static class TerrainSpecialRulesComposer
         if (map.TryGet("randomTerrain", out var random)) terrain = TerrainDeploymentYaml.Strings(random!, "randomTerrain");
         return new(type, ReadRectangles(map), ReadInts(map, "craftGroups", []), ReadInts(map, "conditionals", []), size.AsReadOnly(),
             groups.AsReadOnly(), blocks.AsReadOnly(), frequencies.AsReadOnly(), maximumUses.AsReadOnly(), direction,
-            ReadInt(map, "verticalGroup", 1), ReadInt(map, "horizontalGroup", 2), ReadInt(map, "crossingGroup", 3),
-            ReadBool(map, "canBeSkipped", true), ReadBool(map, "markAsReinforcementsBlock", false),
-            ReadInt(map, "executionChances", 100), ReadInt(map, "executions", 1), ReadString(map, "UFOName", ""),
-            ReadString(map, "craftName", ""), terrain.AsReadOnly(), Math.Abs(ReadInt(map, "label", 0)),
+            map.ReadInt32("verticalGroup", 1), map.ReadInt32("horizontalGroup", 2), map.ReadInt32("crossingGroup", 3),
+            map.ReadBoolean("canBeSkipped", true), map.ReadBoolean("markAsReinforcementsBlock", false),
+            map.ReadInt32("executionChances", 100), map.ReadInt32("executions", 1), map.ReadString("UFOName", ""),
+            map.ReadString("craftName", ""), terrain.AsReadOnly(), Math.Abs(map.ReadInt32("label", 0)),
             Get(map, "tunnelData"), Get(map, "verticalLevels"));
     }
 
@@ -161,9 +161,6 @@ internal static class TerrainSpecialRulesComposer
     }
     private static List<int> ReadInts(YamlMappingNode map, string key, IReadOnlyList<int> fallback) =>
         map.TryGet(key, out var node) ? TerrainDeploymentYaml.Integers(node!, key) : fallback.ToList();
-    private static int ReadInt(YamlMappingNode map, string key, int fallback) => map.TryGet(key, out var node) ? YamlValueReader.ReadInt32(node!) : fallback;
-    private static bool ReadBool(YamlMappingNode map, string key, bool fallback) => map.TryGet(key, out var node) ? YamlValueReader.ReadBoolean(node!) : fallback;
-    private static string ReadString(YamlMappingNode map, string key, string fallback) => map.TryGet(key, out var node) ? YamlValueReader.ReadString(node!) : fallback;
     private static string RequiredString(YamlMappingNode map, string key) => map.TryGet(key, out var node) && node is not YamlNullNode
         ? YamlValueReader.ReadString(node!) : throw Error(map.Span, $"Rule entry is missing '{key}'.");
     private static YamlNode? Get(YamlMappingNode map, string key) => map.TryGet(key, out var node) ? node : null;

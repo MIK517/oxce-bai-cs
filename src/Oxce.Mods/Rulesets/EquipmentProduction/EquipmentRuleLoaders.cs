@@ -302,10 +302,8 @@ internal static class EquipmentYaml
             stats.MaximumStorageSpace = YamlValueReader.ReadDouble(storage!);
         if (stats is UfoStatsBuilder ufo)
         {
-            ufo.CraftCustomDeployment = YamlValueReader.ReadString(
-                mapping, "craftCustomDeploy", ufo.CraftCustomDeployment);
-            ufo.MissionCustomDeployment = YamlValueReader.ReadString(
-                mapping, "missionCustomDeploy", ufo.MissionCustomDeployment);
+            ufo.CraftCustomDeployment = mapping.ReadString("craftCustomDeploy", ufo.CraftCustomDeployment);
+            ufo.MissionCustomDeployment = mapping.ReadString("missionCustomDeploy", ufo.MissionCustomDeployment);
         }
     }
 

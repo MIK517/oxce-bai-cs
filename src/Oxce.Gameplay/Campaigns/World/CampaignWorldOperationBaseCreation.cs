@@ -44,12 +44,12 @@ internal sealed partial class CampaignWorld
                 marker is WorldTargetReference.WaypointType or WorldTargetReference.BaseType or "STR_ALIEN_TERROR")
                 return "Mission operation base uses an unsupported marker namespace.";
             markers.Add(marker);
-            var region = rules.Regions[rules.Regions.GetRequired(choice.Region)].Value;
+            var region = rules.Regions.GetRequiredValue(choice.Region);
             if (region.MissionRegion is { } remap) region = rules.Regions[remap].Value;
             var areas = WorldGeometry.MissionAreas(region, rule.OperationSpawnZone);
             work += 100L * (2 * geometryWork + region.Areas.Count + 1) + areas.Count +
                 areas.Count * scoreWork;
-            if (work > MaximumMissionScriptChecks) return "Mission operation base creation exceeds the supported work limit.";
+            if (work > MaximumMissionScriptChecks) return ForecastLimits.MissionOperationBaseCreationWork;
             foreach (var area in areas)
             {
                 if (!TrySpawnArea(area, out var position))
@@ -67,7 +67,7 @@ internal sealed partial class CampaignWorld
             var first = campaign.PeekNextId(marker);
             work += _alienBases.Count + (long)_sites.Count;
             foreach (var owner in campaign.BaseStates) work += 1L + owner.Crafts.Count + owner.Transfers.Count;
-            if (work > MaximumMissionScriptChecks) return "Mission operation base creation exceeds the supported work limit.";
+            if (work > MaximumMissionScriptChecks) return ForecastLimits.MissionOperationBaseCreationWork;
             if (first <= 0 || (long)first + count > int.MaxValue ||
                 _alienBases.Any(existing => MarkerName(existing.DeploymentId) == marker &&
                     existing.Id >= first && existing.Id < (long)first + count) ||
@@ -83,11 +83,11 @@ internal sealed partial class CampaignWorld
         for (var index = 0; index < regionScores.Length; index++)
             if (!regionScores[index].Add(minimumRegions[index], certain: false) ||
                 !regionScores[index].Add(maximumRegions[index], certain: false))
-                return "Mission operation base activity exceeds the supported range.";
+                return ForecastLimits.MissionOperationBaseActivityRange;
         for (var index = 0; index < countryScores.Length; index++)
             if (!countryScores[index].Add(minimumCountries[index], certain: false) ||
                 !countryScores[index].Add(maximumCountries[index], certain: false))
-                return "Mission operation base activity exceeds the supported range.";
+                return ForecastLimits.MissionOperationBaseActivityRange;
         return null;
 
         void RecordPossibleScore(SpawnArea position, int score, int[] minimumRegions, int[] maximumRegions,

@@ -91,7 +91,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldScheduling
     {
         var rules = campaign.Content.RuntimeRules;
         arcs = rules.ArcScripts.Rules.Where(entry => WorldScriptEligibility.Matches(entry.Value.Criteria, context)).ToArray();
-        if (arcs.Length > 4096) return "Arc scripts exceed the supported work limit.";
+        if (arcs.Length > 4096) return ForecastLimits.ArcScriptsWork;
         var changed = new HashSet<string>(StringComparer.Ordinal);
         if (ArcScriptReason(arcs, campaign.ArcResearch, changed) is { } arcReason) return arcReason;
         var runs = new Dictionary<string, long>(StringComparer.Ordinal);
@@ -99,12 +99,12 @@ internal sealed partial class CampaignWorld : ICampaignWorldScheduling
         var missions = rules.MissionScripts.Rules.Where(entry =>
             WorldScriptEligibility.MayMatch(entry.Value.Criteria, context, changed, runs, markers) &&
             (entry.Value.MaximumRuns == -1 || entry.Value.MaximumRuns > _strategy.MissionsRun(entry.Value.VariableName))).ToArray();
-        if (missions.Length > 4096) return "Mission scripts exceed the supported work limit.";
+        if (missions.Length > 4096) return ForecastLimits.MissionScriptsWork;
         var births = new HashSet<MonthlyBaseBirthChoice>();
         if (MissionScriptReason(missions, context.Month, runs, markers, births) is { } missionReason) return missionReason;
         var events = rules.EventScripts.Rules.Where(entry =>
             WorldScriptEligibility.MayMatch(entry.Value.Criteria, context, changed, runs, markers)).ToArray();
-        if (events.Length > 4096) return "Event scripts exceed the supported work limit.";
+        if (events.Length > 4096) return ForecastLimits.EventScriptsWork;
         if (EventScriptReason(events, context.Month) is { } eventReason) return eventReason;
         if (context.Month > 0)
         {

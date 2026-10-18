@@ -59,11 +59,11 @@ public sealed class TerrainDeploymentRuleCatalog
             TerrainSpecialRulesComposer.Compose(documents, compositionOptions));
     }
 
-    public TerrainDeploymentValidation ValidateRelationships(ItemRuleCatalog items,
+    public RuleValidation ValidateRelationships(ItemRuleCatalog items,
         EquipmentProductionRuleCatalog equipment, PersonnelTacticalRuleCatalog personnel,
         IDiagnosticSink? diagnostics = null)
     {
-        diagnostics ??= NullDiagnosticSink.Instance; var issues = new List<TerrainDeploymentValidationIssue>();
+        diagnostics ??= NullDiagnosticSink.Instance; var issues = new List<RuleValidationIssue>();
         foreach (var terrain in Terrains.Rules)
         {
             DeferOptional(terrain, "enviroEffects", terrain.Value.EnviroEffects, EnviroEffects);
@@ -134,7 +134,3 @@ public sealed class TerrainDeploymentRuleCatalog
         catalog.TryGetSection(name, out var section) ? section! : throw new InvalidOperationException();
     private static readonly string[] Names = ["terrains", "alienRaces", "enviroEffects", "startingConditions", "alienDeployments"];
 }
-
-public sealed record TerrainDeploymentValidationIssue(string RuleId, string Property, string RelatedId, string Message);
-public sealed record TerrainDeploymentValidation(IReadOnlyList<TerrainDeploymentValidationIssue> Issues)
-{ public bool IsValid => Issues.Count == 0; }

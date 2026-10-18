@@ -93,7 +93,7 @@ public sealed partial class CampaignState
         RuleHandle<ItemRuleFamily>? returnedArmor = null;
         if (!transformation.Booleans["keepSoldierArmor"] && !createsClone && sourcePersonal.Armor != destinationArmor)
         {
-            returnedArmor = _content.RuntimeRules.Armors[_content.RuntimeRules.Armors.GetRequired(sourcePersonal.Armor)].Value.StoreItem;
+            returnedArmor = _content.RuntimeRules.Armors.GetRequiredValue(sourcePersonal.Armor).StoreItem;
             if (returnedArmor is { } item && owner.Items.GetValueOrDefault(item) == int.MaxValue)
                 return Blocked("Returned armor exceeds the supported stock range.");
         }

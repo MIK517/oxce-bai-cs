@@ -41,7 +41,7 @@ internal sealed class InventoryRuleLoader : TypedRuleFamilyLoader<InventoryBuild
         if (node is YamlSequenceNode sequence && sequence.Items.Count == 2)
             return new(YamlValueReader.ReadInt32(sequence.Items[0]), YamlValueReader.ReadInt32(sequence.Items[1]));
         if (node is YamlMappingNode mapping)
-            return new(YamlValueReader.ReadInt32(mapping, "x", 0), YamlValueReader.ReadInt32(mapping, "y", 0));
+            return new(mapping.ReadInt32("x", 0), mapping.ReadInt32("y", 0));
         throw new YamlFormatException("Inventory slot must be an x/y mapping or pair.", node.Span);
     }
 }

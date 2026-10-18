@@ -91,7 +91,7 @@ public static class CraftLogistics
         long fuel = rule.FuelMaximum;
         for (var index = 0; index < weapons.Count; index++)
             if (weapons[index] is { } weapon)
-                fuel += rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats.GetValueOrDefault("fuelMax");
+                fuel += rules.CraftWeapons.GetRequiredValue(weapon.RuleId).BonusStats.GetValueOrDefault("fuelMax");
         result = (int)Math.Clamp(fuel, int.MinValue, int.MaxValue);
         return IsSupportedValue(fuel);
     }
@@ -112,7 +112,7 @@ public static class CraftLogistics
         for (var index = 0; index < weapons.Count; index++)
         {
             if (weapons[index] is not { } weapon) continue;
-            speed += rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats
+            speed += rules.CraftWeapons.GetRequiredValue(weapon.RuleId).BonusStats
                 .GetValueOrDefault("speedMax");
         }
         result = (int)Math.Clamp(speed, int.MinValue, int.MaxValue);
@@ -127,7 +127,7 @@ public static class CraftLogistics
         for (var index = 0; index < weapons.Count; index++)
         {
             if (weapons[index] is not { } weapon) continue;
-            range += rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats
+            range += rules.CraftWeapons.GetRequiredValue(weapon.RuleId).BonusStats
                 .GetValueOrDefault("sightRange");
         }
         result = (int)Math.Clamp(range, int.MinValue, int.MaxValue);
@@ -143,7 +143,7 @@ public static class CraftLogistics
         for (var index = 0; index < weapons.Count; index++)
         {
             if (weapons[index] is not { } weapon) continue;
-            var bonus = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats;
+            var bonus = rules.CraftWeapons.GetRequiredValue(weapon.RuleId).BonusStats;
             maximum += bonus.GetValueOrDefault("shieldCapacity");
             rate += bonus.GetValueOrDefault("shieldRechargeInGeoscape");
         }
@@ -164,7 +164,7 @@ public static class CraftLogistics
         for (var index = 0; index < weapons.Count; index++)
         {
             if (weapons[index] is not { } weapon) continue;
-            damageMaximum += rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats
+            damageMaximum += rules.CraftWeapons.GetRequiredValue(weapon.RuleId).BonusStats
                 .GetValueOrDefault("damageMax");
         }
         return damageMaximum;
@@ -182,7 +182,7 @@ public static class CraftLogistics
         for (var index = 0; index < weapons.Count; index++)
         {
             if (weapons[index] is not { } weapon) continue;
-            var bonus = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats;
+            var bonus = rules.CraftWeapons.GetRequiredValue(weapon.RuleId).BonusStats;
             range += bonus.GetValueOrDefault("radarRange");
             chance += bonus.GetValueOrDefault("radarChance");
         }
@@ -199,7 +199,7 @@ public static class CraftLogistics
         foreach (var weapon in state.Weapons)
         {
             if (weapon is null) continue;
-            var bonus = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
+            var bonus = rules.CraftWeapons.GetRequiredValue(weapon.RuleId);
             maximumItems += bonus.BonusStats.GetValueOrDefault("maxItems");
             maximumStorage += bonus.BonusStorageSpace;
         }
@@ -208,7 +208,7 @@ public static class CraftLogistics
         foreach (var pair in state.Items)
         {
             quantity += pair.Value;
-            size += rules.Items[rules.Items.GetRequired(pair.Key)].Value.Size * pair.Value;
+            size += rules.Items.GetRequiredValue(pair.Key).Size * pair.Value;
         }
         return quantity > Math.Max(0, maximumItems) ||
             size > Math.Max(0, maximumStorage) + 0.05;
@@ -256,29 +256,29 @@ public static class CraftLogistics
 
     public static double StoredSize(CraftLogisticsState state, RuntimeRuleCatalog rules)
     {
-        var size = state.Items.Sum(pair => rules.Items[rules.Items.GetRequired(pair.Key)].Value.Size * pair.Value);
+        var size = state.Items.Sum(pair => rules.Items.GetRequiredValue(pair.Key).Size * pair.Value);
         foreach (var vehicle in state.Vehicles)
         {
-            size += rules.Items[rules.Items.GetRequired(vehicle.RuleId)].Value.Size;
+            size += rules.Items.GetRequiredValue(vehicle.RuleId).Size;
             var ammunition = VehicleAmmunition(vehicle, rules);
             if (ammunition.Id.Length != 0)
-                size += rules.Items[rules.Items.GetRequired(ammunition.Id)].Value.Size * ammunition.Count;
+                size += rules.Items.GetRequiredValue(ammunition.Id).Size * ammunition.Count;
         }
         foreach (var weapon in state.Weapons.OfType<CraftWeaponSnapshot>())
         {
-            var rule = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
-            size += rules.Items[rules.Items.GetRequired(rule.Launcher)].Value.Size;
+            var rule = rules.CraftWeapons.GetRequiredValue(weapon.RuleId);
+            size += rules.Items.GetRequiredValue(rule.Launcher).Size;
             if (rule.Clip.Length != 0)
-                size += rules.Items[rules.Items.GetRequired(rule.Clip)].Value.Size * WeaponClipCount(weapon, rules);
+                size += rules.Items.GetRequiredValue(rule.Clip).Size * WeaponClipCount(weapon, rules);
         }
         return size;
     }
 
     internal static int WeaponClipCount(CraftWeaponSnapshot weapon, RuntimeRuleCatalog rules)
     {
-        var rule = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
+        var rule = rules.CraftWeapons.GetRequiredValue(weapon.RuleId);
         if (rule.Clip.Length == 0) return 0;
-        var clip = rules.Items[rules.Items.GetRequired(rule.Clip)].Value;
+        var clip = rules.Items.GetRequiredValue(rule.Clip);
         var divisor = clip.ClipSize > 0 ? clip.ClipSize : rule.RearmRate;
         if (divisor <= 0) throw new InvalidDataException("Craft weapon clip divisor must be positive.");
         return checked((int)Math.Floor((double)weapon.Ammo / divisor));
@@ -286,7 +286,7 @@ public static class CraftLogistics
 
     internal static (string Id, int Count) VehicleAmmunition(CraftVehicleSnapshot vehicle, RuntimeRuleCatalog rules)
     {
-        var rule = rules.Items[rules.Items.GetRequired(vehicle.RuleId)].Value;
+        var rule = rules.Items.GetRequiredValue(vehicle.RuleId);
         if (rule.VehicleFixedAmmoSlot < 0) return ("", 0);
         if (rule.VehicleFixedAmmoSlot >= rule.CompatibleAmmo.Count)
             throw new InvalidDataException("Vehicle ammunition slot is outside the reference range.");
@@ -396,7 +396,7 @@ public static class CraftLogistics
         for (var i = 0; i < weapons.Length; i++)
         {
             if (weapons[i] is not { } weapon) continue;
-            var weaponRule = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
+            var weaponRule = rules.CraftWeapons.GetRequiredValue(weapon.RuleId);
             if (weapon.Ammo >= weaponRule.AmmoMaximum || weapon.Disabled) continue;
             weapons[i] = weapon with { Rearming = true };
             allFull = false;
@@ -420,7 +420,7 @@ public static class CraftLogistics
         long shield = rule.ShieldCapacity;
         foreach (var weapon in weapons.OfType<CraftWeaponSnapshot>())
         {
-            var bonus = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats;
+            var bonus = rules.CraftWeapons.GetRequiredValue(weapon.RuleId).BonusStats;
             soldiers += bonus.GetValueOrDefault("soldiers");
             vehicles += bonus.GetValueOrDefault("vehicles");
             fuel += bonus.GetValueOrDefault("fuelMax");
@@ -434,7 +434,7 @@ public static class CraftLogistics
     {
         foreach (var weapon in state.Weapons.OfType<CraftWeaponSnapshot>())
         {
-            var rule = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
+            var rule = rules.CraftWeapons.GetRequiredValue(weapon.RuleId);
             AddItem(items, rule.Launcher, 1);
             AddItem(items, rule.Clip, WeaponClipCount(weapon, rules));
         }
@@ -460,7 +460,7 @@ public static class CraftLogistics
     private static int SupportedValue(long value)
     {
         if (!IsSupportedValue(value))
-            throw new OverflowException("Craft weapon bonuses exceed the supported capacity range.");
+            throw new OverflowException(ForecastLimits.CraftWeaponBonusesCapacityRange);
         return (int)value;
     }
 

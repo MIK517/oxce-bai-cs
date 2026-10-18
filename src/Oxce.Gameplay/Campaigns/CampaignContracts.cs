@@ -21,6 +21,36 @@ public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool Ca
     bool RememberDisabledCraftWeapons = false, bool GlobeSeasons = false, int WoundedDefendBaseIf = 100,
     bool PsiStrengthEval = false, bool GeoscapeEventsInstantDelivery = true, bool Autosave = true)
 {
+    /// <summary>Every option with its external key, in record order (the order saves write them).</summary>
+    public static IReadOnlyList<CampaignOptionField> Fields { get; } =
+    [
+        CampaignOptionField.Flag("storageLimitsEnforced", o => o.StorageLimitsEnforced, (o, v) => o with { StorageLimitsEnforced = v }),
+        CampaignOptionField.Flag("canSellLiveAliens", o => o.CanSellLiveAliens, (o, v) => o with { CanSellLiveAliens = v }),
+        CampaignOptionField.Flag("autoCombatDefaultSoldier", o => o.AutoCombatDefaultSoldier, (o, v) => o with { AutoCombatDefaultSoldier = v }),
+        CampaignOptionField.Flag("anytimePsiTraining", o => o.AnytimePsiTraining, (o, v) => o with { AnytimePsiTraining = v }),
+        CampaignOptionField.Flag("allowPsiStrengthImprovement", o => o.AllowPsiStrengthImprovement, (o, v) => o with { AllowPsiStrengthImprovement = v }),
+        // A port setting, not a reference user option: mods cannot fix it and reference saves do not record it.
+        CampaignOptionField.Number("maximumBases", false, o => o.MaximumBases, (o, v) => o with { MaximumBases = v }),
+        CampaignOptionField.Flag("allowBuildingQueue", o => o.AllowBuildingQueue, (o, v) => o with { AllowBuildingQueue = v }),
+        CampaignOptionField.Flag("oxceUfoLandingAlert", o => o.UfoLandingAlert, (o, v) => o with { UfoLandingAlert = v }),
+        CampaignOptionField.Flag("aggressiveRetaliation", o => o.AggressiveRetaliation, (o, v) => o with { AggressiveRetaliation = v }),
+        CampaignOptionField.Flag("craftLaunchAlways", o => o.CraftLaunchAlways, (o, v) => o with { CraftLaunchAlways = v }),
+        CampaignOptionField.Flag("oxceGeoSuppressLandingWithoutEquipment", o => o.SuppressLandingWithoutEquipment,
+            (o, v) => o with { SuppressLandingWithoutEquipment = v }),
+        CampaignOptionField.Flag("oxceGeoSuppressRedundantHKAlert", o => o.SuppressRedundantHunterAlert,
+            (o, v) => o with { SuppressRedundantHunterAlert = v }),
+        CampaignOptionField.Flag("retainCorpses", o => o.RetainCorpses, (o, v) => o with { RetainCorpses = v }),
+        CampaignOptionField.Flag("dogfightAI", o => o.DogfightAI, (o, v) => o with { DogfightAI = v }),
+        CampaignOptionField.Flag("oxceRememberDisabledCraftWeapons", o => o.RememberDisabledCraftWeapons,
+            (o, v) => o with { RememberDisabledCraftWeapons = v }),
+        CampaignOptionField.Flag("globeSeasons", o => o.GlobeSeasons, (o, v) => o with { GlobeSeasons = v }),
+        CampaignOptionField.Number("oxceWoundedDefendBaseIf", true, o => o.WoundedDefendBaseIf, (o, v) => o with { WoundedDefendBaseIf = v }),
+        CampaignOptionField.Flag("psiStrengthEval", o => o.PsiStrengthEval, (o, v) => o with { PsiStrengthEval = v }),
+        CampaignOptionField.Flag("oxceGeoscapeEventsInstantDelivery", o => o.GeoscapeEventsInstantDelivery,
+            (o, v) => o with { GeoscapeEventsInstantDelivery = v }),
+        CampaignOptionField.Flag("autosave", o => o.Autosave, (o, v) => o with { Autosave = v }),
+    ];
+
     /// <summary>
     /// Mod::loadAll's fixedUserOptions pass: a loaded mod forces these user options for every
     /// campaign. OptionInfo::load uses std::boolalpha: skip leading classic-locale whitespace,
@@ -30,32 +60,13 @@ public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool Ca
     {
         ArgumentNullException.ThrowIfNull(fixedOptions);
         if (fixedOptions.Count == 0) return this;
-        return this with
+        var options = this;
+        foreach (var field in Fields)
         {
-            StorageLimitsEnforced = Fixed("storageLimitsEnforced", StorageLimitsEnforced),
-            CanSellLiveAliens = Fixed("canSellLiveAliens", CanSellLiveAliens),
-            AutoCombatDefaultSoldier = Fixed("autoCombatDefaultSoldier", AutoCombatDefaultSoldier),
-            AnytimePsiTraining = Fixed("anytimePsiTraining", AnytimePsiTraining),
-            AllowPsiStrengthImprovement = Fixed("allowPsiStrengthImprovement", AllowPsiStrengthImprovement),
-            AllowBuildingQueue = Fixed("allowBuildingQueue", AllowBuildingQueue),
-            UfoLandingAlert = Fixed("oxceUfoLandingAlert", UfoLandingAlert),
-            AggressiveRetaliation = Fixed("aggressiveRetaliation", AggressiveRetaliation),
-            CraftLaunchAlways = Fixed("craftLaunchAlways", CraftLaunchAlways),
-            SuppressLandingWithoutEquipment = Fixed("oxceGeoSuppressLandingWithoutEquipment", SuppressLandingWithoutEquipment),
-            SuppressRedundantHunterAlert = Fixed("oxceGeoSuppressRedundantHKAlert", SuppressRedundantHunterAlert),
-            RetainCorpses = Fixed("retainCorpses", RetainCorpses),
-            DogfightAI = Fixed("dogfightAI", DogfightAI),
-            RememberDisabledCraftWeapons = Fixed("oxceRememberDisabledCraftWeapons", RememberDisabledCraftWeapons),
-            GlobeSeasons = Fixed("globeSeasons", GlobeSeasons),
-            PsiStrengthEval = Fixed("psiStrengthEval", PsiStrengthEval),
-            GeoscapeEventsInstantDelivery = Fixed("oxceGeoscapeEventsInstantDelivery", GeoscapeEventsInstantDelivery),
-            Autosave = Fixed("autosave", Autosave),
-            WoundedDefendBaseIf = fixedOptions.TryGetValue("oxceWoundedDefendBaseIf", out var wounded)
-                ? ReadFixedInteger(wounded) : WoundedDefendBaseIf,
-        };
-
-        bool Fixed(string id, bool current) =>
-            fixedOptions.TryGetValue(id, out var value) ? ReadFixedBoolean(value) : current;
+            if (!field.IsUserOption || !fixedOptions.TryGetValue(field.Key, out var value)) continue;
+            options = field.With(options, field.IsInteger ? ReadFixedInteger(value) : ReadFixedBoolean(value) ? 1 : 0);
+        }
+        return options;
     }
 
     // OptionInfo::load's `ss >> std::dec >> i`: leading whitespace, an optional sign and decimal digits; a failed
@@ -85,6 +96,43 @@ public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool Ca
         // input, where the reference leaves an uninitialized bool, choose false deliberately.
         return text[start..].StartsWith("true", StringComparison.Ordinal);
     }
+}
+
+/// <summary>
+/// One <see cref="CampaignOptions"/> field: its external key, whether it is a number or a flag, and whether it is a
+/// reference user option (fixed by mods' fixedUserOptions and recorded in a reference save's options snapshot).
+/// </summary>
+public sealed class CampaignOptionField
+{
+    private readonly Func<CampaignOptions, int> _get;
+    private readonly Func<CampaignOptions, int, CampaignOptions> _with;
+
+    private CampaignOptionField(string key, bool isInteger, bool isUserOption, Func<CampaignOptions, int> get,
+        Func<CampaignOptions, int, CampaignOptions> with)
+    {
+        Key = key;
+        IsInteger = isInteger;
+        IsUserOption = isUserOption;
+        _get = get;
+        _with = with;
+    }
+
+    public string Key { get; }
+    public bool IsInteger { get; }
+    public bool IsUserOption { get; }
+
+    /// <summary>The value; a flag reads as 1 or 0.</summary>
+    public int Get(CampaignOptions options) => _get(options);
+
+    /// <summary>The options with this field set; a flag is set by any non-zero value.</summary>
+    public CampaignOptions With(CampaignOptions options, int value) => _with(options, value);
+
+    internal static CampaignOptionField Flag(string key, Func<CampaignOptions, bool> get,
+        Func<CampaignOptions, bool, CampaignOptions> with) =>
+        new(key, false, true, options => get(options) ? 1 : 0, (options, value) => with(options, value != 0));
+
+    internal static CampaignOptionField Number(string key, bool isUserOption, Func<CampaignOptions, int> get,
+        Func<CampaignOptions, int, CampaignOptions> with) => new(key, true, isUserOption, get, with);
 }
 
 public readonly record struct CampaignId

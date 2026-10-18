@@ -117,14 +117,14 @@ internal static class PresentationSpecialRulesComposer
             return;
         }
 
-        var type = OptionalString(item, "type", string.Empty);
+        var type = item.ReadString("type", string.Empty);
         var single = false;
         var files = new SortedDictionary<int, string>();
         if (type.Length == 0)
         {
-            type = OptionalString(item, "typeSingle", string.Empty);
+            type = item.ReadString("typeSingle", string.Empty);
             single = type.Length != 0;
-            var fileSingle = OptionalString(item, "fileSingle", string.Empty);
+            var fileSingle = item.ReadString("fileSingle", string.Empty);
             if (fileSingle.Length != 0) files[0] = fileSingle;
         }
         if (type.Length == 0)
@@ -177,9 +177,6 @@ internal static class PresentationSpecialRulesComposer
         mapping.TryGet(key, out var node) && node is not YamlNullNode
             ? YamlValueReader.ReadString(node!)
             : throw new YamlFormatException($"Rule entry is missing '{key}'.", mapping.Span);
-
-    private static string OptionalString(YamlMappingNode mapping, string key, string defaultValue) =>
-        mapping.TryGet(key, out var node) ? YamlValueReader.ReadString(node!) : defaultValue;
 
     private static int OptionalInt(YamlMappingNode mapping, string key, int defaultValue) =>
         mapping.TryGet(key, out var node) ? YamlValueReader.ReadInt32(node!) : defaultValue;

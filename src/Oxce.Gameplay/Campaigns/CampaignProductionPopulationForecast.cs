@@ -13,7 +13,7 @@ public sealed partial class CampaignState
         {
             population += owner.Crafts.Count;
             work += 1L + owner.Crafts.Count + owner.Transfers.Count;
-            if (work > 1_000_000) return reason;
+            if (work > ForecastLimits.Work) return reason;
             if (highest < CampaignTimeTrigger.OneHour) continue;
             foreach (var transfer in owner.Transfers)
                 if (!transfer.Delivered && transfer.Hours <= 1 && transfer.Craft is not null) population++;
@@ -23,7 +23,7 @@ public sealed partial class CampaignState
                 var project = owner.Productions[index];
                 var rule = _content.RuntimeRules.Manufacture[project.Rule].Value;
                 work += 1L + rule.ProducedMaterials.Count;
-                if (work > 1_000_000) return reason;
+                if (work > ForecastLimits.Work) return reason;
                 // Born craft with a positive transfer delay cannot enter the
                 // already-completed hourly arrival pass or this tick's retarget pass.
                 if (rule.TransferTimes.Count > 2 && rule.TransferTimes[2] > 0) continue;

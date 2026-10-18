@@ -9,12 +9,12 @@ internal sealed partial class CampaignWorld : ICampaignMissionResearchInterrupti
         // Each real grant checks links, then visits missions again to interrupt
         // its explicit topics. Ordered forecasts reserve both passes per grant.
         work += 2L * _missions.Count;
-        if (work > 1_000_000) return "Mission research exceeds the supported discovery work limit.";
+        if (work > ForecastLimits.Work) return ForecastLimits.MissionResearchDiscoveryWork;
         var rules = campaign.Content.RuntimeRules;
         foreach (var mission in _missions)
         {
             if (precedingMissionRemovals?.Contains(mission.Id) == true) continue;
-            var rule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
+            var rule = rules.AlienMissions.GetRequiredValue(mission.RuleId);
             if (rule.InterruptResearchId.Length != 0 && rule.InterruptResearch is null)
                 return "Alien mission interruption references undefined research.";
         }
@@ -28,7 +28,7 @@ internal sealed partial class CampaignWorld : ICampaignMissionResearchInterrupti
         for (var index = 0; index < _missions.Count; index++)
         {
             var mission = _missions[index];
-            var rule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
+            var rule = rules.AlienMissions.GetRequiredValue(mission.RuleId);
             if (topics.Contains(rule.InterruptResearchId)) _missions[index] = mission with { Interrupted = true };
         }
     }
@@ -54,7 +54,7 @@ internal sealed partial class CampaignWorld : ICampaignMissionResearchInterrupti
             foreach (var saved in _missions)
             {
                 var mission = MissionAfterDailyResearch(saved, _pass.DailyResearchForecast);
-                var rule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
+                var rule = rules.AlienMissions.GetRequiredValue(mission.RuleId);
                 if (mission.Interrupted || mission.MultiUfoRetaliationInProgress && !rule.MultiUfoRetaliationExtra ||
                     mission.NextWave >= rule.Waves.Count || mission.SpawnCountdown > 30) continue;
                 if (rule.Objective == RuntimeMissionObjective.Infiltration && rule.EndlessInfiltration &&
@@ -89,7 +89,7 @@ internal sealed partial class CampaignWorld : ICampaignMissionResearchInterrupti
         for (var index = 0; index < _missions.Count; index++)
         {
             var mission = _missions[index];
-            var rule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
+            var rule = rules.AlienMissions.GetRequiredValue(mission.RuleId);
             if (!mission.Interrupted && rule.InterruptResearchId.Length != 0 &&
                 campaign.HasCompletedResearch(rule.InterruptResearchId))
                 _missions[index] = mission with { Interrupted = true };
@@ -106,7 +106,7 @@ internal sealed partial class CampaignWorld : ICampaignMissionResearchInterrupti
         var rules = campaign.Content.RuntimeRules;
         foreach (var mission in _missions)
         {
-            var rule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
+            var rule = rules.AlienMissions.GetRequiredValue(mission.RuleId);
             var id = rule.InterruptResearchId;
             if (id.Length == 0) continue;
             if (rule.InterruptResearch is null)
@@ -135,7 +135,7 @@ internal sealed partial class CampaignWorld : ICampaignMissionResearchInterrupti
     {
         if (guaranteedResearch is null || mission.Interrupted) return mission;
         var rules = campaign.Content.RuntimeRules;
-        var rule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
+        var rule = rules.AlienMissions.GetRequiredValue(mission.RuleId);
         var projected = rule.InterruptResearchId.Length != 0 && guaranteedResearch.Contains(rule.InterruptResearchId)
             ? mission with { Interrupted = true } : mission;
         if (projected.AlienBase is null) return projected;

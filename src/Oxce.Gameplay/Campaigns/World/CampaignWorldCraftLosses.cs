@@ -56,7 +56,7 @@ internal sealed partial class CampaignWorld
         AddXcomActivity(new WorldPosition(state.Longitude, state.Latitude), -score, (_, _, history, change) =>
         {
             if ((long)history[^1] + change is < int.MinValue or > int.MaxValue)
-                reason = "X-COM activity exceeds the supported range.";
+                reason = ForecastLimits.XcomActivityRange;
         });
         return reason;
     }

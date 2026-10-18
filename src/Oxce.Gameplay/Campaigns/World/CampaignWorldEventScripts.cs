@@ -25,7 +25,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldEventScripts
         var state = campaign.WorldScriptContext(score, funds, _strategy.MissionRuns);
         var eligible = campaign.Content.RuntimeRules.EventScripts.Rules
             .Where(entry => WorldScriptEligibility.Matches(entry.Value.Criteria, state)).ToArray();
-        if (eligible.Length > 4096) return Blocked("Event scripts exceed the supported work limit.");
+        if (eligible.Length > 4096) return Blocked(ForecastLimits.EventScriptsWork);
         // Preflight every possible choice before the first execution-odds roll or mutation.
         if (EventScriptReason(eligible, state.Month) is { } reason) return Blocked(reason);
         return RunEventScriptCommands(eligible, state.Month);
@@ -99,7 +99,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldEventScripts
         foreach (var choice in choices)
         {
             if (choice.Weight > (ulong)int.MaxValue - total)
-                throw new InvalidDataException("Strategic script weights exceed the supported range.");
+                throw new InvalidDataException(ForecastLimits.StrategicScriptWeightsRange);
             total += choice.Weight;
         }
     }
