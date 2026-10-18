@@ -20,11 +20,17 @@ internal sealed partial class CampaignWorld : ICampaignEventScheduling
         registry.Operation<ICampaignEventScheduling>(this);
         registry.Timed(CampaignTimeTrigger.ThirtyMinutes, CampaignTimeOrder.ThirtyMinutesWorldEvents,
             "strategic event countdowns", AdvanceEvents);
-        // ADR 0035: an event payload (popped, or a site's despawn event) changes much of what the rest of the tick
-        // reads, so the rest is preflighted again on a shadow that has run the half-hour level.
+        // ADR 0035: an event payload (popped, or the despawn event of a site, even one born this tick) changes much of
+        // what the rest of the tick reads, so a half-hour tick where one can run executes its level on a shadow first
+        // and the rest is preflighted again there; a payload never runs on real state unstaged. Sites are born only by
+        // the waves of due missions, of missions generated earlier in the tick (the preflight's generated waves), or by
+        // the month's scripts.
         registry.StagePoint(CampaignTimeTrigger.ThirtyMinutes, "event payloads", (_, highest) =>
-            highest >= CampaignTimeTrigger.ThirtyMinutes && (_events.Any(static e => e.Over || e.SpawnCountdown <= 30) ||
-                _sites.Any(static site => site.SecondsRemaining < 30 * 60)));
+            highest >= CampaignTimeTrigger.ThirtyMinutes && (highest >= CampaignTimeTrigger.OneMonth ||
+                _events.Any(static e => e.Over || e.SpawnCountdown <= 30) ||
+                _sites.Any(static site => site.SecondsRemaining < 30 * 60) ||
+                _missions.Any(static mission => mission.SpawnCountdown <= 30) ||
+                _pass.GeneratedWaveMissions is { Count: > 0 }));
     }
 
     /// <summary>
@@ -35,7 +41,9 @@ internal sealed partial class CampaignWorld : ICampaignEventScheduling
     {
         var events = campaign.Content.RuntimeRules.Events;
         if (!events.TryGet(ruleId, out var handle) || IsEventInterrupted(events[handle].Value)) return;
-        if (_generatedEvents.GetValueOrDefault(ruleId) == int.MaxValue) throw new InvalidDataException(EventCapacityReason);
+        if (_generatedEvents.GetValueOrDefault(ruleId) == int.MaxValue ||
+            !_generatedEvents.ContainsKey(ruleId) && _generatedEvents.Count >= MaximumScheduledEvents)
+            throw new InvalidDataException(EventCapacityReason);
         _generatedEvents[ruleId] = _generatedEvents.GetValueOrDefault(ruleId) + 1;
         campaign.RunEventPayload(ruleId, effects);
     }

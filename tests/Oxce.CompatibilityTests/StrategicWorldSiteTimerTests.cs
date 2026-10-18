@@ -118,7 +118,7 @@ public sealed class StrategicWorldSiteTimerTests
         }, "SITE_DEPLOY", 0);
         // Branch 6 S5: an unfollowed site despawns, granting its research, and its despawn event pops at once.
         var despawned = CampaignState.Restore(blockedSnapshot, content, new SplitMix64RandomSource(17));
-        var events = AssertEventTickRuns(despawned);
+        var events = AssertEventTickRuns(despawned, popped: ["EVENT_DESPAWN"]);
         Assert.Equal("EVENT_DESPAWN", Assert.Single(events.OfType<CampaignEventOpened>()).Window.RuleId);
         Assert.Empty(despawned.Capture().World.MissionSites);
         Assert.Contains("UNLOCK", despawned.Capture().CompletedResearch);

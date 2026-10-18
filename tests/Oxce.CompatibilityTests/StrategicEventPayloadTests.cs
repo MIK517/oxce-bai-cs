@@ -54,6 +54,9 @@ public sealed class StrategicEventPayloadTests
             getOneFree: [STR_BONUS]
           - name: STR_ALLOYS
             cost: 10
+          - name: STR_EVENT_TOPIC
+            cost: 10
+            spawnedEvent: STR_FUNDS
         cutscenes:
           - type: winVideo
             winGame: true
@@ -112,6 +115,11 @@ public sealed class StrategicEventPayloadTests
             funds: 1
           - name: STR_MORE_FUNDS
             funds: 10
+          - name: STR_STOPPED
+            interruptResearch: STR_LASER
+            funds: 100
+          - name: STR_SPAWNER
+            researchList: [STR_EVENT_TOPIC]
         """;
 
     private static readonly Lazy<RuntimeContent> Content = new(() =>
@@ -384,6 +392,31 @@ public sealed class StrategicEventPayloadTests
             campaign.Execute(new RecallCraft(snapshot.Bases[0].Id, "STR_SKYRANGER", 1)).Events)).Reason);
         Assert.Equal("STR_FUNDS", Assert.IsType<CampaignEventAcknowledged>(Assert.Single(campaign.Execute(new AcknowledgeCampaignEvent()).Events)).RuleId);
         AdvanceUnblocked(campaign, 1);
+    }
+
+    [Fact]
+    public void AnInterruptedEventIsRemovedWithoutItsPayloadBesideOneThatPops()
+    {
+        var snapshot = World("STR_FUNDS", researched: ["STR_LASER"]);
+        snapshot = snapshot with { World = snapshot.World with { Events = [new("STR_STOPPED", 30), new("STR_FUNDS", 30)] } };
+        var campaign = CampaignState.Restore(snapshot, Content.Value, new SplitMix64RandomSource(5));
+
+        AssertEventTickRuns(campaign, popped: ["STR_FUNDS"]);
+        Assert.Equal(100_001, campaign.Capture().Funds[^1]);
+        Assert.Empty(campaign.Capture().World.Events);
+    }
+
+    [Fact]
+    public void AnEventScheduledByAPayloadJoinsAfterTheCountdown()
+    {
+        // The research the payload grants spawns STR_FUNDS (SavedGame::spawnEvent, at least 60 minutes); it is not
+        // counted down this tick (ADR 0036), so it pops at the second half hour after.
+        var campaign = CampaignState.Restore(World("STR_SPAWNER"), Content.Value, new SplitMix64RandomSource(5));
+        AssertEventTickRuns(campaign, popped: ["STR_SPAWNER"]);
+        Assert.Equal("STR_FUNDS", Assert.Single(campaign.Capture().World.Events).RuleId);
+        campaign.Execute(new AcknowledgeCampaignEvent());
+        AdvanceUnblocked(campaign, 719);
+        AssertEventTickRuns(campaign, popped: ["STR_FUNDS"]);
     }
 
     [Fact]

@@ -97,7 +97,7 @@ public sealed class StrategicWorldDailyGuaranteedResearchTests
     public void UncertainRepeatableDisabledIneligibleAndUnfinishedTopicsCannotAuthorizePayload(int mode)
     {
         var content = Content(mode);
-        AssertEventTickRuns(CampaignState.Restore(Snapshot(content, mode, 17), content, new SplitMix64RandomSource(17)));
+        AssertEventTickRuns(CampaignState.Restore(Snapshot(content, mode, 17), content, new SplitMix64RandomSource(17)), popped: ["EVENT_GUARANTEED", "EVENT_GUARANTEED"]);
     }
 
     [Fact]
@@ -112,7 +112,7 @@ public sealed class StrategicWorldDailyGuaranteedResearchTests
                 MissionSites = [new(1, "MISSION_SITE", "GUARANTEED_CANCEL_SITE", "RACE_A", 0.2, 0.1, 0) { Detected = true }],
             },
         };
-        AssertEventTickRuns(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)));
+        AssertEventTickRuns(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), popped: ["EVENT_GUARANTEED", "EVENT_GUARANTEED"]);
     }
 
     private static RuntimeContent Content(int mode)

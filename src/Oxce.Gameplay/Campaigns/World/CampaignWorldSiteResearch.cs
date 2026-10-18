@@ -103,7 +103,7 @@ internal sealed partial class CampaignWorld
             var deployment = rules.AlienDeployments[rules.AlienDeployments.GetRequired(site.DeploymentId)].Value;
             if (forecast.Advance(deployment.UnlockedResearchOnDespawnId) is { } reason) return reason;
             afterSites.Add((site.DeploymentId, site.Id), forecast.GuaranteedResearch);
-            if (SiteDespawnReason(deployment, highest, forecast.GuaranteedResearch) is { } eventReason) return eventReason;
+            if (SiteDespawnReason(deployment, forecast.GuaranteedResearch) is { } eventReason) return eventReason;
         }
         _pass.SiteResearchAfterSite = afterSites;
         foreach (var birth in immediateBirths)
@@ -176,7 +176,7 @@ internal sealed partial class CampaignWorld
             var deployment = rules.AlienDeployments[handle].Value;
             var research = conditional[deployment.UnlockedResearchOnDespawnId];
             (_pass.SiteResearchAfterBirth ??= []).TryAdd((birth.Mission, handle), research);
-            if (SiteDespawnReason(deployment, highest, research) is { } reason) return reason;
+            if (SiteDespawnReason(deployment, research) is { } reason) return reason;
         }
         return null;
     }

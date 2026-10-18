@@ -89,7 +89,8 @@ public sealed class StrategicWorldSiteChoiceGrantTests
     {
         var content = StrategicWorldNewbornSiteChoiceResearchTests.Content(generated, differentGrant: true, ownEvents: true);
         var initial = StrategicWorldNewbornSiteChoiceResearchTests.Snapshot(content, generated);
-        AssertEventTickRuns(CampaignState.Restore(initial with { World = initial.World with { Events = [new GeoscapeEventSnapshot("OWN_A", 30)] } }, content, new SplitMix64RandomSource(17)));
+        AssertEventTickRuns(CampaignState.Restore(initial with { World = initial.World with { Events = [new GeoscapeEventSnapshot("OWN_A", 30)] } }, content, new SplitMix64RandomSource(17)),
+            popped: generated ? [] : ["OWN_A"]);
         var campaign = CampaignState.Restore(initial with { World = initial.World with { MissionSites = [] } }, content, new SplitMix64RandomSource(17));
         var before = campaign.Capture();
         var forecast = campaign.MissionResearch.CreateForecast();

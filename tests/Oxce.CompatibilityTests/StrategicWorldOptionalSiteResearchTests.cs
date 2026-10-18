@@ -58,7 +58,7 @@ public sealed class StrategicWorldOptionalSiteResearchTests
     {
         var content = Content(generated, eventInterrupt: "BONUS");
         var initial = Snapshot(content, generated);
-        AssertEventTickRuns(CampaignState.Restore(initial with { World = initial.World with { Events = [new GeoscapeEventSnapshot("NEWBORN_EVENT", 30)] } }, content, new SplitMix64RandomSource(17)));
+        AssertEventTickRuns(CampaignState.Restore(initial with { World = initial.World with { Events = [new GeoscapeEventSnapshot("NEWBORN_EVENT", 30)] } }, content, new SplitMix64RandomSource(17)), popped: []);
         content = Content(generated, count: 9);
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, generated), content, new SplitMix64RandomSource(17)),
             "Mission research exceeds the supported outcome limit.");

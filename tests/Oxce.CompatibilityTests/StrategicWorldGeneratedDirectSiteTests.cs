@@ -115,11 +115,28 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         campaign = Reload(content, campaign, 41, "late-zero-site-born.sav");
         AdvanceUnblocked(campaign, 239);
         campaign = Reload(content, campaign, 41, "late-zero-site-before-payload.sav");
-        AssertEventTickRuns(campaign);
+        AssertEventTickRuns(campaign, popped: ["EVENT_DESPAWN"]);
 
         content = GeneratedDirectSiteContent(deployment: "GENERATED_DIRECT_ZERO_EVENT");
         AssertEventTickRuns(CampaignState.Restore(GeneratedDirectSiteSnapshot(content, 41), content,
-            new SplitMix64RandomSource(41)));
+            new SplitMix64RandomSource(41)), popped: ["EVENT_DESPAWN"]);
+    }
+
+    [Fact]
+    public void ASiteBornAndDespawnedInOneTickRunsItsDespawnPayloadStaged()
+    {
+        // Branch 6 S5 audit: the site is born by the half-hour mission handler and despawns in the site handler of the
+        // same tick; its despawn payload runs on the staged shadow first.
+        var content = GeneratedDirectSiteContent(deployment: "GENERATED_DIRECT_ZERO_EVENT");
+        var events = AssertEventTickRuns(CampaignState.Restore(GeneratedDirectSiteSnapshot(content, 41), content, new SplitMix64RandomSource(41)), popped: ["EVENT_DESPAWN"]);
+        Assert.Equal("EVENT_DESPAWN", Assert.Single(events.OfType<CampaignEventOpened>()).Window.RuleId);
+
+        content = GeneratedDirectSiteContent(deployment: "GENERATED_DIRECT_ZERO_EVENT", despawnEvent: "BAD_DESPAWN_EVENT");
+        var campaign = CampaignState.Restore(GeneratedDirectSiteSnapshot(content, 41), content, new SplitMix64RandomSource(41));
+        var before = campaign.Capture();
+        AssertTimeBlocked(campaign, "Strategic event item 'STR_BOGUS' is not defined.");
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+        AssertTimeBlocked(campaign, "Strategic event item 'STR_BOGUS' is not defined.");
     }
 
     [Theory]
@@ -441,8 +458,11 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
 
     private static RuntimeContent GeneratedDirectSiteContent(bool hunting = false, string deployment = "DIRECT_DEPLOY",
         int objective = 0, bool chain = false, bool alternatives = false, bool repeatSite = false, int directCount = 1, int expiryShift = 0,
-        bool bothCallers = false, bool produceMarkerCraft = false) =>
+        bool bothCallers = false, bool produceMarkerCraft = false, string despawnEvent = "EVENT_DESPAWN") =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], $$$"""
+            events:
+              - name: BAD_DESPAWN_EVENT
+                everyItemList: [STR_BOGUS]
             crafts:
               - {type: GENERATED_DIRECT_CRAFT, speedMax: 2000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
               {{{(produceMarkerCraft ? "- {type: DIRECT_MARKER, damageMax: 100, fuelMax: 0, allowLanding: false}" : "")}}}
@@ -465,7 +485,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
               - type: GENERATED_DIRECT_ZERO_EVENT
                 markerName: GENERATED_ZERO_MARKER
                 duration: [0, 0]
-                despawnEvents: {EVENT_DESPAWN: 1}
+                despawnEvents: {{{{despawnEvent}}}: 1}
               - type: GENERATED_DIRECT_NEGATIVE_BASE
                 markerName: STR_ALIEN_BASE
                 genMission: {GENERATED_DIRECT_NEGATIVE_MISSION: 1}

@@ -193,19 +193,22 @@ internal static class StrategicWorldTestSupport
         }
     }
 
-    /// <summary>Asserts that the next tick is refused with <paramref name="reason"/> and changes nothing.</summary>
     /// <summary>
     /// Branch 6 S5: a due event's payload runs inside the tick (staged, ADR 0035), where time once refused because a
-    /// forecast could not prove the event interrupted. The tick runs; whether the event popped is the payload's to say.
+    /// forecast could not prove the event interrupted. The tick runs, and the events in <paramref name="popped"/> (when
+    /// given) are exactly those whose windows it opened, in order; an empty list means research interrupted them.
     /// </summary>
-    public static IReadOnlyList<ICampaignEvent> AssertEventTickRuns(CampaignState campaign)
+    public static IReadOnlyList<ICampaignEvent> AssertEventTickRuns(CampaignState campaign, string[]? popped = null)
     {
         var result = campaign.Execute(new AdvanceCampaignTime(1));
         Assert.DoesNotContain(result.Events, static e => e is CampaignActionBlocked);
         Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        var opened = result.Events.OfType<CampaignEventOpened>().Select(static e => e.Window.RuleId).ToArray();
+        if (popped is not null) Assert.Equal(popped, opened);
         return result.Events;
     }
 
+    /// <summary>Asserts that the next tick is refused with <paramref name="reason"/> and changes nothing.</summary>
     public static void AssertTimeBlocked(CampaignState campaign, string reason)
     {
         var before = campaign.Capture();

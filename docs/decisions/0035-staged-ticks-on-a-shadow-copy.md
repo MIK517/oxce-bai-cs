@@ -82,6 +82,14 @@ preflights, used as designed, on the state that stage really starts from.
 - Instant despawn events (`SavedGame::canSpawnInstantEvent`) run inside the half-hour site handler,
   before the event countdown handler, so their stage point does not fall on a level boundary.
   Branch 6 S5 either generalizes stage points to handler positions or shows that the event handler's
-  own preflight covers the payload. It records the choice here.
+  own preflight covers the payload. It records the choice here. *Choice (S5):* neither. A
+  half-hour tick where a payload can run has a stage point after its level, so the shadow runs the
+  whole level, despawn and countdown payloads included, before real state changes. That is a tick
+  with a due event, a site within half an hour of expiry, a mission whose wave is due, a mission the
+  preflight generates this tick, or a month: the only ways a site can be born and despawn in one
+  tick. A payload failure inside the level, or a later site's research grant that a payload left
+  without capacity, fails the shadow and refuses the tick; the rest of the tick is preflighted again
+  on the state the payloads leave. Staging every half-hour tick would cost about 1 MB of copies each
+  (48 a day), which the allocation budgets reject.
 - The 4c restrictions R4–R6 are re-evaluated against this mechanism in branch 6 S9
   ([plan D5](../phase-6-campaign-cycle-plan.md#decisions)).

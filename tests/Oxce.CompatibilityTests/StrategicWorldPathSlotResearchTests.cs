@@ -63,7 +63,7 @@ public sealed class StrategicWorldPathSlotResearchTests
             AssertEventTickRuns(CampaignState.Restore(initial with
             {
                 World = initial.World with { Events = [new GeoscapeEventSnapshot("PATH_A_EVENT", 30)] },
-            }, content, new SplitMix64RandomSource(17)));
+            }, content, new SplitMix64RandomSource(17)), popped: []);
             if (common)
             {
                 var campaign = CampaignState.Restore(initial with

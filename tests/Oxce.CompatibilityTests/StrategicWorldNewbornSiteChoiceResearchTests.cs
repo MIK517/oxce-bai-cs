@@ -73,7 +73,8 @@ public sealed class StrategicWorldNewbornSiteChoiceResearchTests
         Assert.Equal(after.World.MissionSites.Count != 2, after.CompletedResearch.Contains("BONUS"));
         Assert.Equivalent(after, Reload(content, campaign, 17, "choice-mixed-duration.sav").Capture(), strict: true);
         content = Content(generated, eventPayload: true);
-        AssertEventTickRuns(CampaignState.Restore(Snapshot(content, generated), content, new SplitMix64RandomSource(17)));
+        AssertEventTickRuns(CampaignState.Restore(Snapshot(content, generated), content, new SplitMix64RandomSource(17)),
+            popped: generated ? [] : ["CHOICE_EVENT", "CHOICE_EVENT"]);
     }
 
     internal static RuntimeContent Content(bool generated, bool differentGrant = false, bool mixedDuration = false,

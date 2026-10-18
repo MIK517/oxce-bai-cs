@@ -62,10 +62,10 @@ public sealed class StrategicWorldStockResearchTests
         var initial = StrategicWorldSiteResearchItemTests.Snapshot(content, "refuel", 2) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
         initial = initial.WithCraft("SHIP_FUEL_ITEM", craft => craft with
         { RuleId = "SHIP", Logistics = craft.Logistics! with { Status = "STR_REARMING", Weapons = [new("UNCERTAIN_GUN", 0, Rearming: true)] } });
-        AssertEventTickRuns(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)));
+        AssertEventTickRuns(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), popped: ["STOCK_EVENT"]);
         content = StrategicWorldSiteResearchItemTests.Content(2, maintenance, eventInterrupt: "CORE");
         AssertEventTickRuns(CampaignState.Restore(initial with
-        { World = initial.World with { Events = [new GeoscapeEventSnapshot("STOCK_AUTO_EVENT", 30)] } }, content, new SplitMix64RandomSource(17)));
+        { World = initial.World with { Events = [new GeoscapeEventSnapshot("STOCK_AUTO_EVENT", 30)] } }, content, new SplitMix64RandomSource(17)), popped: ["STOCK_AUTO_EVENT"]);
         initial = initial with { World = initial.World with { Events = [new GeoscapeEventSnapshot("STOCK_EVENT", 30)] } };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         AdvanceUnblocked(campaign, 1);

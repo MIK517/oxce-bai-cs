@@ -246,7 +246,7 @@ public sealed class StrategicOperationBaseSpawnTests
         var scheduled = campaign.Capture();
         scheduled = scheduled with { World = scheduled.World with { Events = [new("OPERATION_EVENT", 0)] } };
         campaign = CampaignState.Restore(scheduled, content, new SplitMix64RandomSource(scheduled.RandomState));
-        AssertEventTickRuns(campaign);
+        AssertEventTickRuns(campaign, popped: ["OPERATION_EVENT"]);
     }
 
     [Fact]
