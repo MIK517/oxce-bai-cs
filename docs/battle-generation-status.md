@@ -49,3 +49,20 @@ Reference: `ConfirmLandingState::btnYesClick`, `GeoscapeState` (base defense), `
 Tests: `BattleStartTests` (hand-over, holds, save refusal, missing deployment, no request, linked defaults),
 `BattleStateTests` (viewer filtering, spotting revisions, tile index, bounds). `StrategicLandingTests` no longer
 takes the request through the retired seam. Unit and compatibility suites pass.
+
+## Next: S2 design notes
+
+- Terrain files are read through the content's virtual file catalog: `RuntimeContent` gains the catalog (set by
+  `ContentSnapshot` and the compiled-cache restore, both of which already have it), so tests that write synthetic
+  `TERRAIN/*.MCD`, `MAPS/*.MAP` and `ROUTES/*.RMP` files next to their rulesets get them through the normal bootstrap.
+  The resource catalog already resolves these paths (`ResourceDescriptorResolver`, `terrain/{id}/...`).
+- Data sets load lazily at battle generation, as `MapDataSet::loadData` does, into a cache owned by the battle
+  capability; `BattleGenerator.Refusal` loads and validates everything the battle needs before any change, so a
+  malformed file refuses `StartBattle` instead of throwing (ADR 0038).
+- `MapData` semantics to keep: `setBlockValue(lightBlock, Stop_LOS, HE_Block, Block_Smoke, Flammable, HE_Block)` with
+  block[1] = 255 when LOS stops and block[3] = 256 when smoke blocks; `setStopLOS` also resets block[1];
+  `MCDPatch::modifyData` order (bigWall, TU walk/fly/slide, deathTile, terrainHeight, specialType, explosive, armor,
+  flammability, fuel, HEBlock, footstepSound, objectType, noFloor, stopLOS, LOFTS) and an out-of-range patch index
+  is an error (`MapDataSet::getObject` throws).
+- Runtime projections are needed for `terrains` (data sets, map blocks), `mapScripts` and `mcdPatches`; they are
+  typed in `TerrainDeploymentRules.cs` but not yet in `RuntimeRuleCatalog`.
