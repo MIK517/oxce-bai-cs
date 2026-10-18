@@ -30,6 +30,7 @@ public sealed class GeoscapeNotificationsTests
         ["STR_COUNTRIES_AND"] = "{0} and {1}",
         ["STR_COUNTRIES_COMMA"] = "{0}, {1}",
         ["STR_CITY_EVENT"] = "Riots in {0}",
+        ["STR_RACE_MEDAL"] = "Slayer of {0}",
         ["STR_CITY_EVENT_DESC"] = "Trouble in {0}",
     };
 
@@ -60,16 +61,24 @@ public sealed class GeoscapeNotificationsTests
         var popup = Describe(new MonthlyReportReady(report))!;
 
         Assert.Equal("STR_XCOM_PROJECT_MONTHLY_REPORT", popup.Title);
+        // With a bonus, the bonus comes before maintenance (MonthlyReportState moves the lines down).
         Assert.Equal(
         [
-            "Month> January 1999", "Rating> 450 STR_RATING_GOOD", "STR_INCOME> $700,000 (+$25,000)", "STR_MAINTENANCE> $300,000",
-            "STR_PERFORMANCE_BONUS> $4,500", "STR_BALANCE> $1,204,500", "STR_COUNCIL_IS_GENERALLY_SATISFIED", "STR_COUNCIL_REDUCE_DEBTS",
+            "Month> January 1999", "Rating> 450 STR_RATING_GOOD", "STR_INCOME> $700,000 (+$25,000)", "STR_PERFORMANCE_BONUS> $4,500",
+            "STR_MAINTENANCE> $300,000", "STR_BALANCE> $1,204,500", "STR_COUNCIL_IS_GENERALLY_SATISFIED", "STR_COUNCIL_REDUCE_DEBTS",
             "STR_USA is pleased", "STR_RUSSIA, STR_CHINA and STR_INDIA signed pacts",
         ], popup.Lines);
         Assert.Equal([new AcknowledgeMonthlyReport()], popup.Actions.Select(static action => action.Command));
-        // A failed month shows the failure screen; its OK plays the lose cutscene.
-        var failed = Describe(new MonthlyReportReady(report with { CouncilText = "STR_YOU_HAVE_NOT_SUCCEEDED" } is var r ? r with { GameOver = 1 } : r))!;
-        Assert.Equal(("STR_YOU_HAVE_FAILED", "STR_YOU_HAVE_NOT_SUCCEEDED"), (failed.Title, failed.Lines[0]));
+        // GeoscapeState::time1Month resets the speed before the report.
+        Assert.True(popup.ResetsSpeedWhenShown);
+        // A failed month shows the report first; its OK opens the failure screen, whose OK plays the lose cutscene.
+        var failed = Describe(new MonthlyReportReady(report with { CouncilText = "STR_YOU_HAVE_NOT_SUCCEEDED", GameOver = 1 }))!;
+        Assert.Equal("STR_XCOM_PROJECT_MONTHLY_REPORT", failed.Title);
+        Assert.Contains("STR_YOU_HAVE_NOT_SUCCEEDED", failed.Lines);
+        Assert.Null(failed.Actions[0].Command);
+        var screen = failed.Actions[0].Next!;
+        Assert.Equal(("STR_YOU_HAVE_FAILED", 0), (screen.Title, screen.Lines.Count));
+        Assert.Equal([new AcknowledgeMonthlyReport()], screen.Actions.Select(static action => action.Command));
         Assert.Equal("Cutscene unavailable", Describe(new MonthlyReportAcknowledged("loseGame"))!.Title);
         Assert.Null(Describe(new MonthlyReportAcknowledged(null)));
     }
@@ -84,6 +93,7 @@ public sealed class GeoscapeNotificationsTests
         Assert.Equal("Riots in STR_NORTH_AMERICA", popup.Title);
         Assert.Equal(["", "STR_ITEMS_ARRIVING", "STR_RIFLE 3", "STR_GRENADE -2"], popup.Lines);
         Assert.Equal([new AcknowledgeCampaignEvent()], popup.Actions.Select(static action => action.Command));
+        Assert.True(popup.ResetsSpeedWhenShown);
 
         // btnOkClick pushes the cutscene, the sell screen, then the articles: the research article shows first.
         var ok = GeoscapeNotifications.DescribeAll(new CampaignEventAcknowledged("STR_CITY_EVENT", "winVideo", true, "STR_BONUS", "STR_PLASMA"), World, Tr);
@@ -97,19 +107,22 @@ public sealed class GeoscapeNotificationsTests
     {
         var popup = GeoscapeNotifications.Funding([new("STR_USA", 600_000, 50_000), new("STR_RUSSIA", 400_000, -20_000)], Tr);
         Assert.Equal("STR_INTERNATIONAL_RELATIONS", popup.Title);
+        // The total row has no change column (FundingState).
         Assert.Equal(["STR_COUNTRY | STR_FUNDING | STR_CHANGE", "STR_USA | $600,000 | +$50,000", "STR_RUSSIA | $400,000 | -$20,000",
-            "STR_TOTAL_UC | $1,000,000 | +$30,000"], popup.Lines);
+            "STR_TOTAL_UC | $1,000,000"], popup.Lines);
     }
 
     [Fact]
     public void MedalsThePsiReminderAndTheEndingVideoHaveTheirWindows()
     {
-        var medals = Describe(new SoldiersCommended([new(4, "STR_MEDAL_SERVICE", "noNoun", 0), new(5, "STR_RACE", "STR_SECTOID", 1)]))!;
+        var medals = Describe(new SoldiersCommended([new(4, "STR_MEDAL_SERVICE", "noNoun", 0), new(5, "STR_RACE_MEDAL", "STR_SECTOID", 1)]))!;
         Assert.Equal("STR_MEDALS", medals.Title);
-        Assert.Equal(["#4 STR_MEDAL_SERVICE STR_AWARD_0", "#5 STR_RACE STR_SECTOID STR_AWARD_1"], medals.Lines);
-        var psi = Describe(new PsiTrainingReminder())!;
+        Assert.Equal(["#4 STR_MEDAL_SERVICE STR_AWARD_0", "#5 Slayer of STR_SECTOID STR_AWARD_1"], medals.Lines);
+        // PsiTrainingState: a button for each base with psi labs, to its base screens, then OK.
+        var psi = Describe(new PsiTrainingReminder([1]))!;
         Assert.Equal("STR_PSIONIC_TRAINING", psi.Title);
-        Assert.Equal(["Alpha"], psi.Lines);
+        Assert.Equal(["Alpha", "STR_OK"], psi.Actions.Select(static action => action.Label));
+        Assert.Equal(new BaseIntent(1), psi.Actions[0].Intent);
         Assert.Equal("Cutscene unavailable", Describe(new CampaignCutscenePlayed("winVideo"))!.Title);
         Assert.Equal(["Cutscene: loseGame"], Describe(new CampaignEnded(2) { Cutscene = "loseGame" })!.Lines);
         // The host makes requested saves; they open no window.

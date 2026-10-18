@@ -114,7 +114,7 @@ public sealed class StrategicMonthlyCycleTests
         // The logistics fixture's STR_MEDAL_ORIGINAL8_NAME has no criteria and is never awarded here (ADR 0036).
         Assert.Equal<ICampaignEvent>([new MonthlyReportAcknowledged(null),
             new SoldiersCommended([.. soldiers.Select(static s => new CommendationAward(s.Id, "STR_MEDAL_SERVICE", "noNoun", 0))]),
-            new PsiTrainingReminder(), new CampaignSaveRequested(CampaignSaveKind.Autosave)], events, new EventComparer());
+            new PsiTrainingReminder([snapshot.Bases[0].Id]), new CampaignSaveRequested(CampaignSaveKind.Autosave)], events, new EventComparer());
         Assert.All(soldiers, static soldier =>
         {
             Assert.Equal(1, soldier.Personal!.Diary.Counter("monthsService"));
@@ -206,7 +206,9 @@ public sealed class StrategicMonthlyCycleTests
     private sealed class EventComparer : IEqualityComparer<ICampaignEvent>
     {
         public bool Equals(ICampaignEvent? x, ICampaignEvent? y) =>
-            x is SoldiersCommended left && y is SoldiersCommended right ? left.Awards.SequenceEqual(right.Awards) : object.Equals(x, y);
+            x is SoldiersCommended left && y is SoldiersCommended right ? left.Awards.SequenceEqual(right.Awards)
+            : x is PsiTrainingReminder leftPsi && y is PsiTrainingReminder rightPsi ? leftPsi.BaseIds.SequenceEqual(rightPsi.BaseIds)
+            : object.Equals(x, y);
 
         public int GetHashCode(ICampaignEvent obj) => 0;
     }
