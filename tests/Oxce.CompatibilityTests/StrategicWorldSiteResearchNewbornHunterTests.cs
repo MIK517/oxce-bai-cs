@@ -105,11 +105,7 @@ public sealed class StrategicWorldSiteResearchNewbornHunterTests
         Assert.Equal(random.State, after.RandomState);
         Assert.Empty(after.World.MissionSites);
         Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
-        for (var pass = 0; pass < 3; pass++)
-        {
-            campaign = Reload(content, campaign, 17, "site-research-targetless-newborn.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 17, "site-research-targetless-newborn.sav", 3, after);
     }
 
     [Theory]

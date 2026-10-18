@@ -1680,7 +1680,7 @@ Prefer these over local copies (see AGENTS.md, *Test conventions*).
 ### [tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs)
 
 - `StrategicWorldTestSupport` (class) - Shared setup and assertions for the strategic-world compatibility tests.
-- members: `AssertDetectionReadScript`, `CreateSnapshot`, `CreateLifecycleSnapshot`, `CreateUfoTransitCampaign`, `Degrees`, `WithCraft`, `WithFacility`, `WithNextId`, `AdvanceOne`, `AdvanceUnblocked`, `AssertInterceptionStarts`, `AssertLandingRequested`, `AssertNewbornHuntRuns`, `AssertEventTickRuns`, `AssertTimeBlocked`, `Reload`, `AssertSelectedNewbornArrival`, `AllocatedBytes`
+- members: `AssertDetectionReadScript`, `CreateSnapshot`, `CreateLifecycleSnapshot`, `CreateUfoTransitCampaign`, `Degrees`, `WithCraft`, `WithFacility`, `WithNextId`, `AdvanceOne`, `AdvanceUnblocked`, `AssertInterceptionStarts`, `AssertLandingRequested`, `AssertNewbornHuntRuns`, `AssertEventTickRuns`, `AssertTimeBlocked`, `Reload`, `ReloadRepeatedly`, `AssertContinuesLike`, `AssertSelectedNewbornArrival`, `AllocatedBytes`
 
 ### [tests/Oxce.TestExtension/ProbeExtension.cs](../tests/Oxce.TestExtension/ProbeExtension.cs)
 
@@ -1704,7 +1704,7 @@ Prefer these over local copies (see AGENTS.md, *Test conventions*).
 - `TestFixtures.FixedClock` (class)
 - `TestFixtures.CountingMinimumRandomSource` (class)
 - `TestFixtures.RecordingMinimumRandomSource` (class)
-- members: `LogisticsModId`, `DefaultCampaignId`, `Engine`, `RepositoryPath`, `PublicModsPath`, `CreatePlan`, `RuntimeRuleLinkingMods`, `CreateRuntimeRuleLinkingPlan`, `LoadStrategicLogistics`, `CreateLogisticsCampaign`, `LogisticsSaveOptions`, `LoadLogisticsSave`, `VerifiedExpectedPath`, `ReadVerifiedExpected`, `LoadVerifiedManifest`, `ReadKeyValues`, `Rows`, `CopyDirectory`, `Instance`, `UtcNow`, `IntegerCalls`, `UnitCalls`, `State`, `NextExclusive`, `NextInclusive`, `NextUnit`, `Restore`, `Calls`, `State`, `NextExclusive`, `NextInclusive`, `NextUnit`, `Restore`
+- members: `LogisticsModId`, `DefaultCampaignId`, `Engine`, `RepositoryPath`, `PublicModsPath`, `CreatePlan`, `RuntimeRuleLinkingMods`, `CreateRuntimeRuleLinkingPlan`, `LoadStrategicLogistics`, `CreateLogisticsCampaign`, `LogisticsSaveOptions`, `LoadLogisticsSave`, `VerifiedExpectedPath`, `ReadVerifiedExpected`, `LoadVerifiedManifest`, `ReadKeyValues`, `Rows`, `AssertJsonEqual`, `RequirePrivateMods`, `RequireOwnedData`, `RequirePrivateInstallation`, `CorpusFiles`, `ForEachCorpusFile`, `CopyDirectory`, `Instance`, `UtcNow`, `IntegerCalls`, `UnitCalls`, `State`, `NextExclusive`, `NextInclusive`, `NextUnit`, `Restore`, `Calls`, `State`, `NextExclusive`, `NextInclusive`, `NextUnit`, `Restore`
 
 ### Helpers nested in test classes
 

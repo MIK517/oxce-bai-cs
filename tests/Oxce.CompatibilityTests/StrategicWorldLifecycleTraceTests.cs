@@ -1,8 +1,6 @@
 using System.Globalization;
-using System.Text;
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -44,8 +42,7 @@ public sealed class StrategicWorldLifecycleTraceTests
                         ufo.Altitude, Fixed(ufo.Longitude), Fixed(ufo.Latitude), Fixed(ufo.Destination!.Longitude),
                         Fixed(ufo.Destination.Latitude), ufo.Speed, ufo.SecondsRemaining, ufo.Id, ufo.LandId,
                         ufo.Detected ? 1 : 0 }).ToArray()];
-                Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(expected.GetRawText())),
-                    CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(actual)));
+                TestFixtures.AssertJsonEqual(expected, JsonSerializer.SerializeToUtf8Bytes(actual));
                 if (!before.World.Ufos.Select(ufo => (ufo.Status, ufo.TrajectoryPoint))
                     .SequenceEqual(after.World.Ufos.Select(ufo => (ufo.Status, ufo.TrajectoryPoint))) ||
                     before.World.Missions.Count != after.World.Missions.Count)

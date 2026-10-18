@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.Mods.Rulesets.Runtime;
@@ -36,16 +35,10 @@ public sealed partial class StrategicWorldHuntingTests
             var craft = Assert.Single(after.Bases[0].Crafts, craft => craft.RuleId == "VARIANT_HUNT").Logistics!;
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { minimum, stock, choice, progress.Produced, NativeProductionStop(progress.StopReason),
                 after.Bases[0].Items.GetValueOrDefault("SUPPLY"), history, craft.Status, craft.Fuel, after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0 });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
             var control = CampaignState.Restore(after, content, new SplitMix64RandomSource(seed));
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "random-fuel-quantity.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
-            AdvanceUnblocked(campaign, 1);
-            AdvanceUnblocked(control, 1);
-            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+            campaign = ReloadRepeatedly(content, campaign, seed, "random-fuel-quantity.sav", 3, after);
+            AssertContinuesLike(control, campaign, 1);
         }
         Assert.Equal(2, choices.Count);
     }
@@ -110,14 +103,10 @@ public sealed partial class StrategicWorldHuntingTests
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { minimum, stock, choice, progress.Produced, NativeProductionStop(progress.StopReason),
                 owner.Items.GetValueOrDefault("SUPPLY"), history, craft.Status, craft.Fuel, after.World.Ufos[0].Destination!.Id,
                 owner.Transfers.Count, owner.Transfers[0].Quantity, owner.Transfers[1].Quantity, owner.Transfers[0].Hours });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Take(14).ToArray())), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row.EnumerateArray().Take(14).ToArray(), actual);
             var transferIds = owner.Transfers.Select(transfer => transfer.Id).ToArray();
             Assert.Equal(2, transferIds.Distinct().Count());
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "delayed-fuel-quantity.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "delayed-fuel-quantity.sav", 3, after);
             // Isolate the two hourly delivery boundaries, pausing further production.
             // The airborne craft remains in its takeoff countdown during both ticks.
             for (var hour = 3; hour <= 4; hour++)
@@ -140,16 +129,10 @@ public sealed partial class StrategicWorldHuntingTests
                 }
                 else Assert.Empty(owner.Transfers);
                 Assert.Equal(history, Assert.Single(owner.Productions).RandomProductionInfo["SUPPLY"]);
-                for (var rewrite = 0; rewrite < 3; rewrite++)
-                {
-                    campaign = Reload(content, campaign, seed, "delayed-fuel-arrival.sav");
-                    Assert.Equivalent(after, campaign.Capture(), strict: true);
-                }
+                campaign = ReloadRepeatedly(content, campaign, seed, "delayed-fuel-arrival.sav", 3, after);
             }
             var control = CampaignState.Restore(after, content, new SplitMix64RandomSource(seed));
-            AdvanceUnblocked(campaign, 1);
-            AdvanceUnblocked(control, 1);
-            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+            AssertContinuesLike(control, campaign, 1);
         }
         Assert.Equal(2, choices.Count);
     }
@@ -219,16 +202,10 @@ public sealed partial class StrategicWorldHuntingTests
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { reverse ? 1 : 0, 1, history, progress.Produced, NativeProductionStop(progress.StopReason),
                 owner.Items.GetValueOrDefault("SUPPLY"), history, first.Id, first.Logistics!.Status, first.Logistics.Fuel,
                 second.Id, second.Logistics!.Status, second.Logistics.Fuel, after.World.Ufos[0].Destination!.Id });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
             var control = CampaignState.Restore(after, content, new SplitMix64RandomSource(seed));
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "shared-fuel-quantity.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
-            AdvanceUnblocked(campaign, 1);
-            AdvanceUnblocked(control, 1);
-            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+            campaign = ReloadRepeatedly(content, campaign, seed, "shared-fuel-quantity.sav", 3, after);
+            AssertContinuesLike(control, campaign, 1);
         }
         Assert.Equal(2, choices.Count);
     }
@@ -271,17 +248,11 @@ public sealed partial class StrategicWorldHuntingTests
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { required, stock, history, progress[0].Produced, NativeProductionStop(progress[0].StopReason),
                 progress[1].Produced, NativeProductionStop(progress[1].StopReason), owner.Items.GetValueOrDefault("SUPPLY"), owner.Items.GetValueOrDefault("INERT_A"), history,
                 craft.Status, craft.Fuel, after.World.Ufos[0].Destination!.Id });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
             Assert.Equal(2, owner.Productions[1].Spent);
             var control = CampaignState.Restore(after, content, new SplitMix64RandomSource(seed));
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "shared-material-quantity.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
-            AdvanceUnblocked(campaign, 1);
-            AdvanceUnblocked(control, 1);
-            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+            campaign = ReloadRepeatedly(content, campaign, seed, "shared-material-quantity.sav", 3, after);
+            AssertContinuesLike(control, campaign, 1);
         }
         Assert.Equal(2, choices.Count);
     }

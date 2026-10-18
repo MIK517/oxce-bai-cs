@@ -1,7 +1,5 @@
-using System.Text;
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.TestSupport;
@@ -21,8 +19,7 @@ public sealed class StrategicWorldUfoShieldTests
             var random = new ShieldRoll(row[3].GetInt32());
             var shield = WorldUfoShields.Recharge(row[2].GetInt32(), row[0].GetInt32(), row[1].GetInt32(), random);
             int[] actual = [row[0].GetInt32(), row[1].GetInt32(), row[2].GetInt32(), row[3].GetInt32(), shield, random.Calls];
-            Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetRawText())),
-                CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(actual)));
+            TestFixtures.AssertJsonEqual(row, JsonSerializer.SerializeToUtf8Bytes(actual));
         }
     }
 

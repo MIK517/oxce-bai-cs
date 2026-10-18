@@ -15,9 +15,7 @@ public sealed class PrivateGeoscapeAssetsTests
     public void OwnedInstallationsProvideTheGlobeTexturesMarkersAndPalette(string master, string addon,
         int countryColor, int lineColor, int markerSize)
     {
-        var installation = TestFixtures.RepositoryPath("artifacts", "private-install");
-        Assert.SkipUnless(File.Exists(Path.Combine(installation, ".oxce-private-install-manifest.json")),
-            "Owned installation is not staged.");
+        var installation = TestFixtures.RequirePrivateInstallation();
         var request = InstallationLoadRequest.ForMasterAndAddOn(installation, master, addon, new("Extended", "8.6.1.0"));
         var loaded = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
         Assert.True(loaded.IsSuccess, loaded.DescribeFailure());

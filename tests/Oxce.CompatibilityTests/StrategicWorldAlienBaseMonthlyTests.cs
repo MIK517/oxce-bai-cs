@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -49,8 +48,7 @@ public sealed class StrategicWorldAlienBaseMonthlyTests
             Assert.Equal(snapshot.World.AlienBases[0].PreservationKey, alienBase.PreservationKey);
             Reload(content, campaign, 40, "monthly-base-oracle.sav");
         }
-        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(oracle.RootElement.GetProperty("rows"))),
-            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
+        TestFixtures.AssertJsonEqual(oracle.RootElement.GetProperty("rows"), JsonSerializer.SerializeToUtf8Bytes(rows));
     }
 
     [Fact]
@@ -239,8 +237,7 @@ public sealed class StrategicWorldAlienBaseMonthlyTests
                 _ => throw new InvalidOperationException("Unexpected target kind.") }]);
             Reload(content, CampaignState.Restore(after, content, new SplitMix64RandomSource(40)), 40, "monthly-marker-classification.sav");
         }
-        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(oracle.RootElement.GetProperty("markerRows"))),
-            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
+        TestFixtures.AssertJsonEqual(oracle.RootElement.GetProperty("markerRows"), JsonSerializer.SerializeToUtf8Bytes(rows));
     }
 
     [Fact]

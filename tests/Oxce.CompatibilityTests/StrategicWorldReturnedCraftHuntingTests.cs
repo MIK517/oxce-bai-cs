@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -43,7 +42,7 @@ public sealed class StrategicWorldReturnedCraftHuntingTests
                 match, true, false, ufo.Hunting, ufo.Escorting, ufo.OriginalWaypoint is not null,
                 ufo.Destination!.Kind == WorldTargetKind.Craft, ufo.Speed,
             });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(expected, actual);
             var target = match ? new WorldPosition(0.2, 0.1) : new(1.5, 0.7);
             var moved = WorldGeometry.Move(initial.World.Ufos.Single(before => before.UniqueId == ufo.UniqueId).Position,
                 target, WorldGeometry.RadianSpeed(3300));
@@ -58,11 +57,7 @@ public sealed class StrategicWorldReturnedCraftHuntingTests
             else Assert.Equal(2, ufo.Destination.Id);
         }
         var uninterrupted = CampaignState.Restore(after, content, new SplitMix64RandomSource(81));
-        for (var rewrite = 0; rewrite < 3; rewrite++)
-        {
-            campaign = Reload(content, campaign, 81, "returned-craft-hunting.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 81, "returned-craft-hunting.sav", 3, after);
         campaign.Execute(new AdvanceCampaignTime(1) { SelectedSpeed = speed });
         uninterrupted.Execute(new AdvanceCampaignTime(1) { SelectedSpeed = speed });
         Assert.Equivalent(uninterrupted.Capture(), campaign.Capture(), strict: true);

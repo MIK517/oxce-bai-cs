@@ -139,10 +139,6 @@ public sealed class StrategicWorldSiteResearchHuntReturnTests
         var hunter = Assert.Single(after.World.Ufos);
         Assert.Equal(!expiry || fuel == 300, hunter.Hunting);
         Assert.Equal(!expiry || fuel == 300 ? WorldTargetKind.Craft : WorldTargetKind.Waypoint, hunter.Destination!.Kind);
-        for (var pass = 0; pass < 3; pass++)
-        {
-            campaign = Reload(content, campaign, 17, "site-research-hunter-return.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 17, "site-research-hunter-return.sav", 3, after);
     }
 }

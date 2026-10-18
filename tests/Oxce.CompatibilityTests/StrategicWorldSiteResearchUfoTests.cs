@@ -33,11 +33,7 @@ public sealed class StrategicWorldSiteResearchUfoTests
         Assert.True(after.World.Missions[0].Interrupted);
         Assert.Empty(after.World.MissionSites);
         Assert.Equal(disabled ? 3 : 4, after.ResearchDiary.Count);
-        for (var pass = 0; pass < 3; pass++)
-        {
-            campaign = Reload(content, campaign, 17, "site-research-ufo-arrived.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 17, "site-research-ufo-arrived.sav", 3, after);
         AdvanceUnblocked(campaign, 1);
         Assert.Empty(campaign.Capture().World.Ufos);
         Assert.Equal(0, campaign.Capture().World.Missions[0].LiveUfos);

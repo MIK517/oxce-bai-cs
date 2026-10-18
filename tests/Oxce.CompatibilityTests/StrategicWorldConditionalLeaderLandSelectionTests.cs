@@ -81,11 +81,7 @@ public sealed class StrategicWorldConditionalLeaderLandSelectionTests
             Assert.Equal(4, Assert.Single(after.World.Missions).LiveUfos);
             Assert.Equal(12, after.Regions[0].ActivityAlien[^1]);
             patterns.Add(hunters.Select((hunter, index) => hunter ? 1 << index : 0).Sum());
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "conditional-land-selection.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "conditional-land-selection.sav", 3, after);
             var control = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
             AdvanceUnblocked(control, 3);
             AdvanceUnblocked(campaign, 2);

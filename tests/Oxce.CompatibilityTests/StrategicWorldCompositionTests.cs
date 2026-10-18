@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Runtime;
@@ -76,8 +75,7 @@ public sealed class StrategicWorldCompositionTests
             var expectedTrace = row.GetProperty("trace").EnumerateArray().Select(entry => entry.GetString()!)
                 .Where(entry => entry.StartsWith("article:", StringComparison.Ordinal) ||
                     entry.StartsWith("mission:", StringComparison.Ordinal) || entry.StartsWith("event:", StringComparison.Ordinal));
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expectedTrace)),
-                CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(trace)));
+            TestFixtures.AssertJsonEqual(expectedTrace, JsonSerializer.SerializeToUtf8Bytes(trace));
             Assert.Equal(row.GetProperty("runs").GetInt32(), after.World.Strategy.MissionRuns.SingleOrDefault(pair => pair.Key == "RUN").Value);
             Assert.Equal(row.GetProperty("events").GetInt32(), after.World.GeneratedEvents.GetValueOrDefault("E"));
             Assert.Equal(snapshot.Funds, after.Funds); // Eligibility funds are never paid out here.

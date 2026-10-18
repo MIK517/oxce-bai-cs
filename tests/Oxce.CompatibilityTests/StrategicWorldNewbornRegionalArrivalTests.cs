@@ -61,11 +61,7 @@ public sealed class StrategicWorldNewbornRegionalArrivalTests
                 Assert.Equal(expected[index].Arrived ? 1 : 0, ufo.TrajectoryPoint);
                 Assert.Equal(expected[index].Arrived ? 1760 : 2200, ufo.Speed);
             }
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "newborn-regional-first.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "newborn-regional-first.sav", 3, after);
             AdvanceUnblocked(campaign, 1);
         }
         Assert.True(arrivedSeen);
@@ -91,11 +87,7 @@ public sealed class StrategicWorldNewbornRegionalArrivalTests
             Assert.All(after.World.Ufos, ufo => Assert.Equal(1, ufo.TrajectoryPoint));
             Assert.Equal(generation is 1 or 3 ? 9 : 0, after.Regions[0].ActivityAlien[^1]);
             Assert.Equal(generation is 1 or 3 ? 1 : 0, Assert.Single(after.World.AlienBases).GenMissionCount);
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "generated-newborn-first.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "generated-newborn-first.sav", 3, after);
             var control = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
             AdvanceUnblocked(control, 2);
             AdvanceUnblocked(campaign, 1);

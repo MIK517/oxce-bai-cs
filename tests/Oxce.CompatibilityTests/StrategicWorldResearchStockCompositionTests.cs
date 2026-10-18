@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.TestSupport;
@@ -55,7 +54,7 @@ public sealed class StrategicWorldResearchStockCompositionTests
             var arrivals = stocks.Arrivals.Values.Sum(items => items.Count) + (incoming ? count : 0);
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { count, incoming, selected[0], second, mask,
                 quantities, arrivals, after.NextIds["EQUIV_COUNTER"], after.ResearchScores[^1] - before.ResearchScores[^1] });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(expected, actual);
             Assert.Equal(before.Bases.Select(owner => owner.Id), after.Bases.Select(owner => owner.Id));
             Assert.All(after.Bases, owner => { Assert.Empty(owner.Research); Assert.Empty(owner.Transfers); });
             Assert.Equal(stocks.NextTransferId, after.NextIds["oxcePortTransfer"]);
@@ -70,11 +69,7 @@ public sealed class StrategicWorldResearchStockCompositionTests
                 Assert.All(research.ActiveResearch!.Values, Assert.Empty);
             }
             var control = CampaignState.Restore(after, content, new SplitMix64RandomSource(seed));
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "composed-research-stocks.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "composed-research-stocks.sav", 3, after);
             AdvanceUnblocked(campaign, 24);
             for (var tick = 0; tick < 24; tick++) AdvanceUnblocked(control, 1);
             Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
@@ -103,11 +98,7 @@ public sealed class StrategicWorldResearchStockCompositionTests
         Assert.Equal(ExpectedEventCountdowns, after.World.Events.Select(scheduled => scheduled.SpawnCountdown));
         Assert.Equal(2, after.World.GeneratedEvents["EQUIV_EVENT"]);
         Assert.Contains("EQUIV_C", after.CompletedResearch);
-        for (var rewrite = 0; rewrite < 3; rewrite++)
-        {
-            campaign = Reload(content, campaign, 17, "composed-research-future-events.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 17, "composed-research-future-events.sav", 3, after);
         var due = after with
         {
             Time = new(3, 3, 1, 1999, 0, 29, 55),

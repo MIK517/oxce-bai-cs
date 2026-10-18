@@ -107,6 +107,60 @@ internal static class TestFixtures
         return rows;
     }
 
+    /// <summary>Compares an oracle element with actual UTF-8 JSON, both canonicalized, so a failure prints the difference.</summary>
+    internal static void AssertJsonEqual(JsonElement expected, ReadOnlySpan<byte> actual) =>
+        Assert.Equal(CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(expected.GetRawText())), CanonicalJson.Normalize(actual));
+
+    /// <summary>Compares a value serialized as JSON (with its static type) with actual UTF-8 JSON, both canonicalized.</summary>
+    internal static void AssertJsonEqual<T>(T expected, ReadOnlySpan<byte> actual) =>
+        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+
+    /// <summary><c>fixtures/private/mods</c>; skips the test when the private mod corpus is absent.</summary>
+    internal static string RequirePrivateMods()
+    {
+        var path = RepositoryPath("fixtures", "private", "mods");
+        Assert.SkipUnless(Directory.Exists(path), "Private mod assets are not available in this checkout.");
+        return path;
+    }
+
+    /// <summary><c>data</c>, the owned original game files; skips the test when they are absent.</summary>
+    internal static string RequireOwnedData()
+    {
+        var path = RepositoryPath("data");
+        Assert.SkipUnless(Directory.Exists(path), "Private original-game assets are not available in this checkout.");
+        return path;
+    }
+
+    /// <summary>
+    /// <c>artifacts/private-install</c>, the installation <c>tools/stage-private-install.ps1</c> stages; skips the
+    /// test when it has not been staged.
+    /// </summary>
+    internal static string RequirePrivateInstallation()
+    {
+        var path = RepositoryPath("artifacts", "private-install");
+        Assert.SkipUnless(File.Exists(Path.Combine(path, ".oxce-private-install-manifest.json")),
+            "The private installation is not staged; run tools/stage-private-install.ps1.");
+        return path;
+    }
+
+    /// <summary>Every file matching the pattern under the roots, in ordinal path order, so failures repeat run to run.</summary>
+    internal static string[] CorpusFiles(string pattern, params string[] roots) => roots
+        .SelectMany(root => Directory.EnumerateFiles(root, pattern, SearchOption.AllDirectories))
+        .Order(StringComparer.Ordinal).ToArray();
+
+    /// <summary>Runs the check on every corpus file; a failure names the file that caused it.</summary>
+    internal static void ForEachCorpusFile(IEnumerable<string> paths, Action<string> check)
+    {
+        foreach (var path in paths)
+        {
+            try { check(path); }
+            catch (Exception error) when (error is not Xunit.Sdk.SkipException)
+            {
+                throw new Xunit.Sdk.XunitException($"Corpus file '{path}' failed: {error.Message}", error);
+            }
+        }
+    }
+
     internal static void CopyDirectory(string source, string destination)
     {
         Directory.CreateDirectory(destination);

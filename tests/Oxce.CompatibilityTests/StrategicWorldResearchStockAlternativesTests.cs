@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -51,18 +50,12 @@ public sealed class StrategicWorldResearchStockAlternativesTests
                 choice, duplicate, count, choice + 1, after.Bases[0].Items.GetValueOrDefault("SUPPLY") + 1,
                 forecast.Arrivals[before.Bases[0].Id].Count, after.NextIds["EQUIV_COUNTER"], after.ResearchScores[^1] - before.ResearchScores[^1],
             });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(expected, actual);
             Assert.Equal("STR_OUT", after.Bases[0].Crafts[0].Logistics!.Status);
             Assert.True(Assert.Single(after.World.Ufos).Hunting);
             var control = CampaignState.Restore(after, content, new SplitMix64RandomSource(seed));
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "equivalent-research-stock.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
-            AdvanceUnblocked(campaign, 1);
-            AdvanceUnblocked(control, 1);
-            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+            campaign = ReloadRepeatedly(content, campaign, seed, "equivalent-research-stock.sav", 3, after);
+            AssertContinuesLike(control, campaign, 1);
         }
         Assert.Equal(2, choices.Count);
     }
@@ -143,17 +136,13 @@ public sealed class StrategicWorldResearchStockAlternativesTests
                 after.CompletedResearch.Contains("EQUIV_B"), after.Bases[0].Items.GetValueOrDefault("SUPPLY") + 1,
                 forecast.Arrivals[before.Bases[0].Id].Count, after.NextIds["EQUIV_COUNTER"], after.ResearchScores[^1] - before.ResearchScores[^1],
             });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(expected, actual);
             Assert.Equal(after.CompletedResearch.Order(StringComparer.Ordinal), forecast.CompletedResearch!.Order(StringComparer.Ordinal));
             Assert.Equivalent(after.ResearchRuleStatus, forecast.ResearchStatuses, strict: true);
             Assert.Equal(after.Bases[0].Research.Select(project => project.RuleId).Order(StringComparer.Ordinal), forecast.ActiveResearch![after.Bases[0].Id].Order(StringComparer.Ordinal));
             Assert.Equal(after.ResearchDiary.Count - before.ResearchDiary.Count, forecast.DiaryEntries);
             Assert.True(Assert.Single(after.World.Ufos).Hunting);
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "convergent-research-stock.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "convergent-research-stock.sav", 3, after);
         }
         Assert.Equal(2, choices.Count);
     }
@@ -180,7 +169,7 @@ public sealed class StrategicWorldResearchStockAlternativesTests
             var expected = TestFixtures.Rows(oracle.RootElement, "researchConvergentStatusRows").Single(row => row[0].GetInt32() == choice);
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { choice, after.CompletedResearch.Contains("EQUIV_A"),
                 after.CompletedResearch.Contains("EQUIV_B"), after.ResearchRuleStatus.GetValueOrDefault("EQUIV_Z"), after.ResearchScores[^1] - before.ResearchScores[^1] });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(expected, actual);
         }
         Assert.Equal(2, choices.Count);
     }
@@ -211,13 +200,9 @@ public sealed class StrategicWorldResearchStockAlternativesTests
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { repeats, choice, choice + 1,
                 after.Bases[0].Items.GetValueOrDefault("SUPPLY") + 1, forecast.Arrivals[before.Bases[0].Id].Count,
                 after.ResearchScores[^1] - before.ResearchScores[^1] });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(expected, actual);
             Assert.True(Assert.Single(after.World.Ufos).Hunting);
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "weighted-research-stock.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "weighted-research-stock.sav", 3, after);
         }
     }
 
@@ -250,15 +235,11 @@ public sealed class StrategicWorldResearchStockAlternativesTests
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { mode, choice, after.CompletedResearch.Contains("EQUIV_Z"),
                 after.Bases[0].Items.GetValueOrDefault("SUPPLY") + 1, forecast.Arrivals[initial.Bases[0].Id].Count,
                 after.NextIds["EQUIV_COUNTER"], after.ResearchScores[^1] - initial.ResearchScores[^1] });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(expected, actual);
             var expectedDiary = TestFixtures.Rows(diary.RootElement, "stockScopeRows").Single(row => row[0].GetInt32() == mode && row[1].GetInt32() == choice);
             Assert.Equal(expectedDiary[2].EnumerateArray().Select(entry => entry.GetString()), after.ResearchDiary.Select(entry => entry.RuleId));
             Assert.True(Assert.Single(after.World.Ufos).Hunting);
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "scoped-research-stock.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "scoped-research-stock.sav", 3, after);
         }
         Assert.Equal(2, choices.Count);
         var unsafeInitial = Snapshot(content, 17) with { ResearchScores = [int.MaxValue] };
@@ -295,13 +276,9 @@ public sealed class StrategicWorldResearchStockAlternativesTests
             var expected = TestFixtures.Rows(oracle.RootElement, "researchEmptyCounterRewardRows").Single(row => row[0].GetInt32() == mode && row[1].GetInt32() == choice);
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { mode, choice, after.Bases[0].Items.GetValueOrDefault("SUPPLY") + 1,
                 forecast.Arrivals[before.Bases[0].Id].Count, after.NextIds["EQUIV_COUNTER"], after.NextIds.ContainsKey(""), after.NextIds["UNKNOWN_COUNTER"], after.ResearchScores[^1] - before.ResearchScores[^1] });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(expected, actual);
             Assert.True(Assert.Single(after.World.Ufos).Hunting);
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "empty-research-counter.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "empty-research-counter.sav", 3, after);
         }
         Assert.Equal(2, choices.Count);
     }
@@ -354,14 +331,10 @@ public sealed class StrategicWorldResearchStockAlternativesTests
             var expected = TestFixtures.Rows(oracle.RootElement, "researchEmptyOnlyRewardRows").Single(row => row[0].GetInt32() == labels && row[1].GetInt32() == choice);
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { labels, choice, after.Bases[0].Items.GetValueOrDefault("SUPPLY") + 1,
                 after.Bases[0].Transfers.Count, after.NextIds["UNKNOWN_COUNTER"], after.ResearchScores[^1] - before.ResearchScores[^1] });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(expected, actual);
             Assert.False(after.NextIds.ContainsKey(""));
             Assert.True(Assert.Single(after.World.Ufos).Hunting);
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "empty-only-research-effects.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "empty-only-research-effects.sav", 3, after);
         }
         Assert.Equal(2, choices.Count);
     }

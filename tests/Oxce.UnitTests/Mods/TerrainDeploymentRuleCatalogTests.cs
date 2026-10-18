@@ -39,8 +39,7 @@ public sealed class TerrainDeploymentRuleCatalogTests
             actualRows.Add([row[0], weights.Select(entry => new object[] { YamlValueReader.ReadString(entry.Key),
                 YamlValueReader.ReadUInt64(entry.Value) }).ToArray(), total]);
         }
-        Assert.Equal(CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(oracle.RootElement.GetProperty("weightRows").GetRawText())),
-            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(actualRows)));
+        TestFixtures.AssertJsonEqual(oracle.RootElement.GetProperty("weightRows"), JsonSerializer.SerializeToUtf8Bytes(actualRows));
     }
 
     [Theory]

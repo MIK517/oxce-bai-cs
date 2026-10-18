@@ -37,11 +37,7 @@ public sealed class StrategicWorldSiteResearchObjectiveTests
                 Assert.Equal((1, 0, countdown), (mission.NextWave, mission.NextUfoCounter, mission.SpawnCountdown));
                 Assert.True(mission.Interrupted);
             }
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, 66, "site-research-objective-prefix.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, 66, "site-research-objective-prefix.sav", 3, after);
             AdvanceUnblocked(campaign, 360);
             Assert.Empty(campaign.Capture().World.Missions);
         }
@@ -71,11 +67,7 @@ public sealed class StrategicWorldSiteResearchObjectiveTests
         Assert.Empty(after.World.Ufos);
         Assert.Empty(after.World.MissionSites);
         Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
-        for (var pass = 0; pass < 3; pass++)
-        {
-            campaign = Reload(content, campaign, 66, "objective-research-after.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 66, "objective-research-after.sav", 3, after);
     }
 
     [Fact]

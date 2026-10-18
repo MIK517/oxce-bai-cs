@@ -1,5 +1,6 @@
 using Oxce.Formats.Binary;
 using Oxce.Formats.Images;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -13,15 +14,11 @@ public sealed class PrivateIndexedPngCorpusTests
     [Fact]
     public void OwnedModIndexedPngFilesDecodeWithinBounds()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var privateMods = Path.Combine(root, "fixtures", "private", "mods");
-        Assert.SkipUnless(
-            Directory.Exists(privateMods),
-            "Private mod assets are not available in this checkout.");
+        var privateMods = TestFixtures.RequirePrivateMods();
 
         var decodedCount = 0;
         var header = new byte[26];
-        foreach (var path in Directory.EnumerateFiles(privateMods, "*.png", SearchOption.AllDirectories))
+        TestFixtures.ForEachCorpusFile(TestFixtures.CorpusFiles("*.png", privateMods), path =>
         {
             using (var stream = File.OpenRead(path))
             {
@@ -30,7 +27,7 @@ public sealed class PrivateIndexedPngCorpusTests
                 if (read < header.Length || !header.AsSpan(0, 8).SequenceEqual(PngSignature) ||
                     !header.AsSpan(12, 4).SequenceEqual("IHDR"u8) || header[25] != IndexedColorType)
                 {
-                    continue;
+                    return;
                 }
             }
 
@@ -38,7 +35,7 @@ public sealed class PrivateIndexedPngCorpusTests
             Assert.Equal(checked(image.Width * image.Height), image.Pixels.Length);
             Assert.InRange(image.Palette.Count, 1, 256);
             decodedCount++;
-        }
+        });
 
         Assert.True(decodedCount > 14_000, $"Expected the supplied indexed PNG corpus; decoded {decodedCount} files.");
     }

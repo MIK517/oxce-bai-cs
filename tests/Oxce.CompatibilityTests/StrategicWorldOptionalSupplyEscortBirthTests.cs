@@ -55,14 +55,8 @@ public sealed class StrategicWorldOptionalSupplyEscortBirthTests
             var control = CampaignState.Restore(initial, deleted ? deletedContent : survivedContent, new SplitMix64RandomSource(seed));
             AdvanceUnblocked(control, 1);
             Assert.Equivalent(control.Capture(), after, strict: true);
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "optional-space-supply-escort-birth.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
-            AdvanceUnblocked(campaign, 1);
-            AdvanceUnblocked(control, 1);
-            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+            campaign = ReloadRepeatedly(content, campaign, seed, "optional-space-supply-escort-birth.sav", 3, after);
+            AssertContinuesLike(control, campaign, 1);
         }
         Assert.Equal(percentage == 100 ? 2 : 4, outcomes.Count);
     }

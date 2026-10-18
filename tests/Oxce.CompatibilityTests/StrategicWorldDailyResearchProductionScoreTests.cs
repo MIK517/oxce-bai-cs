@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.TestSupport;
@@ -30,22 +29,15 @@ public sealed class StrategicWorldDailyResearchProductionScoreTests
             var choice = after.CompletedResearch.Contains("EQUIV_A") ? 0 : 1;
             seen.Add(choice);
             var expected = TestFixtures.Rows(oracle.RootElement, "researchDailyProductionScoreRows").Single(row => row[0].GetInt32() == mode && row[1].GetInt32() == choice && row[2].GetInt32() == 4 && row[3].GetInt32() == (stopped ? 1 : 0));
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(new long[] { expected[6].GetInt64(), expected[9].GetInt64() })),
-                CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(new long[] { (long)after.ResearchScores[^1] - initial.ResearchScores[^1], after.Bases[0].Items.GetValueOrDefault("SUPPLY") })));
+            TestFixtures.AssertJsonEqual(new long[] { expected[6].GetInt64(), expected[9].GetInt64() }, JsonSerializer.SerializeToUtf8Bytes(new long[] { (long)after.ResearchScores[^1] - initial.ResearchScores[^1], after.Bases[0].Items.GetValueOrDefault("SUPPLY") }));
             Assert.Equal(expected[4].GetInt32(), stopped ? 1 : 4);
             Assert.Empty(after.Bases[0].Productions);
             Assert.DoesNotContain("UNREACHED_AUTO", after.CompletedResearch);
             Assert.Equal("STR_OUT", after.Bases[0].Crafts[0].Logistics!.Status);
             Assert.True(Assert.Single(after.World.Ufos).Hunting);
             var control = CampaignState.Restore(after, content, new SplitMix64RandomSource(seed));
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "daily-production-score.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
-            AdvanceUnblocked(campaign, 1);
-            AdvanceUnblocked(control, 1);
-            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+            campaign = ReloadRepeatedly(content, campaign, seed, "daily-production-score.sav", 3, after);
+            AssertContinuesLike(control, campaign, 1);
         }
         Assert.Equal(2, seen.Count);
     }

@@ -51,11 +51,7 @@ public sealed class StrategicWorldSiteResearchFacilityTests
         Assert.True(after.Bases[0].Facilities[0].Disabled);
         Assert.Equal(snapshot.ResearchScores[^1] + (completes ? 18 : 5), after.ResearchScores[^1]);
         Assert.Empty(after.World.MissionSites);
-        for (var pass = 0; pass < 3; pass++)
-        {
-            campaign = Reload(content, campaign, 17, "site-research-facility.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 17, "site-research-facility.sav", 3, after);
     }
 
     [Theory]

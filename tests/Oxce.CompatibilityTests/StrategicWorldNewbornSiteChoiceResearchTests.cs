@@ -43,11 +43,7 @@ public sealed class StrategicWorldNewbornSiteChoiceResearchTests
             Assert.Equal(b, after.NextIds.GetValueOrDefault("CHOICE_B_COUNTER", 1) - 1);
             seenA |= a != 0;
             seenB |= b != 0;
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "choice-research-after.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "choice-research-after.sav", 3, after);
         }
         Assert.True(seenA);
         Assert.True(seenB);

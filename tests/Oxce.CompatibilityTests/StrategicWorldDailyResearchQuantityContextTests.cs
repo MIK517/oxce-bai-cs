@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.Mods.Rulesets.Runtime;
@@ -47,20 +46,14 @@ public sealed class StrategicWorldDailyResearchQuantityContextTests
             var expected = TestFixtures.Rows(oracle.RootElement, "researchDailyQuantityContextRows").Single(row => row[0].GetInt32() == dependency && row[1].GetInt32() == choice);
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { dependency, choice, after.Bases[0].Items.GetValueOrDefault("SUPPLY"),
                 after.ResearchScores[^1] - initial.ResearchScores[^1], after.CompletedResearch.Contains("SITE_AUTO") ? 1 : 0, after.NextIds.GetValueOrDefault("oxcePortTransfer", 1) - initial.NextIds.GetValueOrDefault("oxcePortTransfer", 1), after.NextIds["EQUIV_COUNTER"] });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(expected, actual);
             Assert.Equal(dependency == 1 && choice == 1, after.CompletedResearch.Contains("SITE_AUTO"));
             Assert.Equal("STR_OUT", after.Bases[0].Crafts[0].Logistics!.Status);
             Assert.True(Assert.Single(after.World.Ufos).Hunting);
             Assert.Empty(after.World.MissionSites);
             var control = CampaignState.Restore(after, content, new SplitMix64RandomSource(seed));
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "daily-quantity-context.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
-            AdvanceUnblocked(campaign, 1);
-            AdvanceUnblocked(control, 1);
-            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+            campaign = ReloadRepeatedly(content, campaign, seed, "daily-quantity-context.sav", 3, after);
+            AssertContinuesLike(control, campaign, 1);
         }
         Assert.Equal(2, seen.Count);
     }

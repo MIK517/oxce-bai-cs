@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -399,6 +398,5 @@ public sealed class StrategicWorldAlienBaseActivityTests
     }
 
     private static void EqualRows(JsonElement expected, List<object[]> actual) =>
-        Assert.Equal(CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(expected.GetRawText())),
-            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(actual)));
+        TestFixtures.AssertJsonEqual(expected, JsonSerializer.SerializeToUtf8Bytes(actual));
 }

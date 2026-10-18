@@ -193,7 +193,7 @@ public sealed class StrategicWorldUfoSiteConversionTests
             {
                 birth, decrease, birth ? after.World.MissionSites[0].Id : 0, converted.Id, after.NextIds["DIRECT_MARKER"],
             });
-            Assert.Equal(CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
             Assert.Equal(7200, converted.SecondsRemaining); // Created after the site timer pass.
             Assert.Equal(initial.Regions[0].ActivityAlien[^1] + 3 + 5 + (birth ? 4 : 0), after.Regions[0].ActivityAlien[^1]);
             Reload(content, campaign, 17, "combined-ufo-site-counter-order.sav");
@@ -355,7 +355,7 @@ public sealed class StrategicWorldUfoSiteConversionTests
                 respawn, Assert.Single(after.World.Ufos).Status == UfoStatus.Destroyed ? "destroyed" : "ignore",
                 after.World.MissionSites.Count, 1, after.RandomState,
             });
-            Assert.Equal(CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
             Assert.Equal(snapshot.Regions[0].ActivityAlien[^1] + 5, after.Regions[0].ActivityAlien[^1]);
             Reload(content, campaign, 17, "suppressed-captured-conversion.sav");
         }
@@ -410,7 +410,7 @@ public sealed class StrategicWorldUfoSiteConversionTests
             {
                 respawn, units, state.Destination?.Kind == WorldTargetKind.MissionSite, state.Destination?.Kind == WorldTargetKind.Base,
             });
-            Assert.Equal(CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
             if (units > 0)
             {
                 var site = Assert.Single(after.World.MissionSites);

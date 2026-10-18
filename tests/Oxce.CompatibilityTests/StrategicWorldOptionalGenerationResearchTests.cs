@@ -37,11 +37,7 @@ public sealed class StrategicWorldOptionalGenerationResearchTests
             Assert.Equal(generated ? 2 : 1, after.NextIds.GetValueOrDefault("SECOND_MARKER", 1));
             generatedSeen |= generated;
             skippedSeen |= !generated;
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "optional-generation-after.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "optional-generation-after.sav", 3, after);
         }
         Assert.True(generatedSeen);
         Assert.True(skippedSeen);

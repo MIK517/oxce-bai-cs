@@ -88,11 +88,7 @@ public sealed class StrategicWorldPassiveLeaderFollowerTests
                 Assert.Equal(source.Position, actual.Destination!.Position);
                 Assert.Equal(10, follower.Destination!.UniqueId);
             }
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "passive-leader-chain.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "passive-leader-chain.sav", 3, after);
             var control = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
             AdvanceUnblocked(control, 3);
             AdvanceUnblocked(campaign, 2);

@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.TestSupport;
@@ -53,11 +52,7 @@ public sealed class StrategicWorldSiteResearchEscortTests
         Assert.Equal(leader.UniqueId, follower.Destination!.UniqueId);
         Assert.Equal(leader.Id, follower.Destination.Id);
         Assert.Equal(2200, follower.Speed);
-        for (var pass = 0; pass < 3; pass++)
-        {
-            campaign = Reload(content, campaign, 17, "site-research-escort-identity.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 17, "site-research-escort-identity.sav", 3, after);
     }
 
     [Fact]
@@ -107,7 +102,7 @@ public sealed class StrategicWorldSiteResearchEscortTests
                         decimal.Parse(ufo.Longitude.ToString("F12", CultureInfo.InvariantCulture), CultureInfo.InvariantCulture),
                         decimal.Parse(ufo.Latitude.ToString("F12", CultureInfo.InvariantCulture), CultureInfo.InvariantCulture),
                     })).ToArray());
-                Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row)), CanonicalJson.Normalize(actual));
+                TestFixtures.AssertJsonEqual(row, actual);
                 campaign = Reload(content, campaign, 81, "site-research-escort.sav");
                 Assert.Equivalent(after, campaign.Capture(), strict: true);
             }

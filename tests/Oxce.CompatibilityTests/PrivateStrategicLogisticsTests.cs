@@ -3,6 +3,7 @@ using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Bootstrap;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.Savegames.Oxce;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -17,9 +18,7 @@ public sealed class PrivateStrategicLogisticsTests
     [Fact]
     public void OwnedContentHasEquivalentFreshAndCachedLogistics()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var installation = Path.Combine(root, "artifacts/private-install");
-        Assert.SkipUnless(File.Exists(Path.Combine(installation, ".oxce-private-install-manifest.json")), "Owned installation is not staged.");
+        var installation = TestFixtures.RequirePrivateInstallation();
         var cacheDirectory = Directory.CreateTempSubdirectory("oxce-private-logistics-cache-");
         try
         {
@@ -44,8 +43,8 @@ public sealed class PrivateStrategicLogisticsTests
                 var second = Exercise(cached.Content!, request);
                 Assert.Equivalent(first, second, strict: true);
                 var family = master switch { "xcom1" => "vanilla-ufo", "xcom2" => "vanilla-tftd", _ => "modded/rosigma" };
-                var imported = ExerciseImported(fresh.Content!, request, Path.Combine(root, "fixtures/private/saves", family));
-                var cachedImported = ExerciseImported(cached.Content!, request, Path.Combine(root, "fixtures/private/saves", family));
+                var imported = ExerciseImported(fresh.Content!, request, TestFixtures.RepositoryPath("fixtures", "private", "saves", family));
+                var cachedImported = ExerciseImported(cached.Content!, request, TestFixtures.RepositoryPath("fixtures", "private", "saves", family));
                 Assert.Equivalent(imported, cachedImported, strict: true);
                 var (expectedSave, expectedItem) = master switch
                 {

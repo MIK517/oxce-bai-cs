@@ -1,7 +1,5 @@
-using System.Text;
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -69,8 +67,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
                 Assert.Equal(1, reloaded.World.AlienBases[0].GenMissionCount);
             }
         }
-        Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(oracle.RootElement.GetProperty("rows").GetRawText())),
-            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
+        TestFixtures.AssertJsonEqual(oracle.RootElement.GetProperty("rows"), JsonSerializer.SerializeToUtf8Bytes(rows));
     }
 
     [Fact]

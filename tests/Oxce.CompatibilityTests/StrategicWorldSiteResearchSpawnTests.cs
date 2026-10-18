@@ -43,11 +43,7 @@ public sealed class StrategicWorldSiteResearchSpawnTests
             if (!final) Assert.Equal(WorldTrajectory.SpawnCountdown(9000, random), mission.SpawnCountdown);
             random.NextInclusive(0, 99);
             Assert.Equal(random.State, after.RandomState);
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, 17, "site-research-airborne-birth.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, 17, "site-research-airborne-birth.sav", 3, after);
             AdvanceUnblocked(campaign, 1);
             Assert.Single(campaign.Capture().World.Missions);
             Assert.Single(campaign.Capture().World.Ufos);
@@ -94,11 +90,7 @@ public sealed class StrategicWorldSiteResearchSpawnTests
             if (!final) WorldTrajectory.SpawnCountdown(9000, random);
             random.NextInclusive(0, 99);
             Assert.Equal(random.State, after.RandomState);
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, 17, "site-research-ground-birth.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, 17, "site-research-ground-birth.sav", 3, after);
             AdvanceUnblocked(campaign, 1);
             var lifted = Assert.Single(campaign.Capture().World.Ufos);
             Assert.Equal((UfoStatus.Flying, WorldAltitudes.VeryLow, 0, ufo.LandId),

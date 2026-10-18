@@ -45,11 +45,7 @@ public sealed class StrategicWorldProductionSiteScoreTests
             Assert.Equal(expected[6].GetInt64(), (long)after.ResearchScores[^1] - initial.ResearchScores[^1]);
             Assert.Contains("SITE", after.CompletedResearch);
             Assert.Empty(after.World.MissionSites);
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "production-site-score.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "production-site-score.sav", 3, after);
         }
         Assert.Equal(2, seen.Count);
     }

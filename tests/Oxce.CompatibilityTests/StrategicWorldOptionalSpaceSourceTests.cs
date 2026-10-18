@@ -39,14 +39,8 @@ public sealed class StrategicWorldOptionalSpaceSourceTests
                 var control = CampaignState.Restore(initial, deleted ? deletedContent : survivedContent, new SplitMix64RandomSource(seed));
                 AdvanceUnblocked(control, 1);
                 Assert.Equivalent(control.Capture(), after, strict: true);
-                for (var pass = 0; pass < 3; pass++)
-                {
-                    campaign = Reload(content, campaign, seed, "optional-space-source-flight.sav");
-                    Assert.Equivalent(after, campaign.Capture(), strict: true);
-                }
-                AdvanceUnblocked(campaign, 1);
-                AdvanceUnblocked(control, 1);
-                Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+                campaign = ReloadRepeatedly(content, campaign, seed, "optional-space-source-flight.sav", 3, after);
+                AssertContinuesLike(control, campaign, 1);
                 deletedSeen |= deleted;
                 survivedSeen |= !deleted;
             }
@@ -89,14 +83,8 @@ public sealed class StrategicWorldOptionalSpaceSourceTests
                 var control = CampaignState.Restore(initial, deleted ? deletedContent : survivedContent, new SplitMix64RandomSource(seed));
                 AdvanceUnblocked(control, 1);
                 Assert.Equivalent(control.Capture(), after, strict: true);
-                for (var pass = 0; pass < 3; pass++)
-                {
-                    campaign = Reload(content, campaign, seed, "optional-space-source-wave.sav");
-                    Assert.Equivalent(after, campaign.Capture(), strict: true);
-                }
-                AdvanceUnblocked(campaign, 1);
-                AdvanceUnblocked(control, 1);
-                Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+                campaign = ReloadRepeatedly(content, campaign, seed, "optional-space-source-wave.sav", 3, after);
+                AssertContinuesLike(control, campaign, 1);
                 deletedSeen |= deleted;
                 survivedSeen |= !deleted;
             }
@@ -139,14 +127,8 @@ public sealed class StrategicWorldOptionalSpaceSourceTests
             var control = CampaignState.Restore(initial, deleted ? deletedContent : survivedContent, new SplitMix64RandomSource(seed));
             AdvanceUnblocked(control, 1);
             Assert.Equivalent(control.Capture(), after, strict: true);
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "optional-space-source-special.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
-            AdvanceUnblocked(campaign, 1);
-            AdvanceUnblocked(control, 1);
-            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+            campaign = ReloadRepeatedly(content, campaign, seed, "optional-space-source-special.sav", 3, after);
+            AssertContinuesLike(control, campaign, 1);
             deletedSeen |= deleted;
             survivedSeen |= !deleted;
         }

@@ -111,9 +111,11 @@ Multiplayer later adds only a wire protocol and remote clients. Keep new code co
 - Tests must be deterministic: fixed campaign IDs, `FixedClock`, explicit
   `SplitMix64RandomSource` seeds; never `Guid.NewGuid()` or the system clock
   for campaign identity.
-- Compare fixture output with
-  `Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual))`
-  so failures print the difference.
+- Compare fixture output with `TestFixtures.AssertJsonEqual(expected, actual)` (an oracle
+  `JsonElement` or a value serialized with its static type, against actual UTF-8 JSON). It
+  canonicalizes both sides, so failures print the difference; never compare raw JSON text.
+- Strategic save checks use `StrategicWorldTestSupport.Reload`, `ReloadRepeatedly` and
+  `AssertContinuesLike` (a reloaded campaign advances like a never-saved control).
 - Iterate oracle arrays through `TestFixtures.Rows(...)`, which fails on an
   empty array.
 - A unit test class that asserts exactly zero bytes from
@@ -123,7 +125,10 @@ Multiplayer later adds only a wire protocol and remote clients. Keep new code co
 - `StrategicReadinessTestContent.Load` builds every ruleset fresh, restores it from the compiled
   cache and asserts both are identical (`ContentStateDump`); tests run on the restored content.
   Do not add fresh/cache theory parameters.
-- Private-asset tests must `Assert.SkipUnless` when `fixtures/private/` is absent.
+- Private-asset tests must skip when their assets are absent: use `TestFixtures.RequirePrivateMods`,
+  `RequireOwnedData` or `RequirePrivateInstallation` (each returns the path), or `Assert.SkipUnless`
+  for a narrower requirement. Corpus scans use `TestFixtures.CorpusFiles` (ordered) and
+  `ForEachCorpusFile` (names the failing file).
 - Order file-system enumerations (`StringComparer.Ordinal`) before selecting
   entries.
 - Verify with `dotnet test` from the repository root.

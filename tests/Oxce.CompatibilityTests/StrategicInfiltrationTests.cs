@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.Json;
 using Oxce.Core.Random;
 using Oxce.Gameplay.Campaigns;
@@ -7,7 +6,6 @@ using Oxce.Mods.Rulesets.Runtime;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.Mods.Rulesets.CampaignStart;
 using Oxce.TestSupport;
-using Oxce.FixtureSupport;
 using Xunit;
 using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
 
@@ -28,7 +26,7 @@ public sealed class StrategicInfiltrationTests
                 pact ? 1 : 0, pending ? 1 : 0, cancel ? 1 : 0,
                 WorldInfiltration.CanInfiltrate(pact, pending, cancel) ? 1 : 0,
                 pact ? 1 : 0, 1, 0 });
-            Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
         }
         var defaults = StrategicReadinessTestContent.Load("strategic-world.rul").RuntimeRules.Campaign;
         Assert.False(defaults.BuildInfiltrationBaseCloseToTheCountry);
@@ -75,7 +73,7 @@ public sealed class StrategicInfiltrationTests
                 success, geometry, kind, chance, fake ? 1 : 0, allow ? 1 : 0,
                 selected is null ? 0 : 1, error ? 1 : 0, random.IntegerCalls, random.UnitCalls, landCalls, id,
             });
-            Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
         }
     }
 
@@ -236,7 +234,7 @@ public sealed class StrategicInfiltrationTests
             var shuffled = WorldInfiltration.CountryOrder(countries, true, random);
             Assert.Equal(Enumerable.Range(0, count), countries);
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { count, random.IntegerCalls, shuffled });
-            Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
             Assert.Same(countries, WorldInfiltration.CountryOrder(countries, false, random));
         }
     }
@@ -321,7 +319,7 @@ public sealed class StrategicInfiltrationTests
                 success, geometry, kind, chance, fake ? 1 : 0, allow ? 1 : 0,
                 selected is null ? 0 : 1, error ? 1 : 0, random.IntegerCalls, random.UnitCalls, landCalls, id,
             });
-            Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
         }
     }
 

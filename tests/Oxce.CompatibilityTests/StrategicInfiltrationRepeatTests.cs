@@ -5,7 +5,6 @@ using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.Mods.Rulesets.Runtime;
 using Oxce.TestSupport;
-using Oxce.FixtureSupport;
 using Xunit;
 using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
 
@@ -37,8 +36,7 @@ public sealed class StrategicInfiltrationRepeatTests
                 }
                 actual.Add([mission.NextWave, mission.NextUfoCounter, mission.SpawnCountdown, spawns, random.IntegerCalls]);
             }
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(example.GetProperty("rows"))),
-                CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(actual)));
+            TestFixtures.AssertJsonEqual(example.GetProperty("rows"), JsonSerializer.SerializeToUtf8Bytes(actual));
         }
     }
 

@@ -36,11 +36,7 @@ public sealed class StrategicWorldSiteResearchGeneratedObjectiveTests
         Assert.Empty(after.World.Ufos);
         Assert.Empty(after.World.MissionSites);
         Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
-        for (var pass = 0; pass < 3; pass++)
-        {
-            campaign = Reload(content, campaign, 17, "late-final-research-after.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 17, "late-final-research-after.sav", 3, after);
         AdvanceUnblocked(campaign, 360);
         Assert.DoesNotContain(campaign.Capture().World.Missions, candidate => candidate.Id == mission.Id);
         Assert.Single(campaign.Capture().ResearchDiary);
@@ -163,11 +159,7 @@ public sealed class StrategicWorldSiteResearchGeneratedObjectiveTests
         Assert.Empty(after.World.MissionSites);
         Assert.Equal(1, after.World.AlienBases.Single(alienBase => alienBase.DeploymentId == "GENERATED_OBJECTIVE_BASE").GenMissionCount);
         Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
-        for (var pass = 0; pass < 3; pass++)
-        {
-            campaign = Reload(content, campaign, 17, "daily-final-research-after.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 17, "daily-final-research-after.sav", 3, after);
     }
 
     [Theory]
@@ -224,11 +216,7 @@ public sealed class StrategicWorldSiteResearchGeneratedObjectiveTests
         Assert.Equal((1, 0, countdown, area), (mission.NextWave, mission.NextUfoCounter, mission.SpawnCountdown, mission.MissionSiteZoneArea));
         Assert.Equal(2, mission.AlienBase!.Id);
         Assert.Equal(expected.State, after.RandomState);
-        for (var pass = 0; pass < 3; pass++)
-        {
-            campaign = Reload(content, campaign, 17, "site-generated-objective-prefix.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 17, "site-generated-objective-prefix.sav", 3, after);
     }
 
     [Fact]

@@ -118,11 +118,7 @@ public sealed class StrategicWorldNewbornLandSelectionTests
                 Assert.Equal(1760, ufo.Speed);
                 Assert.Equal(10, ufo.Shield);
             }
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "newborn-land-retries.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "newborn-land-retries.sav", 3, after);
             AdvanceUnblocked(campaign, 1);
             Assert.All(campaign.Capture().World.Ufos, ufo =>
             {

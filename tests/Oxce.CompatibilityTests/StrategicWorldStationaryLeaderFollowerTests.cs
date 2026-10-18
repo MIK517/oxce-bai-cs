@@ -56,11 +56,7 @@ public sealed class StrategicWorldStationaryLeaderFollowerTests
             Assert.Equal(10, actualFollower.Destination!.UniqueId);
             Assert.Equal(6, Assert.Single(after.World.Missions).LiveUfos);
             Assert.Equal(21, after.Regions[0].ActivityAlien[^1]);
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "stationary-leader-chain.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "stationary-leader-chain.sav", 3, after);
             var control = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
             AdvanceUnblocked(control, 3);
             AdvanceUnblocked(campaign, 2);
@@ -125,11 +121,7 @@ public sealed class StrategicWorldStationaryLeaderFollowerTests
         Assert.Equal(actualTarget.Position, craft.Destination.Position);
         Assert.Equal(WorldGeometry.Move(from, actualTarget.Position, WorldGeometry.RadianSpeed(6000)),
             new(craft.Longitude, craft.Latitude));
-        for (var pass = 0; pass < 3; pass++)
-        {
-            campaign = Reload(content, campaign, 41, "stationary-leader-pursuit.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 41, "stationary-leader-pursuit.sav", 3, after);
         var control = CampaignState.Restore(initial, content, new SplitMix64RandomSource(41));
         AdvanceUnblocked(control, 3);
         AdvanceUnblocked(campaign, 2);

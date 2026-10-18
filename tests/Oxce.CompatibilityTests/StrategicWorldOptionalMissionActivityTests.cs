@@ -49,11 +49,7 @@ public sealed class StrategicWorldOptionalMissionActivityTests
             var control = CampaignState.Restore(selected, interrupted ? interruptedContent : continuedContent, new SplitMix64RandomSource(seed));
             AdvanceUnblocked(control, 1);
             Assert.Equivalent(control.Capture(), after, strict: true);
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "optional-mission-activity-limit.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "optional-mission-activity-limit.sav", 3, after);
             interruptedSeen |= interrupted;
             continuedSeen |= !interrupted;
         }

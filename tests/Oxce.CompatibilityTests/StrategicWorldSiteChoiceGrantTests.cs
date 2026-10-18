@@ -43,11 +43,7 @@ public sealed class StrategicWorldSiteChoiceGrantTests
             Assert.Empty(after.World.Events);
             seenA |= a != 0;
             seenOnlyB |= a == 0;
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "different-site-grants-after.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "different-site-grants-after.sav", 3, after);
         }
         Assert.True(seenA);
         Assert.True(seenOnlyB);

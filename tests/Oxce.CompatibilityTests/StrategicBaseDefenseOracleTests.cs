@@ -70,7 +70,7 @@ public sealed class StrategicBaseDefenseOracleTests
             (ufo.Damage, ufo.Shield, (int)ufo.Status, interrupted, passes, attacks));
         Assert.Equal(expected.GetProperty("ammo").EnumerateArray().Select(static v => v.GetInt32()), defenses.Select(static d => d.Ammo));
         Assert.Equal(expected.GetProperty("storage").GetInt32(), storage.GetValueOrDefault("AMMO"));
-        Assert.Equal(expected.GetProperty("rng").GetRawText(), JsonSerializer.Serialize(random.Calls));
+        TestFixtures.AssertJsonEqual(expected.GetProperty("rng"), JsonSerializer.SerializeToUtf8Bytes(random.Calls));
     }
 
     // RandomState::generate over the scripted raw values; zero once the script is exhausted.

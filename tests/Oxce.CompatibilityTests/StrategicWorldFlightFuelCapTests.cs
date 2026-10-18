@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -33,13 +32,9 @@ public sealed class StrategicWorldFlightFuelCapTests
                         itemFuel, row[1].GetBoolean(), freePatrol, row[3].GetInt32(), row[4].GetInt32(), row[5].GetInt32(),
                         state.Fuel, state.ExcessFuel, after.Bases[0].Items.GetValueOrDefault("SUPPLY"),
                     });
-                    Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row)), CanonicalJson.Normalize(actual));
+                    TestFixtures.AssertJsonEqual(row, actual);
                     Assert.Equal(99, state.Takeoff);
-                    for (var rewrite = 0; rewrite < 3; rewrite++)
-                    {
-                        campaign = Reload(content, campaign, 17, "flight-fuel-cap.sav");
-                        Assert.Equivalent(after, campaign.Capture(), strict: true);
-                    }
+                    campaign = ReloadRepeatedly(content, campaign, 17, "flight-fuel-cap.sav", 3, after);
                     AdvanceUnblocked(campaign, 1);
                     Assert.Equal(state.Fuel, campaign.Capture().Bases[0].Crafts[0].Logistics!.Fuel);
                     Assert.Equal(after.Bases[0].Items.GetValueOrDefault("SUPPLY"), campaign.Capture().Bases[0].Items.GetValueOrDefault("SUPPLY"));

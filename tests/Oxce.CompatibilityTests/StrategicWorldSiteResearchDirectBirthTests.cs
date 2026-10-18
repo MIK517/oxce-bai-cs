@@ -37,11 +37,7 @@ public sealed class StrategicWorldSiteResearchDirectBirthTests
         Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
         if (final) Assert.Empty(after.World.Missions);
         else Assert.True(Assert.Single(after.World.Missions).Interrupted);
-        for (var pass = 0; pass < 3; pass++)
-        {
-            campaign = Reload(content, campaign, 17, "direct-research-born.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 17, "direct-research-born.sav", 3, after);
         AdvanceUnblocked(campaign, 1080);
         var discovered = Assert.Single(campaign.Capture().World.MissionSites);
         Assert.True(discovered.Detected);
@@ -90,11 +86,7 @@ public sealed class StrategicWorldSiteResearchDirectBirthTests
             Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
             if (final) Assert.Empty(after.World.Missions);
             else Assert.True(Assert.Single(after.World.Missions).Interrupted);
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, 17, "daily-direct-after.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, 17, "daily-direct-after.sav", 3, after);
         }
     }
 
@@ -132,11 +124,7 @@ public sealed class StrategicWorldSiteResearchDirectBirthTests
             Assert.Equal(control.Capture().RandomState, after.RandomState);
             Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
             Assert.False(Assert.Single(after.World.Missions).Interrupted);
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, 17, "late-direct-after.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, 17, "late-direct-after.sav", 3, after);
             AdvanceUnblocked(campaign, 360);
             var later = campaign.Capture();
             if (duration == 0)

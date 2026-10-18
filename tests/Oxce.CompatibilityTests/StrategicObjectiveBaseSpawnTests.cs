@@ -5,8 +5,6 @@ using Oxce.Mods.Rulesets.Content;
 using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
 using Oxce.Mods.Rulesets.Runtime;
 using Oxce.TestSupport;
-using Oxce.FixtureSupport;
-using System.Text;
 using System.Text.Json;
 using Xunit;
 
@@ -51,7 +49,7 @@ public sealed class StrategicObjectiveBaseSpawnTests
                 success, geometry, kind, chance, fake ? 1 : 0, allow ? 1 : 0,
                 selected is null ? 0 : 1, error ? 1 : 0, random.IntegerCalls, random.UnitCalls, landCalls, id,
             });
-            Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
         }
     }
     [Fact]
@@ -219,7 +217,7 @@ public sealed class StrategicObjectiveBaseSpawnTests
                 row[0].GetInt32(), row[1].GetInt32(), row[2].GetInt32(), row[3].GetInt32(), row[4].GetInt32(),
                 row[5].GetInt32(), row[6].GetInt32(), kind, creates ? 1 : 0, random.IntegerCalls, random.UnitCalls, id,
             });
-            Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
         }
     }
 
@@ -677,8 +675,7 @@ public sealed class StrategicObjectiveBaseSpawnTests
             var after = campaign.Capture();
             Assert.Equal(100, Assert.Single(after.World.AlienBases).MinutesSinceLastHuntMissionGeneration);
             Assert.Empty(after.World.Missions);
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(control.Capture().Bases)),
-                CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(after.Bases)));
+            TestFixtures.AssertJsonEqual(control.Capture().Bases, JsonSerializer.SerializeToUtf8Bytes(after.Bases));
             Reload(content, campaign, 17, "zero-objective-after.sav");
         }
     }

@@ -38,11 +38,7 @@ public sealed class StrategicWorldRegionResearchTests
             Assert.Equal(1, Assert.Single(after.World.AlienBases).GenMissionCount);
             firstSeen |= first;
             secondSeen |= second;
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "generated-path-research.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "generated-path-research.sav", 3, after);
         }
         Assert.True(firstSeen);
         Assert.True(secondSeen);

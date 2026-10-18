@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Formats.Yaml;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Rulesets.Content;
@@ -34,8 +33,7 @@ public sealed class StrategicWorldDailyResearchDiaryCapacityTests
             var choice = after.CompletedResearch.Contains("EQUIV_A") ? 0 : 1;
             seen.Add(choice);
             var expected = TestFixtures.Rows(oracle.RootElement, "stockScopeRows").Single(row => row[0].GetInt32() == (lookup ? 1 : 0) && row[1].GetInt32() == choice);
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected[2])),
-                CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(after.ResearchDiary.Select(entry => entry.RuleId))));
+            TestFixtures.AssertJsonEqual(expected[2], JsonSerializer.SerializeToUtf8Bytes(after.ResearchDiary.Select(entry => entry.RuleId)));
             Assert.Equal((byte)ResearchDiscoverySource.Base, after.ResearchDiary[0].SourceType);
             Assert.All(after.ResearchDiary.Skip(1), entry =>
             {
@@ -46,14 +44,8 @@ public sealed class StrategicWorldDailyResearchDiaryCapacityTests
             Assert.DoesNotContain("UNREACHED_AUTO", after.CompletedResearch);
             Assert.True(Assert.Single(after.World.Ufos).Hunting);
             var control = CampaignState.Restore(after, content, new SplitMix64RandomSource(seed));
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "daily-diary-capacity.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
-            AdvanceUnblocked(campaign, 1);
-            AdvanceUnblocked(control, 1);
-            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+            campaign = ReloadRepeatedly(content, campaign, seed, "daily-diary-capacity.sav", 3, after);
+            AssertContinuesLike(control, campaign, 1);
         }
         Assert.Equal(2, seen.Count);
     }

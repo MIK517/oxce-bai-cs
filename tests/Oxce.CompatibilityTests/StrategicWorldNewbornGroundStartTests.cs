@@ -42,11 +42,7 @@ public sealed class StrategicWorldNewbornGroundStartTests
                 Assert.Equal(-1, ufo.Shield);
                 Assert.Equal(0, ufo.LandId);
             });
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "newborn-ground-start.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "newborn-ground-start.sav", 3, after);
             AdvanceUnblocked(campaign, timer);
             Assert.All(campaign.Capture().World.Ufos, ufo =>
             { Assert.Equal(1, ufo.TrajectoryPoint); Assert.Equal(10, ufo.Shield); });

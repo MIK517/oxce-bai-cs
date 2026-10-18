@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -41,20 +40,14 @@ public sealed class StrategicWorldOptionalBaseRecallArrivalTests
                     fuel, takeoff, deleted, state.Status != "STR_OUT", state.Fuel, state.Status,
                     state.Speed, state.Takeoff, state.LowFuel, state.MissionComplete, state.Destination is null,
                 });
-                Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+                TestFixtures.AssertJsonEqual(expected, actual);
                 Assert.Equal(new WorldPosition(0.4, 0.2), new(state.Longitude, state.Latitude));
                 Assert.False(Assert.Single(after.World.Ufos).Hunting);
                 var control = CampaignState.Restore(initial, deleted ? deletedContent : survivedContent, new SplitMix64RandomSource(seed));
                 AdvanceUnblocked(control, 1);
                 Assert.Equivalent(control.Capture(), after, strict: true);
-                for (var rewrite = 0; rewrite < 3; rewrite++)
-                {
-                    campaign = Reload(content, campaign, seed, "optional-recall-arrival.sav");
-                    Assert.Equivalent(after, campaign.Capture(), strict: true);
-                }
-                AdvanceUnblocked(campaign, 1);
-                AdvanceUnblocked(control, 1);
-                Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+                campaign = ReloadRepeatedly(content, campaign, seed, "optional-recall-arrival.sav", 3, after);
+                AssertContinuesLike(control, campaign, 1);
             }
             Assert.Equal(2, outcomes.Count);
         }

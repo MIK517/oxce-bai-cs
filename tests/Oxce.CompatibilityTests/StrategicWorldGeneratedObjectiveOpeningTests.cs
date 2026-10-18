@@ -1,6 +1,5 @@
 using Oxce.Core.Random;
 using System.Text.Json;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -197,8 +196,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         AdvanceUnblocked(campaign, 1);
         var after = campaign.Capture();
         var born = Assert.Single(after.World.AlienBases, alienBase => alienBase.Id == 7);
-        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(new[] { row[5].GetInt32(), row[6].GetInt32() })),
-            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(new[] { born.MinutesSinceLastHuntMissionGeneration, after.World.AlienBases.Count })));
+        TestFixtures.AssertJsonEqual(new[] { row[5].GetInt32(), row[6].GetInt32() }, JsonSerializer.SerializeToUtf8Bytes(new[] { born.MinutesSinceLastHuntMissionGeneration, after.World.AlienBases.Count }));
         Assert.Equal(0, after.World.AlienBases[0].MinutesSinceLastHuntMissionGeneration);
         Assert.Equal((1, 0), (Assert.Single(after.World.Missions).NextWave, after.World.Missions[0].LiveUfos));
         Assert.Empty(after.World.Ufos);

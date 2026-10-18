@@ -32,14 +32,8 @@ public sealed class StrategicWorldNewbornTaggedArrivalTests
             Assert.False(Assert.Single(after.World.Missions).Interrupted);
             Assert.Equal(unrelatedGrant, after.CompletedResearch.Contains("OTHER"));
             Assert.Equivalent(control.Capture(), after, strict: true);
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "newborn-harmless-tag.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
-            AdvanceUnblocked(campaign, 1);
-            AdvanceUnblocked(control, 1);
-            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+            campaign = ReloadRepeatedly(content, campaign, seed, "newborn-harmless-tag.sav", 3, after);
+            AssertContinuesLike(control, campaign, 1);
         }
     }
 
@@ -80,11 +74,7 @@ public sealed class StrategicWorldNewbornTaggedArrivalTests
             var control = CampaignState.Restore(initial, interrupted ? interruptedContent : continuedContent, new SplitMix64RandomSource(seed));
             AdvanceUnblocked(control, 1);
             Assert.Equivalent(control.Capture(), after, strict: true);
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "newborn-daily-interruption.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "newborn-daily-interruption.sav", 3, after);
             interruptedSeen |= interrupted;
             continuedSeen |= !interrupted;
         }

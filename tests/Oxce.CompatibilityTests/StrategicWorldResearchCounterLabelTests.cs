@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.TestSupport;
 using Xunit;
@@ -32,14 +31,10 @@ public sealed class StrategicWorldResearchCounterLabelTests
                 choices.Add(choice);
                 var expected = TestFixtures.Rows(oracle.RootElement, "researchCounterLabelRows").Single(row => row[0].GetInt32() == index && row[1].GetInt32() == choice);
                 var actual = JsonSerializer.SerializeToUtf8Bytes(new[] { index, choice, after.NextIds.GetValueOrDefault(label), after.NextIds.ContainsKey(label) ? 1 : 0 });
-                Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+                TestFixtures.AssertJsonEqual(expected, actual);
                 Assert.True(Assert.Single(after.World.Ufos).Hunting);
                 Assert.Equal("STR_OUT", after.Bases[0].Crafts[0].Logistics!.Status);
-                for (var rewrite = 0; rewrite < 3; rewrite++)
-                {
-                    campaign = Reload(content, campaign, seed, "research-counter-label.sav");
-                    Assert.Equivalent(after, campaign.Capture(), strict: true);
-                }
+                campaign = ReloadRepeatedly(content, campaign, seed, "research-counter-label.sav", 3, after);
             }
             Assert.Equal(2, choices.Count);
         }
@@ -53,11 +48,7 @@ public sealed class StrategicWorldResearchCounterLabelTests
         var initial = StrategicWorldDailyResearchQuantityTests.Snapshot(content, 17, false);
         initial = initial with { NextIds = new Dictionary<string, int>(initial.NextIds) { [" "] = 2, ["\t"] = 3, ["\u00a0"] = 4 } };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
-        for (var rewrite = 0; rewrite < 3; rewrite++)
-        {
-            campaign = Reload(content, campaign, 17, "loaded-counter-label.sav");
-            Assert.Equivalent(initial, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 17, "loaded-counter-label.sav", 3, initial);
         AdvanceUnblocked(campaign, 1);
         Assert.Equal(2, campaign.Capture().NextIds[" "]);
         Assert.Equal(3, campaign.Capture().NextIds["\t"]);

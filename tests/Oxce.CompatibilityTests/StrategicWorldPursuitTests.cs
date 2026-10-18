@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -98,8 +97,7 @@ public sealed class StrategicWorldPursuitTests
             Assert.Equal(9, craft.Destination.UniqueId);
             campaign = Reload(content, campaign, 92, "pursuit.sav");
         }
-        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)),
-            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(actual)));
+        TestFixtures.AssertJsonEqual(expected, JsonSerializer.SerializeToUtf8Bytes(actual));
     }
 
     [Theory]

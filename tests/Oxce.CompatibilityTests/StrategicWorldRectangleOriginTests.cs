@@ -1,6 +1,5 @@
 using System.Globalization;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -32,7 +31,7 @@ public sealed class StrategicWorldRectangleOriginTests
             ufo.Destination.Latitude.ToString("F9", CultureInfo.InvariantCulture),
             (int)after.RandomState - 2,
         });
-        Assert.Equal(CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+        TestFixtures.AssertJsonEqual(row, actual);
         Assert.Equal(WorldGeometry.Move(origin, ufo.Destination.Position, WorldGeometry.RadianSpeed(2200)), ufo.Position);
         Reload(content, campaign, 17, "pole-point-origin.sav");
     }

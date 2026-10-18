@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -38,8 +37,7 @@ public sealed class StrategicWorldSiteSpawningTests
                 site.Latitude.ToString("F9", CultureInfo.InvariantCulture),
                 site.Id, site.SecondsRemaining + 1800, site.Race, site.Texture, site.City,
             });
-            Assert.Equal(CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(row.GetProperty("site").GetRawText())),
-                CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row.GetProperty("site"), actual);
             Assert.Equal((ulong)row.GetProperty("calls").GetInt32(), after.RandomState);
             Assert.False(site.Detected);
             Assert.Empty(after.World.Ufos);
@@ -140,8 +138,7 @@ public sealed class StrategicWorldSiteSpawningTests
                 site.Latitude.ToString("F9", CultureInfo.InvariantCulture), site.Id,
                 site.SecondsRemaining + 1800, site.Race, site.Texture, site.City,
             });
-            Assert.Equal(CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(row.GetProperty("site").GetRawText())),
-                CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row.GetProperty("site"), actual);
             Assert.Equal((ulong)row.GetProperty("calls").GetInt32(), after.RandomState);
             Reload(content, campaign, 17, "terrain-site.sav");
         }
@@ -271,8 +268,7 @@ public sealed class StrategicWorldSiteSpawningTests
                 after.World.MissionSites[0].Id, after.World.MissionSites[0].SecondsRemaining + 1800,
                 after.World.MissionSites[0].Race, after.World.MissionSites[0].Texture, after.World.MissionSites[0].City,
             });
-            Assert.Equal(CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(row.GetProperty("site").GetRawText())),
-                CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row.GetProperty("site"), actual);
             Assert.Equal((ulong)row.GetProperty("calls").GetInt32(), after.RandomState);
             Assert.Empty(after.World.Missions);
             Reload(content, campaign, 17, "base-site.sav");

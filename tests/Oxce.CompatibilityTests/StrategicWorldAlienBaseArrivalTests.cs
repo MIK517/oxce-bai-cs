@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -41,17 +40,11 @@ public sealed class StrategicWorldAlienBaseArrivalTests
                 discovered, units, allow, suppress, takeoff, false,
                 state.Destination!.Kind == WorldTargetKind.Base, state.Speed, state.Takeoff, state.Status,
             });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
             Assert.Equal(WorldTargetKind.AlienBase, initial.Bases[0].Crafts[0].Logistics!.Destination!.Kind);
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, 81, "alien-base-arrival.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, 81, "alien-base-arrival.sav", 3, after);
             var control = CampaignState.Restore(after, content, new SplitMix64RandomSource(81));
-            AdvanceUnblocked(campaign, 1);
-            AdvanceUnblocked(control, 1);
-            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+            AssertContinuesLike(control, campaign, 1);
         }
     }
 

@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.TestSupport;
 using Xunit;
@@ -52,14 +51,10 @@ public sealed class StrategicWorldDailyResearchWorldAlternativesTests
             var row = TestFixtures.Rows(oracle.RootElement, "researchScopedRewardRows").Single(row => row[0].GetInt32() == mode && row[1].GetInt32() == choice);
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { mode, choice, after.CompletedResearch.Contains("EQUIV_Z"),
                 after.Bases[0].Items.GetValueOrDefault("SUPPLY") + 1, forecast.Arrivals[before.Bases[0].Id].Count, after.NextIds["EQUIV_COUNTER"], branch.ScoreChange!.Value });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
             var expectedDiary = TestFixtures.Rows(diary.RootElement, "stockScopeRows").Single(row => row[0].GetInt32() == mode && row[1].GetInt32() == choice);
             Assert.Equal(expectedDiary[2].EnumerateArray().Select(entry => entry.GetString()), after.ResearchDiary.Select(entry => entry.RuleId));
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "daily-world-alternatives.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "daily-world-alternatives.sav", 3, after);
         }
         Assert.Equal(2, choices.Count);
     }
@@ -109,7 +104,7 @@ public sealed class StrategicWorldDailyResearchWorldAlternativesTests
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { mode, choice, after.Bases[0].Items.GetValueOrDefault("SUPPLY"), after.NextIds["EQUIV_COUNTER"],
                 after.ResearchScores[^1] - before.ResearchScores[^1], after.CompletedResearch.Contains("SITE_AUTO") ? 1 : 0, after.CompletedResearch.Contains("EQUIV_A") ? 1 : 0,
                 after.CompletedResearch.Contains("EQUIV_B") ? 1 : 0, after.CompletedResearch.Contains("EQUIV_Z") ? 1 : 0 });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
             Assert.Contains("SITE", after.CompletedResearch);
             Assert.Empty(after.World.MissionSites);
             var expectedDiary = new List<string> { "CORE", choice == 0 ? "EQUIV_A" : "EQUIV_B" };
@@ -118,14 +113,8 @@ public sealed class StrategicWorldDailyResearchWorldAlternativesTests
             if (choice == 0) expectedDiary.Add("SITE_AUTO");
             Assert.Equal(expectedDiary, after.ResearchDiary.Select(entry => entry.RuleId));
             var control = CampaignState.Restore(after, content, new SplitMix64RandomSource(seed));
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "daily-alternative-site.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
-            AdvanceUnblocked(campaign, 1);
-            AdvanceUnblocked(control, 1);
-            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+            campaign = ReloadRepeatedly(content, campaign, seed, "daily-alternative-site.sav", 3, after);
+            AssertContinuesLike(control, campaign, 1);
         }
         Assert.Equal(2, choices.Count);
     }

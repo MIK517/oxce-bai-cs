@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.TestSupport;
@@ -27,10 +26,10 @@ public sealed class StrategicWorldDailyResearchScorePrefixTests
             mode, branch.CompletedResearch!.Contains("EQUIV_A") ? 0 : 1,
             branch.MinimumScorePrefix!.Value, branch.MaximumScorePrefix!.Value, branch.ScoreChange!.Value,
         }).OrderBy(row => row[1]);
-        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows.Select(row => new long[]
+        TestFixtures.AssertJsonEqual(rows.Select(row => new long[]
         {
             row[0].GetInt64(), row[1].GetInt64(), row[2].GetInt64(), row[3].GetInt64(), row[4].GetInt64(),
-        }))), CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(actualPrefixes)));
+        }), JsonSerializer.SerializeToUtf8Bytes(actualPrefixes));
         Assert.Equal(rows.Min(row => row[2].GetInt64()), forecast.MinimumScorePrefix);
         Assert.Equal(rows.Max(row => row[3].GetInt64()), forecast.MaximumScorePrefix);
         Assert.InRange(work, 1, 1_000_000);
@@ -52,14 +51,8 @@ public sealed class StrategicWorldDailyResearchScorePrefixTests
             Assert.Equal("STR_OUT", after.Bases[0].Crafts[0].Logistics!.Status);
             Assert.True(Assert.Single(after.World.Ufos).Hunting);
             var control = CampaignState.Restore(after, content, new SplitMix64RandomSource(seed));
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "daily-score-prefix.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
-            AdvanceUnblocked(campaign, 1);
-            AdvanceUnblocked(control, 1);
-            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+            campaign = ReloadRepeatedly(content, campaign, seed, "daily-score-prefix.sav", 3, after);
+            AssertContinuesLike(control, campaign, 1);
         }
         Assert.Equal(2, seen.Count);
     }

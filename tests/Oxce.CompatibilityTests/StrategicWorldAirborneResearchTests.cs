@@ -41,11 +41,7 @@ public sealed class StrategicWorldAirborneResearchTests
             Assert.Equivalent(control.Capture().NextIds, after.NextIds, strict: true);
             interruptedSeen |= interrupted;
             continuedSeen |= !interrupted;
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "airborne-research-arrival.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "airborne-research-arrival.sav", 3, after);
             AdvanceUnblocked(campaign, 1);
             Assert.Equal(interrupted ? 1 : 2, campaign.Capture().World.Ufos.Count);
             Assert.Equal(interrupted ? 1 : 2, Assert.Single(campaign.Capture().World.Missions).LiveUfos);

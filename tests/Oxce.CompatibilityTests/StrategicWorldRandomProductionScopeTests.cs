@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.TestSupport;
@@ -38,11 +37,7 @@ public sealed partial class StrategicWorldHuntingTests
                 Assert.Equal("STR_READY", Assert.Single(after.Bases[1].Crafts).Logistics!.Status);
             }
             if (context == "future-transfer") Assert.Equal(1, Assert.Single(after.Bases[0].Transfers).Hours);
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "scoped-random-production.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "scoped-random-production.sav", 3, after);
         }
         Assert.Equal(2, choices.Count);
     }
@@ -90,14 +85,10 @@ public sealed partial class StrategicWorldHuntingTests
                 mode == 1 ? Assert.Single(after.Bases[0].Productions, project => project.RuleId == "OTHER_MATERIAL").Assigned : 1,
                 craft.Status, craft.Fuel, after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0,
             });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(Assert.Single(rows, row => row[1].GetInt32() == choice))), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(Assert.Single(rows, row => row[1].GetInt32() == choice), actual);
             Assert.Equal(mode != 0, after.Bases[0].Productions.Any(project => project.RuleId == "VARIANT_PRODUCT"));
             Assert.Equal(mode == 1, after.Bases[0].Productions.Any(project => project.RuleId == "OTHER_MATERIAL"));
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "scoped-random-material.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "scoped-random-material.sav", 3, after);
         }
         Assert.Equal(2, choices.Count);
     }
@@ -182,7 +173,7 @@ public sealed partial class StrategicWorldHuntingTests
                 mode == 1 ? Assert.Single(after.Bases[0].Transfers).Hours : 0, craft.Status, craft.Fuel,
                 after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0,
             });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(Assert.Single(rows, row => row[1].GetInt32() == choice))), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(Assert.Single(rows, row => row[1].GetInt32() == choice), actual);
             if (mode == 1)
             {
                 var born = Assert.Single(after.Bases[0].Transfers).Craft!;
@@ -190,11 +181,7 @@ public sealed partial class StrategicWorldHuntingTests
                 Assert.Equal(0, born.Logistics.Fuel);
                 Assert.Equal(born.Id + 1, after.NextIds["OTHER_FUEL"]);
             }
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "scoped-craft-production.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "scoped-craft-production.sav", 3, after);
             if (mode == 1)
             {
                 // The intervening hour has no completion (spent becomes three).
@@ -261,6 +248,6 @@ public sealed partial class StrategicWorldHuntingTests
             after.Bases[0].Transfers.Count(transfer => transfer.Kind == CampaignTransferKind.Item), history.GetValueOrDefault("SUPPLY"), history.GetValueOrDefault("INERT_A"),
             history.GetValueOrDefault("INERT_B"), craft.Status, craft.Fuel, after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0,
         });
-        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(4).ToArray())), CanonicalJson.Normalize(actual));
+        TestFixtures.AssertJsonEqual(row.EnumerateArray().Skip(4).ToArray(), actual);
     }
 }

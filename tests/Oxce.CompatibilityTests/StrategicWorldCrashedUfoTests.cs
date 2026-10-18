@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -27,8 +26,7 @@ public sealed class StrategicWorldCrashedUfoTests
             ufo = WorldCrashedUfo.FiveSeconds(ufo);
             rows.Add([seconds, half, detected, (int)ufo.Status, ufo.SecondsRemaining, ufo.Detected ? 1 : 0]);
         }
-        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(oracle.RootElement.GetProperty("rows"))),
-            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
+        TestFixtures.AssertJsonEqual(oracle.RootElement.GetProperty("rows"), JsonSerializer.SerializeToUtf8Bytes(rows));
     }
 
     [Fact]

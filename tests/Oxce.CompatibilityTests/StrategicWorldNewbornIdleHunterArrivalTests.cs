@@ -78,11 +78,7 @@ public sealed class StrategicWorldNewbornIdleHunterArrivalTests
                     Assert.Equal(new WorldPosition(Degrees(8), Degrees(2)), ufo.Position);
                     Assert.Equal(10, ufo.Shield);
                 }
-                for (var pass = 0; pass < 3; pass++)
-                {
-                    campaign = Reload(content, campaign, seed, "idle-hunter-first-arrival.sav");
-                    Assert.Equivalent(after, campaign.Capture(), strict: true);
-                }
+                campaign = ReloadRepeatedly(content, campaign, seed, "idle-hunter-first-arrival.sav", 3, after);
                 AdvanceUnblocked(campaign, 1);
                 Assert.All(campaign.Capture().World.Ufos, ufo => Assert.Equal(2, ufo.TrajectoryPoint));
             }

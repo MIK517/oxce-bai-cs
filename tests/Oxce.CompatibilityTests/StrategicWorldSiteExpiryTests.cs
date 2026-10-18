@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.TestSupport;
@@ -72,7 +71,7 @@ public sealed class StrategicWorldSiteExpiryTests
             var random = new MinimumChoices();
             var selected = WorldAlienMissionGeneration.Choose(weights, random);
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { name, selected, random.State });
-            Assert.Equal(CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
         }
     }
 
@@ -145,7 +144,7 @@ public sealed class StrategicWorldSiteExpiryTests
                 original ? after.Destination!.Longitude : 0, original ? after.Destination!.Latitude : 0,
                 after.Hunting, after.Escorting,
             });
-            Assert.Equal(CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
         }
     }
 

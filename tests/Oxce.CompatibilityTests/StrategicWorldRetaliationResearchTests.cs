@@ -46,11 +46,7 @@ public sealed class StrategicWorldRetaliationResearchTests
                 Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
                 Assert.Equal(control.Capture().RandomState, after.RandomState);
                 Assert.Equivalent(control.Capture().World.Ufos, after.World.Ufos, strict: true);
-                for (var pass = 0; pass < 3; pass++)
-                {
-                    campaign = Reload(content, campaign, 17, "generated-retaliation-research.sav");
-                    Assert.Equivalent(after, campaign.Capture(), strict: true);
-                }
+                campaign = ReloadRepeatedly(content, campaign, 17, "generated-retaliation-research.sav", 3, after);
             }
         }
     }

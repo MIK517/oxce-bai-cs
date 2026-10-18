@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -34,9 +33,8 @@ public sealed class StrategicWorldAlienBaseHuntingTests
             Assert.Empty(campaign.Capture().World.Missions);
             Reload(content, campaign, 17, "base-hunt-timer.sav");
         }
-        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(TestFixtures.Rows(oracle.RootElement, "rows")
-                .Where(row => row[0].GetString() != "destroyed").ToArray())),
-            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
+        TestFixtures.AssertJsonEqual(TestFixtures.Rows(oracle.RootElement, "rows")
+                .Where(row => row[0].GetString() != "destroyed").ToArray(), JsonSerializer.SerializeToUtf8Bytes(rows));
     }
 
     [Fact]
@@ -196,8 +194,7 @@ public sealed class StrategicWorldAlienBaseHuntingTests
             Assert.Equivalent(snapshot.World.Strategy, after.World.Strategy, strict: true);
             Reload(content, campaign, 17, "hunting-generated.sav");
         }
-        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(selected)),
-            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
+        TestFixtures.AssertJsonEqual(selected, JsonSerializer.SerializeToUtf8Bytes(rows));
     }
 
     [Fact]
@@ -241,8 +238,7 @@ public sealed class StrategicWorldAlienBaseHuntingTests
             Assert.Equal(row[4][3].GetInt32(), mission.SpawnCountdown);
             Assert.Equal(row[4][5].GetInt32(), mission.NextWave);
             Assert.Equal(row[4][6].GetInt32(), mission.NextUfoCounter);
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row[2])),
-                CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(random.Calls)));
+            TestFixtures.AssertJsonEqual(row[2], JsonSerializer.SerializeToUtf8Bytes(random.Calls));
             Assert.Empty(after.World.Ufos);
             campaign = Reload(content, campaign, 17, "immediate-hunt.sav");
             var due = campaign.Capture() with { Time = new(1, 1, 1, 1999, 0, 29, 55) };
@@ -462,8 +458,7 @@ public sealed class StrategicWorldAlienBaseHuntingTests
         var random = new SplitMix64RandomSource(control.Capture().RandomState);
         random.NextInclusive(0, 99); // Native percent(0) still draws for each eligible craft.
         Assert.Equal(random.State, after.RandomState);
-        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(control.Capture() with { World = WorldSnapshot.Empty })),
-            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(after with { World = WorldSnapshot.Empty, RandomState = control.Capture().RandomState })));
+        TestFixtures.AssertJsonEqual(control.Capture() with { World = WorldSnapshot.Empty }, JsonSerializer.SerializeToUtf8Bytes(after with { World = WorldSnapshot.Empty, RandomState = control.Capture().RandomState }));
         Reload(content, campaign, 17, "zero-chance-after.sav");
     }
 

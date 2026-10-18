@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.TestSupport;
 using Xunit;
@@ -38,11 +37,7 @@ public sealed class StrategicWorldDailyResearchSiteAlternativeAcceptanceTests
             Assert.Contains("SITE", after.CompletedResearch);
             Assert.Empty(after.World.MissionSites);
             Assert.Empty(after.World.Events);
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "daily-site-suppressed-event.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "daily-site-suppressed-event.sav", 3, after);
         }
         Assert.Equal(2, outcomes.Count);
     }
@@ -73,13 +68,9 @@ public sealed class StrategicWorldDailyResearchSiteAlternativeAcceptanceTests
             var row = TestFixtures.Rows(oracle.RootElement, "researchDailySiteActiveRows").Single(row => row[0].GetInt32() == choice);
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { choice, after.Bases[0].Research.Count, after.CompletedResearch.Contains("ACTIVE") ? 1 : 0,
                 after.ResearchRuleStatus.GetValueOrDefault("ACTIVE"), after.ResearchScores[^1] - before.ResearchScores[^1], after.NextIds["EQUIV_COUNTER"] });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
             Assert.Equal(choice == 0, after.ResearchDiary.Any(entry => entry.RuleId == "ACTIVE"));
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "daily-site-active-project.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "daily-site-active-project.sav", 3, after);
         }
         Assert.Equal(2, choices.Count);
     }

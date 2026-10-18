@@ -72,11 +72,7 @@ public sealed class StrategicWorldConditionalLeaderSelectedAreaTests
             Assert.Equal(4, Assert.Single(after.World.Missions).LiveUfos);
             Assert.Empty(after.World.MissionSites);
             Assert.Equal(12, after.Regions[0].ActivityAlien[^1]);
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "conditional-selected-area.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "conditional-selected-area.sav", 3, after);
             var control = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
             AdvanceUnblocked(control, 3);
             AdvanceUnblocked(campaign, 2);

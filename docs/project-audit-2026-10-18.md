@@ -374,3 +374,57 @@ Behaviour-preserving; no refusal text, limit, save output or oracle changes.
   and the personnel issue type; `PersonnelTacticalValidation` keeps its derived caches.
 - **Not done here:** the shared test scenario builders (D5). They need test-by-test review and belong in a
   separate change.
+
+### Host-authoritative rules
+
+[ADR 0037](decisions/0037-host-authoritative-session.md) records the host-client boundary (Part 3). Single-player
+runs as one host and one local client, and new code follows the ADR's rules. `AGENTS.md` summarizes them, and
+the implementation plan schedules the session layer before the battlescape UI.
+
+### Test-by-test audit (D5)
+
+Scripts under `.agent-tmp/audit-cleanup/` split every `[Fact]` and `[Theory]` (2,245 tests in 416 files, 693
+theories) into its method body. They check each test against the `AGENTS.md` conventions, then for weak
+assertions, swallowed exceptions, test-only static state, duplicate bodies and near-duplicate pairs. Flagged
+tests were read individually.
+
+What holds:
+
+- No test body is duplicated. Only 13 tests in 5 groups share a shape, all of them intentional parameterized
+  variants. Only 8 pairs in the same file are more than 70% alike, and they test different behaviour.
+- Determinism: the only `Guid.NewGuid` uses name temporary directories. No test reads the clock, sleeps or
+  seeds an unseeded `Random`.
+- Allocation tests that assert exactly zero bytes are in the `AllocationMeasurement` collection. The others
+  report measurements or assert ranges.
+- No fresh/cache theory parameters, no statically skipped tests. Every private-corpus test skips when its
+  assets are absent.
+- The 40 tests without a visible assertion delegate to helpers that assert.
+- No large inline ruleset (139 raw literals over 300 characters) is repeated verbatim.
+
+Fixed:
+
+- **Raw JSON comparisons.** `StrategicDogfightOracleTests` (4) and `StrategicBaseDefenseOracleTests` (1)
+  compared oracle text without canonicalization, so a formatting-only oracle change would have failed them.
+- **JSON assertions.** `TestFixtures.AssertJsonEqual` replaces 125
+  `Assert.Equal(CanonicalJson.Normalize(…), CanonicalJson.Normalize(…))` statements. The failure output is
+  unchanged.
+- **Save continuation checks.** `ReloadRepeatedly` and `AssertContinuesLike` replace 145 reload loops and 50
+  campaign-against-control continuation checks.
+- **Private-asset skips.** `RequirePrivateMods`, `RequireOwnedData` and `RequirePrivateInstallation` replace
+  the per-file checks (18 test methods).
+- **Corpus scans.** The eight scans now visit files in ordinal order through `CorpusFiles`, and
+  `ForEachCorpusFile` names the failing file; before, a decode failure did not say which file it was.
+- **Smaller items.** One combined boolean assertion was split so a failure shows the values. 81 `using`
+  directives these rewrites left unused were removed.
+
+Net change in the tests: about 780 fewer lines (476 added, 1,257 removed). Literal duplication fell from 12.4%
+to 11.6%.
+
+Remaining, by design or deferred:
+
+- 93 tests pin forecast refusals (`AssertTimeBlocked` with a "requires … forecast" reason), and most
+  near-identical setup lives in the `StrategicWorld*` forecast-variant tests. Both shrink with D1: delete the
+  tests together with the forecasts they pin.
+- About 70 JSON comparisons build the expected value another way (files, computed bytes) and keep their explicit
+  form.
+- Temporary-directory cleanup takes several forms, but every site already cleans up, so it was not unified.
