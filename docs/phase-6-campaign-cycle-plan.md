@@ -208,3 +208,10 @@ without waves run and the forecast work bounds fit real globes
 
 The report's OK gives monthly service and commendations, the psi reminder and the save requests; saving is refused
 while it is open ([status S4](strategic-campaign-cycle-status.md#s4--acknowledgement-effects-2026-10-18)).
+
+### S5 — Event payloads (2026-10-18)
+
+Popped and instant events run their payload in the half-hour tick, staged; their windows are modal; the payload
+refusals are removed and Rosigma `Begining.sav` runs past tick 580
+([status S5](strategic-campaign-cycle-status.md#s5--event-payloads-2026-10-18)). Event cutscene endings already apply on
+the acknowledgement; S6 adds the research cutscenes.

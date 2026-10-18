@@ -115,11 +115,11 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         campaign = Reload(content, campaign, 41, "late-zero-site-born.sav");
         AdvanceUnblocked(campaign, 239);
         campaign = Reload(content, campaign, 41, "late-zero-site-before-payload.sav");
-        AssertTimeBlocked(campaign, "Mission site despawn requires research or event payloads.");
+        AssertEventTickRuns(campaign);
 
         content = GeneratedDirectSiteContent(deployment: "GENERATED_DIRECT_ZERO_EVENT");
-        AssertTimeBlocked(CampaignState.Restore(GeneratedDirectSiteSnapshot(content, 41), content,
-            new SplitMix64RandomSource(41)), "Mission site despawn requires research or event payloads.");
+        AssertEventTickRuns(CampaignState.Restore(GeneratedDirectSiteSnapshot(content, 41), content,
+            new SplitMix64RandomSource(41)));
     }
 
     [Theory]

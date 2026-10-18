@@ -27,7 +27,7 @@ average of 0, which nothing reads because no country makes a decision.
 the mod defines no `loseRating` or `loseMoney` video. The port plays nothing and play goes on, as for a defined
 video without `loseGame`.
 
-**The monthly report is a modal hold (S3, plan D2).** The report's decisions are made inside the month tick, as the
+**The monthly report and event windows are modal holds (S3, S5, plan D2).** The report's decisions are made inside the month tick, as the
 reference's report constructor makes them; the popup then holds the clock from the next tick (the time preflight
 refuses) and refuses every other command except its acknowledgement, which the reference's modal window enforces
 through its input. `time1Month` queues the report before any window the same tick's later levels open (a base
@@ -62,3 +62,19 @@ unset by `BattleUnitKills`; the port takes the default constructor's value.
 
 **An ironman campaign after an undefined lose video (S4).** The reference throws before it queues the ironman save;
 the port plays nothing (above) and still requests the ironman save, as for every other failed month.
+
+**An event payload that names an unknown rule (S5).** `eventLogic` looks its regions, soldiers, items and craft up with
+an error (`Mod::getRule`), so an unknown name throws after the score and funds have already changed and the game stops.
+The port runs the payload on the staged shadow first (ADR 0035), so the tick is refused with the name (for example
+"Strategic event item 'STR_BOGUS' is not defined.") and nothing changes. Empty names and `STR_NULL` (and `STR_NONE`
+for items) name no rule, as `Mod::isEmptyRuleName` says; an unknown `spawnedPersonType` spawns nobody, as the reference
+looks it up without an error. A payload without a base (the reference reads the first base of an empty list) or one
+that would spawn more than 10,000 soldiers is refused the same way.
+
+**Events that a payload schedules during the countdown (S5).** `time30Minutes` walks the event list with a range-for
+loop while a payload's research side effects can append to it, which invalidates the loop. The port counts down only
+the events the tick began with; events scheduled meanwhile join the list after them and first count down on the next
+pass.
+
+**An undefined event cutscene (S5).** `GeoscapeEventState::btnOkClick` reads the video with an error; the port plays
+nothing and keeps the campaign's ending unchanged, as for the lose cutscenes above.

@@ -108,7 +108,7 @@ public sealed class StrategicWorldPersistenceTests
     }
 
     [Fact]
-    public void DueWorldEventStopsTimeWithoutPartialMutation()
+    public void DueWorldEventPopsItsWindowAndHoldsTheClock()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CampaignState.Restore(
@@ -117,23 +117,20 @@ public sealed class StrategicWorldPersistenceTests
                 Time = new(1, 1, 1, 1999, 0, 29, 55),
                 World = SampleWorld() with { Events = [new("EVENT_DESPAWN", 30)] }
             }, content, new SplitMix64RandomSource(7));
-        var before = campaign.Capture();
-
         var events = campaign.Execute(new AdvanceCampaignTime(12)).Events;
 
+        // Branch 6 S5: the event pops inside the half-hour tick, and its window holds the clock from the next tick.
         var advanced = Assert.IsType<CampaignTimeAdvanced>(events[0]);
-        Assert.Equal(0, advanced.Summary.TickCount);
-        var blocked = Assert.IsType<CampaignActionBlocked>(events[^1]);
-        Assert.Equal("Strategic event consequences require campaign event execution (Phase 6 branch 6).", blocked.Reason);
-        Assert.Equivalent(before, campaign.Capture(), strict: true);
+        Assert.Equal(1, advanced.Summary.TickCount);
+        Assert.Equal("EVENT_DESPAWN", Assert.Single(events.OfType<CampaignEventOpened>()).Window.RuleId);
+        StrategicWorldTestSupport.AssertTimeBlocked(campaign, CampaignState.EventWindowOpen);
+        Assert.Equal(CampaignState.EventWindowOpen, campaign.QuerySaveRefusal());
 
         var overview = campaign.GetQuery<ICampaignWorldQuery>()!.QueryWorld();
         Assert.Equal(1, overview.ActiveMissions);
-        Assert.Equal(1, overview.ScheduledEvents);
-        Assert.Contains(overview.Targets, target => target.Kind == WorldTargetKind.Ufo && target.Detected);
+        Assert.Equal(0, overview.ScheduledEvents);
         Assert.Contains(overview.Targets, target => target.Kind == WorldTargetKind.MissionSite);
         Assert.Contains(overview.Targets, target => target.Kind == WorldTargetKind.AlienBase);
-        Assert.Contains(overview.Targets, target => target.Kind == WorldTargetKind.Waypoint);
     }
 
     [Fact]

@@ -11,7 +11,6 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldSiteResearchEventTests
 {
-    private const string PayloadReason = "Strategic event consequences require campaign event execution (Phase 6 branch 6).";
 
     [Theory]
     [InlineData(0, "CORE", false)]
@@ -59,7 +58,7 @@ public sealed class StrategicWorldSiteResearchEventTests
             ResearchRuleStatus = scenario == 3 ? new Dictionary<string, int> { ["CORE"] = 2 } : new Dictionary<string, int>(),
             World = snapshot.World with { Events = [new("EVENT_DESPAWN", 30)] },
         };
-        AssertTimeBlocked(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17)), PayloadReason);
+        AssertEventTickRuns(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17)));
     }
 
     [Fact]
@@ -79,7 +78,7 @@ public sealed class StrategicWorldSiteResearchEventTests
             CompletedResearch = ["STOP_EVENT"],
             World = snapshot.World with { Events = [new("EVENT_DESPAWN", 30)] },
         };
-        AssertTimeBlocked(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17)), PayloadReason);
+        AssertEventTickRuns(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17)));
     }
 
     [Fact]
@@ -107,6 +106,6 @@ public sealed class StrategicWorldSiteResearchEventTests
         campaign = Reload(content, campaign, 17, "site-event-future.sav");
         var waiting = campaign.Capture();
         campaign = CampaignState.Restore(waiting with { Time = new(2, 2, 1, 1999, 0, 59, 55) }, content, new SplitMix64RandomSource(waiting.RandomState));
-        AssertTimeBlocked(campaign, PayloadReason);
+        AssertEventTickRuns(campaign);
     }
 }

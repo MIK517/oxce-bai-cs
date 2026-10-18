@@ -66,7 +66,7 @@ public sealed class StrategicWorldGeneratedTimerResearchTests
                 AdvanceUnblocked(campaign, 1);
                 Assert.Empty(campaign.Capture().World.Events);
             }
-            else AssertTimeBlocked(campaign, "Strategic event consequences require campaign event execution (Phase 6 branch 6).");
+            else AssertEventTickRuns(campaign);
         }
     }
 }

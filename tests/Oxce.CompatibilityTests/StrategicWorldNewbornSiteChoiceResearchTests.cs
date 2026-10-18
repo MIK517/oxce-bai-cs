@@ -73,8 +73,7 @@ public sealed class StrategicWorldNewbornSiteChoiceResearchTests
         Assert.Equal(after.World.MissionSites.Count != 2, after.CompletedResearch.Contains("BONUS"));
         Assert.Equivalent(after, Reload(content, campaign, 17, "choice-mixed-duration.sav").Capture(), strict: true);
         content = Content(generated, eventPayload: true);
-        AssertTimeBlocked(CampaignState.Restore(Snapshot(content, generated), content, new SplitMix64RandomSource(17)),
-            "Mission site despawn requires research or event payloads.");
+        AssertEventTickRuns(CampaignState.Restore(Snapshot(content, generated), content, new SplitMix64RandomSource(17)));
     }
 
     internal static RuntimeContent Content(bool generated, bool differentGrant = false, bool mixedDuration = false,

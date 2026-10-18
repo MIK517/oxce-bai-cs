@@ -13,7 +13,6 @@ internal sealed partial class CampaignWorld : ICampaignEventScheduling
     private const int MaximumScheduledEvents = 100_000;
     private const string EventTimerReason = "Strategic event timer exceeds the supported range.";
     private const string EventCapacityReason = "Strategic event population or generation count exceeds the supported range.";
-    private const string EventPayloadReason = "Strategic event consequences require campaign event execution (Phase 6 branch 6).";
     private readonly Dictionary<string, int> _generatedEvents = new(StringComparer.Ordinal);
 
     private void RegisterEventScheduling(CampaignCapabilityRegistry registry)
@@ -21,6 +20,24 @@ internal sealed partial class CampaignWorld : ICampaignEventScheduling
         registry.Operation<ICampaignEventScheduling>(this);
         registry.Timed(CampaignTimeTrigger.ThirtyMinutes, CampaignTimeOrder.ThirtyMinutesWorldEvents,
             "strategic event countdowns", AdvanceEvents);
+        // ADR 0035: an event payload (popped, or a site's despawn event) changes much of what the rest of the tick
+        // reads, so the rest is preflighted again on a shadow that has run the half-hour level.
+        registry.StagePoint(CampaignTimeTrigger.ThirtyMinutes, "event payloads", (_, highest) =>
+            highest >= CampaignTimeTrigger.ThirtyMinutes && (_events.Any(static e => e.Over || e.SpawnCountdown <= 30) ||
+                _sites.Any(static site => site.SecondsRemaining < 30 * 60)));
+    }
+
+    /// <summary>
+    /// SavedGame::canSpawnInstantEvent and the popup: an instant event that research has not interrupted counts in the
+    /// generated history and runs its payload now.
+    /// </summary>
+    private void SpawnInstantEvent(string ruleId, CampaignState.TimeEffects effects)
+    {
+        var events = campaign.Content.RuntimeRules.Events;
+        if (!events.TryGet(ruleId, out var handle) || IsEventInterrupted(events[handle].Value)) return;
+        if (_generatedEvents.GetValueOrDefault(ruleId) == int.MaxValue) throw new InvalidDataException(EventCapacityReason);
+        _generatedEvents[ruleId] = _generatedEvents.GetValueOrDefault(ruleId) + 1;
+        campaign.RunEventPayload(ruleId, effects);
     }
 
     // SavedGame::spawnEvent records history immediately, even for events later interrupted.
@@ -72,26 +89,6 @@ internal sealed partial class CampaignWorld : ICampaignEventScheduling
     {
         if (highest < CampaignTimeTrigger.ThirtyMinutes) return null;
         var rules = campaign.Content.RuntimeRules;
-        foreach (var scheduled in _events)
-        {
-            var rule = rules.Events[rules.Events.GetRequired(scheduled.RuleId)].Value;
-            if (scheduled.Over || scheduled.SpawnCountdown <= 30)
-            {
-                if (rule.InterruptResearch.Length == 0) return EventPayloadReason;
-                if (_pass.SiteResearchForecast is { } sites)
-                {
-                    // Countdown payloads follow every site. A grant can also disable
-                    // earlier research, so never fall back to its pre-site completion.
-                    if (!sites.GuaranteedResearch.Contains(rule.InterruptResearch)) return EventPayloadReason;
-                }
-                else if (highest >= CampaignTimeTrigger.OneDay)
-                {
-                    if (!GuaranteedDailyResearch().Contains(rule.InterruptResearch)) return EventPayloadReason;
-                }
-                else if (!IsEventInterrupted(rule)) return EventPayloadReason;
-            }
-        }
-
         // Bound all reachable producer choices before any current-tick mutation or RNG.
         // A day's research side effects are deduplicated per topic per base. Hourly fallback
         // production acquires available staff before the base's deferred removal pass.
@@ -165,19 +162,22 @@ internal sealed partial class CampaignWorld : ICampaignEventScheduling
             if (candidates.Contains(rule.Id)) yield return rule.Value;
     }
 
-    private void AdvanceEvents(CampaignState.TimeEffects _)
+    /// <summary>
+    /// GeoscapeState::time30Minutes: every event counts down in order, and one whose time has come pops (its payload
+    /// runs at once) unless research has interrupted it; then the finished events are removed. Events that payloads
+    /// schedule meanwhile join after the countdown (ADR 0036).
+    /// </summary>
+    private void AdvanceEvents(CampaignState.TimeEffects effects)
     {
-        for (var index = _events.Count - 1; index >= 0; index--)
+        var rules = campaign.Content.RuntimeRules.Events;
+        var count = _events.Count;
+        for (var index = 0; index < count; index++)
         {
             var scheduled = WorldEventTiming.Think(_events[index]);
-            if (scheduled.Over)
-            {
-                var rule = campaign.Content.RuntimeRules.Events[
-                    campaign.Content.RuntimeRules.Events.GetRequired(scheduled.RuleId)].Value;
-                if (!IsEventInterrupted(rule)) throw new InvalidOperationException(EventPayloadReason);
-                _events.RemoveAt(index);
-            }
-            else _events[index] = scheduled;
+            _events[index] = scheduled;
+            if (scheduled.Over && !IsEventInterrupted(rules[rules.GetRequired(scheduled.RuleId)].Value))
+                campaign.RunEventPayload(scheduled.RuleId, effects);
         }
+        _events.RemoveAll(static scheduled => scheduled.Over);
     }
 }

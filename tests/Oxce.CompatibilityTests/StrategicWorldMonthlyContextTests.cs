@@ -73,7 +73,8 @@ public sealed class StrategicWorldMonthlyContextTests
             0, 0, [1], [], 0, 0, 0, 0, true));
         Assert.Throws<InvalidDataException>(() => WorldMonthlySchedulingMath.Calculate(
             0, 0, [], [], 0, 0, 0, double.NaN, true));
-        Assert.Throws<InvalidDataException>(() => WorldMonthlySchedulingMath.Calculate(
+        // An out-of-range performance bonus pays nothing, as the report's does (ADR 0036).
+        Assert.Equal(new WorldSchedulingInputs(int.MaxValue, 0), WorldMonthlySchedulingMath.Calculate(
             0, int.MaxValue, [], [], 0, 0, 0, 2, true));
         Assert.Throws<OverflowException>(() => WorldMonthlySchedulingMath.Calculate(
             0, 0, [], [], long.MaxValue, 1, 0, 0, true));

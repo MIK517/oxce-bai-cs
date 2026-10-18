@@ -53,10 +53,10 @@ public sealed class StrategicWorldRegionResearchTests
     {
         var content = Content(false);
         var initial = Snapshot(content);
-        AssertTimeBlocked(CampaignState.Restore(initial with
+        AssertEventTickRuns(CampaignState.Restore(initial with
         {
             World = initial.World with { Events = [new GeoscapeEventSnapshot("PATH_A_EVENT", 30)] },
-        }, content, new SplitMix64RandomSource(17)), "Strategic event consequences require campaign event execution (Phase 6 branch 6).");
+        }, content, new SplitMix64RandomSource(17)));
     }
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content)

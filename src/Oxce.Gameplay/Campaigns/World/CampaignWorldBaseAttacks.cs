@@ -56,9 +56,10 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
         registry.Timed(CampaignTimeTrigger.FiveSeconds, CampaignTimeOrder.FiveSecondsCampaignEnding, "campaign ending", CheckCampaignEnding);
         registry.Command<ResolveBaseDefense>(ResolveBaseDefense);
         // The window is modal: time stops (landing preflight) and other commands wait.
-        // time1Month queues the monthly report before a base defense of the same tick, so the report is answered first.
+        // time1Month queues the monthly report, and time30Minutes the events, before a base defense of the same tick,
+        // so those are answered first.
         registry.CommandGate(command => _baseDefense is not null &&
-            command is not (World.ResolveBaseDefense or AdvanceCampaignTime or AcknowledgeMonthlyReport)
+            command is not (World.ResolveBaseDefense or AdvanceCampaignTime or AcknowledgeMonthlyReport or AcknowledgeCampaignEvent)
             ? Blocked(WorldCommandReasons.BaseDefenseOpen) : null);
         // D2: the window is not saved and its opening already parked the UFO, so a save under it would lose the attack.
         registry.SaveGate(() => _baseDefense is not null ? WorldCommandReasons.BaseDefenseOpen : null);

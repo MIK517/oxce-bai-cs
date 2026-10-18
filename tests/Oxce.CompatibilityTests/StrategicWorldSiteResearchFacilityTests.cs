@@ -82,7 +82,7 @@ public sealed class StrategicWorldSiteResearchFacilityTests
             World = snapshot.World with { Events = [new("SITE_EVENT", 0)] },
         };
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
-        if (buildTime == 2) AssertTimeBlocked(campaign, "Strategic event consequences require campaign event execution (Phase 6 branch 6).");
+        if (buildTime == 2) AssertEventTickRuns(campaign);
         else
         {
             AdvanceUnblocked(campaign, 1);

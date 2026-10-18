@@ -63,8 +63,12 @@ public sealed partial class CampaignState
         return Math.Max(_nextIds.GetValueOrDefault("STR_SOLDIER", 1), highest == int.MaxValue ? int.MaxValue : highest + 1);
     }
 
-    private int SelectNationality(RuntimeSoldierRule rule, BaseState state)
+    private int SelectNationality(RuntimeSoldierRule rule, BaseState state) => SelectNationality(rule, state.Longitude, state.Latitude);
+
+    /// <summary>SavedGame::selectSoldierNationalityByLocation for a target at this position.</summary>
+    private int SelectNationality(RuntimeSoldierRule rule, double longitude, double latitude)
     {
+        var state = (Longitude: longitude, Latitude: latitude);
         var settings = _content.RuntimeRules.Campaign;
         if (settings.HireByCountryOdds > 0 && _random.NextInclusive(0, 99) < settings.HireByCountryOdds)
         {

@@ -89,8 +89,7 @@ public sealed class StrategicWorldSiteChoiceGrantTests
     {
         var content = StrategicWorldNewbornSiteChoiceResearchTests.Content(generated, differentGrant: true, ownEvents: true);
         var initial = StrategicWorldNewbornSiteChoiceResearchTests.Snapshot(content, generated);
-        AssertTimeBlocked(CampaignState.Restore(initial with { World = initial.World with { Events = [new GeoscapeEventSnapshot("OWN_A", 30)] } }, content, new SplitMix64RandomSource(17)),
-            "Strategic event consequences require campaign event execution (Phase 6 branch 6).");
+        AssertEventTickRuns(CampaignState.Restore(initial with { World = initial.World with { Events = [new GeoscapeEventSnapshot("OWN_A", 30)] } }, content, new SplitMix64RandomSource(17)));
         var campaign = CampaignState.Restore(initial with { World = initial.World with { MissionSites = [] } }, content, new SplitMix64RandomSource(17));
         var before = campaign.Capture();
         var forecast = campaign.MissionResearch.CreateForecast();

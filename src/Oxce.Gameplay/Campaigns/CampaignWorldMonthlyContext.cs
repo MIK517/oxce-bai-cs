@@ -17,11 +17,8 @@ internal static class WorldMonthlySchedulingMath
         var score = checked(researchScore + (month > 1 ? 400 : 0));
         for (var index = 0; index < xcomActivity.Count; index++)
             score = checked(score + checked(xcomActivity[index] - alienActivity[index]));
-        var product = score * performanceBonusFactor;
-        var truncated = Math.Truncate(product);
-        if (!double.IsFinite(truncated) || truncated < int.MinValue || truncated > int.MaxValue)
-            throw new InvalidDataException("Monthly performance bonus exceeds the supported range.");
-        var performanceBonus = Math.Max(0, checked((int)truncated));
+        // An out-of-range bonus converts as x86 does and pays nothing (ADR 0036).
+        var performanceBonus = Math.Max(0, MonthlyCycle.PerformanceBonus(score, performanceBonusFactor));
         var funds = isNewMonth
             ? checked(currentFunds + countryFunding + performanceBonus - baseMaintenance)
             : currentFunds;

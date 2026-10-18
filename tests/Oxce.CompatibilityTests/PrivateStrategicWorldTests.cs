@@ -118,7 +118,7 @@ public sealed class PrivateStrategicWorldTests
 
     private const string ReportStop = "The monthly report is open.";
     private const string TacticalStop = "Active tactical battle is preserved; tactical continuation is unavailable.";
-    private const string EventStop = "Strategic event consequences require campaign event execution (Phase 6 branch 6).";
+    private const string EventStop = "A strategic event window is open.";
     private const string LimitStop = "limit";
 
     /// <summary>
@@ -135,7 +135,8 @@ public sealed class PrivateStrategicWorldTests
         [("vanilla-tftd", "early/Begining.sav")] = (526925, ReportStop),
         [("vanilla-tftd", "early/IronMode.sav")] = (527040, ReportStop),
         [("vanilla-tftd", "early/Middle.sav")] = (90175, ReportStop),
-        [("modded/rosigma", "early/Begining.sav")] = (580, EventStop),
+        // Branch 6 S5: the event pops at tick 580 and its window holds the clock from the next tick.
+        [("modded/rosigma", "early/Begining.sav")] = (581, EventStop),
         // Branch 5 S6: the landing tick now runs and queues a confirmation, which then holds the clock.
         [("modded/rosigma", "early/Early.sav")] = (6290, "Landing confirmations stop the clock until they are answered."),
         [("modded/rosigma", "early/Middle.sav")] = (429682, ReportStop),
@@ -144,7 +145,7 @@ public sealed class PrivateStrategicWorldTests
 
     /// <summary>
     /// A headless player declines every landing, disengages every interception, fires every base defense and
-    /// acknowledges every monthly report (branch 5 S9, branch 6 S3), so each staged save runs past those windows to the
+    /// acknowledges every monthly report and event window (branch 5 S9, branch 6 S3 and S5), so each staged save runs past those windows to the
     /// next stop that is not a player choice, or to the 40-day limit.
     /// </summary>
     [Fact]
@@ -158,9 +159,9 @@ public sealed class PrivateStrategicWorldTests
         [("vanilla-tftd", "early/IronMode.sav")] = (691200, LimitStop),
         // Superhuman with defeatScore -900: two months rated below -500 lose the campaign.
         [("vanilla-tftd", "early/Middle.sav")] = (591295, "This campaign has ended."),
-        [("modded/rosigma", "early/Begining.sav")] = (580, EventStop),
-        // Declining the terror-site landing lets the campaign run through its month to an event with consequences (S5).
-        [("modded/rosigma", "early/Early.sav")] = (436348, EventStop),
+        // Acknowledging every event window (branch 6 S5), Rosigma runs its months to the limit.
+        [("modded/rosigma", "early/Begining.sav")] = (691200, LimitStop),
+        [("modded/rosigma", "early/Early.sav")] = (691200, LimitStop),
         [("modded/rosigma", "early/Middle.sav")] = (691200, LimitStop),
         [("modded/rosigma", "early/_autogeo_.asav")] = (691200, LimitStop),
     }, AnswerBranchFiveChoices);
@@ -171,6 +172,13 @@ public sealed class PrivateStrategicWorldTests
         if (reason == CampaignState.MonthlyReportOpen)
         {
             Assert.DoesNotContain(campaign.Execute(new AcknowledgeMonthlyReport()).Events, static evt => evt is CampaignActionBlocked);
+            return true;
+        }
+        // Branch 6 S5: every event window is acknowledged.
+        if (reason == CampaignState.EventWindowOpen)
+        {
+            while (campaign.GetQuery<ICampaignEventWindowQuery>()!.QueryEventWindows().Count != 0)
+                Assert.DoesNotContain(campaign.Execute(new AcknowledgeCampaignEvent()).Events, static evt => evt is CampaignActionBlocked);
             return true;
         }
         if (reason == WorldCommandReasons.LandingConfirmationsOpen)

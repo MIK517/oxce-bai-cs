@@ -83,7 +83,7 @@ public sealed class StrategicWorldSiteResearchTests
               - {name: EVENT_DESPAWN, interruptResearch: {{{(interrupted ? "CORE" : "AUTO")}}}}
             """);
         var campaign = CampaignState.Restore(Snapshot(content), content, new SplitMix64RandomSource(17));
-        if (!interrupted) AssertTimeBlocked(campaign, "Mission site despawn requires research or event payloads.");
+        if (!interrupted) AssertEventTickRuns(campaign);
         else
         {
             AdvanceUnblocked(campaign, 1);
@@ -107,8 +107,7 @@ public sealed class StrategicWorldSiteResearchTests
                 MissionSites = [snapshot.World.MissionSites[0] with { DeploymentId = "EARLY_SITE" }, snapshot.World.MissionSites[0]],
             },
         };
-        AssertTimeBlocked(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17)),
-            "Mission site despawn requires research or event payloads.");
+        AssertEventTickRuns(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17)));
     }
 
     [Fact]
