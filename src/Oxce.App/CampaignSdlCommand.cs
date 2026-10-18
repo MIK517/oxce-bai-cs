@@ -63,11 +63,15 @@ internal static class CampaignSdlCommand
         client = new GeoscapeClient(new GeoscapeClientSetup(session, content.RuntimeRules,
             geoscapeAssets, assets.Font, assets.Localize)
         {
-            Save = savePath is null ? null : Save,
+            Save = savePath is null ? null : () => Save(savePath),
+            // MonthlyReportState's SaveGameState: the ironman save replaces the campaign's save; the autosave writes
+            // _autogeo_.asav beside it.
+            SaveRequested = savePath is null ? null : kind => Save(kind == CampaignSaveKind.Ironman ? savePath
+                : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(savePath))!, "_autogeo_.asav")),
             Load = savePath is null ? null : Load,
         });
         Console.WriteLine("Geoscape: 1-6 speed, arrows rotate, +/- zoom, wheel zoom, right click centre, middle drag scroll,");
-        Console.WriteLine("Tab detail, R radar, ./, select target, Enter target info, B bases, I intercept, N new base, F5/F9 save/load, Esc quit");
+        Console.WriteLine("Tab detail, R radar, ./, select target, Enter target info, B bases, I intercept, F funding, N new base, F5/F9 save/load, Esc quit");
         Console.WriteLine("(while the starting base's site is chosen, close the window to quit).");
         Console.WriteLine("Popups: Enter/Esc or 1-9 pick a button; Shift+click (or Shift+digit) adds craft to a wing;");
         Console.WriteLine("choosing a destination: left click a target or empty globe for a waypoint, Esc cancels.");
@@ -85,25 +89,26 @@ internal static class CampaignSdlCommand
         try
         {
             result = host.Run();
-            if (savePath is not null) Save();
+            if (savePath is not null)
+            {
+                try { Save(savePath); }
+                catch (InvalidOperationException error) { Console.Error.WriteLine(error.Message); }
+            }
         }
         finally { extensionSession.Dispose(); }
         PrintWarnings(extensionDiagnostics);
         return result;
 
-        void Save()
+        void Save(string path)
         {
-            // D2: a pending acknowledgement with gameplay effects cannot be saved; the save is skipped.
+            // D2: a pending acknowledgement with gameplay effects cannot be saved; the geoscape shows why.
             if (campaign.CaptureForSave(out var refusal) is not { } snapshot)
-            {
-                Console.Error.WriteLine($"The campaign was not saved: {refusal}");
-                return;
-            }
+                throw new InvalidOperationException($"The campaign was not saved: {refusal}");
             // SavedGame keeps where the globe looked.
             var view = client!.CurrentView;
             var options = new OxceSaveWriteOptions { GlobeView = new(view.Longitude, view.Latitude, view.Zoom) };
-            if (source is null) OxceSaveAdapter.WriteNewCampaignAtomic(savePath!, snapshot, options);
-            else OxceSaveAdapter.RewriteLoadedCampaignAtomic(savePath!, snapshot, source, options);
+            if (source is null) OxceSaveAdapter.WriteNewCampaignAtomic(path, snapshot, options);
+            else OxceSaveAdapter.RewriteLoadedCampaignAtomic(path, snapshot, source, options);
         }
 
         static void PrintWarnings(DiagnosticCollector diagnostics)

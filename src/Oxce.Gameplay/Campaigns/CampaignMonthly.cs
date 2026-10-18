@@ -84,6 +84,7 @@ public sealed partial class CampaignState : ICampaignMonthlyReportQuery
     private void RegisterMonthlyCycle(CampaignCapabilityRegistry registry)
     {
         registry.Query<ICampaignMonthlyReportQuery>(this);
+        registry.Query<ICampaignFundingQuery>(this);
         // D2: the report's OK has gameplay effects that a reload would lose, so the campaign cannot be saved under it.
         registry.SaveGate(() => _monthlyReport is not null ? MonthlyReportOpen : null);
         registry.Command<AcknowledgeMonthlyReport>(_ => AcknowledgeReport());

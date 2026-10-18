@@ -229,10 +229,29 @@ public static class GeoscapeNotifications
                     return new(Format(tr("STR_ALIEN_MISSILES_HAVE_DAMAGED_OUR_BASE"), damaged.Name), lines,
                         damaged.StoresOverfull ? [GoToBase(damaged.BaseId, "STR_OK", okKey: true)] : [Ok()]);
                 }
+            case MonthlyReportReady ready:
+                return MonthlyReport(ready.Report, tr);
+            case MonthlyReportAcknowledged { Cutscene: { } reportVideo }:
+                return Cutscene(reportVideo, tr);
+            case SoldiersCommended commended:
+                // CommendationState: each soldier's new or raised commendations.
+                return new(tr("STR_MEDALS"), [.. commended.Awards.Select(award =>
+                    "#" + award.SoldierId.ToString(CultureInfo.InvariantCulture) + " " + tr(award.Commendation) +
+                    (award.Noun == "noNoun" ? "" : " " + tr(award.Noun)) + " " +
+                    tr("STR_AWARD_" + award.DecorationLevel.ToString(CultureInfo.InvariantCulture)))], [Ok()]);
+            case PsiTrainingReminder:
+                // PsiTrainingState lists the bases with psi labs; the base screens assign the training.
+                return new(tr("STR_PSIONIC_TRAINING"), [.. world.Bases.Select(static owner => owner.Name)], [Ok()]);
+            case CampaignEventOpened opened:
+                return EventWindow(opened.Window, tr, rules);
+            case CampaignEventAcknowledged acknowledged:
+                return EventOk(acknowledged, world, tr) is { Count: > 0 } okPopups ? okPopups[0] : null;
+            case CampaignCutscenePlayed played:
+                return Cutscene(played.Cutscene, tr);
             case CampaignEnded ended:
                 // The reference plays the defeat or victory cutscene; the port has none yet.
                 return new(ended.Ending == 2 ? "The campaign is lost" : "The campaign is won",
-                    ended.Cutscene is { } video ? ["Cutscene: " + video] : [], [Ok()]);
+                    ended.Cutscene is { } endingVideo ? ["Cutscene: " + endingVideo] : [], [Ok()]);
             case DeploymentRequested deployment:
                 // Port screen (S8): Phase 7 runs the battle; until then the request waits in the save.
                 return new("Tactical combat is not available yet",
@@ -277,6 +296,121 @@ public static class GeoscapeNotifications
         "STR_NOT_ENOUGH_LIVING_SPACE" => "STR_NOT_ENOUGH_LIVING_SPACE_AT_BASE",
         _ => reason,
     };
+
+    /// <summary>FundingState: each country's funding and change, then the total.</summary>
+    public static GeoscapePopup Funding(IReadOnlyList<CampaignCountryFunding> countries, Func<string, string> tr)
+    {
+        ArgumentNullException.ThrowIfNull(countries);
+        ArgumentNullException.ThrowIfNull(tr);
+        static string Change(long change) => (change > 0 ? "+" : "") + Funding(change);
+        List<string> lines = [tr("STR_COUNTRY") + " | " + tr("STR_FUNDING") + " | " + tr("STR_CHANGE")];
+        lines.AddRange(countries.Select(country => tr(country.CountryId) + " | " + Funding(country.Funding) + " | " + Change(country.Change)));
+        lines.Add(tr("STR_TOTAL_UC") + " | " + Funding(countries.Sum(static c => (long)c.Funding)) + " | " +
+            Change(countries.Sum(static c => (long)c.Change)));
+        return new(tr("STR_INTERNATIONAL_RELATIONS"), lines, [new(tr("STR_OK"), OkKey: true, CancelKey: true)]);
+    }
+
+    /// <summary>Unicode::formatFunding: thousands separated, the one-character currency in front.</summary>
+    public static string Funding(long value) =>
+        (value < 0 ? "-$" : "$") + Math.Abs(value).ToString("N0", CultureInfo.InvariantCulture);
+
+    private static readonly string[] Months =
+        ["STR_JAN", "STR_FEB", "STR_MAR", "STR_APR", "STR_MAY", "STR_JUN", "STR_JUL", "STR_AUG", "STR_SEP", "STR_OCT", "STR_NOV", "STR_DEC"];
+
+    /// <summary>
+    /// MonthlyReportState: the month, rating, income with its change, maintenance, bonus, balance, the council's text
+    /// with the debt warning and the country lists, or the failure screen; OK acknowledges the report.
+    /// </summary>
+    private static GeoscapePopup MonthlyReport(CampaignMonthlyReport report, Func<string, string> tr)
+    {
+        var acknowledge = new GeoscapePopupAction(tr("STR_OK"), OkKey: true, CancelKey: true) { Command = new AcknowledgeMonthlyReport() };
+        // The second OK of a failed month: the failure screen, then the lose cutscene.
+        if (report.GameOver != 0)
+            return new(tr("STR_YOU_HAVE_FAILED"), [tr(report.CouncilText)], [acknowledge]);
+        var month = report.Month is >= 1 and <= 12 ? tr(Months[report.Month - 1]) : "";
+        var change = (report.FundingChange > 0 ? "+" : "") + Funding(report.FundingChange);
+        List<string> lines =
+        [
+            Format(tr("STR_MONTH"), month, report.Year),
+            Format(tr("STR_MONTHLY_RATING"), report.Rating, tr(report.RatingText)),
+            tr("STR_INCOME") + "> " + Funding(report.CountryFunding) + " (" + change + ")",
+            tr("STR_MAINTENANCE") + "> " + Funding(report.Maintenance),
+        ];
+        if (report.PerformanceBonus > 0) lines.Add(tr("STR_PERFORMANCE_BONUS") + "> " + Funding(report.PerformanceBonus));
+        lines.Add(tr("STR_BALANCE") + "> " + Funding(report.Balance));
+        lines.Add(tr(report.CouncilText));
+        if (report.DebtWarning) lines.Add(tr("STR_COUNCIL_REDUCE_DEBTS"));
+        AddCountries(report.HappyCountries, "STR_COUNTRY_IS_PARTICULARLY_PLEASED", "STR_COUNTRIES_ARE_PARTICULARLY_HAPPY");
+        AddCountries(report.UnhappyCountries, "STR_COUNTRY_IS_UNHAPPY_WITH_YOUR_ABILITY", "STR_COUNTRIES_ARE_UNHAPPY_WITH_YOUR_ABILITY");
+        AddCountries(report.SignedPacts, "STR_COUNTRY_HAS_SIGNED_A_SECRET_PACT", "STR_COUNTRIES_HAVE_SIGNED_A_SECRET_PACT");
+        AddCountries(report.CancelledPacts, "STR_COUNTRY_HAS_CANCELLED_A_SECRET_PACT", "STR_COUNTRIES_HAVE_CANCELLED_A_SECRET_PACT");
+        return new(tr("STR_XCOM_PROJECT_MONTHLY_REPORT"), lines, [acknowledge]);
+
+        // MonthlyReportState::countryList: "A", "A and B", "A, B and C".
+        void AddCountries(IReadOnlyList<string> countries, string singular, string plural)
+        {
+            if (countries.Count == 0) return;
+            if (countries.Count == 1)
+            {
+                lines.Add(Format(tr(singular), tr(countries[0])));
+                return;
+            }
+            var list = tr(countries[0]);
+            for (var index = 1; index < countries.Count - 1; index++) list = Format(tr("STR_COUNTRIES_COMMA"), list, tr(countries[index]));
+            lines.Add(Format(tr(plural), Format(tr("STR_COUNTRIES_AND"), list, tr(countries[^1]))));
+        }
+    }
+
+    /// <summary>
+    /// GeoscapeEventState: the title and message name the place (the city of a city-specific event, otherwise the
+    /// region), then the items given or taken; OK acknowledges the event.
+    /// </summary>
+    private static GeoscapePopup EventWindow(CampaignEventWindow window, Func<string, string> tr, RuntimeRuleCatalog? rules)
+    {
+        var payload = rules is not null && rules.Events.TryGet(window.RuleId, out var handle) ? rules.Events[handle].Value.Payload : null;
+        var place = payload is { CitySpecific: true } && window.City is { } city ? city : window.Region is { } region ? tr(region) : null;
+        var description = payload is { Description.Length: > 0 } ? tr(payload.Description) : "";
+        List<string> lines = [place is null ? description : Format(description, place)];
+        if (window.Items.Count != 0)
+        {
+            lines.Add(tr("STR_ITEMS_ARRIVING"));
+            lines.AddRange(window.Items.Select(row => tr(row.ItemId) + " " + row.Quantity.ToString(CultureInfo.InvariantCulture)));
+        }
+        return new(place is null ? tr(window.RuleId) : Format(tr(window.RuleId), place), lines,
+            [new(tr("STR_OK"), OkKey: true, CancelKey: true) { Command = new AcknowledgeCampaignEvent() }]);
+    }
+
+    /// <summary>
+    /// Every window a notification opens, in the order they show: an event's OK opens several (Describe gives the first).
+    /// </summary>
+    public static IReadOnlyList<GeoscapePopup> DescribeAll(ICampaignEvent notification, CampaignWorldOverview world,
+        Func<string, string> tr, RuntimeRuleCatalog? rules = null, int etaMode = 0) =>
+        notification is CampaignEventAcknowledged acknowledged ? EventOk(acknowledged, world, tr)
+            : Describe(notification, world, tr, rules, etaMode) is { } popup ? [popup] : [];
+
+    /// <summary>
+    /// GeoscapeEventState::btnOkClick pushes the cutscene, then the sell screen with its storage warning, then the bonus
+    /// and research articles; the last pushed shows first.
+    /// </summary>
+    private static List<GeoscapePopup> EventOk(CampaignEventAcknowledged acknowledged, CampaignWorldOverview world,
+        Func<string, string> tr)
+    {
+        List<GeoscapePopup> popups = [];
+        var ok = new GeoscapePopupAction(tr("STR_OK"), OkKey: true, CancelKey: true);
+        // Ufopaedia::openArticle: the research article was pushed last.
+        if (acknowledged.ResearchName.Length != 0) popups.Add(new(tr(acknowledged.ResearchName), ["Ufopaedia article"], [ok]));
+        if (acknowledged.BonusResearchName.Length != 0) popups.Add(new(tr(acknowledged.BonusResearchName), ["Ufopaedia article"], [ok]));
+        if (acknowledged.StorageExceeded && world.Bases.Count != 0)
+            popups.Add(new(Format(tr("STR_STORAGE_EXCEEDED"), world.Bases[0].Name), [],
+                [new(tr("STR_OK"), ResetSpeed: true, OkKey: true, CancelKey: true) { Intent = new BaseIntent(world.Bases[0].Id) }]));
+        if (acknowledged.Cutscene is { } video) popups.Add(Cutscene(video, tr));
+        return popups;
+    }
+
+    /// <summary>A port window for a video the port cannot play yet (CutsceneState, Phase 8).</summary>
+    private static GeoscapePopup Cutscene(string cutscene, Func<string, string> tr) =>
+        new("Cutscene unavailable", ["The cutscene " + cutscene + " cannot be played yet."],
+            [new(tr("STR_OK"), OkKey: true, CancelKey: true)]);
 
     /// <summary>LocalizedText::arg: replaces <c>{0}</c>, <c>{1}</c>, ... in order.</summary>
     public static string Format(string text, params object[] arguments)

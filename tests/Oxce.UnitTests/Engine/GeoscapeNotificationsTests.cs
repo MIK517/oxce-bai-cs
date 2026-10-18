@@ -22,6 +22,15 @@ public sealed class GeoscapeNotificationsTests
         ["STR_BASE_UNDER_ATTACK"] = "{0} is under attack",
         ["STR_ALIEN_MISSILES_HAVE_DESTROYED_OUR_BASE"] = "Missiles destroyed {0}",
         ["STR_THE_ALIENS_HAVE_DESTROYED_THE_UNDEFENDED_BASE"] = "Aliens destroyed {0}",
+        ["STR_MONTH"] = "Month> {0} {1}",
+        ["STR_JAN"] = "January",
+        ["STR_MONTHLY_RATING"] = "Rating> {0} {1}",
+        ["STR_COUNTRY_IS_PARTICULARLY_PLEASED"] = "{0} is pleased",
+        ["STR_COUNTRIES_HAVE_SIGNED_A_SECRET_PACT"] = "{0} signed pacts",
+        ["STR_COUNTRIES_AND"] = "{0} and {1}",
+        ["STR_COUNTRIES_COMMA"] = "{0}, {1}",
+        ["STR_CITY_EVENT"] = "Riots in {0}",
+        ["STR_CITY_EVENT_DESC"] = "Trouble in {0}",
     };
 
     private static readonly CampaignWorldOverview World = new(
@@ -41,6 +50,71 @@ public sealed class GeoscapeNotificationsTests
 
     private static GeoscapePopup? Describe(ICampaignEvent notification) =>
         GeoscapeNotifications.Describe(notification, World, Tr);
+
+    [Fact]
+    public void TheMonthlyReportShowsItsLedgerAndCouncilAndItsOkAcknowledges()
+    {
+        // Branch 6 S7: MonthlyReportState's lines; OK sends the acknowledgement that applies the report's effects.
+        var report = new CampaignMonthlyReport(1, 1999, 450, "STR_RATING_GOOD", 700_000, 25_000, 300_000, 4_500, 1_204_500,
+            "STR_COUNCIL_IS_GENERALLY_SATISFIED", true, ["STR_USA"], [], ["STR_RUSSIA", "STR_CHINA", "STR_INDIA"], []);
+        var popup = Describe(new MonthlyReportReady(report))!;
+
+        Assert.Equal("STR_XCOM_PROJECT_MONTHLY_REPORT", popup.Title);
+        Assert.Equal(
+        [
+            "Month> January 1999", "Rating> 450 STR_RATING_GOOD", "STR_INCOME> $700,000 (+$25,000)", "STR_MAINTENANCE> $300,000",
+            "STR_PERFORMANCE_BONUS> $4,500", "STR_BALANCE> $1,204,500", "STR_COUNCIL_IS_GENERALLY_SATISFIED", "STR_COUNCIL_REDUCE_DEBTS",
+            "STR_USA is pleased", "STR_RUSSIA, STR_CHINA and STR_INDIA signed pacts",
+        ], popup.Lines);
+        Assert.Equal([new AcknowledgeMonthlyReport()], popup.Actions.Select(static action => action.Command));
+        // A failed month shows the failure screen; its OK plays the lose cutscene.
+        var failed = Describe(new MonthlyReportReady(report with { CouncilText = "STR_YOU_HAVE_NOT_SUCCEEDED" } is var r ? r with { GameOver = 1 } : r))!;
+        Assert.Equal(("STR_YOU_HAVE_FAILED", "STR_YOU_HAVE_NOT_SUCCEEDED"), (failed.Title, failed.Lines[0]));
+        Assert.Equal("Cutscene unavailable", Describe(new MonthlyReportAcknowledged("loseGame"))!.Title);
+        Assert.Null(Describe(new MonthlyReportAcknowledged(null)));
+    }
+
+    [Fact]
+    public void AnEventWindowNamesItsPlaceAndItemsAndItsOkOpensItsFollowingWindowsInOrder()
+    {
+        var window = new CampaignEventWindow("STR_CITY_EVENT", "STR_NORTH_AMERICA", "Ottawa",
+            [new("STR_RIFLE", 3), new("STR_GRENADE", -2)], "", "");
+        // Without the rules the description is unknown and the region names the place.
+        var popup = Describe(new CampaignEventOpened(window))!;
+        Assert.Equal("Riots in STR_NORTH_AMERICA", popup.Title);
+        Assert.Equal(["", "STR_ITEMS_ARRIVING", "STR_RIFLE 3", "STR_GRENADE -2"], popup.Lines);
+        Assert.Equal([new AcknowledgeCampaignEvent()], popup.Actions.Select(static action => action.Command));
+
+        // btnOkClick pushes the cutscene, the sell screen, then the articles: the research article shows first.
+        var ok = GeoscapeNotifications.DescribeAll(new CampaignEventAcknowledged("STR_CITY_EVENT", "winVideo", true, "STR_BONUS", "STR_PLASMA"), World, Tr);
+        Assert.Equal(["STR_PLASMA", "STR_BONUS", "STR_STORAGE_EXCEEDED", "Cutscene unavailable"], ok.Select(static p => p.Title));
+        Assert.Equal(new BaseIntent(1), ok[2].Actions[0].Intent);
+        Assert.Empty(GeoscapeNotifications.DescribeAll(new CampaignEventAcknowledged("STR_CITY_EVENT", null, false, "", ""), World, Tr));
+    }
+
+    [Fact]
+    public void TheFundingWindowListsEachCountrysFundingAndChangeAndTheTotal()
+    {
+        var popup = GeoscapeNotifications.Funding([new("STR_USA", 600_000, 50_000), new("STR_RUSSIA", 400_000, -20_000)], Tr);
+        Assert.Equal("STR_INTERNATIONAL_RELATIONS", popup.Title);
+        Assert.Equal(["STR_COUNTRY | STR_FUNDING | STR_CHANGE", "STR_USA | $600,000 | +$50,000", "STR_RUSSIA | $400,000 | -$20,000",
+            "STR_TOTAL_UC | $1,000,000 | +$30,000"], popup.Lines);
+    }
+
+    [Fact]
+    public void MedalsThePsiReminderAndTheEndingVideoHaveTheirWindows()
+    {
+        var medals = Describe(new SoldiersCommended([new(4, "STR_MEDAL_SERVICE", "noNoun", 0), new(5, "STR_RACE", "STR_SECTOID", 1)]))!;
+        Assert.Equal("STR_MEDALS", medals.Title);
+        Assert.Equal(["#4 STR_MEDAL_SERVICE STR_AWARD_0", "#5 STR_RACE STR_SECTOID STR_AWARD_1"], medals.Lines);
+        var psi = Describe(new PsiTrainingReminder())!;
+        Assert.Equal("STR_PSIONIC_TRAINING", psi.Title);
+        Assert.Equal(["Alpha"], psi.Lines);
+        Assert.Equal("Cutscene unavailable", Describe(new CampaignCutscenePlayed("winVideo"))!.Title);
+        Assert.Equal(["Cutscene: loseGame"], Describe(new CampaignEnded(2) { Cutscene = "loseGame" })!.Lines);
+        // The host makes requested saves; they open no window.
+        Assert.Null(Describe(new CampaignSaveRequested(CampaignSaveKind.Autosave)));
+    }
 
     [Fact]
     public void ProductionPopsOnlyWhenAProjectEndsWithItsFormattedMessage()

@@ -22,6 +22,8 @@ public sealed record CampaignUiSession(ICampaignQuery Queries, ICampaignCommandT
     public ICampaignLandingQuery? Landings { get; init; } = Queries as ICampaignLandingQuery;
     /// <summary>The open base defense window, reopened when a save is loaded.</summary>
     public ICampaignBaseDefenseQuery? BaseDefense { get; init; } = Queries as ICampaignBaseDefenseQuery;
+    /// <summary>The countries' funding (FundingState).</summary>
+    public ICampaignFundingQuery? Funding { get; init; } = Queries as ICampaignFundingQuery;
     /// <summary>The open interception windows.</summary>
     public ICampaignInterceptionQuery? Interceptions { get; init; } = Queries as ICampaignInterceptionQuery;
     /// <summary>Where the geoscape globe looked when the campaign was saved (SavedGame globe fields).</summary>
@@ -40,6 +42,7 @@ public sealed record CampaignUiSession(ICampaignQuery Queries, ICampaignCommandT
             Landings = campaign.GetQuery<ICampaignLandingQuery>(),
             BaseDefense = campaign.GetQuery<ICampaignBaseDefenseQuery>(),
             Interceptions = campaign.GetQuery<ICampaignInterceptionQuery>(),
+            Funding = campaign.GetQuery<ICampaignFundingQuery>(),
         };
     }
 }

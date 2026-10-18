@@ -18,7 +18,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 190 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 191 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 95 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
@@ -336,7 +336,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 190 files.
+`src/Oxce.Gameplay` - 191 files.
 
 ### `Oxce.Gameplay`
 
@@ -406,6 +406,9 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CampaignState` (class) [CampaignFacilities.cs](../src/Oxce.Gameplay/Campaigns/CampaignFacilities.cs)
 - `NewCampaignRequest` (record) [CampaignFactory.cs](../src/Oxce.Gameplay/Campaigns/CampaignFactory.cs)
 - `CampaignFactory` (class) [CampaignFactory.cs](../src/Oxce.Gameplay/Campaigns/CampaignFactory.cs)
+- `CampaignCountryFunding` (record) [CampaignFunding.cs](../src/Oxce.Gameplay/Campaigns/CampaignFunding.cs) - One country's row in FundingState: this month's funding and its change from last month.
+- `ICampaignFundingQuery` (interface) [CampaignFunding.cs](../src/Oxce.Gameplay/Campaigns/CampaignFunding.cs)
+- `CampaignState` (class) [CampaignFunding.cs](../src/Oxce.Gameplay/Campaigns/CampaignFunding.cs)
 - `CampaignState` (class) [CampaignLogistics.cs](../src/Oxce.Gameplay/Campaigns/CampaignLogistics.cs)
 - `CampaignState` (class) [CampaignMissionResearch.cs](../src/Oxce.Gameplay/Campaigns/CampaignMissionResearch.cs)
 - `CampaignMonthlyReport` (record) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs) - The monthly report as `MonthlyReportState` shows it: the closed month, its rating, funding and council decision.
