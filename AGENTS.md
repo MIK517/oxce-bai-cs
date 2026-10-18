@@ -146,6 +146,8 @@ Multiplayer later adds only a wire protocol and remote clients. Keep new code co
   for branch 5, `docs/phase-6-campaign-cycle-plan.md` for branch 6).
   `docs/phase-6-ownership.md` keeps the ownership and fixture ledger, and
   `docs/implementation-plan.md` keeps phase-level status; both link to those records.
+- Phase 7 battle work: `docs/phase-7-plan.md` keeps branch scope and decisions; each branch's slices, audits and
+  evidence belong in its status record (`docs/battle-generation-status.md` for branch 1).
 
 ## Completion standard
 

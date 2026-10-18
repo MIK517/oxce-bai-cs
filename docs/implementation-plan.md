@@ -291,6 +291,10 @@ Exit gate:
 
 ## Phase 7 — Playable battlescape vertical slice
 
+The [Phase 7 delivery plan](phase-7-plan.md) splits the phase into eight branches and records the battle design in
+[ADR 0038](decisions/0038-battle-aggregate.md). Branch 1 (battle generation) is in progress:
+[battle generation status](battle-generation-status.md).
+
 Phase 7 inherits the Phase 6 named restrictions: every string in the
 [refusal inventory](phase-6-refusal-inventory.md)'s "Named restrictions" and "Tactical and battle boundaries"
 classes (the 4c R3–R6 among them; [Phase 6 status](phase-6-status.md#refusal-inventory)). Its planning slice checks
@@ -399,8 +403,8 @@ Branch 5 (interception and strategic deployment) is
 [complete](strategic-interception-status.md#branch-audit-2026-10-17) and merged (PR #75).
 Branch 6 (monthly campaign cycle and Phase 6 closure) is
 [complete](phase-6-campaign-cycle-plan.md#progress) and merged (PR #76); the closure is published in
-[Phase 6 status](phase-6-status.md). Phase 7 starts with its planning slice, which takes up the design
-decisions recorded in the [2026-10-18 project audit](project-audit-2026-10-18.md#part-4--recommended-order).
+[Phase 6 status](phase-6-status.md). Phase 7's planning slice is the [Phase 7 plan](phase-7-plan.md), which takes up the design decisions recorded in
+the [2026-10-18 project audit](project-audit-2026-10-18.md#part-4--recommended-order).
 
 The September compatibility-guardrail, script-allocation, compiled-content-cache,
 hot-runtime-partitioning, and portable Unicode-path slices are complete. The production
@@ -408,9 +412,9 @@ content root no longer retains typed compatibility/provenance graphs, virtual re
 identity is deterministic across hosts, and managed-extension API `0.2` exposes
 separately versioned campaign query, command, and event capabilities.
 
-1. Plan [Phase 7](#phase-7--playable-battlescape-vertical-slice), starting from the
-   [first Phase 7 acceptance scenario](phase-6-status.md#first-phase-7-acceptance-scenario).
-   Keep each branch integrated across commands, script providers, saves and UI actions.
+1. Implement [Phase 7 branch 1](phase-7-plan.md#branch-1--battle-generation) (battle generation), then the
+   following branches of the [Phase 7 plan](phase-7-plan.md). Keep each branch integrated across commands,
+   script providers, saves and UI actions.
 2. Continue adding focused executable C++ probes, compatibility matrix entries, and
    controlled benchmarks with every compatibility-sensitive slice.
 
