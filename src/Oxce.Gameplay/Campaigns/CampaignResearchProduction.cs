@@ -603,7 +603,11 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
             owner.Scientists = checked(owner.Scientists + project.Assigned);
             owner.Research.Remove(project);
             ApplyResearchRecoveredItems(owner, rule, id, finished: true, dailyCompletion: true);
-            var discoveries = CompleteResearch(owner, id, rule, sideEffects);
+            var discoveries = CompleteResearch(owner, id, rule, sideEffects, out var bonus);
+            // 3e. the topic's cutscene, then its free topic's: the first video that wins or loses ends the campaign (D4).
+            PlayCutscene(rule.Cutscene, effects);
+            if (bonus is not null && _content.RuntimeRules.Research.TryGet(bonus, out var bonusHandle))
+                PlayCutscene(_content.RuntimeRules.Research[bonusHandle].Value.Cutscene, effects);
             effects.Notify(new CampaignResearchCompleted(owner.Id, id, discoveries));
         }
         var pendingSideEffects = sideEffects.ToHashSet(StringComparer.Ordinal);
@@ -615,13 +619,13 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
     }
 
     private ReadOnlyCollection<string> CompleteResearch(
-        BaseState owner, string id, RuntimeResearchRule rule, List<string> sideEffects)
+        BaseState owner, string id, RuntimeResearchRule rule, List<string> sideEffects, out string? bonus)
     {
         var discoveries = new List<string>();
         // Native time1Day records both core topics before selecting or granting the reward.
         RecordResearchDiary(id, ResearchDiscoverySource.Base, owner.Name, considerDebug: true);
         RecordResearchDiary(rule.Lookup, ResearchDiscoverySource.Base, owner.Name, considerDebug: true);
-        var bonus = SelectResearchReward(rule);
+        bonus = SelectResearchReward(rule);
         if (bonus is not null)
         {
             if (_content.RuntimeRules.Research.TryGet(bonus, out var bonusHandle))

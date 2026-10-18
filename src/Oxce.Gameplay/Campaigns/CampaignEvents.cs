@@ -80,12 +80,7 @@ public sealed partial class CampaignState : ICampaignEventWindowQuery
             // D4: an event cutscene ends the campaign only while it has no ending. Mod::getVideo throws for an
             // undefined video; the port plays nothing (ADR 0036).
             if (!_content.RuntimeRules.Campaign.Cutscenes.TryGetValue(payload.Cutscene, out var video)) cutscene = null;
-            else if (Ending == 0)
-            {
-                if (video.WinGame) EndCampaign(1);
-                if (video.LoseGame) EndCampaign(2);
-                if (Ending != 0) events.Add(new CampaignEnded(Ending));
-            }
+            else if (EndByVideo(video) is { } ended) events.Add(ended);
         }
         // The storage-overfull sell screen, skipped before the first month and after an ending.
         var exceeded = Ending == 0 && MonthsPassed > -1 && Options.StorageLimitsEnforced && _bases.Count != 0 &&

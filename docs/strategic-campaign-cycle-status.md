@@ -428,3 +428,22 @@ Not changed: `ApplyResearchSideEffects` applies counters and events before remov
 `handlePrimaryResearchSideEffects`; nothing observable depends on the order today. Nationality by city with
 hire-by-country or hire-by-region odds is exercised only through the shared `SelectNationality` (recruitment and
 production tests).
+
+## S6 — Strategic endings (2026-10-18)
+
+Plan D4's one ending rule, `CampaignState.EndByVideo`: while the campaign has no ending, a video that wins ends it
+won and one that loses ends it lost (a video with both loses, as the reference sets the win first).
+
+- Research (`GeoscapeState::time1Day`, 3e): after a discovery and its lookup, the topic's cutscene plays
+  (`CampaignCutscenePlayed`), then its free topic's; the first video that wins or loses ends the campaign inside the
+  day tick (`CampaignEnded`), and the second plays on. An undefined video plays nothing (ADR 0036).
+- Event cutscenes (S5) and the monthly failure (S3, S4) use the same rule on their acknowledgement.
+- `time5Seconds` returns early only once the campaign is lost; a won campaign's tick runs on, as in the reference.
+  Losing every base still ends the campaign lost there (branch 5).
+- An ended campaign refuses every command ("This campaign has ended.") and keeps its ending in saves (`end`).
+- Phase 7 inputs, defined and not claimed: the final mission's victory (`BattlescapeState` sets `END_WIN` after the last
+  stage) and a battle's research and cutscenes reach the same rule when tactical play exists.
+- Cutscene playback is Phase 8 presentation; the windows that show an ending are S7.
+
+Tests: `StrategicEndingTests` (a winning topic, a plain topic whose free topic loses, a winning topic whose free topic
+would lose, an undefined video; the ended campaign refusing time before and after a reload).
