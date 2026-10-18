@@ -17,6 +17,9 @@ namespace Oxce.CompatibilityTests;
 /// </summary>
 public sealed class PrivateGeoscapeScenarioTests
 {
+    // Real mods run with the production forecast work bounds (branch 6 S3).
+    public PrivateGeoscapeScenarioTests() => Oxce.Gameplay.Campaigns.World.CampaignWorld.ProductionWorkBounds = true;
+
     [Fact]
     public void UfoSavesPlayThroughTheGeoscape() => Play("xcom1", "-", "vanilla-ufo");
 

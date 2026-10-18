@@ -7,6 +7,18 @@ public interface ICampaignTimeEffects
 
     /// <returns>True to pause before the next tick, after all current handlers finish.</returns>
     bool Apply(CampaignTime current, CampaignTimeTrigger trigger);
+
+    /// <summary>
+    /// Stage points of the next tick (ADR 0035), read after its preflight passes: bit <c>1 &lt;&lt; level</c> means
+    /// the rest of the tick after that trigger level is preflighted again on the state the level leaves.
+    /// </summary>
+    int StagePoints(CampaignTime nextTime, CampaignTimeTrigger highestTrigger) => 0;
+
+    /// <summary>Checks every later stage on a shadow copy without changing this state; null when all pass.</summary>
+    string? PreflightStages(CampaignTime nextTime, CampaignTimeTrigger highestTrigger, int stagePoints) => null;
+
+    /// <summary>Preflights the rest of the current tick on real state after a stage point; it must pass.</summary>
+    void Restage(CampaignTime current, CampaignTimeTrigger remainingHighestTrigger) { }
 }
 
 public readonly record struct CampaignTimeDispatchResult(
@@ -38,10 +50,16 @@ public static class CampaignTimeDispatcher
             var next = current.Advance(out var highest);
             blocked = effects.Preflight(next, highest);
             if (blocked is not null) break;
+            // A stage point after the five-second level would have nothing left to check.
+            var stages = effects.StagePoints(next, highest) & ((2 << (int)highest) - 2);
+            if (stages != 0 && (blocked = effects.PreflightStages(next, highest, stages)) is not null) break;
             current = next;
             // A popup pause is observed by the outer loop, never between handlers.
             for (var trigger = (int)highest; trigger >= 0; trigger--)
+            {
                 paused |= effects.Apply(current, (CampaignTimeTrigger)trigger);
+                if ((stages & (1 << trigger)) != 0) effects.Restage(current, (CampaignTimeTrigger)(trigger - 1));
+            }
             counts[(int)highest]++;
             completed++;
         }

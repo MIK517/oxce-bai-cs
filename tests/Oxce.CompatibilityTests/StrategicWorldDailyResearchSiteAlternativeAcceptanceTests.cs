@@ -25,7 +25,7 @@ public sealed class StrategicWorldDailyResearchSiteAlternativeAcceptanceTests
         if (!guaranteed)
         {
             var campaign = Reload(content, CampaignState.Restore(SiteSnapshot(content, 17), content, new SplitMix64RandomSource(17)), 17, "daily-site-event-guard.sav");
-            AssertTimeBlocked(campaign, "Mission site despawn requires research or event payloads.");
+            AssertEventTickRuns(campaign, popped: ["SITE_EVENT"]);
             return;
         }
         HashSet<bool> outcomes = [];

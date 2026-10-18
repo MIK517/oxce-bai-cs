@@ -33,6 +33,8 @@ public sealed record SoldierPersonalState(
     public IReadOnlyDictionary<string, int> PreviousTransformations { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
     public IReadOnlyDictionary<string, int> TransformationBonuses { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
     public IReadOnlyList<SoldierCommendation> Commendations { get; init; } = [];
+    /// <summary>SoldierDiary's counters, kill list and mission IDs.</summary>
+    public SoldierDiaryState Diary { get; init; } = SoldierDiaryState.Empty;
     /// <summary>SoldierDiary::_ufosShotDownTotal and _ufosDamageTotal (pilot interception wins).</summary>
     public int UfosShotDownTotal { get; init; }
     public int UfosDamageTotal { get; init; }
@@ -72,6 +74,13 @@ public static class SoldierGeneration
 
     private static readonly string[] GeneratedStats = ["tu", "stamina", "health", "mana", "bravery", "reactions",
         "firing", "throwing", "strength", "psiStrength", "melee"];
+
+    /// <summary>
+    /// An empty template: Soldier::load of an empty node, which still re-rolls a soldier's zero mana when the rule allows
+    /// mana (manufacture and event spawns always load their template).
+    /// </summary>
+    public static RuntimeSoldierTemplate EmptyTemplate { get; } = new(new Dictionary<string, int>(), new Dictionary<string, bool>(),
+        new Dictionary<string, string>(), new Dictionary<string, short>(), new Dictionary<string, short>(), null, []);
 
     public static SoldierPersonalState LoadStarting(RuntimeSoldierRule rule, RuntimeSoldierTemplate? template,
         RuntimeRuleCatalog rules, IRandomSource random, bool autoCombatDefault = true)

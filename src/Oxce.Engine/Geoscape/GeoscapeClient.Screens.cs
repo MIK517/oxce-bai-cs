@@ -261,7 +261,7 @@ public sealed partial class GeoscapeClient
         if (blocked is not null)
             Push(new GeoscapePopup(RefusalText(blocked, command, world), [],
                 [new(_setup.Localize("STR_OK"), OkKey: true, CancelKey: true)]));
-        else Notify(result.Events);
+        else Notify(result.Events, pushed: true);
     }
 
     /// <summary>

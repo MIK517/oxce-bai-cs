@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-event-payload",
+  "description": "Event payloads from the verbatim GeoscapeEventState::eventLogic and btnOkClick, SavedGame::canSpawnInstantEvent and selectSoldierNationalityByLocation and WeightedOptions::choose: region and city, score, funds, persons, soldier lists, items with instant delivery, transfers or invert removal, crafts, research with lookups and free topics, adhoc scripts, cutscene endings and the storage-overfull flow; scripted raw RNG through RandomState::generate, recorded soldier, craft and research calls.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "Geoscape/GeoscapeEventState.cpp; Savegame/SavedGame.cpp; Savegame/WeightedOptions.cpp",
+      "probe": "fixtures/reference-probes/savegames/strategic_event_payload_probe.cpp",
+      "capture": "tools/capture-strategic-event-payload-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; reference statements inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "size": 29554,
+      "path": "fixtures/reference-probes/savegames/strategic_event_payload_probe.cpp",
+      "sha256": "06830e38ef55d99e41c66f93e0b3f69a79503e0e21e6b2caaaa57d5e3d584cba"
+    },
+    {
+      "size": 3684,
+      "path": "tools/capture-strategic-event-payload-reference.ps1",
+      "sha256": "029ac0f725a5a16fd9435e2dcad35151d0fc5513005c58588b3ce4397f3a06f8"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-event-payload.expected.json"
+}

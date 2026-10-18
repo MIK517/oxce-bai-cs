@@ -25,8 +25,16 @@ public sealed record BaseDestroyed(int BaseId, string Name, bool Missiles = fals
 public sealed record BaseDamagedByMissiles(int BaseId, string Name, IReadOnlyList<DestroyedFacilityCount> Destroyed,
     bool StoresOverfull) : ICampaignEvent;
 
-/// <summary>The campaign ended (SavedGame::setEnding): 2 is END_LOSE, when no base is left.</summary>
-public sealed record CampaignEnded(int Ending) : ICampaignEvent;
+/// <summary>The campaign ended (SavedGame::setEnding): 1 is END_WIN, 2 is END_LOSE.</summary>
+public sealed record CampaignEnded(int Ending) : ICampaignEvent
+{
+    /// <summary>
+    /// For an ending inside a tick, the video that ends the game (CutsceneState then opens the statistics and drops the
+    /// queued popups): the defeat video for a loss, otherwise the first video the tick queued. A window's own ending
+    /// names its video in its acknowledgement.
+    /// </summary>
+    public string? Cutscene { get; init; }
+}
 
 /// <summary>The open base defense window.</summary>
 public sealed record CampaignBaseDefense(int BaseId, int UfoUniqueId, bool InstaHyper, int Defenses, int GravShields);
@@ -56,8 +64,13 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
         registry.Timed(CampaignTimeTrigger.FiveSeconds, CampaignTimeOrder.FiveSecondsCampaignEnding, "campaign ending", CheckCampaignEnding);
         registry.Command<ResolveBaseDefense>(ResolveBaseDefense);
         // The window is modal: time stops (landing preflight) and other commands wait.
-        registry.CommandGate(command => _baseDefense is not null && command is not (World.ResolveBaseDefense or AdvanceCampaignTime)
+        // time1Month queues the monthly report, and time30Minutes the events, before a base defense of the same tick,
+        // so those are answered first.
+        registry.CommandGate(command => _baseDefense is not null &&
+            command is not (World.ResolveBaseDefense or AdvanceCampaignTime or AcknowledgeMonthlyReport or AcknowledgeCampaignEvent)
             ? Blocked(WorldCommandReasons.BaseDefenseOpen) : null);
+        // D2: the window is not saved and its opening already parked the UFO, so a save under it would lose the attack.
+        registry.SaveGate(() => _baseDefense is not null ? WorldCommandReasons.BaseDefenseOpen : null);
     }
 
     public CampaignBaseDefense? QueryBaseDefense() => campaign.Read(() =>
@@ -151,9 +164,9 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
     // GeoscapeState::time5Seconds: game over when no base is left (D5: the reference rule).
     private void CheckCampaignEnding(CampaignState.TimeEffects effects)
     {
-        if (campaign.Ending != 0 || campaign.BaseStates.Count != 0 || campaign.MonthsPassed < 0) return;
-        campaign.EndCampaign(2);
-        effects.Notify(new CampaignEnded(2));
+        // Game over when no base is left; then this tick's ending, if any, is reported once (time5Seconds).
+        if (campaign.Ending == 0 && campaign.BaseStates.Count == 0 && campaign.MonthsPassed >= 0) campaign.EndInTick(2);
+        campaign.ReportTickEnding(effects);
     }
 
     /// <summary>

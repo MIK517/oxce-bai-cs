@@ -9,6 +9,9 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class PrivateStrategicLogisticsTests
 {
+    // Real mods run with the production forecast work bounds (branch 6 S3).
+    public PrivateStrategicLogisticsTests() => Oxce.Gameplay.Campaigns.World.CampaignWorld.ProductionWorkBounds = true;
+
     private const string TacticalBattleBlocked = "Active tactical battle is preserved; tactical continuation is unavailable.";
 
     [Fact]

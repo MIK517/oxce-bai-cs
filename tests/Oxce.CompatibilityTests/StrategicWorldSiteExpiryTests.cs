@@ -44,7 +44,7 @@ public sealed class StrategicWorldSiteExpiryTests
             var campaign = CampaignState.Restore(snapshot, content, new MinimumChoices());
             if (name == "active")
             {
-                AssertTimeBlocked(campaign, "Mission site despawn requires research or event payloads.");
+                AssertEventTickRuns(campaign, popped: ["INSTANT"]);
                 continue;
             }
             AdvanceOne(campaign);
@@ -102,7 +102,7 @@ public sealed class StrategicWorldSiteExpiryTests
             Time = new(1, 1, 1, 1999, 1, 29, 55),
             DebugMode = true,
         }, content, new SplitMix64RandomSource(17));
-        AssertTimeBlocked(debug, "Mission site despawn requires research or event payloads.");
+        AssertEventTickRuns(debug, popped: ["INSTANT"]);
     }
 
     [Fact]
@@ -224,7 +224,7 @@ public sealed class StrategicWorldSiteExpiryTests
             if (row[2].GetBoolean())
             {
                 Assert.Equal(1, row[3].GetInt32()); // Reference would record generation immediately before executing its payload.
-                AssertTimeBlocked(campaign, "Mission site despawn requires research or event payloads.");
+                AssertEventTickRuns(campaign, popped: ["INSTANT"]);
             }
             else
             {

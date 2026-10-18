@@ -10,6 +10,7 @@ using Xunit;
 
 namespace Oxce.UnitTests.Scripting;
 
+[Collection(AllocationMeasurement.Name)]
 public sealed class ScriptRuntimeFrameTests
 {
     [Fact]

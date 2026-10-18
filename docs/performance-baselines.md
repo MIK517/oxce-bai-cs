@@ -706,3 +706,37 @@ unchanged by interceptions.
 ```powershell
 dotnet run -c Release --project benchmarks/Oxce.Benchmarks -- --filter "*InterceptionStep*" --job short
 ```
+
+### Staged ticks on a shadow copy (branch 6 S2, 2026-10-17)
+
+`StagedTickBenchmarks` times one midnight tick of a world with 8 or 128 flying UFOs, run directly and staged
+after its day level on a shadow copy ([ADR 0035](decisions/0035-staged-ticks-on-a-shadow-copy.md)). Windows
+workstation, BenchmarkDotNet short job, one invocation per iteration so that every measurement is a fresh
+midnight tick (which makes each one a cold, single tick):
+
+| Flying UFOs | Direct | Staged | Direct allocation | Staged allocation |
+|---:|---:|---:|---:|---:|
+| 8 | 470 us | 1,666 us | 9 KB | 101 KB |
+| 128 | 1,693 us | 3,432 us | 77 KB | 238 KB |
+
+A stage point adds about 1.2 ms with 8 UFOs and 1.7 ms with 128 (about 92 KB and 161 KB): one capture, one
+restore and the shadow's preflights and day handlers. Month ticks pay it once a month and event-payload ticks once per due event, so the
+one-day-speed target is unaffected. Ordinary ticks have no stage point and are unchanged.
+
+## Campaign-cycle months (branch 6 S8, 2026-10-18)
+
+Measured by `ImportedCampaignsPlayThreeMonthsAcrossReloadsAtEveryReport` (Debug build, one-day speed; recorded in
+`artifacts/private-campaign-cycle-measurements.json`). The scenario advances to the last tick before each month
+boundary and runs the month tick as its own command, so the month tick (staged, with its rollover and report) is
+timed alone; other commands are timed per tick. Each value is the lower middle of the save's samples (two or three
+month ticks and one or two reloads per save).
+
+| Save | Ordinary tick (µs) | Month tick (ms) | Save and reload (ms) |
+|---|---|---|---|
+| UFO `Middle.sav` | 3.0 | 6.6 | 7.2 |
+| TFTD `IronMode.sav` | 3.3 | 7.8 | 4.1 |
+| Rosigma `Begining.sav` | 5.0 | 150.9 | 10.0 |
+| Rosigma `Early.sav` | 25.7 | 62.8 | 12.9 |
+
+Saving and reloading a campaign takes about 4 to 13 ms; the first reload of the run (UFO `Begining.sav`, 69 ms)
+includes JIT warm-up.

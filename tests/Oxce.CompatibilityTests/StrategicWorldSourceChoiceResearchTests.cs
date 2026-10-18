@@ -61,10 +61,10 @@ public sealed class StrategicWorldSourceChoiceResearchTests
     {
         var content = Content();
         var initial = StrategicWorldOptionalGenerationResearchTests.Snapshot(content);
-        AssertTimeBlocked(CampaignState.Restore(initial with
+        AssertEventTickRuns(CampaignState.Restore(initial with
         {
             World = initial.World with { Events = [new GeoscapeEventSnapshot("AFTER_FIRST", 30)] },
-        }, content, new SplitMix64RandomSource(17)), "Strategic event consequences require campaign event execution (Phase 6 branch 6).");
+        }, content, new SplitMix64RandomSource(17)), popped: []);
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         var before = campaign.Capture();
         var forecast = campaign.MissionResearch.CreateForecast();

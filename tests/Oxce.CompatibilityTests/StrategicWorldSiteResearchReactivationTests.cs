@@ -71,8 +71,7 @@ public sealed class StrategicWorldSiteResearchReactivationTests
     {
         var content = Content(0, Deployment.Replace("despawnPenalty: 7", "despawnPenalty: 7\n    despawnEvents: {PAYLOAD: 1}", StringComparison.Ordinal) +
             "\nevents:\n  - {name: PAYLOAD}\n");
-        AssertTimeBlocked(CampaignState.Restore(Linked(content, false), content, new SplitMix64RandomSource(17)),
-            "Mission site despawn requires research or event payloads.");
+        AssertEventTickRuns(CampaignState.Restore(Linked(content, false), content, new SplitMix64RandomSource(17)), popped: ["PAYLOAD"]);
     }
 
     internal static CampaignSnapshot Linked(RuntimeContent content, bool arrival)

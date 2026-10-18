@@ -222,11 +222,11 @@ public sealed class StrategicEventScriptTests
         Assert.Equal(1, campaign.Capture().World.GeneratedEvents["A"]);
         campaign = Reload(content, campaign, 17, "zero-history-generated.sav");
         AdvanceUnblocked(campaign, 360); // first half-hour decreases timers; scheduling future effects is allowed.
-        AssertTimeBlocked(campaign, "Strategic event consequences require campaign event execution (Phase 6 branch 6).");
+        AssertEventTickRuns(campaign, popped: ["B", "B", "C"]);
     }
 
     [Fact]
-    public void ExhaustedHistoryStopsBeforeMutationAndMonthBoundaryRemainsGuarded()
+    public void ExhaustedHistoryStopsBeforeMutationAndTheMonthStillRuns()
     {
         var content = StrategicReadinessTestContent.Load("strategic-event-scripts.rul");
         var initial = CreateSnapshot(content, "Event capacity") with { RandomState = 17 };
@@ -237,7 +237,9 @@ public sealed class StrategicEventScriptTests
         Assert.Equivalent(before, campaign.Capture(), strict: true);
         campaign = CampaignState.Restore(initial with { Time = new(1, 31, 1, 1999, 23, 59, 55) }, content,
             new SplitMix64RandomSource(17));
-        AssertTimeBlocked(campaign, "Monthly campaign simulation is not implemented yet; time stopped before the month boundary.");
+        // Branch 6 S3: the month runs (event A is not eligible then) and its report holds the clock.
+        Assert.Single(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<MonthlyReportReady>());
+        AssertTimeBlocked(campaign, CampaignState.MonthlyReportOpen);
     }
 
     private sealed class FirstRoll : IRandomSource

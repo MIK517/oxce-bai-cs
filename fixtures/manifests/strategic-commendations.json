@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-commendations",
+  "description": "Monthly commendations from the verbatim SoldierDiary::manageCommendations and addMonthlyService with every total it reads (kill, stun, mission, win, score, terror, night, base defense, alien base, important, valiant crux, trap and reaction-fire totals, the weapon, region, race and rank noun maps), the SoldierCommendations constructor and accessors and the BattleUnitKills and MissionStatistics helpers; stubbed rules, items, research and soldiers.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "Savegame/SoldierDiary.cpp; Savegame/MissionStatistics.h; Savegame/BattleUnitStatistics.h",
+      "probe": "fixtures/reference-probes/savegames/strategic_commendations_probe.cpp",
+      "capture": "tools/capture-strategic-commendations-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; reference statements inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "size": 29870,
+      "path": "fixtures/reference-probes/savegames/strategic_commendations_probe.cpp",
+      "sha256": "9411d9e2b74cf6c7cd4e2fc929911988739c617b6f1cf3890f7d5484caa3246a"
+    },
+    {
+      "size": 6264,
+      "path": "tools/capture-strategic-commendations-reference.ps1",
+      "sha256": "f13222d6686ebac1bae61d2f00f7a715bd059f3e0bb042e5b1003b14cbfb413f"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-commendations.expected.json"
+}

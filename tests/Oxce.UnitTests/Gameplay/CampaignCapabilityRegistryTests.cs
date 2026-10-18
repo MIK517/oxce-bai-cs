@@ -25,6 +25,39 @@ public sealed class CampaignCapabilityRegistryTests
     }
 
     [Fact]
+    public void StagePointsNeedALaterLevelAndTransientCopiesMustMatchByName()
+    {
+        // ADR 0035: a stage point at five seconds would have nothing left to check.
+        var registry = new CampaignCapabilityRegistry();
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            registry.StagePoint(CampaignTimeTrigger.FiveSeconds, "nothing left", static (_, _) => true));
+        registry.StagePoint(CampaignTimeTrigger.OneDay, "day", static (_, highest) => highest == CampaignTimeTrigger.OneMonth);
+        registry.StagePoint(CampaignTimeTrigger.ThirtyMinutes, "half hour", static (_, _) => true);
+        var original = new List<int> { 3 };
+        registry.Transient("numbers", original, static (source, shadow) => shadow.AddRange(source));
+        Assert.Throws<InvalidOperationException>(() => registry.Transient("numbers", original, static (_, _) => { }));
+        var table = registry.Build();
+
+        // Points above the tick's highest level are not offered; a point that does not apply is not set.
+        Assert.Equal(1 << (int)CampaignTimeTrigger.ThirtyMinutes, table.StagePoints(default, CampaignTimeTrigger.OneHour));
+        Assert.Equal(1 << (int)CampaignTimeTrigger.ThirtyMinutes, table.StagePoints(default, CampaignTimeTrigger.OneDay));
+        Assert.Equal(1 << (int)CampaignTimeTrigger.OneDay | 1 << (int)CampaignTimeTrigger.ThirtyMinutes,
+            table.StagePoints(default, CampaignTimeTrigger.OneMonth));
+        Assert.Equal(0, table.StagePoints(default, CampaignTimeTrigger.TenMinutes));
+
+        var copy = new List<int>();
+        var shadowRegistry = new CampaignCapabilityRegistry();
+        shadowRegistry.Transient("numbers", copy, static (source, shadow) => shadow.AddRange(source));
+        table.CopyTransientTo(shadowRegistry.Build());
+        Assert.Equal([3], copy);
+
+        var renamed = new CampaignCapabilityRegistry();
+        renamed.Transient("other numbers", new List<int>(), static (_, _) => { });
+        Assert.Throws<InvalidOperationException>(() => table.CopyTransientTo(renamed.Build()));
+        Assert.Throws<InvalidOperationException>(() => table.CopyTransientTo(new CampaignCapabilityRegistry().Build()));
+    }
+
+    [Fact]
     public void AmbiguousRegistrationsAreRejected()
     {
         var registry = new CampaignCapabilityRegistry();
@@ -47,7 +80,8 @@ public sealed class CampaignCapabilityRegistryTests
         var campaign = TestFixtures.CreateLogisticsCampaign(TestFixtures.LoadStrategicLogistics(), "Order");
         var table = campaign.Handlers;
 
-        Assert.Equal<string>(["months passed", "monthly world scheduling", "purchase limits"], table.HandlerNames(CampaignTimeTrigger.OneMonth));
+        Assert.Equal<string>(["months passed", "purchase limits", "monthly world scheduling", "monthly psi training", "monthly funding",
+            "monthly report", "monthly alien base detection"], table.HandlerNames(CampaignTimeTrigger.OneMonth));
         Assert.Equal<string>(["days passed", "base daily loop", "alien mission research interruption",
             "alien base activity and facility discovery", "dogfight experience cache"],
             table.HandlerNames(CampaignTimeTrigger.OneDay));
@@ -63,7 +97,7 @@ public sealed class CampaignCapabilityRegistryTests
             "interception start", "destroyed UFO interception cleanup", "destroyed UFO cleanup", "interception waits"],
             table.HandlerNames(CampaignTimeTrigger.FiveSeconds));
         Assert.Equal<string>(
-            ["restrictions", "interceptions", "landing confirmations", "destroyed crafts", "world simulation", "craft movement", "month boundary", "monthly world scheduling", "craft servicing",
+            ["restrictions", "monthly report", "event windows", "interceptions", "landing confirmations", "destroyed crafts", "world simulation", "craft movement", "monthly world scheduling", "craft servicing",
                 "research and production", "craft target removal", "transfers"],
             table.PreflightNames);
         var commandTypes = typeof(ICampaignCommand).Assembly.GetTypes()

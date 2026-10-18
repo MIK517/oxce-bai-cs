@@ -8,6 +8,7 @@ using Xunit;
 
 namespace Oxce.UnitTests.Engine;
 
+[Collection(AllocationMeasurement.Name)]
 public sealed class GlobeRendererTests
 {
     private static readonly CampaignTime Noon = new(1, 1, 1, 1999, 12, 0, 0);

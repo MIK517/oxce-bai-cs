@@ -374,6 +374,13 @@ public static class RuntimeRuleLinker
             BuildInfiltrationBaseCloseToTheCountry = content.CampaignStart.Settings.BuildInfiltrationBaseCloseToTheCountry,
             InfiltrateRandomCountryInTheRegion = content.CampaignStart.Settings.InfiltrateRandomCountryInTheRegion,
             Interception = content.CampaignStart.Settings.Interception,
+            Monthly = content.CampaignStart.Settings.Monthly,
+            DefeatScore = content.CampaignStart.Settings.DefeatScore,
+            DefeatFunds = content.CampaignStart.Settings.DefeatFunds,
+            Cutscenes = new ReadOnlyDictionary<string, RuntimeCutscene>(new SortedDictionary<string, RuntimeCutscene>(
+                content.Presentation.Videos.Rules.ToDictionary(static rule => rule.Id,
+                    static rule => new RuntimeCutscene(rule.Value.WinGame, rule.Value.LoseGame), StringComparer.Ordinal),
+                StringComparer.Ordinal)),
         };
         var compatibility = new RuntimeRuleCompatibilitySidecar(CompatibilityEntries(content));
         var catalog = new RuntimeRuleCatalog(
@@ -435,7 +442,16 @@ public static class RuntimeRuleLinker
                     new ReadOnlyDictionary<string, IReadOnlyDictionary<string, short>>(rule.Value.StatSets.ToDictionary(
                         pair => pair.Key, pair => pair.Value.Values, StringComparer.Ordinal)), rule.Value.Events)),
             BuildFamily<CommendationRuleFamily, CommendationRule, RuntimeCommendationRule>(generation,
-                content.PersonnelTactical.Commendations, rule => new(rule.Value.SoldierBonusTypes)),
+                content.PersonnelTactical.Commendations, rule => new(rule.Value.SoldierBonusTypes)
+                {
+                    Criteria = Array.AsReadOnly(rule.Value.Criteria
+                        .OrderBy(static pair => Encoding.UTF8.GetBytes(pair.Key), Utf8ByteOrder).ToArray()),
+                    KillCriteria = rule.Value.KillCriteria,
+                    MissionMarkers = rule.Value.MissionMarkers,
+                    MissionTypes = rule.Value.MissionTypes,
+                    Requires = rule.Value.Requirements,
+                    Units = rule.Value.Units,
+                }),
             IdentityFamily<SkillRuleFamily, SkillRule>(generation, content.PersonnelTactical.Skills),
             BuildFamily<ResearchRuleFamily, ResearchRule, RuntimeResearchRule>(generation,
                 content.EquipmentProduction.Research, rule => new(
@@ -453,7 +469,7 @@ public static class RuntimeRuleLinker
                     rule.Value.NeedItem,
                     rule.Value.DestroyItem, rule.Value.ReturnsItem, rule.Value.Repeatable,
                     rule.Value.ListOrder, rule.Value.Events)
-                { UnlockFinalMission = rule.Id == finalResearch }),
+                { UnlockFinalMission = rule.Id == finalResearch, Cutscene = rule.Value.Cutscene }),
             BuildFamily<ManufactureRuleFamily, ManufactureRule, RuntimeManufactureRule>(generation,
                 content.EquipmentProduction.Manufacture, rule => new(
                     rule.Value.Category, rule.Value.Requirements, rule.Value.RequiredBaseFunctions,
@@ -470,7 +486,8 @@ public static class RuntimeRuleLinker
             BuildFamily<EventRuleFamily, EventRule, RuntimeEventRule>(generation, content.MissionEvents.Events,
                 static rule => new(rule.Value.Integers["timer"], rule.Value.Integers["timerRandom"],
                     rule.Value.Strings["interruptResearch"],
-                    Array.AsReadOnly(rule.Value.AdhocMissionScriptTags.ToArray()))),
+                    Array.AsReadOnly(rule.Value.AdhocMissionScriptTags.ToArray()))
+                { Payload = EventPayload(rule.Value) }),
             BuildFamily<UfoRuleFamily, UfoRule, RuntimeUfoRule>(generation, content.EquipmentProduction.Ufos,
                 rule => BuildUfo(rule.Id, rule.Value)),
             BuildFamily<UfoTrajectoryRuleFamily, UfoTrajectoryRule, RuntimeUfoTrajectoryRule>(generation,
@@ -1007,6 +1024,20 @@ public static class RuntimeRuleLinker
     private static RuleHandle<ItemRuleFamily>? OptionalItem(
         Dictionary<string, RuleHandle<ItemRuleFamily>> handles,
         string id) => id.Length != 0 && id != "STR_NONE" && handles.TryGetValue(id, out var handle) ? handle : null;
+
+    private static RuntimeEventPayload EventPayload(EventRule rule)
+    {
+        static IReadOnlyList<KeyValuePair<string, T>> Ordered<T>(IReadOnlyDictionary<string, T> map) =>
+            Array.AsReadOnly(map.OrderBy(static pair => Encoding.UTF8.GetBytes(pair.Key), Utf8ByteOrder).ToArray());
+        return new(rule.Strings["description"], rule.Strings["cutscene"], Array.AsReadOnly(rule.Regions.ToArray()),
+            rule.Booleans["city"], rule.Integers["points"], rule.Integers["funds"], rule.Strings["spawnedCraftType"],
+            rule.Integers["spawnedPersons"], rule.Strings["spawnedPersonType"], rule.Strings["spawnedPersonName"],
+            RuntimeSoldierTemplateLoader.Read(rule.SpawnedSoldier), Ordered(rule.EveryMultiItems),
+            Array.AsReadOnly(rule.EveryItems.ToArray()), Array.AsReadOnly(rule.RandomItems.ToArray()),
+            Array.AsReadOnly(rule.RandomMultiItems.Select(Ordered).ToArray()), Ordered(rule.WeightedItems),
+            Array.AsReadOnly(rule.Research.ToArray()), rule.Booleans["invert"], Ordered(rule.EveryMultiSoldiers),
+            Array.AsReadOnly(rule.RandomMultiSoldiers.Select(Ordered).ToArray()));
+    }
 
     // std::map<std::string> order: UTF-8 bytes, which differs from UTF-16 ordinal order above the BMP.
     private static readonly Comparer<byte[]> Utf8ByteOrder =

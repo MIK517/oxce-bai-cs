@@ -93,6 +93,10 @@ mechanical translations with no executable acceptance test.
   so failures print the difference.
 - Iterate oracle arrays through `TestFixtures.Rows(...)`, which fails on an
   empty array.
+- A unit test class that asserts exactly zero bytes from
+  `GC.GetAllocatedBytesForCurrentThread` joins
+  `[Collection(AllocationMeasurement.Name)]`, which runs alone after the
+  parallel tests; under parallel load, runtime work can add stray bytes.
 - `StrategicReadinessTestContent.Load` builds every ruleset fresh, restores it from the compiled
   cache and asserts both are identical (`ContentStateDump`); tests run on the restored content.
   Do not add fresh/cache theory parameters.
@@ -111,7 +115,7 @@ mechanical translations with no executable acceptance test.
   `docs/strategic-*-status.md`; cross-cutting checkpoints, current scope and remaining guards
   belong in the Progress section of the branch's delivery plan
   (`docs/phase-6-world-integration-plan.md` for branch 4, `docs/phase-6-interception-plan.md`
-  for branch 5).
+  for branch 5, `docs/phase-6-campaign-cycle-plan.md` for branch 6).
   `docs/phase-6-ownership.md` keeps the ownership and fixture ledger, and
   `docs/implementation-plan.md` keeps phase-level status; both link to those records.
 

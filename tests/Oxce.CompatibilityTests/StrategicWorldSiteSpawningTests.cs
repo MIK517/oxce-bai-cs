@@ -564,7 +564,7 @@ public sealed class StrategicWorldSiteSpawningTests
         var campaign = CampaignState.Restore(initial, content, new QuarterChoices());
         if (!research)
         {
-            AssertTimeBlocked(campaign, "Mission site despawn requires research or event payloads.");
+            AssertEventTickRuns(campaign, popped: ["INSTANT"]);
             return;
         }
         AdvanceUnblocked(campaign, 1);

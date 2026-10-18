@@ -113,8 +113,7 @@ public sealed class StrategicWorldResearchStockCompositionTests
             Time = new(3, 3, 1, 1999, 0, 29, 55),
             World = after.World with { Events = [after.World.Events[0] with { SpawnCountdown = 30 }, after.World.Events[1]] },
         };
-        AssertTimeBlocked(CampaignState.Restore(due, content, new SplitMix64RandomSource(17)),
-            "Strategic event consequences require campaign event execution (Phase 6 branch 6).");
+        AssertEventTickRuns(CampaignState.Restore(due, content, new SplitMix64RandomSource(17)), popped: ["EQUIV_EVENT"]);
     }
 
     private static RuntimeContent Content(string extra = "") => StrategicWorldResearchStockAlternativesTests.Content(false, 2,

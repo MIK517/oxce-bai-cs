@@ -12,7 +12,16 @@ public sealed partial class CampaignState
         new DelegatedCampaignCapability(RegisterCraftServicing),
         new DelegatedCampaignCapability(RegisterResearchProduction),
         new World.CampaignWorld(this),
+        new DelegatedCampaignCapability(RegisterMonthlyCycle),
+        new DelegatedCampaignCapability(RegisterEvents),
+        .. _testCapabilities?.Invoke(this) ?? [],
     ];
+
+    // Read before the capabilities are created, and handed to shadow copies.
+    private readonly Func<CampaignState, ICampaignCapability[]>? _testCapabilities = TestCapabilities.Value;
+
+    /// <summary>Test-only: capabilities added to campaigns created on this async flow, shadows included.</summary>
+    internal static readonly AsyncLocal<Func<CampaignState, ICampaignCapability[]>?> TestCapabilities = new();
 
     private CampaignHandlerTable BuildHandlers()
     {

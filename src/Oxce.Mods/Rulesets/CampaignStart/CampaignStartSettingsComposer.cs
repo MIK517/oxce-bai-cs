@@ -113,6 +113,7 @@ internal static class CampaignStartSettingsComposer
         if (root.TryGet("fixedUserOptions", out var fixedOptions))
             CampaignStartYaml.ApplyEditableNameMap(b.FixedUserOptions, fixedOptions!, "fixedUserOptions");
         ApplyInterception(root, b.Interception);
+        ApplyMonthly(root, b.Monthly);
     }
 
     // Mod::loadFile order and defaults; see CampaignInterceptionSettings.
@@ -146,6 +147,23 @@ internal static class CampaignStartSettingsComposer
         b.RetaliationTriggerOdds = ReadList(overrides, "retaliationTriggerOdds", b.RetaliationTriggerOdds);
         b.RetaliationBaseRegionOdds = ReadList(overrides, "retaliationBaseRegionOdds", b.RetaliationBaseRegionOdds);
         b.AliensFacingCraftOdds = ReadList(overrides, "aliensFacingCraftOdds", b.AliensFacingCraftOdds);
+    }
+
+    // Mod::loadFile order and defaults; see CampaignMonthlySettings.
+    private static void ApplyMonthly(YamlMappingNode root, CampaignMonthlySettingsBuilder b)
+    {
+        b.ChanceToDetectAlienBaseEachMonth = Read(root, "chanceToDetectAlienBaseEachMonth", b.ChanceToDetectAlienBaseEachMonth);
+        // A gameOver node that is not a mapping has no children to read (YamlNodeReader::getChildNode).
+        if (root.TryGet("gameOver", out var gameOver) && gameOver is YamlMappingNode mapping)
+        {
+            b.LoseMoneyCutscene = Read(mapping, "loseMoney", b.LoseMoneyCutscene);
+            b.LoseRatingCutscene = Read(mapping, "loseRating", b.LoseRatingCutscene);
+            b.LoseDefeatCutscene = Read(mapping, "loseDefeat", b.LoseDefeatCutscene);
+        }
+        // The reference's std::map read clears the map and emplaces each child, so the first value of a repeated
+        // key stays and a node without children (null or a scalar) leaves no ratings.
+        if (root.TryGet("monthlyRatings", out var ratings))
+            b.MonthlyRatings = YamlValueReader.ReadMap(ratings!, YamlValueReader.ReadInt32, YamlValueReader.ReadString);
     }
 
     // YamlNodeReader::tryRead into a std::vector replaces the whole list.

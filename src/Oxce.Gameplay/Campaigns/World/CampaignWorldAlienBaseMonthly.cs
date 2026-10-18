@@ -8,7 +8,7 @@ internal interface ICampaignWorldAlienBaseMonthly
     CampaignCommandResult Advance(bool isNewMonth);
 }
 
-/// <summary>Isolated subsystem seam; campaign month rollover remains guarded.</summary>
+/// <summary>Isolated subsystem seam; the month rollover runs the same phase through world scheduling.</summary>
 internal sealed record AdvanceMonthlyWorldAlienBases(bool IsNewMonth = true) : ICampaignCommand;
 
 /// <summary>One possible operation-base deployment/race before monthly upgrades.</summary>
@@ -25,6 +25,22 @@ internal sealed partial class CampaignWorld : ICampaignWorldAlienBaseMonthly
         registry.Operation<ICampaignWorldAlienBaseMonthly>(this);
         registry.Command<AdvanceMonthlyWorldAlienBases>(command =>
             ((ICampaignWorldAlienBaseMonthly)this).Advance(command.IsNewMonth));
+        registry.Timed(CampaignTimeTrigger.OneMonth, CampaignTimeOrder.MonthWorldAlienBaseDetection, "monthly alien base detection",
+            DetectAlienBaseMonthly);
+    }
+
+    /// <summary>
+    /// GeoscapeState::time1Month, after the report: X-COM operatives find the first undiscovered alien base with
+    /// <c>chanceToDetectAlienBaseEachMonth</c>. The roll is made only while an alien base exists.
+    /// </summary>
+    private void DetectAlienBaseMonthly(CampaignState.TimeEffects effects)
+    {
+        if (_alienBases.Count == 0 || !Percent(campaign.Content.RuntimeRules.Campaign.Monthly.ChanceToDetectAlienBaseEachMonth)) return;
+        var index = _alienBases.FindIndex(static alienBase => !alienBase.Discovered);
+        if (index < 0) return;
+        var discovered = _alienBases[index] with { Discovered = true };
+        _alienBases[index] = discovered;
+        effects.Notify(new AlienBaseDiscovered(discovered.Id, discovered.DeploymentId));
     }
 
     CampaignCommandResult ICampaignWorldAlienBaseMonthly.Advance(bool isNewMonth)

@@ -101,8 +101,10 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                         selectionMonth, race: true), campaign.Random)
                     : WorldScriptSelection.Generate(script.Races, selectionMonth, campaign.Random)!.Id;
                 var delay = WorldMissionScriptSelection.Delay(script, campaign.Random);
+                // AlienMission::start reads the first wave's timer only without a delay; a mission without waves then
+                // reads past its wave list, which the port takes as a zero timer (ADR 0036).
                 var countdown = delay == 0
-                    ? WorldTrajectory.SpawnCountdown(checked((int)rule.Waves[0].SpawnTimer), campaign.Random)
+                    ? WorldTrajectory.SpawnCountdown(rule.Waves.Count == 0 ? 0 : checked((int)rule.Waves[0].SpawnTimer), campaign.Random)
                     : delay;
                 var id = campaign.NextId("ALIEN_MISSIONS");
                 _strategy.AddMissionRun(script.VariableName);
@@ -353,8 +355,9 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
         bool ValidMission(RuleHandle<AlienMissionRuleFamily> handle, bool useMissionRace, string? regionId = null)
         {
             var rule = campaign.Content.RuntimeRules.AlienMissions[handle].Value;
-            if (!Enum.IsDefined(rule.Objective) ||
-                !Enum.IsDefined(rule.OperationType) || rule.Waves.Count == 0)
+            // A mission without waves is valid: AlienMission::think has nothing to spawn and the mission ends on its
+            // next pass, after its start has placed or chosen any operation base (Rosigma starts bases this way).
+            if (!Enum.IsDefined(rule.Objective) || !Enum.IsDefined(rule.OperationType))
                 return false;
             if (regionId is not null)
             {
@@ -408,6 +411,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                     if (choice.Value != 0 && !campaign.Content.RuntimeRules.AlienRaces.TryGet(choice.Key, out _))
                         return false;
             }
+            if (rule.Waves.Count == 0) return true;
             var timer = rule.Waves[0].SpawnTimer;
             var steps = timer / 30;
             return timer <= int.MaxValue && (steps / 2 + steps) * 30 <= int.MaxValue;

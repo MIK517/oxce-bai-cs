@@ -83,7 +83,7 @@ public sealed class StrategicWorldSiteTimerTests
     }
 
     [Fact]
-    public void FollowerHoldsExpiredSiteAndUnsupportedDespawnStopsBeforeTick()
+    public void FollowerHoldsExpiredSiteAndAnUnfollowedSitePopsItsDespawnEvent()
     {
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-timer.rul"]);
         var snapshot = CreateSnapshot(content, "Targeted site") with
@@ -116,11 +116,14 @@ public sealed class StrategicWorldSiteTimerTests
         {
             Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
         }, "SITE_DEPLOY", 0);
-        var blocked = CampaignState.Restore(blockedSnapshot, content, new SplitMix64RandomSource(17));
-        var before = blocked.Capture();
-        Assert.Contains(blocked.Execute(new AdvanceCampaignTime(1)).Events,
-            item => item is CampaignActionBlocked action && action.Reason.Contains("despawn", StringComparison.OrdinalIgnoreCase));
-        Assert.Equivalent(before, blocked.Capture(), strict: true);
+        // Branch 6 S5: an unfollowed site despawns, granting its research, and its despawn event pops at once.
+        var despawned = CampaignState.Restore(blockedSnapshot, content, new SplitMix64RandomSource(17));
+        var events = AssertEventTickRuns(despawned, popped: ["EVENT_DESPAWN"]);
+        Assert.Equal("EVENT_DESPAWN", Assert.Single(events.OfType<CampaignEventOpened>()).Window.RuleId);
+        Assert.Empty(despawned.Capture().World.MissionSites);
+        Assert.Contains("UNLOCK", despawned.Capture().CompletedResearch);
+        Assert.Equal(1, despawned.Capture().World.GeneratedEvents.GetValueOrDefault("EVENT_DESPAWN"));
+        AssertTimeBlocked(despawned, CampaignState.EventWindowOpen);
     }
 
     [Theory]

@@ -5,7 +5,27 @@ namespace Oxce.Gameplay.Campaigns.World;
 /// <summary>Alien-base activity and discovery, after the daily player-base loop.</summary>
 internal sealed partial class CampaignWorld
 {
-    private const long MaximumAlienBaseChecks = 1_000_000;
+    // A bound on the forecasts' own work and the worst case they admit. Geometry terms grow with the globe: one base
+    // objective on Rosigma's 3,253-point globe is charged about 650,000 (branch 6 S3), so the fixture-calibrated
+    // 1,000,000 stopped real campaigns.
+    private static long MaximumAlienBaseChecks => FixtureWorkBounds ? 1_000_000 : 100_000_000;
+
+    private static readonly AsyncLocal<bool?> ProductionWorkBoundsOnThisFlow = new();
+
+    /// <summary>
+    /// Test-only: the forecast work bounds at the sizes the fixture tests were calibrated with (1,000,000 checks, and
+    /// 10,000,000 for land selection), so those tests keep small workloads. The test assemblies set it for the process.
+    /// </summary>
+    internal static bool FixtureWorkBoundsEverywhere { get; set; }
+
+    /// <summary>Test-only: the production bounds on this async flow, for tests that load real mods.</summary>
+    internal static bool ProductionWorkBounds
+    {
+        get => ProductionWorkBoundsOnThisFlow.Value == true;
+        set => ProductionWorkBoundsOnThisFlow.Value = value;
+    }
+
+    private static bool FixtureWorkBounds => FixtureWorkBoundsEverywhere && !ProductionWorkBounds;
     private const string AlienBaseWorkReason = "Alien base activity and sight checks exceed the supported work limit.";
 
     private void RegisterAlienBaseOperations(CampaignCapabilityRegistry registry)

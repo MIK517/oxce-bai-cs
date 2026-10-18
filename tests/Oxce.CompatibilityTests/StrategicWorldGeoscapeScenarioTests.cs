@@ -183,7 +183,8 @@ public sealed class StrategicWorldGeoscapeScenarioTests
             client.Choose(targets.Actions.ToList().FindIndex(action => action.Label == GeoscapeScreens.CraftName(craft, static text => text)));
     }
 
-    internal static GeoscapeClient Client(RuntimeContent content, CampaignUiSession session, Action save, Func<CampaignUiSession> load)
+    internal static GeoscapeClient Client(RuntimeContent content, CampaignUiSession session, Action save, Func<CampaignUiSession> load,
+        Action<CampaignSaveKind>? saveRequested = null)
     {
         var texture = new IndexedSurface(32, 32);
         texture.Clear(0x41);
@@ -196,7 +197,35 @@ public sealed class StrategicWorldGeoscapeScenarioTests
             Stopwatch = static () => TimeSpan.Zero,
             Save = save,
             Load = load,
+            SaveRequested = saveRequested,
         });
+    }
+
+    [Fact]
+    public void TheMonthlyReportWindowAcknowledgesAndTheAutosaveWaitsForEveryWindow()
+    {
+        // Branch 6 S7: the month's report opens as a window; its OK applies the report's effects, and the autosave it
+        // requests is made once no window is open.
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], "defeatScore: -100000\n");
+        var campaign = CampaignState.Restore(CreateSnapshot(content, "Report window") with { Time = new(1, 31, 1, 1999, 23, 59, 55) },
+            content, new SplitMix64RandomSource(5));
+        List<CampaignSaveKind> saves = [];
+        var client = Client(content, CampaignUiSession.ForCampaign(campaign, campaign, campaign), save: static () => { },
+            load: static () => throw new InvalidOperationException("No load in this test."), saveRequested: saves.Add);
+
+        for (var frame = 0; frame < 20 && client.Popups.Count == 0; frame++) client.Tick(GeoscapeTimeController.GeoClock);
+        Assert.Equal("STR_XCOM_PROJECT_MONTHLY_REPORT", client.Popups[0].Title);
+        Assert.NotNull(campaign.GetQuery<ICampaignMonthlyReportQuery>()!.QueryMonthlyReport());
+        client.Choose(0);
+        Assert.Null(campaign.GetQuery<ICampaignMonthlyReportQuery>()!.QueryMonthlyReport());
+        Assert.Empty(saves);
+        while (client.Popups.Count != 0)
+        {
+            Assert.Empty(saves);
+            client.Choose(0);
+        }
+        client.Tick(GeoscapeTimeController.GeoClock);
+        Assert.Equal([CampaignSaveKind.Autosave], saves);
     }
 
     private static void Key(GeoscapeClient client, uint key) =>

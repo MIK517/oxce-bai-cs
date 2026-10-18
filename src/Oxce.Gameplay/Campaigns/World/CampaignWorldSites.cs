@@ -23,8 +23,6 @@ internal static class WorldSiteTimer
 
 internal sealed partial class CampaignWorld
 {
-    private const string SiteDespawnBoundary =
-        "Mission site despawn requires research or event payloads.";
     private const string SiteUfoFollowerBoundary =
         "Targeted mission site despawn requires UFO follower destination repair.";
 
@@ -118,7 +116,7 @@ internal sealed partial class CampaignWorld
             {
                 despawnWork += 6 + 2L * deployment.DespawnEvents.Count;
                 if (despawnWork > MaximumAlienBaseChecks) return "Mission site despawn checks exceed the supported work limit.";
-                if (SiteDespawnReason(deployment, highest, SiteResearchAfter(site)) is { } despawnReason) return despawnReason;
+                if (SiteDespawnReason(deployment, SiteResearchAfter(site)) is { } despawnReason) return despawnReason;
             }
             if (transition.Remove)
             {
@@ -165,11 +163,13 @@ internal sealed partial class CampaignWorld
             }
             if (transition.Remove)
             {
-                campaign.MissionResearch.Grant(deployment.UnlockedResearchOnDespawnId, site.DeploymentId);
+                // An earlier site's despawn payload may have used capacity reserved for this grant (staged: ADR 0035).
+                try { campaign.MissionResearch.Grant(deployment.UnlockedResearchOnDespawnId, site.DeploymentId); }
+                catch (InvalidOperationException error) { throw new InvalidDataException(error.Message, error); }
                 counterChanges.Clear();
                 AddSiteCounterChanges(counterChanges, deployment);
                 foreach (var change in counterChanges) campaign.CustomCounters.Apply(change);
-                ConsumeSuppressedSiteEvent(deployment);
+                SpawnSiteDespawnEvent(deployment, effects);
             }
             ScoreUfoActivity(site.Position, transition.Score, rules);
             if (transition.Remove && site.UfoUniqueId != 0)
@@ -253,39 +253,19 @@ internal sealed partial class CampaignWorld
             ? $"Late hunting {target} allocation shares decreased marker counters with same-tick craft production." : null;
     }
 
-    private string? SiteDespawnReason(RuntimeAlienDeploymentRule deployment, CampaignTimeTrigger highest,
-        IReadOnlySet<string>? researchAfterGrant = null)
+    private string? SiteDespawnReason(RuntimeAlienDeploymentRule deployment, IReadOnlySet<string>? researchAfterGrant = null)
     {
         var rules = campaign.Content.RuntimeRules;
         if (researchAfterGrant is null && campaign.BaseStates.Count != 0 && rules.Research.TryGet(deployment.UnlockedResearchOnDespawnId, out _))
             return "Generated mission site research requires ordered expiry forecasts.";
+        // The despawn event's payload runs inside the half-hour level, staged (ADR 0035); only its weights are checked here.
         _ = WorldAlienMissionGeneration.Total(deployment.DespawnEvents);
-        foreach (var pair in deployment.DespawnEvents)
-        {
-            if (pair.Value == 0 || !rules.Events.TryGet(pair.Key, out var handle)) continue;
-            var rule = rules.Events[handle].Value;
-            if (rule.InterruptResearch.Length == 0) return SiteDespawnBoundary;
-            if (researchAfterGrant is not null)
-            {
-                if (!researchAfterGrant.Contains(rule.InterruptResearch)) return SiteDespawnBoundary;
-                continue;
-            }
-            if (highest >= CampaignTimeTrigger.OneDay)
-            {
-                if (!GuaranteedDailyResearch().Contains(rule.InterruptResearch)) return SiteDespawnBoundary;
-            }
-            else if (!campaign.HasCompletedResearch(rule.InterruptResearch)) return SiteDespawnBoundary;
-        }
         return null;
     }
 
-    private void ConsumeSuppressedSiteEvent(RuntimeAlienDeploymentRule deployment)
-    {
-        var id = WorldAlienMissionGeneration.Choose(deployment.DespawnEvents, campaign.Random);
-        if (campaign.Content.RuntimeRules.Events.TryGet(id, out var handle) &&
-            !IsEventInterrupted(campaign.Content.RuntimeRules.Events[handle].Value))
-            throw new InvalidOperationException(SiteDespawnBoundary);
-    }
+    /// <summary>The site's despawn event: AlienDeployment::chooseDespawnEvent, then an instant event.</summary>
+    private void SpawnSiteDespawnEvent(RuntimeAlienDeploymentRule deployment, CampaignState.TimeEffects effects) =>
+        SpawnInstantEvent(WorldAlienMissionGeneration.Choose(deployment.DespawnEvents, campaign.Random), effects);
 
     private string? SiteUfoRepairReason(CampaignTimeTrigger highest)
     {

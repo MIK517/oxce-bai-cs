@@ -55,8 +55,7 @@ public sealed class StrategicWorldNewbornSiteResearchTests
         Assert.Equal(SavedThenBornTopics, campaign.Capture().ResearchDiary.Select(entry => entry.RuleId));
 
         content = StrategicWorldSiteResearchDirectBirthTests.Content(duration: 0, eventInterrupt: "UNLOCK");
-        AssertTimeBlocked(CampaignState.Restore(StrategicWorldSiteResearchDirectBirthTests.Snapshot(content), content, new SplitMix64RandomSource(17)),
-            "Mission site despawn requires research or event payloads.");
+        AssertEventTickRuns(CampaignState.Restore(StrategicWorldSiteResearchDirectBirthTests.Snapshot(content), content, new SplitMix64RandomSource(17)), popped: ["NEWBORN_EVENT", "NEWBORN_EVENT"]);
         content = StrategicWorldSiteResearchDirectBirthTests.Content(duration: 0);
         AssertTimeBlocked(CampaignState.Restore(StrategicWorldSiteResearchDirectBirthTests.Snapshot(content).WithNextId("RESEARCH_BORN_MARKER", int.MaxValue - 1), content, new SplitMix64RandomSource(17)),
             "Mission site marker IDs are exhausted or collide with a saved target.");
@@ -136,19 +135,17 @@ public sealed class StrategicWorldNewbornSiteResearchTests
     {
         var content = StrategicWorldSiteResearchDirectBirthTests.Content(duration: 0, generated: true, frequency: 50, eventInterrupt: "BONUS");
         var initial = StrategicWorldSiteResearchDirectBirthTests.GeneratedSnapshot(content);
-        AssertTimeBlocked(CampaignState.Restore(initial with
+        AssertEventTickRuns(CampaignState.Restore(initial with
         {
             World = initial.World with
             { Events = [new GeoscapeEventSnapshot("NEWBORN_EVENT", 30)] }
-        }, content, new SplitMix64RandomSource(17)),
-            "Strategic event consequences require campaign event execution (Phase 6 branch 6).");
+        }, content, new SplitMix64RandomSource(17)), popped: ["NEWBORN_EVENT"]);
         content = StrategicWorldSiteResearchDirectBirthTests.Content(duration: 0, generated: true, eventInterrupt: "BONUS");
         var campaign = CampaignState.Restore(StrategicWorldSiteResearchDirectBirthTests.GeneratedSnapshot(content), content, new SplitMix64RandomSource(17));
         AdvanceUnblocked(campaign, 1);
         Assert.Empty(campaign.Capture().World.Events);
         content = StrategicWorldSiteResearchDirectBirthTests.Content(duration: 0, generated: true, eventInterrupt: "UNLOCK");
-        AssertTimeBlocked(CampaignState.Restore(StrategicWorldSiteResearchDirectBirthTests.GeneratedSnapshot(content), content, new SplitMix64RandomSource(17)),
-            "Mission site despawn requires research or event payloads.");
+        AssertEventTickRuns(CampaignState.Restore(StrategicWorldSiteResearchDirectBirthTests.GeneratedSnapshot(content), content, new SplitMix64RandomSource(17)), popped: ["NEWBORN_EVENT", "NEWBORN_EVENT"]);
     }
 
     [Fact]
@@ -167,8 +164,7 @@ public sealed class StrategicWorldNewbornSiteResearchTests
                     Events = [new GeoscapeEventSnapshot("NEWBORN_EVENT", 30)],
                 },
             };
-            AssertTimeBlocked(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17)),
-                "Strategic event consequences require campaign event execution (Phase 6 branch 6).");
+            AssertEventTickRuns(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17)), popped: ["NEWBORN_EVENT"]);
         }
     }
 }

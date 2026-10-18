@@ -17,6 +17,8 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     [Fact]
     public void GenerationAndRandomRangesMatchExtractedReference()
     {
+        // Records every random draw, also in a staging verification run (ADR 0035).
+        CampaignState.StageEveryTick = false;
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-generation");
         var content = Load();
         var rows = new List<object[]>();
@@ -315,7 +317,14 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     {
         public List<int[]> Calls { get; } = [];
         public ulong State { get; private set; }
-        public void Restore(ulong state) => State = state;
+
+        // The state counts the draws; a staged shadow's draws are put back (ADR 0035) and so leave the record.
+        public void Restore(ulong state)
+        {
+            State = state;
+            if ((int)state < Calls.Count) Calls.RemoveRange((int)state, Calls.Count - (int)state);
+        }
+
         public int NextInclusive(int minimum, int maximum)
         {
             Assert.True(minimum <= maximum);

@@ -603,7 +603,11 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
             owner.Scientists = checked(owner.Scientists + project.Assigned);
             owner.Research.Remove(project);
             ApplyResearchRecoveredItems(owner, rule, id, finished: true, dailyCompletion: true);
-            var discoveries = CompleteResearch(owner, id, rule, sideEffects);
+            var discoveries = CompleteResearch(owner, id, rule, sideEffects, out var bonus);
+            // 3e. the topic's cutscene, then its free topic's: the first video that wins or loses ends the campaign (D4).
+            PlayCutscene(rule.Cutscene, effects);
+            if (bonus is not null && _content.RuntimeRules.Research.TryGet(bonus, out var bonusHandle))
+                PlayCutscene(_content.RuntimeRules.Research[bonusHandle].Value.Cutscene, effects);
             effects.Notify(new CampaignResearchCompleted(owner.Id, id, discoveries));
         }
         var pendingSideEffects = sideEffects.ToHashSet(StringComparer.Ordinal);
@@ -615,13 +619,13 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
     }
 
     private ReadOnlyCollection<string> CompleteResearch(
-        BaseState owner, string id, RuntimeResearchRule rule, List<string> sideEffects)
+        BaseState owner, string id, RuntimeResearchRule rule, List<string> sideEffects, out string? bonus)
     {
         var discoveries = new List<string>();
         // Native time1Day records both core topics before selecting or granting the reward.
         RecordResearchDiary(id, ResearchDiscoverySource.Base, owner.Name, considerDebug: true);
         RecordResearchDiary(rule.Lookup, ResearchDiscoverySource.Base, owner.Name, considerDebug: true);
-        var bonus = SelectResearchReward(rule);
+        bonus = SelectResearchReward(rule);
         if (bonus is not null)
         {
             if (_content.RuntimeRules.Research.TryGet(bonus, out var bonusHandle))
@@ -1080,29 +1084,38 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
             QueueTransfer(owner, hours, CampaignTransferKind.Engineer, "", 1);
         else
         {
-            var handle = _content.RuntimeRules.Soldiers.GetRequired(rule.SpawnedPersonType);
-            var definition = _content.RuntimeRules.Soldiers[handle].Value;
-            var soldierId = NextSoldierId();
-            _nextIds["STR_SOLDIER"] = checked(soldierId + 1);
-            var personal = SoldierGeneration.Generate(definition,
-                _content.RuntimeRules.Armors.GetExternalId(definition.Armor), SelectNationality(definition, owner),
-                _bases.SelectMany(baseState => baseState.Soldiers.Select(soldier => soldier.Personal?.Name ?? "")
-                    .Concat(baseState.Transfers.Where(transfer => transfer.Soldier is not null)
-                        .Select(transfer => transfer.Soldier!.Personal?.Name ?? ""))).ToHashSet(StringComparer.Ordinal), _random);
-            if (rule.SpawnedSoldierTemplate is { } template)
-                personal = SoldierGeneration.ApplyTemplate(personal, template, definition,
-                    _content.RuntimeRules, _random);
-            personal = rule.SpawnedPersonName.Length != 0
-                ? personal with { Name = rule.SpawnedPersonName }
-                : SoldierGeneration.RegenerateName(personal, definition, _random);
-            var soldier = new SoldierSnapshot(rule.SpawnedPersonType, soldierId)
-            {
-                PreservationKey = FormattableString.Invariant($"created:{Identity.Id}:soldier:{soldierId}"),
-                Personal = personal,
-            };
+            var definition = _content.RuntimeRules.Soldiers[_content.RuntimeRules.Soldiers.GetRequired(rule.SpawnedPersonType)].Value;
+            var soldier = SpawnSoldier(rule.SpawnedPersonType, definition, SelectNationality(definition, owner),
+                rule.SpawnedSoldierTemplate, rule.SpawnedPersonName);
             QueueTransfer(owner, hours, CampaignTransferKind.Soldier,
                 rule.SpawnedPersonType, 1, soldier: soldier);
         }
+    }
+
+    /// <summary>
+    /// Mod::genSoldier, then Soldier::load from a soldier template, then the given name or Soldier::genName: the
+    /// manufacture and event spawns.
+    /// </summary>
+    private SoldierSnapshot SpawnSoldier(string type, RuntimeSoldierRule definition, int nationality,
+        RuntimeSoldierTemplate? template, string name)
+    {
+        var soldierId = NextSoldierId();
+        _nextIds["STR_SOLDIER"] = checked(soldierId + 1);
+        var personal = SoldierGeneration.Generate(definition,
+            _content.RuntimeRules.Armors.GetExternalId(definition.Armor), nationality,
+            _bases.SelectMany(baseState => baseState.Soldiers.Select(soldier => soldier.Personal?.Name ?? "")
+                .Concat(baseState.Transfers.Where(transfer => transfer.Soldier is not null)
+                    .Select(transfer => transfer.Soldier!.Personal?.Name ?? ""))).ToHashSet(StringComparer.Ordinal), _random);
+        personal = SoldierGeneration.ApplyTemplate(personal, template ?? SoldierGeneration.EmptyTemplate, definition,
+            _content.RuntimeRules, _random);
+        personal = name.Length != 0
+            ? personal with { Name = name }
+            : SoldierGeneration.RegenerateName(personal, definition, _random);
+        return new SoldierSnapshot(type, soldierId)
+        {
+            PreservationKey = FormattableString.Invariant($"created:{Identity.Id}:soldier:{soldierId}"),
+            Personal = personal,
+        };
     }
 
     private void QueueTransfer(BaseState owner, int hours, CampaignTransferKind kind,
