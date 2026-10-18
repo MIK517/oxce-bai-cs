@@ -358,3 +358,44 @@ through the port, all matching; it confirmed the `btnOkClick` effects, the event
 Not changed: a soldier without personal state (a port fixture form; real saves always carry it) gets no service.
 `Options::soldierDiaries` off, which makes the reference write no diaries or statistics, is not modelled (it predates
 this branch).
+
+## S5 — Event payloads (2026-10-18)
+
+A popped event now runs `GeoscapeEventState::eventLogic` inside the half-hour tick, and its window holds the clock
+until `btnOkClick` (D2):
+
+- `time30Minutes` counts every event down in list order; one whose time has come and that research has not
+  interrupted runs its payload at once (`CampaignState.RunEventPayload`), then the finished events are removed. A mission
+  site's despawn event is an instant event (`SavedGame::canSpawnInstantEvent`): it counts in the generated history and
+  runs where the site despawns, after its research and counters and before its score.
+- The payload, in reference order: adhoc mission scripts (the existing `CampaignWorldAdhocScripts` with this month's
+  score and funds), the region and the city that places it (RuleRegion::getCities: the named point areas), score to the
+  region or to research, funds, persons (staff by 24-hour transfer; soldiers from the template, named or with a new
+  name, their nationality by the city's country or region), the merged soldier lists (load order), items (std::map by
+  type) given at once, by one-hour transfer or taken (`invert`: stores, then crafts not out, base by base), a craft
+  (ready, or by transfer as if bought), and research: an unknown topic or a known one with a free topic left, its diary
+  entries, lookup, free topic and the research side effects. Manufacture now shares the soldier spawn.
+- A stage point after the half-hour level (ADR 0035) runs any due payload on the shadow first, so a payload that cannot
+  run refuses the tick with nothing changed (ADR 0036); the forecasts that refused every due event whose interruption
+  they could not prove are gone, with the named refusals "Strategic event consequences require campaign event
+  execution (Phase 6 branch 6)." and "Mission site despawn requires research or event payloads.".
+- `CampaignEventWindow` (rule, region, city, the item rows, the research articles) is queued per popped event,
+  copied to shadows, dropped by a reload and refuses saving (`SaveGate`). Commands other than
+  `AcknowledgeCampaignEvent` wait; this tick's monthly report is answered first, and a base defense opened later in
+  the tick after the events. `AcknowledgeCampaignEvent` reports the cutscene (which wins or loses an unended campaign by
+  its video), the storage-overfull sell screen from the first month, and the research articles.
+- The adhoc scheduling inputs pay no out-of-range performance bonus, as the report does (ADR 0036).
+- The production land-work bound rises to 10,000,000,000: Rosigma `Begining.sav`'s month tick charges about
+  2,550,000,000 (worst cases, as in S3).
+
+Tests: `StrategicEventPayloadTests` replays the `strategic-event-payload` scenarios on a campaign built like the probe's
+world: region, city, score, funds and staff; items given at once or by transfer; `invert`; a craft at once or by
+transfer; adhoc scripts; every random draw. The research scenarios run on real rules (the probe's getOneFree stub draws
+nothing), as do soldiers (named from a template, merged lists). Further tests: an unknown item refusing the tick unchanged,
+cutscene endings, the overfull sell screen from month zero, events popping in list order, the report before the
+month's events, and a reload dropping an open window. About forty tests that pinned the old refusals now assert that the
+tick runs (`AssertEventTickRuns`); the persistence and site-timer tests pin the popped window and despawn event.
+
+Corpus (`PrivateStrategicWorldTests`): Rosigma `Begining.sav` runs past tick 580 and stops on its event window at 581.
+Answering every window, all four Rosigma saves and every vanilla save but TFTD `Middle.sav` (which loses the campaign)
+run to the 40-day limit.

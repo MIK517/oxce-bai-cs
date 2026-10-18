@@ -74,7 +74,7 @@ public sealed class StrategicEventSchedulingTests
             Bases = [snapshot.Bases[0] with { Research = [new ResearchProjectSnapshot(research, 1, 0, cost)] }],
             World = snapshot.World with { Events = [new GeoscapeEventSnapshot(eventId, 30)] },
         }, content, new SplitMix64RandomSource(17));
-        AssertTimeBlocked(campaign, "Strategic event consequences require campaign event execution (Phase 6 branch 6).");
+        AssertEventTickRuns(campaign);
     }
 
     [Fact]
@@ -129,7 +129,7 @@ public sealed class StrategicEventSchedulingTests
         Assert.All(campaign.Capture().World.Events, scheduled => Assert.Equal(30, scheduled.SpawnCountdown));
         AdvanceUnblocked(campaign, 359);
         campaign = Reload(content, campaign, 17, "event-due.sav");
-        AssertTimeBlocked(campaign, "Strategic event consequences require campaign event execution (Phase 6 branch 6).");
+        AssertEventTickRuns(campaign);
     }
 
     [Fact]
@@ -191,7 +191,7 @@ public sealed class StrategicEventSchedulingTests
             Bases = [snapshot.Bases[0] with { Research = [new ResearchProjectSnapshot("EVENT_SOURCE", 1, 0, 1)] }],
             World = snapshot.World with { Events = [new GeoscapeEventSnapshot("EVENT_REPEAT", 30)] },
         }, content, new SplitMix64RandomSource(17));
-        AssertTimeBlocked(campaign, "Strategic event consequences require campaign event execution (Phase 6 branch 6).");
+        AssertEventTickRuns(campaign);
     }
 
     [Fact]

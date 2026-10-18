@@ -58,8 +58,7 @@ public sealed class StrategicWorldOptionalSiteResearchTests
     {
         var content = Content(generated, eventInterrupt: "BONUS");
         var initial = Snapshot(content, generated);
-        AssertTimeBlocked(CampaignState.Restore(initial with { World = initial.World with { Events = [new GeoscapeEventSnapshot("NEWBORN_EVENT", 30)] } }, content, new SplitMix64RandomSource(17)),
-            "Strategic event consequences require campaign event execution (Phase 6 branch 6).");
+        AssertEventTickRuns(CampaignState.Restore(initial with { World = initial.World with { Events = [new GeoscapeEventSnapshot("NEWBORN_EVENT", 30)] } }, content, new SplitMix64RandomSource(17)));
         content = Content(generated, count: 9);
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, generated), content, new SplitMix64RandomSource(17)),
             "Mission research exceeds the supported outcome limit.");

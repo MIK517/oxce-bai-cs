@@ -10,7 +10,6 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldDailyGuaranteedResearchTests
 {
-    private const string PayloadReason = "Strategic event consequences require campaign event execution (Phase 6 branch 6).";
 
     [Theory]
     [InlineData(0)]
@@ -98,7 +97,7 @@ public sealed class StrategicWorldDailyGuaranteedResearchTests
     public void UncertainRepeatableDisabledIneligibleAndUnfinishedTopicsCannotAuthorizePayload(int mode)
     {
         var content = Content(mode);
-        AssertTimeBlocked(CampaignState.Restore(Snapshot(content, mode, 17), content, new SplitMix64RandomSource(17)), PayloadReason);
+        AssertEventTickRuns(CampaignState.Restore(Snapshot(content, mode, 17), content, new SplitMix64RandomSource(17)));
     }
 
     [Fact]
@@ -113,7 +112,7 @@ public sealed class StrategicWorldDailyGuaranteedResearchTests
                 MissionSites = [new(1, "MISSION_SITE", "GUARANTEED_CANCEL_SITE", "RACE_A", 0.2, 0.1, 0) { Detected = true }],
             },
         };
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), PayloadReason);
+        AssertEventTickRuns(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)));
     }
 
     private static RuntimeContent Content(int mode)

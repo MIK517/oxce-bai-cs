@@ -564,7 +564,7 @@ public sealed class StrategicMissionSiteScriptTests
         var scheduled = campaign.Capture();
         scheduled = scheduled with { World = scheduled.World with { Events = [new("EVENT_EMPTY_SITE", 0)] } };
         campaign = CampaignState.Restore(scheduled, content, new SplitMix64RandomSource(scheduled.RandomState));
-        AssertTimeBlocked(campaign, "Strategic event consequences require campaign event execution (Phase 6 branch 6).");
+        AssertEventTickRuns(campaign);
     }
     [Fact]
     public void DivergentSignedRegionListingIsBlockedBeforeAnyCommandMutatesState()

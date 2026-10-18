@@ -13,6 +13,7 @@ public sealed partial class CampaignState
         new DelegatedCampaignCapability(RegisterResearchProduction),
         new World.CampaignWorld(this),
         new DelegatedCampaignCapability(RegisterMonthlyCycle),
+        new DelegatedCampaignCapability(RegisterEvents),
         .. _testCapabilities?.Invoke(this) ?? [],
     ];
 

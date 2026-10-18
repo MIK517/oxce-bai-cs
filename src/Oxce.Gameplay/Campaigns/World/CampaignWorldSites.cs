@@ -23,8 +23,6 @@ internal static class WorldSiteTimer
 
 internal sealed partial class CampaignWorld
 {
-    private const string SiteDespawnBoundary =
-        "Mission site despawn requires research or event payloads.";
     private const string SiteUfoFollowerBoundary =
         "Targeted mission site despawn requires UFO follower destination repair.";
 
@@ -169,7 +167,7 @@ internal sealed partial class CampaignWorld
                 counterChanges.Clear();
                 AddSiteCounterChanges(counterChanges, deployment);
                 foreach (var change in counterChanges) campaign.CustomCounters.Apply(change);
-                ConsumeSuppressedSiteEvent(deployment);
+                SpawnSiteDespawnEvent(deployment, effects);
             }
             ScoreUfoActivity(site.Position, transition.Score, rules);
             if (transition.Remove && site.UfoUniqueId != 0)
@@ -259,33 +257,14 @@ internal sealed partial class CampaignWorld
         var rules = campaign.Content.RuntimeRules;
         if (researchAfterGrant is null && campaign.BaseStates.Count != 0 && rules.Research.TryGet(deployment.UnlockedResearchOnDespawnId, out _))
             return "Generated mission site research requires ordered expiry forecasts.";
+        // The despawn event's payload runs inside the half-hour level, staged (ADR 0035); only its weights are checked here.
         _ = WorldAlienMissionGeneration.Total(deployment.DespawnEvents);
-        foreach (var pair in deployment.DespawnEvents)
-        {
-            if (pair.Value == 0 || !rules.Events.TryGet(pair.Key, out var handle)) continue;
-            var rule = rules.Events[handle].Value;
-            if (rule.InterruptResearch.Length == 0) return SiteDespawnBoundary;
-            if (researchAfterGrant is not null)
-            {
-                if (!researchAfterGrant.Contains(rule.InterruptResearch)) return SiteDespawnBoundary;
-                continue;
-            }
-            if (highest >= CampaignTimeTrigger.OneDay)
-            {
-                if (!GuaranteedDailyResearch().Contains(rule.InterruptResearch)) return SiteDespawnBoundary;
-            }
-            else if (!campaign.HasCompletedResearch(rule.InterruptResearch)) return SiteDespawnBoundary;
-        }
         return null;
     }
 
-    private void ConsumeSuppressedSiteEvent(RuntimeAlienDeploymentRule deployment)
-    {
-        var id = WorldAlienMissionGeneration.Choose(deployment.DespawnEvents, campaign.Random);
-        if (campaign.Content.RuntimeRules.Events.TryGet(id, out var handle) &&
-            !IsEventInterrupted(campaign.Content.RuntimeRules.Events[handle].Value))
-            throw new InvalidOperationException(SiteDespawnBoundary);
-    }
+    /// <summary>The site's despawn event: AlienDeployment::chooseDespawnEvent, then an instant event.</summary>
+    private void SpawnSiteDespawnEvent(RuntimeAlienDeploymentRule deployment, CampaignState.TimeEffects effects) =>
+        SpawnInstantEvent(WorldAlienMissionGeneration.Choose(deployment.DespawnEvents, campaign.Random), effects);
 
     private string? SiteUfoRepairReason(CampaignTimeTrigger highest)
     {

@@ -1080,29 +1080,39 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
             QueueTransfer(owner, hours, CampaignTransferKind.Engineer, "", 1);
         else
         {
-            var handle = _content.RuntimeRules.Soldiers.GetRequired(rule.SpawnedPersonType);
-            var definition = _content.RuntimeRules.Soldiers[handle].Value;
-            var soldierId = NextSoldierId();
-            _nextIds["STR_SOLDIER"] = checked(soldierId + 1);
-            var personal = SoldierGeneration.Generate(definition,
-                _content.RuntimeRules.Armors.GetExternalId(definition.Armor), SelectNationality(definition, owner),
-                _bases.SelectMany(baseState => baseState.Soldiers.Select(soldier => soldier.Personal?.Name ?? "")
-                    .Concat(baseState.Transfers.Where(transfer => transfer.Soldier is not null)
-                        .Select(transfer => transfer.Soldier!.Personal?.Name ?? ""))).ToHashSet(StringComparer.Ordinal), _random);
-            if (rule.SpawnedSoldierTemplate is { } template)
-                personal = SoldierGeneration.ApplyTemplate(personal, template, definition,
-                    _content.RuntimeRules, _random);
-            personal = rule.SpawnedPersonName.Length != 0
-                ? personal with { Name = rule.SpawnedPersonName }
-                : SoldierGeneration.RegenerateName(personal, definition, _random);
-            var soldier = new SoldierSnapshot(rule.SpawnedPersonType, soldierId)
-            {
-                PreservationKey = FormattableString.Invariant($"created:{Identity.Id}:soldier:{soldierId}"),
-                Personal = personal,
-            };
+            var definition = _content.RuntimeRules.Soldiers[_content.RuntimeRules.Soldiers.GetRequired(rule.SpawnedPersonType)].Value;
+            var soldier = SpawnSoldier(rule.SpawnedPersonType, definition, SelectNationality(definition, owner),
+                rule.SpawnedSoldierTemplate, rule.SpawnedPersonName);
             QueueTransfer(owner, hours, CampaignTransferKind.Soldier,
                 rule.SpawnedPersonType, 1, soldier: soldier);
         }
+    }
+
+    /// <summary>
+    /// Mod::genSoldier, then Soldier::load from a soldier template, then the given name or Soldier::genName: the
+    /// manufacture and event spawns.
+    /// </summary>
+    private SoldierSnapshot SpawnSoldier(string type, RuntimeSoldierRule definition, int nationality,
+        RuntimeSoldierTemplate? template, string name)
+    {
+        var soldierId = NextSoldierId();
+        _nextIds["STR_SOLDIER"] = checked(soldierId + 1);
+        var personal = SoldierGeneration.Generate(definition,
+            _content.RuntimeRules.Armors.GetExternalId(definition.Armor), nationality,
+            _bases.SelectMany(baseState => baseState.Soldiers.Select(soldier => soldier.Personal?.Name ?? "")
+                .Concat(baseState.Transfers.Where(transfer => transfer.Soldier is not null)
+                    .Select(transfer => transfer.Soldier!.Personal?.Name ?? ""))).ToHashSet(StringComparer.Ordinal), _random);
+        if (template is not null)
+            personal = SoldierGeneration.ApplyTemplate(personal, template, definition,
+                _content.RuntimeRules, _random);
+        personal = name.Length != 0
+            ? personal with { Name = name }
+            : SoldierGeneration.RegenerateName(personal, definition, _random);
+        return new SoldierSnapshot(type, soldierId)
+        {
+            PreservationKey = FormattableString.Invariant($"created:{Identity.Id}:soldier:{soldierId}"),
+            Personal = personal,
+        };
     }
 
     private void QueueTransfer(BaseState owner, int hours, CampaignTransferKind kind,
