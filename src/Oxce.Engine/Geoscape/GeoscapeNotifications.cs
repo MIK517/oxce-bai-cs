@@ -21,6 +21,8 @@ public sealed record GeoscapePopupAction(string Label, bool ResetSpeed = false, 
     public string? Disabled { get; init; }
     /// <summary>What the button becomes while Ctrl is held (ConfirmLandingState's No/Patrol toggle).</summary>
     public GeoscapePopupAction? ControlAlternative { get; init; }
+    /// <summary>The window the button shows next, in place of this one (MonthlyReportState's failure screen).</summary>
+    public GeoscapePopup? Next { get; init; }
 }
 
 /// <summary>A geoscape screen a popup button leads to.</summary>
@@ -236,12 +238,13 @@ public static class GeoscapeNotifications
             case SoldiersCommended commended:
                 // CommendationState: each soldier's new or raised commendations.
                 return new(tr("STR_MEDALS"), [.. commended.Awards.Select(award =>
-                    "#" + award.SoldierId.ToString(CultureInfo.InvariantCulture) + " " + tr(award.Commendation) +
-                    (award.Noun == "noNoun" ? "" : " " + tr(award.Noun)) + " " +
+                    "#" + award.SoldierId.ToString(CultureInfo.InvariantCulture) + " " +
+                    (award.Noun == "noNoun" ? tr(award.Commendation) : Format(tr(award.Commendation), tr(award.Noun))) + " " +
                     tr("STR_AWARD_" + award.DecorationLevel.ToString(CultureInfo.InvariantCulture)))], [Ok()]);
-            case PsiTrainingReminder:
-                // PsiTrainingState lists the bases with psi labs; the base screens assign the training.
-                return new(tr("STR_PSIONIC_TRAINING"), [.. world.Bases.Select(static owner => owner.Name)], [Ok()]);
+            case PsiTrainingReminder psi:
+                // PsiTrainingState: a button for each base with psi labs; the base screens assign the training.
+                return new(tr("STR_PSIONIC_TRAINING"), [],
+                    [.. psi.BaseIds.Select(id => new GeoscapePopupAction(BaseName(id)) { Intent = new BaseIntent(id) }), Ok()]);
             case CampaignEventOpened opened:
                 return EventWindow(opened.Window, tr, rules);
             case CampaignEventAcknowledged acknowledged:
@@ -305,8 +308,7 @@ public static class GeoscapeNotifications
         static string Change(long change) => (change > 0 ? "+" : "") + Funding(change);
         List<string> lines = [tr("STR_COUNTRY") + " | " + tr("STR_FUNDING") + " | " + tr("STR_CHANGE")];
         lines.AddRange(countries.Select(country => tr(country.CountryId) + " | " + Funding(country.Funding) + " | " + Change(country.Change)));
-        lines.Add(tr("STR_TOTAL_UC") + " | " + Funding(countries.Sum(static c => (long)c.Funding)) + " | " +
-            Change(countries.Sum(static c => (long)c.Change)));
+        lines.Add(tr("STR_TOTAL_UC") + " | " + Funding(countries.Sum(static c => (long)c.Funding)));
         return new(tr("STR_INTERNATIONAL_RELATIONS"), lines, [new(tr("STR_OK"), OkKey: true, CancelKey: true)]);
     }
 
@@ -324,9 +326,11 @@ public static class GeoscapeNotifications
     private static GeoscapePopup MonthlyReport(CampaignMonthlyReport report, Func<string, string> tr)
     {
         var acknowledge = new GeoscapePopupAction(tr("STR_OK"), OkKey: true, CancelKey: true) { Command = new AcknowledgeMonthlyReport() };
-        // The second OK of a failed month: the failure screen, then the lose cutscene.
-        if (report.GameOver != 0)
-            return new(tr("STR_YOU_HAVE_FAILED"), [tr(report.CouncilText)], [acknowledge]);
+        // A failed month: the first OK hides the report for the failure screen, whose OK plays the lose cutscene.
+        var ok = report.GameOver == 0 ? acknowledge : new GeoscapePopupAction(tr("STR_OK"), OkKey: true, CancelKey: true)
+        {
+            Next = new(tr("STR_YOU_HAVE_FAILED"), [], [acknowledge]) { ResetsSpeedWhenShown = true },
+        };
         var month = report.Month is >= 1 and <= 12 ? tr(Months[report.Month - 1]) : "";
         var change = (report.FundingChange > 0 ? "+" : "") + Funding(report.FundingChange);
         List<string> lines =
@@ -334,9 +338,10 @@ public static class GeoscapeNotifications
             Format(tr("STR_MONTH"), month, report.Year),
             Format(tr("STR_MONTHLY_RATING"), report.Rating, tr(report.RatingText)),
             tr("STR_INCOME") + "> " + Funding(report.CountryFunding) + " (" + change + ")",
-            tr("STR_MAINTENANCE") + "> " + Funding(report.Maintenance),
         ];
+        // With a bonus, the bonus takes the maintenance line and maintenance and balance move down.
         if (report.PerformanceBonus > 0) lines.Add(tr("STR_PERFORMANCE_BONUS") + "> " + Funding(report.PerformanceBonus));
+        lines.Add(tr("STR_MAINTENANCE") + "> " + Funding(report.Maintenance));
         lines.Add(tr("STR_BALANCE") + "> " + Funding(report.Balance));
         lines.Add(tr(report.CouncilText));
         if (report.DebtWarning) lines.Add(tr("STR_COUNCIL_REDUCE_DEBTS"));
@@ -344,7 +349,8 @@ public static class GeoscapeNotifications
         AddCountries(report.UnhappyCountries, "STR_COUNTRY_IS_UNHAPPY_WITH_YOUR_ABILITY", "STR_COUNTRIES_ARE_UNHAPPY_WITH_YOUR_ABILITY");
         AddCountries(report.SignedPacts, "STR_COUNTRY_HAS_SIGNED_A_SECRET_PACT", "STR_COUNTRIES_HAVE_SIGNED_A_SECRET_PACT");
         AddCountries(report.CancelledPacts, "STR_COUNTRY_HAS_CANCELLED_A_SECRET_PACT", "STR_COUNTRIES_HAVE_CANCELLED_A_SECRET_PACT");
-        return new(tr("STR_XCOM_PROJECT_MONTHLY_REPORT"), lines, [acknowledge]);
+        // GeoscapeState::time1Month resets the speed before the report pops up.
+        return new(tr("STR_XCOM_PROJECT_MONTHLY_REPORT"), lines, [ok]) { ResetsSpeedWhenShown = true };
 
         // MonthlyReportState::countryList: "A", "A and B", "A, B and C".
         void AddCountries(IReadOnlyList<string> countries, string singular, string plural)
@@ -368,16 +374,18 @@ public static class GeoscapeNotifications
     private static GeoscapePopup EventWindow(CampaignEventWindow window, Func<string, string> tr, RuntimeRuleCatalog? rules)
     {
         var payload = rules is not null && rules.Events.TryGet(window.RuleId, out var handle) ? rules.Events[handle].Value.Payload : null;
-        var place = payload is { CitySpecific: true } && window.City is { } city ? city : window.Region is { } region ? tr(region) : null;
+        var place = payload is { CitySpecific: true } && window.City is { } city ? tr(city) : window.Region is { } region ? tr(region) : null;
         var description = payload is { Description.Length: > 0 } ? tr(payload.Description) : "";
         List<string> lines = [place is null ? description : Format(description, place)];
         if (window.Items.Count != 0)
         {
-            lines.Add(tr("STR_ITEMS_ARRIVING"));
+            lines.Add(tr(payload is { Invert: true } ? "STR_SUMMARY" : "STR_ITEMS_ARRIVING"));
             lines.AddRange(window.Items.Select(row => tr(row.ItemId) + " " + row.Quantity.ToString(CultureInfo.InvariantCulture)));
         }
+        // GeoscapeState resets the speed before an event pops up.
         return new(place is null ? tr(window.RuleId) : Format(tr(window.RuleId), place), lines,
-            [new(tr("STR_OK"), OkKey: true, CancelKey: true) { Command = new AcknowledgeCampaignEvent() }]);
+            [new(tr("STR_OK"), OkKey: true, CancelKey: true) { Command = new AcknowledgeCampaignEvent() }])
+        { ResetsSpeedWhenShown = true };
     }
 
     /// <summary>

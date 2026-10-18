@@ -500,3 +500,29 @@ Assigned to Phase 8 (presentation): cutscene playback, Ufopaedia articles (the w
 (`GraphsState`), commendation art and the soldier diary screens, the options screen (the `autosave` option and the other
 user options are read from saves and fixed options), and the save and load menus with file selection (the SDL host
 saves to the path it was started with). Tactical states stay preservation-only (Phase 7).
+
+### S7 audit (2026-10-18)
+
+An independent review of 08eda7ad found the save flow sound (ironman over autosave, one save for repeated
+requests, nothing saved while the base screens are open) and every caller of the throwing save catching it. Fixes:
+
+- A failed month now shows the report first; its OK opens the failure screen (`STR_YOU_HAVE_FAILED`), whose OK
+  acknowledges the report (`GeoscapePopupAction.Next`).
+- The report and event windows reset the speed when they pop up, as `GeoscapeState::timerReset` does before them.
+- Windows a button's command opens show next, the last pushed first, as the reference's state stack shows them ahead
+  of the geoscape's queued popups: the psi reminder before the commendations after the report's OK.
+- A load drops a requested save that has not been made yet.
+- The psi reminder has a button for each base with psi labs (`PsiTrainingReminder.BaseIds`), to its base screens; the
+  event window translates its city, heads taken items `STR_SUMMARY`; a commendation's noun substitutes into its name;
+  the funding total has no change column; a performance bonus line comes before maintenance.
+
+Recorded differences of these text panels (presentation is Phase 8):
+
+- The requested save is made once no window is open, after the windows the report's OK opens and any queued popup;
+  the reference saves at once (`SaveGameState` is pushed last). The save gates (D2) need the wait. Saves go to the
+  campaign's save path (ironman) and `_autogeo_.asav` beside it, not to the user folder under the campaign's name.
+- Commendations list each award by soldier ID, without `CommendationState`'s grouping by commendation or the level
+  name's skip count for repeated thresholds; the storage-overfull window opens the HQ's base screens, not `SellState`;
+  an event naming no region keeps its untranslated title.
+- The controls and pause pass: every window pauses time as `GeoscapeState::popup` does; graphs, Ufopaedia, the options
+  screen and the save menus are the Phase 8 assignments above.

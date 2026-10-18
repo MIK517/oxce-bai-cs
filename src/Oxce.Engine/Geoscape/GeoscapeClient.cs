@@ -481,26 +481,36 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
             _globeDirty = true;
         }
         entry.Chosen?.Invoke(choice);
+        if (action.Next is { } next) Enqueue(next, front: true);
         if (action.Command is { } command) Execute(command, entry.Group);
         if (action.Intent is { } intent) Open(intent, entry, shift);
         Redraw();
     }
 
-    private void Notify(IReadOnlyList<ICampaignEvent> events)
+    /// <param name="pushed">
+    /// The windows a button's command opens: the reference pushes them on its state stack, so they show next, the last
+    /// pushed first, ahead of the geoscape's queued popups.
+    /// </param>
+    private void Notify(IReadOnlyList<ICampaignEvent> events, bool pushed = false)
     {
         foreach (var notification in events)
         {
             // MonthlyReportState and SavedGame's ironman: the host saves once every window is answered.
             if (notification is CampaignSaveRequested request) _pendingSave = _pendingSave is CampaignSaveKind.Ironman ? _pendingSave : request.Kind;
-            foreach (var popup in GeoscapeNotifications.DescribeAll(notification, _world, _setup.Localize, _setup.Rules, _setup.ShowEtaMode))
-                Enqueue(popup);
+            var popups = GeoscapeNotifications.DescribeAll(notification, _world, _setup.Localize, _setup.Rules, _setup.ShowEtaMode);
+            for (var index = popups.Count - 1; index >= 0; index--)
+            {
+                if (pushed) Enqueue(popups[index], front: true);
+                else Enqueue(popups[popups.Count - 1 - index]);
+            }
         }
     }
 
-    private void Enqueue(GeoscapePopup popup, Action<int>? chosen = null)
+    private void Enqueue(GeoscapePopup popup, Action<int>? chosen = null, bool front = false)
     {
         // GeoscapeState::popup pauses time and stops the globe rotating.
-        _popups.Add(new(popup, chosen, 0));
+        if (front) _popups.Insert(0, new(popup, chosen, 0));
+        else _popups.Add(new(popup, chosen, 0));
         _rotateLongitude = _rotateLatitude = 0;
         _dragging = false;
         _time.Interrupt();
@@ -564,8 +574,9 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     {
         if (session.World is null) throw new InvalidOperationException("The loaded session has no world query.");
         _session = session;
-        // Nothing owed by the old campaign's clock may run on the loaded one.
+        // Nothing owed by the old campaign's clock may run on the loaded one, nor a save it requested.
         _time.Interrupt();
+        _pendingSave = null;
         _dogfightElapsed = TimeSpan.Zero;
         _popups.Clear();
         _selected = null;

@@ -53,7 +53,7 @@ public sealed record CommendationAward(int SoldierId, string Commendation, strin
 public sealed record SoldiersCommended(IReadOnlyList<CommendationAward> Awards) : ICampaignEvent;
 
 /// <summary>PsiTrainingState: a base has a psi lab and soldiers train only at the month boundary.</summary>
-public sealed record PsiTrainingReminder : ICampaignEvent;
+public sealed record PsiTrainingReminder(IReadOnlyList<int> BaseIds) : ICampaignEvent;
 
 public enum CampaignSaveKind { Autosave, Ironman }
 
@@ -256,7 +256,8 @@ public sealed partial class CampaignState : ICampaignMonthlyReportQuery
         }
         if (awards.Count != 0) events.Add(new SoldiersCommended(awards));
         // Base::getAvailablePsiLabs as a truth value: any non-zero capacity.
-        if (!Options.AnytimePsiTraining && _bases.Any(owner => AvailablePsi(owner) != 0)) events.Add(new PsiTrainingReminder());
+        if (!Options.AnytimePsiTraining && _bases.Where(owner => AvailablePsi(owner) != 0).Select(static owner => owner.Id).ToArray() is { Length: > 0 } psiBases)
+            events.Add(new PsiTrainingReminder(psiBases));
         if (ironman) events.Add(new CampaignSaveRequested(CampaignSaveKind.Ironman));
         else if (Options.Autosave) events.Add(new CampaignSaveRequested(CampaignSaveKind.Autosave));
         return new(events);
