@@ -313,7 +313,8 @@ Data:
 - `SoldierPersonalState.Diary` types the diary's counters (as `SoldierDiary::save` names them, the two flags as 0
   or 1), its kill list and its mission IDs; `CampaignSnapshot.MissionStatistics` types the save's
   `missionStatistics`. Saves write the counters as the reference does (non-zero only) and keep the kill list, the
-  mission IDs and the statistics from the source, since only battles (Phase 7) change them.
+  mission IDs and the statistics from the source, since only battles (Phase 7) change them; a diary without a source
+  writes its kill list and mission IDs from the typed state.
 - Commendation rules project their criteria (std::map order), kill criteria, mission filters, `requires` and `units`.
   Content compiler/cache revision 73.
 
@@ -322,10 +323,38 @@ friendly fire failing for the dead or missing, unknown names passing, and statis
 mission ID again), the four noun criteria in byte order of their nouns, and the career, mission and turn kill criteria
 with rank, race, weapon, ammo, status, faction, side, body part, battle-type and damage-type details. The
 `strategic-commendations` oracle (`tools/capture-strategic-commendations-reference.ps1`) compiles the reference
-methods verbatim over 9 scenarios, and `StrategicCommendationOracleTests` replays them all. A commendation awarded
+methods verbatim over its scenarios (16 after the audit), and `StrategicCommendationOracleTests` replays them
+all. A commendation awarded
 repeatedly in one call (several levels at once) is pinned there. The paths the reference leaves undefined (no
 criteria, a level past the list, a kill without a span, an absent kill field) are recorded in ADR 0036.
 
 Tests: `StrategicCommendationOracleTests`; `StrategicMonthlyCycleTests` (service, a commendation for every soldier,
 the psi reminder, the autosave and the save refusal, with a save round trip; ironman, autosave and no save
 requests; a failed ironman month requesting its save without service).
+
+### S4 audit (2026-10-18)
+
+An independent review of 3620549e checked `manageCommendations` line by line and ran 6 further probe scenarios
+through the port, all matching; it confirmed the `btnOkClick` effects, the event order, the projection and the ADR
+0036 entries. Fixes:
+
+- A base defense is not saved and its opening has already parked the UFO, so it now also refuses saving (D2); the
+  branch 5 interception status claimed a reload reopened it and is corrected.
+- `CampaignState.CaptureForSave` checks the refusal and captures under one lock; the SDL host uses it.
+- `Mod::getItem` names no item for `STR_NONE`; the evaluator now follows it (and the probe stub).
+- Mission statistics without `region`, `country` or `ufo` take the reference constructor's values
+  (`STR_REGION_UNKNOWN`, `STR_UNKNOWN`, `NO_UFO`), so `IsUfoMission` is false for them.
+- A commendation whose rule no longer exists is dropped on load, as `SoldierDiary::load` does.
+- The psi reminder counts any non-zero psi-lab capacity, as the reference's truth test does.
+- A new soldier's diary writes its typed kill list and mission IDs (kills now also type their victim's type, name
+  and ID).
+- The oracle gains the review's 6 scenarios (a noun criterion beside a plain one, career batches across OR groups,
+  unsorted spans, an unknown weapon with known ammo, zero thresholds, duplicate nouns, owned levels beside nouns) and a
+  `STR_NONE` and repeated-region scenario: 16 in all. New tests: projected items, research and soldier types through
+  the campaign (`CommendationsReadProjectedItemsResearchAndSoldierTypes`), the base-defense save refusal, and the
+  private `ImportedDiariesAndMissionStatisticsAreTypedAndKept` (vanilla UFO `Middle.sav`: typed kills, counters,
+  mission IDs and statistics read back equal after a rewrite).
+
+Not changed: a soldier without personal state (a port fixture form; real saves always carry it) gets no service.
+`Options::soldierDiaries` off, which makes the reference write no diaries or statistics, is not modelled (it predates
+this branch).

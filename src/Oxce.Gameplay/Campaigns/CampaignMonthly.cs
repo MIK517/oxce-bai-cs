@@ -254,7 +254,8 @@ public sealed partial class CampaignState : ICampaignMonthlyReportQuery
             }
         }
         if (awards.Count != 0) events.Add(new SoldiersCommended(awards));
-        if (!Options.AnytimePsiTraining && _bases.Any(owner => AvailablePsi(owner) > 0)) events.Add(new PsiTrainingReminder());
+        // Base::getAvailablePsiLabs as a truth value: any non-zero capacity.
+        if (!Options.AnytimePsiTraining && _bases.Any(owner => AvailablePsi(owner) != 0)) events.Add(new PsiTrainingReminder());
         if (ironman) events.Add(new CampaignSaveRequested(CampaignSaveKind.Ironman));
         else if (Options.Autosave) events.Add(new CampaignSaveRequested(CampaignSaveKind.Autosave));
         return new(events);

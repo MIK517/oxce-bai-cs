@@ -15,9 +15,9 @@
   },
   "inputs": [
     {
-      "size": 25828,
+      "size": 29870,
       "path": "fixtures/reference-probes/savegames/strategic_commendations_probe.cpp",
-      "sha256": "44d77e3d8497619920890ce1342d79715b0155aab5cbbf1b6d780c1a68090253"
+      "sha256": "9411d9e2b74cf6c7cd4e2fc929911988739c617b6f1cf3890f7d5484caa3246a"
     },
     {
       "size": 6264,

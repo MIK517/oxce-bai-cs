@@ -60,6 +60,8 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
         registry.CommandGate(command => _baseDefense is not null &&
             command is not (World.ResolveBaseDefense or AdvanceCampaignTime or AcknowledgeMonthlyReport)
             ? Blocked(WorldCommandReasons.BaseDefenseOpen) : null);
+        // D2: the window is not saved and its opening already parked the UFO, so a save under it would lose the attack.
+        registry.SaveGate(() => _baseDefense is not null ? WorldCommandReasons.BaseDefenseOpen : null);
     }
 
     public CampaignBaseDefense? QueryBaseDefense() => campaign.Read(() =>

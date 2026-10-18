@@ -107,7 +107,13 @@ public sealed class StrategicBaseAttackTests
         Assert.IsType<MonthlyReportAcknowledged>(Assert.Single(campaign.Execute(new AcknowledgeMonthlyReport()).Events));
 
         AssertTimeBlocked(campaign, WorldCommandReasons.BaseDefenseOpen);
+        // D2: the window is not saved and has already parked the UFO, so the campaign cannot be saved under it.
+        Assert.Equal(WorldCommandReasons.BaseDefenseOpen, campaign.QuerySaveRefusal());
+        Assert.Null(campaign.CaptureForSave(out var refusal));
+        Assert.Equal(WorldCommandReasons.BaseDefenseOpen, refusal);
         Assert.IsType<BaseDefenseResolved>(Assert.Single(campaign.Execute(new ResolveBaseDefense(baseId, Fire: true)).Events));
+        Assert.NotNull(campaign.CaptureForSave(out refusal));
+        Assert.Null(refusal);
     }
 
     [Fact]

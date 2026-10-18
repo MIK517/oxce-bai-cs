@@ -41,6 +41,9 @@ internal static class SoldierCommendations
     {
         var awarded = false;
         var diary = personal.Diary;
+        // Mod::getItem: STR_NONE names no item, even when a rule has that name.
+        var item = inputs.Item;
+        inputs = inputs with { Item = id => id == "STR_NONE" ? null : item(id) };
         var levels = new Dictionary<string, int>(StringComparer.Ordinal);
         var modular = new List<string>();
         for (var index = 0; index < inputs.Commendations.Count;)

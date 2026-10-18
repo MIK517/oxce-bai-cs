@@ -64,8 +64,10 @@ public:
     {
         auto found = _commendations.find(id); return found == _commendations.end() ? nullptr : found->second;
     }
+    // Mod::getItem: Armor::NONE names no item; otherwise getRule without an error.
     RuleItem *getItem(const std::string &id, bool = false) const
     {
+        if (id == "STR_NONE") return nullptr;
         auto found = _items.find(id); return found == _items.end() ? nullptr : found->second;
     }
     int getMaxDarknessToSeeUnits() const { return _maxDarknessToSeeUnits; }
@@ -396,6 +398,50 @@ int main()
         {"friendly-fire-alive", "STR_SOLDIER",
             {{"STR_FRIENDLY", {{"totalFriendlyFired", {1, 2, 3}}}, {}, {}, {}, {}, {}}},
             {}, {}, {{"totalShotByFriendlyCounter", 2}}, {}, {}, {}, {}},
+        // From the S4 audit: a noun criterion beside a plain one, career batches across OR groups, unsorted spans,
+        // an unknown weapon with known ammo, zero thresholds, duplicate nouns and owned levels beside nouns.
+        {"mixed-noun-plain", "STR_SOLDIER",
+            {{"STR_MIX", {{"totalKillsByRace", {1, 2}}, {"totalMonthlyService", {1, 5}}}, {}, {}, {}, {}, {}}},
+            items, {}, {}, {sectoidKill, sectoidKill, sectoidKill}, {}, {}, {}},
+        {"career-batches", "STR_SOLDIER",
+            {{"STR_BATCH", {{"killsWithCriteriaCareer", {1, 2, 3}}},
+                {{{2, {"STR_LIVE_LEADER"}}, {1, {"STR_LIVE_COMMANDER"}}}, {{1, {"STR_FLOATER"}}}}, {}, {}, {}, {}}},
+            items, {}, {}, {
+                {"STR_LIVE_LEADER","STR_SECTOID","STR_RIFLE","STR_RIFLE_CLIP",6,1,1,3,0,1},
+                {"STR_LIVE_LEADER","STR_SECTOID","STR_RIFLE","STR_RIFLE_CLIP",6,1,1,3,0,1},
+                {"STR_LIVE_LEADER","STR_SECTOID","STR_RIFLE","STR_RIFLE_CLIP",6,1,1,3,0,1},
+                {"STR_LIVE_COMMANDER","STR_SECTOID","STR_RIFLE","STR_RIFLE_CLIP",6,1,1,3,0,1},
+                {"STR_LIVE_LEADER","STR_SECTOID","STR_RIFLE","STR_RIFLE_CLIP",6,1,1,3,0,1},
+                {"STR_LIVE_COMMANDER","STR_SECTOID","STR_RIFLE","STR_RIFLE_CLIP",6,1,1,3,0,1},
+                {"STR_LIVE_COMMANDER","STR_FLOATER","STR_RIFLE","STR_RIFLE_CLIP",6,1,1,3,0,1}}, {}, {}, {}},
+        {"turn-unsorted", "STR_SOLDIER",
+            {{"STR_T", {{"killsWithCriteriaTurn", {1, 2, 3, 4}}}, {{{2, {"STATUS_DEAD"}}}}, {}, {}, {}, {}},
+             {"STR_M", {{"killsWithCriteriaMission", {1, 2, 3, 4}}}, {{{2, {"STATUS_DEAD"}}}}, {}, {}, {}, {}}},
+            items, {}, {}, {
+                {"A","B","STR_RIFLE","",6,1,1,4,0,1}, {"A","B","STR_RIFLE","",6,1,2,7,0,1}, {"A","B","STR_RIFLE","",6,1,1,4,0,1},
+                {"A","B","STR_RIFLE","",6,1,1,4,0,1}, {"A","B","STR_RIFLE","",6,1,1,4,0,1}, {"A","B","STR_RIFLE","",6,1,2,10,0,1},
+                {"A","B","STR_RIFLE","",6,1,2,10,0,1}}, {}, {}, {}},
+        {"ammo-unknown-weapon-and-zero", "STR_SOLDIER",
+            {{"STR_DT", {{"killsWithCriteriaCareer", {1}}}, {{{1, {"DT_HE"}}}}, {}, {}, {}, {}},
+             {"STR_ZERO", {{"killsWithCriteriaCareer", {0, 0}}}, {{{1, {"STR_NOPE"}}}, {{1, {}}}}, {}, {}, {}, {}},
+             {"STR_ZERO_NOKILL", {{"totalKills", {0}}, {"killsWithCriteriaMission", {0}}}, {}, {}, {}, {}, {}}},
+            items, {}, {}, {{"A","B","STR_ALIEN_GUN","STR_GRENADE",6,1,1,4,0,1}}, {}, {}, {}},
+        {"duplicate-noun", "STR_SOLDIER",
+            {{"STR_DUP", {{"totalKillsByRace", {1, 2, 3}}, {"totalKillsWithAWeapon", {1, 2, 3}}}, {}, {}, {}, {}, {}},
+             {"STR_SECOND_EMPTY", {{"totalKillsByRace", {1}}, {"totalMissionsInARegion", {1}}}, {}, {}, {}, {}, {}}},
+            items, {}, {}, {{"R","STR_X","STR_X","",6,1,1,4,0,1}, {"R","STR_X","STR_X","",6,1,1,4,0,1}}, {}, {}, {}},
+        {"noun-owned-and-nonoun-levels", "STR_SOLDIER",
+            {{"STR_W", {{"totalKillsWithAWeapon", {1, 2}}}, {}, {}, {}, {}, {}},
+             {"STR_RANKED", {{"totalKillsByRank", {1, 2}}}, {}, {}, {}, {}, {}}},
+            items, {}, {}, {sectoidKill, sectoidKill, civilianKill}, {}, {},
+            {{"STR_W", "noNoun", 0}, {"STR_RANKED", "STR_LIVE_SOLDIER", 0}, {"STR_RANKED", "noNoun", 1}}},
+        // Mod::getItem names no item for STR_NONE, even when such an item exists; a repeated mission ID counts its region twice.
+        {"none-is-no-item-and-repeated-region", "STR_SOLDIER",
+            {{"STR_TRAPS", {{"totalTrapKills", {1, 2, 3}}}, {}, {}, {}, {}, {}},
+             {"STR_REACTION", {{"totalReactionFire", {1}}}, {}, {}, {}, {}, {}},
+             {"STR_REGION", {{"totalMissionsInARegion", {2, 3}}}, {}, {}, {}, {}, {}}},
+            {{"STR_NONE", 1, 1, 7}, {"STR_RIFLE", 1, 1, 7}}, {}, {}, {{"A","B","STR_NONE","",6,1,1,4,0,1}, {"A","B","STR_RIFLE","",6,1,1,7,0,1}},
+            {3, 3}, statistics, {}},
     };
     std::printf("{\"scenarios\":[");
     for (size_t i = 0; i < scenarios.size(); ++i) std::printf("%s%s", i ? "," : "", run(scenarios[i]).c_str());
