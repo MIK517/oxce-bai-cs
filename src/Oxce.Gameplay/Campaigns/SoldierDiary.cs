@@ -16,6 +16,11 @@ public sealed record SoldierKill(string Rank, string Race, string Weapon, string
     public const int StatusIgnoreMe = 10;
     public const int FactionHostile = 1;
 
+    /// <summary>The victim's unit type, or its name when it has no type (a soldier); and its battle unit ID.</summary>
+    public string Type { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
+    public int Id { get; init; }
+
     /// <summary>BattleUnitKills::hostileTurn.</summary>
     public bool HostileTurn => (Turn - 1) % 3 == 0;
 

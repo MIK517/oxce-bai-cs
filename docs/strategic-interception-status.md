@@ -553,7 +553,8 @@ defense in one step (the round-by-round animation is not drawn yet); a shot-down
 an attack that goes on leads to the battle request or the destroyed-base window (undefended or nuclear
 wording). The campaign's end and a battle request get port windows in plain text, since there is no
 defeat cutscene or tactical combat yet. Queued landing windows are dropped when their confirmation
-closes or a battle request is pending; a loaded save reopens a pending battle request or base defense.
+closes or a battle request is pending; a loaded save reopens a pending battle request. A base defense is not saved,
+so saving under it is refused (branch 6 S4).
 `CampaignUiSession` carries the landing and base-defense queries, and `EnterCampaignWorld` passes the
 battle-request gate (it is a no-op once the world has begun).
 

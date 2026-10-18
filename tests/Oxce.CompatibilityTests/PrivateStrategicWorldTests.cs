@@ -73,6 +73,49 @@ public sealed class PrivateStrategicWorldTests
         finally { cacheDirectory.Delete(recursive: true); }
     }
 
+    /// <summary>
+    /// Branch 6 S4: an imported save's soldier diaries and mission statistics are typed as the reference loads them,
+    /// and a rewrite keeps the kill lists, mission IDs and statistics as they were.
+    /// </summary>
+    [Fact]
+    public void ImportedDiariesAndMissionStatisticsAreTypedAndKept()
+    {
+        var installation = TestFixtures.RepositoryPath("artifacts", "private-install");
+        Assert.SkipUnless(File.Exists(Path.Combine(installation, ".oxce-private-install-manifest.json")),
+            "Owned installation is not staged.");
+        var request = InstallationLoadRequest.ForMasterAndAddOn(installation, "xcom1", "-", new("Extended", "8.6.1.0"));
+        var loaded = InstallationContentLoader.Load(request, new() { Cache = new() { Enabled = false } },
+            cancellationToken: TestContext.Current.CancellationToken);
+        Assert.True(loaded.IsSuccess, loaded.DescribeFailure());
+        var options = new OxceSaveLoadOptions(request.MasterId, request.ActiveMods.ToHashSet(StringComparer.Ordinal),
+            new Oxce.Formats.Yaml.YamlReadOptions { MaxBytes = 32 * 1024 * 1024, MaxNodes = 2_000_000 });
+        var path = TestFixtures.RepositoryPath("fixtures", "private", "saves", "vanilla-ufo", "early", "Middle.sav");
+        var imported = OxceSaveAdapter.LoadFile(path, loaded.Content!, new SplitMix64RandomSource(17), options);
+        var snapshot = imported.Campaign.Capture();
+
+        var statistic = Assert.Single(snapshot.MissionStatistics);
+        Assert.Equal(new MissionStatisticSnapshot(0, "STR_LANDING_SITE_", "STR_EUROPE", "STR_UK", "STR_UFO_GROUND_ASSAULT", "STR_MEDIUM_SCOUT",
+            false, -330, 15, false, 1), statistic);
+        var diaries = snapshot.Bases.SelectMany(static b => b.Soldiers).Concat(snapshot.DeadSoldiers.Select(static d => d.Soldier))
+            .Select(static s => s.Personal!.Diary).ToArray();
+        var killer = Assert.Single(diaries, static d => d.Kills.Any(static k => k.Id == 1_000_000));
+        Assert.Equal(new SoldierKill("STR_LIVE_SOLDIER", "STR_SECTOID", "STR_RIFLE", "STR_RIFLE_CLIP", 6, 1, 0, 9, 1, 3)
+            { Type = "STR_SECTOID_SOLDIER", Id = 1_000_000 }, Assert.Single(killer.Kills));
+        Assert.Equal([0], killer.MissionIds);
+        Assert.Equal((1, 1, 6, 1, 1), (killer.Counter("hitCounterTotal"), killer.Counter("lowAccuracyHitCounterTotal"),
+            killer.Counter("shotsFiredCounterTotal"), killer.Counter("shotsLandedCounterTotal"), killer.Counter("killedInAction")));
+
+        // The kill lists, mission IDs and statistics are written back from the source nodes; the writer chooses its
+        // own YAML style, so they are compared after reading them back.
+        var rewritten = OxceSaveAdapter.EmitLoadedCampaign(snapshot, imported.Source);
+        var reparsed = OxceSaveAdapter.Load(rewritten, "rewritten.sav", loaded.Content!, new SplitMix64RandomSource(17), options).Campaign.Capture();
+        Assert.Equivalent(snapshot.MissionStatistics, reparsed.MissionStatistics, strict: true);
+        Assert.Equivalent(snapshot.Bases.SelectMany(static b => b.Soldiers), reparsed.Bases.SelectMany(static b => b.Soldiers), strict: true);
+        Assert.Equivalent(snapshot.DeadSoldiers, reparsed.DeadSoldiers, strict: true);
+        Assert.Contains(reparsed.DeadSoldiers.Select(static d => d.Soldier).Concat(reparsed.Bases.SelectMany(static b => b.Soldiers)),
+            static s => s.Personal!.Diary.Kills.Any(static k => k.Id == 1_000_000));
+    }
+
     private const string ReportStop = "The monthly report is open.";
     private const string TacticalStop = "Active tactical battle is preserved; tactical continuation is unavailable.";
     private const string EventStop = "Strategic event consequences require campaign event execution (Phase 6 branch 6).";

@@ -132,6 +132,16 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         lock (_transactionGate) return _handlers.SaveGate();
     }
 
+    /// <summary>The snapshot to save, taken under the same lock as the refusal check; null with the reason when refused.</summary>
+    public CampaignSnapshot? CaptureForSave(out string? refusal)
+    {
+        lock (_transactionGate)
+        {
+            refusal = _handlers.SaveGate();
+            return refusal is null ? CaptureCore() : null;
+        }
+    }
+
     public CampaignSnapshot Capture()
     {
         lock (_transactionGate) return CaptureCore();

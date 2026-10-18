@@ -126,6 +126,62 @@ public sealed class StrategicMonthlyCycleTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CommendationsReadProjectedItemsResearchAndSoldierTypes(bool unlocked)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], """
+            defeatScore: -100000
+            items:
+              - type: TEST_LASER_GUN
+                battleType: 1
+                compatibleAmmo: [TEST_LASER_CELL]
+              - type: TEST_LASER_CELL
+                battleType: 2
+                damageType: 4
+            commendations:
+              - type: STR_LASER_KILLS
+                criteria: {killsWithCriteriaCareer: [1, 2]}
+                killCriteria:
+                  - - [1, [BT_FIREARM, DT_LASER]]
+                units: [RECRUIT]
+              - type: STR_LOCKED
+                criteria: {totalMonthlyService: [1]}
+                requires: [UNLOCK]
+              - type: STR_NONE_TRAP
+                criteria: {totalTrapKills: [1]}
+            """, extraRulesAfterOverlays: true);
+        var snapshot = CreateSnapshot(content, "Kill medals");
+        var owner = snapshot.Bases[0];
+        var veteran = owner.Soldiers[0];
+        // A laser kill on X-COM's turn, and a hostile-turn kill with STR_NONE, which Mod::getItem names no item.
+        var diary = new SoldierDiaryState
+        {
+            Kills = [new SoldierKill("STR_LIVE_SOLDIER", "STR_SECTOID", "TEST_LASER_GUN", "TEST_LASER_CELL", SoldierKill.StatusDead,
+                    SoldierKill.FactionHostile, 1, 3, 0, 1),
+                new SoldierKill("STR_LIVE_SOLDIER", "STR_SECTOID", "STR_NONE", "", SoldierKill.StatusDead, SoldierKill.FactionHostile, 1, 4, 0, 1)],
+        };
+        snapshot = snapshot with
+        {
+            Time = MonthEnd,
+            CompletedResearch = unlocked ? ["UNLOCK"] : [],
+            Bases = [owner with { Soldiers = [veteran with { Personal = veteran.Personal! with { Diary = diary } }, .. owner.Soldiers.Skip(1)] },
+                .. snapshot.Bases.Skip(1)],
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(5));
+        campaign.Execute(new AdvanceCampaignTime(1));
+
+        var awards = Assert.Single(campaign.Execute(new AcknowledgeMonthlyReport()).Events.OfType<SoldiersCommended>()).Awards;
+
+        List<CommendationAward> expected = [new(veteran.Id, "STR_LASER_KILLS", "noNoun", 0)];
+        if (unlocked) expected.Add(new(veteran.Id, "STR_LOCKED", "noNoun", 0));
+        expected.Add(new(veteran.Id, "STR_NONE_TRAP", "noNoun", 0));
+        if (unlocked) expected.AddRange(owner.Soldiers.Skip(1).Select(static s => new CommendationAward(s.Id, "STR_LOCKED", "noNoun", 0)));
+        Assert.Equal(expected, awards);
+        Reload(content, campaign, 5, "kill-medals.sav");
+    }
+
+    [Theory]
     [InlineData(false, true, CampaignSaveKind.Autosave)]
     [InlineData(false, false, null)]
     [InlineData(true, false, CampaignSaveKind.Ironman)]

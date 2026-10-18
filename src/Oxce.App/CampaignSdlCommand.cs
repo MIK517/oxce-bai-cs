@@ -94,7 +94,7 @@ internal static class CampaignSdlCommand
         void Save()
         {
             // D2: a pending acknowledgement with gameplay effects cannot be saved; the save is skipped.
-            if (campaign.QuerySaveRefusal() is { } refusal)
+            if (campaign.CaptureForSave(out var refusal) is not { } snapshot)
             {
                 Console.Error.WriteLine($"The campaign was not saved: {refusal}");
                 return;
@@ -102,8 +102,8 @@ internal static class CampaignSdlCommand
             // SavedGame keeps where the globe looked.
             var view = client!.CurrentView;
             var options = new OxceSaveWriteOptions { GlobeView = new(view.Longitude, view.Latitude, view.Zoom) };
-            if (source is null) OxceSaveAdapter.WriteNewCampaignAtomic(savePath!, campaign.Capture(), options);
-            else OxceSaveAdapter.RewriteLoadedCampaignAtomic(savePath!, campaign.Capture(), source, options);
+            if (source is null) OxceSaveAdapter.WriteNewCampaignAtomic(savePath!, snapshot, options);
+            else OxceSaveAdapter.RewriteLoadedCampaignAtomic(savePath!, snapshot, source, options);
         }
 
         static void PrintWarnings(DiagnosticCollector diagnostics)
