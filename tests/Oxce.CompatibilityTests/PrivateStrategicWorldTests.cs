@@ -117,17 +117,17 @@ public sealed class PrivateStrategicWorldTests
     }
 
     /// <summary>
-    /// Branch 6 S8: every staged save plays three months at the one-day speed, a headless player answering every
-    /// window, saved and reloaded after every monthly report. Each month keeps the ledger's histories aligned and at most
-    /// twelve entries long, the countries' and regions' activity bounded, and the world's populations bounded; the
-    /// measured month and save/reload costs are recorded in artifacts/private-campaign-cycle-measurements.json.
+    /// Branch 6 S8: every staged save plays up to three months at the one-day speed, a headless player answering every
+    /// window, saved and reloaded (and checked equivalent) after every monthly report. Each month every history grows by
+    /// one up to twelve, and the world's populations stay bounded. The month tick is timed on its own; the measurements
+    /// go to artifacts/private-campaign-cycle-measurements.json.
     /// </summary>
     [Fact]
     public void ImportedCampaignsPlayThreeMonthsAcrossReloadsAtEveryReport()
     {
         var installation = TestFixtures.RepositoryPath("artifacts", "private-install");
-        Assert.SkipUnless(File.Exists(Path.Combine(installation, ".oxce-private-install-manifest.json")),
-            "Owned installation is not staged.");
+        Assert.SkipUnless(File.Exists(Path.Combine(installation, ".oxce-private-install-manifest.json")) &&
+            Directory.Exists(TestFixtures.RepositoryPath("fixtures", "private", "saves")), "Owned installation or saves are not staged.");
         var cacheDirectory = Directory.CreateTempSubdirectory("oxce-private-cycle-cache-");
         List<object> measurements = [];
         try
@@ -150,37 +150,55 @@ public sealed class PrivateStrategicWorldTests
                 {
                     var name = Path.GetRelativePath(directory, file).Replace('\\', '/');
                     if (name.StartsWith("battlescape/", StringComparison.Ordinal)) continue;
+                    var label = family + "/" + name;
                     var imported = OxceSaveAdapter.LoadFile(file, content, new SplitMix64RandomSource(17), options);
                     var campaign = imported.Campaign;
                     var source = imported.Source;
+                    var previous = campaign.Capture();
                     var months = 0;
                     string? stop = null;
-                    List<double> dayMilliseconds = [], monthMilliseconds = [], reloadMilliseconds = [];
-                    while (months < 3 && stop is null)
+                    List<object> reports = [];
+                    List<double> tickMicroseconds = [], monthTickMilliseconds = [], reloadMilliseconds = [];
+                    for (var step = 0; months < 3 && stop is null; step++)
                     {
+                        Assert.True(step < 20_000, label + ": the campaign stopped making progress.");
+                        // Up to the last tick before the month boundary, then the month tick on its own.
+                        var time = campaign.Time;
+                        var days = time.Month switch
+                        {
+                            2 when time.Year % 4 == 0 && (time.Year % 100 != 0 || time.Year % 400 == 0) => 29,
+                            2 => 28,
+                            4 or 6 or 9 or 11 => 30,
+                            _ => 31,
+                        };
+                        var toMonth = ((days - time.Day) * 86400 + 86400 - (time.Hour * 3600 + time.Minute * 60 + time.Second)) / 5;
+                        var count = toMonth <= 1 ? 1 : Math.Min(17280, toMonth - 1);
                         var watch = System.Diagnostics.Stopwatch.StartNew();
-                        var result = campaign.Execute(new AdvanceCampaignTime(17280) { SelectedSpeed = CampaignTimeSpeed.OneDay });
+                        var result = campaign.Execute(new AdvanceCampaignTime(count) { SelectedSpeed = CampaignTimeSpeed.OneDay });
                         var elapsed = watch.Elapsed.TotalMilliseconds;
-                        var report = result.Events.OfType<MonthlyReportReady>().Any();
-                        (report ? monthMilliseconds : dayMilliseconds).Add(elapsed);
-                        if (result.Events.OfType<CampaignActionBlocked>().SingleOrDefault()?.Reason is { } reason &&
-                            !AnswerBranchFiveChoices(campaign, reason))
+                        var advanced = result.Events.OfType<CampaignTimeAdvanced>().SingleOrDefault()?.Summary.TickCount ?? 0;
+                        var report = result.Events.OfType<MonthlyReportReady>().SingleOrDefault()?.Report;
+                        if (report is not null && count == 1) monthTickMilliseconds.Add(elapsed);
+                        else if (advanced > 0) tickMicroseconds.Add(elapsed * 1000 / advanced);
+                        var reason = result.Events.OfType<CampaignActionBlocked>().SingleOrDefault()?.Reason;
+                        Assert.True(advanced > 0 || reason is not null, label + " neither advanced nor stopped.");
+                        if (reason is not null && !AnswerBranchFiveChoices(campaign, reason))
                         {
                             stop = reason;
                             break;
                         }
-                        if (campaign.Ending != 0) stop = "ended";
-                        if (!report) continue;
+                        if (report is null) continue;
                         // Answer the report (and the rest of its tick's windows), then save and reload the campaign.
-                        while (campaign.GetQuery<ICampaignMonthlyReportQuery>()!.QueryMonthlyReport() is not null ||
-                               campaign.GetQuery<ICampaignEventWindowQuery>()!.QueryEventWindows().Count != 0)
+                        while (campaign.Ending == 0 && (campaign.GetQuery<ICampaignMonthlyReportQuery>()!.QueryMonthlyReport() is not null ||
+                               campaign.GetQuery<ICampaignEventWindowQuery>()!.QueryEventWindows().Count != 0))
                         {
                             var blocked = campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<CampaignActionBlocked>().Single().Reason;
-                            Assert.True(AnswerBranchFiveChoices(campaign, blocked), $"{family}/{name}: {blocked}");
+                            Assert.True(AnswerBranchFiveChoices(campaign, blocked), label + ": " + blocked);
                         }
                         months++;
-                        AssertMonthInvariants(campaign.Capture(), $"{family}/{name} month {months}");
-                        // A headless player that never fights can lose the council's confidence (two bad months).
+                        reports.Add(new { report.Month, report.Rating, report.GameOver });
+                        var after = campaign.Capture();
+                        AssertMonthInvariants(previous, after, label + " month " + months);
                         if (campaign.Ending != 0)
                         {
                             stop = "ended " + campaign.Ending.ToString(System.Globalization.CultureInfo.InvariantCulture);
@@ -188,51 +206,65 @@ public sealed class PrivateStrategicWorldTests
                         }
                         watch.Restart();
                         var snapshot = campaign.CaptureForSave(out var refusal);
-                        Assert.True(snapshot is not null, $"{family}/{name}: {refusal}");
+                        Assert.True(snapshot is not null, label + ": " + refusal);
                         var saved = OxceSaveAdapter.EmitLoadedCampaign(snapshot, source);
                         var reloaded = OxceSaveAdapter.Load(saved, name, content, new SplitMix64RandomSource(17), options);
                         reloadMilliseconds.Add(watch.Elapsed.TotalMilliseconds);
+                        // The month's state, its new missions, events and logs, survives the save.
+                        Assert.Equivalent(snapshot, reloaded.Campaign.Capture(), strict: true);
                         campaign = reloaded.Campaign;
                         source = reloaded.Source;
+                        previous = after;
                     }
+                    // A month at least, then three months or the council's verdict; nothing else may stop a campaign.
+                    Assert.True(months >= 1, label + ": no month was played.");
+                    Assert.True(stop is null or "ended 2", label + ": " + stop);
                     measurements.Add(new
                     {
-                        Family = family,
-                        Save = name,
-                        Months = months,
-                        Stop = stop ?? "three months",
-                        DayCommandMs = Median(dayMilliseconds),
-                        MonthCommandMs = Median(monthMilliseconds),
-                        SaveAndReloadMs = Median(reloadMilliseconds),
+                        Family = family, Save = name, Months = months, Stop = stop ?? "three months", Reports = reports,
+                        TickMicroseconds = Median(tickMicroseconds), MonthTickMilliseconds = Median(monthTickMilliseconds),
+                        MonthTicks = monthTickMilliseconds.Count, SaveAndReloadMilliseconds = Median(reloadMilliseconds),
+                        Reloads = reloadMilliseconds.Count,
                     });
                 }
             }
-        }
-        finally
-        {
-            cacheDirectory.Delete(recursive: true);
+            // The 19 staged saves: 11 play their months (positive), none is blocked, 8 battles stay preservation-only.
+            Assert.Equal(11, measurements.Count);
             var record = TestFixtures.RepositoryPath("artifacts", "private-campaign-cycle-measurements.json");
             Directory.CreateDirectory(Path.GetDirectoryName(record)!);
             File.WriteAllText(record, JsonSerializer.Serialize(measurements, IndentedJson));
         }
+        finally { cacheDirectory.Delete(recursive: true); }
 
+        // The lower middle, so that one sample of two (often JIT warm-up) does not decide.
         static double Median(List<double> values) =>
-            values.Count == 0 ? 0 : Math.Round(values.Order().ElementAt(values.Count / 2), 1);
+            values.Count == 0 ? 0 : Math.Round(values.Order().ElementAt((values.Count - 1) / 2), 1);
     }
 
-    /// <summary>SavedGame's twelve-month graphs and the world's bounded populations after a month.</summary>
-    private static void AssertMonthInvariants(CampaignSnapshot after, string label)
+    /// <summary>
+    /// SavedGame::monthlyFunding, Country::newMonth and Region::newMonth: every history grows by one month and keeps the
+    /// last twelve; the world's populations stay bounded.
+    /// </summary>
+    private static void AssertMonthInvariants(CampaignSnapshot before, CampaignSnapshot after, string label)
     {
-        var length = after.Funds.Count;
-        Assert.True(length is >= 1 and <= 12, $"{label}: {length} months of funds.");
-        Assert.True(new[] { after.Maintenance.Count, after.Incomes.Count, after.Expenditures.Count, after.ResearchScores.Count }
-            .All(count => count == length), $"{label}: the ledger's histories differ in length.");
-        Assert.All(after.Countries, country => Assert.True(country.Funding.Count <= 12 && country.ActivityXcom.Count <= 12 &&
-            country.ActivityAlien.Count <= 12, $"{label}: {country.RuleId} keeps more than twelve months."));
-        Assert.All(after.Regions, region => Assert.True(region.ActivityXcom.Count <= 12 && region.ActivityAlien.Count <= 12,
-            $"{label}: {region.RuleId} keeps more than twelve months."));
+        static int Grown(int count) => Math.Min(count + 1, 12);
+        Assert.True(after.Funds.Count == Grown(before.Funds.Count) && after.Maintenance.Count == Grown(before.Maintenance.Count) &&
+            after.Incomes.Count == Grown(before.Incomes.Count) && after.Expenditures.Count == Grown(before.Expenditures.Count) &&
+            after.ResearchScores.Count == Grown(before.ResearchScores.Count), label + ": the ledger did not grow by one month.");
+        for (var index = 0; index < after.Countries.Count; index++)
+        {
+            var (old, country) = (before.Countries[index], after.Countries[index]);
+            Assert.True(country.Funding.Count == Grown(old.Funding.Count) && country.ActivityXcom.Count == Grown(old.ActivityXcom.Count) &&
+                country.ActivityAlien.Count == Grown(old.ActivityAlien.Count), label + ": " + country.RuleId + " did not grow by one month.");
+        }
+        for (var index = 0; index < after.Regions.Count; index++)
+        {
+            var (old, region) = (before.Regions[index], after.Regions[index]);
+            Assert.True(region.ActivityXcom.Count == Grown(old.ActivityXcom.Count) && region.ActivityAlien.Count == Grown(old.ActivityAlien.Count),
+                label + ": " + region.RuleId + " did not grow by one month.");
+        }
         Assert.True(after.World.Missions.Count < 1_000 && after.World.Ufos.Count < 1_000 && after.World.MissionSites.Count < 1_000 &&
-            after.World.AlienBases.Count < 1_000 && after.World.Events.Count < 1_000, $"{label}: a world population grew without bound.");
+            after.World.AlienBases.Count < 1_000 && after.World.Events.Count < 1_000, label + ": a world population grew without bound.");
     }
 
     private const string ReportStop = "The monthly report is open.";

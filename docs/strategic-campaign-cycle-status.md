@@ -532,17 +532,22 @@ Recorded differences of these text panels (presentation is Phase 8):
 `PrivateStrategicWorldTests.ImportedCampaignsPlayThreeMonthsAcrossReloadsAtEveryReport` plays every staged save
 (battlescape saves stay preservation-only) for up to three months at the one-day speed. A headless player answers every
 window (landings declined, interceptions disengaged, base defenses fired, reports and events acknowledged). After every
-monthly report the campaign is saved and reloaded from its own save document. Each month asserts that the ledger's
-histories are aligned and at most twelve months long (funds, maintenance, incomes, expenditures, research scores),
-that every country's and region's histories are at most twelve months long, and that the world's populations
-(missions, UFOs, sites, alien bases, events) stay bounded.
+monthly report the campaign is saved and reloaded from its own save document, and the reloaded campaign must be
+strictly equivalent to the saved snapshot (missions, events and their history, logs, `warned`, diaries). Each month
+every history grows by one up to twelve (funds, maintenance, incomes, expenditures, research scores, every country's
+funding and activity, every region's activity), and the world's populations stay bounded. A campaign must play at
+least a month and may stop only after three months or on the council's verdict; the test fails on any other stop.
 
-Outcome (one-day speed, seed 17): Rosigma `Begining.sav` plays three months. The passive player loses every other
-campaign through the council at its second or third report (two months rated below the difficulty's threshold), as
-the reference would. Every month and reload kept the invariants. The 19-save closure classification is unchanged (11
-executable, 8 preservation-only, `ImportedWorldContinuationHasEquivalentFreshAndCachedClassifications`). The
+Outcome (one-day speed): Rosigma `Begining.sav` plays three months. The passive player loses every other campaign at
+its second or third report through the rating (`GameOver` 1: two months below the difficulty's threshold; the
+ratings are recorded), as the reference would. The 19 staged saves: 11 play their months (positive), none is blocked,
+8 battles stay preservation-only (also `ImportedWorldContinuationHasEquivalentFreshAndCachedClassifications`). The
 long-horizon stops are pinned by `ImportedWorldRunsToItsNamedLongHorizonStop` and
 `ImportedWorldRunsPastBranchFiveChoicesToItsNextStop` (S3–S5).
+
+Covered elsewhere: the month's funds identity (`monthlyFunding`) by the `strategic-monthly-report` oracle (S3); event
+history across reloads by the equivalence above and the event tests (S5). Reloads happen at reports; the other
+transitions (landings, base defenses, endings) are reloaded by their own tests (branch 5, S5, S6).
 
 Costs: [performance baselines](performance-baselines.md#campaign-cycle-months-branch-6-s8-2026-10-18). The Windows
 SDL3 smoke (`tools/run-sdl-smoke.ps1`) passes.
