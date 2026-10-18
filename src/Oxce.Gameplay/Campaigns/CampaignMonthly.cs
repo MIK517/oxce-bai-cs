@@ -43,6 +43,23 @@ public sealed record AcknowledgeMonthlyReport : ICampaignCommand;
 
 public sealed record MonthlyReportAcknowledged(string? Cutscene) : ICampaignEvent;
 
+/// <summary>One commendation a soldier was given or raised this month, at its new level.</summary>
+public sealed record CommendationAward(int SoldierId, string Commendation, string Noun, int DecorationLevel);
+
+/// <summary>
+/// CommendationState: the soldiers medalled for this month's service, with what each was given. The windows the
+/// acknowledgement opens stack in the order of its events, so the last one (a save) is on top and shows first.
+/// </summary>
+public sealed record SoldiersCommended(IReadOnlyList<CommendationAward> Awards) : ICampaignEvent;
+
+/// <summary>PsiTrainingState: a base has a psi lab and soldiers train only at the month boundary.</summary>
+public sealed record PsiTrainingReminder : ICampaignEvent;
+
+public enum CampaignSaveKind { Autosave, Ironman }
+
+/// <summary>SaveGameState after the monthly report: an ironman save, or an autosave when the option is on.</summary>
+public sealed record CampaignSaveRequested(CampaignSaveKind Kind) : ICampaignEvent;
+
 public interface ICampaignMonthlyReportQuery
 {
     /// <summary>The report waiting for its acknowledgement, or null.</summary>
@@ -67,6 +84,8 @@ public sealed partial class CampaignState : ICampaignMonthlyReportQuery
     private void RegisterMonthlyCycle(CampaignCapabilityRegistry registry)
     {
         registry.Query<ICampaignMonthlyReportQuery>(this);
+        // D2: the report's OK has gameplay effects that a reload would lose, so the campaign cannot be saved under it.
+        registry.SaveGate(() => _monthlyReport is not null ? MonthlyReportOpen : null);
         registry.Command<AcknowledgeMonthlyReport>(_ => AcknowledgeReport());
         // A modal popup: nothing but its OK reaches the campaign while it is open. Time refuses in its preflight, as
         // for the other windows, so it still reports that no tick ran.
@@ -188,15 +207,71 @@ public sealed partial class CampaignState : ICampaignMonthlyReportQuery
     {
         if (_monthlyReport is not { } report) return Blocked("No monthly report is open.");
         _monthlyReport = null;
-        if (report.GameOver == 0) return new([new MonthlyReportAcknowledged(null)]);
-        var monthly = _content.RuntimeRules.Campaign.Monthly;
-        var cutscene = report.GameOver == 1 ? monthly.LoseRatingCutscene : monthly.LoseMoneyCutscene;
-        // Mod::getVideo throws for an undefined cutscene; the port plays nothing and play goes on (ADR 0036).
-        if (!_content.RuntimeRules.Campaign.Cutscenes.TryGetValue(cutscene, out var video))
-            return new([new MonthlyReportAcknowledged(null)]);
-        if (!video.LoseGame) return new([new MonthlyReportAcknowledged(cutscene)]);
-        EndCampaign(2);
-        return new([new MonthlyReportAcknowledged(cutscene), new CampaignEnded(2)]);
+        var ironman = Identity.Ironman;
+        if (report.GameOver != 0)
+        {
+            var monthly = _content.RuntimeRules.Campaign.Monthly;
+            var cutscene = report.GameOver == 1 ? monthly.LoseRatingCutscene : monthly.LoseMoneyCutscene;
+            List<ICampaignEvent> ended = [];
+            // Mod::getVideo throws for an undefined cutscene; the port plays nothing and play goes on (ADR 0036).
+            if (!_content.RuntimeRules.Campaign.Cutscenes.TryGetValue(cutscene, out var video)) ended.Add(new MonthlyReportAcknowledged(null));
+            else
+            {
+                ended.Add(new MonthlyReportAcknowledged(cutscene));
+                if (video.LoseGame)
+                {
+                    EndCampaign(2);
+                    ended.Add(new CampaignEnded(2));
+                }
+            }
+            if (ironman) ended.Add(new CampaignSaveRequested(CampaignSaveKind.Ironman));
+            return new(ended);
+        }
+
+        List<ICampaignEvent> events = [new MonthlyReportAcknowledged(null)];
+        // Medals for service time: every soldier at a base, in base and soldier order.
+        var inputs = CommendationInputs();
+        List<CommendationAward> awards = [];
+        var commendations = new List<SoldierCommendation>();
+        foreach (var owner in _bases)
+        {
+            for (var index = 0; index < owner.Soldiers.Count; index++)
+            {
+                var soldier = owner.Soldiers[index];
+                if (soldier.Personal is not { } personal) continue;
+                var diary = personal.Diary;
+                personal = personal with { Diary = diary.WithCounter("monthsService", unchecked(diary.Counter("monthsService") + 1)) };
+                commendations.Clear();
+                commendations.AddRange(personal.Commendations);
+                var type = _content.RuntimeRules.Soldiers.GetExternalId(soldier.Rule);
+                if (SoldierCommendations.Manage(type, personal, commendations, inputs))
+                {
+                    awards.AddRange(commendations.Where(commendation => !personal.Commendations.Contains(commendation))
+                        .Select(commendation => new CommendationAward(soldier.Id, commendation.RuleId, commendation.Noun, commendation.DecorationLevel)));
+                    personal = personal with { Commendations = commendations.ToArray().AsReadOnly() };
+                }
+                owner.Soldiers[index] = soldier with { Personal = personal };
+            }
+        }
+        if (awards.Count != 0) events.Add(new SoldiersCommended(awards));
+        if (!Options.AnytimePsiTraining && _bases.Any(owner => AvailablePsi(owner) > 0)) events.Add(new PsiTrainingReminder());
+        if (ironman) events.Add(new CampaignSaveRequested(CampaignSaveKind.Ironman));
+        else if (Options.Autosave) events.Add(new CampaignSaveRequested(CampaignSaveKind.Autosave));
+        return new(events);
+    }
+
+    private CommendationInputs? _commendationInputs;
+
+    private CommendationInputs CommendationInputs()
+    {
+        var rules = _content.RuntimeRules;
+        var ordered = _commendationInputs?.Commendations ?? [.. rules.Commendations.Rules
+            .OrderBy(static rule => Encoding.UTF8.GetBytes(rule.Id), Comparer<byte[]>.Create(static (left, right) => left.AsSpan().SequenceCompareTo(right)))
+            .Select(static rule => (rule.Id, rule.Value))];
+        return _commendationInputs = new(ordered, research => research.All(_completedResearch.Contains), MissionStatistics,
+            id => rules.Items.TryGet(id, out var handle) && rules.Items[handle].Value is var item
+                ? new CommendationItem(item.BattleType, item.Damage.ResistType, item.MeleeDamage.ResistType) : null,
+            rules.Campaign.MaximumDarknessToSeeUnits);
     }
 
     // The countries of the report being evaluated: Country::newMonth sets its pact at once, so a later country's

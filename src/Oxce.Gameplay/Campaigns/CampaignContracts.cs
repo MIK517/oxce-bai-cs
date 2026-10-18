@@ -223,6 +223,8 @@ public sealed record CampaignSnapshot(
     public bool DebugMode { get; init; }
     /// <summary>SavedGame::_warned: the monthly report has warned about funds at or below defeatFunds.</summary>
     public bool Warned { get; init; }
+    /// <summary>SavedGame::_missionStatistics, in save order.</summary>
+    public IReadOnlyList<MissionStatisticSnapshot> MissionStatistics { get; init; } = [];
     public CampaignOptions Options { get; init; } = new();
     public WorldSnapshot World { get; init; } = WorldSnapshot.Empty;
 

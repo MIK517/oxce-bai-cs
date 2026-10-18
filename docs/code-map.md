@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 186 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 188 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 95 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 5 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 315 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 316 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 101 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -336,7 +336,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 186 files.
+`src/Oxce.Gameplay` - 188 files.
 
 ### `Oxce.Gameplay`
 
@@ -403,6 +403,11 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `MonthlyReportReady` (record) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs) - The month rolled over and the report is waiting for its acknowledgement.
 - `AcknowledgeMonthlyReport` (record) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs) - MonthlyReportState::btnOkClick.
 - `MonthlyReportAcknowledged` (record) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs)
+- `CommendationAward` (record) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs) - One commendation a soldier was given or raised this month, at its new level.
+- `SoldiersCommended` (record) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs) - CommendationState: the soldiers medalled for this month's service, with what each was given.
+- `PsiTrainingReminder` (record) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs) - PsiTrainingState: a base has a psi lab and soldiers train only at the month boundary.
+- `CampaignSaveKind` (enum) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs)
+- `CampaignSaveRequested` (record) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs) - SaveGameState after the monthly report: an ironman save, or an autosave when the option is on.
 - `ICampaignMonthlyReportQuery` (interface) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs)
 - `CampaignState` (class) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs)
 - `SetSoldierTraining` (record) [CampaignPersonnel.cs](../src/Oxce.Gameplay/Campaigns/CampaignPersonnel.cs)
@@ -512,6 +517,9 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `MonthlySatisfaction` (enum) [MonthlyCycle.cs](../src/Oxce.Gameplay/Campaigns/MonthlyCycle.cs) - Country::Satisfaction, with the reference's script values.
 - `ProductionProgress` (class) [ProductionProgress.cs](../src/Oxce.Gameplay/Campaigns/ProductionProgress.cs) - Production::getAmountProduced and the completion count at Production::step.
 - `ResearchItemLifecycle` (class) [ResearchItemLifecycle.cs](../src/Oxce.Gameplay/Campaigns/ResearchItemLifecycle.cs) - Needed-item return at Base::removeResearch, before corpse recovery.
+- `SoldierKill` (record) [SoldierDiary.cs](../src/Oxce.Gameplay/Campaigns/SoldierDiary.cs) - BattleUnitKills: one entry of a soldier's kill list.
+- `SoldierDiaryState` (record) [SoldierDiary.cs](../src/Oxce.Gameplay/Campaigns/SoldierDiary.cs) - SoldierDiary's counters, kill list and mission IDs, which commendations read.
+- `MissionStatisticSnapshot` (record) [SoldierDiary.cs](../src/Oxce.Gameplay/Campaigns/SoldierDiary.cs) - MissionStatistics: one finished battle in the save's `missionStatistics`, as commendations read it.
 - `SoldierCommendation` (record) [SoldierGeneration.cs](../src/Oxce.Gameplay/Campaigns/SoldierGeneration.cs)
 - `SoldierPersonalState` (record) [SoldierGeneration.cs](../src/Oxce.Gameplay/Campaigns/SoldierGeneration.cs)
 - `SoldierDogfightExperience` (record) [SoldierGeneration.cs](../src/Oxce.Gameplay/Campaigns/SoldierGeneration.cs) - The interception stat gains a pilot earned today (firing, reactions, bravery).
@@ -925,7 +933,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RuntimeSoldierRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
 - `RuntimeSoldierBonusRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
 - `RuntimeSoldierTransformationRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
-- `RuntimeCommendationRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeCommendationRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs) - RuleCommendations as SoldierDiary::manageCommendations reads it: `Criteria` in std::map (UTF-8 byte) order, the kill criteria's OR groups...
 - `RuntimeStartingFacility` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
 - `RuntimeStartingCraft` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
 - `RuntimeStartingSoldier` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
@@ -1165,7 +1173,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 315 files.
+`tests/Oxce.CompatibilityTests` - 316 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1173,7 +1181,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>312 test classes</summary>
+<details><summary>313 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1236,6 +1244,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicBaseAttackTests` ([StrategicBaseAttackTests.cs](../tests/Oxce.CompatibilityTests/StrategicBaseAttackTests.cs))
 - `StrategicBaseDefenseOracleTests` ([StrategicBaseDefenseOracleTests.cs](../tests/Oxce.CompatibilityTests/StrategicBaseDefenseOracleTests.cs))
 - `StrategicCampaignCycleRulesTests` ([StrategicCampaignCycleRulesTests.cs](../tests/Oxce.CompatibilityTests/StrategicCampaignCycleRulesTests.cs))
+- `StrategicCommendationOracleTests` ([StrategicCommendationOracleTests.cs](../tests/Oxce.CompatibilityTests/StrategicCommendationOracleTests.cs))
 - `StrategicDogfightOracleTests` ([StrategicDogfightOracleTests.cs](../tests/Oxce.CompatibilityTests/StrategicDogfightOracleTests.cs))
 - `StrategicEventSchedulingTests` ([StrategicEventSchedulingTests.cs](../tests/Oxce.CompatibilityTests/StrategicEventSchedulingTests.cs))
 - `StrategicEventScriptTests` ([StrategicEventScriptTests.cs](../tests/Oxce.CompatibilityTests/StrategicEventScriptTests.cs))
@@ -1754,6 +1763,7 @@ A test is listed when it names the manifest id or its expected file.
 | [strategic-alien-base-hunt-timer](../fixtures/manifests/strategic-alien-base-hunt-timer.json) | cpp-reference | `savegames/strategic-alien-base-hunt-timer.expected.json` | `StrategicObjectiveBaseSpawnTests` ([StrategicObjectiveBaseSpawnTests.cs](../tests/Oxce.CompatibilityTests/StrategicObjectiveBaseSpawnTests.cs))<br>`StrategicWorldAlienBaseHuntingTests` ([StrategicWorldAlienBaseHuntingTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldAlienBaseHuntingTests.cs))<br>`StrategicWorldSiteResearchBaseTests` ([StrategicWorldSiteResearchBaseTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteResearchBaseTests.cs)) |
 | [strategic-alien-base-monthly](../fixtures/manifests/strategic-alien-base-monthly.json) | cpp-reference | `savegames/strategic-alien-base-monthly.expected.json` | `StrategicWorldAlienBaseMonthlyTests` ([StrategicWorldAlienBaseMonthlyTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldAlienBaseMonthlyTests.cs)) |
 | [strategic-base-defense](../fixtures/manifests/strategic-base-defense.json) | cpp-reference | `savegames/strategic-base-defense.expected.json` | `StrategicBaseDefenseOracleTests` ([StrategicBaseDefenseOracleTests.cs](../tests/Oxce.CompatibilityTests/StrategicBaseDefenseOracleTests.cs)) |
+| [strategic-commendations](../fixtures/manifests/strategic-commendations.json) | cpp-reference | `savegames/strategic-commendations.expected.json` | `StrategicCommendationOracleTests` ([StrategicCommendationOracleTests.cs](../tests/Oxce.CompatibilityTests/StrategicCommendationOracleTests.cs)) |
 | [strategic-crashed-ufo](../fixtures/manifests/strategic-crashed-ufo.json) | cpp-reference | `savegames/strategic-crashed-ufo.expected.json` | `StrategicWorldCrashedUfoTests` ([StrategicWorldCrashedUfoTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldCrashedUfoTests.cs))<br>`StrategicWorldPassiveLeaderFollowerTests` ([StrategicWorldPassiveLeaderFollowerTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldPassiveLeaderFollowerTests.cs)) |
 | [strategic-detection-damage](../fixtures/manifests/strategic-detection-damage.json) | cpp-reference | `savegames/strategic-detection-damage.expected.json` | `StrategicProductionPriceMetadataTests` ([StrategicProductionPriceDamageTests.cs](../tests/Oxce.CompatibilityTests/StrategicProductionPriceDamageTests.cs))<br>`StrategicWorldDetectionItemRulesTests` ([StrategicWorldDetectionItemRulesTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionItemRulesTests.cs))<br>`StrategicWorldDetectionTextLookupTests` ([StrategicWorldDetectionTextLookupTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionTextLookupTests.cs))<br>`StrategicWorldEnduranceTests` ([StrategicWorldEnduranceTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldEnduranceTests.cs)) |
 | [strategic-detection-inventory-cost](../fixtures/manifests/strategic-detection-inventory-cost.json) | cpp-reference | `savegames/strategic-detection-inventory-cost.expected.json` | `StrategicProductionPriceMetadataTests` ([StrategicProductionPriceInventoryTests.cs](../tests/Oxce.CompatibilityTests/StrategicProductionPriceInventoryTests.cs))<br>`StrategicWorldDetectionInventoryRulesTests` ([StrategicWorldDetectionInventoryRulesTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionInventoryRulesTests.cs))<br>`StrategicWorldDetectionTextLookupTests` ([StrategicWorldDetectionTextLookupTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionTextLookupTests.cs)) |

@@ -93,6 +93,12 @@ internal static class CampaignSdlCommand
 
         void Save()
         {
+            // D2: a pending acknowledgement with gameplay effects cannot be saved; the save is skipped.
+            if (campaign.QuerySaveRefusal() is { } refusal)
+            {
+                Console.Error.WriteLine($"The campaign was not saved: {refusal}");
+                return;
+            }
             // SavedGame keeps where the globe looked.
             var view = client!.CurrentView;
             var options = new OxceSaveWriteOptions { GlobeView = new(view.Longitude, view.Latitude, view.Zoom) };

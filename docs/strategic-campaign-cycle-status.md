@@ -292,3 +292,40 @@ open (a game-over report then escapes on reload) is refused in S4; the app does 
 (`MonthlyReportReady`) or model `timerReset()` before `monthlyFunding`, which is S7. Not changed: the private test
 classes set the production bounds in their constructors, which relies on xUnit carrying the constructor's
 execution context into the test; a class that forgets it runs with fixture bounds and stops at a work limit.
+
+## S4 — Acknowledgement effects (2026-10-18)
+
+`MonthlyReportState::btnOkClick` now runs on `AcknowledgeMonthlyReport` (D2, D3):
+
+- Every soldier at a base, in base and soldier order, gains a month of service (`SoldierDiary::addMonthlyService`)
+  and then its commendations (`manageCommendations`). `SoldiersCommended` lists what each soldier was given or
+  raised to (CommendationState). Soldier bonuses follow from the commendation levels, as before.
+- `PsiTrainingReminder` follows when a base has a finished psi lab and `anytimePsiTraining` is off.
+- `CampaignSaveRequested` asks for an ironman save, or an autosave when the option is on. The windows stack in event
+  order, so the save shows first. A failed month gives no service; it plays its cutscene and then requests the ironman
+  save in an ironman campaign.
+- `CampaignState.QuerySaveRefusal` names the pending acknowledgement that forbids saving (capabilities register
+  `SaveGate`). The open monthly report does; the SDL host skips its exit save and says why. The message window is
+  S7.
+
+Data:
+
+- `SoldierPersonalState.Diary` types the diary's counters (as `SoldierDiary::save` names them, the two flags as 0
+  or 1), its kill list and its mission IDs; `CampaignSnapshot.MissionStatistics` types the save's
+  `missionStatistics`. Saves write the counters as the reference does (non-zero only) and keep the kill list, the
+  mission IDs and the statistics from the source, since only battles (Phase 7) change them.
+- Commendation rules project their criteria (std::map order), kill criteria, mission filters, `requires` and `units`.
+  Content compiler/cache revision 73.
+
+`SoldierCommendations` ports `manageCommendations` and every total it reads: the criteria without nouns (including
+friendly fire failing for the dead or missing, unknown names passing, and statistics loops counting a repeated
+mission ID again), the four noun criteria in byte order of their nouns, and the career, mission and turn kill criteria
+with rank, race, weapon, ammo, status, faction, side, body part, battle-type and damage-type details. The
+`strategic-commendations` oracle (`tools/capture-strategic-commendations-reference.ps1`) compiles the reference
+methods verbatim over 9 scenarios, and `StrategicCommendationOracleTests` replays them all. A commendation awarded
+repeatedly in one call (several levels at once) is pinned there. The paths the reference leaves undefined (no
+criteria, a level past the list, a kill without a span, an absent kill field) are recorded in ADR 0036.
+
+Tests: `StrategicCommendationOracleTests`; `StrategicMonthlyCycleTests` (service, a commendation for every soldier,
+the psi reminder, the autosave and the save refusal, with a save round trip; ironman, autosave and no save
+requests; a failed ironman month requesting its save without service).

@@ -442,7 +442,16 @@ public static class RuntimeRuleLinker
                     new ReadOnlyDictionary<string, IReadOnlyDictionary<string, short>>(rule.Value.StatSets.ToDictionary(
                         pair => pair.Key, pair => pair.Value.Values, StringComparer.Ordinal)), rule.Value.Events)),
             BuildFamily<CommendationRuleFamily, CommendationRule, RuntimeCommendationRule>(generation,
-                content.PersonnelTactical.Commendations, rule => new(rule.Value.SoldierBonusTypes)),
+                content.PersonnelTactical.Commendations, rule => new(rule.Value.SoldierBonusTypes)
+                {
+                    Criteria = Array.AsReadOnly(rule.Value.Criteria
+                        .OrderBy(static pair => Encoding.UTF8.GetBytes(pair.Key), Utf8ByteOrder).ToArray()),
+                    KillCriteria = rule.Value.KillCriteria,
+                    MissionMarkers = rule.Value.MissionMarkers,
+                    MissionTypes = rule.Value.MissionTypes,
+                    Requires = rule.Value.Requirements,
+                    Units = rule.Value.Units,
+                }),
             IdentityFamily<SkillRuleFamily, SkillRule>(generation, content.PersonnelTactical.Skills),
             BuildFamily<ResearchRuleFamily, ResearchRule, RuntimeResearchRule>(generation,
                 content.EquipmentProduction.Research, rule => new(

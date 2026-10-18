@@ -108,6 +108,7 @@ internal sealed class CampaignCapabilityRegistry
     private readonly Dictionary<Type, object> _queries = [];
     private readonly Dictionary<Type, object> _operations = [];
     private readonly List<Func<ICampaignCommand, CampaignCommandResult?>> _commandGates = [];
+    private readonly List<Func<string?>> _saveGates = [];
     private readonly List<CampaignStagePoint> _stagePoints = [];
     private readonly List<CampaignTransientCopy> _transients = [];
 
@@ -131,6 +132,13 @@ internal sealed class CampaignCapabilityRegistry
     {
         ArgumentNullException.ThrowIfNull(gate);
         _commandGates.Add(gate);
+    }
+
+    /// <summary>A check before the campaign is saved; a reason refuses the save (D2: a pending acknowledgement).</summary>
+    public void SaveGate(Func<string?> gate)
+    {
+        ArgumentNullException.ThrowIfNull(gate);
+        _saveGates.Add(gate);
     }
 
     public void Preflight(int order, string name, CampaignTimePreflight check)
@@ -227,6 +235,7 @@ internal sealed class CampaignCapabilityRegistry
         _queries.ToFrozenDictionary(),
         _operations.ToFrozenDictionary(),
         [.. _commandGates],
+        [.. _saveGates],
         [.. _stagePoints],
         [.. _transients]);
 
@@ -270,6 +279,7 @@ internal sealed class CampaignHandlerTable(
     FrozenDictionary<Type, object> queries,
     FrozenDictionary<Type, object> operations,
     Func<ICampaignCommand, CampaignCommandResult?>[] commandGates,
+    Func<string?>[] saveGates,
     CampaignStagePoint[] stagePoints,
     CampaignTransientCopy[] transients)
 {
@@ -299,6 +309,13 @@ internal sealed class CampaignHandlerTable(
     }
 
     /// <summary>The first gate refusal for the command, or null.</summary>
+    public string? SaveGate()
+    {
+        foreach (var gate in saveGates)
+            if (gate() is { } reason) return reason;
+        return null;
+    }
+
     public CampaignCommandResult? CommandGate(ICampaignCommand command)
     {
         foreach (var gate in commandGates)
