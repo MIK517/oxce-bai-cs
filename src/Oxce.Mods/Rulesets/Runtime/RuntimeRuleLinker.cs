@@ -760,7 +760,15 @@ public static class RuntimeRuleLinker
                 Battle = new RuntimeDeploymentBattle(source.Integers["width"], source.Integers["length"],
                     source.Integers["height"], source.Integers["turnLimit"], source.Integers["chronoTrigger"],
                     source.Integers["cheatTurn"], source.Integers["shade"], source.Integers["minShade"],
-                    source.Integers["maxShade"]),
+                    source.Integers["maxShade"])
+                {
+                    Terrains = Array.AsReadOnly(source.Terrains.ToArray()),
+                    MapScript = source.Strings["script"],
+                    MapScripts = Array.AsReadOnly(source.MapScripts.ToArray()),
+                    MinimumDepth = source.Depth.Count > 0 ? source.Depth[0] : 0,
+                    MaximumDepth = source.Depth.Count > 1 ? source.Depth[1] : 0,
+                    CustomUfo = source.Strings["customUfo"],
+                },
             };
         }
 

@@ -1,3 +1,4 @@
+using Oxce.Gameplay.Battles.Terrain;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 
@@ -28,7 +29,15 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
     internal static readonly CampaignReason NoBattleDeployment = new("battle.no-deployment",
         "The deployment request names no alien deployment to generate a battle from.");
 
+    internal static readonly CampaignReason NoTerrainFiles = new("battle.no-terrain-files",
+        "Battle generation needs the installation's terrain files, which the host has not attached.");
+
+    /// <summary>Code of the reasons generation stops with (the reference throws or crashes there).</summary>
+    internal const string GenerationFailedCode = "battle.generation-failed";
+
     private BattleState? _battle;
+    private BattleTerrainLoader? _loader;
+    private IBattleTerrainFiles? _loaderFiles;
 
     public void Register(CampaignCapabilityRegistry registry)
     {
@@ -50,7 +59,24 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         if (handOver.PendingDeploymentRequest is not { } request)
             return Blocked(WorldCommandReasons.For(WorldCommandReasons.NoDeploymentRequest));
         if (BattleGenerator.Refusal(campaign, request) is { } refusal) return Blocked(refusal);
-        var battle = BattleGenerator.Generate(campaign, request);
+        if (campaign.BattleTerrainFiles is not { } files) return Blocked(NoTerrainFiles);
+        if (!ReferenceEquals(files, _loaderFiles))
+        {
+            _loader = new BattleTerrainLoader(campaign.Content.RuntimeRules.Battle, files);
+            _loaderFiles = files;
+        }
+        // A failed generation leaves nothing behind: its draws are put back, so the refusal changes nothing.
+        var random = campaign.Random.State;
+        BattleState battle;
+        try
+        {
+            battle = BattleGenerator.Generate(campaign, request, _loader!);
+        }
+        catch (Generation.MapGenerationException failure)
+        {
+            campaign.Random.Restore(random);
+            return Blocked(new CampaignReason(GenerationFailedCode, failure.Message));
+        }
         battle.Validate();
         handOver.ConsumeDeploymentRequest();
         _battle = battle;

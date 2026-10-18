@@ -10,7 +10,7 @@ Phase 7 branch 1 (`claude/battle-generation`), from `main` at `2b0c81fb`. Plan:
 | S0 planning | Done (2026-10-18) |
 | S1 battle aggregate | Done (2026-10-18) |
 | S2 runtime battle terrain | Done (2026-10-19) |
-| S3 map generation | Not started |
+| S3 map generation | S3a, S3c and `addLine` done (2026-10-19); rest of S3b (digTunnel, craft and UFO maps, vertical levels) open |
 | S4 X-COM deployment | Not started |
 | S5 alien and civilian deployment | Not started |
 | S6 base defense and other entry points | Not started |
@@ -77,9 +77,88 @@ Tests: `BattleTerrainLoaderTests` (field mapping and block values, patch order a
 trailing partial records, every malformed case, MAP and RMP checks). `StrategicReadinessTestContent.Load` can now
 write extra installation files.
 
-## Next: S3 map generation
+## S3a — Terrain map generation (2026-10-19)
 
-`BattlescapeGenerator::run` (terrain choice from the deployment, texture or fallback; depth; shade; map script
-choice), `generateMap` and its commands, `loadMAP` into tiles, `loadRMP` and `attachNodeLinks`, with
-`RuleTerrain::getMapData` indexing across data sets. Battle tiles go into `BattleState` as structure-of-arrays;
-`StartBattle` needs `BattleTerrainFiles` and refuses without them.
+Reference: `BattlescapeGenerator::run` (terrain, depth, shade and map script choice), `setDepth`, `generateMap`
+(script loop, labels, conditionals, execution chances, executions, the level-0 floor fill), `init`, `selectPosition`,
+`addBlock`, `removeBlocks`, `clearModule`, `pickTerrain`, `loadExtraTerrain`, `loadMAP`, `MapScript::load`, `init`,
+`getGroupNumber`, `getBlockNumber`, `getNextBlock`, `RuleTerrain::getRandomMapBlock`, `getMapData`,
+`getRandomMapScript`, `AlienDeployment::getRandomMapScript`, `Texture::load`, `getRandomTerrain`, `TerrainCriteria`,
+`SavedBattleGame::initMap`, `Tile::setMapData`, `Tile::setDiscovered`, `MapBlock::MapBlock`.
+
+- `BattleMap` holds the tiles as structure-of-arrays (map data ID and set per part, discovery bits), the loaded data
+  sets and the per-block terrain names, block names and reinforcement marks. `BattleState` owns it, with the terrain,
+  map script, depth and global shade.
+- `StartBattle` needs `CampaignState.BattleTerrainFiles` (`battle.no-terrain-files` otherwise) and keeps one
+  `BattleTerrainLoader` per attached file port. Generation runs the deployment's terrain choice (deployment terrains,
+  else the mission texture's weighted criteria at the target, else the mod's first terrain), depth, shade overrides,
+  map script choice (the deployment's own script wins when it exists; a named but missing script refuses), the globe
+  terrain, then the map script. A failure throws `MapGenerationException`, which refuses with `battle.generation-failed`
+  and puts the random state back (ADR 0038, amended).
+- Commands: `addBlock`, `fillArea`, `checkBlock`, `removeBlock` and `resize` with labels, conditionals, execution
+  chances (the roll is drawn even at 100), executions sharing one success flag (`removeBlock` overwrites it, the
+  others accumulate), `randomTerrain`/`terrain` with `globeTerrain` and `baseTerrain`. The reference's quirks are kept:
+  `addBlock`'s occupancy check skips the block's last row; `removeBlock` with block indices removes any placed block
+  once a listed index is valid; `checkBlock` sees covered cells as the dummy block in group 0.
+- `loadMAP`: the header height replaces the block's, too tall a block or stack refuses with the reference's messages,
+  a block on the ground stacks on the highest existing floor, parts map across the terrain's data sets with the
+  past-the-end fallback to set 0 object 0, an extra terrain clears the object part first, revealed floors are discovered.
+- Runtime content: `RuntimeBattleRules.MapScripts` (`RuntimeMapScript`; "blocks" clears the groups as `MapScript::load`
+  does), `RuntimeDeploymentBattle` terrains, map scripts, depth and custom UFO, `RuntimeGlobeTexture.Terrains` and
+  `BaseTerrains` (`RuntimeTerrainCriterion.Pick`).
+- Corrections found on the way: a deployment's own `script` defaulted to `DEFAULT` in the typed catalog, which would have
+  overridden every terrain's script; the reference leaves it empty. An alien-base landing recorded mission texture 0
+  for the reference's null texture; it is now -1.
+- Not yet: `digTunnel`, `addCraft`, `addUFO` and vertical levels refuse with a named S3b reason; base defense maps
+  refuse until S6; map block items are S5.
+- Intentional differences: the level-0 floor fill uses set 0 object 1 (the reference uses BLANKS object 1 by pointer,
+  which is set 0 whenever BLANKS is loaded first); a rectangle outside the block grid is treated as occupied (the reference
+  reads outside its arrays).
+
+Tests: `BattleStartTests` (a generated map with block names, tile parts, scorched floors; resize, checkBlock, removeBlock
+and conditionals; an unfilled map refused with the random state put back; missing deployment and terrain files; linked
+defaults and map script projection), `RuntimeTerrainCriterionTests`, `BattleStateTests`.
+
+## S3c — Routes (2026-10-19)
+
+Reference: `BattlescapeGenerator::loadNodes`, `loadRMP`, `attachNodeLinks`, `Node::Node`.
+
+- `BattleMap.Nodes` (`BattleNode`): ID, position, segment, type, rank, flags, reserved, priority and links; culled
+  nodes stay as dummies so IDs line up. `initMap` (a resize) clears them.
+- `loadNodes` gives every block cell the segment number current when it is visited and loads each placed block's
+  RMP with that segment (the codec's offsets, culling and link termination); z counts down from the block's MAP height.
+- `attachNodeLinks` runs both passes as the reference does: edge links joined through the neighbouring segment, then
+  by block position with vertical links between nodes of one block on adjacent levels within three tiles. The upward
+  test compares the level with the map height rather than the top level, as in the reference.
+- Not yet: the landing-zone exception for blocks under the craft, craft and UFO routes and vertical-level segments
+  arrive with S3b.
+
+Tests: `BattleStartTests` checks segments, IDs across blocks, a culled node and its terminated link, and the east-west
+join between two blocks.
+
+## S3b, part 1 — addLine (2026-10-19)
+
+Reference: `BattlescapeGenerator::addLine`, `MapScript::MapScript` (group defaults).
+
+- `addLine` picks a free 10x10 position in the rectangles and needs every existing block along the line to be in the
+  other road's group (up to 22 tries, then the command fails). Empty cells get a random block of the line's group;
+  cells of the other road become a random crossing block in place (cleared and reloaded; the block names keep the
+  road's, as in the reference). `both` draws the vertical line first and the horizontal one only if it succeeded.
+  No block of the needed group is the reference's "addLine failed" exception, a generation refusal.
+- Correction: the typed map-script defaults were vertical 1 and crossing 3; `MapScript`'s constructor uses
+  `MT_NSROAD` (3) and `MT_CROSSING` (4). The horizontal default (`MT_EWROAD`, 2) was right.
+
+Tests: `BattleStartTests.AddLineInBothDirectionsCrossesTheRoadsAndKeepsTheReplacedBlocksName`.
+
+## Next: rest of S3b
+
+- Craft and UFO battlescape terrains: `battlescapeTerrainData` is deferred in the typed craft and UFO loaders
+  (`EquipmentRuleLoaders`); it needs the nested `RuleTerrain::load`, a runtime projection on the craft and UFO rules, and
+  `RuleTerrain::refreshMapDataSets` for craft skins.
+- `addCraft` and `addUFO` (`addCraft`: landing zone blocks from the command's selection, the craft name and the starting
+  condition's craft replacement, the UFO name or the deployment's `customUfo`), the craft and UFO map and route loads
+  after the script (`_craftZ`, `_ufoZ`, segments, the craft's discovered tiles), the landing-zone exception in
+  `loadNodes`, and `craftGroups` conditions.
+- `digTunnel` (`drillModules` with `tunnelData` MCD replacements) and vertical levels (`populateVerticalLevels`,
+  `loadVerticalLevels`, their segments in `loadNodes` and the second pass of `attachNodeLinks`); both are still raw YAML
+  in the typed map script.

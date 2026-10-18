@@ -19,9 +19,10 @@ namespace Oxce.CompatibilityTests;
 /// </summary>
 public sealed class StrategicLandingTests
 {
-    internal static (RuntimeContent Content, CampaignState Campaign) Create(bool seasons = false, string? rules = null)
+    internal static (RuntimeContent Content, CampaignState Campaign) Create(bool seasons = false, string? rules = null,
+        IReadOnlyDictionary<string, byte[]>? files = null)
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], rules);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], rules, files: files);
         var snapshot = CreateLifecycleSnapshot(content);
         var ufo = snapshot.World.Ufos[0] with { SecondsRemaining = 3600, Detected = true };
         var owner = snapshot.Bases[0];
@@ -275,9 +276,9 @@ public sealed class StrategicLandingTests
         var request = Assert.IsType<DeploymentRequested>(Assert.Single(
             campaign.Execute(new AnswerLanding(requested.Confirmation, LandingAnswer.Yes)).Events)).Request;
         // ConfirmLandingState::btnYesClick: the site's or base's deployment is the mission type. A site
-        // keeps its custom deployment and race; an alien base uses mission texture 0 (setWorldTexture(0, ...)).
+        // keeps its custom deployment and race; an alien base has no mission texture (setWorldTexture(0, ...) passes null).
         if (alienBase)
-            Assert.Equal(("ALIEN_BASE_DEPLOY", "ALIEN_BASE_DEPLOY", "RACE_A", 0, requested.GlobeTexture),
+            Assert.Equal(("ALIEN_BASE_DEPLOY", "ALIEN_BASE_DEPLOY", "RACE_A", -1, requested.GlobeTexture),
                 (request.MissionType, request.DeploymentId, request.Race, request.MissionTexture, request.GlobeTexture));
         else
             Assert.Equal(("SITE_DEPLOY", "SITE_DEPLOY", "STR_TERROR_MISSION", "RACE_B", requested.MissionTexture),

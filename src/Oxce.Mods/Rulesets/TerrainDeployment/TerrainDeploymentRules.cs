@@ -192,7 +192,8 @@ internal static class DeploymentDefaults
         ["missionBountyItem"] = "",
         ["nextStage"] = "",
         ["race"] = "",
-        ["script"] = "DEFAULT",
+        // AlienDeployment::_mapScript has no initializer: no script of its own.
+        ["script"] = "",
         ["winCutscene"] = "",
         ["loseCutscene"] = "",
         ["abortCutscene"] = "",

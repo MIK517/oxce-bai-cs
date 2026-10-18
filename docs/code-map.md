@@ -18,16 +18,16 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 199 | Core, Mods, Scripting |
-| [Oxce.Mods](#oxcemods) | 97 | Core, Formats, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 203 | Core, Mods, Scripting |
+| [Oxce.Mods](#oxcemods) | 98 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 5 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 320 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 321 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
-| [Oxce.UnitTests](#oxceunittests) | 103 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
+| [Oxce.UnitTests](#oxceunittests) | 104 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
 | [Oxce.FixtureTool](#oxcefixturetool) | 1 | FixtureSupport, Formats, Mods, Savegames |
 | [Oxce.ResourceBrowser](#oxceresourcebrowser) | 2 | Formats, Mods, Platform.Sdl, Rendering, Resources |
@@ -337,7 +337,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 199 files.
+`src/Oxce.Gameplay` - 203 files.
 
 ### `Oxce.Gameplay`
 
@@ -656,7 +656,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Mods
 
-`src/Oxce.Mods` - 97 files.
+`src/Oxce.Mods` - 98 files.
 
 ### `Oxce.Mods`
 
@@ -928,11 +928,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RuntimeEventRule` (record) [RuntimeEventRule.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeEventRule.cs) - Scheduling inputs from RuleEvent and the payload that GeoscapeEventState::eventLogic applies.
 - `RuntimeEventPayload` (record) [RuntimeEventRule.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeEventRule.cs) - What a popped event gives or takes, in the reference's order.
 - `RuntimeGlobeTexture` (record) [RuntimeGlobe.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeGlobe.cs) - Reference: `Mod/Texture.cpp`.
+- `RuntimeTerrainCriterion` (record) [RuntimeGlobe.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeGlobe.cs) - TerrainCriteria: a terrain name with a weight and a globe area in radians.
 - `RuntimeGlobe` (record) [RuntimeGlobe.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeGlobe.cs)
 - `RuntimeGlobePolyline` (record) [RuntimeGlobe.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeGlobe.cs)
 - `RuntimeGlobeColors` (record) [RuntimeGlobe.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeGlobe.cs) - Globe palette indices.
 - `RuntimeItemDamageRule` (record) [RuntimeItemDamageRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeItemDamageRules.cs) - Float fields owned by each RuleItem damage copy; script queries do not apply tactical damage.
 - `RuntimeDamageConversions` (record) [RuntimeItemDamageRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeItemDamageRules.cs)
+- `RuntimeMapScript` (record) [RuntimeMapScripts.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapScripts.cs) - A map script (Mod::getMapScript): its commands in order.
+- `RuntimeMapScriptCommand` (record) [RuntimeMapScripts.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapScripts.cs) - One MapScript command as `MapScript::load` leaves it: block selection (groups or blocks, frequencies, maximum uses), rectangles, conditio...
 - `RuntimePresentationContent` (class) [RuntimePresentationContent.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimePresentationContent.cs)
 - `RuntimeRuleCompatibilityEntry` (record) [RuntimeRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleCatalog.cs)
 - `RuntimeRuleCompatibilitySidecar` (class) [RuntimeRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleCatalog.cs)
@@ -1204,10 +1207,11 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 320 files.
+`tests/Oxce.CompatibilityTests` - 321 files.
 
 ### `Oxce.CompatibilityTests`
 
+- `BattleTestTerrain` (internal class) [BattleTestTerrain.cs](../tests/Oxce.CompatibilityTests/BattleTestTerrain.cs) - Synthetic terrain files for battle tests: MCD records, MAP blocks and an in-memory file port.
 - `ContentStateDump` (internal class) [ContentStateDump.cs](../tests/Oxce.CompatibilityTests/ContentStateDump.cs) - Deterministic dump of every instance field reachable from an object graph.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
@@ -1545,13 +1549,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.UnitTests
 
-`tests/Oxce.UnitTests` - 103 files.
+`tests/Oxce.UnitTests` - 104 files.
 
 ### `Oxce.UnitTests`
 
 - `AllocationMeasurement` (class) [AllocationMeasurement.cs](../tests/Oxce.UnitTests/AllocationMeasurement.cs)
 
-<details><summary>102 test classes</summary>
+<details><summary>103 test classes</summary>
 
 - `ProjectDependencyTests` ([ProjectDependencyTests.cs](../tests/Oxce.UnitTests/Architecture/ProjectDependencyTests.cs))
 - `DiagnosticTests` ([DiagnosticTests.cs](../tests/Oxce.UnitTests/Core/DiagnosticTests.cs))
@@ -1636,6 +1640,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RulesetComposerTests` ([RulesetComposerTests.cs](../tests/Oxce.UnitTests/Mods/RulesetComposerTests.cs))
 - `RuntimeGlobeProjectionTests` ([RuntimeGlobeProjectionTests.cs](../tests/Oxce.UnitTests/Mods/RuntimeGlobeProjectionTests.cs))
 - `RuntimeRuleLinkerTests` ([RuntimeRuleLinkerTests.cs](../tests/Oxce.UnitTests/Mods/RuntimeRuleLinkerTests.cs))
+- `RuntimeTerrainCriterionTests` ([RuntimeTerrainCriterionTests.cs](../tests/Oxce.UnitTests/Mods/RuntimeTerrainCriterionTests.cs))
 - `StrategicScriptLinkingTests` ([StrategicScriptLinkingTests.cs](../tests/Oxce.UnitTests/Mods/StrategicScriptLinkingTests.cs))
 - `TerrainDeploymentRuleCatalogTests` ([TerrainDeploymentRuleCatalogTests.cs](../tests/Oxce.UnitTests/Mods/TerrainDeploymentRuleCatalogTests.cs))
 - `TypedRuleFamilyLoaderTests` ([TypedRuleFamilyLoaderTests.cs](../tests/Oxce.UnitTests/Mods/TypedRuleFamilyLoaderTests.cs))
@@ -1694,6 +1699,12 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 Shared sources compiled into several projects, and non-test types that tests reuse.
 Prefer these over local copies (see AGENTS.md, *Test conventions*).
+
+### [tests/Oxce.CompatibilityTests/BattleTestTerrain.cs](../tests/Oxce.CompatibilityTests/BattleTestTerrain.cs)
+
+- `BattleTestTerrain` (class) - Synthetic terrain files for battle tests: MCD records, MAP blocks and an in-memory file port.
+- `BattleTestTerrain.Files` (class) - Terrain files by virtual path; counts reads so tests can check caching.
+- members: `Reads`, `Read`, `Record`, `Map`, `RouteNode`, `RequiredFiles`
 
 ### [tests/Oxce.CompatibilityTests/ContentStateDump.cs](../tests/Oxce.CompatibilityTests/ContentStateDump.cs)
 

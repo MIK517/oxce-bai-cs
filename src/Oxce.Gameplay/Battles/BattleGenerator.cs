@@ -1,3 +1,6 @@
+using Oxce.Core.Random;
+using Oxce.Gameplay.Battles.Generation;
+using Oxce.Gameplay.Battles.Terrain;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Runtime;
@@ -5,8 +8,9 @@ using Oxce.Mods.Rulesets.Runtime;
 namespace Oxce.Gameplay.Battles;
 
 /// <summary>
-/// BattlescapeGenerator: builds the battle a deployment request asks for. <see cref="Refusal"/> checks the request
-/// against the content before anything changes; <see cref="Generate"/> then cannot fail on valid input (ADR 0038).
+/// BattlescapeGenerator::run: builds the battle a deployment request asks for. <see cref="Refusal"/> checks what can be
+/// checked before drawing anything; <see cref="Generate"/> then either returns the battle or throws
+/// <see cref="MapGenerationException"/> where the reference throws, and the caller adopts nothing (ADR 0038).
 /// </summary>
 internal static class BattleGenerator
 {
@@ -14,13 +18,47 @@ internal static class BattleGenerator
     public static CampaignReason? Refusal(CampaignState campaign, CampaignDeploymentRequest request) =>
         Deployment(campaign, request) is null ? CampaignBattles.NoBattleDeployment : null;
 
-    public static BattleState Generate(CampaignState campaign, CampaignDeploymentRequest request)
+    public static BattleState Generate(CampaignState campaign, CampaignDeploymentRequest request, BattleTerrainLoader loader)
     {
         var (id, deployment) = Deployment(campaign, request)
             ?? throw new InvalidOperationException("The deployment request was not checked before generation.");
+        var rules = campaign.Content.RuntimeRules;
+        var random = campaign.Random;
         var battle = deployment.Battle;
-        return new BattleState(request.MissionType, id, battle.Width, battle.Length, battle.Height, battle.TurnLimit,
-            battle.ChronoTrigger, battle.CheatTurn);
+        if (!BattleMap.IsSupportedSize(Math.Max(battle.Width, 1), Math.Max(battle.Length, 1), Math.Max(battle.Height, 1)))
+            throw new MapGenerationException($"Deployment {id} asks for a {battle.Width}x{battle.Length}x{battle.Height} map, outside the supported size.");
+        var terrain = PickTerrain(rules, request, battle, random);
+        var depth = PickDepth(battle, terrain, random);
+        var shade = battle.Shade != -1 ? battle.Shade
+            : battle.MinShade != -1 && request.Shade < battle.MinShade ? battle.MinShade
+            : battle.MaxShade != -1 && request.Shade > battle.MaxShade ? battle.MaxShade
+            : request.Shade;
+        var terrainScript = PickOne(terrain.MapScripts, terrain.MapScript, random);
+        var script = rules.Battle.MapScripts.GetValueOrDefault(terrainScript);
+        var scriptId = terrainScript;
+        var deployScript = PickOne(battle.MapScripts, battle.MapScript, random);
+        if (rules.Battle.MapScripts.TryGetValue(deployScript, out var deploymentScript))
+        {
+            script = deploymentScript;
+            scriptId = deployScript;
+        }
+        else if (deployScript.Length != 0)
+        {
+            throw new MapGenerationException($"Map generator encountered an error: {deployScript} script not found.");
+        }
+        if (script is null) throw new MapGenerationException($"Map generator encountered an error: {terrainScript} script not found.");
+        var globeTerrain = GlobeTerrain(rules, request, terrain, random);
+        var map = BattleMapGenerator.Generate(rules.Battle, loader, random, request.MissionType, terrain, globeTerrain, script,
+            battle.Width, battle.Length, battle.Height);
+        if (map.Width == 0 || map.Length == 0 || map.Height == 0)
+            throw new MapGenerationException($"Map script {scriptId} leaves an empty {map.Width}x{map.Length}x{map.Height} map.");
+        return new BattleState(request.MissionType, id, map, battle.TurnLimit, battle.ChronoTrigger, battle.CheatTurn)
+        {
+            TerrainId = terrain.Id,
+            MapScriptId = scriptId,
+            Depth = depth,
+            GlobalShade = shade,
+        };
     }
 
     /// <summary>
@@ -35,4 +73,47 @@ internal static class BattleGenerator
         var deployments = campaign.Content.RuntimeRules.AlienDeployments;
         return id.Length != 0 && deployments.TryGet(id, out var handle) ? (id, deployments[handle].Value) : null;
     }
+
+    /// <summary>
+    /// run's terrain choice: one of the deployment's terrains when it lists any or there is no mission texture with
+    /// terrains (the first terrain of the mod when the deployment lists none either), else the texture's weighted
+    /// pick at the target.
+    /// </summary>
+    private static RuntimeTerrain PickTerrain(RuntimeRuleCatalog rules, CampaignDeploymentRequest request, RuntimeDeploymentBattle battle,
+        IStatefulRandomSource random)
+    {
+        var texture = Texture(rules, request.MissionTexture);
+        string name;
+        if (texture is null || texture.Terrains.Count == 0 || battle.Terrains.Count != 0)
+            name = battle.Terrains.Count != 0 ? battle.Terrains[random.NextInclusive(0, battle.Terrains.Count - 1)]
+                : rules.Battle.TerrainOrder.Count != 0 ? rules.Battle.TerrainOrder[0]
+                : throw new MapGenerationException("Map generator encountered an error: No valid terrain found.");
+        else
+            name = RuntimeTerrainCriterion.Pick(texture.Terrains, request.Target.Longitude, request.Target.Latitude, random.NextInclusive);
+        return rules.Battle.Terrains.GetValueOrDefault(name)
+            ?? throw new MapGenerationException($"Map generator encountered an error: terrain '{name}' does not exist.");
+    }
+
+    /// <summary>BattlescapeGenerator::setDepth: the deployment's depth range wins over the terrain's.</summary>
+    private static int PickDepth(RuntimeDeploymentBattle battle, RuntimeTerrain terrain, IRandomSource random) =>
+        battle.MaximumDepth > 0 ? MonthlyCycle.Generate(random, battle.MinimumDepth, battle.MaximumDepth)
+        : terrain.MaximumDepth > 0 ? MonthlyCycle.Generate(random, terrain.MinimumDepth, terrain.MaximumDepth)
+        : 0;
+
+    /// <summary>getRandomMapScript: one of the list when it is not empty, else the single script.</summary>
+    private static string PickOne(IReadOnlyList<string> choices, string single, IRandomSource random) =>
+        choices.Count != 0 ? choices[random.NextInclusive(0, choices.Count - 1)] : single;
+
+    /// <summary>generateMap's globe terrain: with a craft, the globe texture's pick at the craft, if that terrain exists.</summary>
+    private static RuntimeTerrain GlobeTerrain(RuntimeRuleCatalog rules, CampaignDeploymentRequest request, RuntimeTerrain terrain,
+        IRandomSource random)
+    {
+        if (request.CraftTypeId.Length == 0 || Texture(rules, request.GlobeTexture) is not { } texture) return terrain;
+        // The craft has landed at its target.
+        var name = RuntimeTerrainCriterion.Pick(texture.Terrains, request.Target.Longitude, request.Target.Latitude, random.NextInclusive);
+        return rules.Battle.Terrains.GetValueOrDefault(name) ?? terrain;
+    }
+
+    private static RuntimeGlobeTexture? Texture(RuntimeRuleCatalog rules, int id) =>
+        id >= 0 && rules.Campaign.Globe.Textures.TryGetValue(id, out var texture) ? texture : null;
 }

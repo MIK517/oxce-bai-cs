@@ -302,6 +302,22 @@ public sealed record RuntimeDeploymentBattle(
     int Width, int Length, int Height, int TurnLimit, int ChronoTrigger, int CheatTurn, int Shade, int MinShade, int MaxShade)
 {
     public static RuntimeDeploymentBattle Default { get; } = new(0, 0, 0, 0, 0, 20, -1, -1, -1);
+
+    /// <summary>AlienDeployment::getTerrains: the battle picks one of these, if any, over the globe texture's.</summary>
+    public IReadOnlyList<string> Terrains { get; init; } = [];
+
+    /// <summary>AlienDeployment's <c>script</c> ("" for none) and <c>mapScripts</c> (one is picked when present).</summary>
+    public string MapScript { get; init; } = "";
+
+    public IReadOnlyList<string> MapScripts { get; init; } = [];
+
+    /// <summary>AlienDeployment <c>depth</c> [min, max]; a positive maximum overrides the terrain's.</summary>
+    public int MinimumDepth { get; init; }
+
+    public int MaximumDepth { get; init; }
+
+    /// <summary>AlienDeployment <c>customUfo</c>: the UFO an addUFO command uses when the battle has none.</summary>
+    public string CustomUfo { get; init; } = "";
 }
 
 /// <summary>Reference: <c>AlienDeployment::getAlienRaceEvolution</c> tuples.</summary>

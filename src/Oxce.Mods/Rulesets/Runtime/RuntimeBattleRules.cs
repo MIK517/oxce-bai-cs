@@ -11,16 +11,18 @@ namespace Oxce.Mods.Rulesets.Runtime;
 public sealed class RuntimeBattleRules
 {
     private RuntimeBattleRules(IReadOnlyList<string> terrainOrder, IReadOnlyDictionary<string, RuntimeTerrain> terrains,
-        IReadOnlyDictionary<string, RuntimeMcdPatch> mcdPatches)
+        IReadOnlyDictionary<string, RuntimeMcdPatch> mcdPatches, IReadOnlyDictionary<string, RuntimeMapScript> mapScripts)
     {
         TerrainOrder = terrainOrder;
         Terrains = terrains;
         McdPatches = mcdPatches;
+        MapScripts = mapScripts;
     }
 
     public static RuntimeBattleRules Empty { get; } = new(Array.AsReadOnly(Array.Empty<string>()),
         new ReadOnlyDictionary<string, RuntimeTerrain>(new Dictionary<string, RuntimeTerrain>(StringComparer.Ordinal)),
-        new ReadOnlyDictionary<string, RuntimeMcdPatch>(new Dictionary<string, RuntimeMcdPatch>(StringComparer.Ordinal)));
+        new ReadOnlyDictionary<string, RuntimeMcdPatch>(new Dictionary<string, RuntimeMcdPatch>(StringComparer.Ordinal)),
+        new ReadOnlyDictionary<string, RuntimeMapScript>(new Dictionary<string, RuntimeMapScript>(StringComparer.Ordinal)));
 
     /// <summary>Mod::getTerrainList: terrain IDs in rule order (the first is the generator's last resort).</summary>
     public IReadOnlyList<string> TerrainOrder { get; }
@@ -30,6 +32,9 @@ public sealed class RuntimeBattleRules
     /// <summary>Mod::getMCDPatch, by map data set name.</summary>
     public IReadOnlyDictionary<string, RuntimeMcdPatch> McdPatches { get; }
 
+    /// <summary>Mod::getMapScript, by ID.</summary>
+    public IReadOnlyDictionary<string, RuntimeMapScript> MapScripts { get; }
+
     internal static RuntimeBattleRules Link(TerrainDeploymentRuleCatalog content)
     {
         ArgumentNullException.ThrowIfNull(content);
@@ -38,8 +43,11 @@ public sealed class RuntimeBattleRules
         var patches = new Dictionary<string, RuntimeMcdPatch>(StringComparer.Ordinal);
         foreach (var (id, patch) in content.McdPatches) patches.Add(id, new RuntimeMcdPatch(List(patch.Entries.Select(static entry =>
             new RuntimeMcdPatchEntry(entry.Index, Map(entry.Integers), Map(entry.Booleans), entry.Lofts is null ? null : List(entry.Lofts))))));
+        var scripts = content.MapScripts.ToDictionary(static pair => pair.Key, static pair => RuntimeMapScriptProjection.Project(pair.Value),
+            StringComparer.Ordinal);
         return new(List(content.Terrains.Rules.Select(static rule => rule.Id)),
-            new ReadOnlyDictionary<string, RuntimeTerrain>(terrains), new ReadOnlyDictionary<string, RuntimeMcdPatch>(patches));
+            new ReadOnlyDictionary<string, RuntimeTerrain>(terrains), new ReadOnlyDictionary<string, RuntimeMcdPatch>(patches),
+            new ReadOnlyDictionary<string, RuntimeMapScript>(scripts));
     }
 
     private static RuntimeTerrain Terrain(string id, TerrainRule rule) => new(id, List(rule.MapDataSets),

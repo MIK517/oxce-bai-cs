@@ -18,22 +18,14 @@ internal sealed class BattleState
 
     private readonly List<BattleUnit> _units = [];
 
-    internal BattleState(string missionType, string deploymentId, int width, int length, int height, int turnLimit,
-        int chronoTrigger, int cheatTurn)
+    internal BattleState(string missionType, string deploymentId, BattleMap map, int turnLimit, int chronoTrigger, int cheatTurn)
     {
         ArgumentNullException.ThrowIfNull(missionType);
         ArgumentNullException.ThrowIfNull(deploymentId);
-        ArgumentOutOfRangeException.ThrowIfNegative(width);
-        ArgumentOutOfRangeException.ThrowIfNegative(length);
-        ArgumentOutOfRangeException.ThrowIfNegative(height);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(width, MaximumMapSide);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(length, MaximumMapSide);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(height, MaximumMapHeight);
+        ArgumentNullException.ThrowIfNull(map);
         MissionType = missionType;
         DeploymentId = deploymentId;
-        Width = width;
-        Length = length;
-        Height = height;
+        Map = map;
         TurnLimit = turnLimit;
         ChronoTrigger = chronoTrigger;
         CheatTurn = cheatTurn;
@@ -41,12 +33,25 @@ internal sealed class BattleState
 
     public string MissionType { get; }
     public string DeploymentId { get; }
-    public int Width { get; }
-    public int Length { get; }
-    public int Height { get; }
+    public BattleMap Map { get; }
+    public int Width => Map.Width;
+    public int Length => Map.Length;
+    public int Height => Map.Height;
     public int TurnLimit { get; }
     public int ChronoTrigger { get; }
     public int CheatTurn { get; }
+
+    /// <summary>The terrain the map was generated with (SavedBattleGame's terrain for later stages and scripts).</summary>
+    public string TerrainId { get; init; } = "";
+
+    /// <summary>SavedBattleGame::getLastUsedMapScript.</summary>
+    public string MapScriptId { get; init; } = "";
+
+    /// <summary>SavedBattleGame::getDepth: 0 above water, otherwise the underwater depth.</summary>
+    public int Depth { get; init; }
+
+    /// <summary>SavedBattleGame::getGlobalShade (0-15).</summary>
+    public int GlobalShade { get; init; }
 
     /// <summary>SavedBattleGame::_turn: 0 until the first turn starts after the briefing.</summary>
     public int Turn { get; private set; }
@@ -60,10 +65,9 @@ internal sealed class BattleState
     public IReadOnlyList<BattleUnit> Units => _units;
 
     /// <summary>SavedBattleGame::getTileIndex.</summary>
-    public int TileIndex(BattlePosition position) => position.X + position.Y * Width + position.Z * Width * Length;
+    public int TileIndex(BattlePosition position) => Map.TileIndex(position);
 
-    public bool Contains(BattlePosition position) =>
-        (uint)position.X < (uint)Width && (uint)position.Y < (uint)Length && (uint)position.Z < (uint)Height;
+    public bool Contains(BattlePosition position) => Map.Contains(position);
 
     internal void AddUnit(BattleUnit unit)
     {

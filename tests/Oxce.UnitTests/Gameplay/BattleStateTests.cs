@@ -6,7 +6,7 @@ namespace Oxce.UnitTests.Gameplay;
 /// <summary>ADR 0038: viewer-scoped queries, per-faction spotting, revisions and battle invariants.</summary>
 public sealed class BattleStateTests
 {
-    private static BattleState Create() => new("STR_UFO_CRASH_RECOVERY", "STR_SMALL_SCOUT", 40, 40, 4, 0, 0, 20);
+    private static BattleState Create() => new("STR_UFO_CRASH_RECOVERY", "STR_SMALL_SCOUT", new BattleMap(40, 40, 4), 0, 0, 20);
 
     [Fact]
     public void AViewerSeesItsOwnFactionAndTheUnitsItHasSpotted()
@@ -51,9 +51,12 @@ public sealed class BattleStateTests
     [Fact]
     public void MapSizesOutsideThePortsBoundsAreRejected()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new BattleState("M", "D", BattleState.MaximumMapSide + 1, 10, 1, 0, 0, 20));
-        Assert.Throws<ArgumentOutOfRangeException>(() => new BattleState("M", "D", 10, 10, BattleState.MaximumMapHeight + 1, 0, 0, 20));
-        Assert.Throws<ArgumentOutOfRangeException>(() => new BattleState("M", "D", -10, 10, 1, 0, 0, 20));
+        Assert.False(BattleMap.IsSupportedSize(BattleState.MaximumMapSide + 1, 10, 1));
+        Assert.False(BattleMap.IsSupportedSize(10, 10, BattleState.MaximumMapHeight + 1));
+        Assert.False(BattleMap.IsSupportedSize(1000, 1000, 8));
+        Assert.False(BattleMap.IsSupportedSize(0, 10, 1));
+        Assert.True(BattleMap.IsSupportedSize(60, 60, 8));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new BattleMap(-10, 10, 1));
         Assert.Throws<ArgumentOutOfRangeException>(() => BattleController.Human(-1));
     }
 }

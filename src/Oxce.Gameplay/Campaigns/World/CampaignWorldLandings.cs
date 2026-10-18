@@ -269,8 +269,8 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery, Battles.ICa
                     customDeploy = raceRule?.BaseCustomDeploy ?? "";
                     customMission = raceRule?.BaseCustomMission ?? "";
                     race = alienBase.Race;
-                    // BattlescapeGenerator::setWorldTexture(0, globeTexture) for alien bases.
-                    missionTexture = 0;
+                    // BattlescapeGenerator::setWorldTexture(0, globeTexture) for alien bases: no mission texture.
+                    missionTexture = -1;
                     break;
                 }
             default:

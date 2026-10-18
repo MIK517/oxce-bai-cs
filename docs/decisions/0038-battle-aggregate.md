@@ -56,8 +56,13 @@ nothing. Clients refresh from viewer-scoped queries and the battle revision.
   reachable state is a validation gap to close, not a reason for a forecast.
 - An exception during resolution is a defect. It faults the battle: the battle refuses every later command and the
   host offers the last save, as a determinism mismatch does for staged ticks.
-- Battles have no preflight, no forecast and no per-action copy. Battle generation is a pure function of the request,
-  the campaign and the random source; if it throws, nothing is adopted and the request stays pending.
+- Battles have no preflight, no forecast and no per-action copy.
+- Battle generation is a function of the request, the campaign, the terrain files and the random source. Some of its
+  failures depend on random choices and cannot be checked first (a block that cannot be placed, a map that does not
+  fill); the reference throws there. The port builds the battle aside and adopts it only when generation completes.
+  A failed generation puts the random source back to its state before generation (`IStatefulRandomSource.Restore`), so
+  the refused `StartBattle` changes nothing and a retry fails the same way. This is the one rewind of real random
+  state besides ADR 0035's exact shadow staging: no draw is kept from a generation that did not happen.
 
 ### Strategic ticks: shadow promotion for named restrictions
 

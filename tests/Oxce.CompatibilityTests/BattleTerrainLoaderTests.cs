@@ -1,7 +1,7 @@
-using Oxce.Formats.Terrain;
 using Oxce.Gameplay.Battles.Terrain;
 using Oxce.Mods.Rulesets.Content;
 using Xunit;
+using static Oxce.CompatibilityTests.BattleTestTerrain;
 
 namespace Oxce.CompatibilityTests;
 
@@ -34,33 +34,7 @@ public sealed class BattleTerrainLoaderTests
 
     // The content build requires each data set's MCD, PCK and TAB to exist; the loader reads the test's own bytes.
     private static readonly Lazy<RuntimeContent> Content = new(() =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul"], Rules, files: new[] { "PLAIN", "PATCHED" }
-            .SelectMany(static set => new[] { "MCD", "PCK", "TAB" }.Select(extension => $"TERRAIN/{set}.{extension}"))
-            .ToDictionary(static path => path, static _ => Array.Empty<byte>())));
-
-    private sealed class Files(Dictionary<string, byte[]> files) : IBattleTerrainFiles
-    {
-        public int Reads { get; private set; }
-
-        public ReadOnlyMemory<byte>? Read(string virtualPath)
-        {
-            Reads++;
-            return files.TryGetValue(virtualPath, out var data) ? data : (ReadOnlyMemory<byte>?)null;
-        }
-    }
-
-    /// <summary>One 62-byte MCD record with the given byte offsets set.</summary>
-    private static byte[] Record(params (int Offset, byte Value)[] values)
-    {
-        var record = new byte[McdTerrainCodec.RecordSize];
-        foreach (var (offset, value) in values) record[offset] = value;
-        return record;
-    }
-
-    private static byte[] Mcd(params byte[][] records) => [.. records.SelectMany(static record => record)];
-
-    private static byte[] Map(int length, int width, int levels) => [(byte)length, (byte)width, (byte)levels,
-        .. new byte[length * width * levels * XcomMapTileRecord.Size]];
+        StrategicReadinessTestContent.Load(["strategic-world.rul"], Rules, files: RequiredFiles("PLAIN", "PATCHED")));
 
     private static BattleTerrainLoader Loader(Files files) => new(Content.Value.RuntimeRules.Battle, files);
 
@@ -149,9 +123,9 @@ public sealed class BattleTerrainLoaderTests
         var loader = Loader(new Files(new()
         {
             // The MAP header is length, width, height; the height comes from the file, not the rule.
-            ["MAPS/BLOCK.MAP"] = Map(20, 10, 2),
+            ["MAPS/BLOCK.MAP"] = Map(20, 10, 0, 0),
             ["ROUTES/BLOCK.RMP"] = routes,
-            ["MAPS/WIDE.MAP"] = Map(10, 130, 1),
+            ["MAPS/WIDE.MAP"] = Map(10, 130, 0),
             ["ROUTES/WIDE.RMP"] = [],
         }));
         Assert.Null(loader.TryLoadBlock(blocks[0], out var block));
@@ -160,11 +134,11 @@ public sealed class BattleTerrainLoaderTests
         Assert.Equal("Map block is not of the size specified MAPS/WIDE.MAP is -126x10 , expected: 130x10",
             loader.TryLoadBlock(blocks[1], out _));
 
-        var wrong = Loader(new Files(new() { ["MAPS/BLOCK.MAP"] = Map(10, 10, 4), ["ROUTES/BLOCK.RMP"] = [] }));
+        var wrong = Loader(new Files(new() { ["MAPS/BLOCK.MAP"] = Map(10, 10, 0, 0, 0, 0), ["ROUTES/BLOCK.RMP"] = [] }));
         Assert.Equal("Map block is not of the size specified MAPS/BLOCK.MAP is 10x10 , expected: 10x20", wrong.TryLoadBlock(blocks[0], out _));
-        var noRoutes = Loader(new Files(new() { ["MAPS/BLOCK.MAP"] = Map(20, 10, 4) }));
+        var noRoutes = Loader(new Files(new() { ["MAPS/BLOCK.MAP"] = Map(20, 10, 0, 0, 0, 0) }));
         Assert.Equal("Terrain file ROUTES/BLOCK.RMP is missing.", noRoutes.TryLoadBlock(blocks[0], out _));
-        var truncated = Loader(new Files(new() { ["MAPS/BLOCK.MAP"] = Map(20, 10, 4)[..^4], ["ROUTES/BLOCK.RMP"] = [] }));
+        var truncated = Loader(new Files(new() { ["MAPS/BLOCK.MAP"] = Map(20, 10, 0, 0, 0, 0)[..^4], ["ROUTES/BLOCK.RMP"] = [] }));
         Assert.StartsWith("Invalid MAP file: MAPS/BLOCK.MAP: ", truncated.TryLoadBlock(blocks[0], out _), StringComparison.Ordinal);
     }
 }

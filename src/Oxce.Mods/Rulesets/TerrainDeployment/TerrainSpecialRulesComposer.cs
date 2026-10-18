@@ -96,7 +96,8 @@ internal static class TerrainSpecialRulesComposer
         if (map.TryGet("randomTerrain", out var random)) terrain = TerrainDeploymentYaml.Strings(random!, "randomTerrain");
         return new(type, ReadRectangles(map), ReadInts(map, "craftGroups", []), ReadInts(map, "conditionals", []), size.AsReadOnly(),
             groups.AsReadOnly(), blocks.AsReadOnly(), frequencies.AsReadOnly(), maximumUses.AsReadOnly(), direction,
-            map.ReadInt32("verticalGroup", 1), map.ReadInt32("horizontalGroup", 2), map.ReadInt32("crossingGroup", 3),
+            // MapScript's constructor: MT_NSROAD, MT_EWROAD and MT_CROSSING.
+            map.ReadInt32("verticalGroup", 3), map.ReadInt32("horizontalGroup", 2), map.ReadInt32("crossingGroup", 4),
             map.ReadBoolean("canBeSkipped", true), map.ReadBoolean("markAsReinforcementsBlock", false),
             map.ReadInt32("executionChances", 100), map.ReadInt32("executions", 1), map.ReadString("UFOName", ""),
             map.ReadString("craftName", ""), terrain.AsReadOnly(), Math.Abs(map.ReadInt32("label", 0)),
