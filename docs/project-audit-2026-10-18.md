@@ -333,12 +333,16 @@ Each item is cheap to adopt now and expensive to retrofit:
    measurements of shadow promotion against a journal.
 3. **Phase 7 planning slice:** add the M4 checklist and the live-state convention (D2) to the battle ADR, plus
    per-family link registration (D4) and battle save parts (E3) as early prerequisites.
-4. **Before battlescape UI:** a screen stack, with the clock and pause policy extracted into an
-   engine-level session clock (E4, M3). Single-player benefits too.
+4. **Before battlescape UI:** a screen stack (E4), and the session layer that single-player also runs through
+   ([ADR 0037](decisions/0037-host-authoritative-session.md)):
+   - player identity on commands;
+   - broadcasting committed events;
+   - the host-side clock and pause policy, moved out of the client (M3);
+   - per-actor quotes.
 5. **Multiplayer proper**, after Phase 7's first playable battle:
-   - the session project, the public contract layer and the protocol (M2);
-   - per-actor quotes;
-   - the server clock with speed arbitration.
+   - the public contract layer and the protocol (M2);
+   - remote thin clients;
+   - speed arbitration and role routing.
 
 ## Progress
 

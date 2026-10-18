@@ -89,6 +89,13 @@ The application composes four independently testable pipelines:
 The headless host runs the first three without SDL. Compatibility tests should prefer
 this path and use presentation tests only where visibility or decoded graphics matter.
 
+The simulation and persistence pipelines form the **host**; presentation is a **client** that sends
+commands, receives committed events and reads query views. Single-player is one host and one local
+client in the same process, so a multiplayer build adds only a protocol and remote clients. The rules
+that keep code compatible with that model are in
+[ADR 0037](decisions/0037-host-authoritative-session.md); the multiplayer assessment behind them is in
+the [2026-10-18 audit](project-audit-2026-10-18.md#part-3--multiplayer-assessment).
+
 Content composition is one staged build, not one parse per typed consumer. Ordered
 ruleset inputs are parsed once into session-owned compatibility nodes, dispatched to
 named and special composers, typed, linked, resource-resolved, and script-compiled. The

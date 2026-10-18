@@ -78,6 +78,29 @@ mechanical translations with no executable acceptance test.
   Regenerate it with `python3 tools/generate-code-map.py` after adding or moving types,
   helpers or fixtures; CI runs the script with `--check`.
 
+## Host-authoritative design (future multiplayer)
+
+The game runs as a host (state, rules, randomness, clock, saves) and thin clients (presentation and
+per-player view state), single-player included: one host plus one local client in the same process.
+Multiplayer later adds only a wire protocol and remote clients. Keep new code compatible with that
+([ADR 0037](docs/decisions/0037-host-authoritative-session.md)):
+
+- Commands are immutable data: primitives, strings, enums and stable IDs; no object references,
+  delegates, runtime rule handles or live entities.
+- A command that cannot run returns a classified refusal before any mutation; do not throw on invalid
+  player input after state has changed.
+- Every observable change produces an event or a query revision; clients refresh from queries and never
+  assume their own command was the only change.
+- Queries return immutable views. Anything with hidden information (all battlescape queries) takes the
+  viewer (faction, later player) as a parameter.
+- Only the host advances time. Do not add pause or speed decisions to UI clients.
+- Per-player interaction state (selections, quotes, drafts) is client state or keyed by actor; never a
+  single campaign-wide slot that another player's action or a time advance invalidates.
+- Decisions with gameplay effects are pending state with an ID that a command answers.
+- No process-wide mutable state in simulation code; test switches use `AsyncLocal` or options.
+- Phase 7 battles: an action resolves fully in the simulation (animation replays its events), every unit
+  has a controller (AI or human), and visibility is per faction.
+
 ## Test conventions
 
 - Shared helpers live in `tests/Shared/TestFixtures.cs` (linked into both test

@@ -369,6 +369,19 @@ scenario startup. Audit and memory-measurement tools reuse planning without surr
 their specialized lifetime controls. See
 [ADR 0020](decisions/0020-installation-bootstrap.md).
 
+Every front end runs through a host-client boundary
+([ADR 0037](decisions/0037-host-authoritative-session.md)): the host owns state, rules, randomness,
+the clock and saves; clients own presentation. The first public release uses this boundary for
+single-player, as one host and one local client in one process, so multiplayer later needs only a
+protocol and thin remote clients. A session layer is built before the battlescape UI:
+- player identity on commands;
+- broadcasting committed events;
+- the host-side clock and pause policy moved out of `GeoscapeClient`;
+- per-actor logistics quotes.
+
+See the audit's [recommended order](project-audit-2026-10-18.md#part-4--recommended-order), step 4. Until
+then, new code follows ADR 0037's rules (summarized in `AGENTS.md`).
+
 Trusted managed extensions use a separate versioned abstractions assembly, manual
 installation, narrow capabilities, callback failure containment, and a bounded
 save-neutral state envelope. Tactical AI and live save integration remain attached to
