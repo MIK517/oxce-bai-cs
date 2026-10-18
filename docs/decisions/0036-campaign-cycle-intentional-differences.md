@@ -98,7 +98,9 @@ reads it again; the port plays nothing and leaves the ending unchanged, as for t
 then end the campaign at a later level. The reference's game-over video replaces the game with the statistics screen,
 which drops the queued popups for a loss and for those queued after the first video for a win. The port refuses every
 command of an ended campaign, so those windows stay unanswered, and it no longer lets them forbid saving the ended
-campaign.
+campaign. In particular, a research win on the month tick leaves the month's report unanswered. The reference shows
+it before the win's video and applies its OK: monthly service, commendations and an autosave written with the win
+already set.
 
 **A preflight that does not foresee a loss (S6).** The tick's preflight runs before its day level, so it checks the
 five-second UFO pass that a loss in the day level will skip; a work-limit refusal there could stop a tick the reference

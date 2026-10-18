@@ -554,8 +554,23 @@ SDL3 smoke (`tools/run-sdl-smoke.ps1`) passes.
 
 ## S9 — Phase 6 closure (2026-10-18)
 
-The closure is published in [Phase 6 status](phase-6-status.md). The inventory lists 664 reason strings from
-`src/Oxce.Gameplay` by class ([refusal inventory](phase-6-refusal-inventory.md)). R4–R6 stay named restrictions,
+The closure is published in [Phase 6 status](phase-6-status.md). `tools/generate-refusal-inventory.py` lists 810
+reason sentences from `src/Oxce.Gameplay`, `src/Oxce.Savegames` and `src/Oxce.Extensions` by class
+([refusal inventory](phase-6-refusal-inventory.md); `--check` keeps it current). R4–R6 stay named restrictions,
 assigned to Phase 7 in the [implementation plan](implementation-plan.md#phase-7--playable-battlescape-vertical-slice);
 none of the 19 staged saves reaches one. The rule, save, binding and option matrices are the
 [Phase 6 ownership ledger](phase-6-ownership.md), whose branch 6 rows each name their slice and evidence.
+
+### Closure audit (2026-10-18)
+
+An independent audit of the whole branch (`git diff main...HEAD`) found no gameplay defect across slices and checked
+the window order, endings with open windows, staged payloads, research endings in shadows and requested saves. Fixes:
+
+- The S9 documentation script had truncated this record; the S0–S8 sections are restored (2fc5dcf8).
+- The inventory missed reason strings outside its token patterns and outside `src/Oxce.Gameplay` (the preserved
+  tactical battle, `EXT1011`). The generator is now committed, sweeps every reason sentence in the three strategic
+  projects, applies reviewed overrides and has a `--check` mode.
+- The Phase 7 assignment names the inventory's restriction and tactical classes; the managed extension state (D6,
+  `EXT1011`) is a recorded residual; the compatibility matrices, the ownership row and the phase plans no longer call
+  the month, events or psi guarded or branch 6 in progress; ADR 0036 states the month report left unanswered by a
+  research win.
