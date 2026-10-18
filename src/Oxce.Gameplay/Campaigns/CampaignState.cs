@@ -129,15 +129,18 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     /// </summary>
     public string? QuerySaveRefusal()
     {
-        lock (_transactionGate) return _handlers.SaveGate();
+        lock (_transactionGate) return SaveRefusal();
     }
+
+    // An ended campaign's open windows are moot: the reference's game-over video drops its queued popups (ADR 0036).
+    private string? SaveRefusal() => Ending != 0 ? null : _handlers.SaveGate();
 
     /// <summary>The snapshot to save, taken under the same lock as the refusal check; null with the reason when refused.</summary>
     public CampaignSnapshot? CaptureForSave(out string? refusal)
     {
         lock (_transactionGate)
         {
-            refusal = _handlers.SaveGate();
+            refusal = SaveRefusal();
             return refusal is null ? CaptureCore() : null;
         }
     }

@@ -186,7 +186,8 @@ public sealed class StrategicBaseAttackTests
 
         // The next five-second tick finds no base: END_LOSE (D5), and the campaign accepts no more commands.
         var reloaded = Reload(content, campaign, 11, "base-lost.sav");
-        Assert.Equal(new CampaignEnded(2), Assert.Single(reloaded.Execute(new AdvanceCampaignTime(1)).Events.OfType<CampaignEnded>()));
+        // time5Seconds plays the defeat video (gameOver loseDefeat).
+        Assert.Equal(new CampaignEnded(2) { Cutscene = "loseGame" }, Assert.Single(reloaded.Execute(new AdvanceCampaignTime(1)).Events.OfType<CampaignEnded>()));
         Assert.Equal(2, reloaded.Capture().Ending);
         Assert.Equal("This campaign has ended.", Assert.IsType<CampaignActionBlocked>(Assert.Single(
             reloaded.Execute(new AdvanceCampaignTime(1)).Events)).Reason);

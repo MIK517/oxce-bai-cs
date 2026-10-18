@@ -554,7 +554,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BaseDefenseResolved` (record) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs) - The defense window closed: the UFO was shot down, or the attack went on to its battle.
 - `BaseDestroyed` (record) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs) - A base was destroyed by an attack (BaseDestroyedState); its crafts, crew and stores are lost.
 - `BaseDamagedByMissiles` (record) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs) - Missiles damaged a base that survived (BaseDestroyedState with partial destruction): the facilities lost by type, and whether the stores...
-- `CampaignEnded` (record) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs) - The campaign ended (SavedGame::setEnding): 2 is END_LOSE, when no base is left.
+- `CampaignEnded` (record) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs) - The campaign ended (SavedGame::setEnding): 1 is END_WIN, 2 is END_LOSE.
 - `CampaignBaseDefense` (record) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs) - The open base defense window.
 - `ICampaignBaseDefenseQuery` (interface) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs)
 - `IgnoreUfoContact` (record) [CampaignWorldContacts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldContacts.cs) - Suppress future detected-contact alerts for this current UFO contact.

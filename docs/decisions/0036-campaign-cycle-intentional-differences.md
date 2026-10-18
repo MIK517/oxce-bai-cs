@@ -90,3 +90,16 @@ order for rules allocated as they load. The geoscape debug log (`oxceGeoscapeDeb
 save while the same tick's event windows are still queued; the reference saves then, with their payloads applied and
 without the windows. The port refuses saving while a window is open (D2), so the host makes the requested save once
 the windows are answered (S7).
+
+**An undefined research cutscene (S6).** `time1Day` reads a discovery's video with an error, and `CutsceneState::init`
+reads it again; the port plays nothing and leaves the ending unchanged, as for the other undefined videos above.
+
+**Windows left open by an ending (S6).** A tick can open windows (this month's report, an event, a base defense) and
+then end the campaign at a later level. The reference's game-over video replaces the game with the statistics screen,
+which drops the queued popups for a loss and for those queued after the first video for a win. The port refuses every
+command of an ended campaign, so those windows stay unanswered, and it no longer lets them forbid saving the ended
+campaign.
+
+**A preflight that does not foresee a loss (S6).** The tick's preflight runs before its day level, so it checks the
+five-second UFO pass that a loss in the day level will skip; a work-limit refusal there could stop a tick the reference
+would run. The case needs a research loss on a tick whose UFO pass alone exceeds a bound.

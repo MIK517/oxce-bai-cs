@@ -434,10 +434,15 @@ production tests).
 Plan D4's one ending rule, `CampaignState.EndByVideo`: while the campaign has no ending, a video that wins ends it
 won and one that loses ends it lost (a video with both loses, as the reference sets the win first).
 
-- Research (`GeoscapeState::time1Day`, 3e): after a discovery and its lookup, the topic's cutscene plays
+- Research (`GeoscapeState::time1Day`, 3e): after a discovery and its lookup, the topic's cutscene is queued
   (`CampaignCutscenePlayed`), then its free topic's; the first video that wins or loses ends the campaign inside the
-  day tick (`CampaignEnded`), and the second plays on. An undefined video plays nothing (ADR 0036).
-- Event cutscenes (S5) and the monthly failure (S3, S4) use the same rule on their acknowledgement.
+  day tick. An undefined video plays nothing (ADR 0036).
+- The tick's five-second level reports an ending set in the tick once (`CampaignEnded` with the video that ends the
+  game: the defeat video for a loss, as `time5Seconds` plays it at once, otherwise the first video the tick queued)
+  and, in an ironman campaign, the save that `time1Day` and `time5Seconds` push. Losing every base reports the same way.
+- Event cutscenes (S5) use the same rule on their acknowledgement; the monthly failure (S3, S4) keeps
+  `MonthlyReportState::btnOkClick`'s own rule (only `loseGame`, without the unended check).
+- An ended campaign's open windows no longer forbid saving it (ADR 0036).
 - `time5Seconds` returns early only once the campaign is lost; a won campaign's tick runs on, as in the reference.
   Losing every base still ends the campaign lost there (branch 5).
 - An ended campaign refuses every command ("This campaign has ended.") and keeps its ending in saves (`end`).
@@ -446,4 +451,23 @@ won and one that loses ends it lost (a video with both loses, as the reference s
 - Cutscene playback is Phase 8 presentation; the windows that show an ending are S7.
 
 Tests: `StrategicEndingTests` (a winning topic, a plain topic whose free topic loses, a winning topic whose free topic
-would lose, an undefined video; the ended campaign refusing time before and after a reload).
+would lose, an undefined video, with the game-over video; the ended campaign refusing time before and after a reload;
+the ironman save request; an ending on the month boundary leaving the report moot and the campaign savable).
+
+### S6 audit (2026-10-18)
+
+An independent review of 73ac8c5e confirmed the cutscene rule against `time1Day` 3e (the project's own video, then
+the free topic's, the unended check, a both-flags video losing), that only `time1Day` plays research videos, the
+`time5Seconds` change, and that no path faults the campaign. Fixes:
+
+- The ironman save after an ending inside a tick was missing (research and losing every base); the tick's five-second
+  level now requests it once.
+- `CampaignEnded` names the video that ends the game; the research path no longer reports each queued video as if it
+  ended the game, and the loss window no longer says "No X-COM base remains." for every loss.
+- Windows opened in an ending's tick could never be answered and forbade saving; an ended campaign is now savable
+  (ADR 0036).
+- ADR 0036 records the undefined research cutscene, the moot windows and the preflight that cannot foresee a loss;
+  the docs no longer claim the monthly failure uses `EndByVideo`.
+
+Not changed: a won campaign then losing every base in the same tick keeps the win (practically unreachable); the
+pre-existing `MonthsPassed` guard on the no-bases loss stays.

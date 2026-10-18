@@ -232,7 +232,7 @@ public static class GeoscapeNotifications
             case CampaignEnded ended:
                 // The reference plays the defeat or victory cutscene; the port has none yet.
                 return new(ended.Ending == 2 ? "The campaign is lost" : "The campaign is won",
-                    ended.Ending == 2 ? ["No X-COM base remains."] : [], [Ok()]);
+                    ended.Cutscene is { } video ? ["Cutscene: " + video] : [], [Ok()]);
             case DeploymentRequested deployment:
                 // Port screen (S8): Phase 7 runs the battle; until then the request waits in the save.
                 return new("Tactical combat is not available yet",
