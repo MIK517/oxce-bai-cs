@@ -197,8 +197,12 @@ public sealed class PrivateStrategicWorldTests
                     }
                     measurements.Add(new
                     {
-                        Family = family, Save = name, Months = months, Stop = stop ?? "three months",
-                        DayCommandMs = Median(dayMilliseconds), MonthCommandMs = Median(monthMilliseconds),
+                        Family = family,
+                        Save = name,
+                        Months = months,
+                        Stop = stop ?? "three months",
+                        DayCommandMs = Median(dayMilliseconds),
+                        MonthCommandMs = Median(monthMilliseconds),
                         SaveAndReloadMs = Median(reloadMilliseconds),
                     });
                 }
