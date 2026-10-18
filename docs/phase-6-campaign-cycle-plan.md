@@ -233,3 +233,10 @@ refusal messages are in the SDL geoscape; presentation beyond text panels is ass
 Every staged save plays up to three months with a reload at every report, keeping the ledger's twelve-month histories
 and bounded populations; month and save costs are measured and the Windows SDL3 smoke passes
 ([status S8](strategic-campaign-cycle-status.md#s8--scenarios-2026-10-18)).
+
+### S9 — Phase 6 closure (2026-10-18)
+
+[Phase 6 status](phase-6-status.md) publishes the closure evidence, the refusal inventory with every class's
+disposition ([inventory](phase-6-refusal-inventory.md)), the R4–R6 decision (kept as named restrictions and assigned
+to Phase 7), the residual Phase 7 and 8 obligations, the first Phase 7 acceptance scenario and the launch-gate status
+([branch status S9](strategic-campaign-cycle-status.md#s9--phase-6-closure-2026-10-18)).

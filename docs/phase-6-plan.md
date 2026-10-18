@@ -563,7 +563,7 @@ is necessary for this plan.
   tactical saves, mission results/debriefing and playable-launch integration remain
   explicitly tracked. Full original binary-save conversion and release breadth stay on
   the later completion roadmap, not hidden in a Phase 6 claim.
-- Publish `phase-6-status.md` with exact corpus/check results, intentional differences,
+- Publish `phase-6-status.md` ([published](phase-6-status.md)) with exact corpus/check results, intentional differences,
   unresolved gaps and the first Phase 7 acceptance scenario. Do not manufacture a
   completion percentage from test counts or source-file counts.
 

@@ -290,6 +290,10 @@ Exit gate:
 
 ## Phase 7 — Playable battlescape vertical slice
 
+Phase 7 inherits the Phase 6 named restrictions (the 4c R3–R6 and their kind,
+[Phase 6 status](phase-6-status.md#refusal-inventory)): its planning slice inventories them against the battle
+transitions and retires them through staged ticks or names their remaining owner.
+
 Suggested order:
 
 1. Map generation, tiles, routes/nodes, deployments, units, inventories.
