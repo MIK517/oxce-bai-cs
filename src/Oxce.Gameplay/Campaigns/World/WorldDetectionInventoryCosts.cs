@@ -29,7 +29,7 @@ internal static class WorldDetectionInventoryCosts
     {
         if (!program.Bindings.Any(static binding => binding.Name == "RuleInventory.getMoveToCost")) return null;
         var references = WorldDetectionReferenceForecast.Build(program, rules, visits, maximumWork);
-        if (references is null) return "Detection inventory cost forecast exceeds the supported work limit.";
+        if (references is null) return ForecastLimits.DetectionInventoryCostForecastWork;
         long work = 0;
         for (var index = 0; index < program.Instructions.Count; index++)
         {
@@ -44,7 +44,7 @@ internal static class WorldDetectionInventoryCosts
             if (targets is null || targets.Contains(null))
                 return "Detection inventory movement requires a nonnull destination forecast.";
             work += (long)(sources?.Count ?? rules.Inventories.Count) * targets.Count;
-            if (work > maximumWork) return "Detection inventory cost forecast exceeds the supported work limit.";
+            if (work > maximumWork) return ForecastLimits.DetectionInventoryCostForecastWork;
             var sourceRules = sources is null ? rules.Inventories.Rules.Select(static rule => rule.Value) : sources.OfType<RuntimeInventoryRule>();
             foreach (var source in sourceRules)
                 foreach (var target in targets.OfType<RuntimeInventoryRule>())

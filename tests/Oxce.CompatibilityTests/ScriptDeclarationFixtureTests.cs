@@ -1,4 +1,3 @@
-using Oxce.FixtureSupport;
 using Oxce.Scripting.Compilation;
 using Oxce.Scripting.Runtime;
 using Oxce.TestSupport;
@@ -54,7 +53,6 @@ public sealed class ScriptDeclarationFixtureTests
                 detectionChance,
             });
         }
-        Assert.Equal(CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(oracle.RootElement.GetRawText())),
-            CanonicalJson.Normalize(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new { cases = actual })));
+        TestFixtures.AssertJsonEqual(oracle.RootElement, System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new { cases = actual }));
     }
 }

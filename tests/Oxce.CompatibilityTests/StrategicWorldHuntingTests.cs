@@ -271,7 +271,7 @@ public sealed partial class StrategicWorldHuntingTests
                         decimal.Parse(ufo.Longitude.ToString("F12", System.Globalization.CultureInfo.InvariantCulture), System.Globalization.CultureInfo.InvariantCulture),
                         decimal.Parse(ufo.Latitude.ToString("F12", System.Globalization.CultureInfo.InvariantCulture), System.Globalization.CultureInfo.InvariantCulture),
                     })).ToArray());
-                Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row)), CanonicalJson.Normalize(actual));
+                TestFixtures.AssertJsonEqual(row, actual);
                 campaign = Reload(content, campaign, 81, "escort-chain-after.sav");
             }
         }
@@ -333,7 +333,7 @@ public sealed partial class StrategicWorldHuntingTests
             var born = Assert.Single(after.Bases[0].Crafts, value => value.RuleId == "STR_SOLDIER");
             var soldier = Assert.Single(after.Bases[0].Transfers).Soldier!;
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { order, born.Id, soldier.Id, after.NextIds["STR_SOLDIER"] });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
             Assert.Equal(1, after.World.Ufos[0].Destination!.Id);
             Reload(content, campaign, 81, "shared-birth-after.sav");
         }
@@ -605,8 +605,7 @@ public sealed partial class StrategicWorldHuntingTests
                 Assert.True(campaign.ResearchPreflight.TryForecastDailyStocks(ref work, out var forecast));
                 Assert.Equivalent(before, campaign.Capture(), strict: true);
                 Assert.All(forecast.CounterChanges, change => Assert.Equal("COUNTER_TRACE", change.Name));
-                Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row[4])),
-                    CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(forecast.CounterChanges.Select(change => change.Increase))));
+                TestFixtures.AssertJsonEqual(row[4], JsonSerializer.SerializeToUtf8Bytes(forecast.CounterChanges.Select(change => change.Increase)));
                 var result = campaign.Execute(new AdvanceCampaignTime(1));
                 Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
                 Assert.Single(result.Events.OfType<CampaignResearchCompleted>());
@@ -731,7 +730,7 @@ public sealed partial class StrategicWorldHuntingTests
                     born.Select(craft => new object[] { craft.Id, craft.Logistics!.Status, craft.Logistics.Fuel, craft.Logistics.Weapons[0]?.Rearming ?? false }).ToArray(),
                     existing.Status, existing.Fuel, campaign.Capture().World.Ufos[0].Hunting ? campaign.Capture().World.Ufos[0].Destination!.Id : 0
                 });
-                Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(5).ToArray())), CanonicalJson.Normalize(actual));
+                TestFixtures.AssertJsonEqual(row.EnumerateArray().Skip(5).ToArray(), actual);
                 Reload(content, campaign, 81, "craft-composed-after.sav");
             }
         }
@@ -811,7 +810,7 @@ public sealed partial class StrategicWorldHuntingTests
             { craft.Id, owner.Crafts.Count(craft => craft.RuleId == "PRODUCED_CRAFT"), owner.Transfers.Count, owner.Transfers.Count == 0 ? 0 : owner.Transfers[0].Hours,
                 state.Status, state.Fuel, state.Longitude, state.Latitude, state.Weapons[0]?.Ammo ?? 0,
                 state.Weapons[0]?.Rearming ?? false, state.IsAutoPatrolling });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(3).ToArray())), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row.EnumerateArray().Skip(3).ToArray(), actual);
             Assert.Equal(11, campaign.Capture().NextIds["PRODUCED_CRAFT"]);
             if (hunting)
             {
@@ -836,8 +835,7 @@ public sealed partial class StrategicWorldHuntingTests
                 row[0].GetInt32(), row[1].GetInt32(), row[2].GetInt32(), row[3].GetInt32(),
                 result.HunterKiller, result.Mode, result.Behavior, random.Calls,
             });
-            Assert.Equal(CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(row.GetRawText())),
-                CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
         }
     }
 
@@ -868,8 +866,7 @@ public sealed partial class StrategicWorldHuntingTests
             actual.Add(attraction);
             expected.Add(row[5].GetInt32());
         }
-        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)),
-            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(actual)));
+        TestFixtures.AssertJsonEqual(expected, JsonSerializer.SerializeToUtf8Bytes(actual));
     }
 
     [Fact]
@@ -929,7 +926,7 @@ public sealed partial class StrategicWorldHuntingTests
                 row[0].GetInt32(), hunted.Speed, escort.Speed, restored.Destination!.Longitude,
                 restored.Destination.Latitude, restored.Hunting, restored.Escorting,
             });
-            Assert.Equal(CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
             Assert.Null(restored.OriginalWaypoint);
             Assert.Equal(2200, restored.Speed);
         }
@@ -1120,8 +1117,7 @@ public sealed partial class StrategicWorldHuntingTests
         {
             var actual = JsonSerializer.SerializeToUtf8Bytes(new[]
                 { row[0].GetBoolean(), row[1].GetBoolean(), WorldHunting.IsIgnored(row[0].GetBoolean(), row[1].GetBoolean()) });
-            Assert.Equal(CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(row.GetRawText())),
-                CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
         }
     }
 
@@ -2360,11 +2356,7 @@ public sealed partial class StrategicWorldHuntingTests
                     Assert.Single(selected.Bases[1].Research);
                     Assert.Equal(0, selected.Bases[1].Items.GetValueOrDefault("SUPPLY"));
                     if (chosen == "REWARD_A") Assert.Equal(row[6].GetInt32() - 1, selected.Bases[0].Items.GetValueOrDefault("SUPPLY"));
-                    for (var rewrite = 0; rewrite < 3; rewrite++)
-                    {
-                        campaign = Reload(content, campaign, 81, "reward-variable-stocks.sav");
-                        Assert.Equivalent(selected, campaign.Capture(), strict: true);
-                    }
+                    campaign = ReloadRepeatedly(content, campaign, 81, "reward-variable-stocks.sav", 3, selected);
                     continue;
                 }
                 var result = campaign.Execute(new AdvanceCampaignTime(1));
@@ -2459,7 +2451,7 @@ public sealed partial class StrategicWorldHuntingTests
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "researchUnicodeRows"))
         {
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { after.CompletedResearch.Contains(second), after.ResearchRuleStatus.GetValueOrDefault(second) });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
         }
         Reload(content, campaign, 81, "unicode-research-after.sav");
     }
@@ -2970,7 +2962,7 @@ public sealed partial class StrategicWorldHuntingTests
         var result = campaign.Execute(new AdvanceCampaignTime(1));
         Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
         var actual = JsonSerializer.SerializeToUtf8Bytes(result.Events.OfType<CraftTargetLost>().Select(item => item.Target.Id).ToArray());
-        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+        TestFixtures.AssertJsonEqual(expected, actual);
         Assert.All(campaign.Capture().Bases[0].Crafts, craft => Assert.Equal("ORDER_FOLLOWER", craft.RuleId));
         Reload(content, campaign, 81, "ordered-input-after.sav");
     }
@@ -3527,7 +3519,7 @@ public sealed partial class StrategicWorldHuntingTests
                 var state = Assert.Single(after.Bases[0].Crafts, craft => craft.RuleId == "SCORE_HUNT").Logistics!;
                 var stop = progress.StopReason == "STR_PRODUCTION_COMPLETE" ? 1 : progress.StopReason == "STR_NOT_ENOUGH_MATERIALS" ? 3 : 0;
                 var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { progress.Produced, after.ResearchScores[^1], after.Bases[0].Items.GetValueOrDefault("SUPPLY"), stop, state.Status, state.Fuel, after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0 });
-                Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(4).ToArray())), CanonicalJson.Normalize(actual));
+                TestFixtures.AssertJsonEqual(row.EnumerateArray().Skip(4).ToArray(), actual);
                 Reload(content, campaign, 81, "score-after.sav");
             }
         }
@@ -3817,7 +3809,7 @@ public sealed partial class StrategicWorldHuntingTests
                 var after = campaign.Capture();
                 Assert.Empty(after.Bases[0].Research);
                 var actual = JsonSerializer.SerializeToUtf8Bytes(new[] { after.Bases[0].Items.GetValueOrDefault("SUPPLY"), after.Bases[0].Items.GetValueOrDefault("CORPSE_OUTPUT") });
-                Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(9).ToArray())), CanonicalJson.Normalize(actual));
+                TestFixtures.AssertJsonEqual(row.EnumerateArray().Skip(9).ToArray(), actual);
                 Reload(content, campaign, 81, "corpse-live-after.sav");
             }
         }
@@ -3875,7 +3867,7 @@ public sealed partial class StrategicWorldHuntingTests
                 var after = campaign.Capture();
                 var state = Assert.Single(after.Bases[0].Crafts, craft => craft.RuleId == "CORPSE_HUNT").Logistics!;
                 var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { after.Bases[0].Items.GetValueOrDefault("SUPPLY"), after.Bases[0].Items.GetValueOrDefault("CORPSE_OUTPUT"), state.Status, state.Fuel, after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0 });
-                Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(7).ToArray())), CanonicalJson.Normalize(actual));
+                TestFixtures.AssertJsonEqual(row.EnumerateArray().Skip(7).ToArray(), actual);
                 Reload(content, campaign, 81, "corpse-hunt-after.sav");
             }
         }
@@ -3976,7 +3968,7 @@ public sealed partial class StrategicWorldHuntingTests
                         targetBase.Items.GetValueOrDefault("SUPPLY"), after.Bases.Sum(item => item.Transfers.Count), state.Status, state.Fuel,
                         after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0
                 });
-                Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(7).ToArray())), CanonicalJson.Normalize(actual));
+                TestFixtures.AssertJsonEqual(row.EnumerateArray().Skip(7).ToArray(), actual);
                 Reload(caseContent, campaign, 81, "sale-product-after.sav");
             }
         }
@@ -4007,7 +3999,7 @@ public sealed partial class StrategicWorldHuntingTests
             Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
             var after = campaign.Capture();
             var actual = JsonSerializer.SerializeToUtf8Bytes(new[] { after.Funds[^1], after.Incomes[^1], after.Expenditures[^1] });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(2).ToArray())), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row.EnumerateArray().Skip(2).ToArray(), actual);
             Reload(content, campaign, 81, "mixed-sale-after.sav");
         }
     }

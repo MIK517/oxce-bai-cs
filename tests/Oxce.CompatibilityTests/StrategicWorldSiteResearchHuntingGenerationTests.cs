@@ -43,11 +43,7 @@ public sealed class StrategicWorldSiteResearchHuntingGenerationTests
         Assert.Equal(2, mission.AlienBase!.Id);
         Assert.Equal(0, Assert.Single(after.World.AlienBases).MinutesSinceLastHuntMissionGeneration);
         Assert.Equal(expected.State, after.RandomState);
-        for (var pass = 0; pass < 3; pass++)
-        {
-            campaign = Reload(content, campaign, 17, "site-research-hunting-generation.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 17, "site-research-hunting-generation.sav", 3, after);
         AdvanceUnblocked(campaign, 360);
         if (countdown <= 30) Assert.Empty(campaign.Capture().World.Missions);
         else Assert.False(Assert.Single(campaign.Capture().World.Missions).Interrupted);
@@ -94,11 +90,7 @@ public sealed class StrategicWorldSiteResearchHuntingGenerationTests
         Assert.All(after.World.Missions, mission => Assert.Equal("BOTH_CALLERS", mission.RuleId));
         Assert.Equal(1, Assert.Single(after.World.AlienBases).GenMissionCount);
         Assert.Equal(0, after.World.AlienBases[0].MinutesSinceLastHuntMissionGeneration);
-        for (var pass = 0; pass < 3; pass++)
-        {
-            campaign = Reload(content, campaign, 17, "site-research-both-generation.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 17, "site-research-both-generation.sav", 3, after);
     }
 
     internal static RuntimeContent Content() => StrategicReadinessTestContent.Load(

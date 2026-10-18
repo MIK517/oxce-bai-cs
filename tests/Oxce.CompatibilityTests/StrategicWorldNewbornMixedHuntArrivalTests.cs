@@ -89,11 +89,7 @@ public sealed class StrategicWorldNewbornMixedHuntArrivalTests
                     }
                 }
                 patterns.Add(pattern);
-                for (var pass = 0; pass < 3; pass++)
-                {
-                    campaign = Reload(content, campaign, seed, "mixed-hunter-first-arrival.sav");
-                    Assert.Equivalent(after, campaign.Capture(), strict: true);
-                }
+                campaign = ReloadRepeatedly(content, campaign, seed, "mixed-hunter-first-arrival.sav", 3, after);
                 AdvanceUnblocked(campaign, 1);
                 Assert.All(campaign.Capture().World.Ufos, ufo => Assert.Equal(ufo.HunterKiller ? 0 : 2, ufo.TrajectoryPoint));
             }

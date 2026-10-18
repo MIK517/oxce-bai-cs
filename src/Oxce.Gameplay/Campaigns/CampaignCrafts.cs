@@ -19,7 +19,7 @@ public sealed partial class CampaignState
         var type = rules.Crafts.GetExternalId(craft.Rule);
         foreach (var soldier in Crew(owner, type, craft.Id))
         {
-            var armor = rules.Armors[rules.Armors.GetRequired(soldier.Personal!.Armor)].Value;
+            var armor = rules.Armors.GetRequiredValue(soldier.Personal!.Armor);
             if (rule.AllowedArmorGroups.Count != 0 && !rule.AllowedArmorGroups.Contains(armor.Group))
                 return false;
         }
@@ -28,7 +28,7 @@ public sealed partial class CampaignState
             var count = 0;
             foreach (var soldier in Crew(owner, type, craft.Id))
             {
-                var armor = rules.Armors[rules.Armors.GetRequired(soldier.Personal!.Armor)].Value;
+                var armor = rules.Armors.GetRequiredValue(soldier.Personal!.Armor);
                 if (armor.Group == limit.Key) count++;
             }
             if (count > limit.Value) return false;
@@ -160,7 +160,7 @@ public sealed partial class CampaignState
     // Base::getUsedHangars(type) also reserves one hangar per craft still to be manufactured.
     private int UsedHangars(BaseState state, int type) => state.Crafts.Count(c => _content.RuntimeRules.Crafts[c.Rule].Value.HangarType == type) +
         state.Transfers.Where(t => !t.Delivered && t.Craft is not null &&
-            _content.RuntimeRules.Crafts[_content.RuntimeRules.Crafts.GetRequired(t.Craft.RuleId)].Value.HangarType == type).Sum(t => t.Quantity) +
+            _content.RuntimeRules.Crafts.GetRequiredValue(t.Craft.RuleId).HangarType == type).Sum(t => t.Quantity) +
         state.Productions.Sum(p => ProducedCraft(_content.RuntimeRules.Manufacture[p.Rule].Value) is { } craft &&
             _content.RuntimeRules.Crafts[craft].Value.HangarType == type ? Math.Max(0, p.Amount - Produced(p)) : 0);
 }

@@ -26,7 +26,7 @@ internal static class ProductionOutputEnvelope
         foreach (var choice in choices)
         {
             work += 1L + choice.Items.Count;
-            if (work > 1_000_000) return false;
+            if (work > ForecastLimits.Work) return false;
             if (choice.Weight == 0) continue;
             count++;
             items ??= choice.Items;
@@ -40,7 +40,7 @@ internal static class ProductionOutputEnvelope
         var differs = false;
         foreach (var item in bounds)
         {
-            if (++work > 1_000_000) return false;
+            if (++work > ForecastLimits.Work) return false;
             if (item.Value.Present == count && item.Value.Minimum == item.Value.Maximum) continue;
             differs = true;
             var inert = allowsVariation(item.Key);
@@ -50,7 +50,7 @@ internal static class ProductionOutputEnvelope
             // Inert for servicing does not mean inert for a later needItem grant.
             // Keep its lower stock too; absence in any choice means zero.
             if (allowsQuantityVariation is null) continue;
-            if (++work > 1_000_000) return false;
+            if (++work > ForecastLimits.Work) return false;
             (quantityMinimum ??= new(StringComparer.Ordinal)).Add(item.Key, item.Value.Present == count ? item.Value.Minimum : 0);
         }
         // Reuse changes craft status immediately. Even identical quantities must
@@ -59,7 +59,7 @@ internal static class ProductionOutputEnvelope
         foreach (var choice in choices)
         {
             work += 1L + choice.Items.Count;
-            if (work > 1_000_000) return false;
+            if (work > ForecastLimits.Work) return false;
             if (choice.Weight == 0) continue;
             var order = choice.Items.Keys.Where(id => !allowsVariation(id)).ToArray();
             if (effectOrder is null) effectOrder = order;

@@ -139,8 +139,7 @@ public sealed class StrategicWorldDetectionNumericTests
                 source = row.GetProperty("source").GetString(),
             });
         }
-        Assert.Equal(Oxce.FixtureSupport.CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(oracle.RootElement.GetRawText())),
-            Oxce.FixtureSupport.CanonicalJson.Normalize(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new { cases = actual })));
+        TestFixtures.AssertJsonEqual(oracle.RootElement, System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new { cases = actual }));
     }
 
     [Theory]

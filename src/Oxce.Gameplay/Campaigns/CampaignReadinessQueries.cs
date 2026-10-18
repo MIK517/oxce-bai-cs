@@ -49,7 +49,7 @@ public sealed partial class CampaignState : ICampaignReadinessQuery
                 var weapons = state?.Weapons.Select(weapon =>
                 {
                     if (weapon is null) return null;
-                    var definition = _content.RuntimeRules.CraftWeapons[_content.RuntimeRules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
+                    var definition = _content.RuntimeRules.CraftWeapons.GetRequiredValue(weapon.RuleId);
                     return new CampaignWeaponReadiness(weapon.RuleId, weapon.Ammo, definition.AmmoMaximum, weapon.Rearming, weapon.Disabled);
                 }).ToArray() ?? [];
                 serviceCapacitySupported &= CraftLogistics.TryEffectiveServiceCapacities(
@@ -64,7 +64,7 @@ public sealed partial class CampaignState : ICampaignReadinessQuery
                 _content.RuntimeRules.Facilities[f.Rule].Value.AmmoMaximum, f.BuildTime, f.Disabled));
             var craftReadiness = CampaignSnapshot.ReadOnly(crafts);
             var serviceLimitation = _restrictions.FirstOrDefault(r => r.BlocksTime)?.Feature ??
-                (!serviceCapacitySupported ? "Craft service capacity exceeds the supported range." : PreflightServicing());
+                (!serviceCapacitySupported ? ForecastLimits.CraftServiceCapacityRange : PreflightServicing());
             return new(craftReadiness, CampaignSnapshot.ReadOnly(defenses), serviceLimitation);
         }
     }
@@ -119,7 +119,7 @@ public sealed partial class CampaignState : ICampaignReadinessQuery
         long facilities = owner.Facilities.Where(f => f.BuildTime == 0).Sum(f => (long)FacilityRule(f).MonthlyCost);
         long craft = owner.Crafts.Sum(c => (long)_content.RuntimeRules.Crafts[c.Rule].Value.CostRent) +
             owner.Transfers.Where(t => !t.Delivered && t.Craft is not null).Sum(t =>
-                (long)_content.RuntimeRules.Crafts[_content.RuntimeRules.Crafts.GetRequired(t.Craft!.RuleId)].Value.CostRent);
+                (long)_content.RuntimeRules.Crafts.GetRequiredValue(t.Craft!.RuleId).CostRent);
         long personnel = checked((owner.Scientists + owner.Research.Sum(p => p.Assigned) +
             owner.Transfers.Where(t => !t.Delivered && t.Kind == CampaignTransferKind.Scientist).Sum(t => t.Quantity)) *
             (long)_content.RuntimeRules.Campaign.CostScientist +
@@ -137,7 +137,7 @@ public sealed partial class CampaignState : ICampaignReadinessQuery
             (long)t.Quantity * ItemMonthlyCost(_content.RuntimeRules.Items.GetRequired(t.RuleId))));
         foreach (var soldier in owner.Soldiers.Select(s => s.Personal).Concat(owner.Transfers.Where(t => !t.Delivered && t.Soldier is not null).Select(t => t.Soldier!.Personal)).OfType<SoldierPersonalState>())
         {
-            var storeItem = _content.RuntimeRules.Armors[_content.RuntimeRules.Armors.GetRequired(soldier.Armor)].Value.StoreItem;
+            var storeItem = _content.RuntimeRules.Armors.GetRequiredValue(soldier.Armor).StoreItem;
             if (storeItem is { } item) inventory = checked(inventory + ItemMonthlyCost(item));
         }
         foreach (var state in owner.Crafts.Select(c => c.Logistics).OfType<CraftLogisticsState>())

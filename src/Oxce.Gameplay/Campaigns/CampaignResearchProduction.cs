@@ -104,7 +104,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
 
     string ICampaignArcResearch.Grant(string id)
     {
-        var rule = _content.RuntimeRules.Research[_content.RuntimeRules.Research.GetRequired(id)].Value;
+        var rule = _content.RuntimeRules.Research.GetRequiredValue(id);
         var discoveries = new List<string>();
         AddFinishedResearch(_bases[0], id, discoveries);
         if (rule.Lookup.Length == 0 || !_content.RuntimeRules.Research.TryGet(rule.Lookup, out _)) return id;
@@ -146,7 +146,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
             long slotNegative = 0;
             foreach (var id in slot)
             {
-                var rule = _content.RuntimeRules.Research[_content.RuntimeRules.Research.GetRequired(id)].Value;
+                var rule = _content.RuntimeRules.Research.GetRequiredValue(id);
                 var candidatePositive = Math.Max(0, (long)rule.Points) + automaticPositive;
                 var candidateNegative = Math.Min(0, (long)rule.Points) + automaticNegative;
                 if (rule.Lookup.Length != 0 && _content.RuntimeRules.Research.TryGet(rule.Lookup, out var lookup))
@@ -174,7 +174,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
             long slotAdditions = 0;
             foreach (var id in slot)
             {
-                var rule = _content.RuntimeRules.Research[_content.RuntimeRules.Research.GetRequired(id)].Value;
+                var rule = _content.RuntimeRules.Research.GetRequiredValue(id);
                 slotAdditions = Math.Max(slotAdditions, automatic * (rule.Lookup.Length == 0 ? 1 : 2));
             }
             additions += slotAdditions;
@@ -197,7 +197,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
         foreach (var id in finishing)
         {
             AddGuaranteed(id);
-            AddGuaranteed(rules[rules.GetRequired(id)].Value.Lookup);
+            AddGuaranteed(rules.GetRequiredValue(id).Lookup);
         }
         guaranteed.ExceptWith(possiblyDisabled);
         return guaranteed;
@@ -241,7 +241,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
         var possible = new HashSet<string>(finishing, StringComparer.Ordinal);
         foreach (var id in finishing)
         {
-            var rule = rules[rules.GetRequired(id)].Value;
+            var rule = rules.GetRequiredValue(id);
             possible.UnionWith(rule.GetOneFree);
             foreach (var group in rule.GetOneFreeProtected) possible.UnionWith(group.Topics);
         }
@@ -323,7 +323,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
             var project = owner.Productions[index];
             var refundAccounting = default(AccountingState);
             if (rule.Refund && !TryStageAccounting(rule.Cost, out refundAccounting))
-                return Blocked("Production accounting exceeds the supported range.");
+                return Blocked(ForecastLimits.ProductionAccountingRange);
             owner.Engineers = checked(owner.Engineers + project.Assigned);
             if (rule.Refund) RefundProductionUnit(owner, rule, refundAccounting);
             owner.Productions.RemoveAt(index);
@@ -419,7 +419,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
         if (CoreResearchUnavailable(id, rule, options, unlocked) is { } coreReason) return coreReason;
         if (owner.Research.Any(project => project.Rule == handle)) return "Research is already active.";
         if (!WeightsFit(rule.Events, static entry => entry.Value))
-            return "Strategic event weights exceed the supported range.";
+            return ForecastLimits.StrategicEventWeightsRange;
         if (rule.NeedItem && (rule.NeededItem is null || !_content.RuntimeRules.Items.TryGet(rule.NeededItem, out var item) ||
             owner.Items.GetValueOrDefault(item) == 0)) return "Required research item is unavailable.";
         return HasFunctions(owner, rule.RequiredBaseFunctions) ? null : "Required base functions are unavailable.";
@@ -451,12 +451,12 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
             return "Production references an unresolved person type.";
         if (!WeightsFit(rule.RandomProducedItems, static entry => unchecked((ulong)entry.Weight),
                 requirePositive: rule.RandomProducedItems.Count != 0))
-            return "Random production weights exceed the supported range.";
+            return ForecastLimits.RandomProductionWeightsRange;
         if (rule.RandomProducedItems.SelectMany(set => set.Items).Any(pair =>
             pair.Value < 0 || !_content.RuntimeRules.Items.TryGet(pair.Key, out _)))
             return "Random production references an invalid item quantity or ID.";
         if (!WeightsFit(rule.Events, static entry => entry.Value))
-            return "Strategic event weights exceed the supported range.";
+            return ForecastLimits.StrategicEventWeightsRange;
         return null;
     }
 
@@ -465,7 +465,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
         long work = 0;
         var reason = PreflightResearchProduction(highest, ref work, exactDailyScores: false, out var dailyScoresReserved);
         if (highest < CampaignTimeTrigger.OneDay || !dailyScoresReserved ||
-            reason != "Research and production scores exceed the supported range.") return reason;
+            reason != ForecastLimits.ResearchAndProductionScoresRange) return reason;
         // Retry only a later production score refusal. The guaranteed daily
         // final interval may provide headroom, after all ordered prefixes fit.
         // Both attempts share one work budget; optional production never credits it.
@@ -483,7 +483,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
             _researchEventWeightsFit ??= _content.RuntimeRules.Research.Rules.All(rule =>
                 WeightsFit(rule.Value.Events, static entry => entry.Value));
             if (_researchEventWeightsFit == false)
-                return "Strategic event weights exceed the supported range.";
+                return ForecastLimits.StrategicEventWeightsRange;
             foreach (var owner in _bases)
                 foreach (var project in owner.Research)
                     if ((long)project.Spent + project.Assigned > int.MaxValue)
@@ -508,7 +508,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                 foreach (var production in owner.Productions)
                 {
                     if ((long)production.Spent + production.Assigned > int.MaxValue)
-                        return "Production progress exceeds the supported range.";
+                        return ForecastLimits.ProductionProgressRange;
                     // Restored saves can carry projects that were never validated by a start command.
                     var manufacture = _content.RuntimeRules.Manufacture[production.Rule].Value;
                     if (ProductionRuleInvalid(manufacture) is { } invalidReason) return invalidReason;
@@ -542,20 +542,20 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                         }
                     }
                     if (!scoreCapacity.Reserve(manufacture.Points, manufacture.Points, units))
-                        return "Research and production scores exceed the supported range.";
+                        return ForecastLimits.ResearchAndProductionScoresRange;
                     if (ReserveProductionHistory(production, manufacture, units, ref work) is { } historyReason) return historyReason;
                     var starts = units - (!production.Infinite && ProductionProgress.Produced(manufacture.Time,
                         production.Spent + assignments[index], production.Amount) >= production.Amount ? 1 : 0);
                     if (!accountingCapacity.Reserve(-manufacture.Cost, -manufacture.Cost, starts))
-                        return "Production accounting exceeds the supported range.";
+                        return ForecastLimits.ProductionAccountingRange;
                     if (!production.Sell) continue;
                     foreach (var material in manufacture.ProducedMaterials)
                     {
-                        if (++work > 1_000_000) return "Production accounting exceeds the supported work limit.";
+                        if (++work > ForecastLimits.Work) return "Production accounting exceeds the supported work limit.";
                         if (material.Item is not { } item) continue;
                         var rule = _content.RuntimeRules.Items[item].Value;
                         var daily = highest >= CampaignTimeTrigger.OneDay;
-                        if (daily && DaysPassed == int.MaxValue) return "Production price days exceed the supported range.";
+                        if (daily && DaysPassed == int.MaxValue) return ForecastLimits.ProductionPriceDaysRange;
                         var forecast = new PriceForecastContext(Time.Advance(out _), DaysPassed + (daily ? 1 : 0), daily, work);
                         var price = ItemPrice(material.Id, rule, false, out var unavailable, forecast);
                         var priceWork = forecast.Work - work;
@@ -563,10 +563,10 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                         // Reserve their repeated VM work before running any delivery.
                         work += priceWork * units;
                         if (unavailable is not null) return unavailable;
-                        if (work > 1_000_000) return "Production price forecasts exceed the supported work limit.";
+                        if (work > ForecastLimits.Work) return ForecastLimits.ProductionPriceForecastsWork;
                         var value = (long)price * material.Quantity;
                         if (!accountingCapacity.Reserve(value, value, units))
-                            return "Production accounting exceeds the supported range.";
+                            return ForecastLimits.ProductionAccountingRange;
                     }
                 }
                 if (possiblePersonnel != 0 && UsedQuartersWide(owner) + possiblePersonnel > int.MaxValue)
@@ -739,7 +739,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
         if (rule.SpawnedEvent.Length != 0)
             ScheduleStrategicEvent(rule.SpawnedEvent, source, effects);
         var selectedEvent = SelectWeighted(rule.Events, static entry => entry.Value,
-            "Strategic event weights exceed the supported range.");
+            ForecastLimits.StrategicEventWeightsRange);
         if (selectedEvent.HasValue)
             ScheduleStrategicEvent(selectedEvent.Value.Key, source, effects);
         if (!HasRemainingResearchReward(rule) && !HasProtectedUnlock(rule))
@@ -822,7 +822,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
         // RuleManufacture::haveEnoughMoneyForOneMoreUnit: free units start even with negative funds.
         if (rule.Cost > 0 && _funds[^1] < rule.Cost) return "STR_NOT_ENOUGH_MONEY";
         if (!TryStageAccounting(-rule.Cost, out var accounting))
-            return "Production accounting exceeds the supported range.";
+            return ForecastLimits.ProductionAccountingRange;
         if (rule.SpawnedPersonType.Length != 0 && checkLivingSpace)
         {
             var available = AvailableQuarters(owner);
@@ -937,7 +937,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                     // Native setFunds runs separately for every item: mixed signs
                     // must retain both income and expenditure, even when net funds do not change.
                     if (!TryStageAccounting(checked((long)price * material.Quantity), saleAccounting, out var next))
-                        throw new InvalidDataException("Production accounting exceeds the supported range.");
+                        throw new InvalidDataException(ForecastLimits.ProductionAccountingRange);
                     saleAccounting = next;
                 }
         foreach (var material in rule.ProducedMaterials)
@@ -959,7 +959,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
         {
             var selected = SelectWeighted(rule.RandomProducedItems,
                 static entry => unchecked((ulong)entry.Weight),
-                "Random production weights exceed the supported range.");
+                ForecastLimits.RandomProductionWeightsRange);
             if (selected.HasValue)
             {
                 foreach (var item in selected.Value.Items)
@@ -972,7 +972,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
         }
         ProducePerson(owner, rule);
         var selectedEvent = SelectWeighted(rule.Events, static entry => entry.Value,
-            "Strategic event weights exceed the supported range.");
+            ForecastLimits.StrategicEventWeightsRange);
         if (selectedEvent.HasValue)
             ScheduleStrategicEvent(selectedEvent.Value.Key,
                 _content.RuntimeRules.Manufacture.GetExternalId(production.Rule), effects);
@@ -1084,7 +1084,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
             QueueTransfer(owner, hours, CampaignTransferKind.Engineer, "", 1);
         else
         {
-            var definition = _content.RuntimeRules.Soldiers[_content.RuntimeRules.Soldiers.GetRequired(rule.SpawnedPersonType)].Value;
+            var definition = _content.RuntimeRules.Soldiers.GetRequiredValue(rule.SpawnedPersonType);
             var soldier = SpawnSoldier(rule.SpawnedPersonType, definition, SelectNationality(definition, owner),
                 rule.SpawnedSoldierTemplate, rule.SpawnedPersonName);
             QueueTransfer(owner, hours, CampaignTransferKind.Soldier,

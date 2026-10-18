@@ -6,6 +6,7 @@ using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.Savegames.Oxce;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -15,12 +16,9 @@ public sealed class PrivateCampaignSaveTests
     [Fact]
     public void RepresentativeOwnedSavesLoadAndPreserveTheirStrategicSubset()
     {
-        var repository = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var installation = Path.Combine(repository, "artifacts", "private-install");
-        var saves = Path.Combine(repository, "fixtures", "private", "saves");
-        Assert.SkipUnless(
-            File.Exists(Path.Combine(installation, ".oxce-private-install-manifest.json")) && Directory.Exists(saves),
-            "The staged owned installation and private save corpus are not available in this checkout.");
+        var installation = TestFixtures.RequirePrivateInstallation();
+        var saves = TestFixtures.RepositoryPath("fixtures", "private", "saves");
+        Assert.SkipUnless(Directory.Exists(saves), "The private save corpus is not available in this checkout.");
 
         VerifyFamily(installation, saves, "vanilla-ufo", "xcom1", ["xcom1"],
             expectedFiles: 7, expectedBattleGames: 3, expectedDebugLogs: 6);

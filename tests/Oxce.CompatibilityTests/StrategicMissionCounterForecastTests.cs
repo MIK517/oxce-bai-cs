@@ -1,6 +1,4 @@
-using System.Text;
 using System.Text.Json;
-using Oxce.FixtureSupport;
 using Oxce.Core.Random;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
@@ -22,7 +20,7 @@ public sealed class StrategicMissionCounterForecastTests
             var next = row[1].GetInt32();
             var saved = row[2].GetInt32();
             var actual = JsonSerializer.SerializeToUtf8Bytes(new[] { count, next, saved, WorldMissionWave.Infer(saved, next, count) });
-            Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
         }
     }
 

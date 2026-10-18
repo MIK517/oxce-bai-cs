@@ -47,7 +47,7 @@ public sealed partial class CampaignState
                 if (row.Kind == CampaignTransferKind.Soldier)
                 {
                     var personal = planned.Soldiers.Single(s => s.Id == row.EntityId).Personal!;
-                    var armor = _content.RuntimeRules.Armors[_content.RuntimeRules.Armors.GetRequired(personal.Armor)].Value;
+                    var armor = _content.RuntimeRules.Armors.GetRequiredValue(personal.Armor);
                     if (armor.StoreItem is { } item) planned.Items[item] = checked(planned.Items.GetValueOrDefault(item) + 1);
                 }
                 if (row.Kind == CampaignTransferKind.Craft)
@@ -106,7 +106,7 @@ public sealed partial class CampaignState
                     Craft = craft with
                     {
                         Logistics = RemoveFromCraft(craft.Logistics!,
-                    _content.RuntimeRules.Crafts[_content.RuntimeRules.Crafts.GetRequired(craft.RuleId)].Value, craft.RuleId, craft.Id)
+                    _content.RuntimeRules.Crafts.GetRequiredValue(craft.RuleId), craft.RuleId, craft.Id)
                     }
                 };
             i++;
@@ -124,7 +124,7 @@ public sealed partial class CampaignState
             for (var slot = 0; slot < weapons.Length && count > 0; slot++)
             {
                 if (weapons[slot] is not { } weapon) continue;
-                var rule = _content.RuntimeRules.CraftWeapons[_content.RuntimeRules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
+                var rule = _content.RuntimeRules.CraftWeapons.GetRequiredValue(weapon.RuleId);
                 var launcher = Take(rule.Launcher, 1);
                 var clips = Take(rule.Clip, CraftLogistics.WeaponClipCount(weapon, _content.RuntimeRules));
                 if (!launcher.Changed && !clips.Changed) continue;
@@ -144,11 +144,11 @@ public sealed partial class CampaignState
             }
             var effective = CraftLogistics.EffectiveStats(craftRule, weapons, _content.RuntimeRules);
             var assigned = state.Soldiers.Where(s => s.Personal?.CraftType == craftType && s.Personal.CraftId == craftId)
-                .Sum(s => _content.RuntimeRules.Armors[_content.RuntimeRules.Armors.GetRequired(s.Personal!.Armor)].Value.SpaceOccupied);
+                .Sum(s => _content.RuntimeRules.Armors.GetRequiredValue(s.Personal!.Armor).SpaceOccupied);
             var vehicleSpace = vehicles.Sum(v => v.SpaceOccupied ?? _content.RuntimeRules.Armors[
-                _content.RuntimeRules.Items[_content.RuntimeRules.Items.GetRequired(v.RuleId)].Value.VehicleArmor!.Value].Value.SpaceOccupied);
+                _content.RuntimeRules.Items.GetRequiredValue(v.RuleId).VehicleArmor!.Value].Value.SpaceOccupied);
             var largeSoldiers = state.Soldiers.Count(s => s.Personal?.CraftType == craftType && s.Personal.CraftId == craftId &&
-                _content.RuntimeRules.Armors[_content.RuntimeRules.Armors.GetRequired(s.Personal.Armor)].Value.Size != 1);
+                _content.RuntimeRules.Armors.GetRequiredValue(s.Personal.Armor).Size != 1);
             if (assigned + vehicleSpace > effective.SoldierCapacity || vehicles.Count + largeSoldiers > effective.VehicleCapacity)
                 throw new SaleCapabilityException("Selling mounted equipment would exceed craft capacity.");
             return craft with

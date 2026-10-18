@@ -80,11 +80,7 @@ public sealed class StrategicWorldRegionalLeaderFollowerTests
                 Assert.Equal(WorldGeometry.Move(new(1, 0.6), expected[11], WorldGeometry.RadianSpeed(6000)),
                     new(craft.Longitude, craft.Latitude));
             }
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "regional-leader-chain.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "regional-leader-chain.sav", 3, after);
             var control = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
             AdvanceUnblocked(control, 3);
             AdvanceUnblocked(campaign, 2);

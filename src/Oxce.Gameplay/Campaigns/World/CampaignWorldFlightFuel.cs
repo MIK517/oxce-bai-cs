@@ -16,7 +16,7 @@ internal sealed partial class CampaignWorld
             {
                 if (craft.Logistics is not { Status: "STR_OUT" } state) continue;
                 work += 1L + state.Weapons.Count * 2L;
-                if (work > MaximumAlienBaseChecks) return "Craft flight fuel checks exceed the supported work limit.";
+                if (work > MaximumWorldWork) return "Craft flight fuel checks exceed the supported work limit.";
                 var rule = rules.Crafts[craft.Rule].Value;
                 if (FlightFuelStateReason(state, rule) is { } reason) return reason;
             }
@@ -57,14 +57,14 @@ internal sealed partial class CampaignWorld
         foreach (var owner in campaign.BaseStates)
             foreach (var craft in owner.Crafts)
             {
-                if (++work > MaximumAlienBaseChecks) return "Craft flight fuel refunds exceed the supported work limit.";
+                if (++work > MaximumWorldWork) return ForecastLimits.CraftFlightFuelRefundsWork;
                 if (craft.Logistics is not { } state) continue;
                 var rule = rules.Crafts[craft.Rule].Value;
                 if (state.Status != "STR_OUT" &&
                     !(highest >= CampaignTimeTrigger.ThirtyMinutes && state.IsAutoPatrolling && rule.AutoPatrol)) continue;
                 if (state.Status == "STR_OUT" && state.Destination is null && rule.PatrolWithoutFuel) continue;
                 work += state.Weapons.Count * 2L;
-                if (work > MaximumAlienBaseChecks) return "Craft flight fuel refunds exceed the supported work limit.";
+                if (work > MaximumWorldWork) return ForecastLimits.CraftFlightFuelRefundsWork;
                 if (!CraftLogistics.TryEffectiveFuelMaximum(rule, state.Weapons, rules, out var maximum))
                     return FlightFuelRangeReason;
                 if (rule.RefuelItem is null)
@@ -111,12 +111,12 @@ internal sealed partial class CampaignWorld
                 Dictionary<RuleHandle<ItemRuleFamily>, long> refunds = [];
                 foreach (var craft in sources[owner.Id])
                 {
-                    if (++work > MaximumAlienBaseChecks) return "Craft flight fuel refunds exceed the supported work limit.";
+                    if (++work > MaximumWorldWork) return ForecastLimits.CraftFlightFuelRefundsWork;
                     var state = forecast?.GetValueOrDefault((rules.Crafts.GetExternalId(craft.Rule), craft.Id)) ?? craft.Logistics!;
                     var rule = rules.Crafts[craft.Rule].Value;
                     if (state.Status != "STR_OUT" || state.Destination is null && rule.PatrolWithoutFuel) continue;
                     work += state.Weapons.Count * 3L;
-                    if (work > MaximumAlienBaseChecks) return "Craft flight fuel refunds exceed the supported work limit.";
+                    if (work > MaximumWorldWork) return ForecastLimits.CraftFlightFuelRefundsWork;
                     if (FlightFuelStateReason(state, rule) is { } fuelReason) return fuelReason;
                     if (rule.RefuelItem is not { } item) continue;
                     try

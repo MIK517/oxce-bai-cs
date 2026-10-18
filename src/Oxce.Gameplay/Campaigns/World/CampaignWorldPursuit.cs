@@ -120,7 +120,7 @@ internal sealed partial class CampaignWorld
         if (ufo.Hunting || ufo.Escorting) return (position, ufo.Status, ufo.Speed);
         var mission = ForecastMission(ufo.MissionId, highest);
         var rules = campaign.Content.RuntimeRules;
-        var trajectory = rules.UfoTrajectories[rules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value;
+        var trajectory = rules.UfoTrajectories.GetRequiredValue(ufo.TrajectoryId);
         if (mission.Interrupted || ufo.TrajectoryPoint + 1 >= trajectory.Waypoints.Count)
             return (position, UfoStatus.Destroyed, 0);
         if (IsSiteConversion(ufo, mission, trajectory))
@@ -128,7 +128,7 @@ internal sealed partial class CampaignWorld
                 ? UfoStatus.IgnoreMe : UfoStatus.Destroyed, 0);
         // A base assault ends the five-second pass like a terminal arrival (branch 5 S7).
         if (IsBaseAssaultArrival(ufo, trajectory)) return (position, UfoStatus.Destroyed, 0);
-        var rule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
+        var rule = rules.Ufos.GetRequiredValue(ufo.RuleId);
         var landing = trajectory.Altitude(ufo.TrajectoryPoint + 1) == 0;
         return (position, landing ? UfoStatus.Landed : UfoStatus.Flying,
             landing ? 0 : trajectory.Speed(ufo.TrajectoryPoint + 1, rule.StatsForRace(mission.Race).SpeedMaximum));

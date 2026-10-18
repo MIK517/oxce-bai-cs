@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.TestSupport;
@@ -43,15 +42,11 @@ public sealed class StrategicWorldDailyResearchCounterAlternativeTests
                 seen.Add(choice);
                 var expected = TestFixtures.Rows(oracle.RootElement, "researchDailyCounterAlternativeRows").Single(row => row[0].GetInt32() == mode && row[1].GetInt32() == start && row[2].GetInt32() == choice);
                 var actual = JsonSerializer.SerializeToUtf8Bytes(new long[] { mode, start, choice, after.NextIds["EQUIV_COUNTER"], after.NextIds["LEFT_COUNTER"], after.NextIds["RIGHT_COUNTER"], after.NextIds["TRACE_COUNTER"], after.Bases[0].Items.GetValueOrDefault("SUPPLY"), after.ResearchScores[^1] - initial.ResearchScores[^1] - (withSite ? 3 : 0), after.NextIds["oxcePortTransfer"] - initial.NextIds.GetValueOrDefault("oxcePortTransfer", 1) });
-                Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+                TestFixtures.AssertJsonEqual(expected, actual);
                 Assert.True(Assert.Single(after.World.Ufos).Hunting);
                 Assert.Equal("STR_OUT", after.Bases[0].Crafts[0].Logistics!.Status);
                 Assert.Empty(after.World.MissionSites);
-                for (var rewrite = 0; rewrite < 3; rewrite++)
-                {
-                    campaign = Reload(content, campaign, seed, "daily-counter-alternatives.sav");
-                    Assert.Equivalent(after, campaign.Capture(), strict: true);
-                }
+                campaign = ReloadRepeatedly(content, campaign, seed, "daily-counter-alternatives.sav", 3, after);
             }
             Assert.Equal(2, seen.Count);
         }

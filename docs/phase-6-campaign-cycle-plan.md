@@ -1,7 +1,7 @@
 # Phase 6 branch 6 delivery plan: monthly campaign cycle and Phase 6 closure
 
 Approved 2026-10-17. Branch `claude/strategic-campaign-cycle`, from `main` at
-`3b3077f3` (merged branch 5, PR #75). Reference: `4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`.
+`a67c7c89` (merged branch 5, PR #75). Reference: `4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`.
 Scope and acceptance come from [Phase 6 branch 6](phase-6-plan.md#branch-6--monthly-campaign-cycle-and-phase-6-closure);
 this plan replaces that section's commit purposes (mapping below). Slice evidence and audits are
 recorded in [strategic campaign cycle status](strategic-campaign-cycle-status.md); checkpoints, current scope and remaining guards go in

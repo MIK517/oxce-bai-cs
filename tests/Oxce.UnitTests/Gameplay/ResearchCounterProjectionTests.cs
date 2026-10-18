@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.TestSupport;
 using Xunit;
@@ -16,8 +15,7 @@ public sealed class ResearchCounterProjectionTests
         {
             int? value = row[0].GetInt32() == -1 ? null : row[0].GetInt32();
             foreach (var increase in row[4].EnumerateArray()) value = CustomCounterValue.Apply(value, increase.GetBoolean());
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row[3].GetInt32())),
-                CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(value)));
+            TestFixtures.AssertJsonEqual(row[3].GetInt32(), JsonSerializer.SerializeToUtf8Bytes(value));
         }
     }
 }

@@ -1,6 +1,6 @@
 # Startup measurement and CI efficiency
 
-Date: 2026-09-05. Branch baseline: `3ece8ef`.
+Date: 2026-09-05. Branch baseline: `b08f97a`.
 
 The third review branch adds startup attribution, removes a measured allocation in
 cache-key construction, and cancels superseded pull-request validation. The 5-second

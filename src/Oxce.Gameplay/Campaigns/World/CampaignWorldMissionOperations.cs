@@ -22,7 +22,7 @@ internal sealed partial class CampaignWorld
     private IEnumerable<AlienBaseSnapshot> MissionOperationBases(RuntimeAlienMissionRule rule, string selectedRegion)
     {
         var regions = campaign.Content.RuntimeRules.Regions;
-        var region = regions[regions.GetRequired(selectedRegion)].Value;
+        var region = regions.GetRequiredValue(selectedRegion);
         if (region.MissionRegion is { } remap) region = regions[remap].Value;
         var regional = rule.OperationType is RuntimeMissionOperationType.RegionExistingBase or
             RuntimeMissionOperationType.RegionNewBaseIfNecessary;
@@ -58,7 +58,7 @@ internal sealed partial class CampaignWorld
     {
         // setRegion has already followed one remap. Avoid following a second one.
         var rules = campaign.Content.RuntimeRules;
-        var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+        var region = rules.Regions.GetRequiredValue(mission.RegionId);
         var regional = rule.OperationType is RuntimeMissionOperationType.RegionExistingBase or
             RuntimeMissionOperationType.RegionNewBaseIfNecessary;
         var candidates = rule.OperationType == RuntimeMissionOperationType.RegionNewBase ? [] :

@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.Savegames.Oxce;
@@ -161,7 +160,7 @@ public sealed class StrategicResearchDiaryExecutionTests
         var entries = campaign.Capture().ResearchDiary;
         var actual = JsonSerializer.SerializeToUtf8Bytes(entries.Select(entry => new
         { name = entry.RuleId, date = new[] { entry.Year, entry.Month, entry.Day }, sourceType = entry.SourceType, sourceName = entry.SourceName }));
-        Assert.Equal(CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(row.GetProperty("diary").GetRawText())), CanonicalJson.Normalize(actual));
+        TestFixtures.AssertJsonEqual(row.GetProperty("diary"), actual);
         Assert.Equal(entries.Count, entries.Select(entry => entry.PreservationKey).Distinct(StringComparer.Ordinal).Count());
     }
 }

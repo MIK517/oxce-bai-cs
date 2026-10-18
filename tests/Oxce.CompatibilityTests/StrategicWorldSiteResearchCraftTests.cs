@@ -62,11 +62,7 @@ public sealed class StrategicWorldSiteResearchCraftTests
             Assert.Equal(WorldTargetKind.MissionSite, after.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP").Logistics!.Destination!.Kind);
             Assert.False(after.NextIds.ContainsKey("SITE_COUNT"));
         }
-        for (var pass = 0; pass < 3; pass++)
-        {
-            campaign = Reload(content, campaign, 17, "site-craft-research.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 17, "site-craft-research.sav", 3, after);
     }
 
     [Theory]

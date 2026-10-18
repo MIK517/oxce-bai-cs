@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -27,8 +26,7 @@ public sealed class StrategicWorldSiteResearchWaveTests
             AdvanceUnblocked(campaign, 1);
             var after = campaign.Capture();
             var mission = Assert.Single(after.World.Missions);
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(new[] { row[0].GetInt32(), row[1].GetInt32(), row[2].GetInt32() })),
-                CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(new[] { mission.NextWave, mission.NextUfoCounter, mission.SpawnCountdown })));
+            TestFixtures.AssertJsonEqual(new[] { row[0].GetInt32(), row[1].GetInt32(), row[2].GetInt32() }, JsonSerializer.SerializeToUtf8Bytes(new[] { mission.NextWave, mission.NextUfoCounter, mission.SpawnCountdown }));
             var random = new SplitMix64RandomSource(initial.RandomState);
             for (var call = 0; call < row[4].GetInt32(); call++) random.NextInclusive(0, 0);
             Assert.Equal(random.State, after.RandomState);
@@ -36,11 +34,7 @@ public sealed class StrategicWorldSiteResearchWaveTests
             Assert.Empty(after.World.Ufos);
             Assert.Empty(after.World.MissionSites);
             Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, 66, "site-research-wave.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, 66, "site-research-wave.sav", 3, after);
         }
     }
 

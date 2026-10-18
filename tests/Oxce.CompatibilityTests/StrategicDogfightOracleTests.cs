@@ -34,7 +34,7 @@ public sealed class StrategicDogfightOracleTests
         var world = new OracleWorld(input);
         var dogfight = world.CreateDogfight();
 
-        Assert.Equal(expected.GetProperty("start").GetRawText(), Json([
+        TestFixtures.AssertJsonEqual(expected.GetProperty("start"), Json([
             dogfight.CurrentDistance, dogfight.TargetDistance, ModeName(dogfight.Mode), dogfight.PilotAccuracyBonus,
             dogfight.PilotDodgeBonus, dogfight.PilotApproachSpeedModifier, dogfight.CraftAccelerationBonus,
             world.Ufo.EscapeCountdown, world.Ufo.FireCountdown, dogfight.UfoSize]));
@@ -64,20 +64,20 @@ public sealed class StrategicDogfightOracleTests
             world.Ufo.InterceptionProcessed = false;
             dogfight.Think();
             Assert.True(step < rows.Length, $"{name}: the engine ran past the reference's last step {rows.Length - 1}.");
-            Assert.Equal(rows[step].GetRawText(), Row(step, dogfight, world));
+            TestFixtures.AssertJsonEqual(rows[step], Row(step, dogfight, world));
         }
         Assert.Equal(rows.Length, step);
 
-        Assert.Equal(expected.GetProperty("end").GetRawText(), Json([
+        TestFixtures.AssertJsonEqual(expected.GetProperty("end"), Json([
             world.Ufo.Damage, (int)world.Ufo.Status, world.Ufo.SecondsRemaining, world.Ufo.CrashId, world.Ufo.LandId,
             world.Ufo.Altitude.Length, world.Craft.Damage, world.Craft.InDogfight ? 1 : 0, world.Returned, world.Thought,
             world.UfoMoves, world.HunterResets, world.Ufo.HunterKiller ? 1 : 0, world.CountryActivity, world.RegionActivity,
             world.ShotDown, world.Missions, world.Experience, dogfight.DestroyUfo ? 1 : 0, dogfight.DestroyCraft ? 1 : 0,
             world.Ufo.SoftlockShotCounter, world.Ufo.ShieldRechargeHandle, world.Interrupted ? 1 : 0]));
-        Assert.Equal(expected.GetProperty("rng").GetRawText(), Json([.. world.RandomCalls]));
+        TestFixtures.AssertJsonEqual(expected.GetProperty("rng"), Json([.. world.RandomCalls]));
     }
 
-    private static string Row(int step, Dogfight d, OracleWorld world)
+    private static byte[] Row(int step, Dogfight d, OracleWorld world)
     {
         var weapons = new List<object>();
         for (var i = 0; i < world.Craft.Weapons.Count; ++i)
@@ -91,7 +91,7 @@ public sealed class StrategicDogfightOracleTests
 
     private static string ModeName(DogfightMode mode) => mode.ToString().ToLowerInvariant();
 
-    private static string Json(object[] values) => JsonSerializer.Serialize(values);
+    private static byte[] Json(object[] values) => JsonSerializer.SerializeToUtf8Bytes(values);
 
     private static int[] Ints(JsonElement element) => [.. element.EnumerateArray().Select(static v => v.GetInt32())];
 

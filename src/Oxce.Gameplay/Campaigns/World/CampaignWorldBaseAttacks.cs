@@ -109,7 +109,7 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
     private string? BaseDefenseOutcomeReason(CampaignState.BaseState owner, string ufoRuleId)
     {
         var rules = campaign.Content.RuntimeRules;
-        if (rules.Ufos[rules.Ufos.GetRequired(ufoRuleId)].Value.MissilePower <= 0) return null;
+        if (rules.Ufos.GetRequiredValue(ufoRuleId).MissilePower <= 0) return null;
         var crafts = owner.Crafts.Where(static craft => craft.Logistics?.Status != "STR_OUT")
             .Select(craft => (rules.Crafts.GetExternalId(craft.Rule), craft.Id)).ToArray();
         if (((ICampaignCraftRemoval)this).PlanReason(crafts) is { } removal) return removal;
@@ -178,8 +178,8 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
     {
         var rules = campaign.Content.RuntimeRules;
         var nextWaypoint = ufo.TrajectoryPoint + 1;
-        var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
-        var ufoRule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
+        var region = rules.Regions.GetRequiredValue(mission.RegionId);
+        var ufoRule = rules.Ufos.GetRequiredValue(ufo.RuleId);
         var missionRule = MissionRule(mission);
         var wave = missionRule.Waves[MissionWaveIndex(ufo, mission, missionRule)];
         // getWaypoint's random choices happen before the assault branch ignores them.
@@ -265,8 +265,8 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
         var mission = FindMission(saved.MissionId)!;
         var rules = campaign.Content.RuntimeRules;
         var missionRule = MissionRule(mission);
-        var stats = rules.Ufos[rules.Ufos.GetRequired(saved.RuleId)].Value.StatsForRace(mission.Race);
-        var ufoRule = rules.Ufos[rules.Ufos.GetRequired(saved.RuleId)].Value;
+        var stats = rules.Ufos.GetRequiredValue(saved.RuleId).StatsForRace(mission.Race);
+        var ufoRule = rules.Ufos.GetRequiredValue(saved.RuleId);
         var random = campaign.Random;
         var before = random.State;
         var (defenses, gravShields) = BaseDefenseSetup.For(owner, rules);
@@ -440,7 +440,7 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
         var ufo = _ufos[index];
         var mission = FindMission(ufo.MissionId)!;
         var missionRule = MissionRule(mission);
-        var stats = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value.StatsForRace(mission.Race);
+        var stats = rules.Ufos.GetRequiredValue(ufo.RuleId).StatsForRace(mission.Race);
         var texture = StrategicGeography.TextureAt(rules.Campaign.Globe, ufo.Longitude, ufo.Latitude) ?? -1;
         var shade = WorldShading.LandingShade(campaign.Time, ufo.Longitude, ufo.Latitude, campaign.Options.GlobeSeasons);
         var damagePercentage = rules.Campaign.Interception.LessAliensDuringBaseDefense && stats.DamageMaximum != 0
@@ -449,7 +449,7 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
         var missionIndex = _missions.FindIndex(candidate => candidate.Id == mission.Id);
         if (missionRule.Objective == RuntimeMissionObjective.InstantRetaliation)
             _missions[missionIndex] = _missions[missionIndex] with { Interrupted = true };
-        var ufoRule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
+        var ufoRule = rules.Ufos.GetRequiredValue(ufo.RuleId);
         if (ufoRule.MissilePower > 0)
         {
             // Missiles damage facilities; the base survives and its retaliation mission may strike again.

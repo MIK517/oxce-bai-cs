@@ -45,7 +45,7 @@ public static class WorldScriptSelection
         foreach (var choice in choices)
         {
             if (choice.Weight > (ulong)int.MaxValue - total)
-                throw new InvalidDataException("Strategic script weights exceed the supported range.");
+                throw new InvalidDataException(ForecastLimits.StrategicScriptWeightsRange);
             total += choice.Weight;
         }
         if (total == 0) return null;

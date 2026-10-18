@@ -11,11 +11,11 @@ internal sealed partial class CampaignWorld
             escort.Destination is not { Kind: WorldTargetKind.Waypoint })
             return null;
         work += _missions.Count + 1L;
-        if (work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
+        if (work > MaximumWorldWork) return NewbornEscortOriginWorkReason;
         if (FindMission(escort.MissionId) is not { } saved) return null;
         var mission = MissionAfterDailyResearch(saved, _pass.DailyResearchForecast);
         var rules = campaign.Content.RuntimeRules;
-        var rule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
+        var rule = rules.AlienMissions.GetRequiredValue(mission.RuleId);
         if (rule.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Infiltration or
                 RuntimeMissionObjective.Base or RuntimeMissionObjective.Site or RuntimeMissionObjective.Supply) ||
             IsOver(mission, rule) || mission.Interrupted || mission.NextWave >= rule.Waves.Count ||
@@ -29,7 +29,7 @@ internal sealed partial class CampaignWorld
         foreach (var step in DueWaveSteps(mission, rule))
         {
             work += 3L * _alienBases.Count + 1;
-            if (work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
+            if (work > MaximumWorldWork) return NewbornEscortOriginWorkReason;
             var wave = SpawnWave(step, rule);
             if (!CanAdvanceWaveCounters(step, rule, wave)) return null;
             if (CanAdvanceNoObjectWave(step, rule)) continue;
@@ -38,14 +38,14 @@ internal sealed partial class CampaignWorld
                 wave.HunterKillerPercentage == -1 ? rules.Ufos[handle].Value.HunterKillerPercentage : wave.HunterKillerPercentage;
             if (percentage >= 100) continue;
             if (wave.Trajectory is not { } trajectory) return null;
-            var region = rules.Regions[rules.Regions.GetRequired(step.RegionId)].Value;
+            var region = rules.Regions.GetRequiredValue(step.RegionId);
             foreach (var zone in region.MissionZones)
             {
                 work += zone.Areas.Count + 1L;
-                if (work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
+                if (work > MaximumWorldWork) return NewbornEscortOriginWorkReason;
             }
             work += _alienBases.Count;
-            if (work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
+            if (work > MaximumWorldWork) return NewbornEscortOriginWorkReason;
             if (!TryOrdinarySpawnPositions(step, rule, rules.UfoTrajectories[trajectory].Value, region, out var origins) ||
                 origins.Count == 0) return null;
             // Every earlier possible leader contributes to the target domain. A
@@ -66,9 +66,9 @@ internal sealed partial class CampaignWorld
                 inexact.Add(escort.UniqueId);
                 foreach (var id in dependentIds) inexact.Add(id);
             }
-            var ufoRule = rules.Ufos[rules.Ufos.GetRequired(escort.RuleId)].Value;
+            var ufoRule = rules.Ufos.GetRequiredValue(escort.RuleId);
             var maximum = (long)ufoRule.Stats.SpeedMaximum + ufoRule.RaceBonus(mission.Race).SpeedMaximum;
-            if (maximum is < 0 or > int.MaxValue) return "UFO hunting stats exceed the supported range.";
+            if (maximum is < 0 or > int.MaxValue) return ForecastLimits.UfoHuntingStatsRange;
             // Flight-only stand-in: the real leader is appended after saved UFOs,
             // so a point origin is exact. A regional proof supplies status/speed only;
             // its unchanged position must never serve as an exact flight target.
@@ -86,7 +86,7 @@ internal sealed partial class CampaignWorld
         dependentIds = ids;
         foreach (var saved in _ufos)
         {
-            if (++work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
+            if (++work > MaximumWorldWork) return NewbornEscortOriginWorkReason;
             if (saved.UniqueId == source.UniqueId) continue;
             var projected = UfoForFlight(saved, _pass.NewbornHighestTrigger);
             if (StationaryNewLeaderFollower(projected)) continue;

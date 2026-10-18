@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -53,8 +52,7 @@ public sealed class StrategicWorldWaveChainTests
                 campaign = CampaignState.Restore(campaign.Capture() with { Time = snapshot.Time }, content,
                     new SplitMix64RandomSource(66));
             }
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)),
-                CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(actual)));
+            TestFixtures.AssertJsonEqual(expected, JsonSerializer.SerializeToUtf8Bytes(actual));
         }
     }
 

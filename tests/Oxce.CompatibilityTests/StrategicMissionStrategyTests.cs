@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -47,8 +46,7 @@ public sealed class StrategicMissionStrategyTests
             Reload(content, campaign, 17, "strategy-mission.sav");
         }
         var expected = TestFixtures.Rows(oracle.RootElement, "rows").Where(row => row[0].GetString() != "refresh").ToArray();
-        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)),
-            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
+        TestFixtures.AssertJsonEqual(expected, JsonSerializer.SerializeToUtf8Bytes(rows));
     }
 
     [Fact]
@@ -111,8 +109,7 @@ public sealed class StrategicMissionStrategyTests
         var campaign = CampaignState.Restore(snapshot, content, random);
         Assert.Empty(campaign.Execute(new ScheduleMonthlyWorldMissions(0, 0)).Events);
         Assert.Equal(row[1].GetString(), Assert.Single(campaign.Capture().World.Missions).RuleId);
-        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row[2])),
-            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(random.Calls.Skip(2).Take(2).ToArray())));
+        TestFixtures.AssertJsonEqual(row[2], JsonSerializer.SerializeToUtf8Bytes(random.Calls.Skip(2).Take(2).ToArray()));
         Assert.Equal(4, campaign.Capture().World.Strategy.MissionRuns.Single(p => p.Key == "OLDER_RUN").Value);
         campaign = Reload(content, campaign, 17, "strategy-refresh.sav");
         Assert.Empty(campaign.Execute(new ScheduleMonthlyWorldMissions(0, 0)).Events);
@@ -152,8 +149,7 @@ public sealed class StrategicMissionStrategyTests
             var mission = campaign.Capture().World.Missions.SingleOrDefault();
             Assert.Equal(row[2].GetString(), mission?.RegionId ?? "");
             var count = row[3].GetArrayLength();
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row[3])),
-                CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(random.Calls.Skip(1).Take(count).ToArray())));
+            TestFixtures.AssertJsonEqual(row[3], JsonSerializer.SerializeToUtf8Bytes(random.Calls.Skip(1).Take(count).ToArray()));
             if (mission is not null) Assert.Equal("MISSION_A", mission.RuleId);
             else Assert.Empty(campaign.Capture().World.Strategy.MissionRuns);
             Reload(content, campaign, 17, "strategy-implicit-base.sav");
@@ -176,8 +172,7 @@ public sealed class StrategicMissionStrategyTests
             strategy.RemoveMission("REGION", "MISSION_A");
             rows.Add([name, strategy.RegionMissions.Count, strategy.RegionChances.TotalWeight]);
         }
-        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(oracle.RootElement.GetProperty("deletionRows"))),
-            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
+        TestFixtures.AssertJsonEqual(oracle.RootElement.GetProperty("deletionRows"), JsonSerializer.SerializeToUtf8Bytes(rows));
     }
 
     private static RuntimeContent Load()

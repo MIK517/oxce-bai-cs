@@ -42,11 +42,7 @@ public sealed class StrategicWorldTerminalResearchTests
             Assert.Equivalent(control.Capture().World.Ufos, after.World.Ufos, strict: true);
             interruptedSeen |= mission.Interrupted;
             uninterruptedSeen |= !mission.Interrupted;
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "terminal-research-arrival.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "terminal-research-arrival.sav", 3, after);
             AdvanceUnblocked(campaign, 1);
             Assert.Empty(campaign.Capture().World.Ufos);
             Assert.All(campaign.Capture().World.Missions, retained => Assert.Equal(0, retained.LiveUfos));

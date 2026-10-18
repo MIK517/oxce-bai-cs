@@ -172,14 +172,14 @@ public sealed partial class CampaignState
             subtotal = checked(subtotal + (long)selection.Quantity * row.UnitCost);
             if (row.Kind == CampaignTransferKind.Item)
             {
-                var rule = _content.RuntimeRules.Items[_content.RuntimeRules.Items.GetRequired(row.RuleId)].Value;
+                var rule = _content.RuntimeRules.Items.GetRequiredValue(row.RuleId);
                 storageAdded += rule.Size * selection.Quantity;
                 hasStoredItem |= rule.Size > 0;
                 if (rule.IsAlien) prisoners[rule.PrisonType] = prisoners.GetValueOrDefault(rule.PrisonType) + selection.Quantity;
             }
             else if (row.Kind == CampaignTransferKind.Craft)
             {
-                var type = _content.RuntimeRules.Crafts[_content.RuntimeRules.Crafts.GetRequired(row.RuleId)].Value.HangarType;
+                var type = _content.RuntimeRules.Crafts.GetRequiredValue(row.RuleId).HangarType;
                 hangars[type] = hangars.GetValueOrDefault(type) + selection.Quantity;
                 if (quote.Operation == LogisticsOperation.Transfer)
                 {
@@ -246,7 +246,7 @@ public sealed partial class CampaignState
             {
                 var row = quote.Rows[selection.RowId];
                 if (row.Kind != CampaignTransferKind.Soldier) continue;
-                var template = _content.RuntimeRules.Soldiers[_content.RuntimeRules.Soldiers.GetRequired(row.RuleId)].Value.SpawnedTemplate;
+                var template = _content.RuntimeRules.Soldiers.GetRequiredValue(row.RuleId).SpawnedTemplate;
                 var count = template?.RandomTransformationBonuses?.Count ?? 0;
                 bonusWork += (long)selection.Quantity * count * Math.Clamp(template?.TransformationBonusesCount ?? 0, 0, count);
                 if (bonusWork > MaximumCommandTicks) return Blocked("Soldier bonus generation exceeds the bounded command workload.");
@@ -284,7 +284,7 @@ public sealed partial class CampaignState
                         { PreservationKey = $"{Identity.Id}:transfer:{transferId}" });
                         continue;
                     }
-                    var rule = _content.RuntimeRules.Crafts[_content.RuntimeRules.Crafts.GetRequired(row.RuleId)].Value;
+                    var rule = _content.RuntimeRules.Crafts.GetRequiredValue(row.RuleId);
                     for (var i = 0; i < selection.Quantity; i++)
                     {
                         var craftId = craftIds[row.RuleId]++;
@@ -322,7 +322,7 @@ public sealed partial class CampaignState
                         { PreservationKey = $"{Identity.Id}:transfer:{transferId}" });
                         continue;
                     }
-                    var rule = _content.RuntimeRules.Soldiers[_content.RuntimeRules.Soldiers.GetRequired(row.RuleId)].Value;
+                    var rule = _content.RuntimeRules.Soldiers.GetRequiredValue(row.RuleId);
                     for (var i = 0; i < selection.Quantity; i++)
                     {
                         var soldierId = nextSoldierId++;
@@ -480,11 +480,11 @@ public sealed partial class CampaignState
     private double UsedStores(BaseState state) => state.Items.Sum(p => _content.RuntimeRules.Items[p.Key].Value.Size * p.Value) +
         state.Crafts.Sum(c => c.Logistics is { } logistics ? CraftLogistics.StoredSize(logistics, _content.RuntimeRules) : 0) +
         state.Transfers.Where(t => !t.Delivered).Sum(t => t.Kind == CampaignTransferKind.Item
-            ? _content.RuntimeRules.Items[_content.RuntimeRules.Items.GetRequired(t.RuleId)].Value.Size * t.Quantity
+            ? _content.RuntimeRules.Items.GetRequiredValue(t.RuleId).Size * t.Quantity
             : t.Craft?.Logistics is { } craft ? CraftLogistics.StoredSize(craft, _content.RuntimeRules) : 0);
     private int AvailableContainment(BaseState state, int prisonType) => state.Facilities.Where(f => f.BuildTime == 0).Select(f => _content.RuntimeRules.Facilities[f.Rule].Value).Where(f => f.PrisonType == prisonType).Sum(f => f.Aliens);
     private int UsedContainment(BaseState state, int prisonType) => state.Items.Where(p => _content.RuntimeRules.Items[p.Key].Value is { IsAlien: true } rule && rule.PrisonType == prisonType).Sum(p => p.Value) +
-        state.Transfers.Where(t => !t.Delivered && t.Kind == CampaignTransferKind.Item && _content.RuntimeRules.Items[_content.RuntimeRules.Items.GetRequired(t.RuleId)].Value is { IsAlien: true } rule && rule.PrisonType == prisonType).Sum(t => t.Quantity);
+        state.Transfers.Where(t => !t.Delivered && t.Kind == CampaignTransferKind.Item && _content.RuntimeRules.Items.GetRequiredValue(t.RuleId) is { IsAlien: true } rule && rule.PrisonType == prisonType).Sum(t => t.Quantity);
 
     private int StorageLimit(BaseState state, RuntimeItemRule rule, int maximum, LogisticsOperation operation)
     {
@@ -521,7 +521,7 @@ public sealed partial class CampaignState
                     case CampaignTransferKind.Scientist: scientists += transfer.Quantity; break;
                     case CampaignTransferKind.Engineer: engineers += transfer.Quantity; break;
                     case CampaignTransferKind.Item:
-                        if (_content.RuntimeRules.Items[_content.RuntimeRules.Items.GetRequired(transfer.RuleId)].Value.BattleType == 0)
+                        if (_content.RuntimeRules.Items.GetRequiredValue(transfer.RuleId).BattleType == 0)
                             reusableItems++;
                         var current = incoming.GetValueOrDefault(transfer.RuleId,
                             state.Items.GetValueOrDefault(_content.RuntimeRules.Items.GetRequired(transfer.RuleId)));
@@ -538,13 +538,13 @@ public sealed partial class CampaignState
                 }
             }
             reuseWork += reusableItems * ((long)state.Crafts.Count + incomingCrafts);
-            if (reuseWork > 1_000_000) return "Arrival item reuse exceeds the supported work limit.";
+            if (reuseWork > ForecastLimits.Work) return "Arrival item reuse exceeds the supported work limit.";
             if (scientists > int.MaxValue || engineers > int.MaxValue) return "Arrival exceeds the personnel quantity range.";
             // Pure arithmetic preflight includes the half-hour handler after all hourly deliveries.
             foreach (var transfer in state.Transfers)
             {
                 if (transfer.Delivered || transfer.Hours > 1 || transfer.Craft is not { } craft) continue;
-                var rule = _content.RuntimeRules.Crafts[_content.RuntimeRules.Crafts.GetRequired(craft.RuleId)].Value;
+                var rule = _content.RuntimeRules.Crafts.GetRequiredValue(craft.RuleId);
                 var arrived = CraftLogistics.Arrive(craft.Logistics!, rule, _content.RuntimeRules, state.Longitude, state.Latitude);
                 if (arrived.Status != "STR_REFUELLING") continue;
                 var item = rule.RefuelItem;

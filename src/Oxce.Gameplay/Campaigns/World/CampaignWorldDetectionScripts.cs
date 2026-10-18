@@ -29,7 +29,7 @@ internal sealed partial class CampaignWorld
     private DetectionScript BuildDetectionScript(string ruleId, bool fromCraft)
     {
         var rules = campaign.Content.RuntimeRules;
-        var rule = rules.Ufos[rules.Ufos.GetRequired(ruleId)].Value;
+        var rule = rules.Ufos.GetRequiredValue(ruleId);
         var parser = fromCraft ? "detectUfoFromCraft" : "detectUfoFromBase";
         var artifact = rule.Scripts.Select(handle => rules.Scripts[handle].Value.Artifact)
             .FirstOrDefault(candidate => candidate.ParserName == parser);
@@ -65,23 +65,23 @@ internal sealed partial class CampaignWorld
             var candidateReason = WorldDetectionScriptSafety.UnavailableReason(candidate, DetectionBindingSupported, out var visits, campaign.CountryStates.Count);
             reason ??= candidateReason;
             if (candidateReason is not null) continue;
-            reason ??= WorldDetectionModSafety.UnavailableReason(candidate, rules, visits, MaximumAlienBaseChecks);
-            reason ??= WorldDetectionNumericSafety.UnavailableReason(candidate, rules, visits, MaximumAlienBaseChecks);
-            reason ??= WorldDetectionDamageQueries.UnavailableReason(candidate, rules, visits, MaximumAlienBaseChecks);
-            reason ??= WorldDetectionInventoryCosts.UnavailableReason(candidate, rules, visits, MaximumAlienBaseChecks);
+            reason ??= WorldDetectionModSafety.UnavailableReason(candidate, rules, visits, MaximumWorldWork);
+            reason ??= WorldDetectionNumericSafety.UnavailableReason(candidate, rules, visits, MaximumWorldWork);
+            reason ??= WorldDetectionDamageQueries.UnavailableReason(candidate, rules, visits, MaximumWorldWork);
+            reason ??= WorldDetectionInventoryCosts.UnavailableReason(candidate, rules, visits, MaximumWorldWork);
             stepBound += visits.Sum(static count => (long)count);
             var needsRoleForecast = candidate.Bindings.Any(binding => DetectionInventoryRole(binding.Name) is { } role &&
                 !rules.Inventories.TryGet(role, out _));
             var needsFieldForecast = candidate.Bindings.Any(binding => DetectionConsumesFields(binding.Name));
             var references = needsRoleForecast || needsFieldForecast
-                ? WorldDetectionReferenceForecast.Build(candidate, rules, visits, MaximumAlienBaseChecks) : null;
+                ? WorldDetectionReferenceForecast.Build(candidate, rules, visits, MaximumWorldWork) : null;
             if ((needsRoleForecast || needsFieldForecast) && references is null)
-                reason ??= needsFieldForecast ? "Detection consumed-field forecast exceeds the supported work limit." :
+                reason ??= needsFieldForecast ? ForecastLimits.DetectionConsumedFieldForecastWork :
                     "Detection inventory lookup forecast exceeds the supported work limit.";
             var scalars = needsFieldForecast && references is not null
-                ? WorldDetectionScalarForecast.Build(candidate, rules, references, visits, MaximumAlienBaseChecks) : null;
+                ? WorldDetectionScalarForecast.Build(candidate, rules, references, visits, MaximumWorldWork) : null;
             if (needsFieldForecast && scalars is null)
-                reason ??= "Detection consumed-field forecast exceeds the supported work limit.";
+                reason ??= ForecastLimits.DetectionConsumedFieldForecastWork;
             for (var instructionIndex = 0; instructionIndex < candidate.Instructions.Count; instructionIndex++)
             {
                 if (visits[instructionIndex] == 0 ||
@@ -147,20 +147,20 @@ internal sealed partial class CampaignWorld
         if (script.UfoStats.Length != 0)
         {
             var rules = campaign.Content.RuntimeRules;
-            var rule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
+            var rule = rules.Ufos.GetRequiredValue(ufo.RuleId);
             _detectionUfoStats = rule.Stats;
             _detectionUfoBonus = rule.RaceBonus(FindMission(ufo.MissionId)!.Race);
         }
         if (script.DamageStats)
         {
             var rules = campaign.Content.RuntimeRules;
-            var rule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
+            var rule = rules.Ufos.GetRequiredValue(ufo.RuleId);
             _detectionDamageMaximum = checked(rule.Stats.DamageMaximum + rule.RaceBonus(FindMission(ufo.MissionId)!.Race).DamageMaximum);
         }
         if (script.ShieldStats)
         {
             var rules = campaign.Content.RuntimeRules;
-            var rule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
+            var rule = rules.Ufos.GetRequiredValue(ufo.RuleId);
             _detectionShieldCapacity = checked(rule.Stats.ShieldCapacity + rule.RaceBonus(FindMission(ufo.MissionId)!.Race).ShieldCapacity);
         }
         var inputIndex = 0;
@@ -212,23 +212,23 @@ internal sealed partial class CampaignWorld
         // Reserve contact and host-scan work before evaluating consumed fields.
         work += (fromBase.StepBound + (long)fromBase.UfoTagQueries * ufoTagCount) * campaign.BaseStates.Count;
         work += (fromCraft.StepBound + (long)fromCraft.CraftStatQueries * weaponSlots + (long)fromCraft.UfoTagQueries * ufoTagCount) * craftSources;
-        if (work > MaximumAlienBaseChecks) return "Detection script work exceeds the supported half-hour limit.";
+        if (work > MaximumWorldWork) return "Detection script work exceeds the supported half-hour limit.";
         if (fromBase.UfoStats.Length != 0 || fromCraft.UfoStats.Length != 0)
         {
             var rules = campaign.Content.RuntimeRules;
-            var rule = rules.Ufos[rules.Ufos.GetRequired(ruleId)].Value;
+            var rule = rules.Ufos.GetRequiredValue(ruleId);
             var bonus = rule.RaceBonus(race ?? "");
             foreach (var field in fromBase.UfoStats)
                 if ((long)DetectionUfoStat(rule.Stats, field) + DetectionUfoStat(bonus, field) is < int.MinValue or > int.MaxValue)
-                    return "Detection UFO statistics exceed the supported range.";
+                    return ForecastLimits.DetectionUfoStatisticsRange;
             foreach (var field in fromCraft.UfoStats)
                 if ((long)DetectionUfoStat(rule.Stats, field) + DetectionUfoStat(bonus, field) is < int.MinValue or > int.MaxValue)
-                    return "Detection UFO statistics exceed the supported range.";
+                    return ForecastLimits.DetectionUfoStatisticsRange;
         }
         if (fromBase.DamageStats || fromCraft.DamageStats)
         {
             var rules = campaign.Content.RuntimeRules;
-            var rule = rules.Ufos[rules.Ufos.GetRequired(ruleId)].Value;
+            var rule = rules.Ufos.GetRequiredValue(ruleId);
             var maximum = (long)rule.Stats.DamageMaximum + rule.RaceBonus(race ?? "").DamageMaximum;
             if (maximum is < int.MinValue or > int.MaxValue)
                 return "Detection UFO damage maximum exceeds the supported range.";
@@ -274,7 +274,7 @@ internal sealed partial class CampaignWorld
             if (highest < CampaignTimeTrigger.OneHour) continue;
             foreach (var transfer in owner.Transfers)
                 if (!transfer.Delivered && transfer.Hours <= 1 && transfer.Craft is { } incoming &&
-                    PossibleDetectionCraft(rules.Crafts[rules.Crafts.GetRequired(incoming.RuleId)].Value, incoming.Logistics))
+                    PossibleDetectionCraft(rules.Crafts.GetRequiredValue(incoming.RuleId), incoming.Logistics))
                 {
                     craftSources++;
                     weaponSlots = Math.Max(weaponSlots, incoming.Logistics?.Weapons.Count ?? 0);

@@ -3,9 +3,7 @@ using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.CampaignStart;
 using Oxce.Mods.Rulesets.Runtime;
-using System.Text;
 using Oxce.TestSupport;
-using Oxce.FixtureSupport;
 using System.Text.Json;
 using Xunit;
 using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
@@ -53,7 +51,7 @@ public sealed class StrategicOperationBaseSpawnTests
                 selected is null ? 0 : 1, selected is null ? 1 : 0,
                 2 + attempts, 2 * attempts, landCalls, row[10].GetInt32(),
             });
-            Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
         }
     }
 

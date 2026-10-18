@@ -28,7 +28,7 @@ internal sealed partial class CampaignWorld
             foreach (var craft in owner.Crafts)
             {
                 work += 1L + owner.Soldiers.Count;
-                if (work > MaximumAlienBaseChecks) return "UFO site conversion exceeds the supported work limit.";
+                if (work > MaximumWorldWork) return ForecastLimits.UfoSiteConversionWork;
                 if (craft.Logistics is not { } state || !FollowsUfo(state.Destination, ufo)) continue;
                 if (state.Status != "STR_OUT" || !owner.IsPlaced)
                     return "UFO site follower craft cannot change destination.";

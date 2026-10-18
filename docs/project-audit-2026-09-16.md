@@ -1,6 +1,6 @@
 # Project audit, 2026-09-16
 
-Branch: `audit/full-review-2026-09`, based on `main` at `cdb7e27`.
+Branch: `audit/full-review-2026-09`, based on `main` at `aed9b31`.
 Reference engine: `oxce-bai` at `4df3a5e` (the pinned fixture commit).
 
 ## Outcome

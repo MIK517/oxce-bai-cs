@@ -1,7 +1,5 @@
-using System.Text;
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.TestSupport;
@@ -47,8 +45,7 @@ public sealed class StrategicAdhocScriptTests
                 150 => "THRESHOLD",
                 _ => throw new Xunit.Sdk.XunitException("Unexpected adhoc mission delay."),
             }).ToArray();
-            Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetProperty("scripts").GetRawText())),
-                CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(actual)));
+            TestFixtures.AssertJsonEqual(row.GetProperty("scripts"), JsonSerializer.SerializeToUtf8Bytes(actual));
         }
     }
 

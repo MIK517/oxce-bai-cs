@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.Json;
 using Oxce.Core.Random;
 using Oxce.Gameplay.Campaigns;
@@ -6,7 +5,6 @@ using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.Mods.Rulesets.Runtime;
 using Oxce.TestSupport;
-using Oxce.FixtureSupport;
 using Xunit;
 using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
 
@@ -33,7 +31,7 @@ public sealed class StrategicRetaliationSpawnTests
             var index = WorldRetaliation.SelectIndex(candidates.Count, random);
             var selected = index is { } value ? candidates[value].Id : 0;
             var actual = JsonSerializer.SerializeToUtf8Bytes(new[] { objective, multi, skip, mask, selected, random.IntegerCalls });
-            Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
         }
     }
 

@@ -18,9 +18,7 @@ public sealed class PrivateStrategicWorldTests
     [Fact]
     public void ImportedWorldContinuationHasEquivalentFreshAndCachedClassifications()
     {
-        var installation = TestFixtures.RepositoryPath("artifacts", "private-install");
-        Assert.SkipUnless(File.Exists(Path.Combine(installation, ".oxce-private-install-manifest.json")),
-            "Owned installation is not staged.");
+        var installation = TestFixtures.RequirePrivateInstallation();
         var cacheDirectory = Directory.CreateTempSubdirectory("oxce-private-world-cache-");
         try
         {
@@ -80,9 +78,7 @@ public sealed class PrivateStrategicWorldTests
     [Fact]
     public void ImportedDiariesAndMissionStatisticsAreTypedAndKept()
     {
-        var installation = TestFixtures.RepositoryPath("artifacts", "private-install");
-        Assert.SkipUnless(File.Exists(Path.Combine(installation, ".oxce-private-install-manifest.json")),
-            "Owned installation is not staged.");
+        var installation = TestFixtures.RequirePrivateInstallation();
         var request = InstallationLoadRequest.ForMasterAndAddOn(installation, "xcom1", "-", new("Extended", "8.6.1.0"));
         var loaded = InstallationContentLoader.Load(request, new() { Cache = new() { Enabled = false } },
             cancellationToken: TestContext.Current.CancellationToken);
@@ -125,9 +121,8 @@ public sealed class PrivateStrategicWorldTests
     [Fact]
     public void ImportedCampaignsPlayThreeMonthsAcrossReloadsAtEveryReport()
     {
-        var installation = TestFixtures.RepositoryPath("artifacts", "private-install");
-        Assert.SkipUnless(File.Exists(Path.Combine(installation, ".oxce-private-install-manifest.json")) &&
-            Directory.Exists(TestFixtures.RepositoryPath("fixtures", "private", "saves")), "Owned installation or saves are not staged.");
+        var installation = TestFixtures.RequirePrivateInstallation();
+        Assert.SkipUnless(Directory.Exists(TestFixtures.RepositoryPath("fixtures", "private", "saves")), "Private saves are not staged.");
         var cacheDirectory = Directory.CreateTempSubdirectory("oxce-private-cycle-cache-");
         List<object> measurements = [];
         try
@@ -367,9 +362,7 @@ public sealed class PrivateStrategicWorldTests
     private static void RunToLongHorizonStops(Dictionary<(string, string), (int Ticks, string Reason)> expected,
         Func<CampaignState, string, bool>? answer)
     {
-        var installation = TestFixtures.RepositoryPath("artifacts", "private-install");
-        Assert.SkipUnless(File.Exists(Path.Combine(installation, ".oxce-private-install-manifest.json")),
-            "Owned installation is not staged.");
+        var installation = TestFixtures.RequirePrivateInstallation();
         var cacheDirectory = Directory.CreateTempSubdirectory("oxce-private-horizon-cache-");
         try
         {
@@ -428,9 +421,7 @@ public sealed class PrivateStrategicWorldTests
     [Fact]
     public void RosigmaEarlyReachesADeploymentRequest()
     {
-        var installation = TestFixtures.RepositoryPath("artifacts", "private-install");
-        Assert.SkipUnless(File.Exists(Path.Combine(installation, ".oxce-private-install-manifest.json")),
-            "Owned installation is not staged.");
+        var installation = TestFixtures.RequirePrivateInstallation();
         var cacheDirectory = Directory.CreateTempSubdirectory("oxce-private-landing-cache-");
         try
         {

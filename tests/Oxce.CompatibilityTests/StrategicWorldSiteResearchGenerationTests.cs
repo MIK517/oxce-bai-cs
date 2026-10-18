@@ -34,11 +34,7 @@ public sealed class StrategicWorldSiteResearchGenerationTests
         var random = new SplitMix64RandomSource(initial.RandomState);
         foreach (var call in row[4].EnumerateArray()) random.NextInclusive(call[0].GetInt32(), call[1].GetInt32());
         Assert.Equal(random.State, after.RandomState);
-        for (var pass = 0; pass < 3; pass++)
-        {
-            campaign = Reload(content, campaign, 17, "site-research-generated-delayed.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 17, "site-research-generated-delayed.sav", 3, after);
         AdvanceUnblocked(campaign, 360);
         Assert.Empty(campaign.Capture().World.Missions);
     }

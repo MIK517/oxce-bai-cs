@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.TestSupport;
@@ -36,9 +35,8 @@ public sealed class StrategicMissionBaseTargetTests
             else Assert.DoesNotContain(after.World.Strategy.MissionRuns, p => p.Key == "BASE_RUN");
             Reload(content, campaign, 17, "mission-base-target.sav");
         }
-        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(TestFixtures.Rows(oracle.RootElement, "rows")
-                .Where(row => !row[0].GetString()!.StartsWith("implicit", StringComparison.Ordinal)).ToArray())),
-            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
+        TestFixtures.AssertJsonEqual(TestFixtures.Rows(oracle.RootElement, "rows")
+                .Where(row => !row[0].GetString()!.StartsWith("implicit", StringComparison.Ordinal)).ToArray(), JsonSerializer.SerializeToUtf8Bytes(rows));
     }
 
     [Fact]

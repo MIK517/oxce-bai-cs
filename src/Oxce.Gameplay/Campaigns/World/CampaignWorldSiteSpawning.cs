@@ -71,7 +71,7 @@ internal sealed partial class CampaignWorld
         var wave = rule.Waves[mission.NextWave];
         var rules = campaign.Content.RuntimeRules;
         var trajectory = rules.UfoTrajectories[wave.Trajectory!.Value].Value;
-        var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+        var region = rules.Regions.GetRequiredValue(mission.RegionId);
         var zone = rule.SpawnZone == -1 ? trajectory.Zone(0) : rule.SpawnZone;
         var areas = WorldGeometry.MissionAreas(region, zone);
         if (mission.MissionSiteZoneArea == -1) return areas;
@@ -92,10 +92,10 @@ internal sealed partial class CampaignWorld
         if (wave.ObjectiveOnXcomBase)
         {
             work += DirectSiteBaseWork(mission);
-            if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
+            if (work > MaximumWorldWork) return ForecastLimits.DirectMissionSiteCreationWork;
             if (DirectSiteBases(mission).Count == 0) return null;
         }
-        if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
+        if (work > MaximumWorldWork) return ForecastLimits.DirectMissionSiteCreationWork;
         var markers = new HashSet<string>(StringComparer.Ordinal);
         HashSet<RuleHandle<AlienDeploymentRuleFamily>>? expiryCandidates = null;
         Dictionary<CustomCounterChange, int>? expiryChanges = null;
@@ -103,10 +103,10 @@ internal sealed partial class CampaignWorld
         foreach (var area in areas)
         {
             work += SiteDeploymentSelectionWork(wave, rule, area);
-            if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
+            if (work > MaximumWorldWork) return ForecastLimits.DirectMissionSiteCreationWork;
             var candidates = SiteDeploymentCandidates(wave, rule, area);
             work += candidates.Count;
-            if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
+            if (work > MaximumWorldWork) return ForecastLimits.DirectMissionSiteCreationWork;
             if (candidates.Count == 0) continue;
             if (!wave.ObjectiveOnXcomBase && !TrySpawnArea(area, out _))
                 return "Direct mission site coordinates require an unsupported latitude domain.";
@@ -119,7 +119,7 @@ internal sealed partial class CampaignWorld
                 if (processThisTick && deployment.DurationMinimum == 0)
                 {
                     work += 6 + 2L * deployment.DespawnEvents.Count;
-                    if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
+                    if (work > MaximumWorldWork) return ForecastLimits.DirectMissionSiteCreationWork;
                     if (SiteDespawnReason(deployment, _pass.SiteResearchAfterBirth?.GetValueOrDefault((mission, handle))) is { } despawnReason)
                         return despawnReason;
                     if (IsUfoIdNamespace(deployment.CounterDespawn) || IsUfoIdNamespace(deployment.CounterFailure) ||
@@ -129,7 +129,7 @@ internal sealed partial class CampaignWorld
                     if ((expiryCandidates ??= []).Add(handle))
                     {
                         work += 42; // At most six fields and their multiplicity comparisons.
-                        if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
+                        if (work > MaximumWorldWork) return ForecastLimits.DirectMissionSiteCreationWork;
                         var changes = new List<CustomCounterChange>(6);
                         AddSiteCounterChanges(changes, deployment);
                         expiryChanges ??= [];
@@ -147,19 +147,19 @@ internal sealed partial class CampaignWorld
             foreach (var (change, count) in expiryChanges)
             {
                 work += 2L + count;
-                if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
+                if (work > MaximumWorldWork) return ForecastLimits.DirectMissionSiteCreationWork;
                 var additional = generated?.ReserveExpiry(change, count) ?? count;
                 var changes = change.Increase ? _pass.SiteBirthExpiryIncreases ??= [] : _pass.SiteBirthExpiryDecreases ??= [];
                 for (var index = 0; index < additional; index++) changes.Add(change);
             }
         population += generated?.ReservePopulation() ?? 1;
-        if ((long)_sites.Count + population > 100_000) return "World mission site population exceeds the supported limit.";
+        if ((long)_sites.Count + population > 100_000) return ForecastLimits.WorldMissionSitePopulationLimit;
         foreach (var marker in markers)
         {
             if (string.IsNullOrEmpty(marker))
                 return "Direct mission site marker names require a nonempty ID namespace.";
             work += _sites.Count + (long)_alienBases.Count;
-            if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
+            if (work > MaximumWorldWork) return ForecastLimits.DirectMissionSiteCreationWork;
             if (marker is "STR_UFO_UNIQUE" or "STR_UFO" or "STR_LANDING_SITE" or "STR_CRASH_SITE")
                 return "Mission site and UFO creation share an unsupported ID namespace.";
             var additional = generated?.ReserveMarker(marker) ?? 1;
@@ -169,7 +169,7 @@ internal sealed partial class CampaignWorld
             if (highest >= CampaignTimeTrigger.OneDay)
             {
                 work += (long)rules.Research.Count * campaign.BaseStates.Count;
-                if (work > MaximumAlienBaseChecks) return "Mission site marker forecasts exceed the supported work limit.";
+                if (work > MaximumWorldWork) return ForecastLimits.MissionSiteMarkerForecastsWork;
                 long counterFields = 0;
                 foreach (var research in rules.Research.Rules)
                     counterFields += research.Value.IncreaseCounters.Count + (long)research.Value.DecreaseCounters.Count;
@@ -181,9 +181,9 @@ internal sealed partial class CampaignWorld
                         work += 1L + research.GetOneFree.Count;
                         foreach (var group in research.GetOneFreeProtected) work += 1L + group.Topics.Count;
                     }
-                if (work > MaximumAlienBaseChecks) return "Mission site marker forecasts exceed the supported work limit.";
+                if (work > MaximumWorldWork) return ForecastLimits.MissionSiteMarkerForecastsWork;
             }
-            if (ProductionCounterWorkReason(highest, ref work, "Mission site marker forecasts exceed the supported work limit.") is { } productionWork)
+            if (ProductionCounterWorkReason(highest, ref work, ForecastLimits.MissionSiteMarkerForecastsWork) is { } productionWork)
                 return productionWork;
             if (!processThisTick && LateHuntingMarkerReason(marker, highest, ref work) is { } siteCounterReason)
                 return siteCounterReason;
@@ -295,17 +295,17 @@ internal sealed partial class CampaignWorld
         if (wave.ObjectiveOnXcomBase)
         {
             work += DirectSiteBaseWork(mission);
-            if (work > MaximumAlienBaseChecks) return "Mission site activity forecasts exceed the supported work limit.";
+            if (work > MaximumWorldWork) return ForecastLimits.MissionSiteActivityForecastsWork;
             bases = DirectSiteBases(mission);
             if (bases.Count == 0) return null;
         }
         foreach (var area in DirectSiteAreas(mission, rule))
         {
             work += SiteDeploymentSelectionWork(wave, rule, area);
-            if (work > MaximumAlienBaseChecks) return "Mission site activity forecasts exceed the supported work limit.";
+            if (work > MaximumWorldWork) return ForecastLimits.MissionSiteActivityForecastsWork;
             var candidates = SiteDeploymentCandidates(wave, rule, area);
             work += candidates.Count;
-            if (work > MaximumAlienBaseChecks) return "Mission site activity forecasts exceed the supported work limit.";
+            if (work > MaximumWorldWork) return ForecastLimits.MissionSiteActivityForecastsWork;
             if (candidates.Count == 0) { suppressed = true; continue; }
             suppressed |= SiteDeploymentMayBeSuppressed(wave, rule, area);
             hasCandidates = true;
@@ -332,7 +332,7 @@ internal sealed partial class CampaignWorld
         if (bases is not null && hasCandidates)
             foreach (var owner in bases) positions.Add(new SpawnArea(new(owner.Longitude, owner.Latitude), 0));
         work += (long)positions.Count * (regions.Length + countries.Length) * 2;
-        if (work > MaximumAlienBaseChecks) return "Mission site activity forecasts exceed the supported work limit.";
+        if (work > MaximumWorldWork) return ForecastLimits.MissionSiteActivityForecastsWork;
         if (positions.Count == 0) return null;
         if (!suppressed && minimum == maximum) return CheckPossibleActivity(positions, maximum, regions, countries, guaranteedAward);
         if (maximum > 0 && CheckPossibleActivity(positions, maximum, regions, countries, false) is { } reason) return reason;
@@ -342,14 +342,14 @@ internal sealed partial class CampaignWorld
     private long DirectSiteBaseWork(AlienMissionSnapshot mission)
     {
         var rules = campaign.Content.RuntimeRules;
-        var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+        var region = rules.Regions.GetRequiredValue(mission.RegionId);
         return (long)campaign.BaseStates.Count * (region.Areas.Count + 1L);
     }
 
     private List<CampaignState.BaseState> DirectSiteBases(AlienMissionSnapshot mission)
     {
         var rules = campaign.Content.RuntimeRules;
-        var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+        var region = rules.Regions.GetRequiredValue(mission.RegionId);
         var rule = MissionRule(mission);
         if (rule.Objective is RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation)
             return WorldRetaliation.Candidates(campaign.BaseStates, region, rule.Objective,

@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -125,6 +124,5 @@ public sealed class StrategicWorldRetaliationCleanupTests
     private static CampaignState Restore(RuntimeContent content, CampaignSnapshot snapshot) =>
         CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(40));
     private static void Equal(JsonElement expected, List<int[]> rows) =>
-        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)),
-            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
+        TestFixtures.AssertJsonEqual(expected, JsonSerializer.SerializeToUtf8Bytes(rows));
 }

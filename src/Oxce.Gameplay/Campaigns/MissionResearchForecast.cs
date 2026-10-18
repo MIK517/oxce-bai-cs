@@ -8,7 +8,7 @@ public sealed partial class CampaignState
     /// <summary>Ordered, bounded alternative outcomes of world research grants; never consumes RNG.</summary>
     internal sealed class MissionResearchForecast
     {
-        private const long MaximumWork = 1_000_000;
+        private const long MaximumWork = ForecastLimits.Work;
         private const string WorkReason = "Mission research exceeds the supported discovery work limit.";
         private readonly CampaignState _campaign;
         private readonly RuntimeRuleCatalog _rules;
@@ -56,7 +56,7 @@ public sealed partial class CampaignState
             _guaranteedResearch = _possibleResearch = _outcomes[0].Completed;
             if (precedingResearch?.DiscoveryAlternatives is { Count: > 0 } alternatives)
             {
-                if (alternatives.Count > 256) { _reason = "Mission research exceeds the supported outcome limit."; return; }
+                if (alternatives.Count > 256) { _reason = ForecastLimits.MissionResearchOutcomes; return; }
                 if (firstBaseItems is not null && firstBaseItemUncertainty is not null && campaign._bases.Count != 0)
                 {
                     var baseId = campaign._bases[0].Id;
@@ -67,7 +67,7 @@ public sealed partial class CampaignState
                     foreach (var item in firstBaseItemUncertainty)
                     {
                         var daily = dailyDeltas?.GetValueOrDefault(_rules.Items.GetExternalId(item.Key)) ?? 0;
-                        if (daily > item.Value) { _reason = "Mission site research item stocks exceed the supported range."; return; }
+                        if (daily > item.Value) { _reason = ForecastLimits.MissionSiteResearchItemStocksRange; return; }
                         if (daily != item.Value) remaining.Add(item.Key, item.Value - daily);
                     }
                     _otherFirstBaseItemUncertainty = remaining.ToFrozenDictionary();
@@ -119,7 +119,7 @@ public sealed partial class CampaignState
                 var item = _rules.Items.GetRequired(upper[index].Key);
                 var quantity = (long)items.GetValueOrDefault(item) - upper[index].Value + exact[index].Value;
                 if (quantity is < 0 or > int.MaxValue)
-                { _reason = "Mission site research item stocks exceed the supported range."; return null; }
+                { _reason = ForecastLimits.MissionSiteResearchItemStocksRange; return null; }
                 items[item] = (int)quantity;
             }
             return items.ToFrozenDictionary();
@@ -143,7 +143,7 @@ public sealed partial class CampaignState
                 {
                     _work += 1L + (prior.AbsentItems?.Count ?? 0);
                     if (_work > MaximumWork) { _reason = WorkReason; return; }
-                    if (next.Count == 256) { _reason = "Mission research exceeds the supported outcome limit."; return; }
+                    if (next.Count == 256) { _reason = ForecastLimits.MissionResearchOutcomes; return; }
                     var stocks = prior.Items ?? _firstBaseItems;
                     if (_otherFirstBaseItemUncertainty is not null && stocks is not null &&
                         (stocks.GetValueOrDefault(item) == 0 || stocks.GetValueOrDefault(item) > _otherFirstBaseItemUncertainty.GetValueOrDefault(item)))
@@ -151,7 +151,7 @@ public sealed partial class CampaignState
                         next.Add(prior);
                         continue;
                     }
-                    if (next.Count > 254) { _reason = "Mission research exceeds the supported outcome limit."; return; }
+                    if (next.Count > 254) { _reason = ForecastLimits.MissionResearchOutcomes; return; }
                     // Initial research sets are shared only before grants, which
                     // always clone them. Item masks stay immutable across grants.
                     HashSet<RuleHandle<ItemRuleFamily>> absent = prior.AbsentItems is { } earlier ? new(earlier) : [];
@@ -194,7 +194,7 @@ public sealed partial class CampaignState
                 foreach (var bonus in choices)
                 {
                     found = true;
-                    if (next.Count == 256) { _reason = "Mission research exceeds the supported outcome limit."; break; }
+                    if (next.Count == 256) { _reason = ForecastLimits.MissionResearchOutcomes; break; }
                     var outcome = Clone(primary);
                     if (_reason is not null) break;
                     if (_rules.Research.TryGet(bonus, out _))
@@ -205,7 +205,7 @@ public sealed partial class CampaignState
                 if (_reason is not null) break;
                 if (!found)
                 {
-                    if (next.Count == 256) { _reason = "Mission research exceeds the supported outcome limit."; break; }
+                    if (next.Count == 256) { _reason = ForecastLimits.MissionResearchOutcomes; break; }
                     next.Add(primary);
                 }
             }
@@ -239,7 +239,7 @@ public sealed partial class CampaignState
             {
                 if (++_work > MaximumWork) return _reason = WorkReason;
                 if (!seen.Add(id)) continue;
-                if (choices.Count == 256) return _reason = "Mission research exceeds the supported outcome limit.";
+                if (choices.Count == 256) return _reason = ForecastLimits.MissionResearchOutcomes;
                 choices.Add(id);
             }
             if (choices.Count == 0) return _reason;
@@ -268,12 +268,12 @@ public sealed partial class CampaignState
                 _possibleExplicitTopics = possibleExplicit;
                 if (Advance(id) is { } reason) return reason;
                 conditional.Add(id, _guaranteedResearch);
-                if (combined.Count + _outcomes.Count > 256) return _reason = "Mission research exceeds the supported outcome limit.";
+                if (combined.Count + _outcomes.Count > 256) return _reason = ForecastLimits.MissionResearchOutcomes;
                 combined.AddRange(_outcomes);
             }
             if (optional)
             {
-                if (combined.Count + prior.Count > 256) return _reason = "Mission research exceeds the supported outcome limit.";
+                if (combined.Count + prior.Count > 256) return _reason = ForecastLimits.MissionResearchOutcomes;
                 combined.AddRange(prior);
             }
             return Publish(combined);
@@ -296,7 +296,7 @@ public sealed partial class CampaignState
                 _guaranteedExplicitTopics = guaranteedExplicit;
                 _possibleExplicitTopics = possibleExplicit;
                 if (advance() is { } reason) return reason;
-                if (combined.Count + _outcomes.Count > 256) return _reason = "Mission research exceeds the supported outcome limit.";
+                if (combined.Count + _outcomes.Count > 256) return _reason = ForecastLimits.MissionResearchOutcomes;
                 combined.AddRange(_outcomes);
             }
             return combined.Count == 0 ? _reason : Publish(combined);
@@ -305,7 +305,7 @@ public sealed partial class CampaignState
         private string? IncludeSkipped(List<Outcome> skipped)
         {
             if (_outcomes.Count + skipped.Count > 256)
-                return _reason = "Mission research exceeds the supported outcome limit.";
+                return _reason = ForecastLimits.MissionResearchOutcomes;
             List<Outcome> combined = [.. _outcomes, .. skipped];
             return Publish(combined);
         }
@@ -367,7 +367,7 @@ public sealed partial class CampaignState
                 if (discovered != topic) outcome.DiaryEntries++;
                 if ((Int128)outcome.Score + _precedingProductionMinimum < int.MinValue ||
                     (Int128)outcome.Score + _precedingProductionMaximum > int.MaxValue)
-                    _reason = "Mission research score exceeds the supported range.";
+                    _reason = ForecastLimits.MissionResearchScoreRange;
             }, ref _work, MaximumWork);
             if (!supported) _reason = WorkReason;
             if (!_campaign.ResearchDiaryCapacityFits(outcome.DiaryEntries))

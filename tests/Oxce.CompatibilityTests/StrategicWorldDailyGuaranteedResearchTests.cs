@@ -43,11 +43,7 @@ public sealed class StrategicWorldDailyGuaranteedResearchTests
             var control = CampaignState.Restore(initial with { World = initial.World with { Events = [] } }, content, new SplitMix64RandomSource(seed));
             AdvanceUnblocked(control, 1);
             Assert.Equivalent(control.Capture(), after, strict: true);
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "guaranteed-daily-events.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "guaranteed-daily-events.sav", 3, after);
         }
     }
 
@@ -81,11 +77,7 @@ public sealed class StrategicWorldDailyGuaranteedResearchTests
         Assert.Empty(after.World.Events);
         Assert.Equal(int.MaxValue, after.Regions[0].ActivityAlien[^1]);
         Assert.Null(Assert.Single(after.Bases[0].Crafts, craft => craft.RuleId == "SHIP").Logistics!.Destination);
-        for (var pass = 0; pass < 3; pass++)
-        {
-            campaign = Reload(content, campaign, 17, "guaranteed-daily-links.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 17, "guaranteed-daily-links.sav", 3, after);
     }
 
     [Theory]

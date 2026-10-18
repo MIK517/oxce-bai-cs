@@ -66,11 +66,7 @@ public sealed class StrategicWorldSiteResearchDailyTests
             Assert.Equal((byte)ResearchDiscoverySource.Mission, core.SourceType);
             Assert.Equal("DEPLOY_DIARY", core.SourceName);
         }
-        for (var pass = 0; pass < 3; pass++)
-        {
-            campaign = Reload(content, campaign, 17, "daily-site-research.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 17, "daily-site-research.sav", 3, after);
     }
 
     [Fact]

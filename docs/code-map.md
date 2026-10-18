@@ -17,9 +17,9 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Engine](#oxceengine) | 29 | Core, Gameplay, Rendering, Resources |
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
-| [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 191 | Core, Mods, Scripting |
-| [Oxce.Mods](#oxcemods) | 95 | Core, Formats, Scripting |
+| [Oxce.Formats](#oxceformats) | 35 | Core |
+| [Oxce.Gameplay](#oxcegameplay) | 192 | Core, Mods, Scripting |
+| [Oxce.Mods](#oxcemods) | 96 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
@@ -248,7 +248,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Formats
 
-`src/Oxce.Formats` - 34 files.
+`src/Oxce.Formats` - 35 files.
 
 ### `Oxce.Formats`
 
@@ -318,6 +318,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `YamlCompatibilityReader` (class) [YamlCompatibilityReader.cs](../src/Oxce.Formats/Yaml/YamlCompatibilityReader.cs)
 - `YamlCompatibilityWriter` (class) [YamlCompatibilityWriter.cs](../src/Oxce.Formats/Yaml/YamlCompatibilityWriter.cs)
 - `YamlFormatException` (class) [YamlFormatException.cs](../src/Oxce.Formats/Yaml/YamlFormatException.cs)
+- `YamlMappingReadExtensions` (class) [YamlMappingReadExtensions.cs](../src/Oxce.Formats/Yaml/YamlMappingReadExtensions.cs) - Keyed reads of a mapping entry with `YamlValueReader`'s conversions; a missing key gives the default.
 - `YamlNodeKind` (enum) [YamlNodes.cs](../src/Oxce.Formats/Yaml/YamlNodes.cs)
 - `YamlScalarStyle` (enum) [YamlNodes.cs](../src/Oxce.Formats/Yaml/YamlNodes.cs)
 - `YamlNode` (class) [YamlNodes.cs](../src/Oxce.Formats/Yaml/YamlNodes.cs)
@@ -336,7 +337,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 191 files.
+`src/Oxce.Gameplay` - 192 files.
 
 ### `Oxce.Gameplay`
 
@@ -371,6 +372,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CampaignCommandResult` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
 - `CampaignDifficulty` (enum) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
 - `CampaignOptions` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
+- `CampaignOptionField` (class) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs) - One `CampaignOptions` field: its external key, whether it is a number or a flag, and whether it is a reference user option (fixed by mods...
 - `CampaignId` (record struct) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
 - `CampaignIdentity` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
 - `CountrySnapshot` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
@@ -634,7 +636,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Mods
 
-`src/Oxce.Mods` - 95 files.
+`src/Oxce.Mods` - 96 files.
 
 ### `Oxce.Mods`
 
@@ -723,6 +725,8 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `SpecialRuleSectionBehavior` (enum) [RuleSectionRegistry.cs](../src/Oxce.Mods/Rulesets/RuleSectionRegistry.cs)
 - `SpecialRuleSectionDefinition` (record) [RuleSectionRegistry.cs](../src/Oxce.Mods/Rulesets/RuleSectionRegistry.cs)
 - `RuleSectionRegistry` (class) [RuleSectionRegistry.cs](../src/Oxce.Mods/Rulesets/RuleSectionRegistry.cs)
+- `RuleValidationIssue` (record) [RuleValidation.cs](../src/Oxce.Mods/Rulesets/RuleValidation.cs) - A broken relationship between typed rules: the rule, its property, the related ID when one is named, and why.
+- `RuleValidation` (record) [RuleValidation.cs](../src/Oxce.Mods/Rulesets/RuleValidation.cs) - The relationship issues a rule-family group found; valid when there are none.
 - `RulesetCatalogNormalizationOptions` (record) [RulesetCatalogNormalizationOptions.cs](../src/Oxce.Mods/Rulesets/RulesetCatalogNormalizationOptions.cs)
 - `RulesetCatalogNormalizer` (class) [RulesetCatalogNormalizer.cs](../src/Oxce.Mods/Rulesets/RulesetCatalogNormalizer.cs)
 - `RulesetComposer` (class) [RulesetComposer.cs](../src/Oxce.Mods/Rulesets/RulesetComposer.cs)
@@ -747,8 +751,6 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CampaignMonthlySettings` (record) [CampaignMonthlySettings.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignMonthlySettings.cs) - Global rules read by the month rollover and the monthly report (`Mod::loadFile`), with the `Mod::Mod` defaults.
 - `CampaignMonthlyRating` (record) [CampaignMonthlySettings.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignMonthlySettings.cs) - One `monthlyRatings` entry: the rating text shown from `Score` upwards.
 - `CampaignStartRuleCatalog` (class) [CampaignStartRuleCatalog.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRuleCatalog.cs)
-- `CampaignStartValidationIssue` (record) [CampaignStartRuleCatalog.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRuleCatalog.cs)
-- `CampaignStartValidation` (record) [CampaignStartRuleCatalog.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRuleCatalog.cs)
 - `GeographicArea` (record) [CampaignStartRules.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRules.cs)
 - `CountryRule` (record) [CampaignStartRules.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRules.cs)
 - `MissionArea` (record) [CampaignStartRules.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRules.cs)
@@ -777,8 +779,6 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 ### `Oxce.Mods.Rulesets.EquipmentProduction`
 
 - `EquipmentProductionRuleCatalog` (class) [EquipmentProductionRuleCatalog.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRuleCatalog.cs)
-- `EquipmentProductionValidationIssue` (record) [EquipmentProductionRuleCatalog.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRuleCatalog.cs)
-- `EquipmentProductionValidation` (record) [EquipmentProductionRuleCatalog.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRuleCatalog.cs)
 - `ItemCategoryRule` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs)
 - `WeaponSetRule` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs)
 - `CraftStats` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs)
@@ -795,8 +795,6 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 ### `Oxce.Mods.Rulesets.Items`
 
 - `ItemRuleCatalog` (class) [ItemRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Items/ItemRuleCatalog.cs)
-- `ItemRuleValidationIssue` (record) [ItemRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Items/ItemRuleCatalog.cs)
-- `ItemRuleValidation` (record) [ItemRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Items/ItemRuleCatalog.cs)
 - `ItemScalarValues` (class) [ItemRules.cs](../src/Oxce.Mods/Rulesets/Items/ItemRules.cs)
 - `ItemUseValues<T>` (record) [ItemRules.cs](../src/Oxce.Mods/Rulesets/Items/ItemRules.cs)
 - `ItemActionRule` (record) [ItemRules.cs](../src/Oxce.Mods/Rulesets/Items/ItemRules.cs)
@@ -807,8 +805,6 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 ### `Oxce.Mods.Rulesets.MissionEvents`
 
 - `MissionEventRuleCatalog` (class) [MissionEventRuleCatalog.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRuleCatalog.cs)
-- `MissionEventValidationIssue` (record) [MissionEventRuleCatalog.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRuleCatalog.cs)
-- `MissionEventValidation` (record) [MissionEventRuleCatalog.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRuleCatalog.cs)
 - `TrajectoryWaypointRule` (record) [MissionEventRules.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRules.cs)
 - `UfoTrajectoryRule` (record) [MissionEventRules.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRules.cs)
 - `MissionWaveRule` (record) [MissionEventRules.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRules.cs)
@@ -822,7 +818,6 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 ### `Oxce.Mods.Rulesets.PersonnelTactical`
 
 - `PersonnelTacticalRuleCatalog` (class) [PersonnelTacticalRuleCatalog.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRuleCatalog.cs)
-- `PersonnelTacticalValidationIssue` (record) [PersonnelTacticalRuleCatalog.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRuleCatalog.cs)
 - `PersonnelDerivedCaches` (record) [PersonnelTacticalRuleCatalog.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRuleCatalog.cs)
 - `PersonnelTacticalValidation` (record) [PersonnelTacticalRuleCatalog.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRuleCatalog.cs)
 - `UnitStatsRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs)
@@ -981,8 +976,6 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 ### `Oxce.Mods.Rulesets.TerrainDeployment`
 
 - `TerrainDeploymentRuleCatalog` (class) [TerrainDeploymentRuleCatalog.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRuleCatalog.cs)
-- `TerrainDeploymentValidationIssue` (record) [TerrainDeploymentRuleCatalog.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRuleCatalog.cs)
-- `TerrainDeploymentValidation` (record) [TerrainDeploymentRuleCatalog.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRuleCatalog.cs)
 - `MapBlockRule` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)
 - `TerrainRule` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)
 - `MapScriptCommandType` (enum) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)
@@ -1687,7 +1680,7 @@ Prefer these over local copies (see AGENTS.md, *Test conventions*).
 ### [tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs)
 
 - `StrategicWorldTestSupport` (class) - Shared setup and assertions for the strategic-world compatibility tests.
-- members: `AssertDetectionReadScript`, `CreateSnapshot`, `CreateLifecycleSnapshot`, `CreateUfoTransitCampaign`, `Degrees`, `WithCraft`, `WithFacility`, `WithNextId`, `AdvanceOne`, `AdvanceUnblocked`, `AssertInterceptionStarts`, `AssertLandingRequested`, `AssertNewbornHuntRuns`, `AssertEventTickRuns`, `AssertTimeBlocked`, `Reload`, `AssertSelectedNewbornArrival`, `AllocatedBytes`
+- members: `AssertDetectionReadScript`, `CreateSnapshot`, `CreateLifecycleSnapshot`, `CreateUfoTransitCampaign`, `Degrees`, `WithCraft`, `WithFacility`, `WithNextId`, `AdvanceOne`, `AdvanceUnblocked`, `AssertInterceptionStarts`, `AssertLandingRequested`, `AssertNewbornHuntRuns`, `AssertEventTickRuns`, `AssertTimeBlocked`, `Reload`, `ReloadRepeatedly`, `AssertContinuesLike`, `AssertSelectedNewbornArrival`, `AllocatedBytes`
 
 ### [tests/Oxce.TestExtension/ProbeExtension.cs](../tests/Oxce.TestExtension/ProbeExtension.cs)
 
@@ -1711,7 +1704,7 @@ Prefer these over local copies (see AGENTS.md, *Test conventions*).
 - `TestFixtures.FixedClock` (class)
 - `TestFixtures.CountingMinimumRandomSource` (class)
 - `TestFixtures.RecordingMinimumRandomSource` (class)
-- members: `LogisticsModId`, `DefaultCampaignId`, `Engine`, `RepositoryPath`, `PublicModsPath`, `CreatePlan`, `RuntimeRuleLinkingMods`, `CreateRuntimeRuleLinkingPlan`, `LoadStrategicLogistics`, `CreateLogisticsCampaign`, `LogisticsSaveOptions`, `LoadLogisticsSave`, `VerifiedExpectedPath`, `ReadVerifiedExpected`, `LoadVerifiedManifest`, `ReadKeyValues`, `Rows`, `CopyDirectory`, `Instance`, `UtcNow`, `IntegerCalls`, `UnitCalls`, `State`, `NextExclusive`, `NextInclusive`, `NextUnit`, `Restore`, `Calls`, `State`, `NextExclusive`, `NextInclusive`, `NextUnit`, `Restore`
+- members: `LogisticsModId`, `DefaultCampaignId`, `Engine`, `RepositoryPath`, `PublicModsPath`, `CreatePlan`, `RuntimeRuleLinkingMods`, `CreateRuntimeRuleLinkingPlan`, `LoadStrategicLogistics`, `CreateLogisticsCampaign`, `LogisticsSaveOptions`, `LoadLogisticsSave`, `VerifiedExpectedPath`, `ReadVerifiedExpected`, `LoadVerifiedManifest`, `ReadKeyValues`, `Rows`, `AssertJsonEqual`, `RequirePrivateMods`, `RequireOwnedData`, `RequirePrivateInstallation`, `CorpusFiles`, `ForEachCorpusFile`, `CopyDirectory`, `Instance`, `UtcNow`, `IntegerCalls`, `UnitCalls`, `State`, `NextExclusive`, `NextInclusive`, `NextUnit`, `Restore`, `Calls`, `State`, `NextExclusive`, `NextInclusive`, `NextUnit`, `Restore`
 
 ### Helpers nested in test classes
 

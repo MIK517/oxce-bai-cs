@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.TestSupport;
@@ -51,20 +50,14 @@ public sealed class StrategicWorldResearchArrivalOrderTests
                 ordered.Arrivals[before.Bases[0].Id].Select(item => item.Key).ToArray(),
                 after.Bases[0].Items.GetValueOrDefault("SUPPLY") + 1, after.Bases[0].Items.GetValueOrDefault("CLIP"),
                 arrivals.Count, after.ResearchScores[^1] - before.ResearchScores[^1] });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(expected, actual);
             Assert.Equal(forecast.NextTransferId, after.NextIds["oxcePortTransfer"]);
             Assert.Empty(after.Bases[0].Transfers);
             Assert.Equal("STR_OUT", after.Bases[0].Crafts[0].Logistics!.Status);
             Assert.True(Assert.Single(after.World.Ufos).Hunting);
             var control = CampaignState.Restore(after, content, new SplitMix64RandomSource(seed));
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "research-arrival-order.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
-            AdvanceUnblocked(campaign, 1);
-            AdvanceUnblocked(control, 1);
-            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+            campaign = ReloadRepeatedly(content, campaign, seed, "research-arrival-order.sav", 3, after);
+            AssertContinuesLike(control, campaign, 1);
         }
         Assert.Equal(2, choices.Count);
     }
@@ -108,12 +101,8 @@ public sealed class StrategicWorldResearchArrivalOrderTests
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { choice, ordered.Arrivals[before.Bases[0].Id].Select(item => item.Key).ToArray(),
                 after.Bases[0].Items.GetValueOrDefault("SUPPLY"), after.Bases[0].Items.GetValueOrDefault("CLIP"),
                 ship.Weapons[0]!.Rearming, ship.Weapons[1]!.Rearming, ship.Status });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "reusable-research-order.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            TestFixtures.AssertJsonEqual(expected, actual);
+            campaign = ReloadRepeatedly(content, campaign, seed, "reusable-research-order.sav", 3, after);
         }
         Assert.Equal(2, choices.Count);
     }
@@ -154,15 +143,11 @@ public sealed class StrategicWorldResearchArrivalOrderTests
             var expected = TestFixtures.Rows(oracle.RootElement, "researchLargeReusableRows").Single(row => row[0].GetInt32() == count);
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { count, after.Bases[0].Items["SUPPLY"] + 1,
                 forecast.Arrivals[before.Bases[0].Id].Count, after.ResearchScores[^1] - before.ResearchScores[^1] });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(expected, actual);
             Assert.Equal(forecast.NextTransferId, after.NextIds["oxcePortTransfer"]);
             Assert.Empty(after.Bases[0].Transfers);
             Assert.True(Assert.Single(after.World.Ufos).Hunting);
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "large-reusable-research.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "large-reusable-research.sav", 3, after);
             if (choices.Count == 2) break;
         }
         Assert.Equal(2, choices.Count);

@@ -254,7 +254,7 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery
                     missionType = ufo.Status == UfoStatus.Crashed ? "STR_UFO_CRASH_RECOVERY" : "STR_UFO_GROUND_ASSAULT";
                     var underwater = rules.Campaign.Globe.Textures.TryGetValue(missionTexture, out var texture) && texture.FakeUnderwater;
                     deployment = underwater ? ufo.RuleId + "_UNDERWATER" : ufo.RuleId;
-                    var stats = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value.StatsForRace(mission.Race);
+                    var stats = rules.Ufos.GetRequiredValue(ufo.RuleId).StatsForRace(mission.Race);
                     customDeploy = stats.CraftCustomDeployment;
                     customMission = underwater ? deployment : "";
                     race = mission.Race;

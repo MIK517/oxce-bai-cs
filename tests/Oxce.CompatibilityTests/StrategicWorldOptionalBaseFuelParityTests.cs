@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -50,7 +49,7 @@ public sealed class StrategicWorldOptionalBaseFuelParityTests
             {
                 limit, fuel, low, deleted, state.Fuel, state.LowFuel, state.Speed, state.Destination!.Kind == WorldTargetKind.Base,
             });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(expected, actual);
             Assert.Equal(Math.Max(0, takeoff - 1), state.Takeoff);
             var position = takeoff > 0 ? new WorldPosition(1, 0.6) :
                 WorldGeometry.Move(new(1, 0.6), new(0.4, 0.2), WorldGeometry.RadianSpeed(state.Speed));
@@ -59,14 +58,8 @@ public sealed class StrategicWorldOptionalBaseFuelParityTests
             var control = CampaignState.Restore(initial, deleted ? deletedContent : survivedContent, new SplitMix64RandomSource(seed));
             AdvanceUnblocked(control, 1);
             Assert.Equivalent(control.Capture(), after, strict: true);
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "optional-base-fuel-parity.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
-            AdvanceUnblocked(campaign, 1);
-            AdvanceUnblocked(control, 1);
-            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+            campaign = ReloadRepeatedly(content, campaign, seed, "optional-base-fuel-parity.sav", 3, after);
+            AssertContinuesLike(control, campaign, 1);
         }
         Assert.Equal(2, outcomes.Count);
     }

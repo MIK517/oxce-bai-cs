@@ -35,15 +35,15 @@ public sealed partial class CampaignState
         for (var index = 0; index < invocation.Programs.Length; index++)
         {
             var check = invocation.Checks[index];
-            if ((forecast.Work += check.Charge) > 1_000_000)
+            if ((forecast.Work += check.Charge) > ForecastLimits.Work)
             {
-                unavailable = "Production price forecasts exceed the supported work limit.";
+                unavailable = ForecastLimits.ProductionPriceForecastsWork;
                 return adjusted;
             }
             _priceFrame.Prepare(invocation.Programs[index]);
             foreach (var binding in check.Bindings)
             {
-                if (binding.Tag && (forecast.Work += _content.Tags.Types.Count) > 1_000_000)
+                if (binding.Tag && (forecast.Work += _content.Tags.Types.Count) > ForecastLimits.Work)
                 {
                     unavailable = "Production price tag metadata exceeds the supported work limit.";
                     return adjusted;
@@ -74,18 +74,18 @@ public sealed partial class CampaignState
             }
             foreach (var candidate in invocation.Programs)
             {
-                var remaining = 1_000_000 - forecast.Work;
+                var remaining = ForecastLimits.Work - forecast.Work;
                 if (remaining <= 0)
                 {
-                    unavailable = "Production price forecasts exceed the supported work limit.";
+                    unavailable = ForecastLimits.ProductionPriceForecastsWork;
                     break;
                 }
                 var options = new ScriptExecutionOptions { MaximumSteps = (int)Math.Min(remaining, ScriptExecutionOptions.Default.MaximumSteps) };
                 var result = ScriptVm.ExecuteWithInputs(candidate, _priceOutput, _priceInputs, _priceOutput, _priceFrame, options, invocation.Providers);
                 forecast.Work += result.Steps;
-                if (forecast.Work > 1_000_000)
+                if (forecast.Work > ForecastLimits.Work)
                 {
-                    unavailable = "Production price forecasts exceed the supported work limit.";
+                    unavailable = ForecastLimits.ProductionPriceForecastsWork;
                     break;
                 }
                 if (!result.Succeeded)
@@ -218,7 +218,7 @@ public sealed partial class CampaignState
         }
         if (name == "RuleItem.hasCategory")
         {
-            if (forecast is not null && (forecast.Work += item?.Rule.Categories.Count ?? 0) > 1_000_000)
+            if (forecast is not null && (forecast.Work += item?.Rule.Categories.Count ?? 0) > ForecastLimits.Work)
                 return ScriptBindingResult.Failure("Production price category queries exceed the supported work limit.");
             args[1] = ScriptRuntimeValue.FromScalar(item?.Rule.Categories.Contains(args[2].Text ?? "", StringComparer.Ordinal) == true ? 1 : 0);
             return ScriptBindingResult.Success;
@@ -280,19 +280,19 @@ public sealed partial class CampaignState
                 forecast.CompletedResearch = research.CompletedResearch;
             forecast.Work = work;
         }
-        if (forecast.Work > 1_000_000) return "Production price research forecasts exceed the supported work limit.";
+        if (forecast.Work > ForecastLimits.Work) return ForecastLimits.ProductionPriceResearchForecastsWork;
         if (forecast.CompletedResearch is null && forecast.GuaranteedResearch is null)
         {
             // Bound both existing research projections before they scan rule edges.
             forecast.Work += 8L * (_bases.Count + _completedResearch.Count + _researchRuleStatus.Count + _content.RuntimeRules.Research.Count);
             foreach (var owner in _bases) forecast.Work += 8L * owner.Research.Count;
-            if (forecast.Work > 1_000_000) return "Production price research forecasts exceed the supported work limit.";
+            if (forecast.Work > ForecastLimits.Work) return ForecastLimits.ProductionPriceResearchForecastsWork;
             foreach (var entry in _content.RuntimeRules.Research.Rules)
             {
                 var rule = entry.Value;
                 forecast.Work += 8L * (rule.GetOneFree.Count + rule.Disables.Count + rule.GetOneFreeProtected.Count);
                 foreach (var group in rule.GetOneFreeProtected) forecast.Work += 8L * group.Topics.Count;
-                if (forecast.Work > 1_000_000) return "Production price research forecasts exceed the supported work limit.";
+                if (forecast.Work > ForecastLimits.Work) return ForecastLimits.ProductionPriceResearchForecastsWork;
             }
             forecast.GuaranteedResearch = ResearchPreflight.GuaranteedResearchAfterDailyProgress();
             forecast.PossibleResearch = ResearchPreflight.PossibleResearchAfterDailyProgress();

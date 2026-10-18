@@ -1,7 +1,6 @@
 using Oxce.Core.Random;
 using Oxce.Gameplay.Campaigns;
 using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
-using System.Text;
 using System.Text.Json;
 using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns.World;
@@ -41,7 +40,7 @@ public sealed class StrategicMissionSiteScriptTests
                 direct, site, occupied, repeat, zone, row[5].GetBoolean(),
                 candidates.Select(candidate => new object[] { candidate.Region, candidate.Area }).ToArray(),
             });
-            Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
         }
 
         static MissionArea Area(bool point, int texture) => new(0.1, point ? 0.1 : 0.2, 0.1, 0.1, texture, "");
@@ -108,7 +107,7 @@ public sealed class StrategicMissionSiteScriptTests
                 Assert.Equal(5, row[5].GetArrayLength());
                 Assert.Equal(4, random.Calls.Count);
             }
-            else Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+            else TestFixtures.AssertJsonEqual(row, actual);
         }
     }
 

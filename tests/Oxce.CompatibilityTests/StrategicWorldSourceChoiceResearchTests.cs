@@ -45,11 +45,7 @@ public sealed class StrategicWorldSourceChoiceResearchTests
                 else Assert.Empty(after.World.Missions);
                 firstSeen |= first;
                 otherSeen |= !first;
-                for (var pass = 0; pass < 3; pass++)
-                {
-                    campaign = Reload(content, campaign, seed, "source-choice-research.sav");
-                    Assert.Equivalent(after, campaign.Capture(), strict: true);
-                }
+                campaign = ReloadRepeatedly(content, campaign, seed, "source-choice-research.sav", 3, after);
             }
             Assert.True(firstSeen);
             Assert.True(otherSeen);

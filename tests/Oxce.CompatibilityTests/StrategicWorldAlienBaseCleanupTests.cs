@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -53,8 +52,7 @@ public sealed class StrategicWorldAlienBaseCleanupTests
             Assert.Equal(snapshot.RandomState, after.RandomState);
             Reload(content, campaign, 40, "base-cleanup.sav");
         }
-        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(oracle.RootElement.GetProperty("rows"))),
-            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
+        TestFixtures.AssertJsonEqual(oracle.RootElement.GetProperty("rows"), JsonSerializer.SerializeToUtf8Bytes(rows));
     }
 
     [Theory]
@@ -106,11 +104,7 @@ public sealed class StrategicWorldAlienBaseCleanupTests
             Assert.DoesNotContain(after.World.Missions, mission => mission.Id == 5);
             Assert.Equal(RetainedSpaceMissionIds, after.World.Missions.Select(mission => mission.Id));
             Assert.All(after.World.Missions, mission => { Assert.Null(mission.AlienBase); Assert.False(mission.Interrupted); });
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "uncertain-cleanup-space-links.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "uncertain-cleanup-space-links.sav", 3, after);
         }
         AssertTimeBlocked(Restore(content, Snapshot(content, "CLEANUP_MISSING_RESEARCH")),
             "Alien base self-destruction references undefined research.");
@@ -190,8 +184,7 @@ public sealed class StrategicWorldAlienBaseCleanupTests
             var follower = campaign.Capture().Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP").Logistics!;
             rows.Add([complete, follower.Destination?.Kind == WorldTargetKind.Base ? 1 : 0]);
         }
-        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(oracle.RootElement.GetProperty("followerRows"))),
-            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
+        TestFixtures.AssertJsonEqual(oracle.RootElement.GetProperty("followerRows"), JsonSerializer.SerializeToUtf8Bytes(rows));
     }
 
     [Fact]

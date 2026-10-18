@@ -57,11 +57,7 @@ public sealed class StrategicWorldNewbornObjectiveArrivalTests
                     Assert.Single(result.Events.OfType<AlienBaseDiscovered>());
                 }
                 Assert.Equal(objective == 2 ? 16 : 9, after.Regions[0].ActivityAlien[^1]);
-                for (var pass = 0; pass < 3; pass++)
-                {
-                    campaign = Reload(content, campaign, seed, "newborn-objective-first.sav");
-                    Assert.Equivalent(after, campaign.Capture(), strict: true);
-                }
+                campaign = ReloadRepeatedly(content, campaign, seed, "newborn-objective-first.sav", 3, after);
                 AdvanceUnblocked(campaign, 1);
                 Assert.All(campaign.Capture().World.Ufos, ufo => Assert.Equal(2, ufo.TrajectoryPoint));
             }

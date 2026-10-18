@@ -14,7 +14,7 @@ internal sealed partial class CampaignWorld
             foreach (var baseState in campaign.BaseStates)
             {
                 work += baseState.Research.Count;
-                if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                if (work > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
                 researchMayChangeStocks |= baseState.Research.Any(project => (long)project.Spent + project.Assigned >= project.Cost);
             }
         if (highest >= CampaignTimeTrigger.OneDay && campaign.ResearchPreflight.HasDisabledDailyProjects(ref work))
@@ -31,7 +31,7 @@ internal sealed partial class CampaignWorld
                 researchMayChangeStocks = false;
             }
         }
-        if (researchMayChangeStocks && work <= MaximumAlienBaseChecks)
+        if (researchMayChangeStocks && work <= MaximumWorldWork)
         {
             var supported = TryDailyResearchProjection(out var worldStocks);
             // Failed branches also consume the caller's shared work budget.
@@ -42,21 +42,21 @@ internal sealed partial class CampaignWorld
                 researchMayChangeStocks = false;
             }
         }
-        if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+        if (work > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
         Dictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> baseStocks = [];
         Dictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> baseUncertainty = [];
         foreach (var owner in campaign.BaseStates)
         {
             Dictionary<RuleHandle<ItemRuleFamily>, int>? stocks = null;
             work += 1L + owner.Crafts.Count + owner.Items.Count + owner.Transfers.Count;
-            if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+            if (work > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
             if (highest >= CampaignTimeTrigger.ThirtyMinutes) stocks = new(owner.Items);
             if (researchStocks?.StockChanges.GetValueOrDefault(owner.Id) is { } changes)
                 foreach (var change in changes)
                 {
                     var item = rules.Items.GetRequired(change.Key);
                     var quantity = (long)stocks!.GetValueOrDefault(item) + change.Value;
-                    if (quantity is < 0 or > int.MaxValue) return "Research refunds exceed the supported stock range.";
+                    if (quantity is < 0 or > int.MaxValue) return ForecastLimits.ResearchRefundsStockRange;
                     stocks![item] = (int)quantity;
                 }
             var sources = new List<CampaignState.CraftState>(owner.Crafts);
@@ -85,7 +85,7 @@ internal sealed partial class CampaignWorld
             if (baseUncertainty.TryGetValue(owner.Id, out var uncertainty) && uncertainty.Count != 0)
             {
                 work += stocks!.Count + (long)uncertainty.Count;
-                if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                if (work > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
                 minimumStocks = new(stocks);
                 foreach (var item in uncertainty) minimumStocks[item.Key] = stocks.GetValueOrDefault(item.Key) - item.Value;
             }
@@ -95,7 +95,7 @@ internal sealed partial class CampaignWorld
                 if (minimumStocks is not null)
                 {
                     work += 1L + craft.Logistics!.Weapons.Count * 3L;
-                    if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                    if (work > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
                     if (ForecastHuntingCraftState(owner, craft, highest, minimumStocks, out var lower) is { } lowerReason) return lowerReason;
                     if (!lower.Weapons.SequenceEqual(state.Weapons) || (lower with { Weapons = state.Weapons }) != state)
                         return "UFO retargeting requires stochastic craft ammunition stock forecasts.";
@@ -117,7 +117,7 @@ internal sealed partial class CampaignWorld
         foreach (var owner in campaign.BaseStates)
             foreach (var craft in _pass.HuntingCraftSources[owner.Id])
             {
-                if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                if (++work > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
                 var key = (rules.Crafts.GetExternalId(craft.Rule), craft.Id);
                 var state = _pass.HuntingCraftForecast[key];
                 var returnHome = false;
@@ -126,13 +126,13 @@ internal sealed partial class CampaignWorld
                 if (state.Destination is { Kind: WorldTargetKind.MissionSite } siteTarget && highest >= CampaignTimeTrigger.ThirtyMinutes)
                 {
                     work += _sites.Count;
-                    if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                    if (work > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
                     returnHome = ReturnsFromSiteBeforeMovement(siteTarget, highest);
                 }
                 if (state.Destination is { Kind: WorldTargetKind.AlienBase } baseTarget && highest >= CampaignTimeTrigger.OneDay)
                 {
                     work += _alienBases.Count;
-                    if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                    if (work > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
                     returnHome = _alienBases.Any(alienBase => FollowsAlienBase(baseTarget, alienBase) &&
                         BaseDestroyedAfterDailyResearch(alienBase, _pass.DailyResearchForecast));
                 }
@@ -140,7 +140,7 @@ internal sealed partial class CampaignWorld
                 if (!owner.IsPlaced || !new WorldPosition(state.Longitude, state.Latitude).IsNormalized)
                     return "Airborne craft coordinates require a placed base and normalized positions.";
                 work += state.Weapons.Count * 5L;
-                if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                if (work > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
                 if (!CraftLogistics.TryEffectiveSpeedMaximum(rules.Crafts[craft.Rule].Value, state.Weapons, rules, out var maximum))
                     return SpeedRangeReason;
                 if (returnHome) state = SetDestination(state, maximum, BaseReference(owner)) with { Status = state.Status };
@@ -173,7 +173,7 @@ internal sealed partial class CampaignWorld
             (long)state.Fuel + rule.RefuelRate - capacities.FuelMaximum + state.ExcessFuel > int.MaxValue ||
             rule.RefuelItem is not null && state.Fuel < capacities.FuelMaximum &&
             (long)state.Fuel + rule.RefuelRate > capacities.FuelMaximum && rule.RefuelRate <= 0)
-            return "Craft service capacity exceeds the supported range.";
+            return ForecastLimits.CraftServiceCapacityRange;
         var result = CraftLogistics.Refuel(state, rule, rules,
             rule.RefuelItem is { } item ? fuelStocks!.GetValueOrDefault(item) : 0);
         if (rule.RefuelItem is { } fuelItem && result.FuelItemChange != 0)

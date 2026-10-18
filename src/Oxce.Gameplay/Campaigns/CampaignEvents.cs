@@ -90,7 +90,7 @@ public sealed partial class CampaignState : ICampaignEventWindowQuery
     }
 
     private RuntimeEventRule EventRule(string id) =>
-        _content.RuntimeRules.Events[_content.RuntimeRules.Events.GetRequired(id)].Value;
+        _content.RuntimeRules.Events.GetRequiredValue(id);
 
     /// <summary>
     /// GeoscapeEventState::eventLogic, which its constructor runs inside the tick, and the window it then shows. A name
@@ -284,11 +284,11 @@ public sealed partial class CampaignState : ICampaignEventWindowQuery
         var bonusName = "";
         List<string> topics = [];
         var possibilities = payload.Research.Where(id => !_completedResearch.Contains(id) ||
-            HasRemainingResearchReward(rules.Research[rules.Research.GetRequired(id)].Value)).ToArray();
+            HasRemainingResearchReward(rules.Research.GetRequiredValue(id))).ToArray();
         if (possibilities.Length != 0)
         {
             var id = possibilities[_random.NextInclusive(0, possibilities.Length - 1)];
-            var research = rules.Research[rules.Research.GetRequired(id)].Value;
+            var research = rules.Research.GetRequiredValue(id);
             // An article already seen is not shown again.
             var alreadyResearched = _completedResearch.Contains(research.Lookup.Length != 0 ? research.Lookup : id);
             var discoveries = new List<string>();

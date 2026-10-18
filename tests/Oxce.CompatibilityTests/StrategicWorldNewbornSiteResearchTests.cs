@@ -32,11 +32,7 @@ public sealed class StrategicWorldNewbornSiteResearchTests
             Assert.Equal(savedIndex == 0 ? BornTopics : SavedThenBornTopics, after.ResearchDiary.Select(entry => entry.RuleId));
             if (final) Assert.Empty(after.World.Missions);
             else Assert.True(Assert.Single(after.World.Missions).Interrupted);
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, 17, "immediate-site-after.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, 17, "immediate-site-after.sav", 3, after);
             AdvanceUnblocked(campaign, 360);
             Assert.Empty(campaign.Capture().World.Missions);
             Assert.Equal(after.ResearchDiary, campaign.Capture().ResearchDiary);
@@ -118,11 +114,7 @@ public sealed class StrategicWorldNewbornSiteResearchTests
                 Assert.Equal(1, Assert.Single(after.World.AlienBases).GenMissionCount);
                 if (final) Assert.Empty(after.World.Missions);
                 else Assert.True(Assert.Single(after.World.Missions).Interrupted);
-                for (var pass = 0; pass < 3; pass++)
-                {
-                    campaign = Reload(content, campaign, 17, "daily-immediate-after.sav");
-                    Assert.Equivalent(after, campaign.Capture(), strict: true);
-                }
+                campaign = ReloadRepeatedly(content, campaign, 17, "daily-immediate-after.sav", 3, after);
                 AdvanceUnblocked(campaign, 360);
                 Assert.Empty(campaign.Capture().World.Missions);
                 Assert.Equal(after.ResearchDiary, campaign.Capture().ResearchDiary);

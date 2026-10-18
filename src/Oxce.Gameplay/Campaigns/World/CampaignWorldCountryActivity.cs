@@ -11,7 +11,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldActivityPreflight
         var rules = campaign.Content.RuntimeRules;
         foreach (var alienBase in _alienBases)
         {
-            if (++work > MaximumAlienBaseChecks) return "Production country activity forecasts exceed the supported work limit.";
+            if (++work > MaximumWorldWork) return ForecastLimits.ProductionCountryActivityForecastsWork;
             var rule = AlienBaseRule(alienBase);
             if (rule.Points == 0) continue;
             CampaignState.CountryState? scored = null;
@@ -19,7 +19,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldActivityPreflight
             {
                 var countryRule = rules.Countries[candidate.Rule].Value;
                 work += countryRule.Areas.Count + 1L;
-                if (work > MaximumAlienBaseChecks) return "Production country activity forecasts exceed the supported work limit.";
+                if (work > MaximumWorldWork) return ForecastLimits.ProductionCountryActivityForecastsWork;
                 if (!WorldGeometry.InsideCountry(countryRule, alienBase.Position)) continue;
                 scored = candidate;
                 break;

@@ -7,6 +7,7 @@ using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.Mods.Rulesets.Phase3;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -59,12 +60,9 @@ public sealed class Phase3ContentCorpusTests
     public void FinalModPackUpdatesStandardFirestormArticleWithoutRepeatingItsType()
     {
         var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var installation = Path.Combine(root, "artifacts", "private-install");
-        var privateMods = Path.Combine(root, "fixtures", "private", "mods");
-        Assert.SkipUnless(
-            File.Exists(Path.Combine(installation, ".oxce-private-install-manifest.json")) &&
-            Directory.Exists(Path.Combine(privateMods, "Final Mod Pack")),
-            "The private installation and Final Mod Pack corpus are not staged.");
+        var installation = TestFixtures.RequirePrivateInstallation();
+        var privateMods = TestFixtures.RequirePrivateMods();
+        Assert.SkipUnless(Directory.Exists(Path.Combine(privateMods, "Final Mod Pack")), "The Final Mod Pack corpus is not staged.");
         var discoveryOptions = new ModDiscoveryOptions
         {
             ExternalResourceRoots = [installation, Path.Combine(root, "fixtures", "private")],

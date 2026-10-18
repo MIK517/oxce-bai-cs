@@ -42,11 +42,7 @@ public sealed class StrategicWorldSiteResearchHuntingTests
         Assert.Empty(after.World.MissionSites);
         Assert.Equal(uncertain ? 2 : 1, after.ResearchDiary.Count);
         Assert.Equal(!uncertain || after.CompletedResearch.Contains("BONUS"), Assert.Single(after.World.Missions).Interrupted);
-        for (var pass = 0; pass < 3; pass++)
-        {
-            campaign = Reload(content, campaign, 17, "site-research-hunter.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 17, "site-research-hunter.sav", 3, after);
     }
 
     internal static RuntimeContent Content(bool uncertain = false, string extraRules = "", string[]? ruleFiles = null, string? finalRules = null) =>

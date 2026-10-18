@@ -1,6 +1,4 @@
-using System.Text;
 using System.Text.Json;
-using Oxce.FixtureSupport;
 using Oxce.Core.Random;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Rulesets.Content;
@@ -144,7 +142,7 @@ public sealed class StrategicWorldEscortSpawnTests
                 flags, row[1].GetInt32(), result.Escorting, result.Destination!.UniqueId,
                 result.Longitude, result.Latitude, result.Speed, result.OriginalWaypoint?.Longitude, result.OriginalWaypoint?.Latitude,
             });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
         }
     }
 
@@ -228,8 +226,7 @@ public sealed class StrategicWorldEscortSpawnTests
                 result.Longitude, result.Latitude, result.Speed,
                 result.OriginalWaypoint?.Longitude, result.OriginalWaypoint?.Latitude, (int)result.Status,
             });
-            Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetRawText())),
-                CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
         }
     }
 
@@ -390,8 +387,7 @@ public sealed class StrategicWorldEscortSpawnTests
                 result.Longitude, result.Latitude, result.Speed,
                 result.OriginalWaypoint?.Longitude, result.OriginalWaypoint?.Latitude,
             });
-            Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetRawText())),
-                CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
         }
     }
 
@@ -1119,7 +1115,7 @@ public sealed class StrategicWorldEscortSpawnTests
                     decimal.Parse(ufo.Longitude.ToString("F12", System.Globalization.CultureInfo.InvariantCulture), System.Globalization.CultureInfo.InvariantCulture),
                     decimal.Parse(ufo.Latitude.ToString("F12", System.Globalization.CultureInfo.InvariantCulture), System.Globalization.CultureInfo.InvariantCulture),
                 })).ToArray());
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
             Assert.Equal(3, Assert.Single(after.World.Missions).LiveUfos);
             Assert.Equal(leader.UniqueId, after.World.Ufos.Single(ufo => ufo.UniqueId == 9).Destination!.UniqueId);
             Assert.Equal(9, after.World.Ufos.Single(ufo => ufo.UniqueId == 10).Destination!.UniqueId);

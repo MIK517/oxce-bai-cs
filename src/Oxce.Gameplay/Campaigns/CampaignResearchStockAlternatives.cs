@@ -46,7 +46,7 @@ public sealed partial class CampaignState
                     work += branch.CompletedResearch!.Count + (long)branch.ResearchStatuses!.Count + branch.ActiveResearch!.Count;
                     foreach (var active in branch.ActiveResearch.Values) work += active.Count;
                 }
-                if (work > 1_000_000 || !SameResearchStockConsequences(common, branch, includeMetadata: !retainWorldAlternatives, includeQuantities: !retainWorldAlternatives,
+                if (work > ForecastLimits.Work || !SameResearchStockConsequences(common, branch, includeMetadata: !retainWorldAlternatives, includeQuantities: !retainWorldAlternatives,
                         includeCounters: !retainWorldAlternatives) ||
                     includeDiscoveries && !retainWorldAlternatives && !SameResearchDiscoveryConsequences(common, branch)) return false;
                 commonCounters &= common.CounterChanges.SequenceEqual(branch.CounterChanges);
@@ -58,16 +58,16 @@ public sealed partial class CampaignState
                 {
                     work += 1L + branch.CompletedResearch!.Count + branch.ResearchStatuses!.Count + branch.ActiveResearch!.Count;
                     foreach (var active in branch.ActiveResearch.Values) work += active.Count;
-                    if (work > 1_000_000) return false;
+                    if (work > ForecastLimits.Work) return false;
                     if (earlier.ScoreChange != branch.ScoreChange || earlier.MinimumScorePrefix != branch.MinimumScorePrefix ||
                         earlier.MaximumScorePrefix != branch.MaximumScorePrefix || earlier.DiaryEntries != branch.DiaryEntries ||
                         !SameResearchDiscoveryConsequences(earlier, branch)) continue;
                     work += branch.CounterChanges.Count;
-                    if (work > 1_000_000) return false;
+                    if (work > ForecastLimits.Work) return false;
                     if (!earlier.CounterChanges.SequenceEqual(branch.CounterChanges)) continue;
                     work += branch.Arrivals.Count;
                     foreach (var arrivals in branch.Arrivals.Values) work += arrivals.Count;
-                    if (work > 1_000_000) return false;
+                    if (work > ForecastLimits.Work) return false;
                     if (!SameResearchArrivals(earlier, branch)) continue;
                     repeated = true;
                     break;
@@ -79,7 +79,7 @@ public sealed partial class CampaignState
                         forecast = branch with { UnavailableReason = "Daily research exceeds the supported world outcome limit." };
                         return false;
                     }
-                    if (++work > 1_000_000) return false;
+                    if (++work > ForecastLimits.Work) return false;
                     alternatives.Add(branch);
                 }
             }
@@ -98,7 +98,7 @@ public sealed partial class CampaignState
                 minimumPrefix = Math.Min(minimumPrefix, branch.MinimumScorePrefix!.Value);
                 maximumPrefix = Math.Max(maximumPrefix, branch.MaximumScorePrefix!.Value);
             }
-            if (work > 1_000_000) return false;
+            if (work > ForecastLimits.Work) return false;
             if (!TryBoundResearchArrivals(alternatives, ref work, out var arrivals, out var uncertainty)) return false;
             var guaranteed = new HashSet<string>(common.CompletedResearch, StringComparer.Ordinal);
             foreach (var branch in alternatives) guaranteed.IntersectWith(branch.CompletedResearch!);
@@ -129,14 +129,14 @@ public sealed partial class CampaignState
         // Duplicate labels weight actual selection, but have the same pure
         // consequence at this choice. Retain the first index of each identity.
         projectionWork += candidates.Count;
-        if (projectionWork > 1_000_000) return false;
+        if (projectionWork > ForecastLimits.Work) return false;
         HashSet<string> seen = new(StringComparer.Ordinal);
         for (var index = 0; index < candidates.Count; index++)
         {
             if (seen.Contains(candidates[index])) continue;
             if (created == MaximumResearchStockAlternatives) return false;
             projectionWork += prefix.Length + 1L;
-            if (projectionWork > 1_000_000) return false;
+            if (projectionWork > ForecastLimits.Work) return false;
             seen.Add(candidates[index]);
             var path = new int[prefix.Length + 1];
             prefix.CopyTo(path, 0);
@@ -199,7 +199,7 @@ public sealed partial class CampaignState
         foreach (var owner in alternatives[0].Arrivals)
         {
             work += 1L + owner.Value.Count * (long)(alternatives.Count + 3);
-            if (work > 1_000_000) return false;
+            if (work > ForecastLimits.Work) return false;
             List<KeyValuePair<string, int>> projected = new(owner.Value.Count);
             Dictionary<string, int> local = new(StringComparer.Ordinal);
             for (var index = 0; index < owner.Value.Count; index++)

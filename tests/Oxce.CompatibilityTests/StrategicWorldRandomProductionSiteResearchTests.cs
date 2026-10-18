@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.TestSupport;
@@ -52,19 +51,13 @@ public sealed class StrategicWorldRandomProductionSiteResearchTests
             var craft = Assert.Single(owner.Crafts, craft => craft.RuleId == "SHIP_FUEL_ITEM").Logistics!;
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { presence ? 1 : 0, stock, choice, progress.Produced, string.IsNullOrEmpty(progress.StopReason) ? 0 : 3,
                 owner.Items.GetValueOrDefault("TOKEN"), history, after.CompletedResearch.Contains("AUTO") ? 1 : 0, craft.Fuel });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
             Assert.Equal(owner.Items.GetValueOrDefault("TOKEN") != 0, after.ResearchDiary.Any(entry => entry.RuleId == "AUTO"));
             Assert.Empty(after.World.MissionSites);
             Assert.Empty(after.World.Events);
             var control = CampaignState.Restore(after, content, new SplitMix64RandomSource(seed));
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "inert-site-research-after.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
-            AdvanceUnblocked(campaign, 1);
-            AdvanceUnblocked(control, 1);
-            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+            campaign = ReloadRepeatedly(content, campaign, seed, "inert-site-research-after.sav", 3, after);
+            AssertContinuesLike(control, campaign, 1);
         }
         Assert.Equal(2, choices.Count);
     }

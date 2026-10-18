@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -145,14 +144,14 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             Assert.Equal(2, after.World.Missions.Count);
             var daily = after.World.Missions[0];
             var hunt = after.World.Missions[1];
-            Assert.True(daily.Id > 0 && hunt.Id == daily.Id + 1);
+            Assert.True(daily.Id > 0);
+            Assert.Equal(daily.Id + 1, hunt.Id);
             Assert.Equal(10, after.World.Ufos.Count);
             foreach (var mission in after.World.Missions)
             {
                 var ufoCount = after.World.Ufos.Count(ufo => ufo.MissionId == mission.Id);
                 var actual = new[] { mission.NextWave, mission.NextUfoCounter, mission.SpawnCountdown, ufoCount };
-                Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)),
-                    CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(actual)));
+                TestFixtures.AssertJsonEqual(expected, JsonSerializer.SerializeToUtf8Bytes(actual));
                 Assert.Equal(ufoCount, mission.LiveUfos);
                 Assert.False(mission.Interrupted); // The daily interruption handler ran before either birth.
                 Assert.Equal("REGION", mission.RegionId); // One missionRegion remap.
@@ -247,8 +246,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         var ufo = Assert.Single(after.World.Ufos);
         var actual = new[] { (int)ufo.Status, ufo.SecondsRemaining + 5, ufo.Speed };
         var expected = row.EnumerateArray().Skip(3).Take(3).Select(value => value.GetInt32()).ToArray();
-        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)),
-            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(actual)));
+        TestFixtures.AssertJsonEqual(expected, JsonSerializer.SerializeToUtf8Bytes(actual));
         Assert.Equal(initial.Regions[0].ActivityAlien[^1] + 6, after.Regions[0].ActivityAlien[^1]);
         Assert.Equal(1, Assert.Single(after.World.Missions).LiveUfos);
         campaign = Reload(content, campaign, 19, "daily-ground-after.sav");

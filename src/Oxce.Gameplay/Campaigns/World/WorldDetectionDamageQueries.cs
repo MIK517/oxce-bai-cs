@@ -74,9 +74,9 @@ internal static class WorldDetectionDamageQueries
         if (!program.Bindings.Any(static binding => Supports(binding.Name))) return null;
         long work = 0;
         var references = WorldDetectionReferenceForecast.Build(program, rules, visits, maximumWork);
-        if (references is null) return "Detection damage query forecast exceeds the supported work limit.";
+        if (references is null) return ForecastLimits.DetectionDamageQueryForecastWork;
         var powers = WorldDetectionScalarForecast.Build(program, rules, references, visits, maximumWork);
-        if (powers is null) return "Detection damage query forecast exceeds the supported work limit.";
+        if (powers is null) return ForecastLimits.DetectionDamageQueryForecastWork;
         for (var index = 0; index < program.Instructions.Count; index++)
         {
             if (visits[index] == 0 || !references.Reachable(index) || !powers.Reachable(index)) continue;
@@ -95,7 +95,7 @@ internal static class WorldDetectionDamageQueries
             var armor = binding.Name == "RuleDamageType.getArmorEffectiveness";
             var power = armor ? (0, 0) : powers.At(index, instruction.Operands[3]);
             work += candidates?.Count ?? 2L * rules.Items.Count;
-            if (work > maximumWork) return "Detection damage query forecast exceeds the supported work limit.";
+            if (work > maximumWork) return ForecastLimits.DetectionDamageQueryForecastWork;
             var profiles = candidates is null
                 ? rules.Items.Rules.SelectMany(static item => new[] { item.Value.Damage, item.Value.MeleeDamage })
                 : candidates.OfType<RuntimeItemDamageRule>();

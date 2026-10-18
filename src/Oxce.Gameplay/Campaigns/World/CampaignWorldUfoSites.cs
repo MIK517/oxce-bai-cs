@@ -56,7 +56,7 @@ internal sealed partial class CampaignWorld
         if (ufo.Hunting || ufo.Escorting || ufo.Status != UfoStatus.Flying || ufo.Destination is not { Kind: WorldTargetKind.Waypoint } ||
             (knownDistance ?? UfoDestinationDistance(ufo)) > WorldGeometry.RadianSpeed(ufo.Speed)) return false;
         var rules = campaign.Content.RuntimeRules;
-        var trajectory = rules.UfoTrajectories[rules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value;
+        var trajectory = rules.UfoTrajectories.GetRequiredValue(ufo.TrajectoryId);
         return IsSiteConversion(ufo, ForecastMission(ufo.MissionId, highest), trajectory);
     }
 
@@ -74,7 +74,7 @@ internal sealed partial class CampaignWorld
     {
         var rules = campaign.Content.RuntimeRules;
         var rule = MissionRule(mission);
-        var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+        var region = rules.Regions.GetRequiredValue(mission.RegionId);
         var area = SelectedMissionArea(region, rule.SpawnZone, mission.MissionSiteZoneArea);
         return rule.Waves[MissionWaveIndex(ufo, mission, rule)].ObjectiveOnTheLandingSite
             ? area with
@@ -94,14 +94,14 @@ internal sealed partial class CampaignWorld
         var wave = rule.Waves[MissionWaveIndex(ufo, mission, rule)] with { Deployment = null };
         var area = UfoSiteArea(ufo, mission, ufo.Destination!.Position);
         work += SiteDeploymentSelectionWork(wave, rule, area);
-        if (work > MaximumAlienBaseChecks) return "UFO site conversion exceeds the supported work limit.";
+        if (work > MaximumWorldWork) return ForecastLimits.UfoSiteConversionWork;
         var candidates = SiteDeploymentCandidates(wave, rule, area);
         if (candidates.Count == 0 && (_pass.SuppressedUfoSites ??= []).Add(ufo.UniqueId))
             _pass.ResetEscortFlight(); // Suppression changes a dormant conversion into a terminal arrival.
         work += (long)candidates.Count * (1L + _sites.Count + _alienBases.Count);
-        if (work > MaximumAlienBaseChecks) return "UFO site conversion exceeds the supported work limit.";
+        if (work > MaximumWorldWork) return ForecastLimits.UfoSiteConversionWork;
         if (candidates.Count != 0 && (long)_sites.Count + _ufos.Count > 100_000)
-            return "World mission site population exceeds the supported limit.";
+            return ForecastLimits.WorldMissionSitePopulationLimit;
         if (candidates.Count != 0 && !TrySpawnArea(area, out _))
             return "UFO site conversion coordinates require an unsupported latitude domain.";
         var markers = new HashSet<string>(StringComparer.Ordinal);
@@ -133,15 +133,15 @@ internal sealed partial class CampaignWorld
                         foreach (var group in research.GetOneFreeProtected) work += 1L + group.Topics.Count;
                     }
             }
-            if (work > MaximumAlienBaseChecks) return "Mission site marker forecasts exceed the supported work limit.";
+            if (work > MaximumWorldWork) return ForecastLimits.MissionSiteMarkerForecastsWork;
             if (_pass.SiteBirthIdChanges?.Any(change => change.Name == marker) == true &&
                 _pass.SiteConversionCounterForecast?.Any(change => change.Change.Name == marker && !change.Change.Increase) == true)
                 return "UFO site conversion shares decreased marker counters with same-tick direct sites.";
-            if (ProductionCounterWorkReason(highest, ref work, "Mission site marker forecasts exceed the supported work limit.") is { } productionWork)
+            if (ProductionCounterWorkReason(highest, ref work, ForecastLimits.MissionSiteMarkerForecastsWork) is { } productionWork)
                 return productionWork;
             if (_pass.SiteConversionCounterForecast?.Any(change => change.Change.Name == marker && !change.Change.Increase) == true)
             {
-                if (ProductionCounterWorkReason(highest, ref work, "Mission site marker forecasts exceed the supported work limit.") is { } decreaseWork)
+                if (ProductionCounterWorkReason(highest, ref work, ForecastLimits.MissionSiteMarkerForecastsWork) is { } decreaseWork)
                     return decreaseWork;
                 if (campaign.ProductionPreflight.CraftCounter(marker, highest, (1, 1)).Maximum > 1)
                     return "UFO site conversion shares decreased marker counters with same-tick craft production.";
@@ -173,7 +173,7 @@ internal sealed partial class CampaignWorld
                 WorldGeometry.RandomDouble(campaign.Random, area.LatitudeMinimum, area.LatitudeMaximum));
             var id = campaign.NextId(deployment.MarkerName);
             var seconds = checked(campaign.Random.NextInclusive(deployment.DurationMinimum, deployment.DurationMaximum) * 3600);
-            var custom = rules.Ufos[rules.Ufos.GetRequired(arrived.RuleId)].Value.StatsForRace(mission.Race).MissionCustomDeployment;
+            var custom = rules.Ufos.GetRequiredValue(arrived.RuleId).StatsForRace(mission.Race).MissionCustomDeployment;
             _sites.Add(new MissionSiteSnapshot(id, mission.RuleId, rules.AlienDeployments.GetExternalId(handle),
                 mission.Race, position.Longitude, position.Latitude, seconds)
             {

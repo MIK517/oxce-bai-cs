@@ -72,9 +72,7 @@ public sealed class StrategicWorldDailyWaveResearchTests
             AdvanceUnblocked(control, 1);
             Assert.Equivalent(control.Capture(), after, strict: true);
             for (var pass = 0; pass < 3; pass++) campaign = Reload(content, campaign, seed, "daily-wave-research-selected.sav");
-            AdvanceUnblocked(campaign, 1);
-            AdvanceUnblocked(control, 1);
-            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+            AssertContinuesLike(control, campaign, 1);
             interruptedSeen |= interrupted;
             continuedSeen |= !interrupted;
         }

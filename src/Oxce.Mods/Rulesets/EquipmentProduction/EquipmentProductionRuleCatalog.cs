@@ -70,13 +70,13 @@ public sealed class EquipmentProductionRuleCatalog
                 Required(unresolved, "manufactureShortcut"), diagnostics, typedOptions));
     }
 
-    public EquipmentProductionValidation ValidateRelationships(
+    public RuleValidation ValidateRelationships(
         ItemRuleCatalog items,
         IDiagnosticSink? diagnostics = null)
     {
         ArgumentNullException.ThrowIfNull(items);
         diagnostics ??= NullDiagnosticSink.Instance;
-        var issues = new List<EquipmentProductionValidationIssue>();
+        var issues = new List<RuleValidationIssue>();
         ValidateItemCategories();
         ValidateWeaponSets();
         ValidateCraftWeapons();
@@ -84,7 +84,7 @@ public sealed class EquipmentProductionRuleCatalog
         ValidateResearch();
         ValidateManufacture();
         ValidateShortcuts();
-        return new EquipmentProductionValidation(Array.AsReadOnly(issues.ToArray()));
+        return new RuleValidation(Array.AsReadOnly(issues.ToArray()));
 
         void ValidateItemCategories()
         {
@@ -229,7 +229,7 @@ public sealed class EquipmentProductionRuleCatalog
 
         void Report<T>(TypedRule<T> owner, string property, string? id, string message, string code) where T : notnull
         {
-            issues.Add(new EquipmentProductionValidationIssue(owner.Id, property, id, message));
+            issues.Add(new RuleValidationIssue(owner.Id, property, id, message));
             diagnostics.Report(new DiagnosticEvent(
                 code,
                 DiagnosticSeverity.Error,
@@ -263,15 +263,4 @@ public sealed class EquipmentProductionRuleCatalog
         "itemCategories", "weaponSets", "craftWeapons", "crafts", "ufos", "research", "manufacture",
         "manufactureShortcut",
     ];
-}
-
-public sealed record EquipmentProductionValidationIssue(
-    string RuleId,
-    string Property,
-    string? RelatedId,
-    string Message);
-
-public sealed record EquipmentProductionValidation(IReadOnlyList<EquipmentProductionValidationIssue> Issues)
-{
-    public bool IsValid => Issues.Count == 0;
 }

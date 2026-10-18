@@ -206,8 +206,8 @@ internal sealed class BaseFacilityRuleLoader : TypedRuleFamilyLoader<BaseFacilit
             if (entry.Value is not YamlMappingNode costNode)
                 throw new YamlFormatException("Facility item costs must be mappings.", entry.Value.Span);
             builder.BuildCostItems.TryGetValue(id, out var existing);
-            var build = YamlValueReader.ReadInt32(costNode, "build", existing?.Build ?? 0);
-            var refund = YamlValueReader.ReadInt32(costNode, "refund", existing?.Refund ?? 0);
+            var build = costNode.ReadInt32("build", existing?.Build ?? 0);
+            var refund = costNode.ReadInt32("refund", existing?.Refund ?? 0);
             if (build <= 0 && refund <= 0) builder.BuildCostItems.Remove(id);
             else builder.BuildCostItems[id] = new FacilityItemCost(build, refund);
         }

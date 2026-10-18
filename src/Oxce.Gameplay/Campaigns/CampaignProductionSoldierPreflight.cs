@@ -16,7 +16,7 @@ public sealed partial class CampaignState
         foreach (var owner in _bases)
         {
             work += 1L + owner.Soldiers.Count + owner.Transfers.Count * 2L;
-            if (work > 1_000_000) return "Soldier production exceeds the supported work limit.";
+            if (work > ForecastLimits.Work) return ForecastLimits.SoldierProductionWork;
             foreach (var soldier in owner.Soldiers) next = Math.Max(next, (long)soldier.Id + 1);
             var removesDelivered = owner.Transfers.Any(transfer => !transfer.Delivered && transfer.Hours <= 1);
             foreach (var transfer in owner.Transfers)
@@ -32,26 +32,26 @@ public sealed partial class CampaignState
 
     private string? ProducedSoldierReason(RuntimeManufactureRule rule, int births, ref long work)
     {
-        var definition = _content.RuntimeRules.Soldiers[_content.RuntimeRules.Soldiers.GetRequired(rule.SpawnedPersonType)].Value;
+        var definition = _content.RuntimeRules.Soldiers.GetRequiredValue(rule.SpawnedPersonType);
         long generationWork = 1L + definition.NamePools.Count + definition.MinimumStats.Count;
         foreach (var pool in definition.NamePools)
             generationWork += pool.LookWeights.Count + pool.MaleFirst.Count + pool.FemaleFirst.Count + pool.MaleCallsign.Count + pool.FemaleCallsign.Count;
         generationWork += _bases.Count + _bases.Sum(owner => owner.Soldiers.Count + (long)owner.Transfers.Count);
-        if (generationWork > 1_000_000 || births > (1_000_000 - work) / (generationWork * 10))
-            return "Soldier production exceeds the supported work limit.";
+        if (generationWork > ForecastLimits.Work || births > (ForecastLimits.Work - work) / (generationWork * 10))
+            return ForecastLimits.SoldierProductionWork;
         work += births * generationWork * 10; // Native duplicate generation retries at most ten times.
-        if (work > 1_000_000) return "Soldier production exceeds the supported work limit.";
+        if (work > ForecastLimits.Work) return ForecastLimits.SoldierProductionWork;
         if (SoldierGeneration.GenerationRestriction(definition) is { } reason) return reason;
         if (rule.SpawnedSoldierTemplate is not { } template) return null;
         work += births * (long)(template.InitialStats.Count + template.CurrentStats.Count +
             (template.TransformationBonuses?.Count ?? 0) + (template.PreviousTransformations?.Count ?? 0));
-        if (work > 1_000_000) return "Soldier production exceeds the supported work limit.";
+        if (work > ForecastLimits.Work) return ForecastLimits.SoldierProductionWork;
         if (template.UnsupportedFields.Count != 0)
             return $"Soldier production template requires state for {string.Join(", ", template.UnsupportedFields)}.";
         if (template.RandomTransformationBonuses is { } weights && template.TransformationBonusesCount > 0)
         {
             work += births * (long)weights.Count * (1L + Math.Min(weights.Count, template.TransformationBonusesCount));
-            if (work > 1_000_000) return "Soldier production exceeds the supported work limit.";
+            if (work > ForecastLimits.Work) return ForecastLimits.SoldierProductionWork;
             if (weights.Where(pair => pair.Value > 0).Sum(pair => (long)pair.Value) > int.MaxValue)
                 return "Soldier production template weights exceed the supported range.";
             if (weights.Any(pair => pair.Value > 0 && pair.Key.Length != 0 && pair.Key != "\0" &&
@@ -66,20 +66,20 @@ public sealed partial class CampaignState
     {
         // Every earlier birth remains in a pending transfer for later name
         // collection. Charge that growing scan across projects and bases.
-        if (births > 1_000_000 || births * (births - 1) / 2 > 1_000_000 - work)
-            return "Soldier production exceeds the supported work limit.";
+        if (births > 1_000_000 || births * (births - 1) / 2 > ForecastLimits.Work - work)
+            return ForecastLimits.SoldierProductionWork;
         work += births * (births - 1) / 2;
         // Name collection traverses every pending transfer, including item,
         // craft and staff transfers queued by other projects in this tick.
         var otherTransfers = Math.Max(0, transfers - births);
-        if (otherTransfers > (1_000_000 - work) / births)
-            return "Soldier production exceeds the supported work limit.";
+        if (otherTransfers > (ForecastLimits.Work - work) / births)
+            return ForecastLimits.SoldierProductionWork;
         work += births * otherTransfers;
         long population = births;
         foreach (var owner in _bases)
         {
             work += 1L + owner.Soldiers.Count + owner.Transfers.Count;
-            if (work > 1_000_000) return "Soldier production exceeds the supported work limit.";
+            if (work > ForecastLimits.Work) return ForecastLimits.SoldierProductionWork;
             population += owner.Soldiers.Count + owner.Transfers.Count(transfer => !transfer.Delivered && transfer.Soldier is not null);
         }
         if (population > 100_000) return "Soldier production exceeds the supported population limit.";
@@ -89,7 +89,7 @@ public sealed partial class CampaignState
         if (ProducedCraftCounterRange("STR_SOLDIER", highest, counters, ref work, out var range) is { } reason)
             return reason.Replace("Craft", "Soldier", StringComparison.Ordinal).Replace("craft", "soldier", StringComparison.Ordinal);
         work += _bases.Count + _bases.Sum(owner => owner.Soldiers.Count + (long)owner.Transfers.Count);
-        if (work > 1_000_000) return "Soldier production exceeds the supported work limit.";
+        if (work > ForecastLimits.Work) return ForecastLimits.SoldierProductionWork;
         long next = range.Maximum;
         foreach (var owner in _bases)
         {
@@ -100,7 +100,7 @@ public sealed partial class CampaignState
         if (_content.RuntimeRules.Crafts.TryGet("STR_SOLDIER", out var craft) && craftBirths?.GetValueOrDefault(craft) is > 0 and var shared)
         {
             work += _bases.Count + _bases.Sum(owner => owner.Crafts.Count + (long)owner.Transfers.Count);
-            if (work > 1_000_000) return "Soldier production exceeds the supported work limit.";
+            if (work > ForecastLimits.Work) return ForecastLimits.SoldierProductionWork;
             next = Math.Max(next, NextCraftId("STR_SOLDIER", range.Maximum));
             births += shared;
         }

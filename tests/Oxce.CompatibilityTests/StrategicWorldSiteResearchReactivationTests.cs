@@ -43,11 +43,7 @@ public sealed class StrategicWorldSiteResearchReactivationTests
         }
         var points = content.RuntimeRules.AlienMissions[content.RuntimeRules.AlienMissions.GetRequired("MISSION_SCOUT")].Value.Points;
         Assert.Equal(snapshot.Regions[0].ActivityAlien[^1] + 7 + Math.Max(0, points), after.Regions[0].ActivityAlien[^1]);
-        for (var pass = 0; pass < 3; pass++)
-        {
-            campaign = Reload(content, campaign, 17, "research-dormant-after.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 17, "research-dormant-after.sav", 3, after);
         if (arrival)
         {
             AdvanceUnblocked(campaign, 1);

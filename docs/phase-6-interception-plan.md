@@ -1,7 +1,7 @@
 # Phase 6 branch 5 delivery plan: interception and strategic deployment
 
 Approved 2026-10-12. Branch `claude/strategic-interception-deployment`, from `main` at
-`5a78fe3d` (merged branch 4d, PR #74). Reference: `4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`.
+`1991902b` (merged branch 4d, PR #74). Reference: `4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`.
 Scope and acceptance come from [Phase 6 branch 5](phase-6-plan.md#branch-5--interception-and-strategic-deployment-handoff);
 this plan replaces that section's commit purposes (mapping below). Slice evidence and audits are
 recorded in [strategic interception status](strategic-interception-status.md); checkpoints,

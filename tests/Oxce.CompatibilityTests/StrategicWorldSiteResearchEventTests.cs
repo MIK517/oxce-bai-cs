@@ -39,11 +39,7 @@ public sealed class StrategicWorldSiteResearchEventTests
         Assert.Empty(after.World.MissionSites);
         Assert.Contains(interrupt, after.CompletedResearch);
         Assert.Equal(2, after.World.GeneratedEvents["EVENT_DESPAWN"]);
-        for (var pass = 0; pass < 3; pass++)
-        {
-            campaign = Reload(content, campaign, 17, "site-event-after.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 17, "site-event-after.sav", 3, after);
     }
 
     [Theory]

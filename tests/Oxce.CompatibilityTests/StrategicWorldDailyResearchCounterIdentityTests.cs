@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.TestSupport;
 using Xunit;
@@ -32,19 +31,13 @@ public sealed class StrategicWorldDailyResearchCounterIdentityTests
                 var expected = TestFixtures.Rows(oracle.RootElement, "researchCounterAlternativeBirthRows").Single(row => row[0].GetInt32() == (person ? 1 : 0) && row[1].GetInt32() == start && row[2].GetInt32() == choice);
                 var identity = person ? Assert.Single(after.Bases[0].Transfers).Soldier!.Id : Assert.Single(after.Bases[0].Crafts, craft => craft.RuleId == "PRODUCED_CRAFT").Id;
                 var actual = JsonSerializer.SerializeToUtf8Bytes(new long[] { person ? 1 : 0, start, choice, identity, identity, after.NextIds[counter], after.Bases[0].Items.GetValueOrDefault("SUPPLY"), after.Bases[0].Transfers.Count, after.ResearchScores[^1] - initial.ResearchScores[^1] });
-                Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+                TestFixtures.AssertJsonEqual(expected, actual);
                 Assert.Equal(2, after.NextIds["EQUIV_COUNTER"]);
                 Assert.Equal("STR_OUT", after.Bases[0].Crafts[0].Logistics!.Status);
                 Assert.True(Assert.Single(after.World.Ufos).Hunting);
                 var control = CampaignState.Restore(after, content, new SplitMix64RandomSource(seed));
-                for (var rewrite = 0; rewrite < 3; rewrite++)
-                {
-                    campaign = Reload(content, campaign, seed, "counter-alternative-birth.sav");
-                    Assert.Equivalent(after, campaign.Capture(), strict: true);
-                }
-                AdvanceUnblocked(campaign, 1);
-                AdvanceUnblocked(control, 1);
-                Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+                campaign = ReloadRepeatedly(content, campaign, seed, "counter-alternative-birth.sav", 3, after);
+                AssertContinuesLike(control, campaign, 1);
             }
             Assert.Equal(2, seen.Count);
         }

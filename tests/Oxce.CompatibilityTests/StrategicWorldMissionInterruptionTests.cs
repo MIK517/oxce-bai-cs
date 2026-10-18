@@ -1,7 +1,5 @@
-using System.Text;
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -39,8 +37,7 @@ public sealed class StrategicWorldMissionInterruptionTests
             Assert.Equal(snapshot.RandomState, after.RandomState);
             Reload(content, campaign, 40, "interruption-oracle.sav");
         }
-        Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(oracle.RootElement.GetProperty("interruptionRows").GetRawText())),
-            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
+        TestFixtures.AssertJsonEqual(oracle.RootElement.GetProperty("interruptionRows"), JsonSerializer.SerializeToUtf8Bytes(rows));
     }
 
     [Fact]

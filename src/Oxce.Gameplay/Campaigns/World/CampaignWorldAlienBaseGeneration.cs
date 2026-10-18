@@ -27,7 +27,7 @@ internal sealed partial class CampaignWorld
             var weights = WorldAlienMissionGeneration.WeightsAt(mission.RaceWeights,
                 unchecked((ulong)campaign.MonthsPassed), race: true);
             work += weights.Count;
-            if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+            if (work > MaximumWorldWork) return AlienBaseWorkReason;
             _ = WorldAlienMissionGeneration.Total(weights);
         }
         var regions = new List<string>();
@@ -37,7 +37,7 @@ internal sealed partial class CampaignWorld
             foreach (var owner in campaign.BaseStates)
             {
                 work += campaign.RegionStates.Count;
-                if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                if (work > MaximumWorldWork) return AlienBaseWorkReason;
                 if (LocateGenerationRegion(new(owner.Longitude, owner.Latitude)) is not { } region)
                     return "Alien base mission cannot locate a player base region.";
                 regions.Add(region);
@@ -50,7 +50,7 @@ internal sealed partial class CampaignWorld
                 var weights = WorldAlienMissionGeneration.WeightsAt(mission.RegionWeights,
                     unchecked((ulong)campaign.MonthsPassed), race: false);
                 work += weights.Count;
-                if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                if (work > MaximumWorldWork) return AlienBaseWorkReason;
                 if (WorldAlienMissionGeneration.Total(weights) == 0)
                     return "Alien base mission selects an empty region.";
                 foreach (var choice in weights)
@@ -59,13 +59,13 @@ internal sealed partial class CampaignWorld
             else
             {
                 work += campaign.RegionStates.Count;
-                if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                if (work > MaximumWorldWork) return AlienBaseWorkReason;
                 if (LocateGenerationRegion(alienBase.Position) is not { } region)
                     return "Alien base mission cannot locate its source base region.";
                 regions.Add(region);
             }
         }
-        if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+        if (work > MaximumWorldWork) return AlienBaseWorkReason;
         var rules = campaign.Content.RuntimeRules;
         HashSet<string>? forecastRegions = forecastImmediate ? new(StringComparer.Ordinal) : null;
         foreach (var name in regions)
@@ -112,7 +112,7 @@ internal sealed partial class CampaignWorld
         if (missionName.Length == 0 || alienBase.GenMissionCount >= deployment.GenMissionLimit ||
             !Percent(deployment.GenMissionFrequency)) return;
         var rules = campaign.Content.RuntimeRules;
-        var rule = rules.AlienMissions[rules.AlienMissions.GetRequired(missionName)].Value;
+        var rule = rules.AlienMissions.GetRequiredValue(missionName);
         string regionId;
         if (Percent(rule.TargetBaseOdds))
         {
@@ -124,7 +124,7 @@ internal sealed partial class CampaignWorld
             regionId = WorldAlienMissionGeneration.Choose(WorldAlienMissionGeneration.WeightsAt(rule.RegionWeights,
                 unchecked((ulong)campaign.MonthsPassed), race: false), campaign.Random);
         else regionId = LocateGenerationRegion(alienBase.Position)!;
-        var region = rules.Regions[rules.Regions.GetRequired(regionId)].Value;
+        var region = rules.Regions.GetRequiredValue(regionId);
         if (region.MissionRegionId.Length != 0) regionId = region.MissionRegionId;
         var id = campaign.NextId("ALIEN_MISSIONS");
         var race = !deployment.GenMissionRaceFromAlienBase && rule.HasRaceWeights
@@ -134,7 +134,7 @@ internal sealed partial class CampaignWorld
         var area = -1;
         if (rule.Objective == RuntimeMissionObjective.Site)
         {
-            var areas = rules.Regions[rules.Regions.GetRequired(regionId)].Value.MissionZones[rule.SpawnZone].Areas;
+            var areas = rules.Regions.GetRequiredValue(regionId).MissionZones[rule.SpawnZone].Areas;
             if (areas.Count != 0) area = campaign.Random.NextInclusive(0, areas.Count - 1);
         }
         var countdown = WorldTrajectory.SpawnCountdown(checked((int)rule.Waves[0].SpawnTimer), campaign.Random);

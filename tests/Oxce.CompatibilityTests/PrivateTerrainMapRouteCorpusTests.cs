@@ -1,5 +1,6 @@
 using Oxce.Formats.Binary;
 using Oxce.Formats.Terrain;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -94,14 +95,12 @@ public sealed class PrivateTerrainMapRouteCorpusTests
     public void OwnedGameAndModMapsAndRoutesParseWithinBounds()
     {
         var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var privateMods = Path.Combine(root, "fixtures", "private", "mods");
-        var data = Path.Combine(root, "data");
-        Assert.SkipUnless(
-            Directory.Exists(privateMods) && Directory.Exists(data),
-            "Owned game and private mod assets are not available in this checkout.");
+        var privateMods = TestFixtures.RequirePrivateMods();
+        var data = TestFixtures.RequireOwnedData();
 
         var assetRoots = Directory.EnumerateDirectories(data)
             .Concat(Directory.EnumerateDirectories(privateMods))
+            .Order(StringComparer.Ordinal)
             .ToArray();
         var mapCount = 0;
         var routeCount = 0;

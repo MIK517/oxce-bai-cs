@@ -21,7 +21,7 @@ internal sealed partial class CampaignWorld
             if (!possible.Contains(rule.BaseSelfDestructCodeId)) continue;
             work += _missions.Count + (long)campaign.CountryStates.Count + _alienBases.Count;
             foreach (var owner in campaign.BaseStates) work += owner.Crafts.Count;
-            if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+            if (work > MaximumWorldWork) return AlienBaseWorkReason;
             var marker = MarkerName(alienBase.DeploymentId);
             foreach (var other in _alienBases)
                 if (!ReferenceEquals(other, alienBase) && other.Id == alienBase.Id && MarkerName(other.DeploymentId) == marker)
@@ -33,7 +33,7 @@ internal sealed partial class CampaignWorld
             }
         }
         if (guaranteedResearch is not null && (long)_alienBases.Count *
-            _missions.Count(mission => mission.AlienBase is not null) > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+            _missions.Count(mission => mission.AlienBase is not null) > MaximumWorldWork) return AlienBaseWorkReason;
         return null;
     }
 
@@ -44,7 +44,7 @@ internal sealed partial class CampaignWorld
         // pact eligibility still need their own caller alternatives.
         work += _missions.Count + (long)rule.GenMission.Count + campaign.BaseStates.Count + campaign.CountryStates.Count;
         foreach (var owner in campaign.BaseStates) work += owner.Crafts.Count + (long)owner.Transfers.Count;
-        if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+        if (work > MaximumWorldWork) return AlienBaseWorkReason;
         foreach (var mission in _missions)
             if (FollowsAlienBase(mission.AlienBase, alienBase))
             {
@@ -63,7 +63,7 @@ internal sealed partial class CampaignWorld
                 // surviving branch keeps all ordinary spawn/arrival proofs, while
                 // the interrupted branch can expire earlier or omit wave awards.
                 work += _ufos.Count;
-                if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                if (work > MaximumWorldWork) return AlienBaseWorkReason;
                 // Native interruption does not reset hunting or escort flags.
                 // Their shared flight/retarget proofs retain the continuing branch;
                 // ordinary arrivals may terminate earlier in the interrupted branch.
@@ -129,7 +129,7 @@ internal sealed partial class CampaignWorld
         if (firstBurn == secondBurn || state.LowFuel) return null;
         if (maximum <= 0) return mismatchReason;
         work += state.Weapons.Count;
-        if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+        if (work > MaximumWorldWork) return AlienBaseWorkReason;
         if (!CraftLogistics.TryEffectiveFuelMaximum(rule, state.Weapons, campaign.Content.RuntimeRules, out var fuelMaximum) ||
             fuelMaximum < 0) return FlightFuelRangeReason;
         // Unequal burns arise only for ordinary fuel. These primitive bounds
@@ -150,16 +150,16 @@ internal sealed partial class CampaignWorld
         {
             foreach (var craft in owner.Crafts)
             {
-                if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                if (++work > MaximumWorldWork) return AlienBaseWorkReason;
                 if (craft.Logistics is { } state && FollowsCraft(state.Destination, type, source.Id) &&
                     UncertainEscortFuelReason(owner, rules.Crafts[craft.Rule].Value, state, oldSpeed, returnSpeed, true, sourcePosition, ref work) is { } reason)
                     return reason;
             }
             foreach (var transfer in owner.Transfers)
             {
-                if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                if (++work > MaximumWorldWork) return AlienBaseWorkReason;
                 if (transfer.Craft is { Logistics: { } state } incoming && FollowsCraft(state.Destination, type, source.Id) &&
-                    UncertainEscortFuelReason(owner, rules.Crafts[rules.Crafts.GetRequired(incoming.RuleId)].Value,
+                    UncertainEscortFuelReason(owner, rules.Crafts.GetRequiredValue(incoming.RuleId),
                         state, oldSpeed, returnSpeed, false, sourcePosition, ref work) is { } reason) return reason;
             }
         }
@@ -173,7 +173,7 @@ internal sealed partial class CampaignWorld
         // to an independent waypoint before fuel, replacing the craft destination.
         if (rule.RefuelItem is not null || owned && state.Status != "STR_OUT") return null;
         work += state.Weapons.Count;
-        if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+        if (work > MaximumWorldWork) return AlienBaseWorkReason;
         if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
                 campaign.Content.RuntimeRules, out var maximum)) return SpeedRangeReason;
         // Fuel precedes movement. An owned OUT craft and this source retain
@@ -209,7 +209,7 @@ internal sealed partial class CampaignWorld
         {
             foreach (var step in DueWaveSteps(mission, rule))
             {
-                if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                if (++work > MaximumWorldWork) return AlienBaseWorkReason;
                 var wave = SpawnWave(step, rule);
                 if (wave.Ufo is not null && wave.Objective) objectiveBirth = true;
             }

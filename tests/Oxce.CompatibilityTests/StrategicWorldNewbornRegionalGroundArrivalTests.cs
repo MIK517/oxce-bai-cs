@@ -63,11 +63,7 @@ public sealed class StrategicWorldNewbornRegionalGroundArrivalTests
                 Assert.Equal(expected[index].Arrived ? 10 : 0, ufo.SecondsRemaining);
                 Assert.Equal(10, ufo.Shield);
             }
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "newborn-regional-ground.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "newborn-regional-ground.sav", 3, after);
             var control = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
             AdvanceUnblocked(control, 4);
             AdvanceUnblocked(campaign, 3);
@@ -136,11 +132,7 @@ public sealed class StrategicWorldNewbornRegionalGroundArrivalTests
             Assert.Equal(10, ufo.Shield);
         });
         Assert.Equal(generation is 1 or 3 ? 3 : 0, after.World.Ufos.Count(ufo => ufo.LandId > 0));
-        for (var pass = 0; pass < 3; pass++)
-        {
-            campaign = Reload(content, campaign, 17, "generated-first-ground.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 17, "generated-first-ground.sav", 3, after);
         var control = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         AdvanceUnblocked(control, 4);
         AdvanceUnblocked(campaign, 3);
@@ -159,11 +151,7 @@ public sealed class StrategicWorldNewbornRegionalGroundArrivalTests
         AdvanceUnblocked(campaign, 1);
         var after = campaign.Capture();
         Assert.All(after.World.Ufos, ufo => Assert.Equal(2_147_483_645, ufo.SecondsRemaining));
-        for (var pass = 0; pass < 3; pass++)
-        {
-            campaign = Reload(content, campaign, 17, "newborn-ground-timer-limit.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 17, "newborn-ground-timer-limit.sav", 3, after);
         AdvanceUnblocked(campaign, 1);
         Assert.All(campaign.Capture().World.Ufos, ufo => Assert.Equal(2_147_483_640, ufo.SecondsRemaining));
     }

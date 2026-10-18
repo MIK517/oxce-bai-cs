@@ -40,7 +40,7 @@ public sealed partial class CampaignState
             {
                 var project = owner.Productions[index]; var rule = rules.Manufacture[project.Rule].Value;
                 work += rule.RequiredMaterials.Count + (long)rule.ProducedMaterials.Count;
-                if (work > 1_000_000) return reason;
+                if (work > ForecastLimits.Work) return reason;
                 var units = ProductionProgress.Requested(rule.Time, project.Spent, assignments[index], project.Amount, project.Infinite);
                 var starts = units - (!project.Infinite && ProductionProgress.Produced(rule.Time,
                     project.Spent + assignments[index], project.Amount) >= project.Amount && units != 0 ? 1 : 0);
@@ -54,7 +54,7 @@ public sealed partial class CampaignState
                     if (material.Craft is not null) actors = Math.Min(1_000_001, actors + Math.Min(1_000_001, units * (long)material.Quantity));
             }
         }
-        if (removals != 0 && (actors > 1_000_000 || removals > (1_000_000 - work) / Math.Max(1, actors))) return reason;
+        if (removals != 0 && (actors > 1_000_000 || removals > (ForecastLimits.Work - work) / Math.Max(1, actors))) return reason;
         work += removals * actors;
         if (possibleTypes is not null) types = possibleTypes;
         return null;
@@ -97,7 +97,7 @@ public sealed partial class CampaignState
                 // their release until every project in this base has stepped.
                 released += assignedMaximum;
                 work += 1L + rule.RequiredMaterials.Count + rule.ProducedMaterials.Count;
-                if (work > 1_000_000) throw new InvalidDataException("Craft production ID forecasts exceed the supported work limit.");
+                if (work > ForecastLimits.Work) throw new InvalidDataException(ForecastLimits.CraftProductionIdForecastsWork);
                 consumesCraft |= rule.RequiredMaterials.Any(material => material.Craft is { } craft &&
                     rules.Crafts.GetExternalId(craft) == name);
                 long quantity = 0;
@@ -136,7 +136,7 @@ public sealed partial class CampaignState
         foreach (var owner in _bases)
         {
             work += 1L + owner.Crafts.Count + owner.Transfers.Count * 2L + (makesSoldier ? owner.Soldiers.Count : 0);
-            if (work > 1_000_000) throw new InvalidDataException("Craft production ID forecasts exceed the supported work limit.");
+            if (work > ForecastLimits.Work) throw new InvalidDataException(ForecastLimits.CraftProductionIdForecastsWork);
             foreach (var craft in owner.Crafts)
                 if (makesCraft && rules.Crafts.GetExternalId(craft.Rule) == name) floor = Math.Max(floor, (long)craft.Id + 1);
             if (makesSoldier)

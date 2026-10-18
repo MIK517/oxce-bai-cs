@@ -11,7 +11,7 @@ See [the ownership ledger](../phase-6-ownership.md) and
 
 The 2026-09-26 [world scope split](../phase-6-plan.md#branch-4--world-simulation-and-mission-generation)
 sets branch 4b closure at the supported ordinary UFO lifecycle and headless craft
-operations. That gate is satisfied and merged in `e10d96f`; see the
+operations. That gate is satisfied and merged in `ec91f48`; see the
 [closure evidence](../strategic-world-operations-status.md#branch-4b-closure-evidence-2026-09-26). Branch 4c owns mission/arc/event scheduling,
 broader world lifecycles, remaining scripts and pursuit. Branch 4d owns globe UI and
 combined branch 4 acceptance. Event payloads run in the half-hour tick (branch 6 S5).

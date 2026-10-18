@@ -242,7 +242,7 @@ its supported UFO lifecycle closure gate with headless acceptance evidence. The
 2026-09-26 scope revision assigns remaining mission/arc/event scheduling, broader
 world lifecycles, scripts and pursuit to branch 4c; the approved
 [4c/4d split](phase-6-world-integration-plan.md) assigns globe UI and combined branch 4
-acceptance to 4d before branch 5. Branch 4b merged in `e10d96f`. Campaign-event payload
+acceptance to 4d before branch 5. Branch 4b merged in `ec91f48`. Campaign-event payload
 effects remain guarded until branch 6; 4c owns scheduling and persistence.
 Branch 4c now includes [alien-base activity and discovery](strategic-world-alien-base-activity-status.md):
 daily scoring, facility sight and craft patrol sight with save/reload and precise
@@ -369,6 +369,19 @@ scenario startup. Audit and memory-measurement tools reuse planning without surr
 their specialized lifetime controls. See
 [ADR 0020](decisions/0020-installation-bootstrap.md).
 
+Every front end runs through a host-client boundary
+([ADR 0037](decisions/0037-host-authoritative-session.md)): the host owns state, rules, randomness,
+the clock and saves; clients own presentation. The first public release uses this boundary for
+single-player, as one host and one local client in one process, so multiplayer later needs only a
+protocol and thin remote clients. A session layer is built before the battlescape UI:
+- player identity on commands;
+- broadcasting committed events;
+- the host-side clock and pause policy moved out of `GeoscapeClient`;
+- per-actor logistics quotes.
+
+See the audit's [recommended order](project-audit-2026-10-18.md#part-4--recommended-order), step 4. Until
+then, new code follows ADR 0037's rules (summarized in `AGENTS.md`).
+
 Trusted managed extensions use a separate versioned abstractions assembly, manual
 installation, narrow capabilities, callback failure containment, and a bounded
 save-neutral state envelope. Tactical AI and live save integration remain attached to
@@ -384,9 +397,10 @@ documents it links; entries below link to them instead of copying them. Branch 4
 branch 4d (globe integration and combined branch 4 acceptance) is [complete](phase-6-world-integration-plan.md#branch-4d-closure-2026-10-12) and merged (PR #74).
 Branch 5 (interception and strategic deployment) is
 [complete](strategic-interception-status.md#branch-audit-2026-10-17) and merged (PR #75).
-Branch 6 (monthly campaign cycle and Phase 6 closure) is delivered on its branch
-([branch 6 plan](phase-6-campaign-cycle-plan.md#progress)); the closure is published in
-[Phase 6 status](phase-6-status.md). After it merges, Phase 7 starts with its planning slice.
+Branch 6 (monthly campaign cycle and Phase 6 closure) is
+[complete](phase-6-campaign-cycle-plan.md#progress) and merged (PR #76); the closure is published in
+[Phase 6 status](phase-6-status.md). Phase 7 starts with its planning slice, which takes up the design
+decisions recorded in the [2026-10-18 project audit](project-audit-2026-10-18.md#part-4--recommended-order).
 
 The September compatibility-guardrail, script-allocation, compiled-content-cache,
 hot-runtime-partitioning, and portable Unicode-path slices are complete. The production
@@ -394,8 +408,8 @@ content root no longer retains typed compatibility/provenance graphs, virtual re
 identity is deterministic across hosts, and managed-extension API `0.2` exposes
 separately versioned campaign query, command, and event capabilities.
 
-1. Continue the [Phase 6 delivery plan](phase-6-plan.md) with world simulation and
-   mission generation; retain the logistics/readiness/economy time and ownership guards.
+1. Plan [Phase 7](#phase-7--playable-battlescape-vertical-slice), starting from the
+   [first Phase 7 acceptance scenario](phase-6-status.md#first-phase-7-acceptance-scenario).
    Keep each branch integrated across commands, script providers, saves and UI actions.
 2. Continue adding focused executable C++ probes, compatibility matrix entries, and
    controlled benchmarks with every compatibility-sensitive slice.
@@ -439,7 +453,7 @@ passing. Fixture input checksums, code-map validation and `git diff --check` pas
 The changed pinned text inputs use LF bytes to match clean Git checkouts.
 The user also verified formatting from normal PowerShell with
 `dotnet format Oxce.slnx --verify-no-changes --no-restore` (exit code 0).
-The audit fix is committed as `1d532c1`; this batch's validation is complete. See
+The audit fix is committed as `1953026`; this batch's validation is complete. See
 [mission status](strategic-mission-script-status.md) for evidence and remaining
 4c scope. Branch 4d remains untouched.
 

@@ -49,13 +49,13 @@ internal static class StartingCrewAssignment
             };
         }
 
-        RuntimeArmorRule Armor(CampaignState.SoldierState soldier) => rules.Armors[rules.Armors.GetRequired(soldier.Personal!.Armor)].Value;
+        RuntimeArmorRule Armor(CampaignState.SoldierState soldier) => rules.Armors.GetRequiredValue(soldier.Personal!.Armor);
         static bool Reached(int maximum, int count) => maximum > -1 && count >= maximum;
     }
 
     private static (int Size, int Space) VehicleDimensions(CraftVehicleSnapshot vehicle, RuntimeRuleCatalog rules)
     {
-        var item = rules.Items[rules.Items.GetRequired(vehicle.RuleId)].Value;
+        var item = rules.Items.GetRequiredValue(vehicle.RuleId);
         if (item.VehicleArmor is not { } handle) throw new InvalidDataException($"Vehicle '{vehicle.RuleId}' has no vehicle armor.");
         var armor = rules.Armors[handle].Value;
         var size = vehicle.Size ?? checked(armor.Size * armor.Size);
@@ -82,7 +82,7 @@ public static class SoldierPiloting
         }
         foreach (var required in craft.RequiredPilotBonuses)
             if (!rules.SoldierBonuses.TryGet(required, out var handle) || !bonuses.Contains(handle)) return false;
-        var armor = rules.Armors[rules.Armors.GetRequired(personal.Armor)].Value;
+        var armor = rules.Armors.GetRequiredValue(personal.Armor);
         foreach (var requirement in craft.PilotMinimumStats)
         {
             short value = personal.CurrentStats.GetValueOrDefault(requirement.Key);

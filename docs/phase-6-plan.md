@@ -1,16 +1,16 @@
 # Phase 6 — Playable strategic campaign implementation plan
 
-Plan date: 2026-09-05. Baseline: `752e976` on `main`.
+Plan date: 2026-09-05. Baseline: `627cda5` on `main`.
 Status (scope revised 2026-09-26): branches 1–3 have bounded acceptance documented in
 [strategic logistics status](strategic-logistics-status.md),
 [strategic readiness status](strategic-readiness-status.md), and
 [research and production status](strategic-research-production-status.md).
 Branch 4a supplies the bounded world foundation; branch 4b satisfies its revised
-ordinary-lifecycle closure gate and merged in `e10d96f` (PR #72).
+ordinary-lifecycle closure gate and merged in `ec91f48` (PR #72).
 Branches 4c (PR #73), 4d (PR #74) and 5 (PR #75,
-[branch 5 plan](phase-6-interception-plan.md)) merged; branch 6 closes Phase 6
-([branch 6 plan](phase-6-campaign-cycle-plan.md), [Phase 6 status](phase-6-status.md)).
-This is not a Phase 6 completion claim.
+[branch 5 plan](phase-6-interception-plan.md)) merged; branch 6 (PR #76) closes Phase 6
+([branch 6 plan](phase-6-campaign-cycle-plan.md)). The closure evidence, residual
+obligations and the launch gate are recorded in [Phase 6 status](phase-6-status.md).
 
 ## Goal and scope
 
@@ -357,7 +357,7 @@ hook required by an enabled path; do not silently skip it to meet the new gate.
 
 ### Branch 4c — Headless world generation and integration
 
-Branch: `codex/strategic-world-integration`, from merged `main` at `e10d96f`.
+Branch: `codex/strategic-world-integration`, from merged `main` at `ec91f48`.
 The approved [4c/4d delivery plan](phase-6-world-integration-plan.md) splits headless
 implementation from UI closure. Branch 4c owns:
 

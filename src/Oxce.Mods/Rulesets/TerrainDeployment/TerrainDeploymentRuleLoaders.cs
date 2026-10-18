@@ -52,19 +52,17 @@ internal sealed class TerrainRuleLoader : IdOnlyTypedRuleFamilyLoader<TerrainBui
         {
             if (item is not YamlMappingNode map)
                 throw new YamlFormatException("mapBlocks entries must be mappings.", item.Span);
-            var name = ReadString(map, "name", "");
-            var width = ReadInt(map, "width", 10); var length = ReadInt(map, "length", 10);
+            var name = map.ReadString("name", "");
+            var width = map.ReadInt32("width", 10); var length = map.ReadInt32("length", 10);
             if (width % 10 != 0 || length % 10 != 0)
                 throw new YamlFormatException($"MapBlock '{name}' size must be divisible by ten.", item.Span);
-            builder.MapBlocks.Add(new MapBlockRule(name, width, length, ReadInt(map, "height", 4),
+            builder.MapBlocks.Add(new MapBlockRule(name, width, length, map.ReadInt32("height", 4),
                 ReadInts(map, "groups", [0]), ReadInts(map, "revealedFloors", []),
                 Get(map, "items"), Get(map, "fuseTimers"), Get(map, "randomizedItems"), Get(map, "extendedItems"),
                 ReadInts(map, "craftInventoryTile", [])));
         }
     }
     private static YamlNode? Get(YamlMappingNode map, string key) => map.TryGet(key, out var node) ? node : null;
-    private static string ReadString(YamlMappingNode map, string key, string value) => map.TryGet(key, out var node) ? YamlValueReader.ReadString(node!) : value;
-    private static int ReadInt(YamlMappingNode map, string key, int value) => map.TryGet(key, out var node) ? YamlValueReader.ReadInt32(node!) : value;
     private static IReadOnlyList<int> ReadInts(YamlMappingNode map, string key, IReadOnlyList<int> value) =>
         map.TryGet(key, out var node) ? TerrainDeploymentYaml.Integers(node!, key).AsReadOnly() : value;
 }

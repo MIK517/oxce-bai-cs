@@ -53,9 +53,9 @@ internal sealed partial class CampaignWorld
         var maximum = (long)rule.Stats.SpeedMaximum + rule.RaceBonus(mission.Race).SpeedMaximum;
         var radar = (long)rule.Stats.RadarRange + rule.RaceBonus(mission.Race).RadarRange;
         if (maximum is < 0 or > int.MaxValue)
-            return wave.Escort ? "UFO escort speed exceeds the supported range." : "UFO hunting stats exceed the supported range.";
+            return wave.Escort ? ForecastLimits.UfoEscortSpeedRange : ForecastLimits.UfoHuntingStatsRange;
         if (radar is < int.MinValue or > int.MaxValue)
-            return "UFO hunting stats exceed the supported range.";
+            return ForecastLimits.UfoHuntingStatsRange;
         if (!TryNewbornInitialSpeed(path, (int)maximum, out _))
             return "UFO initial trajectory speed exceeds the supported range.";
         if (NoCraftCanBecomeHunterTarget()) return null;
@@ -74,7 +74,7 @@ internal sealed partial class CampaignWorld
                 return candidateReason;
             if (candidate)
             {
-                var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+                var region = rules.Regions.GetRequiredValue(mission.RegionId);
                 if (!TryOrdinarySpawnPositions(mission, missionRule, path, region, out var positions) || positions.Count == 0)
                     return null;
                 if (wave.Escort)
@@ -120,7 +120,7 @@ internal sealed partial class CampaignWorld
         bool initializedEscort, bool canRemainIdle)
     {
         var maximum = (long)rule.Stats.SpeedMaximum + rule.RaceBonus(race).SpeedMaximum;
-        if (maximum is < 0 or > int.MaxValue) return "UFO hunting stats exceed the supported range.";
+        if (maximum is < 0 or > int.MaxValue) return ForecastLimits.UfoHuntingStatsRange;
         var hypothetical = new UfoSnapshot(0, string.Empty, 0, string.Empty, 0, 0, 0,
             UfoStatus.Flying, WorldAltitudes.High)
         {
@@ -129,7 +129,7 @@ internal sealed partial class CampaignWorld
             Destination = WorldTargetReference.ForWaypoint(0, new(1, 0.6))
         };
         if (!WorldHunting.TryHunt(hypothetical, WorldTargetReference.ForWaypoint(0, new(1, 0.6)),
-                (int)maximum, rule.HuntSpeed, out _)) return "UFO hunt speed exceeds the supported range.";
+                (int)maximum, rule.HuntSpeed, out _)) return ForecastLimits.UfoHuntSpeedRange;
         return null;
     }
 
@@ -140,17 +140,17 @@ internal sealed partial class CampaignWorld
         var rules = campaign.Content.RuntimeRules;
         foreach (var owner in campaign.BaseStates)
         {
-            if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+            if (++work > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
             foreach (var craft in _pass.HuntingCraftSources![owner.Id])
             {
-                if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                if (++work > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
                 var state = _pass.HuntingCraftForecast![(rules.Crafts.GetExternalId(craft.Rule), craft.Id)];
                 var rule = rules.Crafts[craft.Rule].Value;
                 if (state.Status != "STR_OUT" || rule.Undetectable || WorldHunting.IsIgnored(state.LowFuel, state.MissionComplete) ||
                     state.Damage >= CraftLogistics.EffectiveDamageMaximum(state, rule, rules)) continue;
                 foreach (var position in positions)
                 {
-                    if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                    if (++work > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
                     if (WorldGeometry.Distance(position.Center, new(state.Longitude, state.Latitude)) - position.Radius <=
                         WorldGeometry.Nautical(radar) + 1e-12) return null;
                 }
@@ -166,10 +166,10 @@ internal sealed partial class CampaignWorld
         var rules = campaign.Content.RuntimeRules;
         foreach (var owner in campaign.BaseStates)
         {
-            if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+            if (++work > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
             foreach (var craft in _pass.HuntingCraftSources![owner.Id])
             {
-                if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                if (++work > MaximumWorldWork) return ForecastLimits.UfoRetargetingWork;
                 var state = _pass.HuntingCraftForecast!.GetValueOrDefault((rules.Crafts.GetExternalId(craft.Rule), craft.Id), craft.Logistics!);
                 if (state.Status != "STR_OUT") continue;
                 var rule = rules.Crafts[craft.Rule].Value;

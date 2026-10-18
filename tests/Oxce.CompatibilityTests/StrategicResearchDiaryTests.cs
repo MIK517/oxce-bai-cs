@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Formats.Yaml;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Rulesets.Content;
@@ -31,7 +30,7 @@ public sealed class StrategicResearchDiaryTests
             var entries = loaded.Campaign.Capture().ResearchDiary;
             var actual = JsonSerializer.SerializeToUtf8Bytes(entries.Select(entry => new
             { name = entry.RuleId, date = new[] { entry.Year, entry.Month, entry.Day }, sourceType = entry.SourceType, sourceName = entry.SourceName }));
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(rows, actual);
             Assert.Equal(entries.Count, entries.Select(entry => entry.PreservationKey).Distinct(StringComparer.Ordinal).Count());
             Assert.DoesNotContain(entries, entry => entry.RuleId == "REMOVED_TOPIC");
             var rewritten = OxceSaveAdapter.EmitLoadedCampaign(loaded.Campaign.Capture(), loaded.Source);

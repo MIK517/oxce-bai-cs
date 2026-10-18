@@ -29,9 +29,9 @@ internal sealed partial class CampaignWorld
         }
         var rules = campaign.Content.RuntimeRules;
         if (PrepareInfiltrationCountries(highest, ref work) is { } countryReason) return countryReason;
-        var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+        var region = rules.Regions.GetRequiredValue(mission.RegionId);
         work += (long)campaign.CountryStates.Count * (region.Areas.Count + 1L);
-        if (work > MaximumAlienBaseChecks) return "Infiltration country search exceeds the supported work limit.";
+        if (work > MaximumWorldWork) return ForecastLimits.InfiltrationCountrySearchWork;
         var eligible = campaign.CountryStates.Count(country => EligibleAfterDailyDestruction(country, region));
         if (eligible == 0) return null;
         if (rules.Campaign.BuildInfiltrationBaseCloseToTheCountry)
@@ -44,7 +44,7 @@ internal sealed partial class CampaignWorld
                 rules.Campaign.Globe.Textures.TryGetValue(area.Texture, out var texture) ? 3L * texture.Deployments.Count : 1);
         // Suppression can repeat all 100 attempts for every eligible country.
         work += eligible * 100L * search;
-        if (work > MaximumAlienBaseChecks) return "Infiltration country search exceeds the supported work limit.";
+        if (work > MaximumWorldWork) return ForecastLimits.InfiltrationCountrySearchWork;
         // Regional searches have the same possible birth regardless of country.
         // Only one country may sign per mission completion.
         return ObjectiveBaseSpawnReason(mission, rule with { Points = 0 }, highest, markers, ref work, generated, source);
@@ -64,7 +64,7 @@ internal sealed partial class CampaignWorld
             var countryRule = rules.Countries[country.Rule].Value;
             if (countryRule.Areas.Count == 0) return "Infiltration country has no spawn areas.";
             work += 100L * (2 * geometry + countryRule.Areas.Count + 1L);
-            if (work > MaximumAlienBaseChecks) return "Infiltration country search exceeds the supported work limit.";
+            if (work > MaximumWorldWork) return ForecastLimits.InfiltrationCountrySearchWork;
             foreach (var area in countryRule.Areas)
             {
                 if (area.LongitudeMinimum <= area.LongitudeMaximum)
@@ -91,7 +91,7 @@ internal sealed partial class CampaignWorld
         var rules = campaign.Content.RuntimeRules;
         var destruction = highest >= CampaignTimeTrigger.OneDay && rules.Campaign.AllowCountriesToCancelAlienPact;
         work += campaign.CountryStates.Count * (destruction ? 3L * _alienBases.Count + 1 : 1L);
-        if (work > MaximumAlienBaseChecks) return "Infiltration country search exceeds the supported work limit.";
+        if (work > MaximumWorldWork) return ForecastLimits.InfiltrationCountrySearchWork;
         var eligible = new HashSet<CampaignState.CountryState>(ReferenceEqualityComparer.Instance);
         foreach (var country in campaign.CountryStates)
         {
@@ -131,7 +131,7 @@ internal sealed partial class CampaignWorld
     private void CompleteInfiltration(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
     {
         var rules = campaign.Content.RuntimeRules;
-        var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+        var region = rules.Regions.GetRequiredValue(mission.RegionId);
         foreach (var country in WorldInfiltration.CountryOrder(campaign.CountryStates,
             rules.Campaign.InfiltrateRandomCountryInTheRegion, campaign.Random))
         {

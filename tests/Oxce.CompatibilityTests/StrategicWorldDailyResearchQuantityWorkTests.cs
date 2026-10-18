@@ -36,8 +36,6 @@ public sealed class StrategicWorldDailyResearchQuantityWorkTests
         Assert.Empty(campaign.Execute(new ConfigureResearchProject(initial.Bases[0].Id, "CORE", 0, Cancel: true)).Events.OfType<CampaignActionBlocked>());
         var canceled = campaign.Capture();
         var control = CampaignState.Restore(canceled, content, new SplitMix64RandomSource(17));
-        AdvanceUnblocked(campaign, 1);
-        AdvanceUnblocked(control, 1);
-        Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+        AssertContinuesLike(control, campaign, 1);
     }
 }

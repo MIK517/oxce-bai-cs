@@ -55,11 +55,7 @@ public sealed class StrategicWorldSiteResearchBaseTests
         Assert.Equal(mode == 2 ? 10 : 0, alienBase.MinutesSinceLastHuntMissionGeneration);
         Assert.Equal(mode == 1 ? 1 : 0, alienBase.GenMissionCount);
         Assert.Equal(3, after.World.Missions.Count);
-        for (var pass = 0; pass < 3; pass++)
-        {
-            campaign = Reload(content, campaign, 17, "quiet-base-research.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 17, "quiet-base-research.sav", 3, after);
     }
 
     [Fact]

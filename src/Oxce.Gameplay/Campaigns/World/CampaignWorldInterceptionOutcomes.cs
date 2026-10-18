@@ -455,7 +455,7 @@ internal sealed partial class CampaignWorld
             {
                 if (weight > int.MaxValue - total)
                 {
-                    Fail("Retaliation mission weights exceed the supported range.");
+                    Fail(ForecastLimits.RetaliationMissionWeightsRange);
                     return null;
                 }
                 total += weight;
@@ -477,7 +477,7 @@ internal sealed partial class CampaignWorld
                 total += weight;
                 if (total > int.MaxValue)
                 {
-                    Fail("Retaliation mission weights exceed the supported range.");
+                    Fail(ForecastLimits.RetaliationMissionWeightsRange);
                     return ("", null);
                 }
                 candidates.Add((entry.Id, entry.Value, total));
@@ -512,7 +512,7 @@ internal sealed partial class CampaignWorld
             var next = (long)current + score;
             if (next is < int.MinValue or > int.MaxValue)
             {
-                Fail("X-COM activity exceeds the supported range.");
+                Fail(ForecastLimits.XcomActivityRange);
                 return;
             }
             if (forecast) _activity[(country, index)] = (int)next;

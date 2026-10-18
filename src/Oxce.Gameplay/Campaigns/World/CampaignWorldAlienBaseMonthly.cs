@@ -89,7 +89,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldAlienBaseMonthly
         foreach (var owner in campaign.BaseStates)
         {
             craftReferences += owner.Crafts.Count;
-            if (work + craftReferences > MaximumAlienBaseChecks) return BaseMonthlyWorkReason;
+            if (work + craftReferences > MaximumWorldWork) return BaseMonthlyWorkReason;
             foreach (var craft in owner.Crafts)
                 identities.TryAdd((campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id), -1);
         }
@@ -99,14 +99,14 @@ internal sealed partial class CampaignWorld : ICampaignWorldAlienBaseMonthly
         if (prospectiveBases is not null && prospectiveMarkers is not null)
             foreach (var birth in prospectiveBases)
             {
-                if (++work > MaximumAlienBaseChecks) return BaseMonthlyWorkReason;
+                if (++work > MaximumWorldWork) return BaseMonthlyWorkReason;
                 var marker = MarkerName(birth.DeploymentId);
                 if (newbornOwners.ContainsKey(marker)) continue;
                 var owner = -2 - newbornOwners.Count;
                 newbornOwners.Add(marker, owner);
                 for (long id = campaign.PeekNextId(marker); id <= prospectiveMarkers.GetValueOrDefault(marker); id++)
                 {
-                    if (++work > MaximumAlienBaseChecks) return BaseMonthlyWorkReason;
+                    if (++work > MaximumWorldWork) return BaseMonthlyWorkReason;
                     if (!identities.TryAdd((marker, checked((int)id)), owner)) return BaseUpgradeIdentityReason;
                 }
             }
@@ -127,17 +127,17 @@ internal sealed partial class CampaignWorld : ICampaignWorldAlienBaseMonthly
 
         string? Check(AlienBaseSnapshot current, int owner)
         {
-            if (++work > MaximumAlienBaseChecks) return BaseMonthlyWorkReason;
+            if (++work > MaximumWorldWork) return BaseMonthlyWorkReason;
             var source = AlienBaseRule(current);
             if (!ReserveIdentity(source.MarkerName, current.Id, owner)) return BaseUpgradeIdentityReason;
             work += source.AlienBaseUpgrades.Count;
-            if (work > MaximumAlienBaseChecks) return BaseMonthlyWorkReason;
+            if (work > MaximumWorldWork) return BaseMonthlyWorkReason;
             IReadOnlyDictionary<string, ulong>? weights;
             try
             {
                 weights = UpgradeWeights(source, month, current.StartMonth);
                 work += weights?.Count ?? 0;
-                if (work > MaximumAlienBaseChecks) return BaseMonthlyWorkReason;
+                if (work > MaximumWorldWork) return BaseMonthlyWorkReason;
                 if (weights is not null) _ = WorldAlienMissionGeneration.Total(weights);
             }
             catch (InvalidDataException error) { return error.Message; }
@@ -154,7 +154,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldAlienBaseMonthly
                     campaign.Content.RuntimeRules.AlienDeployments.GetRequired(id)].Value.MarkerName != source.MarkerName))
             {
                 work += _missions.Count + (long)additionalMissions + _ufos.Count + craftReferences;
-                if (work > MaximumAlienBaseChecks) return BaseMonthlyWorkReason;
+                if (work > MaximumWorldWork) return BaseMonthlyWorkReason;
             }
             foreach (var id in candidates)
             {
@@ -212,7 +212,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldAlienBaseMonthly
             var changed = false;
             foreach (var step in deployment.AlienRaceEvolution)
             {
-                if (++work > MaximumAlienBaseChecks) return BaseMonthlyWorkReason;
+                if (++work > MaximumWorldWork) return BaseMonthlyWorkReason;
                 if (step.Month > month || step.FromRace != race ||
                     !campaign.Content.RuntimeRules.AlienRaces.TryGet(step.ToRace, out _)) continue;
                 race = step.ToRace;

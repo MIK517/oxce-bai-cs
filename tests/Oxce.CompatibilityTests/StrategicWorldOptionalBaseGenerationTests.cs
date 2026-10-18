@@ -62,14 +62,8 @@ public sealed class StrategicWorldOptionalBaseGenerationTests
                 var control = CampaignState.Restore(initial, deleted ? deletedContent : survivedContent, new SplitMix64RandomSource(seed));
                 AdvanceUnblocked(control, 1);
                 Assert.Equivalent(control.Capture(), after, strict: true);
-                for (var pass = 0; pass < 3; pass++)
-                {
-                    campaign = Reload(content, campaign, seed, "optional-source-generation.sav");
-                    Assert.Equivalent(after, campaign.Capture(), strict: true);
-                }
-                AdvanceUnblocked(campaign, 1);
-                AdvanceUnblocked(control, 1);
-                Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+                campaign = ReloadRepeatedly(content, campaign, seed, "optional-source-generation.sav", 3, after);
+                AssertContinuesLike(control, campaign, 1);
                 deletedSeen |= deleted;
                 survivedSeen |= !deleted;
             }
@@ -129,14 +123,8 @@ public sealed class StrategicWorldOptionalBaseGenerationTests
             Assert.Contains("BONUS", after.CompletedResearch);
             Assert.Equal(!deleted && generation == 3 ? 1 : 0, after.World.MissionSites.Count);
             Assert.Equal(deleted ? 1 : generation == 3 ? 3 : 2, after.NextIds.GetValueOrDefault("ALIEN_MISSIONS", 1));
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "optional-immediate-site-research.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
-            AdvanceUnblocked(campaign, 1);
-            AdvanceUnblocked(control, 1);
-            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+            campaign = ReloadRepeatedly(content, campaign, seed, "optional-immediate-site-research.sav", 3, after);
+            AssertContinuesLike(control, campaign, 1);
             deletedSeen |= deleted;
             survivedSeen |= !deleted;
         }
@@ -172,14 +160,8 @@ public sealed class StrategicWorldOptionalBaseGenerationTests
             var control = CampaignState.Restore(initial, deleted ? deletedContent : survivedContent, new SplitMix64RandomSource(seed));
             AdvanceUnblocked(control, 1);
             Assert.Equivalent(control.Capture(), after, strict: true);
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "optional-hunting-zero-research.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
-            AdvanceUnblocked(campaign, 360);
-            AdvanceUnblocked(control, 360);
-            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+            campaign = ReloadRepeatedly(content, campaign, seed, "optional-hunting-zero-research.sav", 3, after);
+            AssertContinuesLike(control, campaign, 360);
             Assert.Contains("BONUS", campaign.Capture().CompletedResearch);
             Assert.Empty(campaign.Capture().World.MissionSites);
             generatedSeen |= !deleted;
@@ -216,11 +198,7 @@ public sealed class StrategicWorldOptionalBaseGenerationTests
                 Assert.Equal(activity == 1 ? 1 : 0, source.GenMissionCount);
                 Assert.Equal(activity == 2 ? 10 : 0, source.MinutesSinceLastHuntMissionGeneration);
             }
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "optional-source-quiet-generation.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "optional-source-quiet-generation.sav", 3, after);
             deletedSeen |= deleted;
             survivedSeen |= !deleted;
         }

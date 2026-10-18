@@ -69,11 +69,7 @@ public sealed class StrategicWorldConditionalLeaderObjectiveTests
                 Assert.Equal(objective == 2 ? 19 : 12, after.Regions[0].ActivityAlien[^1]);
                 Assert.Empty(after.World.MissionSites);
                 patterns.Add(births.Select((ufo, index) => ufo.HunterKiller ? 1 << index : 0).Sum());
-                for (var rewrite = 0; rewrite < 3; rewrite++)
-                {
-                    campaign = Reload(content, campaign, seed, "conditional-objective-escort.sav");
-                    Assert.Equivalent(after, campaign.Capture(), strict: true);
-                }
+                campaign = ReloadRepeatedly(content, campaign, seed, "conditional-objective-escort.sav", 3, after);
                 var control = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
                 AdvanceUnblocked(control, 3);
                 AdvanceUnblocked(campaign, 2);

@@ -1,7 +1,5 @@
-using System.Text;
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Runtime;
 using Oxce.TestSupport;
@@ -104,11 +102,10 @@ public sealed class StrategicScriptRuleTests
             var selectedMission = WorldScriptSelection.Generate(mission.Missions, month, random);
             var selectedEvent = WorldScriptSelection.Generate(events.Events, month, random, allowEmptyTimeline: true);
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object?[] { month, roll, selectedMission?.Id, selectedEvent?.Id, random.Calls });
-            Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
         }
         var names = WorldScriptSelection.Available(mission.Missions, -1).Select(choice => choice.Rule.Id).ToArray();
-        Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(oracle.RootElement.GetProperty("beforeFirst").GetRawText())),
-            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(names)));
+        TestFixtures.AssertJsonEqual(oracle.RootElement.GetProperty("beforeFirst"), JsonSerializer.SerializeToUtf8Bytes(names));
         var empty = rules.EventScripts[rules.EventScripts.GetRequired("EVENT_DEFAULT")].Value;
         var noDraw = new ScriptRoll(1);
         Assert.Equal(oracle.RootElement.GetProperty("emptyEvent").GetString(),
@@ -120,7 +117,7 @@ public sealed class StrategicScriptRuleTests
             var script = mission with { StartDelay = row[0].GetInt32(), RandomDelay = row[1].GetInt32() };
             var actual = JsonSerializer.SerializeToUtf8Bytes(new[]
             { script.StartDelay, script.RandomDelay, WorldMissionScriptSelection.Delay(script, random), random.Calls });
-            Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
         }
     }
 

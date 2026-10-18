@@ -41,11 +41,7 @@ public sealed class StrategicWorldOptionalSiteResearchTests
             Assert.Equivalent(control.Capture().World.MissionSites, after.World.MissionSites, strict: true);
             seenExpired |= expired;
             seenSurvived |= !expired;
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "optional-duration-after.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "optional-duration-after.sav", 3, after);
         }
         Assert.True(seenExpired);
         Assert.True(seenSurvived);

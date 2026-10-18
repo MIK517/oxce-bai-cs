@@ -50,26 +50,26 @@ internal sealed record CampaignUiAssets(IndexedSpriteFont Font, Func<string, str
             var root = ReadMap(input, fontPath, diagnostics);
             if (!root.TryGet("fonts", out var node) || node is not YamlSequenceNode sequence)
                 throw new InvalidDataException("Font.dat requires a fonts sequence.");
-            var definition = sequence.Items.OfType<YamlMappingNode>().FirstOrDefault(m => String(m, "id") == "FONT_SMALL");
+            var definition = sequence.Items.OfType<YamlMappingNode>().FirstOrDefault(m => m.ReadString("id", "") == "FONT_SMALL");
             if (definition is null) return IndexedInterfaceFont.Create();
-            var width = Integer(definition, "width", 0);
-            var height = Integer(definition, "height", 0);
-            var spacing = Integer(definition, "spacing", 0);
+            var width = definition.ReadInt32("width", 0);
+            var height = definition.ReadInt32("height", 0);
+            var spacing = definition.ReadInt32("spacing", 0);
             if (!definition.TryGet("images", out node) || node is not YamlSequenceNode images)
                 throw new InvalidDataException("FONT_SMALL requires an images sequence.");
             var projected = new List<IndexedSpriteFontImage>();
             foreach (var image in images.Items)
             {
                 var map = image as YamlMappingNode ?? throw new InvalidDataException("Font images must be mappings.");
-                var path = "Language/" + String(map, "file");
+                var path = "Language/" + map.ReadString("file", "");
                 using var bytes = Open(path) ?? throw new FileNotFoundException("Font image is missing.", path);
                 var data = BinaryDataReader.FromStream(bytes);
                 var decoded = path.EndsWith(".bmp", StringComparison.OrdinalIgnoreCase)
                     ? IndexedBmpCodec.Decode(data) : IndexedPngCodec.Decode(data);
                 var surface = new IndexedSurface(decoded.Width, decoded.Height);
                 decoded.Pixels.Span.CopyTo(surface.Pixels);
-                projected.Add(new(surface, Integer(map, "width", width), Integer(map, "height", height),
-                    Integer(map, "spacing", spacing), String(map, "chars").TrimEnd('\r', '\n')));
+                projected.Add(new(surface, map.ReadInt32("width", width), map.ReadInt32("height", height),
+                    map.ReadInt32("spacing", spacing), map.ReadString("chars", "").TrimEnd('\r', '\n')));
             }
             var mono = definition.TryGet("monospace", out var monospace) && YamlValueReader.ReadBoolean(monospace!);
             return new(projected, mono);
@@ -89,8 +89,4 @@ internal sealed record CampaignUiAssets(IndexedSpriteFont Font, Func<string, str
             ? map : throw new InvalidDataException($"'{name}' requires one YAML mapping.");
     }
 
-    private static int Integer(YamlMappingNode map, string key, int fallback) => map.TryGet(key, out var node)
-        ? YamlValueReader.ReadInt32(node!) : fallback;
-    private static string String(YamlMappingNode map, string key) => map.TryGet(key, out var node)
-        ? YamlValueReader.ReadString(node!) : "";
 }

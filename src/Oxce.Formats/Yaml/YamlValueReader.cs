@@ -87,6 +87,15 @@ public static class YamlValueReader
     public static int ReadInt32(YamlMappingNode mapping, string key, int defaultValue) =>
         mapping.TryGet(key, out var node) ? ReadInt32(node!) : defaultValue;
 
+    public static long ReadInt64(YamlMappingNode mapping, string key, long defaultValue) =>
+        mapping.TryGet(key, out var node) ? ReadInt64(node!) : defaultValue;
+
+    public static ulong ReadUInt64(YamlMappingNode mapping, string key, ulong defaultValue) =>
+        mapping.TryGet(key, out var node) ? ReadUInt64(node!) : defaultValue;
+
+    public static double ReadDouble(YamlMappingNode mapping, string key, double defaultValue) =>
+        mapping.TryGet(key, out var node) ? ReadDouble(node!) : defaultValue;
+
     public static bool ReadBoolean(YamlMappingNode mapping, string key, bool defaultValue) =>
         mapping.TryGet(key, out var node) ? ReadBoolean(node!) : defaultValue;
 

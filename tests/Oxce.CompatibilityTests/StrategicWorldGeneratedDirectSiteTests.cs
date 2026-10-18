@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -38,9 +37,8 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             var after = campaign.Capture();
             var site = Assert.Single(after.World.MissionSites);
             cities.Add(site.City);
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(new object[]
-                { native[0].GetString()!, native[5].GetString()!, native[6].GetInt32() })),
-                CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(new object[] { site.DeploymentId, site.Race, site.Texture })));
+            TestFixtures.AssertJsonEqual(new object[]
+                { native[0].GetString()!, native[5].GetString()!, native[6].GetInt32() }, JsonSerializer.SerializeToUtf8Bytes(new object[] { site.DeploymentId, site.Race, site.Texture }));
             Assert.Equal(7, site.Id);
             Assert.False(site.Detected);
             var originalTimer = site.SecondsRemaining + (hunting ? 0 : 1800);

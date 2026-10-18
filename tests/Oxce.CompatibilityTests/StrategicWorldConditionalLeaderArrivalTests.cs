@@ -72,11 +72,7 @@ public sealed class StrategicWorldConditionalLeaderArrivalTests
                 Assert.Null(source.OriginalWaypoint);
             }
             patterns.Add(pattern);
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "conditional-leader-arrival.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "conditional-leader-arrival.sav", 3, after);
             var control = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
             AdvanceUnblocked(control, 3);
             AdvanceUnblocked(campaign, 2);
@@ -135,11 +131,7 @@ public sealed class StrategicWorldConditionalLeaderArrivalTests
             Assert.Equal(escort.Position, state.Destination.Position);
             var expected = takeoff ? from : WorldGeometry.Move(from, escort.Position, WorldGeometry.RadianSpeed(6000));
             Assert.Equal(expected, new(state.Longitude, state.Latitude));
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "regional-leader-pursuit.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "regional-leader-pursuit.sav", 3, after);
             var control = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
             AdvanceUnblocked(control, 3);
             AdvanceUnblocked(campaign, 2);

@@ -26,7 +26,7 @@ The current runtime boundary, findings, and ordered follow-up work are recorded 
 | `Oxce.Savegames` | External save schema, compatible read/write, migrations, unknown-field preservation, and adapters to gameplay-owned capture/restore contracts |
 | `Oxce.Gameplay` | Geoscape, bases, interception, battlescape, AI, mission generation, rule execution, mutable runtime state, invariants, and save-neutral capture/restore contracts |
 | `Oxce.Rendering` | Indexed surfaces, palettes, software primitives, text/layout models, render commands |
-| `Oxce.Engine` | State stack, loop, input abstractions, clocks, orchestration, headless host |
+| `Oxce.Engine` | Loop clients, input abstractions, clocks, the geoscape time controller, the geoscape and logistics screens, audio orchestration. There is no screen stack yet; each client keeps its own modal state ([2026-10-18 audit](project-audit-2026-10-18.md#e4-no-screen-framework)) |
 | `Oxce.Extensions.Abstractions` | Versioned, implementation-independent contracts for trusted managed extensions |
 | `Oxce.Extensions` | Manual extension discovery/loading, capability adapters, lifecycle, diagnostics, and failure containment |
 | `Oxce.Platform.Sdl` | SDL3 native interop, windows, input devices, audio, GPU presentation |
@@ -88,6 +88,13 @@ The application composes four independently testable pipelines:
 
 The headless host runs the first three without SDL. Compatibility tests should prefer
 this path and use presentation tests only where visibility or decoded graphics matter.
+
+The simulation and persistence pipelines form the **host**; presentation is a **client** that sends
+commands, receives committed events and reads query views. Single-player is one host and one local
+client in the same process, so a multiplayer build adds only a protocol and remote clients. The rules
+that keep code compatible with that model are in
+[ADR 0037](decisions/0037-host-authoritative-session.md); the multiplayer assessment behind them is in
+the [2026-10-18 audit](project-audit-2026-10-18.md#part-3--multiplayer-assessment).
 
 Content composition is one staged build, not one parse per typed consumer. Ordered
 ruleset inputs are parsed once into session-owned compatibility nodes, dispatched to

@@ -30,7 +30,7 @@ internal static class MissionResearchSequence
         Func<RuntimeResearchRule, string?> selectReward)
     {
         List<string> topics = [];
-        var rule = rules.Research[rules.Research.GetRequired(initial)].Value;
+        var rule = rules.Research.GetRequiredValue(initial);
         Primary(rules, initial, ApplyTopic);
         if (selectReward(rule) is { } bonus && rules.Research.TryGet(bonus, out var bonusHandle))
             Bonus(rules, rules.Research.GetExternalId(bonusHandle), ApplyTopic);
@@ -47,14 +47,14 @@ internal static class MissionResearchSequence
     public static void Primary(RuntimeRuleCatalog rules, string id, Action<string, ResearchDiscoverySource> apply)
     {
         apply(id, ResearchDiscoverySource.Mission);
-        var lookup = rules.Research[rules.Research.GetRequired(id)].Value.Lookup;
+        var lookup = rules.Research.GetRequiredValue(id).Lookup;
         if (lookup.Length != 0) apply(lookup, ResearchDiscoverySource.Mission);
     }
 
     public static void Bonus(RuntimeRuleCatalog rules, string id, Action<string, ResearchDiscoverySource> apply)
     {
         apply(id, ResearchDiscoverySource.FreeFrom);
-        var lookup = rules.Research[rules.Research.GetRequired(id)].Value.Lookup;
+        var lookup = rules.Research.GetRequiredValue(id).Lookup;
         if (lookup.Length != 0) apply(lookup, ResearchDiscoverySource.FreeFrom);
     }
 }

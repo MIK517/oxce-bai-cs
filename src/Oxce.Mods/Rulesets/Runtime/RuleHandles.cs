@@ -175,6 +175,9 @@ public sealed class RuntimeRuleFamily<TFamily, TProjection>
         ? handle
         : throw new KeyNotFoundException($"Runtime rule '{id}' was not found in family '{typeof(TFamily).Name}'.");
 
+    /// <summary>The projection of the rule with this external ID; throws like <see cref="GetRequired"/> when it is missing.</summary>
+    public TProjection GetRequiredValue(string id) => _rules[GetRequired(id).Index].Value;
+
     public string GetExternalId(RuleHandle<TFamily> handle) => this[handle].Id;
 
     public void Validate(RuleHandle<TFamily> handle)

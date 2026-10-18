@@ -9,10 +9,10 @@ internal sealed partial class CampaignWorld
         var rules = campaign.Content.RuntimeRules;
         foreach (var owner in campaign.BaseStates)
         {
-            if (++work > MaximumAlienBaseChecks) return "New UFO escort selection exceeds the supported work limit.";
+            if (++work > MaximumWorldWork) return ForecastLimits.NewUfoEscortSelectionWork;
             foreach (var craft in owner.Crafts)
             {
-                if (++work > MaximumAlienBaseChecks) return "New UFO escort selection exceeds the supported work limit.";
+                if (++work > MaximumWorldWork) return ForecastLimits.NewUfoEscortSelectionWork;
                 if (craft.Logistics is not { Status: "STR_OUT", Destination.Kind: WorldTargetKind.Ufo } state) continue;
                 if (NewLeaderPursuitDependency(state.Destination!, source, ref work, out var depends) is { } dependencyReason)
                     return dependencyReason;
@@ -37,7 +37,7 @@ internal sealed partial class CampaignWorld
         UfoSnapshot source, ref long work)
     {
         work += _ufos.Count + (long)_missions.Count + 1;
-        if (work > MaximumAlienBaseChecks) return "New UFO escort selection exceeds the supported work limit.";
+        if (work > MaximumWorldWork) return ForecastLimits.NewUfoEscortSelectionWork;
         if (TargetUfo(target) is not { } actor) return null;
         var projected = UfoForFlight(actor, _pass.NewbornHighestTrigger);
         if (projected.Status != UfoStatus.Flying) return NewLeaderPursuitReason;
@@ -45,10 +45,10 @@ internal sealed partial class CampaignWorld
         if (actor.UniqueId == source.UniqueId)
         {
             var rules = campaign.Content.RuntimeRules;
-            var rule = rules.Ufos[rules.Ufos.GetRequired(source.RuleId)].Value;
+            var rule = rules.Ufos.GetRequiredValue(source.RuleId);
             if (FindMission(source.MissionId) is not { } mission) return "UFO mission link requires world simulation.";
             var maximum = (long)rule.Stats.SpeedMaximum + rule.RaceBonus(mission.Race).SpeedMaximum;
-            if (maximum is < 0 or > int.MaxValue) return "UFO hunting stats exceed the supported range.";
+            if (maximum is < 0 or > int.MaxValue) return ForecastLimits.UfoHuntingStatsRange;
             // A probabilistic birth may leave the escort idle. Attachment restores
             // full speed; a transitive follower retains its own projected speed.
             speed = Math.Max(speed, (int)maximum);
@@ -86,7 +86,7 @@ internal sealed partial class CampaignWorld
         for (var visited = 0; visited < _ufos.Count; visited++)
         {
             work += _ufos.Count + (long)_missions.Count + _sites.Count + _alienBases.Count + 1;
-            if (work > MaximumAlienBaseChecks) return "New UFO escort selection exceeds the supported work limit.";
+            if (work > MaximumWorldWork) return ForecastLimits.NewUfoEscortSelectionWork;
             if (TargetUfo(target) is not { } actor) return null;
             if (actor.UniqueId == source.UniqueId)
             {

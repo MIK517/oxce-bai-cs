@@ -16,7 +16,7 @@ internal sealed partial class CampaignWorld
         try
         {
             var rules = campaign.Content.RuntimeRules;
-            var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+            var region = rules.Regions.GetRequiredValue(mission.RegionId);
             var areas = WorldGeometry.MissionAreas(region, rule.SpawnZone);
             long geometry = 1;
             foreach (var polygon in rules.Campaign.Globe.Polygons) geometry += polygon.Points.Count;
@@ -31,7 +31,7 @@ internal sealed partial class CampaignWorld
         GeneratedTargetReservations? generated = null, WorldTargetReference? source = null)
     {
         if (generated is not null) work += 8;
-        if (work > MaximumAlienBaseChecks) return "Base objective creation exceeds the supported work limit.";
+        if (work > MaximumWorldWork) return ForecastLimits.BaseObjectiveCreationWork;
         var additional = generated?.ReservePopulation() ?? 1;
         var pact = rule.Objective == RuntimeMissionObjective.Infiltration;
         if (pact)
@@ -56,7 +56,7 @@ internal sealed partial class CampaignWorld
         {
             work += 100L * (1 + (rule.SiteTypeId.Length != 0 ? 1 :
                 rules.Campaign.Globe.Textures.TryGetValue(area.Texture, out var texture) ? 3L * texture.Deployments.Count : 1));
-            if (work > MaximumAlienBaseChecks) return "Base objective creation exceeds the supported work limit.";
+            if (work > MaximumWorldWork) return ForecastLimits.BaseObjectiveCreationWork;
             if (!TrySpawnArea(area, out var position))
                 return "Base objective coordinates require an unsupported latitude domain.";
             positions.Add(position);
@@ -78,8 +78,8 @@ internal sealed partial class CampaignWorld
         foreach (var marker in markers)
         {
             if (generated is not null) work += 8;
-            if (work > MaximumAlienBaseChecks) return "Base objective creation exceeds the supported work limit.";
-            if (ProductionCounterWorkReason(highest, ref work, "Base objective creation exceeds the supported work limit.") is { } productionWork)
+            if (work > MaximumWorldWork) return ForecastLimits.BaseObjectiveCreationWork;
+            if (ProductionCounterWorkReason(highest, ref work, ForecastLimits.BaseObjectiveCreationWork) is { } productionWork)
                 return productionWork;
             var markerAdditional = generated?.ReserveMarker(marker) ?? 1;
             if (pact)
@@ -108,7 +108,7 @@ internal sealed partial class CampaignWorld
                         foreach (var group in research.GetOneFreeProtected) work += 1L + group.Topics.Count;
                     }
             }
-            if (work > MaximumAlienBaseChecks) return "Base objective creation exceeds the supported work limit.";
+            if (work > MaximumWorldWork) return ForecastLimits.BaseObjectiveCreationWork;
             if (landing && _pass.SiteBirthIdChanges?.Any(change => change.Name == marker) == true &&
                 _pass.SiteConversionCounterForecast?.Any(change => change.Change.Name == marker && !change.Change.Increase) == true)
                 return "Landing base creation shares decreased marker counters with same-tick world births.";
@@ -120,7 +120,7 @@ internal sealed partial class CampaignWorld
             {
                 // A later decrease may reuse the ID of a craft born this hour.
                 // The snapshot craft list cannot detect that future collision.
-                if (ProductionCounterWorkReason(highest, ref work, "Base objective creation exceeds the supported work limit.") is { } decreaseWork)
+                if (ProductionCounterWorkReason(highest, ref work, ForecastLimits.BaseObjectiveCreationWork) is { } decreaseWork)
                     return decreaseWork;
                 if (campaign.ProductionPreflight.CraftCounter(marker, highest, (1, 1)).Maximum > 1)
                     return "Landing base creation shares decreased marker counters with same-tick craft production.";
@@ -143,7 +143,7 @@ internal sealed partial class CampaignWorld
         foreach (var state in campaign.RegionStates) scoreGeometry += rules.Regions[state.Rule].Value.Areas.Count;
         foreach (var state in campaign.CountryStates) scoreGeometry += rules.Countries[state.Rule].Value.Areas.Count;
         work += areas.Count * scoreGeometry;
-        if (work > MaximumAlienBaseChecks) return "Base objective creation exceeds the supported work limit.";
+        if (work > MaximumWorldWork) return ForecastLimits.BaseObjectiveCreationWork;
         (_pass.ObjectiveBaseScores ??= []).Add((positions, rule.Points, source, hunting));
         return null;
     }
@@ -174,7 +174,7 @@ internal sealed partial class CampaignWorld
         if (deployment.HuntMissionMaxFrequency > int.MaxValue - 10)
             return "New base objective hunting timer exceeds the supported range.";
         if (deployment.BaseDetectionChance <= 0)
-            return BaseHuntingPopulationReason(highest, ref work, "Base objective creation exceeds the supported work limit.");
+            return BaseHuntingPopulationReason(highest, ref work, ForecastLimits.BaseObjectiveCreationWork);
         var rules = campaign.Content.RuntimeRules;
         var range = WorldGeometry.Nautical(deployment.BaseDetectionRange);
         var possibleGeneration = false;
@@ -182,7 +182,7 @@ internal sealed partial class CampaignWorld
         foreach (var owner in campaign.BaseStates)
         {
             work += owner.Crafts.Count + (highest >= CampaignTimeTrigger.OneHour ? (long)owner.Transfers.Count : 0);
-            if (work > MaximumAlienBaseChecks) return "Base objective creation exceeds the supported work limit.";
+            if (work > MaximumWorldWork) return ForecastLimits.BaseObjectiveCreationWork;
             foreach (var craft in owner.Crafts)
             {
                 if (craft.Logistics is not { } state || rules.Crafts[craft.Rule].Value.Undetectable) continue;
@@ -223,7 +223,7 @@ internal sealed partial class CampaignWorld
             {
                 if (transfer.Delivered || transfer.Hours > 1 ||
                     transfer.Craft?.Logistics is not { IsAutoPatrolling: true }) continue;
-                var craft = rules.Crafts[rules.Crafts.GetRequired(transfer.Craft.RuleId)].Value;
+                var craft = rules.Crafts.GetRequiredValue(transfer.Craft.RuleId);
                 if (!craft.Undetectable && craft.AutoPatrol && Near(new(owner.Longitude, owner.Latitude)))
                 {
                     if (_pass.HuntingCraftForecast is null && ForecastHuntingCrafts(highest, ref work) is { } forecastReason)
@@ -245,7 +245,7 @@ internal sealed partial class CampaignWorld
             if (deployment.BaseDetectionChance <= 0) return null;
             var choices = WorldAlienBaseHunting.Weights(deployment.HuntMissions, unchecked((ulong)campaign.MonthsPassed));
             checks += 2L * choices.Count;
-            if (checks > MaximumAlienBaseChecks) return "Base objective creation exceeds the supported work limit.";
+            if (checks > MaximumWorldWork) return ForecastLimits.BaseObjectiveCreationWork;
             _ = WorldAlienMissionGeneration.Total(choices);
             foreach (var choice in choices)
             {
@@ -277,7 +277,7 @@ internal sealed partial class CampaignWorld
         if (highest < CampaignTimeTrigger.TenMinutes || _pass.ObjectiveBasesBeforeHunting == 0) return null;
         long possibleCrafts = 0;
         foreach (var owner in campaign.BaseStates) possibleCrafts += owner.Crafts.Count + (long)owner.Transfers.Count;
-        return possibleCrafts * (_alienBases.Count + (long)_pass.ObjectiveBasesBeforeHunting) > MaximumAlienBaseChecks
+        return possibleCrafts * (_alienBases.Count + (long)_pass.ObjectiveBasesBeforeHunting) > MaximumWorldWork
             ? "Base objective patrol discovery exceeds the supported work limit." : null;
     }
 
@@ -289,7 +289,7 @@ internal sealed partial class CampaignWorld
         return (uint)wave < (uint)rule.Waves.Count && ufo.TrajectoryPoint + 1 < trajectory.Waypoints.Count &&
             trajectory.Altitude(ufo.TrajectoryPoint + 1) == 0 &&
             WorldObjectiveBaseSpawn.CreatesOnLanding(rule, rule.Waves[wave], trajectory.Zone(ufo.TrajectoryPoint),
-                LandingAllowed(ufo.Destination!.Position, rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value),
+                LandingAllowed(ufo.Destination!.Position, rules.Ufos.GetRequiredValue(ufo.RuleId)),
                 IsSiteConversion(ufo, mission, trajectory));
     }
 
@@ -302,7 +302,7 @@ internal sealed partial class CampaignWorld
         var mission = ForecastMission(ufo.MissionId, highest);
         if (mission.Interrupted) return null;
         var rules = campaign.Content.RuntimeRules;
-        var trajectory = rules.UfoTrajectories[rules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value;
+        var trajectory = rules.UfoTrajectories.GetRequiredValue(ufo.TrajectoryId);
         if (!CreatesLandingBase(ufo, mission, trajectory)) return null;
         try
         {
@@ -318,7 +318,7 @@ internal sealed partial class CampaignWorld
     private void CompleteBaseObjective(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
     {
         var rules = campaign.Content.RuntimeRules;
-        var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+        var region = rules.Regions.GetRequiredValue(mission.RegionId);
         if (WorldObjectiveBaseSpawn.Select(rules, rule, region, campaign.Random) is { } selected)
             SpawnMissionAlienBase(mission, rule, selected.Deployment, selected.Position);
     }

@@ -93,11 +93,7 @@ public sealed class StrategicWorldNewbornEscortArrivalTests
                 }
             }
             patterns.Add(pattern);
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "escort-first-arrival.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "escort-first-arrival.sav", 3, after);
             AdvanceUnblocked(campaign, 1);
             Assert.All(campaign.Capture().World.Ufos.Where(ufo => !savedLeader || ufo.UniqueId != 9),
                 ufo => Assert.Equal(ufo.Escorting ? 0 : ground ? 1 : 2, ufo.TrajectoryPoint));
@@ -145,11 +141,7 @@ public sealed class StrategicWorldNewbornEscortArrivalTests
             Assert.Equal(2, after.ResearchDiary[1].SourceType);
             Assert.Equal("CORE", after.ResearchDiary[1].SourceName);
             Assert.Empty(after.World.MissionSites);
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "escort-arrival-site-research.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "escort-arrival-site-research.sav", 3, after);
             AdvanceUnblocked(campaign, 1);
             AdvanceUnblocked(control, 1);
             Assert.Equivalent(control.Capture().World.Ufos, campaign.Capture().World.Ufos, strict: true);

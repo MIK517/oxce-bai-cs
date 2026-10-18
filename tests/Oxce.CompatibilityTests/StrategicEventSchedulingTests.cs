@@ -1,7 +1,5 @@
-using System.Text;
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Savegames.Oxce;
@@ -96,8 +94,7 @@ public sealed class StrategicEventSchedulingTests
                 countdowns.Add(scheduled.SpawnCountdown);
             }
             scheduled = WorldEventTiming.Think(scheduled);
-            Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetProperty("countdowns").GetRawText())),
-                CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(countdowns)));
+            TestFixtures.AssertJsonEqual(row.GetProperty("countdowns"), JsonSerializer.SerializeToUtf8Bytes(countdowns));
             Assert.Equal(row.GetProperty("over").GetBoolean(), scheduled.Over);
         }
     }

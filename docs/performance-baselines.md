@@ -110,7 +110,7 @@ validation and the pinned-reference-compatible mapping.
 
 Measured on Windows 11 with a Ryzen 9 7940HS, .NET SDK 10.0.302, runtime 10.0.10,
 BenchmarkDotNet 0.15.8, and the documented `Short` job. The before content result is
-from documentation commit `b8e6d56`; the after result is from the single-parse candidate
+from documentation commit `9b4611e`; the after result is from the single-parse candidate
 on `codex/architecture-performance-foundations`.
 
 Parsing every ordered ruleset once and sharing the resulting immutable document catalog
@@ -161,7 +161,7 @@ resource directory. Both candidate runs reached `linked`, reported the expected 
 warnings and zero errors, and emitted the same 9,274,826-byte typed manifest with SHA-256
 `6153996A44CFB42DD39FEAB6B56FD1BB7A55530FB2CF8A14B3B9655AFFE3728C`.
 
-As a direct behavioral and wall-clock comparison, documentation commit `b8e6d56` was
+As a direct behavioral and wall-clock comparison, documentation commit `9b4611e` was
 run against the identical isolated input. Its two process-level runs took 14.593 and
 14.869 seconds; the candidate took 4.888 and 4.918 seconds. The averages are 14.731
 versus 4.903 seconds, approximately a 3.0-times end-to-end improvement. All four output
@@ -548,7 +548,7 @@ population, and active pursuit or escort formations at the end. The reference pe
 (80 ms by default).
 
 Measured in the Linux VM (2 cores, .NET SDK 10.0.401) with the in-process toolchain and 12
-warmup iterations; absolute values are host-dependent. "Before" is `83b6bb0`.
+warmup iterations; absolute values are host-dependent. "Before" is `1ab61ff`.
 
 | Scenario | Before | After | Allocated |
 |---|---:|---:|---:|
@@ -611,7 +611,7 @@ and amortized). The client's remaining allocation is the clock, date, funds and 
 formatted each frame.
 
 Time advance is measured separately. The same run of `CampaignTimeAdvanceBenchmarks` at commit
-`94b634b4` matched the 2026-10-06 results within noise (one-day speed: 32 UFOs 18.0 us/tick,
+`0b84f667` matched the 2026-10-06 results within noise (one-day speed: 32 UFOs 18.0 us/tick,
 128 UFOs 59.1 us/tick). One-day speed owes 17,280 ticks per 80 ms step; spread over frames within
 the 12 ms budget ([ADR 0032](decisions/0032-geoscape-ui-intentional-differences.md)), a world with
 32 flying UFOs needs about 0.31 s of tick work per game day and 128 UFOs about 1.0 s, instead of
@@ -648,7 +648,7 @@ its distance per saved UFO across the movement, site-conversion and half-hour st
 ([ADR 0033](decisions/0033-shared-per-tick-flight-projection.md)).
 
 Windows workstation, `--time-profile Flight128 Flight32 --seconds 6`, three alternating runs of
-`main` (`5a78fe3d`) and S1; the machine was noisy, so the pairs are the comparison:
+`main` (`1991902b`) and S1; the machine was noisy, so the pairs are the comparison:
 
 | Scenario (one-day speed) | `main` | S1 | Change |
 |---|---:|---:|---:|

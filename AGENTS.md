@@ -78,6 +78,29 @@ mechanical translations with no executable acceptance test.
   Regenerate it with `python3 tools/generate-code-map.py` after adding or moving types,
   helpers or fixtures; CI runs the script with `--check`.
 
+## Host-authoritative design (future multiplayer)
+
+The game runs as a host (state, rules, randomness, clock, saves) and thin clients (presentation and
+per-player view state), single-player included: one host plus one local client in the same process.
+Multiplayer later adds only a wire protocol and remote clients. Keep new code compatible with that
+([ADR 0037](docs/decisions/0037-host-authoritative-session.md)):
+
+- Commands are immutable data: primitives, strings, enums and stable IDs; no object references,
+  delegates, runtime rule handles or live entities.
+- A command that cannot run returns a classified refusal before any mutation; do not throw on invalid
+  player input after state has changed.
+- Every observable change produces an event or a query revision; clients refresh from queries and never
+  assume their own command was the only change.
+- Queries return immutable views. Anything with hidden information (all battlescape queries) takes the
+  viewer (faction, later player) as a parameter.
+- Only the host advances time. Do not add pause or speed decisions to UI clients.
+- Per-player interaction state (selections, quotes, drafts) is client state or keyed by actor; never a
+  single campaign-wide slot that another player's action or a time advance invalidates.
+- Decisions with gameplay effects are pending state with an ID that a command answers.
+- No process-wide mutable state in simulation code; test switches use `AsyncLocal` or options.
+- Phase 7 battles: an action resolves fully in the simulation (animation replays its events), every unit
+  has a controller (AI or human), and visibility is per faction.
+
 ## Test conventions
 
 - Shared helpers live in `tests/Shared/TestFixtures.cs` (linked into both test
@@ -88,9 +111,11 @@ mechanical translations with no executable acceptance test.
 - Tests must be deterministic: fixed campaign IDs, `FixedClock`, explicit
   `SplitMix64RandomSource` seeds; never `Guid.NewGuid()` or the system clock
   for campaign identity.
-- Compare fixture output with
-  `Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual))`
-  so failures print the difference.
+- Compare fixture output with `TestFixtures.AssertJsonEqual(expected, actual)` (an oracle
+  `JsonElement` or a value serialized with its static type, against actual UTF-8 JSON). It
+  canonicalizes both sides, so failures print the difference; never compare raw JSON text.
+- Strategic save checks use `StrategicWorldTestSupport.Reload`, `ReloadRepeatedly` and
+  `AssertContinuesLike` (a reloaded campaign advances like a never-saved control).
 - Iterate oracle arrays through `TestFixtures.Rows(...)`, which fails on an
   empty array.
 - A unit test class that asserts exactly zero bytes from
@@ -100,7 +125,10 @@ mechanical translations with no executable acceptance test.
 - `StrategicReadinessTestContent.Load` builds every ruleset fresh, restores it from the compiled
   cache and asserts both are identical (`ContentStateDump`); tests run on the restored content.
   Do not add fresh/cache theory parameters.
-- Private-asset tests must `Assert.SkipUnless` when `fixtures/private/` is absent.
+- Private-asset tests must skip when their assets are absent: use `TestFixtures.RequirePrivateMods`,
+  `RequireOwnedData` or `RequirePrivateInstallation` (each returns the path), or `Assert.SkipUnless`
+  for a narrower requirement. Corpus scans use `TestFixtures.CorpusFiles` (ordered) and
+  `ForEachCorpusFile` (names the failing file).
 - Order file-system enumerations (`StringComparer.Ordinal`) before selecting
   entries.
 - Verify with `dotnet test` from the repository root.

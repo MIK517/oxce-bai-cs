@@ -28,7 +28,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldArcScripts
         var context = campaign.WorldScriptContext(score, funds, _strategy.MissionRuns);
         var eligible = campaign.Content.RuntimeRules.ArcScripts.Rules.Where(entry =>
             WorldScriptEligibility.Matches(entry.Value.Criteria, context)).ToArray();
-        if (eligible.Length > 4096) return Blocked("Arc scripts exceed the supported work limit.");
+        if (eligible.Length > 4096) return Blocked(ForecastLimits.ArcScriptsWork);
         var research = campaign.ArcResearch;
         if (ArcScriptReason(eligible, research) is { } reason) return Blocked(reason);
 
@@ -108,7 +108,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldArcScripts
                 {
                     if (research.IsResearched(choice.Rule.Id) && !priorDisables.Contains(choice.Rule.Id)) continue;
                     if (choice.Weight > (ulong)int.MaxValue - weight)
-                        throw new InvalidDataException("Strategic script weights exceed the supported range.");
+                        throw new InvalidDataException(ForecastLimits.StrategicScriptWeightsRange);
                     weight += choice.Weight;
                     if (choice.Weight == 0) continue;
                     if (research.GrantReason(choice.Rule.Id) is { } reason) return reason;

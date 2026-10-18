@@ -136,11 +136,7 @@ public sealed class StrategicWorldSiteResearchGeneratedSpawnTests
             Assert.Equal(random.State, after.RandomState);
             Assert.Empty(after.World.MissionSites);
             Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, 17, "site-generated-ground-timer.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, 17, "site-generated-ground-timer.sav", 3, after);
             AdvanceUnblocked(campaign, 1);
             Assert.Equal(UfoStatus.Flying, Assert.Single(campaign.Capture().World.Ufos).Status);
             Assert.Equal(0, campaign.Capture().World.Ufos[0].SecondsRemaining);
@@ -166,11 +162,7 @@ public sealed class StrategicWorldSiteResearchGeneratedSpawnTests
         Assert.All(after.World.Ufos, ufo => Assert.Single(after.World.Missions, mission => mission.Id == ufo.MissionId));
         Assert.Empty(after.World.MissionSites);
         Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
-        for (var pass = 0; pass < 3; pass++)
-        {
-            campaign = Reload(content, campaign, 17, "site-research-both-birth-callers.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 17, "site-research-both-birth-callers.sav", 3, after);
     }
 
     [Fact]
@@ -278,11 +270,7 @@ public sealed class StrategicWorldSiteResearchGeneratedSpawnTests
         Assert.InRange(WorldGeometry.Distance(expected, ufo.Position), 0, 1e-8);
         Assert.Equal(random.State, after.RandomState);
         Assert.Equal(hunting ? 0 : 1, Assert.Single(after.World.AlienBases).GenMissionCount);
-        for (var pass = 0; pass < 3; pass++)
-        {
-            campaign = Reload(content, campaign, 17, "site-research-generated-ufo.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 17, "site-research-generated-ufo.sav", 3, after);
     }
 
     internal static RuntimeContent Content(bool hunting, bool final = false, string interrupt = "CORE", string trajectory = "PATH_0_0", bool bothCallers = false, string ufo = "UFO_SCOUT", bool escort = false) =>

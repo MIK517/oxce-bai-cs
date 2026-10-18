@@ -57,16 +57,16 @@ public static class ModMetadataReader
         ArgumentException.ThrowIfNullOrWhiteSpace(modPath);
         diagnostics ??= NullDiagnosticSink.Instance;
         var fallbackName = Path.GetFileName(Path.TrimEndingDirectorySeparator(modPath));
-        var id = ReadString(mapping, "id", fallbackName);
+        var id = mapping.ReadString("id", fallbackName);
         var isMaster = ReadBoolean(mapping, "isMaster", false);
         var master = isMaster ? string.Empty : "xcom1";
-        master = ReadString(mapping, "master", master);
+        master = mapping.ReadString("master", master);
         if (master == "*")
         {
             master = string.Empty;
         }
 
-        var version = ParseVersion(ReadString(mapping, "version", "1.0"), id, mapping, "version", diagnostics);
+        var version = ParseVersion(mapping.ReadString("version", "1.0"), id, mapping, "version", diagnostics);
         ModVersion? requiredMasterVersion = null;
         if (mapping.TryGet("requiredMasterModVersion", out var requiredNode))
         {
@@ -87,9 +87,9 @@ public static class ModMetadataReader
             }
         }
 
-        var requiredExtendedVersion = ReadString(mapping, "requiredExtendedVersion", string.Empty);
+        var requiredExtendedVersion = mapping.ReadString("requiredExtendedVersion", string.Empty);
         var requiredExtendedEngine = requiredExtendedVersion.Length == 0 ? string.Empty : "Extended";
-        requiredExtendedEngine = ReadString(mapping, "requiredExtendedEngine", requiredExtendedEngine);
+        requiredExtendedEngine = mapping.ReadString("requiredExtendedEngine", requiredExtendedEngine);
         var externalResources = Array.Empty<string>();
         if (isMaster && master.Length == 0 && mapping.TryGet("loadResources", out var resourcesNode))
         {
@@ -100,17 +100,17 @@ public static class ModMetadataReader
         {
             Path = Path.GetFullPath(modPath),
             Id = id,
-            Name = ReadString(mapping, "name", fallbackName),
-            Description = ReadString(mapping, "description", "No description."),
-            Author = ReadString(mapping, "author", "unknown author"),
+            Name = mapping.ReadString("name", fallbackName),
+            Description = mapping.ReadString("description", "No description."),
+            Author = mapping.ReadString("author", "unknown author"),
             MasterId = master,
             Version = version,
-            VersionDisplay = ReadString(mapping, "versionDisplay", version.Text),
+            VersionDisplay = mapping.ReadString("versionDisplay", version.Text),
             IsMaster = isMaster,
             ReservedSpace = Math.Clamp(ReadInt32(mapping, "reservedSpace", 1), 1, 100),
             RequiredExtendedEngine = requiredExtendedEngine,
             RequiredExtendedVersion = requiredExtendedVersion,
-            ResourceConfigFile = ReadString(mapping, "resourceConfig", string.Empty),
+            ResourceConfigFile = mapping.ReadString("resourceConfig", string.Empty),
             ExternalResourceDirectories = Array.AsReadOnly(externalResources),
             RequiredMasterVersion = requiredMasterVersion,
         };
@@ -138,9 +138,6 @@ public static class ModMetadataReader
 
         return version;
     }
-
-    private static string ReadString(YamlMappingNode mapping, string key, string defaultValue) =>
-        mapping.TryGet(key, out var node) ? YamlValueReader.ReadString(node!) : defaultValue;
 
     private static bool ReadBoolean(YamlMappingNode mapping, string key, bool defaultValue) =>
         mapping.TryGet(key, out var node) ? YamlValueReader.ReadBoolean(node!) : defaultValue;

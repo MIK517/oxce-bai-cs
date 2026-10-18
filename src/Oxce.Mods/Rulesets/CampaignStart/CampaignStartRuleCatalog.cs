@@ -60,10 +60,10 @@ public sealed class CampaignStartRuleCatalog
             CampaignStartSettingsComposer.Compose(documents, compositionOptions));
     }
 
-    public CampaignStartValidation ValidateInternalRelationships(IDiagnosticSink? diagnostics = null)
+    public RuleValidation ValidateInternalRelationships(IDiagnosticSink? diagnostics = null)
     {
         diagnostics ??= NullDiagnosticSink.Instance;
-        var issues = new List<CampaignStartValidationIssue>();
+        var issues = new List<RuleValidationIssue>();
         foreach (var facility in Facilities.Rules)
         {
             ValidateReference(facility, facility.Value.DestroyedFacility, "destroyedFacility", sameSize: true);
@@ -76,7 +76,7 @@ public sealed class CampaignStartRuleCatalog
         }
         if (Settings.DestroyedFacility.Length != 0 && !Facilities.TryGet(Settings.DestroyedFacility, out _))
         {
-            var issue = new CampaignStartValidationIssue(
+            var issue = new RuleValidationIssue(
                 "global", "destroyedFacility", Settings.DestroyedFacility, "Referenced facility does not exist.");
             issues.Add(issue);
             diagnostics.Report(new DiagnosticEvent(
@@ -86,7 +86,7 @@ public sealed class CampaignStartRuleCatalog
                 context: new DiagnosticContext(RuleType: "global", RelatedId: Settings.DestroyedFacility)));
         }
         ValidateBaseFunctionLimit();
-        return new CampaignStartValidation(Array.AsReadOnly(issues.ToArray()));
+        return new RuleValidation(Array.AsReadOnly(issues.ToArray()));
 
         void ValidateReference(TypedRule<BaseFacilityRule> owner, string id, string property, bool sameSize)
         {
@@ -135,7 +135,7 @@ public sealed class CampaignStartRuleCatalog
 
         void ReportMissing(TypedRule<BaseFacilityRule> owner, string property, string relatedId)
         {
-            var issue = new CampaignStartValidationIssue(owner.Id, property, relatedId, "Referenced facility does not exist.");
+            var issue = new RuleValidationIssue(owner.Id, property, relatedId, "Referenced facility does not exist.");
             issues.Add(issue);
             diagnostics.Report(new DiagnosticEvent(
                 ModDiagnosticCodes.MissingRuleReference,
@@ -148,7 +148,7 @@ public sealed class CampaignStartRuleCatalog
 
         void Report(TypedRule<BaseFacilityRule> owner, string property, string message, string relatedId = "")
         {
-            issues.Add(new CampaignStartValidationIssue(owner.Id, property, relatedId, message));
+            issues.Add(new RuleValidationIssue(owner.Id, property, relatedId, message));
             diagnostics.Report(new DiagnosticEvent(
                 ModDiagnosticCodes.InvalidRuleRelationship,
                 DiagnosticSeverity.Error,
@@ -174,7 +174,7 @@ public sealed class CampaignStartRuleCatalog
                 .Take(129)
                 .Count();
             if (names <= 128) return;
-            issues.Add(new CampaignStartValidationIssue(
+            issues.Add(new RuleValidationIssue(
                 "global", "baseFunctions", string.Empty, "More than 128 distinct base functions are declared."));
             diagnostics.Report(new DiagnosticEvent(
                 ModDiagnosticCodes.InvalidRuleRelationship,
@@ -189,10 +189,4 @@ public sealed class CampaignStartRuleCatalog
         RuleSectionRegistry.TryGetNamed(name, out var section) ? section! : throw new InvalidOperationException();
     private static UnresolvedRuleSection Required(UnresolvedRuleCatalog catalog, string name) =>
         catalog.TryGetSection(name, out var section) ? section! : throw new InvalidOperationException();
-}
-
-public sealed record CampaignStartValidationIssue(string RuleId, string Property, string RelatedId, string Message);
-public sealed record CampaignStartValidation(IReadOnlyList<CampaignStartValidationIssue> Issues)
-{
-    public bool IsValid => Issues.Count == 0;
 }

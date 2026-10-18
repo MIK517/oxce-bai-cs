@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -193,7 +192,7 @@ public sealed class StrategicWorldEscortEnduranceTests
                     ufo.Destination.Kind == WorldTargetKind.Ufo ? 0 : ufo.Destination.Longitude,
                     ufo.Destination.Kind == WorldTargetKind.Ufo ? 0 : ufo.Destination.Latitude,
                 })).ToArray());
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
             campaign = Reload(content, campaign, 81, "escort-deletion-after.sav");
         }
         AdvanceUnblocked(campaign, 2);
@@ -268,7 +267,7 @@ public sealed class StrategicWorldEscortEnduranceTests
                     decimal.Parse(ufo.Longitude.ToString("F12", CultureInfo.InvariantCulture), CultureInfo.InvariantCulture),
                     decimal.Parse(ufo.Latitude.ToString("F12", CultureInfo.InvariantCulture), CultureInfo.InvariantCulture),
                 })).ToArray());
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
         }
         var stepped = Run(1, false);
         Assert.Equivalent(stepped, Run(120, false), strict: true);

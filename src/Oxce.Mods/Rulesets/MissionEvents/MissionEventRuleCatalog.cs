@@ -51,11 +51,11 @@ public sealed class MissionEventRuleCatalog
             UfopaediaComposer.Compose(documents, compositionOptions, diagnostics));
     }
 
-    public MissionEventValidation ValidateRelationships(CampaignStartRuleCatalog campaign, ItemRuleCatalog items,
+    public RuleValidation ValidateRelationships(CampaignStartRuleCatalog campaign, ItemRuleCatalog items,
         EquipmentProductionRuleCatalog equipment, PersonnelTacticalRuleCatalog personnel,
         TerrainDeploymentRuleCatalog terrain, IDiagnosticSink? diagnostics = null)
     {
-        diagnostics ??= NullDiagnosticSink.Instance; var issues = new List<MissionEventValidationIssue>();
+        diagnostics ??= NullDiagnosticSink.Instance; var issues = new List<RuleValidationIssue>();
         foreach (var mission in AlienMissions.Rules)
         {
             foreach (var wave in mission.Value.Waves)
@@ -134,6 +134,3 @@ public sealed class MissionEventRuleCatalog
     private static UnresolvedRuleSection Required(UnresolvedRuleCatalog catalog, string name) => catalog.TryGetSection(name, out var section) ? section! : throw new InvalidOperationException();
     private static readonly string[] Names = ["ufoTrajectories", "alienMissions", "arcScripts", "eventScripts", "events", "missionScripts", "adhocScripts"];
 }
-
-public sealed record MissionEventValidationIssue(string RuleId, string Property, string RelatedId, string Message);
-public sealed record MissionEventValidation(IReadOnlyList<MissionEventValidationIssue> Issues) { public bool IsValid => Issues.Count == 0; }

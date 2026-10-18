@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.TestSupport;
@@ -42,7 +41,7 @@ public sealed class StrategicWorldDailyResearchQuantityTests
             var expected = TestFixtures.Rows(oracle.RootElement, "researchDailyQuantityRows").Single(row => row[0].GetInt32() == choice && row[1].GetInt32() == (withSite ? 1 : 0));
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { choice, withSite ? 1 : 0, after.Bases[0].Items.GetValueOrDefault("SUPPLY"),
                 forecast.Arrivals[initial.Bases[0].Id].Count, after.NextIds["EQUIV_COUNTER"], after.ResearchScores[^1] - initial.ResearchScores[^1], after.CompletedResearch.Contains("SITE_AUTO") ? 1 : 0 });
-            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(expected, actual);
             var exact = Assert.Single(forecast.DiscoveryAlternatives, branch => branch.CompletedResearch!.Contains(choice == 0 ? "EQUIV_A" : "EQUIV_B"));
             Assert.Equal(3 + choice, exact.Arrivals[initial.Bases[0].Id].Sum(item => item.Value));
             Assert.Empty(exact.ArrivalUncertainty);
@@ -50,14 +49,8 @@ public sealed class StrategicWorldDailyResearchQuantityTests
             Assert.True(Assert.Single(after.World.Ufos).Hunting);
             Assert.Empty(after.World.MissionSites);
             var control = CampaignState.Restore(after, content, new SplitMix64RandomSource(seed));
-            for (var rewrite = 0; rewrite < 3; rewrite++)
-            {
-                campaign = Reload(content, campaign, seed, "daily-variable-quantities.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
-            AdvanceUnblocked(campaign, 1);
-            AdvanceUnblocked(control, 1);
-            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+            campaign = ReloadRepeatedly(content, campaign, seed, "daily-variable-quantities.sav", 3, after);
+            AssertContinuesLike(control, campaign, 1);
         }
         Assert.Equal(2, seen.Count);
     }

@@ -42,11 +42,7 @@ public sealed class StrategicWorldSiteResearchItemTests
             Assert.Equal(control.Capture().RandomState, after.RandomState);
             emptySeen |= remaining == 0;
             remainingSeen |= remaining != 0;
-            for (var pass = 0; pass < 3; pass++)
-            {
-                campaign = Reload(content, campaign, seed, "site-research-ammo.sav");
-                Assert.Equivalent(after, campaign.Capture(), strict: true);
-            }
+            campaign = ReloadRepeatedly(content, campaign, seed, "site-research-ammo.sav", 3, after);
         }
         Assert.Equal(supply == 2, emptySeen);
         Assert.True(remainingSeen);
@@ -78,11 +74,7 @@ public sealed class StrategicWorldSiteResearchItemTests
         var craft = after.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP_FUEL_ITEM").Logistics!;
         Assert.Equal(100, craft.Fuel);
         Assert.Equal("STR_READY", craft.Status);
-        for (var pass = 0; pass < 3; pass++)
-        {
-            campaign = Reload(content, campaign, 17, "site-research-item.sav");
-            Assert.Equivalent(after, campaign.Capture(), strict: true);
-        }
+        campaign = ReloadRepeatedly(content, campaign, 17, "site-research-item.sav", 3, after);
     }
 
     internal static RuntimeContent Content(int supply, string extraRules = "", string eventInterrupt = "") => StrategicReadinessTestContent.Load(["strategic-world.rul"], $$$"""

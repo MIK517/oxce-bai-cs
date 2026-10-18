@@ -228,6 +228,29 @@ internal static class StrategicWorldTestSupport
         return restored;
     }
 
+    /// <summary>Saves and reloads <paramref name="times"/> times; after each reload the campaign still equals <paramref name="expected"/>.</summary>
+    public static CampaignState ReloadRepeatedly(RuntimeContent content, CampaignState campaign, ulong seed, string name, int times,
+        CampaignSnapshot expected)
+    {
+        for (var pass = 0; pass < times; pass++)
+        {
+            campaign = Reload(content, campaign, seed, name);
+            Assert.Equivalent(expected, campaign.Capture(), strict: true);
+        }
+        return campaign;
+    }
+
+    /// <summary>
+    /// Advances a reloaded campaign and its never-saved control by the same ticks and requires the same state: the save
+    /// kept everything later ticks read.
+    /// </summary>
+    public static void AssertContinuesLike(CampaignState control, CampaignState campaign, int ticks)
+    {
+        AdvanceUnblocked(campaign, ticks);
+        AdvanceUnblocked(control, ticks);
+        Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+    }
+
     /// <summary>Checks one ordinary count-two birth, including its possible first airborne arrival.</summary>
     public static bool AssertSelectedNewbornArrival(RuntimeContent content, CampaignSnapshot initial,
         IStatefulRandomSource expectedRandom, IStatefulRandomSource actualRandom)

@@ -1,7 +1,5 @@
-using System.Text;
 using System.Text.Json;
 using Oxce.Core.Random;
-using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.TestSupport;
@@ -41,7 +39,7 @@ public sealed class StrategicWorldNewbornMonthlyTests
             var marker = content.RuntimeRules.AlienDeployments[content.RuntimeRules.AlienDeployments.GetRequired(born.DeploymentId)].Value.MarkerName;
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
             { name, born.DeploymentId, born.Race, born.StartMonth, born.MinutesSinceLastHuntMissionGeneration, 0, marker });
-            Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+            TestFixtures.AssertJsonEqual(row, actual);
             var link = Assert.Single(after.World.Missions).AlienBase!;
             Assert.Equal(marker, link.TypeId);
             Assert.Equal(born.Id, link.Id);

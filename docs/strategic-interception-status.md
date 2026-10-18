@@ -14,7 +14,7 @@ lines and the branch 5 name in [Phase 6 plan](phase-6-plan.md) and
 with the slice mapping; amended the extension-state rule per D6; named the branch 5 records in
 `AGENTS.md`.
 
-Baseline on the Windows workstation at `5a78fe3d`: Release build with no warnings; root
+Baseline on the Windows workstation at `1991902b`: Release build with no warnings; root
 `dotnet test` passes 3,457 tests (unit and compatibility, including the private corpus) with no
 failures or skips in 10 min 28 s. The kickoff time profile reproduces on this machine (Flight128
 50.2 us/tick, 0.87 s per in-game day); see the
