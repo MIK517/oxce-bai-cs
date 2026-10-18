@@ -35,6 +35,9 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
 
     /// <summary>SavedGame::getWarned/setWarned, read and changed by the monthly report.</summary>
     internal bool Warned { get; set; }
+
+    /// <summary>SavedGame::_missionStatistics, which commendations read; unchanged until Phase 7 adds battles.</summary>
+    internal IReadOnlyList<MissionStatisticSnapshot> MissionStatistics { get; private init; } = [];
     private readonly List<DeadSoldierSnapshot> _deadSoldiers = [];
     private CampaignTimeProfile? _timeProfile;
 
@@ -118,6 +121,15 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
                     nameof(command));
             return _handlers.CommandGate(command) ?? handler(command);
         }
+    }
+
+    /// <summary>
+    /// Why the campaign cannot be saved now, or null. The reference cannot save under a modal window whose OK has
+    /// gameplay effects (D2); a save made there would lose them on reload.
+    /// </summary>
+    public string? QuerySaveRefusal()
+    {
+        lock (_transactionGate) return _handlers.SaveGate();
     }
 
     public CampaignSnapshot Capture()
@@ -208,6 +220,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         DeadSoldiers = CampaignSnapshot.ReadOnly(_deadSoldiers),
         DebugMode = _debugMode,
         Warned = Warned,
+        MissionStatistics = MissionStatistics,
         Options = Options,
     });
 
@@ -310,6 +323,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
                 _restrictions = CampaignSnapshot.ReadOnly(snapshot.Restrictions),
                 _debugMode = snapshot.DebugMode,
                 Warned = snapshot.Warned,
+                MissionStatistics = CampaignSnapshot.ReadOnly(snapshot.MissionStatistics),
                 // Mods that fix user options override the options a save was made with.
                 Options = snapshot.Options.WithFixedUserOptions(content.RuntimeRules.Campaign.FixedUserOptions),
             };

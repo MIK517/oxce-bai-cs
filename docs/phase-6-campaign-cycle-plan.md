@@ -203,3 +203,8 @@ tick ([status S2](strategic-campaign-cycle-status.md#s2--staged-ticks-2026-10-17
 The month rollover runs, staged, with its report as a modal hold and the country script at its call site; missions
 without waves run and the forecast work bounds fit real globes
 ([status S3](strategic-campaign-cycle-status.md#s3--the-month-in-reference-order-2026-10-17)).
+
+### S4 — Acknowledgement effects (2026-10-18)
+
+The report's OK gives monthly service and commendations, the psi reminder and the save requests; saving is refused
+while it is open ([status S4](strategic-campaign-cycle-status.md#s4--acknowledgement-effects-2026-10-18)).

@@ -48,3 +48,17 @@ other mission without waves.
 **A site script naming a mission without waves (S3).** `GeoscapeState::processCommand`'s site branch reads the
 mission's first wave (`getWave(0)`) to pick the site's deployment, which reads past an empty wave list. The port
 keeps refusing such a script with its mission-script boundary reason rather than inventing a deployment.
+
+**A commendation without criteria (S4).** `SoldierDiary::manageCommendations` tries a commendation again after
+each award, so one with no criteria (such as `STR_MEDAL_ORIGINAL8_NAME`, which the reference awards only in code at
+the start of a campaign) is awarded without end and the game hangs. The port never awards such a commendation there.
+
+**A noun level past its last threshold (S4).** For a noun criterion, a commendation whose saved level reaches past
+the last threshold makes `critDef.at` throw. The port awards nothing for that noun.
+
+**A kill without a span (S4).** The per-mission and per-turn kill criteria start without counters and read them for a
+kill whose mission or turn is -1. The port starts a fresh span there. A kill-list field that a save omits is left
+unset by `BattleUnitKills`; the port takes the default constructor's value.
+
+**An ironman campaign after an undefined lose video (S4).** The reference throws before it queues the ironman save;
+the port plays nothing (above) and still requests the ironman save, as for every other failed month.

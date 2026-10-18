@@ -33,6 +33,8 @@ public sealed record SoldierPersonalState(
     public IReadOnlyDictionary<string, int> PreviousTransformations { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
     public IReadOnlyDictionary<string, int> TransformationBonuses { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
     public IReadOnlyList<SoldierCommendation> Commendations { get; init; } = [];
+    /// <summary>SoldierDiary's counters, kill list and mission IDs.</summary>
+    public SoldierDiaryState Diary { get; init; } = SoldierDiaryState.Empty;
     /// <summary>SoldierDiary::_ufosShotDownTotal and _ufosDamageTotal (pilot interception wins).</summary>
     public int UfosShotDownTotal { get; init; }
     public int UfosDamageTotal { get; init; }

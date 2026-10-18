@@ -224,6 +224,7 @@ public static partial class OxceSaveAdapter
             MonthlyPurchaseLog = ReadIntMap(body, "monthlyPurchaseLimitLog"),
             DebugMode = Boolean(body, "debug", false),
             Warned = Boolean(body, "warned", false),
+            MissionStatistics = Array.AsReadOnly(Maps(body, "missionStatistics").Select(ReadMissionStatistic).ToArray()),
             Options = body.TryGet("oxcePortOptions", out var optionsNode)
                 ? ReadOptions(RequireMap(optionsNode!, "oxcePortOptions"))
                 : ReadReferenceOptions(body),
@@ -774,7 +775,8 @@ public static partial class OxceSaveAdapter
     private static YamlMappingNode? BuildSoldierDiary(YamlMappingNode? source, SoldierPersonalState personal)
     {
         var diary = source is not null && source.TryGet("diary", out var node) ? RequireMap(node!, "soldier diary") : null;
-        if (diary is null && personal.Commendations.Count == 0 && personal.UfosShotDownTotal == 0 && personal.UfosDamageTotal == 0)
+        if (diary is null && personal.Commendations.Count == 0 && personal.UfosShotDownTotal == 0 && personal.UfosDamageTotal == 0 &&
+            personal.Diary.Counters.Count == 0 && personal.Diary.Kills.Count == 0 && personal.Diary.MissionIds.Count == 0)
             return null;
         var previous = Maps(diary, "commendations").ToArray();
         var commendations = personal.Commendations.Select((commendation, index) =>
@@ -793,9 +795,44 @@ public static partial class OxceSaveAdapter
             Pair("commendations", Sequence(commendations)),
             Pair("ufosShotDownTotal", personal.UfosShotDownTotal == 0 ? null : Integer(personal.UfosShotDownTotal)),
             Pair("ufosDamageTotal", personal.UfosDamageTotal == 0 ? null : Integer(personal.UfosDamageTotal)),
+            // SoldierDiary::save writes a counter only when it is not zero. The kill list and mission IDs change only in
+            // battle (Phase 7), so their source nodes are kept.
+            .. SoldierDiaryState.CounterKeys.Select(key => Pair(key, personal.Diary.Counter(key) is var value && value == 0 ? null
+                : SoldierDiaryState.IsFlag(key) ? Boolean(true) : Integer(value))),
         ]);
         return diary is null ? Overlay(result, [Pair("killList", Sequence([]))]) : result;
     }
+
+    /// <summary>SoldierDiary::load: the counters, the kill list and the mission IDs.</summary>
+    private static SoldierDiaryState ReadDiary(YamlMappingNode? diary)
+    {
+        if (diary is null) return SoldierDiaryState.Empty;
+        var counters = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var key in SoldierDiaryState.CounterKeys)
+        {
+            var value = SoldierDiaryState.IsFlag(key) ? Boolean(diary, key, false) ? 1 : 0 : Integer(diary, key, 0);
+            if (value != 0) counters[key] = value;
+        }
+        // BattleUnitKills(reader) leaves an absent field unset; the port takes the default constructor's value.
+        var kills = Maps(diary, "killList").Select(static kill => new SoldierKill(String(kill, "rank", ""), String(kill, "race", ""),
+            String(kill, "weapon", ""), String(kill, "weaponAmmo", ""), Integer(kill, "status", SoldierKill.StatusIgnoreMe),
+            Integer(kill, "faction", SoldierKill.FactionHostile), Integer(kill, "mission", 0), Integer(kill, "turn", 0),
+            Integer(kill, "side", 0), Integer(kill, "bodypart", 0))).ToArray();
+        var missions = diary.TryGet("missionIdList", out var node)
+            ? YamlValueReader.ReadSequence(node!, YamlValueReader.ReadInt32) : [];
+        return new SoldierDiaryState
+        {
+            Counters = new ReadOnlyDictionary<string, int>(counters),
+            Kills = Array.AsReadOnly(kills),
+            MissionIds = Array.AsReadOnly(missions.ToArray()),
+        };
+    }
+
+    /// <summary>MissionStatistics::load, as commendations read it.</summary>
+    private static MissionStatisticSnapshot ReadMissionStatistic(YamlMappingNode map) => new(Integer(map, "id", 0),
+        String(map, "markerName", ""), String(map, "region", ""), String(map, "country", ""), String(map, "type", ""),
+        String(map, "ufo", ""), Boolean(map, "success", false), Integer(map, "score", 0), Integer(map, "daylight", 0),
+        Boolean(map, "valiantCrux", false), Integer(map, "lootValue", 0));
 
     private static SoldierSnapshot ReadSoldier(YamlMappingNode map, string defaultSoldier) =>
         new(String(map, "type", defaultSoldier), Integer(map, "id", 0))
@@ -830,6 +867,7 @@ public static partial class OxceSaveAdapter
                 RequiredString(c, "commendationName"), String(c, "noun", "noNoun"), Integer(c, "decorationLevel", 0))).ToArray()),
             UfosShotDownTotal = diary is null ? 0 : Integer(diary, "ufosShotDownTotal", 0),
             UfosDamageTotal = diary is null ? 0 : Integer(diary, "ufosDamageTotal", 0),
+            Diary = ReadDiary(diary),
             DailyDogfightExperience = map.TryGet("dailyDogfightExperienceCache", out var cacheNode) &&
                 RequireMap(cacheNode!, "dogfight experience") is var cache
                 ? new(Integer(cache, "firing", 0), Integer(cache, "reactions", 0), Integer(cache, "bravery", 0))

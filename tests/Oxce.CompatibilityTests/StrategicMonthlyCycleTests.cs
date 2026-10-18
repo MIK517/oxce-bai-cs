@@ -52,7 +52,8 @@ public sealed class StrategicMonthlyCycleTests
         // Modal: time and every other command wait for the OK.
         Assert.Equal(CampaignState.MonthlyReportOpen, Assert.Single(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<CampaignActionBlocked>()).Reason);
         Assert.Equal(1, campaign.Capture().MonthsPassed);
-        Assert.Equal(new MonthlyReportAcknowledged(null), Assert.Single(campaign.Execute(new AcknowledgeMonthlyReport()).Events));
+        Assert.Equal([new MonthlyReportAcknowledged(null), new CampaignSaveRequested(CampaignSaveKind.Autosave)],
+            campaign.Execute(new AcknowledgeMonthlyReport()).Events);
         Assert.Null(campaign.GetQuery<ICampaignMonthlyReportQuery>()!.QueryMonthlyReport());
         AdvanceUnblocked(campaign, 3);
         // The report is not saved; a reload has none.
@@ -85,6 +86,73 @@ public sealed class StrategicMonthlyCycleTests
         if (anytime) Assert.Equal(0, trained.Improvement);
         else Assert.InRange(trained.Improvement, 50, 75);
         Assert.All(campaign.Capture().Bases[0].Soldiers.Skip(1), soldier => Assert.Equal(0, soldier.Personal!.Improvement));
+    }
+
+    private const string ServiceMedal = PsiLab + """
+
+        commendations:
+          - type: STR_MEDAL_SERVICE
+            criteria: {totalMonthlyService: [1, 2]}
+
+        """;
+
+    [Fact]
+    public void TheReportsOkAddsServiceAwardsCommendationsAndRequestsTheAutosave()
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], ServiceMedal);
+        var snapshot = CreateSnapshot(content, "Service").WithFacility("PSI_LAB") with { Time = MonthEnd };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(5));
+        Assert.Null(campaign.QuerySaveRefusal());
+        Assert.Single(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<MonthlyReportReady>());
+        // D2: the OK's effects would be lost by a save made under the report.
+        Assert.Equal(CampaignState.MonthlyReportOpen, campaign.QuerySaveRefusal());
+
+        var events = campaign.Execute(new AcknowledgeMonthlyReport()).Events;
+
+        var soldiers = campaign.Capture().Bases.SelectMany(static b => b.Soldiers).ToArray();
+        Assert.NotEmpty(soldiers);
+        // The logistics fixture's STR_MEDAL_ORIGINAL8_NAME has no criteria and is never awarded here (ADR 0036).
+        Assert.Equal<ICampaignEvent>([new MonthlyReportAcknowledged(null),
+            new SoldiersCommended([.. soldiers.Select(static s => new CommendationAward(s.Id, "STR_MEDAL_SERVICE", "noNoun", 0))]),
+            new PsiTrainingReminder(), new CampaignSaveRequested(CampaignSaveKind.Autosave)], events, new EventComparer());
+        Assert.All(soldiers, static soldier =>
+        {
+            Assert.Equal(1, soldier.Personal!.Diary.Counter("monthsService"));
+            Assert.Contains(new SoldierCommendation("STR_MEDAL_SERVICE", "noNoun", 0), soldier.Personal.Commendations);
+        });
+        Assert.Null(campaign.QuerySaveRefusal());
+        // The service and the commendation are saved and read back.
+        Reload(content, campaign, 5, "service.sav");
+    }
+
+    [Theory]
+    [InlineData(false, true, CampaignSaveKind.Autosave)]
+    [InlineData(false, false, null)]
+    [InlineData(true, false, CampaignSaveKind.Ironman)]
+    public void TheReportsOkRequestsAnIronmanSaveOrAnAutosave(bool ironman, bool autosave, CampaignSaveKind? kind)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], "defeatScore: -100000\n");
+        var snapshot = CreateSnapshot(content, "Save requests");
+        snapshot = snapshot with
+        {
+            Time = MonthEnd,
+            Identity = snapshot.Identity with { Ironman = ironman },
+            Options = snapshot.Options with { Autosave = autosave },
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(5));
+        campaign.Execute(new AdvanceCampaignTime(1));
+
+        var requests = campaign.Execute(new AcknowledgeMonthlyReport()).Events.OfType<CampaignSaveRequested>();
+
+        Assert.Equal(kind is { } expected ? [new CampaignSaveRequested(expected)] : [], requests);
+    }
+
+    private sealed class EventComparer : IEqualityComparer<ICampaignEvent>
+    {
+        public bool Equals(ICampaignEvent? x, ICampaignEvent? y) =>
+            x is SoldiersCommended left && y is SoldiersCommended right ? left.Awards.SequenceEqual(right.Awards) : object.Equals(x, y);
+
+        public int GetHashCode(ICampaignEvent obj) => 0;
     }
 
     [Fact]
@@ -201,6 +269,7 @@ public sealed class StrategicMonthlyCycleTests
     {
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], "cutscenes:\n  - type: loseGame\n");
         var snapshot = CreateSnapshot(content, "Bad months");
+        snapshot = snapshot with { Identity = snapshot.Identity with { Ironman = true } };
         var region = snapshot.Regions[0];
         // Last month and this month both rate below the threshold: X-COM nothing, the aliens 900 each month.
         snapshot = snapshot with
@@ -220,9 +289,12 @@ public sealed class StrategicMonthlyCycleTests
 
         Assert.Equal(1, report.GameOver);
         Assert.Equal("STR_YOU_HAVE_NOT_SUCCEEDED", report.CouncilText);
+        // The failed month gives no service or commendations; an ironman campaign saves after the cutscene.
         var acknowledged = campaign.Execute(new AcknowledgeMonthlyReport()).Events;
-        Assert.Equal([new MonthlyReportAcknowledged("loseGame"), new CampaignEnded(2)], acknowledged);
+        Assert.Equal([new MonthlyReportAcknowledged("loseGame"), new CampaignEnded(2), new CampaignSaveRequested(CampaignSaveKind.Ironman)],
+            acknowledged);
         Assert.Equal(2, campaign.Ending);
+        Assert.All(campaign.Capture().Bases.SelectMany(static b => b.Soldiers), static s => Assert.Equal(0, s.Personal!.Diary.Counter("monthsService")));
     }
 
     [Fact]

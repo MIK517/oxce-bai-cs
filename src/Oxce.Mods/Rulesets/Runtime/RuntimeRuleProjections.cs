@@ -437,7 +437,19 @@ public sealed record RuntimeSoldierTransformationRule(
     IReadOnlyDictionary<string, int> RequiredCommendations,
     IReadOnlyDictionary<string, IReadOnlyDictionary<string, short>> StatSets,
     IReadOnlyDictionary<string, ulong> Events);
-public sealed record RuntimeCommendationRule(IReadOnlyList<string> SoldierBonusTypes);
+/// <summary>
+/// RuleCommendations as SoldierDiary::manageCommendations reads it: <see cref="Criteria"/> in std::map (UTF-8 byte)
+/// order, the kill criteria's OR groups of AND criteria, the mission filters, and the research and soldier types.
+/// </summary>
+public sealed record RuntimeCommendationRule(IReadOnlyList<string> SoldierBonusTypes)
+{
+    public IReadOnlyList<KeyValuePair<string, IReadOnlyList<int>>> Criteria { get; init; } = [];
+    public IReadOnlyList<IReadOnlyList<PersonnelTactical.CommendationKillCriterion>> KillCriteria { get; init; } = [];
+    public IReadOnlyList<string> MissionMarkers { get; init; } = [];
+    public IReadOnlyList<string> MissionTypes { get; init; } = [];
+    public IReadOnlyList<string> Requires { get; init; } = [];
+    public IReadOnlyList<string> Units { get; init; } = [];
+}
 
 public sealed record RuntimeStartingFacility(
     RuleHandle<FacilityRuleFamily> Rule,
