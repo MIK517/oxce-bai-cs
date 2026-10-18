@@ -1,0 +1,691 @@
+# Phase 6 refusal inventory
+
+Generated for the Phase 6 closure (branch 6 S9, [plan D5](phase-6-campaign-cycle-plan.md#decisions)) from every
+reason string in `src/Oxce.Gameplay` (`return`, `Blocked`, constant and exception messages of at least twelve
+characters with a space). Each string is in one class; the classes and their owners are in
+[Phase 6 status](phase-6-status.md#refusal-inventory). Counts: hold 8, invariant 47, phase7 2, bound 236, action 42, restriction 112, input 217; 664 in all.
+
+## Modal holds and the ended campaign (reference behaviour: the windows and the game-over stop time and input)
+
+- "A base defense stops the clock until it is resolved." — `Campaigns/World/WorldCommandReasons.cs:36`
+- "A strategic event window is open." — `Campaigns/CampaignEvents.cs:38`
+- "Landing confirmations stop the clock until they are answered." — `Campaigns/World/WorldCommandReasons.cs:31`
+- "No monthly report is open." — `Campaigns/CampaignMonthly.cs:209`
+- "No strategic event window is open." — `Campaigns/CampaignEvents.cs:70`
+- "Open interception windows stop the clock until they are minimized." — `Campaigns/World/WorldCommandReasons.cs:29`
+- "The monthly report is open." — `Campaigns/CampaignMonthly.cs:71`
+- "This campaign has ended." — `Campaigns/CampaignState.cs:118`
+
+## Internal consistency checks (not refusals a campaign reaches: a stage, provider or registration the code itself guarantees)
+
+- "A shadow campaign disagreed with its original's preflight: {first}" — `Campaigns/CampaignState.cs:447`
+- "A shadow campaign must have the same transient registrations." — `Campaigns/CampaignCapabilities.cs:303` (+1)
+- "A shadow copy lost UFOs." — `Campaigns/World/CampaignWorld.cs:68`
+- "Alien mission wave changed after world preflight." — `Campaigns/World/CampaignWorldMissions.cs:335`
+- "An interception step reached an outcome its forecast did not stop: " — `Campaigns/World/CampaignWorldInterceptionOutcomes.cs:116`
+- "Arrival provider was not preflighted." — `Campaigns/CampaignLogistics.cs:606`
+- "Base detection changed after world preflight." — `Campaigns/World/CampaignWorldBaseDetection.cs:42`
+- "Command '{typeof(TCommand).Name}' has more than one handler." — `Campaigns/CampaignCapabilities.cs:126`
+- "Could not compile identity detection script." — `Campaigns/World/CampaignWorldDetectionScripts.cs:45`
+- "Could not compile identity price script." — `Campaigns/CampaignPriceScripts.cs:161`
+- "Country provider '{name}' was not preflighted." — `Campaigns/GeoscapeCountryQueries.cs:47`
+- "Craft shield stats changed after world preflight." — `Campaigns/World/CampaignWorldCrafts.cs:376`
+- "Craft sight range changed after world preflight." — `Campaigns/World/CampaignWorldAlienBases.cs:167`
+- "Craft speed changed after world preflight." — `Campaigns/World/CampaignWorldCrafts.cs:386` (+2)
+- "Craft was not found or is unresolved." — `Campaigns/CampaignPersonnel.cs:69` (+2)
+- "Deleted base follower speed changed after preflight." — `Campaigns/World/CampaignWorldAlienBaseCleanup.cs:264`
+- "Detection UFO provider was not preflighted." — `Campaigns/World/CampaignWorldDetectionBindings.cs:260`
+- "Detection armor link was not preflighted." — `Campaigns/World/WorldDetectionArmorLinks.cs:26`
+- "Detection armor provider was not preflighted." — `Campaigns/World/CampaignWorldDetectionUnitStats.cs:105`
+- "Detection craft provider was not preflighted." — `Campaigns/World/CampaignWorldDetectionBindings.cs:282`
+- "Detection craft rule provider was not preflighted." — `Campaigns/World/CampaignWorldDetectionBindings.cs:305`
+- "Detection damage query was not preflighted." — `Campaigns/World/CampaignWorldDetectionBindings.cs:76`
+- "Detection immutable rule receiver was not preflighted." — `Campaigns/World/WorldDetectionRuleQueries.cs:49`
+- "Detection inventory destination was not preflighted." — `Campaigns/World/CampaignWorldDetectionBindings.cs:116`
+- "Detection item provider was not preflighted." — `Campaigns/World/WorldDetectionItemQueries.cs:36`
+- "Detection provider receiver was not preflighted." — `Campaigns/World/CampaignWorldDetectionBindings.cs:213`
+- "Detection random damage was not preflighted." — `Campaigns/World/CampaignWorldDetectionBindings.cs:67`
+- "Detection script was not preflighted." — `Campaigns/World/CampaignWorldDetectionScripts.cs:146`
+- "Detection soldier provider was not preflighted." — `Campaigns/World/CampaignWorldDetectionUnitStats.cs:69`
+- "Detection text receiver was not preflighted." — `Campaigns/World/WorldDetectionTextQueries.cs:20`
+- "Mission site follower speed changed after world preflight." — `Campaigns/World/CampaignWorldSites.cs:350`
+- "Mission wave work changed after preflight." — `Campaigns/World/CampaignWorldMissions.cs:331`
+- "Price provider was not preflighted." — `Campaigns/CampaignPriceScripts.cs:266`
+- "Production queue was not found." — `Campaigns/CampaignResearchProduction.cs:322`
+- "Query '{typeof(TQuery).Name}' has more than one implementation." — `Campaigns/CampaignCapabilities.cs:226`
+- "Research diary capacity was not reserved before the transition." — `Campaigns/CampaignResearchDiary.cs:34`
+- "Research project was not found." — `Campaigns/CampaignResearchProduction.cs:273`
+- "Smoke receiver was not preflighted." — `Campaigns/World/CampaignWorldDetectionBindings.cs:147`
+- "Soldier template was not preflighted." — `Campaigns/SoldierGeneration.cs:145`
+- "Soldier was not found or is unresolved." — `Campaigns/CampaignPersonnel.cs:62` (+2)
+- "Soldier was not found." — `Campaigns/CampaignPersonnel.cs:32`
+- "Time script provider was not preflighted." — `Campaigns/CampaignTimeScriptValues.cs:20`
+- "UFO arrival changed after world preflight." — `Campaigns/World/CampaignWorldUfos.cs:272`
+- "UFO mission link changed after world preflight." — `Campaigns/World/CampaignWorldDetection.cs:393`
+- "UFO site follower speed changed after world preflight." — `Campaigns/World/CampaignWorldUfoSiteFollowers.cs:55`
+- "UFO takeoff changed after world preflight." — `Campaigns/World/CampaignWorldUfos.cs:599`
+- "Waypoint IDs changed after world preflight." — `Campaigns/World/CampaignWorldCrafts.cs:630`
+
+## Tactical and battle boundaries (Phase 7)
+
+- "A confirmed landing waits for its battle (Phase 7 tactical execution)." — `Campaigns/World/WorldCommandReasons.cs:33`
+- "Crashed UFO battlescape transitions require tactical simulation." — `Campaigns/World/CampaignWorldUfos.cs:89`
+
+## Port work and range bounds (deterministic limits on forecast work, identities and values the reference leaves unbounded)
+
+- "A globe coordinate is outside the supported range." — `Campaigns/World/WorldGeometry.cs:47`
+- "A globe distance is outside the supported range." — `Campaigns/World/WorldGeometry.cs:73`
+- "A possible soldier production template bonus exceeds the counter range." — `Campaigns/CampaignProductionSoldierPreflight.cs:59`
+- "A strategic event payload spawns more soldiers than supported." — `Campaigns/CampaignEvents.cs:342`
+- "Aggressive retaliation base selection exceeds the supported work limit." — `Campaigns/World/CampaignWorldUfos.cs:181`
+- "Airborne craft fuel or takeoff state is out of range." — `Campaigns/World/CampaignWorldCrafts.cs:249`
+- "Alien base activity and sight checks exceed the supported work limit." — `Campaigns/World/CampaignWorldAlienBases.cs:29`
+- "Alien base birth identity exceeds its saved sequence." — `Campaigns/World/CampaignWorld.cs:449`
+- "Alien base generation counter is exhausted." — `Campaigns/World/CampaignWorldAlienBaseGeneration.cs:14`
+- "Alien base hunting initial timer exceeds the supported range." — `Campaigns/World/CampaignWorldAlienBaseHunting.cs:185`
+- "Alien base hunting mission fields exceed the supported range." — `Campaigns/World/CampaignWorldAlienBaseHunting.cs:133`
+- "Alien base hunting timer exceeds the supported range." — `Campaigns/World/CampaignWorldAlienBaseHunting.cs:35`
+- "Alien base mission initial timer exceeds the supported range." — `Campaigns/World/CampaignWorldAlienBaseGeneration.cs:20`
+- "Alien base mission weights exceed the supported range." — `Campaigns/World/CampaignWorldAlienBases.cs:66` (+1)
+- "Alien base monthly processing exceeds the supported work limit." — `Campaigns/World/CampaignWorldAlienBaseMonthly.cs:20`
+- "Alien containment usage for prison type {prisonType} exceeds the supported range." — `Campaigns/CampaignState.cs:772`
+- "Alien mission IDs or population exceed the supported limit." — `Campaigns/World/CampaignWorldAlienBases.cs:90` (+2)
+- "Alien mission activity forecasts exceed the supported work limit." — `Campaigns/World/CampaignWorldDetection.cs:147` (+2)
+- "Alien mission land selection exceeds the supported work limit." — `Campaigns/World/CampaignWorldMissions.cs:126` (+2)
+- "Alien mission source base lookups exceed the supported work limit." — `Campaigns/World/CampaignWorldMissions.cs:66`
+- "Alien mission spawn geometry exceeds the supported work limit." — `Campaigns/World/CampaignWorldMissions.cs:130` (+2)
+- "Alien race evolution reaches the reference 100-transition limit." — `Campaigns/World/CampaignWorldAlienBaseMonthly.cs:19`
+- "Arc research diary exceeds its supported population or identity range." — `Campaigns/World/CampaignWorldArcScripts.cs:146`
+- "Arc research exceeds the supported automatic-topic limit." — `Campaigns/World/CampaignWorldArcScripts.cs:136`
+- "Arc research score exceeds the supported range." — `Campaigns/World/CampaignWorldArcScripts.cs:144`
+- "Arc scripts exceed the supported reference limit." — `Campaigns/World/CampaignWorldArcScripts.cs:84`
+- "Arc scripts exceed the supported work limit." — `Campaigns/World/CampaignWorldArcScripts.cs:31` (+1)
+- "Arrival exceeds the item quantity range." — `Campaigns/CampaignLogistics.cs:529`
+- "Arrival exceeds the personnel quantity range." — `Campaigns/CampaignLogistics.cs:542`
+- "Arrival item reuse exceeds the supported work limit." — `Campaigns/CampaignLogistics.cs:541`
+- "Arrival refuelling exceeds the item quantity range." — `Campaigns/CampaignLogistics.cs:557`
+- "Assigned production exceeds workshop capacity." — `Campaigns/CampaignState.cs:794`
+- "Assigned scientists exceed laboratory capacity." — `Campaigns/CampaignState.cs:792`
+- "Base accounting exceeds the supported range." — `Campaigns/CampaignBasePlacement.cs:113`
+- "Base coordinates are outside their supported range." — `Campaigns/CampaignBasePlacement.cs:67`
+- "Base detection inputs are outside the supported range." — `Campaigns/World/CampaignWorldAlienBaseHunting.cs:260` (+1)
+- "Base identity range is exhausted." — `Campaigns/CampaignBasePlacement.cs:108`
+- "Base objective IDs are exhausted or collide." — `Campaigns/World/CampaignWorldObjectiveBases.cs:133`
+- "Base objective birth sequence is exhausted." — `Campaigns/World/CampaignWorldObjectiveBases.cs:48`
+- "Base objective creation exceeds the supported work limit." — `Campaigns/World/CampaignWorldObjectiveBases.cs:34` (+6)
+- "Base objective patrol discovery exceeds the supported work limit." — `Campaigns/World/CampaignWorldObjectiveBases.cs:281`
+- "Base objective population exceeds the supported limit." — `Campaigns/World/CampaignWorldObjectiveBases.cs:46`
+- "Base objective search exceeded its finite bound." — `Campaigns/World/WorldObjectiveBaseSpawn.cs:69`
+- "Base personnel including incoming transfers exceed the supported range." — `Campaigns/CampaignState.cs:764`
+- "Conditional UFO escort arrival exceeds the supported work limit." — `Campaigns/World/CampaignWorldConditionalLeaderFlight.cs:34`
+- "Construction reduction exceeds the supported range." — `Campaigns/CampaignFacilities.cs:88`
+- "Country scripts exceed the supported event execution limit." — `Campaigns/CampaignMonthly.cs:311`
+- "Country scripts exceed the supported work limit." — `Campaigns/CampaignMonthly.cs:334`
+- "Craft flight fuel checks exceed the supported work limit." — `Campaigns/World/CampaignWorldFlightFuel.cs:19`
+- "Craft flight fuel refunds exceed the supported stock range." — `Campaigns/World/CampaignWorldFlightFuel.cs:127`
+- "Craft flight fuel refunds exceed the supported work limit." — `Campaigns/World/CampaignWorldFlightFuel.cs:60` (+3)
+- "Craft flight fuel values exceed the supported range." — `Campaigns/World/CampaignWorldFlightFuel.cs:7`
+- "Craft fuel limit is outside the supported range." — `Campaigns/World/WorldFlight.cs:23`
+- "Craft geoscape shield stats exceed the supported range." — `Campaigns/World/CampaignWorldCrafts.cs:310`
+- "Craft hunter attraction exceeds the supported range." — `Campaigns/World/CampaignWorldHunting.cs:113`
+- "Craft identity range is exhausted." — `Campaigns/CampaignLogistics.cs:238`
+- "Craft inventory must be resolved before capacity-dependent logistics actions." — `Campaigns/CampaignLogistics.cs:437`
+- "Craft logistics values exceed their supported range." — `Campaigns/CampaignEntityValidation.cs:32`
+- "Craft production ID forecasts exceed the supported population limit." — `Campaigns/CampaignProductionForecast.cs:130`
+- "Craft production ID forecasts exceed the supported work limit." — `Campaigns/CampaignProductionForecast.cs:100` (+1)
+- "Craft production exceeds the supported population limit." — `Campaigns/CampaignProductionCraftPreflight.cs:44`
+- "Craft production exceeds the supported work limit." — `Campaigns/CampaignProductionCraftPreflight.cs:41` (+9)
+- "Craft production exhausts the craft identity range." — `Campaigns/CampaignProductionCraftPreflight.cs:61` (+2)
+- "Craft refuelling stock exceeds the supported range." — `Campaigns/World/CampaignWorldHuntingCrafts.cs:182`
+- "Craft service capacity exceeds the supported range." — `Campaigns/CampaignReadinessQueries.cs:67` (+5)
+- "Craft service rate exceeds the supported range." — `Campaigns/CampaignServicing.cs:38` (+1)
+- "Craft speed exceeds the supported range." — `Campaigns/World/WorldCommandReasons.cs:15`
+- "Craft target removal exceeds the supported work limit." — `Campaigns/CampaignProductionForecast.cs:31` (+2)
+- "Craft vehicle capacity is full." — `Campaigns/CampaignPersonnel.cs:246`
+- "Craft vehicle identity range is exhausted." — `Campaigns/CampaignPersonnel.cs:252`
+- "Craft weapon bonuses exceed the supported capacity range." — `Campaigns/CampaignPersonnel.cs:77` (+2)
+- "Craft weapon service values exceed the supported range." — `Campaigns/CampaignServicing.cs:47` (+1)
+- "Craft weapon sight bonuses exceed the supported range." — `Campaigns/World/CampaignWorldAlienBases.cs:124`
+- "Craft weapon slot is outside its range." — `Campaigns/CampaignPersonnel.cs:162`
+- "Destroyed UFO cleanup exceeds the supported work limit." — `Campaigns/World/CampaignWorldUfos.cs:60` (+1)
+- "Destroyed UFO cleanup with new waves exceeds the supported work limit." — `Campaigns/World/CampaignWorldMissions.cs:221`
+- "Destroyed UFO count exceeds its mission's live count." — `Campaigns/World/CampaignWorldUfos.cs:81`
+- "Destroyed UFO follower cleanup exceeds the supported work limit." — `Campaigns/World/CampaignWorldUfos.cs:67` (+1)
+- "Detection Mod receiver forecast exceeds the supported work limit." — `Campaigns/World/WorldDetectionModSafety.cs:13`
+- "Detection UFO damage maximum exceeds the supported range." — `Campaigns/World/CampaignWorldDetectionScripts.cs:234`
+- "Detection UFO damage percentage exceeds the supported range." — `Campaigns/World/CampaignWorldDetectionScripts.cs:239`
+- "Detection UFO statistics exceed the supported range." — `Campaigns/World/CampaignWorldDetectionScripts.cs:223` (+1)
+- "Detection consumed-field forecast exceeds the supported work limit." — `Campaigns/World/CampaignWorldDetectionScripts.cs:79`
+- "Detection craft damage percentage exceeds the supported range." — `Campaigns/World/CampaignWorldDetectionScripts.cs:301`
+- "Detection craft statistics exceed the supported range." — `Campaigns/World/CampaignWorldDetectionScripts.cs:294`
+- "Detection damage query exceeds the supported integer range." — `Campaigns/World/WorldDetectionDamageQueries.cs:107`
+- "Detection damage query forecast exceeds the supported work limit." — `Campaigns/World/WorldDetectionDamageQueries.cs:77` (+2)
+- "Detection inventory cost forecast exceeds the supported work limit." — `Campaigns/World/WorldDetectionInventoryCosts.cs:32` (+1)
+- "Detection numeric safety forecast exceeds the supported work limit." — `Campaigns/World/WorldDetectionNumericSafety.cs:24` (+1)
+- "Detection script exceeds the supported event execution limit." — `Campaigns/World/CampaignWorldDetectionScripts.cs:50`
+- "Detection script exceeds the supported instruction limit." — `Campaigns/World/WorldDetectionScriptSafety.cs:16` (+2)
+- "Detection script work exceeds the supported half-hour limit." — `Campaigns/World/CampaignWorldDetectionScripts.cs:215`
+- "Direct mission site creation exceeds the supported work limit." — `Campaigns/World/CampaignWorldSiteResearch.cs:239` (+13)
+- "Direct mission site duration is outside the supported range." — `Campaigns/World/CampaignWorldSiteResearch.cs:291` (+1)
+- "Earlier mission scripts can exhaust a required strategy region table." — `Campaigns/World/CampaignWorldMissionScripts.cs:321`
+- "Endless infiltration restart timer exceeds the supported range." — `Campaigns/World/CampaignWorldInfiltration.cs:28`
+- "Event scripts exceed the supported work limit." — `Campaigns/World/CampaignWorldEventScripts.cs:28` (+1)
+- "Fallback production capacity exceeds the supported range." — `Campaigns/CampaignProductionStaffingForecast.cs:24`
+- "Fallback production progress forecasts exceed the supported range." — `Campaigns/CampaignProductionForecast.cs:119`
+- "Fallback production staffing exceeds the supported range." — `Campaigns/CampaignProductionStaffingForecast.cs:37`
+- "Ignored UFO contacts exceed the supported limit." — `Campaigns/World/WorldCommandReasons.cs:39`
+- "Immediate generated mission fields exceed the supported range." — `Campaigns/World/CampaignWorldGeneratedWaves.cs:56`
+- "Immediate generated site areas exceed the supported limit." — `Campaigns/World/CampaignWorldGeneratedWaves.cs:104`
+- "Immediate mission waves exceed the supported work limit." — `Campaigns/World/CampaignWorldMissions.cs:899`
+- "Incoming quantity for item '{transfer.RuleId}' exceeds the supported range." — `Campaigns/CampaignState.cs:760`
+- "Infiltration country search exceeded its finite bound." — `Campaigns/World/WorldInfiltration.cs:73`
+- "Infiltration country search exceeds the supported work limit." — `Campaigns/World/CampaignWorldInfiltration.cs:34` (+3)
+- "Lost craft count exceeds the supported range." — `Campaigns/World/CampaignWorldCraftLosses.cs:48`
+- "Mission counter forecasts exceed the supported range." — `Campaigns/World/CampaignWorldMissionInterruption.cs:82`
+- "Mission operation base IDs are exhausted or collide." — `Campaigns/World/CampaignWorldOperationBaseCreation.cs:81`
+- "Mission operation base activity exceeds the supported range." — `Campaigns/World/CampaignWorldOperationBaseCreation.cs:86` (+1)
+- "Mission operation base birth sequence is exhausted." — `Campaigns/World/CampaignWorldOperationBaseCreation.cs:19`
+- "Mission operation base creation exceeds the supported work limit." — `Campaigns/World/CampaignWorldOperationBaseCreation.cs:52` (+1)
+- "Mission operation base population exceeds the supported limit." — `Campaigns/World/CampaignWorldOperationBaseCreation.cs:20`
+- "Mission research exceeds the supported discovery work limit." — `Campaigns/CampaignResearchScorePreflight.cs:13` (+6)
+- "Mission research score exceeds the supported range." — `Campaigns/CampaignResearchScorePreflight.cs:35`
+- "Mission script base targeting exceeds the supported work limit." — `Campaigns/World/CampaignWorldMissionBaseTargets.cs:11`
+- "Mission script condition is outside the supported range." — `Campaigns/World/CampaignWorldMissionScripts.cs:155`
+- "Mission script delay exceeds the supported range." — `Campaigns/World/CampaignWorldMissionScripts.cs:171`
+- "Mission script run counter is exhausted." — `Campaigns/World/CampaignWorldMissionScripts.cs:295`
+- "Mission scripts exceed the supported work limit." — `Campaigns/World/CampaignWorldMissionScripts.cs:39` (+1)
+- "Mission site UFO follower repair exceeds the supported work limit." — `Campaigns/World/CampaignWorldSites.cs:278`
+- "Mission site UFO reactivation speed exceeds the supported range." — `Campaigns/World/CampaignWorldSites.cs:112`
+- "Mission site activity forecasts exceed the supported work limit." — `Campaigns/World/CampaignWorldSiteSpawning.cs:298` (+3)
+- "Mission site custom counter exceeds the supported range." — `Campaigns/CampaignCustomCounters.cs:90`
+- "Mission site despawn checks exceed the supported work limit." — `Campaigns/World/CampaignWorldSites.cs:118`
+- "Mission site discovery postponement exceeds the supported timer range." — `Campaigns/World/CampaignWorldSites.cs:46`
+- "Mission site follower lookups exceed the supported work limit." — `Campaigns/World/CampaignWorldSites.cs:292`
+- "Mission site marker IDs are exhausted or collide with a saved target." — `Campaigns/World/CampaignWorldSiteSpawning.cs:197` (+1)
+- "Mission site marker forecasts exceed the supported work limit." — `Campaigns/World/CampaignWorldSites.cs:209` (+4)
+- "Mission site research UFO link checks exceed the supported work limit." — `Campaigns/World/CampaignWorldSiteResearch.cs:323`
+- "Mission site research item stocks exceed the supported range." — `Campaigns/World/CampaignWorldSiteResearch.cs:93`
+- "New UFO escort movement exceeds the supported work limit." — `Campaigns/World/CampaignWorldMissions.cs:210`
+- "New UFO escort origin forecasts exceed the supported work limit." — `Campaigns/World/CampaignWorldNewbornEscortOrigins.cs:7`
+- "New UFO escort selection exceeds the supported work limit." — `Campaigns/World/CampaignWorldMissions.cs:117` (+5)
+- "New UFO retargeting exceeds the supported work limit." — `Campaigns/CampaignProductionPopulationForecast.cs:11` (+1)
+- "New base hunting region forecasts exceed the supported work limit." — `Campaigns/World/WorldGenerationRegions.cs:24` (+1)
+- "New base objective hunting timer exceeds the supported range." — `Campaigns/World/CampaignWorldObjectiveBases.cs:175`
+- "Operation-base search exceeded its finite bound." — `Campaigns/World/WorldOperationBaseSpawn.cs:30`
+- "Order accounting exceeds the supported range." — `Campaigns/CampaignLogistics.cs:214`
+- "Order exceeds the bounded transfer count." — `Campaigns/CampaignLogistics.cs:225`
+- "Order exceeds the reference 32-bit transaction range." — `Campaigns/CampaignLogistics.cs:194`
+- "Produced craft service values exceed the supported range." — `Campaigns/CampaignProductionCraftPreflight.cs:24` (+1)
+- "Production accounting exceeds the supported range." — `Campaigns/CampaignProductionStockForecast.cs:305` (+5)
+- "Production accounting exceeds the supported work limit." — `Campaigns/CampaignResearchProduction.cs:554`
+- "Production arrivals exceed the supported quantity range." — `Campaigns/CampaignProductionStockForecast.cs:235` (+1)
+- "Production arrivals exceed the supported work limit." — `Campaigns/CampaignProductionPersonnelPreflight.cs:12` (+3)
+- "Production arrivals exhaust the transfer identity range." — `Campaigns/CampaignProductionPersonnelPreflight.cs:50` (+1)
+- "Production captive populations exceed the supported range." — `Campaigns/CampaignProductionStockForecast.cs:284`
+- "Production country activity forecasts exceed the supported work limit." — `Campaigns/World/CampaignWorldCountryActivity.cs:14` (+1)
+- "Production country alien activity exceeds the supported range." — `Campaigns/World/CampaignWorldCountryActivity.cs:38`
+- "Production craft unload quantities exceed the supported range." — `Campaigns/CampaignProductionStockForecast.cs:190`
+- "Production craft unload stocks exceed the supported range." — `Campaigns/CampaignProductionStockForecast.cs:195`
+- "Production outputs exceed the supported stock range." — `Campaigns/CampaignProductionStockForecast.cs:146` (+1)
+- "Production personnel arrivals exceed the supported population limit." — `Campaigns/CampaignProductionPersonnelPreflight.cs:48`
+- "Production personnel exceed the supported population range." — `Campaigns/CampaignResearchProduction.cs:573`
+- "Production price days exceed the supported range." — `Campaigns/CampaignProductionStockForecast.cs:293` (+1)
+- "Production price forecasts exceed the supported work limit." — `Campaigns/CampaignResearchProduction.cs:566`
+- "Production price research forecasts exceed the supported work limit." — `Campaigns/CampaignPriceScripts.cs:283` (+2)
+- "Production progress exceeds the supported range." — `Campaigns/CampaignProductionStaffingForecast.cs:47` (+1)
+- "Production staffing exceeds the supported work limit." — `Campaigns/CampaignProductionStaffingForecast.cs:13`
+- "Quantity exceeds the legal limit." — `Campaigns/CampaignLogistics.cs:171`
+- "Random production history exceeds the supported range." — `Campaigns/CampaignProductionHistoryPreflight.cs:32`
+- "Random production history exceeds the supported work limit." — `Campaigns/CampaignProductionHistoryPreflight.cs:13` (+3)
+- "Random production weights exceed the supported range." — `Campaigns/CampaignResearchProduction.cs:454`
+- "Removing this weapon would exceed craft capacity." — `Campaigns/CampaignPersonnel.cs:197`
+- "Research and production scores exceed the supported range." — `Campaigns/CampaignResearchProduction.cs:545` (+3)
+- "Research arrivals exceed the supported stock range." — `Campaigns/World/CampaignWorldHuntingInputs.cs:149` (+1)
+- "Research cost exceeds the supported range." — `Campaigns/CampaignResearchProduction.cs:296`
+- "Research custom counters exceed the supported range." — `Campaigns/CampaignResearchCounterPreflight.cs:24` (+1)
+- "Research custom counters exceed the supported work limit." — `Campaigns/CampaignResearchCounterPreflight.cs:25` (+1)
+- "Research diary exceeds the supported population limit." — `Campaigns/CampaignResearchDiary.cs:105`
+- "Research diary forecasts exceed the supported work limit." — `Campaigns/CampaignResearchDiary.cs:61` (+6)
+- "Research diary identity exceeds its saved sequence." — `Campaigns/CampaignResearchDiary.cs:124`
+- "Research diary identity sequence is exhausted." — `Campaigns/CampaignResearchDiary.cs:118`
+- "Research progress exceeds the supported range." — `Campaigns/CampaignResearchProduction.cs:490`
+- "Research recovery exceeds the supported work limit." — `Campaigns/CampaignResearchRecovery.cs:52` (+2)
+- "Research refunds exceed the supported stock range." — `Campaigns/CampaignResearchRecovery.cs:37` (+2)
+- "Research score forecasts exceed the supported work limit." — `Campaigns/CampaignResearchScorePreflight.cs:56` (+4)
+- "Retaliation mission cleanup exceeds the supported work limit." — `Campaigns/World/CampaignWorldMissions.cs:241`
+- "Retaliation target selection exceeds the supported work limit." — `Campaigns/World/CampaignWorldRetaliationSpawning.cs:23`
+- "Returned armor exceeds the supported stock range." — `Campaigns/CampaignTransformations.cs:98`
+- "Sale inventory exceeds the supported quantity range." — `Campaigns/CampaignLogistics.cs:69`
+- "Sale quantity exceeds available inventory." — `Campaigns/CampaignSales.cs:114`
+- "Sale refunds exceed the item quantity range." — `Campaigns/CampaignSales.cs:63`
+- "Scheduled event identity exceeds its generation history." — `Campaigns/World/CampaignWorldEvents.cs:89`
+- "Sell or transfer enough items to bring stores within capacity." — `Campaigns/CampaignSales.cs:66`
+- "Site mission location history exceeds the supported limit." — `Campaigns/World/CampaignWorldMissionScripts.cs:178`
+- "Soldier bonus generation exceeds the bounded command workload." — `Campaigns/CampaignLogistics.cs:252`
+- "Soldier commendations exceed the supported range." — `Campaigns/CampaignEntityValidation.cs:14`
+- "Soldier identity range is exhausted." — `Campaigns/CampaignLogistics.cs:231`
+- "Soldier look weights exceed the random range." — `Campaigns/SoldierGeneration.cs:66`
+- "Soldier nationality weights exceed the random range." — `Campaigns/SoldierGeneration.cs:62`
+- "Soldier production exceeds the supported population limit." — `Campaigns/CampaignProductionSoldierPreflight.cs:85`
+- "Soldier production exceeds the supported work limit." — `Campaigns/CampaignProductionSoldierPreflight.cs:19` (+9)
+- "Soldier production exhausts the soldier identity range." — `Campaigns/CampaignProductionSoldierPreflight.cs:28` (+1)
+- "Soldier production template weights exceed the supported range." — `Campaigns/CampaignProductionSoldierPreflight.cs:56`
+- "Soldier transformation history exceeds the entry limit." — `Campaigns/CampaignEntityValidation.cs:16`
+- "Storage quantity exceeds the reference integer range." — `Campaigns/StrategicLogisticsMath.cs:13`
+- "Strategic event population or generation count exceeds the supported range." — `Campaigns/World/CampaignWorldEvents.cs:15`
+- "Strategic event timer exceeds the supported range." — `Campaigns/World/CampaignWorldEvents.cs:14` (+1)
+- "Strategic event weights exceed the supported range." — `Campaigns/CampaignResearchProduction.cs:422` (+2)
+- "Strategic script weights exceed the supported range." — `Campaigns/World/CampaignWorldArcScripts.cs:111` (+3)
+- "The craft carries too many items." — `Campaigns/World/WorldCommandReasons.cs:17`
+- "The logistics catalog exceeds the bounded row limit." — `Campaigns/CampaignLogistics.cs:107`
+- "Transfer arrivals exceed the supported stock range." — `Campaigns/World/CampaignWorldHuntingInputs.cs:137`
+- "Transfer hours would overflow." — `Campaigns/CampaignState.cs:721`
+- "Transfer identity range is exhausted." — `Campaigns/CampaignLogistics.cs:227` (+1)
+- "Transformation bonuses exceed the supported range." — `Campaigns/CampaignTransformations.cs:92`
+- "Transformation event weights exceed the supported random range." — `Campaigns/CampaignTransformations.cs:28`
+- "Transformation history exceeds the supported range." — `Campaigns/CampaignTransformations.cs:88`
+- "Transformation identity range is exhausted." — `Campaigns/CampaignTransformations.cs:61` (+1)
+- "UFO alien activity exceeds the supported range." — `Campaigns/World/CampaignWorldDetection.cs:358` (+5)
+- "UFO arrival follower checks exceed the supported work limit." — `Campaigns/World/CampaignWorldUfos.cs:339`
+- "UFO contact marker IDs are exhausted or collide with a saved UFO." — `Campaigns/World/CampaignWorldDetection.cs:51` (+2)
+- "UFO escort movement exceeds the supported work limit." — `Campaigns/World/CampaignWorldHunting.cs:53`
+- "UFO escort speed exceeds the supported range." — `Campaigns/World/CampaignWorldMissions.cs:581` (+1)
+- "UFO hunt speed exceeds the supported range." — `Campaigns/World/CampaignWorldHunting.cs:129` (+1)
+- "UFO hunting stats exceed the supported range." — `Campaigns/World/CampaignWorldConditionalLeaderFlight.cs:20` (+7)
+- "UFO initial trajectory speed exceeds the supported range." — `Campaigns/World/CampaignWorldNewbornHunting.cs:60`
+- "UFO landing marker IDs are exhausted or collide with a saved UFO." — `Campaigns/World/CampaignWorldDetection.cs:335`
+- "UFO mission site duration is outside the supported range." — `Campaigns/World/CampaignWorldUfoSites.cs:113`
+- "UFO operation-base lookup exceeds the supported work limit." — `Campaigns/World/CampaignWorldUfos.cs:171`
+- "UFO retargeting exceeds the supported work limit." — `Campaigns/CampaignProductionStockForecast.cs:26` (+49)
+- "UFO retargeting with generated missions exceeds the supported work limit." — `Campaigns/World/CampaignWorldAlienBases.cs:110`
+- "UFO shield arithmetic exceeds the supported range." — `Campaigns/World/CampaignWorldUfos.cs:120` (+1)
+- "UFO site conversion exceeds the supported work limit." — `Campaigns/World/CampaignWorldUfoSiteFollowers.cs:31` (+2)
+- "UFO takeoff target lookup exceeds the supported work limit." — `Campaigns/World/CampaignWorldUfos.cs:587`
+- "UFO unique IDs are exhausted or collide with a saved UFO." — `Campaigns/World/CampaignWorldMissions.cs:233`
+- "UFO waypoint land selection exceeds the supported work limit." — `Campaigns/World/CampaignWorldConditionalLeaderFlight.cs:41` (+1)
+- "Vehicle dimensions exceed their supported range." — `Campaigns/CampaignEntityValidation.cs:46`
+- "Waypoint IDs are exhausted or collide with a saved waypoint." — `Campaigns/World/WorldCommandReasons.cs:21`
+- "Weighted option totals exceed the supported range." — `Campaigns/World/WorldWeightedOptions.cs:88`
+- "World UFO population exceeds the supported limit." — `Campaigns/World/CampaignWorldMissions.cs:232`
+- "World mission site population exceeds the supported limit." — `Campaigns/World/CampaignWorldSiteSpawning.cs:156` (+1)
+- "Wound recovery exceeds its finite range." — `Campaigns/SoldierReadiness.cs:36`
+
+## Player command refusals the reference also makes (its states disable or refuse the action)
+
+- "A craft can return only to its own base; use a transfer to change bases." — `Campaigns/World/WorldCommandReasons.cs:26`
+- "A transfer needs two different bases." — `Campaigns/CampaignLogistics.cs:40`
+- "A wing has one to four distinct craft." — `Campaigns/World/WorldCommandReasons.cs:20`
+- "Access lift is in use." — `Campaigns/CampaignFacilities.cs:54`
+- "Access lift removal requires base abandonment." — `Campaigns/CampaignFacilities.cs:111`
+- "Base facilities overlap." — `Campaigns/CampaignState.cs:809`
+- "Cannot spawn mission site, invalid spawn zone." — `Campaigns/World/CampaignWorldSiteScripts.cs:106` (+1)
+- "Craft maximum fuel cannot be negative." — `Campaigns/CraftLogistics.cs:335` (+1)
+- "Craft movement requires a positive maximum speed." — `Campaigns/World/WorldFlight.cs:38`
+- "Dismantling remainder facilities do not fit the vacated area." — `Campaigns/CampaignFacilities.cs:128`
+- "Facility conflicts with another base function." — `Campaigns/CampaignFacilities.cs:171`
+- "Insufficient facility stock." — `Campaigns/CampaignFacilities.cs:260`
+- "Maximum base count must be positive." — `Campaigns/CampaignState.cs:275` (+1)
+- "Maximum facility count reached." — `Campaigns/CampaignFacilities.cs:42`
+- "Maximum number of bases reached." — `Campaigns/CampaignBasePlacement.cs:61`
+- "No facility at that position." — `Campaigns/CampaignFacilities.cs:107`
+- "No starting-base template is available for {request.Difficulty}." — `Campaigns/CampaignFactory.cs:72`
+- "Place the starting base before using logistics." — `Campaigns/CampaignLogistics.cs:38`
+- "Place the starting base first." — `Campaigns/CampaignBasePlacement.cs:60` (+1)
+- "Production does not support autosell." — `Campaigns/CampaignResearchProduction.cs:363`
+- "Production is hidden." — `Campaigns/CampaignResearchProduction.cs:432`
+- "Required arc research '{id}' does not exist." — `Campaigns/CampaignResearchProduction.cs:102`
+- "Required armor is not in stores." — `Campaigns/CampaignPersonnel.cs:110`
+- "Required base function is in use." — `Campaigns/CampaignFacilities.cs:175`
+- "Required base functions are missing." — `Campaigns/CampaignLogistics.cs:442`
+- "Required base functions are unavailable." — `Campaigns/CampaignFacilities.cs:40` (+3)
+- "Required commendation is missing." — `Campaigns/CampaignTransformations.cs:45`
+- "Required country has signed an alien pact." — `Campaigns/CampaignLogistics.cs:444`
+- "Required craft weapon is not in stores." — `Campaigns/CampaignPersonnel.cs:180`
+- "Required event '{candidate.Id}' does not exist." — `Campaigns/World/WorldEventScriptSelection.cs:24`
+- "Required event '{choice.Id}' does not exist." — `Campaigns/World/CampaignWorldEventScripts.cs:89`
+- "Required purchase research is not complete." — `Campaigns/CampaignLogistics.cs:441`
+- "Required research is incomplete." — `Campaigns/CampaignResearchProduction.cs:434`
+- "Required research is not complete." — `Campaigns/CampaignBasePlacement.cs:62` (+4)
+- "Required research item is unavailable." — `Campaigns/CampaignResearchProduction.cs:290` (+1)
+- "Required vehicle ammunition is not in stores." — `Campaigns/CampaignPersonnel.cs:268`
+- "Required vehicle is not in stores." — `Campaigns/CampaignPersonnel.cs:247`
+- "Research dependencies are incomplete." — `Campaigns/CampaignResearchProduction.cs:688`
+- "Research is already active." — `Campaigns/CampaignResearchProduction.cs:420`
+- "Research is already complete." — `Campaigns/CampaignResearchProduction.cs:694`
+- "Research requirements are incomplete." — `Campaigns/CampaignResearchProduction.cs:690`
+- "The starting base is already placed." — `Campaigns/CampaignState.cs:550`
+
+## Named restrictions: same-tick interactions the forecasts do not resolve (R3-R6 and their kind)
+
+- "A globe target reference has an unsupported kind." — `Campaigns/World/CampaignWorld.cs:580`
+- "A new campaign requires at least one geographic country." — `Campaigns/CampaignFactory.cs:54`
+- "A strategic event payload requires a base." — `Campaigns/CampaignEvents.cs:128`
+- "A world mission requires at least one alien race." — `Campaigns/World/CampaignWorld.cs:393`
+- "A world mission requires at least one region." — `Campaigns/World/CampaignWorld.cs:383`
+- "A {what} has an unsupported kind." — `Campaigns/World/CampaignWorld.cs:591`
+- "Airborne craft coordinates require a placed base and normalized positions." — `Campaigns/World/CampaignWorldHuntingCrafts.cs:141`
+- "Alien base generation requires a valid mission objective, operation and first wave." — `Campaigns/World/CampaignWorldAlienBaseGeneration.cs:16`
+- "Alien base hunting can create a mission; immediate hunting mission simulation is unavailable." — `Campaigns/World/CampaignWorldAlienBaseHunting.cs:7`
+- "Alien base hunting requires a valid mission and first wave." — `Campaigns/World/CampaignWorldAlienBaseHunting.cs:181`
+- "Alien base hunting source identity is ambiguous." — `Campaigns/World/CampaignWorldAlienBaseHunting.cs:212`
+- "Alien base self-destruction cannot resolve an ambiguous marker identity." — `Campaigns/World/CampaignWorldAlienBaseCleanup.cs:28`
+- "Alien base self-destruction requires craft escort speed alternatives for uncertain research." — `Campaigns/World/CampaignWorldAlienBaseCleanup.cs:190` (+1)
+- "Alien base self-destruction requires craft speed alternatives for uncertain research." — `Campaigns/World/CampaignWorldAlienBaseCleanup.cs:103`
+- "Alien base self-destruction requires linked-target alternatives for uncertain research." — `Campaigns/World/CampaignWorldAlienBaseCleanup.cs:83`
+- "Alien mission wave spawning requires world simulation." — `Campaigns/World/CampaignWorldDetection.cs:162` (+1)
+- "An order must contain a bounded non-empty selection." — `Campaigns/CampaignLogistics.cs:154`
+- "Arc research requires a headquarters base." — `Campaigns/CampaignResearchProduction.cs:101`
+- "Auto-patrol hunting coordinates require a placed base and normalized positions." — `Campaigns/World/CampaignWorldHuntingCrafts.cs:189`
+- "Base objective coordinates require an unsupported latitude domain." — `Campaigns/World/CampaignWorldObjectiveBases.cs:61`
+- "Base objective uses an unsupported marker namespace." — `Campaigns/World/CampaignWorldObjectiveBases.cs:73`
+- "Campaign creation requires runtime-linked content." — `Campaigns/CampaignFactory.cs:35`
+- "Campaign restoration requires runtime-linked content." — `Campaigns/CampaignState.cs:279`
+- "Country script requires unsupported binding {binding.Name}." — `Campaigns/CampaignMonthly.cs:315`
+- "Craft arrival requires complete logistics state." — `Campaigns/CampaignLogistics.cs:536`
+- "Craft dispatch requires resolved craft state." — `Campaigns/World/WorldCommandReasons.cs:11`
+- "Craft logistics state is required for sale or transfer." — `Campaigns/CampaignCrafts.cs:68`
+- "Craft production requires daily research identity forecasts." — `Campaigns/CampaignProductionCraftPreflight.cs:75` (+1)
+- "Craft production requires other production identity forecasts." — `Campaigns/CampaignProductionStockForecast.cs:128` (+1)
+- "Craft servicing requires resolved craft state." — `Campaigns/CampaignServicing.cs:35` (+1)
+- "Craft target removal requires placed follower bases." — `Campaigns/World/CampaignWorldCraftRemoval.cs:99` (+1)
+- "Destroyed craft removal requires world simulation." — `Campaigns/World/CampaignWorldCrafts.cs:307`
+- "Detection country enumeration requires a compiler-owned loop." — `Campaigns/World/WorldDetectionScriptSafety.cs:29`
+- "Detection damage conversion requires a bounded power forecast." — `Campaigns/World/WorldDetectionDamageQueries.cs:106`
+- "Detection inventory movement requires a nonnull destination forecast." — `Campaigns/World/WorldDetectionInventoryCosts.cs:45`
+- "Detection inventory movement requires missing cost {source.Id} -> {target.Id}." — `Campaigns/World/WorldDetectionInventoryCosts.cs:52`
+- "Detection random damage requires a null profile or null state forecast." — `Campaigns/World/WorldDetectionDamageQueries.cs:93`
+- "Detection script contains an unsupported operation." — `Campaigns/World/WorldDetectionScriptSafety.cs:37`
+- "Detection script requires a bounded loop forecast." — `Campaigns/World/WorldDetectionScriptSafety.cs:36`
+- "Detection script requires a positive wave-period forecast." — `Campaigns/World/WorldDetectionNumericSafety.cs:38`
+- "Detection script requires unsupported binding {binding.Name}." — `Campaigns/World/WorldDetectionScriptSafety.cs:14`
+- "Detection smoke reduction requires a guaranteed Mod receiver." — `Campaigns/World/WorldDetectionModSafety.cs:24`
+- "Direct mission site coordinates require an unsupported latitude domain." — `Campaigns/World/CampaignWorldSiteSpawning.cs:112`
+- "Direct mission site counters share an unsupported UFO ID namespace." — `Campaigns/World/CampaignWorldSiteSpawning.cs:128`
+- "Direct mission site marker names require a nonempty ID namespace." — `Campaigns/World/CampaignWorldSiteSpawning.cs:160`
+- "Generated mission site research requires ordered expiry forecasts." — `Campaigns/World/CampaignWorldSites.cs:260`
+- "Immediate generated mission source identity is ambiguous." — `Campaigns/World/CampaignWorldGeneratedWaves.cs:70`
+- "Immediate generated mission waves require creation-tick lifecycle forecasts." — `Campaigns/World/CampaignWorldGeneratedWaves.cs:7`
+- "Immediate hunting retaliation requires base-discovery forecasts." — `Campaigns/World/CampaignWorldAlienBaseHunting.cs:261`
+- "Initial world entry requires a valid UFO mission and trajectory." — `Campaigns/World/CampaignWorldScheduling.cs:56`
+- "Item flight fuel refunds require a positive refuel rate." — `Campaigns/CraftLogistics.cs:343` (+1)
+- "Landing base creation shares decreased marker counters with same-tick craft production." — `Campaigns/World/CampaignWorldObjectiveBases.cs:126`
+- "Landing base creation shares decreased marker counters with same-tick world births." — `Campaigns/World/CampaignWorldObjectiveBases.cs:114`
+- "Late hunting {target} allocation may reuse an earlier newborn marker ID after counter decreases." — `Campaigns/World/CampaignWorldSites.cs:250`
+- "Late hunting {target} allocation shares decreased marker counters with same-tick craft production." — `Campaigns/World/CampaignWorldSites.cs:253`
+- "Loaded idle escorts require same-tick newborn craft pursuit forecasts." — `Campaigns/World/CampaignWorldNewLeaderPursuit.cs:5`
+- "Loaded idle escorts require same-tick newborn waypoint forecasts." — `Campaigns/World/CampaignWorldMissions.cs:618`
+- "Mission operation base coordinates require an unsupported latitude domain." — `Campaigns/World/CampaignWorldOperationBaseCreation.cs:56`
+- "Mission operation base identity is ambiguous." — `Campaigns/World/CampaignWorldMissionOperations.cs:18`
+- "Mission operation base uses an unsupported marker namespace." — `Campaigns/World/CampaignWorldOperationBaseCreation.cs:45`
+- "Mission site UFO reactivation requires a dormant UFO." — `Campaigns/World/CampaignWorldSites.cs:110`
+- "Mission site and UFO creation share an unsupported ID namespace." — `Campaigns/World/CampaignWorldSiteSpawning.cs:164`
+- "Mission site research requires alien-base generation phase forecasts." — `Campaigns/World/CampaignWorldSiteResearch.cs:7`
+- "Mission site research requires deterministic daily research phase forecasts." — `Campaigns/World/CampaignWorldSiteResearch.cs:38`
+- "Mission site research requires mission-wave composition forecasts." — `Campaigns/World/CampaignWorldSiteResearch.cs:8`
+- "Monthly world accounting requires a known soldier armor rule." — `Campaigns/CampaignWorldMonthlyContext.cs:46`
+- "Multiple mission sites reference the same dormant UFO." — `Campaigns/World/CampaignWorld.cs:509`
+- "New UFO escorts require craft retarget forecasts." — `Campaigns/World/CampaignWorldMissions.cs:583` (+3)
+- "New base hunting requires normalized source-region bounds." — `Campaigns/World/WorldGenerationRegions.cs:17`
+- "New base hunting supply waves require a live source forecast." — `Campaigns/World/CampaignWorldObjectiveBases.cs:260`
+- "New base objective hunting requires creation-tick mission forecasts." — `Campaigns/World/CampaignWorldObjectiveBases.cs:257`
+- "Newborn mission site research requires ordered expiry forecasts." — `Campaigns/World/CampaignWorldSiteResearch.cs:303`
+- "Production arrivals require daily research transfer-identity forecasts." — `Campaigns/CampaignProductionStockForecast.cs:251`
+- "Production arrivals require other production effect forecasts." — `Campaigns/CampaignProductionStockForecast.cs:250`
+- "Production prices require uncertain alien-base deletion forecasts." — `Campaigns/World/CampaignWorldCountryActivity.cs:33`
+- "Production rule contains an unsupported negative value." — `Campaigns/CampaignProductionStaffingForecast.cs:30` (+1)
+- "Regional newborn leader followers require flying escort forecasts." — `Campaigns/World/CampaignWorldNewLeaderFlight.cs:101`
+- "Retaliation assault ground starts require lifecycle forecasts." — `Campaigns/World/CampaignWorldRetaliationSpawning.cs:34`
+- "Retaliation assault spawning requires a UFO rule." — `Campaigns/World/CampaignWorldRetaliationSpawning.cs:30`
+- "Retaliation assault spawning requires a source trajectory." — `Campaigns/World/CampaignWorldRetaliationSpawning.cs:28`
+- "Retaliation assault spawning requires the assault trajectory." — `Campaigns/World/CampaignWorldRetaliationSpawning.cs:32`
+- "Soldier arrival requires complete personal state." — `Campaigns/CampaignLogistics.cs:532`
+- "Soldier personal state is required for transfer or dismissal." — `Campaigns/CampaignRecruitment.cs:14`
+- "Soldier stats are outside transformation requirements." — `Campaigns/CampaignTransformations.cs:43`
+- "Strategic script listing requires a nonempty timeline." — `Campaigns/World/WorldScriptSelection.cs:32`
+- "UFO base detection requires a valid mission link." — `Campaigns/World/CampaignWorldBaseDetection.cs:79`
+- "UFO destination requires world simulation." — `Campaigns/World/CampaignWorldUfos.cs:112` (+1)
+- "UFO dispatch requires its stable unique identity." — `Campaigns/World/WorldCommandReasons.cs:23`
+- "UFO forecast requires a mission link." — `Campaigns/World/CampaignWorldMissionInterruption.cs:38`
+- "UFO hunting or escort state requires a valid original waypoint." — `Campaigns/World/CampaignWorldHunting.cs:7`
+- "UFO mission link requires world simulation." — `Campaigns/World/CampaignWorldDetection.cs:97` (+4)
+- "UFO mission site marker namespace is unsupported." — `Campaigns/World/CampaignWorldUfoSites.cs:115`
+- "UFO retargeting requires daily research ammunition-reuse forecasts." — `Campaigns/World/CampaignWorldHuntingInputs.cs:39`
+- "UFO retargeting requires daily research fuel-stock forecasts." — `Campaigns/World/CampaignWorldHuntingInputs.cs:32`
+- "UFO retargeting requires production craft-consumption forecasts." — `Campaigns/CampaignProductionStockForecast.cs:98`
+- "UFO retargeting requires production fuel-stock forecasts." — `Campaigns/CampaignProductionStockForecast.cs:100`
+- "UFO retargeting requires same-tick craft ammunition reuse forecasts." — `Campaigns/CampaignProductionStockForecast.cs:105`
+- "UFO retargeting requires shared production accounting forecasts." — `Campaigns/CampaignProductionStockForecast.cs:111`
+- "UFO retargeting requires shared production material forecasts." — `Campaigns/CampaignProductionStockForecast.cs:113`
+- "UFO retargeting requires shared production personnel forecasts." — `Campaigns/CampaignProductionStockForecast.cs:114`
+- "UFO retargeting requires stochastic craft ammunition stock forecasts." — `Campaigns/World/CampaignWorldHuntingCrafts.cs:101`
+- "UFO retargeting requires stochastic craft ammunition transition forecasts." — `Campaigns/World/CampaignWorldHuntingInputs.cs:63`
+- "UFO retargeting requires stochastic facility ammunition forecasts." — `Campaigns/World/CampaignWorldHuntingInputs.cs:110`
+- "UFO retargeting requires stochastic production material forecasts." — `Campaigns/CampaignProductionStockForecast.cs:179`
+- "UFO retargeting requires stochastic shared craft ammunition forecasts." — `Campaigns/World/CampaignWorldHuntingInputs.cs:69`
+- "UFO site conversion coordinates require an unsupported latitude domain." — `Campaigns/World/CampaignWorldUfoSiteFollowers.cs:26` (+1)
+- "UFO site conversion shares decreased marker counters with same-tick craft production." — `Campaigns/World/CampaignWorldUfoSites.cs:147`
+- "UFO site conversion shares decreased marker counters with same-tick direct sites." — `Campaigns/World/CampaignWorldUfoSites.cs:139`
+- "UFO state requires world simulation." — `Campaigns/World/CampaignWorldUfos.cs:108`
+- "UFO waypoint arrival requires mission simulation." — `Campaigns/World/CampaignWorldUfos.cs:192`
+- "Undelivered transfer arrival requires positive remaining hours." — `Campaigns/CampaignLogistics.cs:518` (+1)
+- "Unsupported stock kind." — `Campaigns/CampaignLogistics.cs:428`
+
+## Invalid content or save input (the reference throws, crashes or misbehaves; ADR 0036 and earlier ADRs record the choices)
+
+- "A UFO must have a destination." — `Campaigns/World/CampaignWorld.cs:499`
+- "A base cannot contain duplicate production projects." — `Campaigns/CampaignState.cs:790`
+- "A base cannot contain duplicate research projects." — `Campaigns/CampaignState.cs:788`
+- "A base facility is outside the 6x6 base grid." — `Campaigns/CampaignState.cs:805`
+- "A campaign must contain at least one base." — `Campaigns/CampaignState.cs:575`
+- "A city-specific strategic event names no region." — `Campaigns/CampaignEvents.cs:140`
+- "A craft cannot depart from an unplaced base." — `Campaigns/World/WorldCommandReasons.cs:12`
+- "A craft cannot escort itself." — `Campaigns/World/WorldCommandReasons.cs:25`
+- "A destroyed UFO has no live mission count to release." — `Campaigns/World/CampaignWorldUfos.cs:622`
+- "A mission area can generate an invalid UFO waypoint." — `Campaigns/World/CampaignWorldUfos.cs:424`
+- "A mission site follower craft cannot return to its base." — `Campaigns/World/CampaignWorldSites.cs:100`
+- "A non-retaliation mission cannot expire while a base links it as retaliation." — `Campaigns/World/CampaignWorldMissions.cs:246`
+- "A possible male recruit has no enabled callsign pool." — `Campaigns/SoldierGeneration.cs:70`
+- "A transformation cannot both clone a soldier and produce an item." — `Campaigns/CampaignTransformations.cs:57`
+- "A {what} must reference a positive identity." — `Campaigns/World/CampaignWorld.cs:594`
+- "A {what} position is outside the globe coordinate range." — `Campaigns/World/CampaignWorld.cs:726`
+- "Airborne craft cannot be sold." — `Campaigns/CampaignCrafts.cs:76`
+- "Airborne craft cannot be transferred (canTransferCraftsWhileAirborne is not supported)." — `Campaigns/CampaignCrafts.cs:75`
+- "Airborne craft coordinates are invalid." — `Campaigns/World/CampaignWorldAlienBaseCleanup.cs:105` (+1)
+- "Alien base IDs must be positive." — `Campaigns/World/CampaignWorld.cs:514`
+- "Alien base counters cannot be negative." — `Campaigns/World/CampaignWorld.cs:518`
+- "Alien base generation references an undefined alien mission." — `Campaigns/World/CampaignWorldAlienBases.cs:70`
+- "Alien base hunting cannot locate its source region." — `Campaigns/World/CampaignWorldAlienBaseHunting.cs:214`
+- "Alien base hunting references an undefined fallback region." — `Campaigns/World/CampaignWorldAlienBaseHunting.cs:219`
+- "Alien base hunting references an undefined mission." — `Campaigns/World/CampaignWorldAlienBaseHunting.cs:126` (+1)
+- "Alien base hunting site mission has an invalid spawn zone." — `Campaigns/World/CampaignWorldAlienBaseHunting.cs:231`
+- "Alien base hunting timeline has no entry for the current month." — `Campaigns/World/CampaignWorldAlienBaseHunting.cs:305`
+- "Alien base mission cannot locate a player base region." — `Campaigns/World/CampaignWorldAlienBaseGeneration.cs:42`
+- "Alien base mission cannot locate its source base region." — `Campaigns/World/CampaignWorldAlienBaseGeneration.cs:64`
+- "Alien base mission has no player base to target." — `Campaigns/World/CampaignWorldAlienBaseGeneration.cs:36`
+- "Alien base mission references an undefined fallback region." — `Campaigns/World/CampaignWorldAlienBaseGeneration.cs:81`
+- "Alien base mission references an undefined region." — `Campaigns/World/CampaignWorldAlienBaseGeneration.cs:74`
+- "Alien base mission region timeline has no entry for the current month." — `Campaigns/World/WorldAlienMissionGeneration.cs:17`
+- "Alien base mission selects an empty region." — `Campaigns/World/CampaignWorldAlienBaseGeneration.cs:55`
+- "Alien base pact country '{alienBase.PactCountryId}' is unknown." — `Campaigns/World/CampaignWorld.cs:520`
+- "Alien base self-destruction references undefined research." — `Campaigns/World/CampaignWorldAlienBaseCleanup.cs:18`
+- "Alien base site mission has an invalid spawn zone." — `Campaigns/World/CampaignWorldAlienBaseGeneration.cs:91`
+- "Alien base upgrade hunting timer cannot be negative." — `Campaigns/World/CampaignWorldAlienBaseMonthly.cs:165`
+- "Alien base upgrade timeline has no entry for its current age." — `Campaigns/World/CampaignWorldAlienBaseMonthly.cs:193`
+- "Alien base upgrades can collide with another world target's marker identity." — `Campaigns/World/CampaignWorldAlienBaseMonthly.cs:21`
+- "Alien mission '{mission.RuleId}' has no wave {mission.NextWave}." — `Campaigns/World/CampaignWorld.cs:467`
+- "Alien mission IDs must be positive." — `Campaigns/World/CampaignWorld.cs:462`
+- "Alien mission cannot expire while UFOs still reference it." — `Campaigns/World/CampaignWorldMissions.cs:243`
+- "Alien mission counters cannot be negative." — `Campaigns/World/CampaignWorld.cs:464`
+- "Alien mission interruption references undefined research." — `Campaigns/World/CampaignWorldMissionInterruption.cs:19` (+2)
+- "An airborne craft belongs to a base that is not placed." — `Campaigns/World/CampaignWorldAlienBaseCleanup.cs:106` (+1)
+- "An intercepted UFO has no mission." — `Campaigns/World/CampaignWorldInterceptionOutcomes.cs:82`
+- "An intercepted UFO no longer exists." — `Campaigns/World/CampaignWorldInterceptionOutcomes.cs:63`
+- "An intercepting craft needs logistics state." — `Campaigns/World/CampaignWorldInterceptions.cs:356`
+- "An intercepting craft no longer exists." — `Campaigns/World/CampaignWorldInterceptionOutcomes.cs:48` (+1)
+- "An operation must have a unique interface registration." — `Campaigns/CampaignCapabilities.cs:249`
+- "Base IDs cannot be negative." — `Campaigns/CampaignState.cs:665`
+- "Base coordinates must be finite." — `Campaigns/CampaignState.cs:667`
+- "Base detection inputs cannot be negative." — `Campaigns/World/WorldDetection.cs:50`
+- "Base latitude must be in [-π/2, π/2]." — `Campaigns/CampaignState.cs:798`
+- "Base longitude must be in [0, 2π)." — `Campaigns/CampaignState.cs:796`
+- "Base objective hunting timer cannot be negative." — `Campaigns/World/CampaignWorldObjectiveBases.cs:67`
+- "Base objective references an unavailable deployment." — `Campaigns/World/CampaignWorldObjectiveBases.cs:167`
+- "Base objective texture weights select an unavailable deployment." — `Campaigns/World/CampaignWorldObjectiveBases.cs:161`
+- "Base personnel counts cannot be negative." — `Campaigns/CampaignState.cs:745`
+- "Campaign {name} must contain between 1 and 12 entries." — `Campaigns/CampaignState.cs:835`
+- "Commendation level cannot be negative." — `Campaigns/StartingCrewAssignment.cs:78`
+- "Corrupted save: a world mission references a missing alien base." — `Campaigns/World/CampaignWorld.cs:471`
+- "Country script failed: {result.FailureMessage ?? result.DiagnosticCode}." — `Campaigns/CampaignMonthly.cs:341`
+- "Craft auto-patrol coordinates are invalid." — `Campaigns/World/CampaignWorldCrafts.cs:314`
+- "Craft coordinates must be finite." — `Campaigns/CampaignEntityValidation.cs:30`
+- "Craft fuel consumption cannot be zero." — `Campaigns/World/WorldFlight.cs:32`
+- "Craft item quantities must be positive." — `Campaigns/CampaignEntityValidation.cs:51`
+- "Craft production cannot be infinite." — `Campaigns/CampaignResearchProduction.cs:356`
+- "Craft transfer payload is inconsistent." — `Campaigns/CampaignState.cs:737`
+- "Craft vehicle preservation identities must be unique." — `Campaigns/CampaignEntityValidation.cs:36`
+- "Craft weapon ammunition cannot be negative." — `Campaigns/CampaignEntityValidation.cs:40`
+- "Craft weapon clip divisor must be positive." — `Campaigns/CraftLogistics.cs:283`
+- "Craft weapon slot count is outside the reference range." — `Campaigns/CraftLogistics.cs:305` (+1)
+- "Crashed UFO cannot expire while a mission site references it." — `Campaigns/World/CampaignWorldUfos.cs:97`
+- "Direct mission site area is outside its spawn zone." — `Campaigns/World/CampaignWorldSiteSpawning.cs:79`
+- "Direct mission site wave counters or trajectory are invalid." — `Campaigns/World/CampaignWorldSiteSpawning.cs:89`
+- "Dismantling construction time cannot be negative." — `Campaigns/CampaignFacilities.cs:140`
+- "Duplicate craft identity was found." — `Campaigns/CampaignState.cs:591` (+1)
+- "Duplicate research diary preservation keys." — `Campaigns/CampaignResearchDiary.cs:125`
+- "Duplicate scheduled event preservation keys." — `Campaigns/World/CampaignWorldEvents.cs:83`
+- "Duplicate soldier ID was found." — `Campaigns/CampaignState.cs:594` (+1)
+- "Duplicate {name} were found." — `Campaigns/CampaignState.cs:862` (+1)
+- "Event rule '{eventRuleId}' is unavailable." — `Campaigns/World/CampaignWorldAdhocScripts.cs:27`
+- "Facility construction time cannot be negative." — `Campaigns/CampaignFacilities.cs:78`
+- "Facility is not available for this base type." — `Campaigns/CampaignFacilities.cs:38`
+- "Facility service values cannot be negative." — `Campaigns/CampaignServicing.cs:56` (+2)
+- "Fallback production values cannot be negative." — `Campaigns/ProductionProgress.cs:12`
+- "Generated event history contains an invalid name or count." — `Campaigns/World/CampaignWorldEvents.cs:76`
+- "Infiltration country has no spawn areas." — `Campaigns/World/CampaignWorldInfiltration.cs:65` (+1)
+- "Initial values target unavailable script type '{ownerType}'." — `Campaigns/CampaignFactory.cs:223`
+- "Invalid craft weapon maintenance values." — `Campaigns/CraftServicing.cs:106`
+- "Invalid facility refund item." — `Campaigns/CampaignFacilities.cs:252`
+- "Item '{pair.Key}' has a non-positive quantity." — `Campaigns/CampaignState.cs:685`
+- "Item is not a craft vehicle." — `Campaigns/CampaignPersonnel.cs:219`
+- "Landed UFO timer or altitude is invalid." — `Campaigns/World/CampaignWorldUfos.cs:126`
+- "Maintenance cannot consume unavailable stock." — `Campaigns/CampaignServicing.cs:112`
+- "Male callsign pool is empty while female callsigns are enabled." — `Campaigns/SoldierGeneration.cs:258`
+- "Mission operation base hunting timer cannot be negative." — `Campaigns/World/CampaignWorldOperationBaseCreation.cs:41`
+- "Mission operation references an unavailable alien base deployment." — `Campaigns/World/CampaignWorldOperationBaseCreation.cs:38`
+- "Mission script cannot locate a valid player base region." — `Campaigns/World/CampaignWorldMissionScripts.cs:201`
+- "Mission script strategy cannot refresh an empty region distribution." — `Campaigns/World/CampaignWorldMissionScripts.cs:241`
+- "Mission script strategy has no table for its selected region." — `Campaigns/World/CampaignWorldMissionScripts.cs:266`
+- "Mission script strategy references an unavailable region." — `Campaigns/World/CampaignWorldMissionScripts.cs:253`
+- "Mission scripts share label {script.Label}." — `Campaigns/World/CampaignWorldMissionScripts.cs:153`
+- "Mission site IDs must be positive." — `Campaigns/World/CampaignWorld.cs:505`
+- "Mission site texture {area.Texture} does not exist." — `Campaigns/World/CampaignWorldSiteSpawning.cs:248`
+- "Mission site timer cannot be negative." — `Campaigns/World/CampaignWorldSites.cs:14`
+- "Mission site timers cannot be negative." — `Campaigns/World/CampaignWorld.cs:507`
+- "Mission zone {zone} has no area {area}." — `Campaigns/World/WorldGeometry.cs:222`
+- "Mission zone {zone} has no area {index}." — `Campaigns/World/CampaignWorldMissions.cs:731` (+1)
+- "Mission zone {zone} has no areas." — `Campaigns/World/WorldGeometry.cs:193`
+- "Monthly purchase counts cannot be negative." — `Campaigns/CampaignState.cs:309`
+- "Monthly score history is shorter than the funds history." — `Campaigns/MonthlyCycle.cs:334`
+- "Monthly world preflight failed after calendar advancement: " — `Campaigns/World/CampaignWorldScheduling.cs:30`
+- "Monthly world score history is inconsistent." — `Campaigns/CampaignWorldMonthlyContext.cs:14` (+1)
+- "New base hunting cannot locate every possible source region." — `Campaigns/World/WorldGenerationRegions.cs:51`
+- "Order contains a duplicate or invalid row." — `Campaigns/CampaignLogistics.cs:168`
+- "Performance bonus factor must be finite." — `Campaigns/CampaignWorldMonthlyContext.cs:16`
+- "Preflighted detection event failed: {outcome.FailureMessage}" — `Campaigns/World/CampaignWorldDetectionScripts.cs:193`
+- "Preflighted detection script failed: {outcome.FailureMessage}" — `Campaigns/World/CampaignWorldDetectionScripts.cs:198`
+- "Production amount cannot be less than completed units." — `Campaigns/CampaignResearchProduction.cs:345`
+- "Production amount must be positive." — `Campaigns/CampaignResearchProduction.cs:335`
+- "Production item quantities cannot be negative." — `Campaigns/CampaignResearchProduction.cs:1033`
+- "Production progress values cannot be negative." — `Campaigns/ProductionProgress.cs:20`
+- "Production references an unresolved item or craft." — `Campaigns/CampaignResearchProduction.cs:448`
+- "Production references an unresolved person type." — `Campaigns/CampaignResearchProduction.cs:451`
+- "Production values cannot be negative." — `Campaigns/CampaignState.cs:785`
+- "Random production references an invalid item quantity or ID." — `Campaigns/CampaignResearchProduction.cs:457`
+- "Random source returned an invalid alien mission roll." — `Campaigns/World/WorldAlienMissionGeneration.cs:33`
+- "Random source returned an invalid retaliation mission roll." — `Campaigns/World/CampaignWorldInterceptionOutcomes.cs:489`
+- "Random source returned an invalid strategic script roll." — `Campaigns/World/WorldScriptSelection.cs:58`
+- "Random source returned an invalid weighted choice." — `Campaigns/SoldierGeneration.cs:200`
+- "Random starting soldiers were requested but no soldier type is eligible." — `Campaigns/CampaignFactory.cs:108`
+- "Research diary entry has invalid research or source data." — `Campaigns/CampaignResearchDiary.cs:113`
+- "Research is only available as an indirect unlock." — `Campaigns/CampaignResearchProduction.cs:683`
+- "Research is permanently disabled." — `Campaigns/CampaignResearchProduction.cs:681`
+- "Research project values cannot be negative." — `Campaigns/CampaignState.cs:778`
+- "Scheduled event countdowns cannot be negative." — `Campaigns/World/CampaignWorld.cs:531`
+- "Script owner type '{ownerName}' is unavailable." — `Campaigns/CampaignState.cs:823`
+- "Select a compatible access lift and a position inside the base." — `Campaigns/CampaignBasePlacement.cs:102`
+- "Shared flight of UFO {saved.UniqueId} differs from its recomputation." — `Campaigns/World/CampaignWorldHunting.cs:223`
+- "Site mission script cannot locate a player base region." — `Campaigns/World/CampaignWorldSiteScripts.cs:98`
+- "Site mission script has no valid mission distribution." — `Campaigns/World/CampaignWorldSiteScripts.cs:58` (+1)
+- "Site mission script references an unavailable region." — `Campaigns/World/CampaignWorldSiteScripts.cs:78`
+- "Site mission script region listing and selection timelines disagree." — `Campaigns/World/CampaignWorldSiteScripts.cs:7`
+- "Site script generated a mission outside its candidate list." — `Campaigns/World/WorldMissionSiteSelection.cs:45`
+- "Site script generated mission is outside its candidate list." — `Campaigns/World/CampaignWorldSiteScripts.cs:88`
+- "Site script has no selectable candidate region." — `Campaigns/World/WorldMissionSiteSelection.cs:87` (+1)
+- "Site script region lost its preflighted candidates." — `Campaigns/World/WorldMissionSiteSelection.cs:70`
+- "Soldier does not fit this craft." — `Campaigns/CampaignPersonnel.cs:96`
+- "Soldier generation has inverted stat bounds." — `Campaigns/SoldierGeneration.cs:60`
+- "Soldier has completed physical training." — `Campaigns/CampaignPersonnel.cs:37`
+- "Soldier health is incompatible with this transformation." — `Campaigns/CampaignTransformations.cs:37`
+- "Soldier rank is too low." — `Campaigns/CampaignTransformations.cs:33`
+- "Soldier recovery must be finite." — `Campaigns/CampaignEntityValidation.cs:11`
+- "Soldier refers to a craft outside its base." — `Campaigns/CampaignEntityValidation.cs:66`
+- "Soldier state is unresolved." — `Campaigns/CampaignPersonnel.cs:34`
+- "Soldier transfer payload is inconsistent." — `Campaigns/CampaignState.cs:730`
+- "Soldier transformation history is incompatible." — `Campaigns/CampaignTransformations.cs:42`
+- "Soldier type is not allowed." — `Campaigns/CampaignTransformations.cs:39`
+- "Soldier {soldier.Id}" — `Campaigns/CampaignRecruitment.cs:20`
+- "Starting item quantities must be positive." — `Campaigns/CampaignFactory.cs:151`
+- "Strategic event {kind} '{id}' is not defined." — `Campaigns/CampaignEvents.cs:353`
+- "Strategic script timeline has no entry for the requested month." — `Campaigns/World/WorldScriptSelection.cs:25`
+- "That base is not under attack." — `Campaigns/World/WorldCommandReasons.cs:37`
+- "That landing confirmation is not the one shown." — `Campaigns/World/WorldCommandReasons.cs:32`
+- "The UFO contact no longer exists or is not visible." — `Campaigns/World/WorldCommandReasons.cs:38`
+- "The campaign mod list must contain distinct non-empty IDs." — `Campaigns/CampaignState.cs:848`
+- "The campaign mod list must contain its master." — `Campaigns/CampaignState.cs:845`
+- "The craft cannot fly the final mission." — `Campaigns/World/WorldCommandReasons.cs:35`
+- "The craft carries armor forbidden by its rules." — `Campaigns/World/WorldCommandReasons.cs:16`
+- "The craft does not have enough pilots." — `Campaigns/World/WorldCommandReasons.cs:18`
+- "The craft is not airborne." — `Campaigns/World/WorldCommandReasons.cs:19`
+- "The craft is not ready to depart." — `Campaigns/World/WorldCommandReasons.cs:13`
+- "The craft is returning to base." — `Campaigns/World/WorldCommandReasons.cs:14`
+- "The destination kind is invalid." — `Campaigns/World/WorldCommandReasons.cs:22`
+- "The destination no longer exists or is not visible." — `Campaigns/World/WorldCommandReasons.cs:24`
+- "The interception does not offer that mode." — `Campaigns/World/WorldCommandReasons.cs:30`
+- "The landing target no longer offers a mission." — `Campaigns/World/WorldCommandReasons.cs:27`
+- "The soldier is not at that base." — `Campaigns/CampaignState.cs:246`
+- "The transient copy '{name}' is registered twice." — `Campaigns/CampaignCapabilities.cs:189`
+- "The {scope} handler '{entry.Name}' is registered twice." — `Campaigns/CampaignCapabilities.cs:258`
+- "There is no deployment request to take." — `Campaigns/World/WorldCommandReasons.cs:34`
+- "There is no such interception." — `Campaigns/World/WorldCommandReasons.cs:28`
+- "This craft weapon slot is fixed." — `Campaigns/CampaignPersonnel.cs:165`
+- "This quote has expired; reopen the logistics screen." — `Campaigns/CampaignLogistics.cs:152`
+- "Transfer coordinates must be finite." — `Campaigns/StrategicLogisticsMath.cs:27`
+- "Transfer cost divisor must not be zero." — `Campaigns/StrategicLogisticsMath.cs:38`
+- "Transfer kind or quantity is invalid." — `Campaigns/CampaignState.cs:720`
+- "Transfer payload does not match its kind." — `Campaigns/CampaignState.cs:724`
+- "Transferred crew must travel with its assigned craft." — `Campaigns/CampaignEntityValidation.cs:72`
+- "Transformation transfer time cannot be negative." — `Campaigns/CampaignTransformations.cs:55`
+- "Two {scope} handlers use order {entry.Order}; ordering must be explicit." — `Campaigns/CampaignCapabilities.cs:256`
+- "UFO altitude '{ufo.Altitude}' is not a reference altitude." — `Campaigns/World/CampaignWorld.cs:480`
+- "UFO counters cannot be negative." — `Campaigns/World/CampaignWorld.cs:497`
+- "UFO site follower craft cannot change destination." — `Campaigns/World/CampaignWorldUfoSiteFollowers.cs:34`
+- "UFO speed is invalid." — `Campaigns/World/CampaignWorldConditionalLeaderFlight.cs:17` (+2)
+- "UFO status is invalid." — `Campaigns/World/CampaignWorld.cs:478`
+- "UFO unique IDs must be positive." — `Campaigns/World/CampaignWorld.cs:476`
+- "Unknown UFO mission; the save is corrupt." — `Campaigns/World/CampaignWorld.cs:485`
+- "Unknown UFO trajectory; the save is corrupt." — `Campaigns/World/CampaignWorld.cs:490`
+- "Unknown damage classification query." — `Campaigns/World/WorldDetectionDamageQueries.cs:28`
+- "Unknown damage conversion query." — `Campaigns/World/WorldDetectionDamageQueries.cs:66`
+- "Unknown detection UFO stat." — `Campaigns/World/CampaignWorldDetectionUfoStats.cs:56`
+- "Unknown detection caller input." — `Campaigns/World/CampaignWorldDetectionScripts.cs:181`
+- "Unknown detection rule lookup." — `Campaigns/World/WorldDetectionReferenceForecast.cs:269`
+- "Unknown detection text query." — `Campaigns/World/WorldDetectionTextQueries.cs:31` (+1)
+- "Unresolved craft state" — `Campaigns/CampaignReadinessQueries.cs:58`
+- "Vehicle '{vehicle.RuleId}' has no vehicle armor." — `Campaigns/StartingCrewAssignment.cs:59`
+- "Vehicle ammunition slot is outside the reference range." — `Campaigns/CraftLogistics.cs:292`
+- "Vehicle dimensions must be nonnegative and size must be positive." — `Campaigns/StartingCrewAssignment.cs:63`
+- "Vehicle is not loaded on this craft." — `Campaigns/CampaignPersonnel.cs:277`
+- "Waypoint IDs must be positive." — `Campaigns/World/CampaignWorld.cs:525`
+- "Weighted selection did not produce a result." — `Campaigns/CampaignResearchProduction.cs:1006`
+- "world simulation/" — `Campaigns/CampaignTimeProfile.cs:23`
+- "{kind} IDs must be positive." — `Campaigns/CampaignState.cs:857`
