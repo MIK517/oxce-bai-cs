@@ -230,8 +230,8 @@ public sealed record RuntimeAlienRaceRule(string Id, int RetaliationAggression, 
 }
 
 /// <summary>
-/// The strategic projection of an alien deployment: site and alien-base bookkeeping only.
-/// Battlescape generation properties remain in the typed catalog for Phase 7.
+/// The runtime projection of an alien deployment: site and alien-base bookkeeping, and in
+/// <see cref="Battle"/> the battlescape properties the battle generator reads so far.
 /// Reference: <c>Mod/AlienDeployment.cpp</c>.
 /// </summary>
 public sealed record RuntimeAlienDeploymentRule(
@@ -277,6 +277,9 @@ public sealed record RuntimeAlienDeploymentRule(
     /// <summary>AlienDeployment::getAlienBaseDiscoveredMessage: AlienBaseState's title, or "" for the default.</summary>
     public string AlienBaseDiscoveredMessage { get; init; } = string.Empty;
 
+    /// <summary>The battlescape properties of this deployment.</summary>
+    public RuntimeDeploymentBattle Battle { get; init; } = RuntimeDeploymentBattle.Default;
+
     /// <summary>
     /// AlienDeployment::generateHuntMission / generateAlienBaseUpgrade: the timeline is stored in
     /// descending month order and the first entry at or below the given month wins.
@@ -288,6 +291,17 @@ public sealed record RuntimeAlienDeploymentRule(
             if (month >= timeline[index].FirstMonth) return timeline[index].Weights;
         return timeline.Count == 0 ? null : timeline[0].Weights;
     }
+}
+
+/// <summary>
+/// AlienDeployment battlescape properties read by <c>BattlescapeGenerator::run</c>: the map size
+/// (<c>getDimensions</c>), <c>turnLimit</c>, <c>chronoTrigger</c> (0 force lose, 1 force abort, 2 force win,
+/// 3 force win surrender), <c>cheatTurn</c> and the shade overrides (-1 for none).
+/// </summary>
+public sealed record RuntimeDeploymentBattle(
+    int Width, int Length, int Height, int TurnLimit, int ChronoTrigger, int CheatTurn, int Shade, int MinShade, int MaxShade)
+{
+    public static RuntimeDeploymentBattle Default { get; } = new(0, 0, 0, 0, 0, 20, -1, -1, -1);
 }
 
 /// <summary>Reference: <c>AlienDeployment::getAlienRaceEvolution</c> tuples.</summary>

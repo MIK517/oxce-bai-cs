@@ -754,6 +754,10 @@ public static class RuntimeRuleLinker
                 StartingCondition = source.Strings["startingCondition"],
                 Race = source.Strings["race"],
                 AlienBaseDiscoveredMessage = source.Strings["alienBaseDiscoveredMessage"],
+                Battle = new RuntimeDeploymentBattle(source.Integers["width"], source.Integers["length"],
+                    source.Integers["height"], source.Integers["turnLimit"], source.Integers["chronoTrigger"],
+                    source.Integers["cheatTurn"], source.Integers["shade"], source.Integers["minShade"],
+                    source.Integers["maxShade"]),
             };
         }
 

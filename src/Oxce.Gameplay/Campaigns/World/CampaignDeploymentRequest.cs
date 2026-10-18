@@ -42,12 +42,3 @@ public sealed record LaunchFinalMission(int BaseId, string CraftTypeId, int Craf
 
 /// <summary>A confirmed landing recorded its deployment request; the campaign waits for the battle.</summary>
 public sealed record DeploymentRequested(CampaignDeploymentRequest Request) : ICampaignEvent;
-
-/// <summary>
-/// The Phase 7 seam: takes the pending deployment request, exactly once. Until tactical execution
-/// exists the campaign does not continue past it (the request cannot be withdrawn).
-/// </summary>
-public sealed record TakeDeploymentRequest : ICampaignCommand;
-
-/// <summary>The request taken by <see cref="TakeDeploymentRequest"/>.</summary>
-public sealed record DeploymentRequestTaken(CampaignDeploymentRequest Request) : ICampaignEvent;

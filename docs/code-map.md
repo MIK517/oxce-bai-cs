@@ -18,16 +18,16 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 192 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 196 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 96 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 5 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 318 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 319 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
-| [Oxce.UnitTests](#oxceunittests) | 102 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
+| [Oxce.UnitTests](#oxceunittests) | 103 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
 | [Oxce.FixtureTool](#oxcefixturetool) | 1 | FixtureSupport, Formats, Mods, Savegames |
 | [Oxce.ResourceBrowser](#oxceresourcebrowser) | 2 | Formats, Mods, Platform.Sdl, Rendering, Resources |
@@ -337,11 +337,24 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 192 files.
+`src/Oxce.Gameplay` - 196 files.
 
 ### `Oxce.Gameplay`
 
 - `AssemblyMarker` (class) [AssemblyMarker.cs](../src/Oxce.Gameplay/AssemblyMarker.cs) - Marks the assembly containing geoscape, bases, and battlescape rules.
+
+### `Oxce.Gameplay.Battles`
+
+- `BattleFaction` (enum) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - UnitFaction: the side a battle unit fights for.
+- `BattleControllerKind` (enum) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs)
+- `BattleController` (record struct) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - Who decides a unit's actions (ADR 0038): the AI, or the human in a player slot.
+- `BattleViewer` (record struct) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - Whose view a battle query answers for (ADR 0038): a faction, and the player slot within it.
+- `BattlePosition` (record struct) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - A tile position: x along the width, y along the length, z the level (0 is the ground level).
+- `StartBattle` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - Starts the battle the pending deployment request asks for (`ConfirmLandingState::btnYesClick`, `BaseDefenseState` and `ConfirmCydoniaStat...
+- `BattleStarted` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The battle a deployment request asked for has started.
+- `BattleUnitView` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - A unit as a viewer sees it.
+- `BattleOverview` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The battle as a viewer sees it; `Revision` changes with every committed battle change.
+- `IBattleQuery` (interface) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The current battle, if any, as a viewer sees it (ADR 0038: every battle query takes a viewer).
 
 ### `Oxce.Gameplay.Campaigns`
 
@@ -551,8 +564,6 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CampaignDeploymentRequest` (record) [CampaignDeploymentRequest.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignDeploymentRequest.cs) - The battle a confirmed landing asks for (D4): what `ConfirmLandingState::btnYesClick` hands to `BattlescapeGenerator`.
 - `LaunchFinalMission` (record) [CampaignDeploymentRequest.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignDeploymentRequest.cs) - SelectDestinationState's Cydonia button and ConfirmCydoniaState's Yes: the craft flies the final mission.
 - `DeploymentRequested` (record) [CampaignDeploymentRequest.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignDeploymentRequest.cs) - A confirmed landing recorded its deployment request; the campaign waits for the battle.
-- `TakeDeploymentRequest` (record) [CampaignDeploymentRequest.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignDeploymentRequest.cs) - The Phase 7 seam: takes the pending deployment request, exactly once.
-- `DeploymentRequestTaken` (record) [CampaignDeploymentRequest.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignDeploymentRequest.cs) - The request taken by `TakeDeploymentRequest`.
 - `CampaignArcUnlocked` (record) [CampaignWorldArcScripts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldArcScripts.cs) - The article that GeoscapeState opens for one granted arc.
 - `BaseDefenseStarted` (record) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs) - A retaliation UFO reached an X-COM base with defenses: the base defense window opens and pauses time.
 - `ResolveBaseDefense` (record) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs) - Fires the base defenses (BaseDefenseState's Start) or skips them (Skip firing), then applies the outcome.
@@ -970,7 +981,8 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RuntimeStartingCondition` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - A month-keyed weighted table.
 - `RuntimeWeightedTimeline` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs)
 - `RuntimeAlienRaceRule` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - The strategic projection of an alien race: retaliation aggression and the retaliation mission timeline in rule order (AlienRace::retaliat...
-- `RuntimeAlienDeploymentRule` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - The strategic projection of an alien deployment: site and alien-base bookkeeping only.
+- `RuntimeAlienDeploymentRule` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - The runtime projection of an alien deployment: site and alien-base bookkeeping, and in `Battle` the battlescape properties the battle gen...
+- `RuntimeDeploymentBattle` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - AlienDeployment battlescape properties read by `BattlescapeGenerator::run`: the map size (`getDimensions`), `turnLimit`, `chronoTrigger`...
 - `RuntimeAlienRaceEvolution` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - Reference: `AlienDeployment::getAlienRaceEvolution` tuples.
 
 ### `Oxce.Mods.Rulesets.TerrainDeployment`
@@ -1178,7 +1190,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 318 files.
+`tests/Oxce.CompatibilityTests` - 319 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1186,8 +1198,9 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>315 test classes</summary>
+<details><summary>316 test classes</summary>
 
+- `BattleStartTests` ([BattleStartTests.cs](../tests/Oxce.CompatibilityTests/BattleStartTests.cs))
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
 - `CampaignSaveRegressionFixtureTests` ([CampaignSaveRegressionFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignSaveRegressionFixtureTests.cs))
@@ -1517,13 +1530,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.UnitTests
 
-`tests/Oxce.UnitTests` - 102 files.
+`tests/Oxce.UnitTests` - 103 files.
 
 ### `Oxce.UnitTests`
 
 - `AllocationMeasurement` (class) [AllocationMeasurement.cs](../tests/Oxce.UnitTests/AllocationMeasurement.cs)
 
-<details><summary>101 test classes</summary>
+<details><summary>102 test classes</summary>
 
 - `ProjectDependencyTests` ([ProjectDependencyTests.cs](../tests/Oxce.UnitTests/Architecture/ProjectDependencyTests.cs))
 - `DiagnosticTests` ([DiagnosticTests.cs](../tests/Oxce.UnitTests/Core/DiagnosticTests.cs))
@@ -1563,6 +1576,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `XcomPaletteCodecTests` ([XcomPaletteCodecTests.cs](../tests/Oxce.UnitTests/Formats/XcomPaletteCodecTests.cs))
 - `YamlCompatibilityReaderTests` ([YamlCompatibilityReaderTests.cs](../tests/Oxce.UnitTests/Formats/YamlCompatibilityReaderTests.cs))
 - `YamlCompatibilityWriterTests` ([YamlCompatibilityWriterTests.cs](../tests/Oxce.UnitTests/Formats/YamlCompatibilityWriterTests.cs))
+- `BattleStateTests` ([BattleStateTests.cs](../tests/Oxce.UnitTests/Gameplay/BattleStateTests.cs))
 - `CampaignCapabilityRegistryTests` ([CampaignCapabilityRegistryTests.cs](../tests/Oxce.UnitTests/Gameplay/CampaignCapabilityRegistryTests.cs))
 - `CampaignFoundationTests` ([CampaignFoundationTests.cs](../tests/Oxce.UnitTests/Gameplay/CampaignFoundationTests.cs))
 - `CampaignLogisticsTests` ([CampaignLogisticsTests.cs](../tests/Oxce.UnitTests/Gameplay/CampaignLogisticsTests.cs))

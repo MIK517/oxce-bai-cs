@@ -19,7 +19,7 @@ namespace Oxce.CompatibilityTests;
 /// </summary>
 public sealed class StrategicLandingTests
 {
-    private static (RuntimeContent Content, CampaignState Campaign) Create(bool seasons = false, string? rules = null)
+    internal static (RuntimeContent Content, CampaignState Campaign) Create(bool seasons = false, string? rules = null)
     {
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], rules);
         var snapshot = CreateLifecycleSnapshot(content);
@@ -184,13 +184,9 @@ public sealed class StrategicLandingTests
             campaign.Execute(new RecallCraft(request.BaseId, "SHIP", 1)).Events)).Reason);
         Assert.Equivalent(before, campaign.Capture(), strict: true);
 
-        // The request survives a reload, and the Phase 7 seam takes it exactly once.
+        // The request survives a reload and waits for its battle.
         var reloaded = Reload(content, campaign, 17, "deployment.sav");
         Assert.Equivalent(request, Landings(reloaded).QueryDeploymentRequest(), strict: true);
-        Assert.Equivalent(request, Assert.IsType<DeploymentRequestTaken>(Assert.Single(reloaded.Execute(new TakeDeploymentRequest()).Events)).Request,
-            strict: true);
-        Assert.Equal(WorldCommandReasons.NoDeploymentRequest, Assert.IsType<CampaignActionBlocked>(Assert.Single(
-            reloaded.Execute(new TakeDeploymentRequest()).Events)).Reason);
         AssertTimeBlocked(reloaded, WorldCommandReasons.DeploymentRequestPending);
     }
 

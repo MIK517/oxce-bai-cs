@@ -30,7 +30,7 @@ public static class WorldCommandReasons
     internal const string InterceptionMode = "The interception does not offer that mode.";
     internal const string LandingConfirmationsOpen = "Landing confirmations stop the clock until they are answered.";
     internal const string NoLandingConfirmation = "That landing confirmation is not the one shown.";
-    internal const string DeploymentRequestPending = "A confirmed landing waits for its battle (Phase 7 tactical execution).";
+    internal const string DeploymentRequestPending = "A confirmed landing waits for its battle to start.";
     internal const string NoDeploymentRequest = "There is no deployment request to take.";
     internal const string FinalMissionUnavailable = "The craft cannot fly the final mission.";
     internal const string BaseDefenseOpen = "A base defense stops the clock until it is resolved.";

@@ -86,6 +86,7 @@ internal static class CampaignPreflightOrder
     // This tick's event windows follow the report and precede the windows its five-second level opens.
     public const int EventWindows = 112;
     public const int Interceptions = 120;
+    public const int Battle = 121;
     public const int Landings = 122;
     public const int DestroyedCrafts = 125;
     public const int WorldSimulation = 150;

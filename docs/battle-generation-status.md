@@ -8,7 +8,7 @@ Phase 7 branch 1 (`claude/battle-generation`), from `main` at `2b0c81fb`. Plan:
 | Slice | State |
 |---|---|
 | S0 planning | Done (2026-10-18) |
-| S1 battle aggregate | Not started |
+| S1 battle aggregate | Done (2026-10-18) |
 | S2 runtime battle terrain | Not started |
 | S3 map generation | Not started |
 | S4 X-COM deployment | Not started |
@@ -22,3 +22,30 @@ The [Phase 7 plan](phase-7-plan.md) splits the phase into eight branches and rec
 (M4), the failure model (D1.3) and the live-state convention (D2) in [ADR 0038](decisions/0038-battle-aggregate.md).
 The inherited refusals are assigned to owning branches in the plan's
 [inherited refusals](phase-7-plan.md#inherited-refusals) section.
+
+## S1 — Battle aggregate (2026-10-18)
+
+Reference: `ConfirmLandingState::btnYesClick`, `GeoscapeState` (base defense), `ConfirmCydoniaState::btnYesClick`,
+`BattlescapeGenerator::run` (deployment choice, turn limit, chrono trigger, cheat turn), `SavedBattleGame`
+(constructor: turn 0, player side), `AlienDeployment::load` and `getDimensions`, `BattleUnit::MAX_SOLDIER_ID`,
+`UnitFaction`.
+
+- `Oxce.Gameplay/Battles`: `BattleState` (mission type, deployment, map size, turn, side, limits, revision, units),
+  `BattleUnit` (stable ID, faction, controller, position, per-faction spotting), `BattleController`, `BattleViewer`.
+  `IBattleQuery.QueryBattle(viewer)` returns the viewer's faction's units and the units it has spotted.
+- `StartBattle` replaces the Phase 6 seam `TakeDeploymentRequest`. It picks the deployment as `run` does (the alien
+  custom mission, else the UFO's deployment for a UFO target, else the mission type's), refuses before any change
+  when the content has none (the reference throws in `Mod::getDeployment`), generates the battle and only then
+  consumes the request (`ICampaignDeploymentHandOver`).
+- While a battle exists, the `battle` preflight (order 121) stops time and a command gate refuses every other
+  command with `battle.in-progress`; saving is refused with the named restriction `battle.save-unsupported`,
+  which branch 2 retires.
+- `RuntimeAlienDeploymentRule.Battle` projects the battle properties read so far: size, `turnLimit`,
+  `chronoTrigger`, `cheatTurn` and the shade overrides, with the reference constructor's defaults.
+- The landing hold now reads "A confirmed landing waits for its battle to start." (a modal hold: the player starts
+  the battle). The Phase 6 refusal inventory stays the Phase 6 closure record and is not regenerated.
+- The battle capability registry (ADR 0038) arrives with the first battle command; S1 has none.
+
+Tests: `BattleStartTests` (hand-over, holds, save refusal, missing deployment, no request, linked defaults),
+`BattleStateTests` (viewer filtering, spotting revisions, tile index, bounds). `StrategicLandingTests` no longer
+takes the request through the retired seam. Unit and compatibility suites pass.

@@ -489,7 +489,6 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
             Vehicles = defenders.Vehicles,
             UfoDamagePercentage = damagePercentage,
         };
-        _deploymentRequestTaken = false;
         return _deploymentRequest;
     }
 
