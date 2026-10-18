@@ -95,6 +95,18 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     }
 
     internal CampaignTimeProfile? ActiveTimeProfile => _timeProfile;
+
+    /// <summary>
+    /// The installation's terrain files, which battle generation reads (ADR 0038). The host attaches them; they are
+    /// not campaign state, are not saved and are not copied to shadows. Null means battles cannot be generated.
+    /// </summary>
+    public Battles.Terrain.IBattleTerrainFiles? BattleTerrainFiles
+    {
+        get { lock (_transactionGate) return _battleTerrainFiles; }
+        set { lock (_transactionGate) _battleTerrainFiles = value; }
+    }
+
+    private Battles.Terrain.IBattleTerrainFiles? _battleTerrainFiles;
     public CampaignDifficulty Difficulty { get; }
     public CampaignTime Time { get; private set; }
     public int Ending { get; private set; }

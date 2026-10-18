@@ -6,6 +6,7 @@ using Oxce.Engine;
 using Oxce.Engine.Geoscape;
 using Oxce.Engine.Input;
 using Oxce.Extensions;
+using Oxce.Gameplay.Battles.Terrain;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Bootstrap;
 using Oxce.Mods.Loading;
@@ -33,6 +34,7 @@ internal static class CampaignSdlCommand
         var assets = CampaignUiAssets.Load(loaded.VirtualFiles!, content.Presentation, startupDiagnostics);
         var geoscapeAssets = GeoscapeAssets.Load(loaded.VirtualFiles!, content.Resources, content.RuntimeRules.Campaign.Globe);
         PrintWarnings(startupDiagnostics);
+        var battleFiles = new VirtualBattleTerrainFiles(loaded.VirtualFiles!);
         loaded = null!;
         var activeMods = request.ActiveMods;
 
@@ -42,6 +44,7 @@ internal static class CampaignSdlCommand
                 CampaignDifficulty.Beginner),
             new SplitMix64RandomSource(0x4F584345UL),
             SystemCampaignClock.Instance);
+        campaign.BattleTerrainFiles = battleFiles;
         var extensionDiagnostics = new DiagnosticCollector();
         using var extensions = ManagedExtensionHost.LoadFromDirectory(
             Path.Combine(Path.GetFullPath(installationRoot), "extensions"), extensionDiagnostics);
@@ -124,6 +127,7 @@ internal static class CampaignSdlCommand
             var restored = OxceSaveAdapter.LoadFile(savePath!, content, new SplitMix64RandomSource(0),
                 new(masterId, activeMods.ToHashSet(StringComparer.Ordinal), Diagnostics: saveDiagnostics));
             PrintWarnings(saveDiagnostics);
+            restored.Campaign.BattleTerrainFiles = battleFiles;
             // Attach before swapping so a failure leaves the running campaign and its session intact.
             var attached = extensions.AttachCampaign(restored.Campaign, restored.Campaign);
             extensionSession.Dispose();

@@ -9,7 +9,7 @@ Phase 7 branch 1 (`claude/battle-generation`), from `main` at `2b0c81fb`. Plan:
 |---|---|
 | S0 planning | Done (2026-10-18) |
 | S1 battle aggregate | Done (2026-10-18) |
-| S2 runtime battle terrain | Not started |
+| S2 runtime battle terrain | Done (2026-10-19) |
 | S3 map generation | Not started |
 | S4 X-COM deployment | Not started |
 | S5 alien and civilian deployment | Not started |
@@ -50,19 +50,36 @@ Tests: `BattleStartTests` (hand-over, holds, save refusal, missing deployment, n
 `BattleStateTests` (viewer filtering, spotting revisions, tile index, bounds). `StrategicLandingTests` no longer
 takes the request through the retired seam. Unit and compatibility suites pass.
 
-## Next: S2 design notes
+## S2 — Runtime battle terrain (2026-10-19)
 
-- Terrain files are read through the content's virtual file catalog: `RuntimeContent` gains the catalog (set by
-  `ContentSnapshot` and the compiled-cache restore, both of which already have it), so tests that write synthetic
-  `TERRAIN/*.MCD`, `MAPS/*.MAP` and `ROUTES/*.RMP` files next to their rulesets get them through the normal bootstrap.
-  The resource catalog already resolves these paths (`ResourceDescriptorResolver`, `terrain/{id}/...`).
-- Data sets load lazily at battle generation, as `MapDataSet::loadData` does, into a cache owned by the battle
-  capability; `BattleGenerator.Refusal` loads and validates everything the battle needs before any change, so a
-  malformed file refuses `StartBattle` instead of throwing (ADR 0038).
-- `MapData` semantics to keep: `setBlockValue(lightBlock, Stop_LOS, HE_Block, Block_Smoke, Flammable, HE_Block)` with
-  block[1] = 255 when LOS stops and block[3] = 256 when smoke blocks; `setStopLOS` also resets block[1];
-  `MCDPatch::modifyData` order (bigWall, TU walk/fly/slide, deathTile, terrainHeight, specialType, explosive, armor,
-  flammability, fuel, HEBlock, footstepSound, objectType, noFloor, stopLOS, LOFTS) and an out-of-range patch index
-  is an error (`MapDataSet::getObject` throws).
-- Runtime projections are needed for `terrains` (data sets, map blocks), `mapScripts` and `mcdPatches`; they are
-  typed in `TerrainDeploymentRules.cs` but not yet in `RuntimeRuleCatalog`.
+Reference: `MapDataSet::loadData`, `MapData` (setters, `setBlockValue`, `setStopLOS`, `setHEBlock`),
+`MCDPatch::load` and `modifyData`, `MapBlock::load`, `BattlescapeGenerator::loadMAP` (header and size checks) and
+`loadRMP` (file), `FileMap::getIStream`.
+
+- `RuntimeRuleCatalog.Battle` (`RuntimeBattleRules`) links the battlescape-only families as one group: terrains
+  (`RuntimeTerrain`, `RuntimeMapBlock`, in rule order for `getTerrainList`) and MCD patches. The typed records are
+  projected into runtime records because their collection types differ after a compiled-cache round trip, which the
+  fresh/cache content comparison caught. Map scripts are projected in S3, map block items in S5.
+- `IBattleTerrainFiles` is the host's port for terrain files. `VirtualBattleTerrainFiles` reads the installation's
+  virtual file catalog (mod overrides included); the SDL app attaches it to new and loaded campaigns as
+  `CampaignState.BattleTerrainFiles`, which is not state and is not saved. The content build already requires each
+  terrain data set's MCD, PCK and TAB files to exist (resource resolution), so a missing data set fails at load.
+- `BattleTerrainLoader` loads and keeps data sets and map blocks on demand and returns a reason for malformed
+  content instead of throwing: a missing file (`getIStream` throws), a patch index past the data set
+  (`MapDataSet::getObject` throws), more than 12 LOFTS in a patch (the reference writes past the array), a tile type
+  outside the four parts after patching, a MAP whose header differs from the block's size. The header is compared as
+  signed chars, so a block side above 127 never matches, as in the reference.
+- Intentional difference: a truncated MAP file is invalid content (the codec's check); the reference leaves the
+  missing tiles empty.
+- `McdTerrainRecord.BlockSmokeValue` exposes the raw byte: `setBlockValue` blocks smoke only when it is exactly 1.
+
+Tests: `BattleTerrainLoaderTests` (field mapping and block values, patch order and LOFTS, caching, data set order,
+trailing partial records, every malformed case, MAP and RMP checks). `StrategicReadinessTestContent.Load` can now
+write extra installation files.
+
+## Next: S3 map generation
+
+`BattlescapeGenerator::run` (terrain choice from the deployment, texture or fallback; depth; shade; map script
+choice), `generateMap` and its commands, `loadMAP` into tiles, `loadRMP` and `attachNodeLinks`, with
+`RuleTerrain::getMapData` indexing across data sets. Battle tiles go into `BattleState` as structure-of-arrays;
+`StartBattle` needs `BattleTerrainFiles` and refuses without them.

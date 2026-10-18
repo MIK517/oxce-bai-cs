@@ -523,7 +523,10 @@ public static class RuntimeRuleLinker
                     References(eventHandles, rule.Value.Sequential), ScriptWeights(eventHandles, rule.Value.Random),
                     ScriptTimeline(eventHandles, rule.Value.EventWeights))),
             scriptBuild.Family,
-            settings);
+            settings)
+        {
+            Battle = RuntimeBattleRules.Link(content.TerrainDeployment),
+        };
         cancellationToken.ThrowIfCancellationRequested();
         return new RuntimeRuleLinkResult(catalog, compatibility, Array.AsReadOnly(issues.ToArray()));
 

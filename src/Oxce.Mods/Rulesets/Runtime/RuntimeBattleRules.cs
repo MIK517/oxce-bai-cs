@@ -1,0 +1,86 @@
+using System.Collections.ObjectModel;
+using Oxce.Mods.Rulesets.TerrainDeployment;
+
+namespace Oxce.Mods.Rulesets.Runtime;
+
+/// <summary>
+/// The rule families only the battlescape reads (Phase 7, ADR 0038), linked as one group by <see cref="Link"/>, apart
+/// from the strategic families. Terrain files (MCD, MAP, RMP) load when a battle needs them, as
+/// <c>MapDataSet::loadData</c> and <c>BattlescapeGenerator::loadMAP</c> do.
+/// </summary>
+public sealed class RuntimeBattleRules
+{
+    private RuntimeBattleRules(IReadOnlyList<string> terrainOrder, IReadOnlyDictionary<string, RuntimeTerrain> terrains,
+        IReadOnlyDictionary<string, RuntimeMcdPatch> mcdPatches)
+    {
+        TerrainOrder = terrainOrder;
+        Terrains = terrains;
+        McdPatches = mcdPatches;
+    }
+
+    public static RuntimeBattleRules Empty { get; } = new(Array.AsReadOnly(Array.Empty<string>()),
+        new ReadOnlyDictionary<string, RuntimeTerrain>(new Dictionary<string, RuntimeTerrain>(StringComparer.Ordinal)),
+        new ReadOnlyDictionary<string, RuntimeMcdPatch>(new Dictionary<string, RuntimeMcdPatch>(StringComparer.Ordinal)));
+
+    /// <summary>Mod::getTerrainList: terrain IDs in rule order (the first is the generator's last resort).</summary>
+    public IReadOnlyList<string> TerrainOrder { get; }
+
+    public IReadOnlyDictionary<string, RuntimeTerrain> Terrains { get; }
+
+    /// <summary>Mod::getMCDPatch, by map data set name.</summary>
+    public IReadOnlyDictionary<string, RuntimeMcdPatch> McdPatches { get; }
+
+    internal static RuntimeBattleRules Link(TerrainDeploymentRuleCatalog content)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        var terrains = new Dictionary<string, RuntimeTerrain>(StringComparer.Ordinal);
+        foreach (var rule in content.Terrains.Rules) terrains.Add(rule.Id, Terrain(rule.Id, rule.Value));
+        var patches = new Dictionary<string, RuntimeMcdPatch>(StringComparer.Ordinal);
+        foreach (var (id, patch) in content.McdPatches) patches.Add(id, new RuntimeMcdPatch(List(patch.Entries.Select(static entry =>
+            new RuntimeMcdPatchEntry(entry.Index, Map(entry.Integers), Map(entry.Booleans), entry.Lofts is null ? null : List(entry.Lofts))))));
+        return new(List(content.Terrains.Rules.Select(static rule => rule.Id)),
+            new ReadOnlyDictionary<string, RuntimeTerrain>(terrains), new ReadOnlyDictionary<string, RuntimeMcdPatch>(patches));
+    }
+
+    private static RuntimeTerrain Terrain(string id, TerrainRule rule) => new(id, List(rule.MapDataSets),
+        List(rule.MapBlocks.Select(static block => new RuntimeMapBlock(block.Name, block.Width, block.Length, block.Height,
+            List(block.Groups), List(block.RevealedFloors), List(block.CraftInventoryTile)))),
+        rule.EnviroEffects, List(rule.CivilianTypes), rule.MinimumDepth, rule.MaximumDepth, rule.MapScript, List(rule.MapScripts));
+
+    private static ReadOnlyCollection<T> List<T>(IEnumerable<T> source) => Array.AsReadOnly(source.ToArray());
+
+    private static ReadOnlyDictionary<string, T> Map<T>(IReadOnlyDictionary<string, T> source) =>
+        new(source.ToDictionary(static pair => pair.Key, static pair => pair.Value, StringComparer.Ordinal));
+}
+
+/// <summary>RuleTerrain as the battle generator reads it (sprites and ambience stay with presentation).</summary>
+public sealed record RuntimeTerrain(
+    string Id,
+    IReadOnlyList<string> MapDataSets,
+    IReadOnlyList<RuntimeMapBlock> MapBlocks,
+    string EnviroEffects,
+    IReadOnlyList<string> CivilianTypes,
+    int MinimumDepth,
+    int MaximumDepth,
+    string MapScript,
+    IReadOnlyList<string> MapScripts);
+
+/// <summary>MapBlock: size (the MAP header's height replaces <see cref="Height"/> when loaded), groups and revealed floors.</summary>
+public sealed record RuntimeMapBlock(
+    string Name,
+    int Width,
+    int Length,
+    int Height,
+    IReadOnlyList<int> Groups,
+    IReadOnlyList<int> RevealedFloors,
+    IReadOnlyList<int> CraftInventoryTile);
+
+/// <summary>MCDPatch: entries in rule order.</summary>
+public sealed record RuntimeMcdPatch(IReadOnlyList<RuntimeMcdPatchEntry> Entries);
+
+/// <summary>One MCDPatch data entry: the integer and boolean properties it sets and its LOFTS, if any.</summary>
+public sealed record RuntimeMcdPatchEntry(
+    ulong Index,
+    IReadOnlyDictionary<string, int> Integers,
+    IReadOnlyDictionary<string, bool> Booleans,
+    IReadOnlyList<int>? Lofts);

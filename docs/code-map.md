@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 196 | Core, Mods, Scripting |
-| [Oxce.Mods](#oxcemods) | 96 | Core, Formats, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 199 | Core, Mods, Scripting |
+| [Oxce.Mods](#oxcemods) | 97 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 5 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 319 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 320 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 103 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -337,7 +337,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 196 files.
+`src/Oxce.Gameplay` - 199 files.
 
 ### `Oxce.Gameplay`
 
@@ -355,6 +355,15 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BattleUnitView` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - A unit as a viewer sees it.
 - `BattleOverview` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The battle as a viewer sees it; `Revision` changes with every committed battle change.
 - `IBattleQuery` (interface) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The current battle, if any, as a viewer sees it (ADR 0038: every battle query takes a viewer).
+
+### `Oxce.Gameplay.Battles.Terrain`
+
+- `BattleTilePart` (enum) [BattleMapData.cs](../src/Oxce.Gameplay/Battles/Terrain/BattleMapData.cs) - TilePart: the four parts of a tile, in MAP record order.
+- `BattleMapData` (class) [BattleMapData.cs](../src/Oxce.Gameplay/Battles/Terrain/BattleMapData.cs) - One terrain object (MapData), read from an MCD record and patched by the data set's MCD patch.
+- `BattleMapDataSet` (class) [BattleMapData.cs](../src/Oxce.Gameplay/Battles/Terrain/BattleMapData.cs) - A loaded MapDataSet: the objects of one MCD file, patched.
+- `BattleMapBlockData` (class) [BattleMapData.cs](../src/Oxce.Gameplay/Battles/Terrain/BattleMapData.cs) - A loaded map block: its MAP tiles (height from the MAP header, which `loadMAP` takes over the rule's) and the raw RMP routes, which are d...
+- `IBattleTerrainFiles` (interface) [BattleTerrainFiles.cs](../src/Oxce.Gameplay/Battles/Terrain/BattleTerrainFiles.cs) - The installation files battles read (`FileMap::getIStream`): terrain data sets, map blocks and routes.
+- `VirtualBattleTerrainFiles` (class) [BattleTerrainFiles.cs](../src/Oxce.Gameplay/Battles/Terrain/BattleTerrainFiles.cs) - Terrain files from the installation's virtual file catalog (mods override the master's files).
 
 ### `Oxce.Gameplay.Campaigns`
 
@@ -647,7 +656,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Mods
 
-`src/Oxce.Mods` - 96 files.
+`src/Oxce.Mods` - 97 files.
 
 ### `Oxce.Mods`
 
@@ -908,6 +917,11 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `AdhocScriptRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
 - `ArcScriptRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
 - `EventScriptRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `RuntimeBattleRules` (class) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - The rule families only the battlescape reads (Phase 7, ADR 0038), linked as one group by `Link`, apart from the strategic families.
+- `RuntimeTerrain` (record) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - RuleTerrain as the battle generator reads it (sprites and ambience stay with presentation).
+- `RuntimeMapBlock` (record) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - MapBlock: size (the MAP header's height replaces `Height` when loaded), groups and revealed floors.
+- `RuntimeMcdPatch` (record) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - MCDPatch: entries in rule order.
+- `RuntimeMcdPatchEntry` (record) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - One MCDPatch data entry: the integer and boolean properties it sets and its LOFTS, if any.
 - `RuntimeCraftTemplateWeapon` (record) [RuntimeCraftTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeCraftTemplate.cs)
 - `RuntimeCraftTemplateVehicle` (record) [RuntimeCraftTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeCraftTemplate.cs)
 - `RuntimeCraftTemplate` (record) [RuntimeCraftTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeCraftTemplate.cs)
@@ -1190,7 +1204,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 319 files.
+`tests/Oxce.CompatibilityTests` - 320 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1198,9 +1212,10 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>316 test classes</summary>
+<details><summary>317 test classes</summary>
 
 - `BattleStartTests` ([BattleStartTests.cs](../tests/Oxce.CompatibilityTests/BattleStartTests.cs))
+- `BattleTerrainLoaderTests` ([BattleTerrainLoaderTests.cs](../tests/Oxce.CompatibilityTests/BattleTerrainLoaderTests.cs))
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
 - `CampaignSaveRegressionFixtureTests` ([CampaignSaveRegressionFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignSaveRegressionFixtureTests.cs))
