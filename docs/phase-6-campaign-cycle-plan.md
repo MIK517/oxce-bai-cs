@@ -227,3 +227,9 @@ the monthly failure use; Phase 7 victory inputs are recorded
 The monthly report, event, commendation, psi-reminder, funding, cutscene and ending windows, requested saves and save
 refusal messages are in the SDL geoscape; presentation beyond text panels is assigned to Phase 8
 ([status S7](strategic-campaign-cycle-status.md#s7--campaign-cycle-windows-2026-10-18)).
+
+### S8 — Scenarios (2026-10-18)
+
+Every staged save plays up to three months with a reload at every report, keeping the ledger's twelve-month histories
+and bounded populations; month and save costs are measured and the Windows SDL3 smoke passes
+([status S8](strategic-campaign-cycle-status.md#s8--scenarios-2026-10-18)).

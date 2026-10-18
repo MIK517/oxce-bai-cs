@@ -722,3 +722,20 @@ midnight tick (which makes each one a cold, single tick):
 A stage point adds about 1.2 ms with 8 UFOs and 1.7 ms with 128 (about 92 KB and 161 KB): one capture, one
 restore and the shadow's preflights and day handlers. Month ticks pay it once a month and event-payload ticks once per due event, so the
 one-day-speed target is unaffected. Ordinary ticks have no stage point and are unchanged.
+
+## Campaign-cycle months (branch 6 S8, 2026-10-18)
+
+Measured by `ImportedCampaignsPlayThreeMonthsAcrossReloadsAtEveryReport` (Debug build, one-day speed, the medians of
+each save's commands; recorded in `artifacts/private-campaign-cycle-measurements.json`). A day is one command of
+17,280 ticks; the month command is the day whose month tick runs the rollover, staged, with its report.
+
+| Save | Day command (ms) | Month command (ms) | Save and reload (ms) |
+|---|---|---|---|
+| UFO `Middle.sav` | 54 | 35 | 8 |
+| TFTD `IronMode.sav` | 59 | 47 | 5 |
+| Rosigma `Begining.sav` | 85 | 168 | 9 |
+| Rosigma `Early.sav` | 82 | 521 | 10 |
+
+The month's own cost is the month command less a day command: from nothing (vanilla, whose shorter month days run
+fewer UFO passes) to about 440 ms in Rosigma `Early.sav`, whose month scripts start many missions and whose land
+selection is charged in full (S5). Saving and reloading a campaign takes about 5 to 14 ms.

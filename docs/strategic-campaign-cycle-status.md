@@ -526,3 +526,23 @@ Recorded differences of these text panels (presentation is Phase 8):
   an event naming no region keeps its untranslated title.
 - The controls and pause pass: every window pauses time as `GeoscapeState::popup` does; graphs, Ufopaedia, the options
   screen and the save menus are the Phase 8 assignments above.
+
+## S8 — Scenarios (2026-10-18)
+
+`PrivateStrategicWorldTests.ImportedCampaignsPlayThreeMonthsAcrossReloadsAtEveryReport` plays every staged save
+(battlescape saves stay preservation-only) for up to three months at the one-day speed. A headless player answers every
+window (landings declined, interceptions disengaged, base defenses fired, reports and events acknowledged). After every
+monthly report the campaign is saved and reloaded from its own save document. Each month asserts that the ledger's
+histories are aligned and at most twelve months long (funds, maintenance, incomes, expenditures, research scores),
+that every country's and region's histories are at most twelve months long, and that the world's populations
+(missions, UFOs, sites, alien bases, events) stay bounded.
+
+Outcome (one-day speed, seed 17): Rosigma `Begining.sav` plays three months. The passive player loses every other
+campaign through the council at its second or third report (two months rated below the difficulty's threshold), as
+the reference would. Every month and reload kept the invariants. The 19-save closure classification is unchanged (11
+executable, 8 preservation-only, `ImportedWorldContinuationHasEquivalentFreshAndCachedClassifications`). The
+long-horizon stops are pinned by `ImportedWorldRunsToItsNamedLongHorizonStop` and
+`ImportedWorldRunsPastBranchFiveChoicesToItsNextStop` (S3–S5).
+
+Costs: [performance baselines](performance-baselines.md#campaign-cycle-months-branch-6-s8-2026-10-18). The Windows
+SDL3 smoke (`tools/run-sdl-smoke.ps1`) passes.

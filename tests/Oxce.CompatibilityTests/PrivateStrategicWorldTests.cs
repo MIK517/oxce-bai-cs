@@ -116,6 +116,121 @@ public sealed class PrivateStrategicWorldTests
             static s => s.Personal!.Diary.Kills.Any(static k => k.Id == 1_000_000));
     }
 
+    /// <summary>
+    /// Branch 6 S8: every staged save plays three months at the one-day speed, a headless player answering every
+    /// window, saved and reloaded after every monthly report. Each month keeps the ledger's histories aligned and at most
+    /// twelve entries long, the countries' and regions' activity bounded, and the world's populations bounded; the
+    /// measured month and save/reload costs are recorded in artifacts/private-campaign-cycle-measurements.json.
+    /// </summary>
+    [Fact]
+    public void ImportedCampaignsPlayThreeMonthsAcrossReloadsAtEveryReport()
+    {
+        var installation = TestFixtures.RepositoryPath("artifacts", "private-install");
+        Assert.SkipUnless(File.Exists(Path.Combine(installation, ".oxce-private-install-manifest.json")),
+            "Owned installation is not staged.");
+        var cacheDirectory = Directory.CreateTempSubdirectory("oxce-private-cycle-cache-");
+        List<object> measurements = [];
+        try
+        {
+            foreach (var (master, addon, family) in new[]
+            {
+                ("xcom1", "-", "vanilla-ufo"), ("xcom2", "-", "vanilla-tftd"), ("40k", "40k_ROSIGMA_edits", "modded/rosigma"),
+            })
+            {
+                var request = InstallationLoadRequest.ForMasterAndAddOn(installation, master, addon, new("Extended", "8.6.1.0"));
+                var loaded = InstallationContentLoader.Load(request, new() { Cache = new() { DirectoryPath = cacheDirectory.FullName } },
+                    cancellationToken: TestContext.Current.CancellationToken);
+                Assert.True(loaded.IsSuccess, loaded.DescribeFailure());
+                var content = loaded.Content!;
+                var options = new OxceSaveLoadOptions(request.MasterId, request.ActiveMods.ToHashSet(StringComparer.Ordinal),
+                    new Oxce.Formats.Yaml.YamlReadOptions { MaxBytes = 32 * 1024 * 1024, MaxNodes = 2_000_000 });
+                var directory = TestFixtures.RepositoryPath("fixtures", "private", "saves", family);
+                foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)
+                    .Where(path => Path.GetExtension(path) is ".sav" or ".asav").Order(StringComparer.Ordinal))
+                {
+                    var name = Path.GetRelativePath(directory, file).Replace('\\', '/');
+                    if (name.StartsWith("battlescape/", StringComparison.Ordinal)) continue;
+                    var imported = OxceSaveAdapter.LoadFile(file, content, new SplitMix64RandomSource(17), options);
+                    var campaign = imported.Campaign;
+                    var source = imported.Source;
+                    var months = 0;
+                    string? stop = null;
+                    List<double> dayMilliseconds = [], monthMilliseconds = [], reloadMilliseconds = [];
+                    while (months < 3 && stop is null)
+                    {
+                        var watch = System.Diagnostics.Stopwatch.StartNew();
+                        var result = campaign.Execute(new AdvanceCampaignTime(17280) { SelectedSpeed = CampaignTimeSpeed.OneDay });
+                        var elapsed = watch.Elapsed.TotalMilliseconds;
+                        var report = result.Events.OfType<MonthlyReportReady>().Any();
+                        (report ? monthMilliseconds : dayMilliseconds).Add(elapsed);
+                        if (result.Events.OfType<CampaignActionBlocked>().SingleOrDefault()?.Reason is { } reason &&
+                            !AnswerBranchFiveChoices(campaign, reason))
+                        {
+                            stop = reason;
+                            break;
+                        }
+                        if (campaign.Ending != 0) stop = "ended";
+                        if (!report) continue;
+                        // Answer the report (and the rest of its tick's windows), then save and reload the campaign.
+                        while (campaign.GetQuery<ICampaignMonthlyReportQuery>()!.QueryMonthlyReport() is not null ||
+                               campaign.GetQuery<ICampaignEventWindowQuery>()!.QueryEventWindows().Count != 0)
+                        {
+                            var blocked = campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<CampaignActionBlocked>().Single().Reason;
+                            Assert.True(AnswerBranchFiveChoices(campaign, blocked), $"{family}/{name}: {blocked}");
+                        }
+                        months++;
+                        AssertMonthInvariants(campaign.Capture(), $"{family}/{name} month {months}");
+                        // A headless player that never fights can lose the council's confidence (two bad months).
+                        if (campaign.Ending != 0)
+                        {
+                            stop = "ended " + campaign.Ending.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                            break;
+                        }
+                        watch.Restart();
+                        var snapshot = campaign.CaptureForSave(out var refusal);
+                        Assert.True(snapshot is not null, $"{family}/{name}: {refusal}");
+                        var saved = OxceSaveAdapter.EmitLoadedCampaign(snapshot, source);
+                        var reloaded = OxceSaveAdapter.Load(saved, name, content, new SplitMix64RandomSource(17), options);
+                        reloadMilliseconds.Add(watch.Elapsed.TotalMilliseconds);
+                        campaign = reloaded.Campaign;
+                        source = reloaded.Source;
+                    }
+                    measurements.Add(new
+                    {
+                        Family = family, Save = name, Months = months, Stop = stop ?? "three months",
+                        DayCommandMs = Median(dayMilliseconds), MonthCommandMs = Median(monthMilliseconds),
+                        SaveAndReloadMs = Median(reloadMilliseconds),
+                    });
+                }
+            }
+        }
+        finally
+        {
+            cacheDirectory.Delete(recursive: true);
+            var record = TestFixtures.RepositoryPath("artifacts", "private-campaign-cycle-measurements.json");
+            Directory.CreateDirectory(Path.GetDirectoryName(record)!);
+            File.WriteAllText(record, JsonSerializer.Serialize(measurements, IndentedJson));
+        }
+
+        static double Median(List<double> values) =>
+            values.Count == 0 ? 0 : Math.Round(values.Order().ElementAt(values.Count / 2), 1);
+    }
+
+    /// <summary>SavedGame's twelve-month graphs and the world's bounded populations after a month.</summary>
+    private static void AssertMonthInvariants(CampaignSnapshot after, string label)
+    {
+        var length = after.Funds.Count;
+        Assert.True(length is >= 1 and <= 12, $"{label}: {length} months of funds.");
+        Assert.True(new[] { after.Maintenance.Count, after.Incomes.Count, after.Expenditures.Count, after.ResearchScores.Count }
+            .All(count => count == length), $"{label}: the ledger's histories differ in length.");
+        Assert.All(after.Countries, country => Assert.True(country.Funding.Count <= 12 && country.ActivityXcom.Count <= 12 &&
+            country.ActivityAlien.Count <= 12, $"{label}: {country.RuleId} keeps more than twelve months."));
+        Assert.All(after.Regions, region => Assert.True(region.ActivityXcom.Count <= 12 && region.ActivityAlien.Count <= 12,
+            $"{label}: {region.RuleId} keeps more than twelve months."));
+        Assert.True(after.World.Missions.Count < 1_000 && after.World.Ufos.Count < 1_000 && after.World.MissionSites.Count < 1_000 &&
+            after.World.AlienBases.Count < 1_000 && after.World.Events.Count < 1_000, $"{label}: a world population grew without bound.");
+    }
+
     private const string ReportStop = "The monthly report is open.";
     private const string TacticalStop = "Active tactical battle is preserved; tactical continuation is unavailable.";
     private const string EventStop = "A strategic event window is open.";
