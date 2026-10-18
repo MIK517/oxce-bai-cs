@@ -100,7 +100,7 @@ public sealed class PrivateStrategicWorldTests
             .Select(static s => s.Personal!.Diary).ToArray();
         var killer = Assert.Single(diaries, static d => d.Kills.Any(static k => k.Id == 1_000_000));
         Assert.Equal(new SoldierKill("STR_LIVE_SOLDIER", "STR_SECTOID", "STR_RIFLE", "STR_RIFLE_CLIP", 6, 1, 0, 9, 1, 3)
-            { Type = "STR_SECTOID_SOLDIER", Id = 1_000_000 }, Assert.Single(killer.Kills));
+        { Type = "STR_SECTOID_SOLDIER", Id = 1_000_000 }, Assert.Single(killer.Kills));
         Assert.Equal([0], killer.MissionIds);
         Assert.Equal((1, 1, 6, 1, 1), (killer.Counter("hitCounterTotal"), killer.Counter("lowAccuracyHitCounterTotal"),
             killer.Counter("shotsFiredCounterTotal"), killer.Counter("shotsLandedCounterTotal"), killer.Counter("killedInAction")));
