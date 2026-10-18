@@ -229,9 +229,7 @@ public sealed partial class GeoscapeClient
     private GeoscapePopup NamingPopup() => new(_setup.Localize("STR_BASE_NAME"), [_naming!.Text + "_"],
         string.IsNullOrWhiteSpace(_naming.Text) ? [] : [new(_setup.Localize("STR_OK"), OkKey: true, CancelKey: true)]);
 
-    /// <summary>Unicode::formatFunding: thousands separated, the one-character currency in front.</summary>
-    private static string Funding(long value) =>
-        (value < 0 ? "-$" : "$") + Math.Abs(value).ToString("N0", CultureInfo.InvariantCulture);
+    private static string Funding(long value) => GeoscapeNotifications.Funding(value);
 
     private GeoscapePopup Message(string text) =>
         new(text, [], [new(_setup.Localize("STR_OK"), OkKey: true, CancelKey: true)]);

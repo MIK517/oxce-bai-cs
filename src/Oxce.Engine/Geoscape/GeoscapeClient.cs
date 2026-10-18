@@ -18,6 +18,8 @@ public sealed record GeoscapeClientSetup(
     Func<string, string> Localize)
 {
     public Action? Save { get; init; }
+    /// <summary>Makes a save the campaign requested: an ironman save, or the autosave (SaveGameState).</summary>
+    public Action<CampaignSaveKind>? SaveRequested { get; init; }
     public Func<CampaignUiSession>? Load { get; init; }
     public Func<TimeSpan>? Stopwatch { get; init; }
     public GlobeRenderOptions Options { get; init; } = new();
@@ -57,6 +59,8 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     private readonly GlobeRenderer _renderer;
     private readonly GeoscapeTimeController _time;
     private readonly List<PopupEntry> _popups = [];
+    /// <summary>A save the campaign requested (ironman or autosave), made once no window is open.</summary>
+    private CampaignSaveKind? _pendingSave;
     private CampaignUiSession _session;
     private CampaignWorldOverview _world;
     private CampaignOverview _overview;
@@ -161,6 +165,11 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
             }
         }
         redraw |= TickInterceptions(fixedInterval);
+        if (_pendingSave is { } save && _popups.Count == 0)
+        {
+            _pendingSave = null;
+            if (_setup.SaveRequested is { } requested) Guard(() => requested(save));
+        }
         if (TimeCanRun)
         {
             GeoscapeTimeStep step;
@@ -300,6 +309,10 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
                 break;
             case 'b':
                 OpenBases();
+                break;
+            case 'f' when _session.Funding is { } funding:
+                // GeoscapeState's Funding button (FundingState).
+                Enqueue(GeoscapeNotifications.Funding(funding.QueryFunding(), _setup.Localize));
                 break;
             case 'i':
                 OpenIntercept(new InterceptIntent(), NewGroup());
@@ -477,7 +490,9 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     {
         foreach (var notification in events)
         {
-            if (GeoscapeNotifications.Describe(notification, _world, _setup.Localize, _setup.Rules, _setup.ShowEtaMode) is { } popup)
+            // MonthlyReportState and SavedGame's ironman: the host saves once every window is answered.
+            if (notification is CampaignSaveRequested request) _pendingSave = _pendingSave is CampaignSaveKind.Ironman ? _pendingSave : request.Kind;
+            foreach (var popup in GeoscapeNotifications.DescribeAll(notification, _world, _setup.Localize, _setup.Rules, _setup.ShowEtaMode))
                 Enqueue(popup);
         }
     }

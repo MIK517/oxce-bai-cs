@@ -471,3 +471,32 @@ the free topic's, the unended check, a both-flags video losing), that only `time
 
 Not changed: a won campaign then losing every base in the same tick keeps the win (practically unreachable); the
 pre-existing `MonthsPassed` guard on the no-bases loss stays.
+
+## S7 — Campaign-cycle windows (2026-10-18)
+
+The SDL geoscape shows the branch's windows as text panels (`GeoscapeNotifications`), the way branch 5 shows its
+landing and base-defense windows:
+
+- The monthly report (`MonthlyReportState`): month, rating, income with its change, maintenance, performance bonus,
+  balance, the council's text with the debt warning and the country lists; a failed month shows the failure screen.
+  OK sends `AcknowledgeMonthlyReport`; the lose cutscene then opens a cutscene window.
+- The event window (`GeoscapeEventState`): the title and message with the place (the city of a city-specific event,
+  otherwise the region) and the items given or taken; OK sends `AcknowledgeCampaignEvent`. Its OK opens the research
+  and bonus articles, the storage-overfull window (to the HQ's base screens) and the cutscene, in the reference's stack
+  order (`GeoscapeNotifications.DescribeAll`).
+- Commendations (`CommendationState`: each soldier's new or raised commendation and level), the psi-training reminder
+  (`PsiTrainingState`: the bases), the funding view (`FundingState` on F: each country's funding and change, the total),
+  cutscene-unavailable windows for queued videos, and the ending window naming the game-over video.
+- Requested saves: the geoscape makes `CampaignSaveRequested` once no window is open (`GeoscapeClientSetup.SaveRequested`);
+  the SDL host writes the ironman save to the campaign's save path and the autosave to `_autogeo_.asav` beside it.
+- A refused save says why: F5 in the geoscape and the base screens shows the reason, and the exit save prints it.
+
+Tests: `GeoscapeNotificationsTests` (the report's lines and acknowledgement, the failure screen, the event window and
+the windows its OK opens in order, medals, psi reminder, cutscene and ending windows, funding view) and
+`StrategicWorldGeoscapeScenarioTests.TheMonthlyReportWindowAcknowledgesAndTheAutosaveWaitsForEveryWindow` (the real
+client: the month opens the report window, OK acknowledges it, and the autosave waits for every window).
+
+Assigned to Phase 8 (presentation): cutscene playback, Ufopaedia articles (the windows name them), the graphs
+(`GraphsState`), commendation art and the soldier diary screens, the options screen (the `autosave` option and the other
+user options are read from saves and fixed options), and the save and load menus with file selection (the SDL host
+saves to the path it was started with). Tactical states stay preservation-only (Phase 7).

@@ -221,3 +221,9 @@ the acknowledgement; S6 adds the research cutscenes.
 Research and free-topic cutscenes end the campaign inside the day tick through the one ending rule that events and
 the monthly failure use; Phase 7 victory inputs are recorded
 ([status S6](strategic-campaign-cycle-status.md#s6--strategic-endings-2026-10-18)).
+
+### S7 — Campaign-cycle windows (2026-10-18)
+
+The monthly report, event, commendation, psi-reminder, funding, cutscene and ending windows, requested saves and save
+refusal messages are in the SDL geoscape; presentation beyond text panels is assigned to Phase 8
+([status S7](strategic-campaign-cycle-status.md#s7--campaign-cycle-windows-2026-10-18)).
