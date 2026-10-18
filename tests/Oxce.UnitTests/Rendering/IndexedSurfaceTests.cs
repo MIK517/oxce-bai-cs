@@ -3,6 +3,7 @@ using Xunit;
 
 namespace Oxce.UnitTests.Rendering;
 
+[Collection(AllocationMeasurement.Name)]
 public sealed class IndexedSurfaceTests
 {
     [Fact]

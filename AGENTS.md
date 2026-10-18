@@ -93,6 +93,10 @@ mechanical translations with no executable acceptance test.
   so failures print the difference.
 - Iterate oracle arrays through `TestFixtures.Rows(...)`, which fails on an
   empty array.
+- A unit test class that asserts exactly zero bytes from
+  `GC.GetAllocatedBytesForCurrentThread` joins
+  `[Collection(AllocationMeasurement.Name)]`, which runs alone after the
+  parallel tests; under parallel load, runtime work can add stray bytes.
 - `StrategicReadinessTestContent.Load` builds every ruleset fresh, restores it from the compiled
   cache and asserts both are identical (`ContentStateDump`); tests run on the restored content.
   Do not add fresh/cache theory parameters.

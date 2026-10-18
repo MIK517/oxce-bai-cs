@@ -27,7 +27,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
 | [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 318 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
-| [Oxce.UnitTests](#oxceunittests) | 101 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
+| [Oxce.UnitTests](#oxceunittests) | 102 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
 | [Oxce.FixtureTool](#oxcefixturetool) | 1 | FixtureSupport, Formats, Mods, Savegames |
 | [Oxce.ResourceBrowser](#oxceresourcebrowser) | 2 | Formats, Mods, Platform.Sdl, Rendering, Resources |
@@ -1524,7 +1524,11 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.UnitTests
 
-`tests/Oxce.UnitTests` - 101 files.
+`tests/Oxce.UnitTests` - 102 files.
+
+### `Oxce.UnitTests`
+
+- `AllocationMeasurement` (class) [AllocationMeasurement.cs](../tests/Oxce.UnitTests/AllocationMeasurement.cs)
 
 <details><summary>101 test classes</summary>
 
@@ -1690,6 +1694,11 @@ Prefer these over local copies (see AGENTS.md, *Test conventions*).
 - `ProbeExtension` (class)
 - `ThrowOnEventExtension` (class)
 - members: `Initialize`, `Shutdown`, `Attach`, `OnEvent`, `Detach`, `CaptureState`, `RestoreState`, `Initialize`, `Shutdown`, `Attach`, `OnEvent`, `Detach`
+
+### [tests/Oxce.UnitTests/AllocationMeasurement.cs](../tests/Oxce.UnitTests/AllocationMeasurement.cs)
+
+- `AllocationMeasurement` (class)
+- members: `Name`
 
 ### [tests/Shared/GameplayVerification.cs](../tests/Shared/GameplayVerification.cs) - linked into Oxce.CompatibilityTests, Oxce.UnitTests
 
