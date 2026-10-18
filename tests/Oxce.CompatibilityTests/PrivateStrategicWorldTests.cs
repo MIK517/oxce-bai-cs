@@ -221,9 +221,15 @@ public sealed class PrivateStrategicWorldTests
                     Assert.True(stop is null or "ended 2", label + ": " + stop);
                     measurements.Add(new
                     {
-                        Family = family, Save = name, Months = months, Stop = stop ?? "three months", Reports = reports,
-                        TickMicroseconds = Median(tickMicroseconds), MonthTickMilliseconds = Median(monthTickMilliseconds),
-                        MonthTicks = monthTickMilliseconds.Count, SaveAndReloadMilliseconds = Median(reloadMilliseconds),
+                        Family = family,
+                        Save = name,
+                        Months = months,
+                        Stop = stop ?? "three months",
+                        Reports = reports,
+                        TickMicroseconds = Median(tickMicroseconds),
+                        MonthTickMilliseconds = Median(monthTickMilliseconds),
+                        MonthTicks = monthTickMilliseconds.Count,
+                        SaveAndReloadMilliseconds = Median(reloadMilliseconds),
                         Reloads = reloadMilliseconds.Count,
                     });
                 }
