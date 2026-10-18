@@ -36,23 +36,30 @@ persisted deployment request (branch 5), which Phase 7 consumes.
     report; Rosigma `Begining.sav` plays all three.
 - Costs: [performance baselines](performance-baselines.md#campaign-cycle-months-branch-6-s8-2026-10-18) (month tick
   7–151 ms Debug, save and reload 4–13 ms) and the staged tick costs (S2). The Windows SDL3 smoke passes.
-- Root `dotnet test` at the closure commit: every unit and compatibility test passes, the private corpus included
-  (the last run is recorded in the branch 6 status).
+- Validation at the closure: root `dotnet test` ran 3,670 tests (unit and compatibility, the private corpus included),
+  all green, none skipped; `dotnet format --verify-no-changes`, `python tools/generate-code-map.py --check` and
+  `python tools/generate-refusal-inventory.py --check` are clean.
+- Not covered: blocked corpus cases (no staged save is blocked; blocked paths are covered by synthetic tests), a
+  C++ reload of the port's emitted saves, and pinned reference saves for the newly executable mid-month state. The
+  three-month runs are thin for UFO and TFTD, where the passive player loses at the second or third report.
 
 ## Refusal inventory
 
-Plan D5: every reason string in `src/Oxce.Gameplay` is listed in the
-[refusal inventory](phase-6-refusal-inventory.md), 664 in all, each in one class:
+Plan D5: `tools/generate-refusal-inventory.py` lists every reason sentence in `src/Oxce.Gameplay`,
+`src/Oxce.Savegames` and `src/Oxce.Extensions` in the [refusal inventory](phase-6-refusal-inventory.md), 810 in all,
+each in one class. Classes are assigned by patterns, with hand-reviewed overrides for the cases the closure audit
+named. The classification is per class, not a per-string review. A string the patterns misfile keeps the class it
+shows until it is moved.
 
 | Class | Count | Disposition |
 |---|---|---|
 | Modal holds and the ended campaign | 8 | Reference behaviour: the reference's windows and game over stop time and input (D2, D4). |
-| Internal consistency checks | 47 | Not reachable refusals. They state invariants the code guarantees (a provider preflighted, a stage that agrees with its shadow, one registration each). |
-| Player command refusals | 42 | Reference behaviour: the reference's states disable or refuse the same actions. |
-| Invalid content or save input | 217 | Re-justified as invalid input: the reference throws, crashes or misbehaves there. The chosen behaviours are recorded in the decision records ([ADR 0036](decisions/0036-campaign-cycle-intentional-differences.md) and earlier). |
-| Port work and range bounds | 236 | Re-justified: deterministic limits on forecast work, identities and values the reference leaves unbounded. Branch 6 raised the forecast bounds to fit real globes (S3, S5). No staged save reaches one (corpus above). |
-| Tactical and battle boundaries | 2 | Phase 7. |
-| Named restrictions | 112 | Same-tick interactions the forecasts do not resolve: the 4c restrictions R3–R6 and their kind. Assigned to Phase 7 (below). |
+| Internal consistency checks | 50 | Not reachable refusals. They state invariants the code guarantees (a provider preflighted, a stage that agrees with its shadow, one registration each). |
+| Player command refusals | 58 | Reference behaviour: the reference's states disable or refuse the same actions. |
+| Invalid content or save input | 279 | Re-justified as invalid input: the reference throws, crashes or misbehaves there. The chosen behaviours are recorded in the decision records ([ADR 0036](decisions/0036-campaign-cycle-intentional-differences.md) and earlier). |
+| Port work and range bounds | 276 | Re-justified: deterministic limits on forecast work, identities and values the reference leaves unbounded. Branch 6 raised the forecast bounds to fit real globes (S3, S5). No staged save reaches one (corpus above). |
+| Tactical and battle boundaries | 3 | Phase 7 (the preserved battle state included). |
+| Named restrictions | 136 | Strategic transitions and same-tick interactions the port does not run yet: the 4c restrictions R3–R6 and the other capability boundaries (unsupported script bindings, `canTransferCraftsWhileAirborne`, follower repairs). Assigned to Phase 7 (below). |
 
 **R4–R6 (plan D5).** Re-evaluated against staged ticks: the staging mechanism can lift them. A tick that reaches one
 would run its levels on a shadow and stop only for a real failure. Doing so means replacing each forecast with a
@@ -80,6 +87,9 @@ records in [decisions](decisions/). The text-panel windows' differences are list
   - cutscene playback, Ufopaedia, graphs, the commendation and soldier diary screens;
   - the options screen and the save and load menus;
   - the reference's window art and layout over the text panels.
+- **Managed extension state (plan D6):** an extension that keeps save state stays refused at load (`EXT1011`,
+  [ADR 0021](decisions/0021-versioned-managed-extensions.md)) until the first state-owning extension gives the host a
+  persistence contract.
 - **Later completion roadmap:** full original binary-save conversion and release breadth.
 
 ## First Phase 7 acceptance scenario

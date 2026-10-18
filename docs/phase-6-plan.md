@@ -8,8 +8,8 @@ Status (scope revised 2026-09-26): branches 1–3 have bounded acceptance docume
 Branch 4a supplies the bounded world foundation; branch 4b satisfies its revised
 ordinary-lifecycle closure gate and merged in `e10d96f` (PR #72).
 Branches 4c (PR #73), 4d (PR #74) and 5 (PR #75,
-[branch 5 plan](phase-6-interception-plan.md)) merged; branch 6 is in progress
-([branch 6 plan](phase-6-campaign-cycle-plan.md)).
+[branch 5 plan](phase-6-interception-plan.md)) merged; branch 6 closes Phase 6
+([branch 6 plan](phase-6-campaign-cycle-plan.md), [Phase 6 status](phase-6-status.md)).
 This is not a Phase 6 completion claim.
 
 ## Goal and scope

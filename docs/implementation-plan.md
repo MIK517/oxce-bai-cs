@@ -284,15 +284,17 @@ copying every legacy state. Every slice includes save fields, rules, and script 
 Exit gate:
 
 - A modded campaign can be operated from creation through a validated, persisted
-  strategic deployment request, with strategic save/reload at each major transition.
+  strategic deployment request, with strategic save/reload at each major transition
+  (met by branch 6: [Phase 6 status](phase-6-status.md#launch-gate)).
   Phase 7's first battle generator must consume that request to close the broader
   playable mission-launch gate; a request alone does not constitute a playable battle.
 
 ## Phase 7 — Playable battlescape vertical slice
 
-Phase 7 inherits the Phase 6 named restrictions (the 4c R3–R6 and their kind,
-[Phase 6 status](phase-6-status.md#refusal-inventory)): its planning slice inventories them against the battle
-transitions and retires them through staged ticks or names their remaining owner.
+Phase 7 inherits the Phase 6 named restrictions: every string in the
+[refusal inventory](phase-6-refusal-inventory.md)'s "Named restrictions" and "Tactical and battle boundaries"
+classes (the 4c R3–R6 among them; [Phase 6 status](phase-6-status.md#refusal-inventory)). Its planning slice checks
+them against the battle transitions and retires each through staged ticks or names its remaining owner.
 
 Suggested order:
 
@@ -382,9 +384,9 @@ documents it links; entries below link to them instead of copying them. Branch 4
 branch 4d (globe integration and combined branch 4 acceptance) is [complete](phase-6-world-integration-plan.md#branch-4d-closure-2026-10-12) and merged (PR #74).
 Branch 5 (interception and strategic deployment) is
 [complete](strategic-interception-status.md#branch-audit-2026-10-17) and merged (PR #75).
-Branch 6 (monthly campaign cycle and Phase 6 closure) follows the
-[branch 6 plan](phase-6-campaign-cycle-plan.md); its checkpoints are in that plan's
-[Progress](phase-6-campaign-cycle-plan.md#progress).
+Branch 6 (monthly campaign cycle and Phase 6 closure) is delivered on its branch
+([branch 6 plan](phase-6-campaign-cycle-plan.md#progress)); the closure is published in
+[Phase 6 status](phase-6-status.md). After it merges, Phase 7 starts with its planning slice.
 
 The September compatibility-guardrail, script-allocation, compiled-content-cache,
 hot-runtime-partitioning, and portable Unicode-path slices are complete. The production
