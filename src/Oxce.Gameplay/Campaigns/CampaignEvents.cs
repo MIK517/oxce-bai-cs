@@ -111,8 +111,9 @@ public sealed partial class CampaignState : ICampaignEventWindowQuery
             _eventWindows.Add(window);
             effects.Notify(new CampaignEventOpened(window));
         }
-        catch (InvalidOperationException error)
+        catch (Exception error) when (error is InvalidOperationException or ArgumentException)
         {
+            // A capacity the payload cannot reserve, or craft or soldier values outside the supported range.
             throw new InvalidDataException(error.Message, error);
         }
     }
@@ -137,7 +138,11 @@ public sealed partial class CampaignState : ICampaignEventWindowQuery
         if (payload.Regions.Count != 0)
         {
             var regionId = payload.Regions[_random.NextInclusive(0, payload.Regions.Count - 1)];
-            region = RequiredRule(rules.Regions, regionId, "region");
+            // An empty name or STR_NULL names no region: the score goes to research. A city-specific event then reads
+            // the cities of no region in the reference; the port refuses it (ADR 0036).
+            region = OptionalRule(rules.Regions, regionId, "region");
+            if (region is null && payload.CitySpecific)
+                throw new InvalidDataException("A city-specific strategic event names no region.");
         }
         // Even an event that is not city-specific picks a city to represent its region (and maybe a country).
         if (region is { } picked && Cities(rules.Regions[picked].Value) is { Count: > 0 } cities)
@@ -352,10 +357,6 @@ public sealed partial class CampaignState : ICampaignEventWindowQuery
         return family.TryGet(id, out var handle) ? handle
             : throw new InvalidDataException($"Strategic event {kind} '{id}' is not defined.");
     }
-
-    private static RuleHandle<TFamily> RequiredRule<TFamily, TProjection>(RuntimeRuleFamily<TFamily, TProjection> family, string id,
-        string kind) where TProjection : notnull =>
-        OptionalRule(family, id, kind) ?? throw new InvalidDataException($"Strategic event {kind} '{id}' is not defined.");
 
     /// <summary>RuleRegion::getCities: the named point areas of its mission zones, in zone order.</summary>
     private static List<(string Name, double Longitude, double Latitude)> Cities(RuntimeRegionRule region)

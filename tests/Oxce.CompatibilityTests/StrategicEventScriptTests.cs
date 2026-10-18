@@ -222,7 +222,7 @@ public sealed class StrategicEventScriptTests
         Assert.Equal(1, campaign.Capture().World.GeneratedEvents["A"]);
         campaign = Reload(content, campaign, 17, "zero-history-generated.sav");
         AdvanceUnblocked(campaign, 360); // first half-hour decreases timers; scheduling future effects is allowed.
-        AssertEventTickRuns(campaign);
+        AssertEventTickRuns(campaign, popped: ["B", "B", "C"]);
     }
 
     [Fact]

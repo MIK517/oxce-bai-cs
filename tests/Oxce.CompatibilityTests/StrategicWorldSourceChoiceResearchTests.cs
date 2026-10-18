@@ -64,7 +64,7 @@ public sealed class StrategicWorldSourceChoiceResearchTests
         AssertEventTickRuns(CampaignState.Restore(initial with
         {
             World = initial.World with { Events = [new GeoscapeEventSnapshot("AFTER_FIRST", 30)] },
-        }, content, new SplitMix64RandomSource(17)));
+        }, content, new SplitMix64RandomSource(17)), popped: []);
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         var before = campaign.Capture();
         var forecast = campaign.MissionResearch.CreateForecast();

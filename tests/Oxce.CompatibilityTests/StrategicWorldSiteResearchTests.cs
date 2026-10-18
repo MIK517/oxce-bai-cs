@@ -83,7 +83,7 @@ public sealed class StrategicWorldSiteResearchTests
               - {name: EVENT_DESPAWN, interruptResearch: {{{(interrupted ? "CORE" : "AUTO")}}}}
             """);
         var campaign = CampaignState.Restore(Snapshot(content), content, new SplitMix64RandomSource(17));
-        if (!interrupted) AssertEventTickRuns(campaign);
+        if (!interrupted) AssertEventTickRuns(campaign, popped: ["EVENT_DESPAWN"]);
         else
         {
             AdvanceUnblocked(campaign, 1);
@@ -107,7 +107,7 @@ public sealed class StrategicWorldSiteResearchTests
                 MissionSites = [snapshot.World.MissionSites[0] with { DeploymentId = "EARLY_SITE" }, snapshot.World.MissionSites[0]],
             },
         };
-        AssertEventTickRuns(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17)));
+        AssertEventTickRuns(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17)), popped: ["EVENT_DESPAWN"]);
     }
 
     [Fact]

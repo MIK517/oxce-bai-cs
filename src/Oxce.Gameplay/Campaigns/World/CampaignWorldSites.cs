@@ -116,7 +116,7 @@ internal sealed partial class CampaignWorld
             {
                 despawnWork += 6 + 2L * deployment.DespawnEvents.Count;
                 if (despawnWork > MaximumAlienBaseChecks) return "Mission site despawn checks exceed the supported work limit.";
-                if (SiteDespawnReason(deployment, highest, SiteResearchAfter(site)) is { } despawnReason) return despawnReason;
+                if (SiteDespawnReason(deployment, SiteResearchAfter(site)) is { } despawnReason) return despawnReason;
             }
             if (transition.Remove)
             {
@@ -163,7 +163,9 @@ internal sealed partial class CampaignWorld
             }
             if (transition.Remove)
             {
-                campaign.MissionResearch.Grant(deployment.UnlockedResearchOnDespawnId, site.DeploymentId);
+                // An earlier site's despawn payload may have used capacity reserved for this grant (staged: ADR 0035).
+                try { campaign.MissionResearch.Grant(deployment.UnlockedResearchOnDespawnId, site.DeploymentId); }
+                catch (InvalidOperationException error) { throw new InvalidDataException(error.Message, error); }
                 counterChanges.Clear();
                 AddSiteCounterChanges(counterChanges, deployment);
                 foreach (var change in counterChanges) campaign.CustomCounters.Apply(change);
@@ -251,8 +253,7 @@ internal sealed partial class CampaignWorld
             ? $"Late hunting {target} allocation shares decreased marker counters with same-tick craft production." : null;
     }
 
-    private string? SiteDespawnReason(RuntimeAlienDeploymentRule deployment, CampaignTimeTrigger highest,
-        IReadOnlySet<string>? researchAfterGrant = null)
+    private string? SiteDespawnReason(RuntimeAlienDeploymentRule deployment, IReadOnlySet<string>? researchAfterGrant = null)
     {
         var rules = campaign.Content.RuntimeRules;
         if (researchAfterGrant is null && campaign.BaseStates.Count != 0 && rules.Research.TryGet(deployment.UnlockedResearchOnDespawnId, out _))

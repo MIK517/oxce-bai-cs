@@ -96,7 +96,7 @@ public sealed class StrategicWorldSiteResearchDailyTests
     {
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
         var content = Content(4, siteEvent: true);
-        AssertEventTickRuns(CampaignState.Restore(Snapshot(content, 4), content, new SplitMix64RandomSource(17)));
+        AssertEventTickRuns(CampaignState.Restore(Snapshot(content, 4), content, new SplitMix64RandomSource(17)), popped: []);
     }
 
     internal static RuntimeContent Content(int mode, bool siteEvent = false) => StrategicReadinessTestContent.Load(["strategic-world.rul"], $$"""

@@ -317,7 +317,14 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     {
         public List<int[]> Calls { get; } = [];
         public ulong State { get; private set; }
-        public void Restore(ulong state) => State = state;
+
+        // The state counts the draws; a staged shadow's draws are put back (ADR 0035) and so leave the record.
+        public void Restore(ulong state)
+        {
+            State = state;
+            if ((int)state < Calls.Count) Calls.RemoveRange((int)state, Calls.Count - (int)state);
+        }
+
         public int NextInclusive(int minimum, int maximum)
         {
             Assert.True(minimum <= maximum);

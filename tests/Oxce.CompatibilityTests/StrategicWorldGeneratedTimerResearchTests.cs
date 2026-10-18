@@ -66,7 +66,8 @@ public sealed class StrategicWorldGeneratedTimerResearchTests
                 AdvanceUnblocked(campaign, 1);
                 Assert.Empty(campaign.Capture().World.Events);
             }
-            else AssertEventTickRuns(campaign);
+            // Branch 6 S5: only the earliest later timer still grants the interruption before the event pops.
+            else AssertEventTickRuns(campaign, popped: timer == 60 ? [] : ["NEWBORN_EVENT"]);
         }
     }
 }

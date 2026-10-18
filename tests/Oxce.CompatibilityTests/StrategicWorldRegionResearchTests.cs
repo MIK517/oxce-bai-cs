@@ -56,7 +56,7 @@ public sealed class StrategicWorldRegionResearchTests
         AssertEventTickRuns(CampaignState.Restore(initial with
         {
             World = initial.World with { Events = [new GeoscapeEventSnapshot("PATH_A_EVENT", 30)] },
-        }, content, new SplitMix64RandomSource(17)));
+        }, content, new SplitMix64RandomSource(17)), popped: []);
     }
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content)

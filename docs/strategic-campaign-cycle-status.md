@@ -375,8 +375,8 @@ until `btnOkClick` (D2):
   type) given at once, by one-hour transfer or taken (`invert`: stores, then crafts not out, base by base), a craft
   (ready, or by transfer as if bought), and research: an unknown topic or a known one with a free topic left, its diary
   entries, lookup, free topic and the research side effects. Manufacture now shares the soldier spawn.
-- A stage point after the half-hour level (ADR 0035) runs any due payload on the shadow first, so a payload that cannot
-  run refuses the tick with nothing changed (ADR 0036); the forecasts that refused every due event whose interruption
+- A stage point after the half-hour level of every tick where a payload can run (ADR 0035) runs it on the shadow first,
+  so a payload that cannot run refuses the tick with nothing changed (ADR 0036); the forecasts that refused every due event whose interruption
   they could not prove are gone, with the named refusals "Strategic event consequences require campaign event
   execution (Phase 6 branch 6)." and "Mission site despawn requires research or event payloads.".
 - `CampaignEventWindow` (rule, region, city, the item rows, the research articles) is queued per popped event,
@@ -399,3 +399,32 @@ tick runs (`AssertEventTickRuns`); the persistence and site-timer tests pin the 
 Corpus (`PrivateStrategicWorldTests`): Rosigma `Begining.sav` runs past tick 580 and stops on its event window at 581.
 Answering every window, all four Rosigma saves and every vanilla save but TFTD `Middle.sav` (which loses the campaign)
 run to the 40-day limit.
+
+### S5 audit (2026-10-18)
+
+An independent review of 0792cb3b confirmed the `eventLogic` statement order, draws and lookups, the countdown loop,
+the window ordering and the `btnOkClick` effects. Fixes:
+
+- The stage point read the sites before the tick, so a site born and despawned in the same half-hour tick ran its
+  despawn payload unstaged (a failing payload then escaped mid-tick). The stage point now also covers ticks with a due
+  mission wave, a mission generated this tick, or a month: every way a site is born (ADR 0035). Staging every half-hour
+  tick was tried and broke the allocation budgets (about 1 MB a copy).
+  `ASiteBornAndDespawnedInOneTickRunsItsDespawnPayloadStaged` fails with the old condition.
+- Payload failures from argument checks (craft or soldier values) and a later site's research grant left without
+  capacity by an earlier payload now refuse the tick instead of escaping.
+- Manufacture and event soldiers always load their template, an empty one included, so a zero mana is re-rolled as
+  `Soldier::load` does.
+- An empty or `STR_NULL` region now names no region (ADR 0036); instant events respect the event-history population
+  bound; the unused `highest` parameter of the despawn check is gone.
+- The rewritten tests now say which events pop (`AssertEventTickRuns(campaign, popped: [...])`), recorded from the
+  run and checked: several pin an empty list, the interruption research completing earlier in the tick. Shadow draws
+  leave the recording random sources (`Restore` drops them).
+- New tests: an interrupted event beside one that pops, and an event scheduled by a payload's research joining after
+  the countdown.
+- ADR 0036 records the string-ID person name, the load-order soldier lists, the unmodelled debug log, and the save the
+  report requests under event windows (the host saves after them, S7).
+
+Not changed: `ApplyResearchSideEffects` applies counters and events before removing obsolete projects, the reverse of
+`handlePrimaryResearchSideEffects`; nothing observable depends on the order today. Nationality by city with
+hire-by-country or hire-by-region odds is exercised only through the shared `SelectNationality` (recruitment and
+production tests).

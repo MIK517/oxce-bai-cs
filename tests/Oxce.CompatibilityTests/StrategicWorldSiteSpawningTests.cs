@@ -564,7 +564,7 @@ public sealed class StrategicWorldSiteSpawningTests
         var campaign = CampaignState.Restore(initial, content, new QuarterChoices());
         if (!research)
         {
-            AssertEventTickRuns(campaign);
+            AssertEventTickRuns(campaign, popped: ["INSTANT"]);
             return;
         }
         AdvanceUnblocked(campaign, 1);

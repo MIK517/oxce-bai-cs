@@ -214,16 +214,31 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     private sealed class VariantChoices(ulong seed) : IStatefulRandomSource
     {
         private readonly SplitMix64RandomSource _inner = new(seed);
+        private readonly List<ulong> _statesBefore = [];
         public List<(int Minimum, int Maximum)> Calls { get; } = [];
         public ulong State => _inner.State;
-        public void Restore(ulong state) => _inner.Restore(state);
+
+        // A staged shadow's draws are put back (ADR 0035), and so leave the record.
+        public void Restore(ulong state)
+        {
+            var index = _statesBefore.LastIndexOf(state);
+            if (index >= 0)
+            {
+                Calls.RemoveRange(index, Calls.Count - index);
+                _statesBefore.RemoveRange(index, _statesBefore.Count - index);
+            }
+            _inner.Restore(state);
+        }
+
         public int NextInclusive(int minimum, int maximum)
         {
+            _statesBefore.Add(_inner.State);
             Calls.Add((minimum, maximum));
             return _inner.NextInclusive(minimum, maximum);
         }
         public int NextExclusive(int maximum)
         {
+            _statesBefore.Add(_inner.State);
             Calls.Add((0, maximum - 1));
             return _inner.NextExclusive(maximum);
         }

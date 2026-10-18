@@ -69,7 +69,9 @@ The port runs the payload on the staged shadow first (ADR 0035), so the tick is 
 "Strategic event item 'STR_BOGUS' is not defined.") and nothing changes. Empty names and `STR_NULL` (and `STR_NONE`
 for items) name no rule, as `Mod::isEmptyRuleName` says; an unknown `spawnedPersonType` spawns nobody, as the reference
 looks it up without an error. A payload without a base (the reference reads the first base of an empty list) or one
-that would spawn more than 10,000 soldiers is refused the same way.
+that would spawn more than 10,000 soldiers is refused the same way. An empty or `STR_NULL` region names no region,
+so the score goes to research; a city-specific event without a region, whose cities the reference then reads from no
+region, is refused.
 
 **Events that a payload schedules during the countdown (S5).** `time30Minutes` walks the event list with a range-for
 loop while a payload's research side effects can append to it, which invalidates the loop. The port counts down only
@@ -78,3 +80,13 @@ pass.
 
 **An undefined event cutscene (S5).** `GeoscapeEventState::btnOkClick` reads the video with an error; the port plays
 nothing and keeps the campaign's ending unchanged, as for the lose cutscenes above.
+
+**Names and order of spawned soldiers (S5).** A spawned person's `spawnedPersonName` is kept as its string ID, as the
+port keeps every text, where the reference stores the translated name (manufacture does the same). The merged
+soldier lists are kept in rule load order, where the reference orders them by the rules' addresses, which follow load
+order for rules allocated as they load. The geoscape debug log (`oxceGeoscapeDebugLogMaxEntries`) is not modelled.
+
+**A save the report requests under this tick's event windows (S5).** The report's OK requests an autosave or ironman
+save while the same tick's event windows are still queued; the reference saves then, with their payloads applied and
+without the windows. The port refuses saving while a window is open (D2), so the host makes the requested save once
+the windows are answered (S7).

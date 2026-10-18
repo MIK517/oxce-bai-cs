@@ -22,7 +22,7 @@ public sealed class StrategicWorldRandomProductionSiteResearchTests
         var content = Content(presence);
         var initial = Snapshot(content, 0);
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), 17, "inert-site-event-before.sav");
-        AssertEventTickRuns(campaign);
+        AssertEventTickRuns(campaign, popped: ["STOCK_EVENT"]);
     }
 
     [Theory]

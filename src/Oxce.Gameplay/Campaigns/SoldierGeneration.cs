@@ -75,6 +75,13 @@ public static class SoldierGeneration
     private static readonly string[] GeneratedStats = ["tu", "stamina", "health", "mana", "bravery", "reactions",
         "firing", "throwing", "strength", "psiStrength", "melee"];
 
+    /// <summary>
+    /// An empty template: Soldier::load of an empty node, which still re-rolls a soldier's zero mana when the rule allows
+    /// mana (manufacture and event spawns always load their template).
+    /// </summary>
+    public static RuntimeSoldierTemplate EmptyTemplate { get; } = new(new Dictionary<string, int>(), new Dictionary<string, bool>(),
+        new Dictionary<string, string>(), new Dictionary<string, short>(), new Dictionary<string, short>(), null, []);
+
     public static SoldierPersonalState LoadStarting(RuntimeSoldierRule rule, RuntimeSoldierTemplate? template,
         RuntimeRuleCatalog rules, IRandomSource random, bool autoCombatDefault = true)
     {

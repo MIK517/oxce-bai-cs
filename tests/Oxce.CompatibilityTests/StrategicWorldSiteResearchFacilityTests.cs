@@ -82,7 +82,7 @@ public sealed class StrategicWorldSiteResearchFacilityTests
             World = snapshot.World with { Events = [new("SITE_EVENT", 0)] },
         };
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
-        if (buildTime == 2) AssertEventTickRuns(campaign);
+        if (buildTime == 2) AssertEventTickRuns(campaign, popped: ["SITE_EVENT"]);
         else
         {
             AdvanceUnblocked(campaign, 1);

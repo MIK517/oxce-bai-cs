@@ -1102,9 +1102,8 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
             _bases.SelectMany(baseState => baseState.Soldiers.Select(soldier => soldier.Personal?.Name ?? "")
                 .Concat(baseState.Transfers.Where(transfer => transfer.Soldier is not null)
                     .Select(transfer => transfer.Soldier!.Personal?.Name ?? ""))).ToHashSet(StringComparer.Ordinal), _random);
-        if (template is not null)
-            personal = SoldierGeneration.ApplyTemplate(personal, template, definition,
-                _content.RuntimeRules, _random);
+        personal = SoldierGeneration.ApplyTemplate(personal, template ?? SoldierGeneration.EmptyTemplate, definition,
+            _content.RuntimeRules, _random);
         personal = name.Length != 0
             ? personal with { Name = name }
             : SoldierGeneration.RegenerateName(personal, definition, _random);

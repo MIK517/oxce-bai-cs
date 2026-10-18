@@ -70,7 +70,7 @@ public sealed class StrategicWorldArrivalResearchEnduranceTests
                 Time = end.Time with { Hour = 0, Minute = 29, Second = 55 },
                 World = end.World with { Events = [end.World.Events[0] with { SpawnCountdown = 30 }] },
             };
-            AssertEventTickRuns(CampaignState.Restore(due, content, new SplitMix64RandomSource(seed)));
+            AssertEventTickRuns(CampaignState.Restore(due, content, new SplitMix64RandomSource(seed)), popped: ["EVENT_DESPAWN"]);
             var month = end with { Time = new(1, 31, 1, 1999, 23, 59, 55) };
             // Branch 6 S3: the month runs and its report holds the clock.
             var monthly = CampaignState.Restore(month, content, new SplitMix64RandomSource(seed));
