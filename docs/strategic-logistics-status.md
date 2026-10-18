@@ -1,7 +1,7 @@
 # Strategic logistics branch status
 
 Validation date: 2026-09-07. Branch: `codex/strategic-base-logistics`.
-First commit: `586df1b` (reviewed implementation plan, before implementation).
+First commit: `2b5276a` (reviewed implementation plan, before implementation).
 
 ## Delivered boundary
 

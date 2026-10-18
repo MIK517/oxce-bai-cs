@@ -48,7 +48,7 @@ boundary explicitly.
 
 ## Successor branches (scope revised 2026-09-26)
 
-`codex/strategic-world-operations` (4b) merged in `e10d96f`, completing its bounded
+`codex/strategic-world-operations` (4b) merged in `ec91f48`, completing its bounded
 ordinary UFO lifecycle, craft operations, spawning, detection and save/reload gate;
 see [operations status](strategic-world-operations-status.md).
 

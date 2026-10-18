@@ -1,8 +1,8 @@
 # Phase 6 world integration delivery plan
 
 Approved 2026-09-26. Branch 4c: `codex/strategic-world-integration`, based on
-`e10d96f` (merged branch 4b). Branch 4d: `claude/strategic-world-ui`, from main after
-4c merges (`e22b6853`). Branch 5 follows 4d. Reference: `4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`.
+`ec91f48` (merged branch 4b). Branch 4d: `claude/strategic-world-ui`, from main after
+4c merges (`b05cbac4`). Branch 5 follows 4d. Reference: `4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`.
 
 ## Branch 4c: tested headless slices
 
@@ -49,7 +49,7 @@ remains Phase 8. Combined world acceptance closes here, with the named later-pha
 
 ### Branch 4d slices (approved 2026-10-11)
 
-Starting audit of `e22b6853` found: the SDL app reaches the campaign through
+Starting audit of `b05cbac4` found: the SDL app reaches the campaign through
 `CampaignExtensionSession`, which implements none of the readiness, research/production
 or world query interfaces, so the client's readiness and research/production views are
 unreachable outside tests and no world view exists; no UI path calls
@@ -365,7 +365,7 @@ forecasts.
   equal stock-bound outcomes are implemented with ordered acceptance. See the
   [three slices and audit fix](strategic-world-hunting-status.md#production-material-uncertainty-2026-10-07).
 
-- Opening plan/scope commit: `b06cb39`.
+- Opening plan/scope commit: `23da8a8`.
 - 2026-10-07 selected direct-site cycle: daily/hunting selected-area sites,
   mixed chains and exclusive direct activity ranges execute with transition
   reloads and 72-hour acceptance. See
@@ -484,7 +484,7 @@ forecasts.
   diff checks pass. One earlier run reported a 256-byte patrol-allocation difference;
   the isolated test, complete craft suite and two subsequent root runs passed without
   changing that test or its threshold. The cause was not established.
-- Audited rule projections and preflight corrections committed as `9f7d4d0`.
+- Audited rule projections and preflight corrections committed as `c1cec59`.
 - Monthly event-script subsystem: live campaign trigger facts, eligibility/counters,
   ordered odds draws, sequential/random/repeatable selection and transaction-owned
   event scheduling now execute through an internal subsystem fixture operation.

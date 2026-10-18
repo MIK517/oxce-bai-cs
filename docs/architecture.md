@@ -26,7 +26,7 @@ The current runtime boundary, findings, and ordered follow-up work are recorded 
 | `Oxce.Savegames` | External save schema, compatible read/write, migrations, unknown-field preservation, and adapters to gameplay-owned capture/restore contracts |
 | `Oxce.Gameplay` | Geoscape, bases, interception, battlescape, AI, mission generation, rule execution, mutable runtime state, invariants, and save-neutral capture/restore contracts |
 | `Oxce.Rendering` | Indexed surfaces, palettes, software primitives, text/layout models, render commands |
-| `Oxce.Engine` | State stack, loop, input abstractions, clocks, orchestration, headless host |
+| `Oxce.Engine` | Loop clients, input abstractions, clocks, the geoscape time controller, the geoscape and logistics screens, audio orchestration. There is no screen stack yet; each client keeps its own modal state ([2026-10-18 audit](project-audit-2026-10-18.md#e4-no-screen-framework)) |
 | `Oxce.Extensions.Abstractions` | Versioned, implementation-independent contracts for trusted managed extensions |
 | `Oxce.Extensions` | Manual extension discovery/loading, capability adapters, lifecycle, diagnostics, and failure containment |
 | `Oxce.Platform.Sdl` | SDL3 native interop, windows, input devices, audio, GPU presentation |

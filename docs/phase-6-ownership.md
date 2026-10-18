@@ -3,7 +3,7 @@
 Reference: `4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`. Implementation
 branches: `codex/strategic-base-logistics`, `codex/strategic-base-readiness`,
 `codex/strategic-research-production`, the branch 4a world foundation, and
-`codex/strategic-world-operations` (4b, merged in `e10d96f`).
+`codex/strategic-world-operations` (4b, merged in `ec91f48`).
 `codex/strategic-world-integration` (4c) owns remaining headless world simulation;
 `claude/strategic-world-ui` (4d) owns UI and combined closure
 under the 2026-09-26 scope revision. This is

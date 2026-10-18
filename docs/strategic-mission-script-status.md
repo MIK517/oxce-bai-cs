@@ -392,7 +392,7 @@ checksums, code-map validation and `git diff --check` pass. The changed pinned
 probe and rules text now use LF bytes, matching Git storage and clean checkouts.
 The user verified formatting from normal PowerShell with
 `dotnet format Oxce.slnx --verify-no-changes --no-restore` (exit code 0).
-The audit fix is committed as `1d532c1`; this batch's validation is complete.
+The audit fix is committed as `1953026`; this batch's validation is complete.
 The sandbox named-pipe failure remains unresolved. No permissions were changed.
 
 General separated Space rectangular origins are implemented. Direct site and

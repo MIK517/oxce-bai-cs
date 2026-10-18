@@ -16,7 +16,7 @@ branch 6 records in `AGENTS.md`. The plan's
 [starting audit](phase-6-campaign-cycle-plan.md#starting-audit-2026-10-17) lists the remaining branch 6
 refusals and the silent research-cutscene gap.
 
-Baseline on the Windows workstation at `3b3077f3`: Release build with no warnings; root
+Baseline on the Windows workstation at `a67c7c89`: Release build with no warnings; root
 `dotnet test` passes 3,562 tests (unit and compatibility, including the private corpus) with no
 failures or skips in 7 min 56 s; `dotnet format --verify-no-changes` and
 `tools/generate-code-map.py --check` are clean.
@@ -119,7 +119,7 @@ oracles are consumed in S3 and S5.
 
 ### S1 audit (2026-10-17)
 
-An independent review of the slice (`git diff 2043a07d`) confirmed the oracles match their captures, the stub
+An independent review of the slice (`git diff c30df426`) confirmed the oracles match their captures, the stub
 fidelity of the monthly probe, the option defaults, `warned` and the `scripts:` source of country scripts. Fixes:
 
 - The event probe's rule lookups ignored their error flag, so the oracle showed unknown names silently dropped;
@@ -269,7 +269,7 @@ event with consequences (436348, S5). The records are written to `artifacts/priv
 
 ### S3 audit (2026-10-18)
 
-An independent review of ff847989 confirmed the month's order, monthly psi, the alien-base roll, the report's
+An independent review of 59238286 confirmed the month's order, monthly psi, the alien-base roll, the report's
 decisions, the country arithmetic, the script's inputs and atomic refusal, the pact events, the zero-wave missions
 against `AlienMission::start`/`isOver`, and the work-bound seam. Fixes:
 
@@ -334,7 +334,7 @@ requests; a failed ironman month requesting its save without service).
 
 ### S4 audit (2026-10-18)
 
-An independent review of 3620549e checked `manageCommendations` line by line and ran 6 further probe scenarios
+An independent review of 2144b63c checked `manageCommendations` line by line and ran 6 further probe scenarios
 through the port, all matching; it confirmed the `btnOkClick` effects, the event order, the projection and the ADR
 0036 entries. Fixes:
 
@@ -402,7 +402,7 @@ run to the 40-day limit.
 
 ### S5 audit (2026-10-18)
 
-An independent review of 0792cb3b confirmed the `eventLogic` statement order, draws and lookups, the countdown loop,
+An independent review of e80a69fb confirmed the `eventLogic` statement order, draws and lookups, the countdown loop,
 the window ordering and the `btnOkClick` effects. Fixes:
 
 - The stage point read the sites before the tick, so a site born and despawned in the same half-hour tick ran its
@@ -456,7 +456,7 @@ the ironman save request; an ending on the month boundary leaving the report moo
 
 ### S6 audit (2026-10-18)
 
-An independent review of 73ac8c5e confirmed the cutscene rule against `time1Day` 3e (the project's own video, then
+An independent review of c88e3c14 confirmed the cutscene rule against `time1Day` 3e (the project's own video, then
 the free topic's, the unended check, a both-flags video losing), that only `time1Day` plays research videos, the
 `time5Seconds` change, and that no path faults the campaign. Fixes:
 
@@ -503,7 +503,7 @@ saves to the path it was started with). Tactical states stay preservation-only (
 
 ### S7 audit (2026-10-18)
 
-An independent review of 08eda7ad found the save flow sound (ironman over autosave, one save for repeated
+An independent review of a522aa0e found the save flow sound (ironman over autosave, one save for repeated
 requests, nothing saved while the base screens are open) and every caller of the throwing save catching it. Fixes:
 
 - A failed month now shows the report first; its OK opens the failure screen (`STR_YOU_HAVE_FAILED`), whose OK
@@ -566,7 +566,7 @@ none of the 19 staged saves reaches one. The rule, save, binding and option matr
 An independent audit of the whole branch (`git diff main...HEAD`) found no gameplay defect across slices and checked
 the window order, endings with open windows, staged payloads, research endings in shadows and requested saves. Fixes:
 
-- The S9 documentation script had truncated this record; the S0–S8 sections are restored (2fc5dcf8).
+- The S9 documentation script had truncated this record; the S0–S8 sections are restored (7a5623a1).
 - The inventory missed reason strings outside its token patterns and outside `src/Oxce.Gameplay` (the preserved
   tactical battle, `EXT1011`). The generator is now committed, sweeps every reason sentence in the three strategic
   projects, applies reviewed overrides and has a `--check` mode.

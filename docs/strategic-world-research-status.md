@@ -1559,7 +1559,7 @@ All 192 affected cases pass. The audit also checked leader order/origin unions,
 source-key reuse across generated and escort-only paths, radar-loss patrol,
 transitive movement/takeoff, work bounds and per-pass reset. All 4,583 root tests pass with zero failures/skips, including checksums, private
 classifications and populated allocation gates. Full formatting, code-map and
-diff checks pass; correction 84630b4b is separate. No new native artifacts were
+diff checks pass; correction 88800a4b is separate. No new native artifacts were
 generated, useful captures/logs remain, and the reference checkout is clean.
 Remaining linked deletion, ordered research/arrival alternatives and final
 acceptance keep 4c open; 4d remains untouched.
@@ -1622,7 +1622,7 @@ the corrected root rerun follows.
 Corrected cycle 23 acceptance passes all 4,621 root tests with zero failures/skips,
 including checksum, private-corpus and populated allocation gates. Full formatting,
 code-map and diff checks pass; the reference checkout remains clean. Confirmed
-audit test correction fd87a7cf is separate from the three slices. No native
+audit test correction 24f2f98e is separate from the three slices. No native
 artifacts were generated; useful captures and logs remain. Variable-speed/fuel,
 near-home and transfer alternatives plus branch-wide closure keep 4c open.
 
@@ -1722,7 +1722,7 @@ checkup retain their boundaries. All 198 affected tests pass. Reference: Craft
 repair/rearm/refuel/setDestination and Geoscape time1Hour/time30Minutes/time10Minutes
 ordering, backed by verified maintenanceRows/hourlyMaintenanceRows/escortFuelRows.
 Targeted format/map/diff pass. This completes cycle 25's third slice; combined
-audit includes the earlier committed zero-speed slice a869570b.
+audit includes the earlier committed zero-speed slice d126cfaf.
 
 ## Optional craft fuel eligibility (2026-10-09)
 
@@ -1790,7 +1790,7 @@ audit and root validation remain pending.
 
 
 Cycle 26 batch audit closes the own-fuel/escort-fuel/converged-arrival slices
-608f20ba, f8456ba5 and 19d733ae. No additional confirmed runtime defect was found.
+4d837ede, c3eb7b5a and eba9ba23. No additional confirmed runtime defect was found.
 Reviewed native saved order, strict escort distance, inclusive low-fuel thresholds,
 installed fuel capacities, positive/zero/negative fallback domains, early arithmetic
 validation, takeoff arrival/checkup, current-fuel script visibility, hunting eligibility,
