@@ -215,3 +215,9 @@ Popped and instant events run their payload in the half-hour tick, staged; their
 refusals are removed and Rosigma `Begining.sav` runs past tick 580
 ([status S5](strategic-campaign-cycle-status.md#s5--event-payloads-2026-10-18)). Event cutscene endings already apply on
 the acknowledgement; S6 adds the research cutscenes.
+
+### S6 — Strategic endings (2026-10-18)
+
+Research and free-topic cutscenes end the campaign inside the day tick through the one ending rule that events and
+the monthly failure use; Phase 7 victory inputs are recorded
+([status S6](strategic-campaign-cycle-status.md#s6--strategic-endings-2026-10-18)).

@@ -210,8 +210,8 @@ internal sealed partial class CampaignWorld
     {
         _ufoArrivalEndedTick = false;
         _ufoIsAttackingThisTick = false;
-        // GeoscapeState::time5Seconds returns once the campaign has ended.
-        if (campaign.Ending != 0)
+        // GeoscapeState::time5Seconds returns once the campaign is lost; a won campaign's tick runs on (D4).
+        if (campaign.Ending == 2)
         {
             _ufoArrivalEndedTick = true;
             return;

@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 189 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 190 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 95 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 5 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 317 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 318 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 101 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -336,7 +336,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 189 files.
+`src/Oxce.Gameplay` - 190 files.
 
 ### `Oxce.Gameplay`
 
@@ -390,6 +390,8 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `SystemCampaignClock` (class) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
 - `CampaignState` (class) [CampaignCrafts.cs](../src/Oxce.Gameplay/Campaigns/CampaignCrafts.cs)
 - `CampaignState` (class) [CampaignCustomCounters.cs](../src/Oxce.Gameplay/Campaigns/CampaignCustomCounters.cs)
+- `CampaignCutscenePlayed` (record) [CampaignEndings.cs](../src/Oxce.Gameplay/Campaigns/CampaignEndings.cs) - CutsceneState for a video the campaign plays in a tick (research discoveries); its window is presentation.
+- `CampaignState` (class) [CampaignEndings.cs](../src/Oxce.Gameplay/Campaigns/CampaignEndings.cs)
 - `CampaignState` (class) [CampaignEntityValidation.cs](../src/Oxce.Gameplay/Campaigns/CampaignEntityValidation.cs)
 - `CampaignEventItemRow` (record) [CampaignEvents.cs](../src/Oxce.Gameplay/Campaigns/CampaignEvents.cs) - One row of the event window's item list: an item given, or taken (negative) by an inverted event.
 - `CampaignEventWindow` (record) [CampaignEvents.cs](../src/Oxce.Gameplay/Campaigns/CampaignEvents.cs) - GeoscapeEventState as it shows a popped event: its rule, the region and city that place it, the items it gave or took at once, and the re...
@@ -1180,7 +1182,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 317 files.
+`tests/Oxce.CompatibilityTests` - 318 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1188,7 +1190,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>314 test classes</summary>
+<details><summary>315 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1253,6 +1255,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicCampaignCycleRulesTests` ([StrategicCampaignCycleRulesTests.cs](../tests/Oxce.CompatibilityTests/StrategicCampaignCycleRulesTests.cs))
 - `StrategicCommendationOracleTests` ([StrategicCommendationOracleTests.cs](../tests/Oxce.CompatibilityTests/StrategicCommendationOracleTests.cs))
 - `StrategicDogfightOracleTests` ([StrategicDogfightOracleTests.cs](../tests/Oxce.CompatibilityTests/StrategicDogfightOracleTests.cs))
+- `StrategicEndingTests` ([StrategicEndingTests.cs](../tests/Oxce.CompatibilityTests/StrategicEndingTests.cs))
 - `StrategicEventPayloadTests` ([StrategicEventPayloadTests.cs](../tests/Oxce.CompatibilityTests/StrategicEventPayloadTests.cs))
 - `StrategicEventSchedulingTests` ([StrategicEventSchedulingTests.cs](../tests/Oxce.CompatibilityTests/StrategicEventSchedulingTests.cs))
 - `StrategicEventScriptTests` ([StrategicEventScriptTests.cs](../tests/Oxce.CompatibilityTests/StrategicEventScriptTests.cs))
