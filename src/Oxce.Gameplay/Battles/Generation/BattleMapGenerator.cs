@@ -33,6 +33,7 @@ internal sealed class BattleMapGenerator
     private RuntimeMapBlock?[,] _blocks = new RuntimeMapBlock?[0, 0];
     private bool[,] _covered = new bool[0, 0];
     private int[,] _segments = new int[0, 0];
+    private MapDirection[,] _drillMap = new MapDirection[0, 0];
     private int _blocksToDo;
     private int _markAsReinforcementsBlock;
     private readonly BattleMapInputs _inputs;
@@ -190,6 +191,10 @@ internal sealed class BattleMapGenerator
                 return AddCraftCommand(command, selection, terrain) || success;
             case MapScriptCommandType.AddUfo:
                 return AddUfoCommand(command, selection, terrain) || success;
+            case MapScriptCommandType.DigTunnel:
+                DrillModules(command, terrain);
+                // This command is fail-proof.
+                return true;
             case MapScriptCommandType.CheckBlock:
                 return CheckBlock(command, terrain, success);
             case MapScriptCommandType.RemoveBlock:
@@ -213,6 +218,7 @@ internal sealed class BattleMapGenerator
         _covered = new bool[width / 10, length / 10];
         _segments = new int[width / 10, length / 10];
         _landingZone = new bool[width / 10, length / 10];
+        _drillMap = new MapDirection[width / 10, length / 10];
         _blocksToDo = width / 10 * (length / 10);
     }
 
@@ -268,6 +274,10 @@ internal sealed class BattleMapGenerator
                 _covered[x + dx, y + dy] = true;
                 _blocksToDo--;
             }
+        // The south and east edges are marked for drilling; the far corner (or a single block) for both.
+        for (var dx = 0; dx <= sizeX; dx++) _drillMap[x + dx, y + sizeY] = MapDirection.Vertical;
+        for (var dy = 0; dy <= sizeY; dy++) _drillMap[x + sizeX, y + dy] = MapDirection.Horizontal;
+        _drillMap[x + sizeX, y + sizeY] = MapDirection.Both;
         _blocks[x, y] = block;
         var visible = _missionType == BaseDefenseMissionType;
         LoadMap(block, x * 10, y * 10, 0, terrain, LoadExtraTerrain(terrain), visible);
@@ -327,6 +337,107 @@ internal sealed class BattleMapGenerator
             }
         }
         return true;
+    }
+
+    /// <summary>
+    /// BattlescapeGenerator::drillModules: on the tunnel level, opens every marked edge between two placed blocks across
+    /// the rectangle's span (3, 3, 3, 3 without rectangles), clearing walls and walkable-free objects, laying the floor
+    /// replacement and closing the sides with the wall and corner replacements. The replacements are the terrain's data
+    /// sets; the port records them at the terrain's loaded offset (the reference writes the terrain-relative set index
+    /// while pointing at the right object, so its IDs only agree for the deployment terrain).
+    /// </summary>
+    private void DrillModules(RuntimeMapScriptCommand command, RuntimeTerrain terrain)
+    {
+        var data = command.Tunnel ?? throw new MapGenerationException("Map script command digTunnel has no tunnelData.");
+        if (data.Invalid is { } invalid) throw new MapGenerationException($"Map script digTunnel tunnelData is invalid: {invalid}");
+        var offset = LoadExtraTerrain(terrain);
+        (int Id, int Set)? Replacement(string type)
+        {
+            if (!data.Replacements.TryGetValue(type, out var replacement)) return null;
+            if ((uint)replacement.Set >= (uint)terrain.MapDataSets.Count ||
+                (uint)replacement.Entry >= (uint)_map.DataSets[offset + replacement.Set].Objects.Count)
+                throw new MapGenerationException(
+                    $"Map script digTunnel replacement {type} refers to missing object {replacement.Entry} of set {replacement.Set} in terrain {terrain.Id}.");
+            return (replacement.Entry, offset + replacement.Set);
+        }
+        var westWall = Replacement("westWall");
+        var northWall = Replacement("northWall");
+        var corner = Replacement("corner");
+        var floor = Replacement("floor");
+        var rectangle = command.Rectangles.Count != 0 ? command.Rectangles[0] : new MapRectangle(3, 3, 3, 3);
+        var level = data.Level;
+        int Tile(int x, int y)
+        {
+            var position = new BattlePosition(x, y, level);
+            if (!_map.Contains(position))
+                throw new MapGenerationException($"Map script digTunnel reaches outside the map at {x}, {y}, {level}.");
+            return _map.TileIndex(position);
+        }
+        void Set(int tile, BattleTilePart part, (int Id, int Set)? value) =>
+            _map.SetPart(tile, part, value?.Id ?? -1, value?.Set ?? -1);
+        void ClearUnwalkableObject(int tile)
+        {
+            if (_map.MapData(tile, BattleTilePart.ObjectPart) is { TimeUnitsWalk: 0 }) Set(tile, BattleTilePart.ObjectPart, null);
+        }
+        var blocksX = _map.Width / 10;
+        var blocksY = _map.Length / 10;
+        for (var i = 0; i < blocksX; i++)
+            for (var j = 0; j < blocksY; j++)
+            {
+                if (!Occupied(i, j)) continue;
+                if (command.Direction != MapDirection.Vertical && i < blocksX - 1 &&
+                    _drillMap[i, j] is MapDirection.Horizontal or MapDirection.Both && Occupied(i + 1, j))
+                {
+                    // Drill east.
+                    for (var k = rectangle.Y; k != rectangle.Y + rectangle.Height; k++)
+                    {
+                        if (!_map.Contains(new BattlePosition(i * 10 + 9, j * 10 + k, level))) continue;
+                        var tile = Tile(i * 10 + 9, j * 10 + k);
+                        Set(tile, BattleTilePart.WestWall, null);
+                        Set(tile, BattleTilePart.ObjectPart, null);
+                        if (floor is not null) Set(tile, BattleTilePart.Floor, floor);
+                        var next = Tile((i + 1) * 10, j * 10 + k);
+                        Set(next, BattleTilePart.WestWall, null);
+                        ClearUnwalkableObject(next);
+                    }
+                    if (northWall is not null)
+                    {
+                        Set(Tile(i * 10 + 9, j * 10 + rectangle.Y), BattleTilePart.NorthWall, northWall);
+                        Set(Tile(i * 10 + 9, j * 10 + rectangle.Y + rectangle.Height), BattleTilePart.NorthWall, northWall);
+                    }
+                    if (corner is not null)
+                    {
+                        var tile = Tile((i + 1) * 10, j * 10 + rectangle.Y);
+                        if (_map.MapData(tile, BattleTilePart.NorthWall) is null) Set(tile, BattleTilePart.NorthWall, corner);
+                    }
+                }
+                if (command.Direction != MapDirection.Horizontal && j < blocksY - 1 &&
+                    _drillMap[i, j] is MapDirection.Vertical or MapDirection.Both && Occupied(i, j + 1))
+                {
+                    // Drill south.
+                    for (var k = rectangle.X; k != rectangle.X + rectangle.Width; k++)
+                    {
+                        if (!_map.Contains(new BattlePosition(i * 10 + k, j * 10 + 9, level))) continue;
+                        var tile = Tile(i * 10 + k, j * 10 + 9);
+                        Set(tile, BattleTilePart.NorthWall, null);
+                        Set(tile, BattleTilePart.ObjectPart, null);
+                        if (floor is not null) Set(tile, BattleTilePart.Floor, floor);
+                        var next = Tile(i * 10 + k, (j + 1) * 10);
+                        Set(next, BattleTilePart.NorthWall, null);
+                        ClearUnwalkableObject(next);
+                    }
+                    if (westWall is not null)
+                    {
+                        Set(Tile(i * 10 + rectangle.X, j * 10 + 9), BattleTilePart.WestWall, westWall);
+                        Set(Tile(i * 10 + rectangle.X + rectangle.Width, j * 10 + 9), BattleTilePart.WestWall, westWall);
+                    }
+                    if (corner is not null)
+                    {
+                        var tile = Tile(i * 10 + rectangle.X, (j + 1) * 10);
+                        if (_map.MapData(tile, BattleTilePart.WestWall) is null) Set(tile, BattleTilePart.WestWall, corner);
+                    }
+                }
+            }
     }
 
     /// <summary>The checkBlock command: is there a block (of a group, or one of the listed blocks) in the rectangles?</summary>

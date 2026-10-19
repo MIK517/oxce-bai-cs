@@ -936,6 +936,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RuntimeDamageConversions` (record) [RuntimeItemDamageRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeItemDamageRules.cs)
 - `RuntimeMapScript` (record) [RuntimeMapScripts.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapScripts.cs) - A map script (Mod::getMapScript): its commands in order.
 - `RuntimeMapScriptCommand` (record) [RuntimeMapScripts.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapScripts.cs) - One MapScript command as `MapScript::load` leaves it: block selection (groups or blocks, frequencies, maximum uses), rectangles, conditio...
+- `RuntimeTunnelData` (record) [RuntimeMapScripts.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapScripts.cs) - MapScript `tunnelData`: the level to drill on and the MCD replacements by part (westWall, northWall, corner, floor) as data set and entry...
 - `RuntimePresentationContent` (class) [RuntimePresentationContent.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimePresentationContent.cs)
 - `RuntimeRuleCompatibilityEntry` (record) [RuntimeRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleCatalog.cs)
 - `RuntimeRuleCompatibilitySidecar` (class) [RuntimeRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleCatalog.cs)

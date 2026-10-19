@@ -10,7 +10,7 @@ Phase 7 branch 1 (`claude/battle-generation`), from `main` at `2b0c81fb`. Plan:
 | S0 planning | Done (2026-10-18) |
 | S1 battle aggregate | Done (2026-10-18) |
 | S2 runtime battle terrain | Done (2026-10-19) |
-| S3 map generation | S3a, S3c, `addLine`, `addCraft` and `addUFO` done (2026-10-19); `digTunnel` and vertical levels open |
+| S3 map generation | S3a, S3c, `addLine`, `addCraft`, `addUFO` and `digTunnel` done (2026-10-19); vertical levels and craft skins open |
 | S4 X-COM deployment | Not started |
 | S5 alien and civilian deployment | Not started |
 | S6 base defense and other entry points | Not started |
@@ -109,8 +109,7 @@ Reference: `BattlescapeGenerator::run` (terrain, depth, shade and map script cho
 - Corrections found on the way: a deployment's own `script` defaulted to `DEFAULT` in the typed catalog, which would have
   overridden every terrain's script; the reference leaves it empty. An alien-base landing recorded mission texture 0
   for the reference's null texture; it is now -1.
-- Not yet: `digTunnel` and vertical levels refuse with a named S3b reason; base defense maps refuse until S6; map block
-  items are S5.
+- Not yet: vertical levels refuse with a named S3b reason; base defense maps refuse until S6; map block items are S5.
 - Intentional differences: the level-0 floor fill uses set 0 object 1 (the reference uses BLANKS object 1 by pointer,
   which is set 0 whenever BLANKS is loaded first); a rectangle outside the block grid is treated as occupied (the reference
   reads outside its arrays).
@@ -178,10 +177,26 @@ zone), `Node::CRAFTSEGMENT` and `UFOSEGMENT`, `RuleStartingCondition::getCraftRe
 Tests: `BattleStartTests.TheCraftAndTheUfoLandOnLandingZonesAndTheirMapsAndRoutesLoadAfterTheScript` and the inline
 terrain links in `DeploymentBattlePropertiesAreLinkedWithTheReferenceDefaults`.
 
+## S3b, part 3 — digTunnel (2026-10-19)
+
+Reference: `BattlescapeGenerator::drillModules`, `addBlock` (drill edges), `MapScript::load` (`tunnelData`),
+`TunnelData`, `MCDReplacement`, `MapData::getTUCost`.
+
+- `addBlock` marks drill edges as the reference does (south edge vertical, east edge horizontal, the far corner both).
+- `digTunnel` opens each marked edge between two occupied cells on the tunnel level across the first rectangle's span
+  (3, 3, 3, 3 without one): walls and objects go, objects on the far side go only when they cost no walking time, the
+  floor replacement is laid and the wall and corner replacements close the sides. The command always succeeds.
+- `RuntimeMapScriptCommand.Tunnel` (`RuntimeTunnelData`) parses `tunnelData` (level 0, replacements with set and entry
+  -1 by default); a malformed node, a missing tunnelData, a replacement past the terrain's data sets or a side tile
+  outside the map refuse generation (the reference throws or crashes).
+- Intentional difference: replacements are recorded at the terrain's loaded data set offset. The reference stores the
+  terrain-relative set index while pointing at the right object, so its saved IDs only agree for the deployment terrain.
+
+Tests: `BattleStartTests.DigTunnelOpensTheMarkedEdgeBetweenTwoBlocks`.
+
 ## Next: rest of S3b
 
-- `digTunnel` (`drillModules` with `tunnelData` MCD replacements) and vertical levels (`populateVerticalLevels`,
-  `loadVerticalLevels`, their segments in `loadNodes` and the second pass of `attachNodeLinks`, the craft and UFO vertical
-  level loads); both are still raw YAML in the typed map script.
+- Vertical levels (`populateVerticalLevels`, `loadVerticalLevels`, their segments in `loadNodes` and the second pass of
+  `attachNodeLinks`, the craft and UFO vertical level loads); still raw YAML in the typed map script.
 - Craft skins: the craft's skin index in the strategic save and `refreshMapDataSets`.
 - Then S4 (X-COM deployment on the craft's tiles).

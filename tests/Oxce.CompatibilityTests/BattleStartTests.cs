@@ -46,6 +46,12 @@ public sealed class BattleStartTests
             height: 2
             terrains: [TEST_TERRAIN]
             script: CRAFTED
+          - type: UFO_TUNNEL
+            width: 20
+            length: 10
+            height: 2
+            terrains: [TEST_TERRAIN]
+            script: TUNNEL
           - type: UFO_UNFILLED
             width: 20
             length: 20
@@ -95,6 +101,18 @@ public sealed class BattleStartTests
               - {type: addCraft}
               - {type: addUFO}
               - {type: fillArea}
+          - type: TUNNEL
+            commands:
+              - {type: fillArea}
+              - type: digTunnel
+                direction: horizontal
+                rects: [[3, 3, 3, 4]]
+                tunnelData:
+                  level: 0
+                  MCDReplacements:
+                    - {type: floor, set: 1, entry: 1}
+                    - {type: northWall, set: 1, entry: 0}
+                    - {type: corner, set: 1, entry: 0}
           - type: UNFILLED
             commands:
               - {type: addBlock, groups: [1]}
@@ -255,6 +273,25 @@ public sealed class BattleStartTests
         Assert.Equal(7, real.Length);
         var craftNode = Assert.Single(real, static node => node.Segment == 1000);
         Assert.Equal(new BattlePosition(craft.X * 10 + 4, craft.Y * 10 + 4, 0), craftNode.Position);
+    }
+
+    [Fact]
+    public void DigTunnelOpensTheMarkedEdgeBetweenTwoBlocks()
+    {
+        var (campaign, _) = Requested(Rules, "UFO_TUNNEL");
+        Assert.IsType<BattleStarted>(Assert.Single(campaign.Execute(new StartBattle()).Events));
+        var map = Battle(campaign).Map;
+        (int, int) Part(int x, int y, BattleTilePart part) => map.Part(map.TileIndex(new(x, y, 0)), part);
+        // drillModules east across rows 3-6: the floor replacement (TESTSET 1) on the west block's last column, the north
+        // wall replacement closing both sides, and the corner on the east block where it had no north wall.
+        Assert.All(Enumerable.Range(3, 4), y => Assert.Equal((1, 1), Part(9, y, BattleTilePart.Floor)));
+        Assert.Equal((0, 1), Part(9, 2, BattleTilePart.Floor));
+        Assert.Equal((0, 1), Part(9, 7, BattleTilePart.Floor));
+        Assert.Equal((0, 1), Part(9, 3, BattleTilePart.NorthWall));
+        Assert.Equal((0, 1), Part(9, 7, BattleTilePart.NorthWall));
+        Assert.Equal((0, 1), Part(10, 3, BattleTilePart.NorthWall));
+        Assert.Equal((-1, -1), Part(10, 4, BattleTilePart.NorthWall));
+        Assert.Equal((0, 1), Part(10, 4, BattleTilePart.Floor));
     }
 
     [Fact]
