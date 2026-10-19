@@ -221,6 +221,15 @@ public sealed record RuntimeCraftRule(
     RuleHandleList<CraftWeaponRuleFamily> FixedWeapons,
     RuleHandleList<RuntimeScriptFamily> Scripts)
 {
+    /// <summary>RuleCraft::getGroups: map script commands with craft groups run only for a craft in one of them.</summary>
+    public IReadOnlyList<int> Groups { get; init; } = [];
+
+    /// <summary>RuleCraft::isMapVisible: whether the craft's map starts discovered.</summary>
+    public bool MapVisible { get; init; } = true;
+
+    /// <summary>RuleCraft::getBattlescapeTerrainData: the craft's map, or null.</summary>
+    public RuntimeTerrain? BattlescapeTerrain { get; init; }
+
     public string Type { get; init; } = "";
     public RuntimePurchaseRequirements Purchase { get; init; } = new(0, "", "", [], []);
     /// <summary>RuleCraft::_stats, before installed weapon bonuses and capacity limits.</summary>

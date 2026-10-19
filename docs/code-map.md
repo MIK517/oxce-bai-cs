@@ -1007,6 +1007,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `TerrainDeploymentRuleCatalog` (class) [TerrainDeploymentRuleCatalog.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRuleCatalog.cs)
 - `MapBlockRule` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)
 - `TerrainRule` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)
+- `InlineTerrainRule` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs) - RuleCraft and RuleUfo `battlescapeTerrainData`: a terrain of their own, named by its `name`.
 - `MapScriptCommandType` (enum) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)
 - `MapDirection` (enum) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)
 - `MapRectangle` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)

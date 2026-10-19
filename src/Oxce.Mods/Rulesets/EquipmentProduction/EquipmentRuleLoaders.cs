@@ -110,7 +110,7 @@ internal sealed class CraftRuleLoader : TypedRuleFamilyLoader<CraftBuilder, Craf
             builder.TakeoffSounds = EquipmentYaml.IndexList(takeoffSound!, reader.Source.ModId);
         if (reader.TryGet("pilotSoldierBonusesRequired", out var pilotBonuses))
             builder.RequiredPilotBonuses = EquipmentYaml.StringList(pilotBonuses!);
-        reader.Defer("battlescapeTerrainData", "inline craft terrain loading belongs to the terrain slice");
+        reader.ApplyMapping("battlescapeTerrainData", nested => builder.BattlescapeTerrain = TerrainDeployment.TerrainRuleLoader.ReadInline(nested));
         reader.Defer("deployment", "craft deployment loading belongs to the deployment slice");
         if (reader.TryGet("pilotMinStatsRequired", out var pilotStats))
             PersonnelTacticalYaml.ApplyStats(builder.PilotMinimumStats, pilotStats!, nonZeroMerge: false);
@@ -137,7 +137,7 @@ internal sealed class CraftRuleLoader : TypedRuleFamilyLoader<CraftBuilder, Craf
         Array.AsReadOnly((string[])builder.WeaponStrings.Clone()),
         Array.AsReadOnly((string[])builder.FixedWeapons.Clone()),
         builder.RequiredPilotBonuses.AsReadOnly())
-    { PilotMinimumStats = PersonnelTacticalYaml.FreezeStats(builder.PilotMinimumStats).Values };
+    { PilotMinimumStats = PersonnelTacticalYaml.FreezeStats(builder.PilotMinimumStats).Values, BattlescapeTerrain = builder.BattlescapeTerrain };
 
     private static void ApplyWeaponTypes(CraftBuilder builder, RulePropertyReader reader)
     {
@@ -203,7 +203,7 @@ internal sealed class UfoRuleLoader : IdOnlyTypedRuleFamilyLoader<UfoBuilder, Uf
             if (reader.TryGet(key, out var sound))
                 builder.Sounds[key] = PresentationYaml.ReadIndexReference(sound!, reader.Source.ModId);
         }
-        reader.Defer("battlescapeTerrainData", "inline UFO terrain loading belongs to the terrain slice");
+        reader.ApplyMapping("battlescapeTerrainData", nested => builder.BattlescapeTerrain = TerrainDeployment.TerrainRuleLoader.ReadInline(nested));
         reader.DeferRemaining("dynamic UFO script values require Phase 4 registration");
     }
     protected override UfoRule Freeze(UfoBuilder builder) => new(
@@ -218,7 +218,8 @@ internal sealed class UfoRuleLoader : IdOnlyTypedRuleFamilyLoader<UfoBuilder, Uf
         EquipmentReadOnly.Dictionary(builder.Sounds),
         EquipmentYaml.FreezeUfoStats(builder.Stats),
         new ReadOnlyDictionary<string, UfoStats>(builder.RaceBonuses.ToDictionary(
-            pair => pair.Key, pair => EquipmentYaml.FreezeUfoStats(pair.Value), StringComparer.Ordinal)));
+            pair => pair.Key, pair => EquipmentYaml.FreezeUfoStats(pair.Value), StringComparer.Ordinal)))
+    { BattlescapeTerrain = builder.BattlescapeTerrain };
 
     private static void ApplyRaceBonuses(UfoBuilder builder, YamlNode node)
     {

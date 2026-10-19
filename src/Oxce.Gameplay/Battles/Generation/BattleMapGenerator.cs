@@ -21,6 +21,7 @@ internal sealed class BattleMapGenerator
     private const int LandingZoneGroup = 1;
 
     private readonly RuntimeBattleRules _rules;
+    private readonly RuntimeRuleCatalog _catalog;
     private readonly BattleTerrainLoader _loader;
     private readonly IRandomSource _random;
     private readonly string _missionType;
@@ -34,12 +35,26 @@ internal sealed class BattleMapGenerator
     private int[,] _segments = new int[0, 0];
     private int _blocksToDo;
     private int _markAsReinforcementsBlock;
+    private readonly BattleMapInputs _inputs;
+    private string _craftRuleId;
+    private bool _craftDeployed;
+    private RuntimeMapBlock? _craftMap;
+    private (int X, int Y, int Width, int Length) _craftPosition;
+    private int _craftZ;
+    private RuntimeTerrain? _ufoTerrain;
+    private string _ufoType = "";
+    private readonly List<(RuntimeMapBlock Map, int X, int Y, int Width, int Length)> _ufoMaps = [];
+    private readonly List<int> _ufoZ = [];
+    private bool[,] _landingZone = new bool[0, 0];
     private string _scriptId = "";
 
-    private BattleMapGenerator(RuntimeBattleRules rules, BattleTerrainLoader loader, IRandomSource random, string missionType,
-        RuntimeTerrain terrain, RuntimeTerrain globeTerrain, int width, int length, int height)
+    private BattleMapGenerator(RuntimeRuleCatalog rules, BattleTerrainLoader loader, IRandomSource random, string missionType,
+        RuntimeTerrain terrain, RuntimeTerrain globeTerrain, int width, int length, int height, BattleMapInputs inputs)
     {
-        _rules = rules;
+        _inputs = inputs;
+        _craftRuleId = inputs.CraftId;
+        _catalog = rules;
+        _rules = rules.Battle;
         _loader = loader;
         _random = random;
         _missionType = missionType;
@@ -50,11 +65,13 @@ internal sealed class BattleMapGenerator
     }
 
     /// <summary>Generates the terrain map for a battle, or throws <see cref="MapGenerationException"/> with the reason.</summary>
-    public static BattleMap Generate(RuntimeBattleRules rules, BattleTerrainLoader loader, IRandomSource random, string missionType,
-        RuntimeTerrain terrain, RuntimeTerrain globeTerrain, RuntimeMapScript script, int width, int length, int height)
+    public static BattleMap Generate(RuntimeRuleCatalog rules, BattleTerrainLoader loader, IRandomSource random, string missionType,
+        RuntimeTerrain terrain, RuntimeTerrain globeTerrain, RuntimeMapScript script, int width, int length, int height,
+        BattleMapInputs inputs)
     {
         ArgumentNullException.ThrowIfNull(script);
-        var generator = new BattleMapGenerator(rules, loader, random, missionType, terrain, globeTerrain, width, length, height);
+        ArgumentNullException.ThrowIfNull(inputs);
+        var generator = new BattleMapGenerator(rules, loader, random, missionType, terrain, globeTerrain, width, length, height, inputs);
         generator.Run(script);
         return generator._map;
     }
@@ -76,6 +93,8 @@ internal sealed class BattleMapGenerator
                 throw new MapGenerationException("Map generator encountered an error: multiple commands are sharing the same label.");
             conditionals[command.Label] = false;
             if (!ConditionsHold(command, conditionals)) continue;
+            // A deployed craft runs only the commands for one of its groups.
+            if (_craftDeployed && command.CraftGroups.Count != 0 && !command.CraftGroups.Any(CraftRule.Groups.Contains)) continue;
             // RNG::percent draws even for a certain chance.
             if (!RandomChance.Percent(_random, command.ExecutionChances)) continue;
             if (command.HasVerticalLevels)
@@ -94,7 +113,39 @@ internal sealed class BattleMapGenerator
             conditionals[command.Label] = success;
         }
         if (_blocksToDo != 0) throw new MapGenerationException("Map failed to fully generate.");
+        var dataSetOffset = _map.DataSets.Count;
         LoadNodes();
+        var craftDataSetOffset = 0;
+        if (_ufoMaps.Count != 0 && _ufoTerrain is { } ufoTerrain)
+        {
+            foreach (var set in LoadTerrain(ufoTerrain))
+            {
+                _map.AddDataSet(set);
+                craftDataSetOffset++;
+            }
+            for (var index = 0; index < _ufoMaps.Count; index++)
+            {
+                var (map, x, y, width, length) = _ufoMaps[index];
+                LoadMap(map, x * 10, y * 10, _ufoZ[index], ufoTerrain, dataSetOffset, false, ufoIndex: index);
+                LoadRoutes(map, x * 10, y * 10, _ufoZ[index], UfoSegment);
+                MarkCraftArea(x, y, width, length, _ufoType, map.Name, UfoSegment);
+            }
+        }
+        if (_craftMap is { } craftMap)
+        {
+            var craft = CraftRule;
+            var craftTerrain = craft.BattlescapeTerrain!;
+            foreach (var set in LoadTerrain(craftTerrain)) _map.AddDataSet(set);
+            LoadMap(craftMap, _craftPosition.X * 10, _craftPosition.Y * 10, _craftZ, craftTerrain, dataSetOffset + craftDataSetOffset,
+                craft.MapVisible, craft: true);
+            LoadRoutes(craftMap, _craftPosition.X * 10, _craftPosition.Y * 10, _craftZ, CraftSegment);
+            MarkCraftArea(_craftPosition.X, _craftPosition.Y, _craftPosition.Width, _craftPosition.Length, _craftRuleId, craftMap.Name, CraftSegment);
+            for (var x = _craftPosition.X * 10 - 1; x <= _craftPosition.X * 10 + craftMap.Width; x++)
+                for (var y = _craftPosition.Y * 10 - 1; y <= _craftPosition.Y * 10 + craftMap.Length; y++)
+                    for (var z = _map.Height - 1; z >= _craftZ; z--)
+                        if (_map.Contains(new BattlePosition(x, y, z)))
+                            _map.SetDiscovered(_map.TileIndex(new BattlePosition(x, y, z)), BattleTilePart.Floor, craft.MapVisible);
+        }
         FillLevelZeroFloors();
         AttachNodeLinks();
     }
@@ -135,6 +186,10 @@ internal sealed class BattleMapGenerator
             case MapScriptCommandType.AddLine:
                 return AddLine(command.Direction, command.Rectangles, terrain, command.VerticalGroup, command.HorizontalGroup,
                     command.CrossingGroup);
+            case MapScriptCommandType.AddCraft:
+                return AddCraftCommand(command, selection, terrain) || success;
+            case MapScriptCommandType.AddUfo:
+                return AddUfoCommand(command, selection, terrain) || success;
             case MapScriptCommandType.CheckBlock:
                 return CheckBlock(command, terrain, success);
             case MapScriptCommandType.RemoveBlock:
@@ -157,6 +212,7 @@ internal sealed class BattleMapGenerator
         _blocks = new RuntimeMapBlock?[width / 10, length / 10];
         _covered = new bool[width / 10, length / 10];
         _segments = new int[width / 10, length / 10];
+        _landingZone = new bool[width / 10, length / 10];
         _blocksToDo = width / 10 * (length / 10);
     }
 
@@ -374,6 +430,129 @@ internal sealed class BattleMapGenerator
         Initialize(width, length, height);
     }
 
+    private RuntimeCraftRule? Craft(string id) =>
+        id.Length != 0 && _catalog.Crafts.TryGet(id, out var handle) ? _catalog.Crafts[handle].Value : null;
+
+    private RuntimeUfoRule? Ufo(string id) =>
+        id.Length != 0 && _catalog.Ufos.TryGet(id, out var handle) ? _catalog.Ufos[handle].Value : null;
+
+    private const int CraftSegment = 1000;
+    private const int UfoSegment = 2000;
+
+    private RuntimeCraftRule CraftRule => Craft(_craftRuleId)
+        ?? throw new MapGenerationException($"Craft {_craftRuleId} does not exist.");
+
+    /// <summary>
+    /// The addCraft command: the craft's rules may be swapped by the command's craft name and then by the starting
+    /// condition's transformation of the current craft; a random block of its terrain lands on a free position, and
+    /// its landing zone gets blocks from the command's selection. An unplaced craft fails the map unless the command
+    /// has a label.
+    /// </summary>
+    private bool AddCraftCommand(RuntimeMapScriptCommand command, MapScriptSelection selection, RuntimeTerrain terrain)
+    {
+        if (_craftRuleId.Length == 0) return false;
+        var replacement = Craft(command.CraftName) is null ? null : command.CraftName;
+        if (_inputs.StartingCondition is { } condition)
+            replacement = condition.CraftTransformations.TryGetValue(_craftRuleId, out var transformed) ? transformed : replacement;
+        if (replacement is not null && Craft(replacement) is not null) _craftRuleId = replacement;
+        var craftTerrain = CraftRule.BattlescapeTerrain
+            ?? throw new MapGenerationException($"Craft {_craftRuleId} has no battlescape terrain.");
+        var craftMap = MapScriptSelection.RandomBlock(craftTerrain, 999, 999, 0, force: false, _random)
+            ?? throw new MapGenerationException($"Craft {_craftRuleId} has no map block in group 0.");
+        if (!PlaceCraft(craftMap, command, selection, terrain, out var position))
+        {
+            if (command.Label == 0)
+                throw new MapGenerationException($"Map generator encountered an error: Craft (MapBlock: {craftMap.Name}) could not be placed on the map. You may try turning on 'save scumming' to work around this issue.");
+            return false;
+        }
+        _craftMap = craftMap;
+        _craftPosition = position;
+        LoadLandingZone(position, terrain);
+        _craftDeployed = true;
+        return true;
+    }
+
+    /// <summary>
+    /// The addUFO command: the command's UFO, else the battle's UFO, else the deployment's custom UFO. The UFO terrain
+    /// found by an earlier command stays in use when a later one finds none, as in the reference.
+    /// </summary>
+    private bool AddUfoCommand(RuntimeMapScriptCommand command, MapScriptSelection selection, RuntimeTerrain terrain)
+    {
+        if (Ufo(command.UfoName) is { } named)
+        {
+            _ufoTerrain = named.BattlescapeTerrain;
+            _ufoType = command.UfoName;
+        }
+        else if (_inputs.UfoId.Length != 0 && Ufo(_inputs.UfoId) is { } battleUfo)
+        {
+            _ufoTerrain = battleUfo.BattlescapeTerrain;
+            _ufoType = _inputs.UfoId;
+        }
+        else if (_inputs.CustomUfo.Length != 0)
+        {
+            var custom = Ufo(_inputs.CustomUfo)
+                ?? throw new MapGenerationException($"UFO {_inputs.CustomUfo} does not exist.");
+            _ufoTerrain = custom.BattlescapeTerrain;
+            _ufoType = _inputs.CustomUfo;
+        }
+        if (_ufoTerrain is not { } ufoTerrain) return false;
+        var ufoMap = MapScriptSelection.RandomBlock(ufoTerrain, 999, 999, 0, force: false, _random)
+            ?? throw new MapGenerationException($"UFO {_ufoType} has no map block in group 0.");
+        if (!PlaceCraft(ufoMap, command, selection, terrain, out var position))
+        {
+            if (command.Label == 0 && !command.CanBeSkipped)
+                throw new MapGenerationException($"Map generator encountered an error: UFO (MapBlock: {ufoMap.Name}) could not be placed on the map. You may try turning on 'save scumming' to work around this issue.");
+            return false;
+        }
+        _ufoMaps.Add((ufoMap, position.X, position.Y, position.Width, position.Length));
+        LoadLandingZone(position, terrain);
+        _ufoZ.Add(0);
+        return true;
+    }
+
+    /// <summary>
+    /// BattlescapeGenerator::addCraft: a free position for the craft or UFO; each cell under it becomes landing zone
+    /// and, when free, gets the next block of the command's selection (no dummy marks, no drill edges).
+    /// </summary>
+    private bool PlaceCraft(RuntimeMapBlock craftMap, RuntimeMapScriptCommand command, MapScriptSelection selection, RuntimeTerrain terrain,
+        out (int X, int Y, int Width, int Length) position)
+    {
+        position = default;
+        if (!SelectPosition(command.Rectangles, craftMap.Width, craftMap.Length, out var x, out var y)) return false;
+        position = (x, y, craftMap.Width / 10, craftMap.Length / 10);
+        for (var dx = 0; dx < position.Width; dx++)
+            for (var dy = 0; dy < position.Length; dy++)
+            {
+                _landingZone[x + dx, y + dy] = true;
+                var block = selection.NextBlock(terrain, _random);
+                if (block is null || Occupied(x + dx, y + dy)) continue;
+                _map.SetBlockInfo(x + dx, y + dy, terrain.Id, block.Name, _markAsReinforcementsBlock);
+                _blocks[x + dx, y + dy] = block;
+                _blocksToDo--;
+            }
+        return true;
+    }
+
+    /// <summary>The landing zone blocks' maps, loaded as soon as the craft or UFO is placed.</summary>
+    private void LoadLandingZone((int X, int Y, int Width, int Length) position, RuntimeTerrain terrain)
+    {
+        for (var x = position.X; x < position.X + position.Width; x++)
+            for (var y = position.Y; y < position.Y + position.Length; y++)
+                if (_blocks[x, y] is { } block)
+                    LoadMap(block, x * 10, y * 10, 0, terrain, LoadExtraTerrain(terrain), _missionType == BaseDefenseMissionType);
+    }
+
+    /// <summary>The block names and segments under a craft or UFO name it, not the terrain.</summary>
+    private void MarkCraftArea(int x, int y, int width, int length, string type, string mapName, int segment)
+    {
+        for (var dx = 0; dx < width; dx++)
+            for (var dy = 0; dy < length; dy++)
+            {
+                _map.SetBlockInfo(x + dx, y + dy, type, mapName, _map.ReinforcementBlock(x + dx, y + dy));
+                _segments[x + dx, y + dy] = segment;
+            }
+    }
+
     /// <summary>BattlescapeGenerator::pickTerrain for a command's random terrain.</summary>
     private RuntimeTerrain PickTerrain(string name) => name switch
     {
@@ -401,7 +580,8 @@ internal sealed class BattleMapGenerator
     }
 
     /// <summary>BattlescapeGenerator::loadMAP for a terrain block (no craft or UFO offsets).</summary>
-    private void LoadMap(RuntimeMapBlock block, int offsetX, int offsetY, int offsetZ, RuntimeTerrain terrain, int dataSetOffset, bool discovered)
+    private void LoadMap(RuntimeMapBlock block, int offsetX, int offsetY, int offsetZ, RuntimeTerrain terrain, int dataSetOffset, bool discovered,
+        bool craft = false, int ufoIndex = -1)
     {
         if (_loader.TryLoadBlock(block, out var data) is { } reason) throw new MapGenerationException(reason);
         var file = data!.Map;
@@ -416,6 +596,8 @@ internal sealed class BattleMapGenerator
             if (_map.MapData(_map.TileIndex(new BattlePosition(x, y, level)), BattleTilePart.Floor) is not null && offsetZ == 0)
             {
                 z += level;
+                if (craft && _craftZ == 0) _craftZ = level;
+                if (ufoIndex >= 0 && _ufoZ[ufoIndex] == 0) _ufoZ[ufoIndex] = level;
                 break;
             }
         if (z > _map.Height - 1)
@@ -484,7 +666,9 @@ internal sealed class BattleMapGenerator
             for (var x = 0; x < _map.Width / 10; x++)
             {
                 _segments[x, y] = segment;
-                if (_blocks[x, y] is { } block) LoadRoutes(block, x * 10, y * 10, 0, segment++);
+                // The landing zone under a craft or UFO has no routes of its own while the craft is on the ground.
+                if (_blocks[x, y] is { } block && !(block.Groups.Contains(LandingZoneGroup) && _landingZone[x, y] && _craftZ == 0))
+                    LoadRoutes(block, x * 10, y * 10, 0, segment++);
             }
     }
 
@@ -611,6 +795,12 @@ internal sealed class BattleMapGenerator
             }
     }
 }
+
+/// <summary>
+/// What the battle brings to the map besides its terrain: the landing craft (empty for none), the target UFO (empty for
+/// none), the deployment's custom UFO and the starting condition.
+/// </summary>
+internal sealed record BattleMapInputs(string CraftId, string UfoId, string CustomUfo, RuntimeStartingCondition? StartingCondition);
 
 /// <summary>A reason battle generation stopped (the reference throws or crashes there).</summary>
 internal sealed class MapGenerationException(string reason) : Exception(reason);

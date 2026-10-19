@@ -10,7 +10,7 @@ Phase 7 branch 1 (`claude/battle-generation`), from `main` at `2b0c81fb`. Plan:
 | S0 planning | Done (2026-10-18) |
 | S1 battle aggregate | Done (2026-10-18) |
 | S2 runtime battle terrain | Done (2026-10-19) |
-| S3 map generation | S3a, S3c and `addLine` done (2026-10-19); rest of S3b (digTunnel, craft and UFO maps, vertical levels) open |
+| S3 map generation | S3a, S3c, `addLine`, `addCraft` and `addUFO` done (2026-10-19); `digTunnel` and vertical levels open |
 | S4 X-COM deployment | Not started |
 | S5 alien and civilian deployment | Not started |
 | S6 base defense and other entry points | Not started |
@@ -109,8 +109,8 @@ Reference: `BattlescapeGenerator::run` (terrain, depth, shade and map script cho
 - Corrections found on the way: a deployment's own `script` defaulted to `DEFAULT` in the typed catalog, which would have
   overridden every terrain's script; the reference leaves it empty. An alien-base landing recorded mission texture 0
   for the reference's null texture; it is now -1.
-- Not yet: `digTunnel`, `addCraft`, `addUFO` and vertical levels refuse with a named S3b reason; base defense maps
-  refuse until S6; map block items are S5.
+- Not yet: `digTunnel` and vertical levels refuse with a named S3b reason; base defense maps refuse until S6; map block
+  items are S5.
 - Intentional differences: the level-0 floor fill uses set 0 object 1 (the reference uses BLANKS object 1 by pointer,
   which is set 0 whenever BLANKS is loaded first); a rectangle outside the block grid is treated as occupied (the reference
   reads outside its arrays).
@@ -130,8 +130,7 @@ Reference: `BattlescapeGenerator::loadNodes`, `loadRMP`, `attachNodeLinks`, `Nod
 - `attachNodeLinks` runs both passes as the reference does: edge links joined through the neighbouring segment, then
   by block position with vertical links between nodes of one block on adjacent levels within three tiles. The upward
   test compares the level with the map height rather than the top level, as in the reference.
-- Not yet: the landing-zone exception for blocks under the craft, craft and UFO routes and vertical-level segments
-  arrive with S3b.
+- Not yet: vertical-level segments arrive with the rest of S3b.
 
 Tests: `BattleStartTests` checks segments, IDs across blocks, a culled node and its terminated link, and the east-west
 join between two blocks.
@@ -150,15 +149,39 @@ Reference: `BattlescapeGenerator::addLine`, `MapScript::MapScript` (group defaul
 
 Tests: `BattleStartTests.AddLineInBothDirectionsCrossesTheRoadsAndKeepsTheReplacedBlocksName`.
 
+## S3b, part 2 — Craft and UFO maps (2026-10-19)
+
+Reference: `RuleCraft::load` and `RuleUfo::load` (`battlescapeTerrainData`), `RuleTerrain::load`,
+`BattlescapeGenerator::generateMap` (the addCraft and addUFO cases, `craftGroups`, the UFO and craft map and route loads
+after the script, the craft's discovered tiles), `addCraft`, `loadMAP` (`_craftZ`, `_ufoZ`), `loadNodes` (the landing
+zone), `Node::CRAFTSEGMENT` and `UFOSEGMENT`, `RuleStartingCondition::getCraftReplacement`, `RuleCraft::isMapVisible`.
+
+- `battlescapeTerrainData` is read for crafts and UFOs (`InlineTerrainRule`): each node is a new terrain named by its
+  `name`, loaded through the terrain loader, not merged with an earlier definition. `RuntimeCraftRule` and
+  `RuntimeUfoRule` carry it as `BattlescapeTerrain`; the craft also gets `MapVisible` and `Groups`, and
+  `RuntimeStartingCondition` its `CraftTransformations`.
+- The generator gets the landing craft, the target UFO (UFO targets only), the deployment's `customUfo` and the
+  starting condition (the deployment's, else the mission texture's). `addCraft` swaps the craft's rules by the command's
+  `craftName` and then by the starting condition's transformation of the current craft, picks a random group-0 block
+  of its terrain (any size up to 999), places it on a free position and fills its landing zone from the command's
+  selection (group 1 by default); an unplaced craft refuses unless the command has a label. `addUFO` uses the command's
+  UFO, else the battle's, else the custom UFO; a UFO terrain found earlier stays in use, as in the reference; an
+  unplaced UFO is skipped when `canBeSkipped` or labelled. Commands with `craftGroups` run only for a deployed craft
+  in one of them.
+- After the script: nodes (the landing zone under a grounded craft or UFO loads no routes), then the UFO data sets and
+  maps with their routes (segment 2000), then the craft's (segment 1000), each stacked on the highest floor below it
+  and clearing the object part; the craft's area and border are discovered as the craft's `mapVisible` says. The block
+  names there are the craft or UFO type and its map block.
+- Not yet: craft skins (`RuleTerrain::refreshMapDataSets`); the port does not keep the craft's skin index, which is the
+  reference's no-op case.
+
+Tests: `BattleStartTests.TheCraftAndTheUfoLandOnLandingZonesAndTheirMapsAndRoutesLoadAfterTheScript` and the inline
+terrain links in `DeploymentBattlePropertiesAreLinkedWithTheReferenceDefaults`.
+
 ## Next: rest of S3b
 
-- Craft and UFO battlescape terrains: `battlescapeTerrainData` is deferred in the typed craft and UFO loaders
-  (`EquipmentRuleLoaders`); it needs the nested `RuleTerrain::load`, a runtime projection on the craft and UFO rules, and
-  `RuleTerrain::refreshMapDataSets` for craft skins.
-- `addCraft` and `addUFO` (`addCraft`: landing zone blocks from the command's selection, the craft name and the starting
-  condition's craft replacement, the UFO name or the deployment's `customUfo`), the craft and UFO map and route loads
-  after the script (`_craftZ`, `_ufoZ`, segments, the craft's discovered tiles), the landing-zone exception in
-  `loadNodes`, and `craftGroups` conditions.
 - `digTunnel` (`drillModules` with `tunnelData` MCD replacements) and vertical levels (`populateVerticalLevels`,
-  `loadVerticalLevels`, their segments in `loadNodes` and the second pass of `attachNodeLinks`); both are still raw YAML
-  in the typed map script.
+  `loadVerticalLevels`, their segments in `loadNodes` and the second pass of `attachNodeLinks`, the craft and UFO vertical
+  level loads); both are still raw YAML in the typed map script.
+- Craft skins: the craft's skin index in the strategic save and `refreshMapDataSets`.
+- Then S4 (X-COM deployment on the craft's tiles).

@@ -40,6 +40,12 @@ public sealed class BattleStartTests
             height: 2
             terrains: [TEST_TERRAIN]
             script: ROADS
+          - type: UFO_CRAFTED
+            width: 30
+            length: 30
+            height: 2
+            terrains: [TEST_TERRAIN]
+            script: CRAFTED
           - type: UFO_UNFILLED
             width: 20
             length: 20
@@ -56,6 +62,18 @@ public sealed class BattleStartTests
               - {name: ROAD_NS, width: 10, length: 10, groups: [3]}
               - {name: CROSSING, width: 10, length: 10, groups: [4]}
             script: BASIC
+        crafts:
+          - type: SHIP
+            battlescapeTerrainData:
+              name: SHIP_MAP
+              mapDataSets: [BLANKS, SHIPSET]
+              mapBlocks: [{name: SHIPBLOCK, width: 10, length: 10}]
+        ufos:
+          - type: UFO_SCOUT
+            battlescapeTerrainData:
+              name: SCOUT_MAP
+              mapDataSets: [BLANKS, UFOSET]
+              mapBlocks: [{name: SCOUTBLOCK, width: 10, length: 20, groups: [0, 5]}]
         mapScripts:
           - type: BASIC
             commands:
@@ -71,6 +89,11 @@ public sealed class BattleStartTests
           - type: ROADS
             commands:
               - {type: addLine, direction: both}
+              - {type: fillArea}
+          - type: CRAFTED
+            commands:
+              - {type: addCraft}
+              - {type: addUFO}
               - {type: fillArea}
           - type: UNFILLED
             commands:
@@ -93,15 +116,22 @@ public sealed class BattleStartTests
         ["MAPS/ROAD_NS.MAP"] = Map(10, 10, 2),
         ["ROUTES/ROAD_NS.RMP"] = [],
         ["MAPS/CROSSING.MAP"] = Map(10, 10, 3),
+        ["TERRAIN/SHIPSET.MCD"] = Mcd(Record((42, 7))),
+        ["TERRAIN/UFOSET.MCD"] = Mcd(Record((42, 8))),
+        ["MAPS/SHIPBLOCK.MAP"] = Map(10, 10, 2),
+        ["ROUTES/SHIPBLOCK.RMP"] = RouteNode(4, 4, 0, []),
+        ["MAPS/SCOUTBLOCK.MAP"] = Map(20, 10, 2),
+        ["ROUTES/SCOUTBLOCK.RMP"] = [],
         ["ROUTES/CROSSING.RMP"] = [],
     });
 
     private static (CampaignState Campaign, CampaignDeploymentRequest Request) Requested(string? rules, string ufo = "UFO_SCOUT")
     {
-        var (_, campaign) = StrategicLandingTests.Create(rules: rules?.Replace("type: " + ufo, "type: UFO_SCOUT_PICKED", StringComparison.Ordinal)
-                .Replace("type: UFO_SCOUT\n", "type: UFO_SCOUT_DEFAULT\n", StringComparison.Ordinal)
-                .Replace("type: UFO_SCOUT_PICKED", "type: UFO_SCOUT", StringComparison.Ordinal),
-            files: rules is null ? null : RequiredFiles("BLANKS", "TESTSET"));
+        // The landing UFO is UFO_SCOUT: the deployment under test takes its name and the default one steps aside.
+        if (rules is not null && ufo != "UFO_SCOUT")
+            rules = rules.Replace("type: UFO_SCOUT\n    width", "type: UFO_SCOUT_DEFAULT\n    width", StringComparison.Ordinal)
+                .Replace("type: " + ufo + "\n", "type: UFO_SCOUT\n", StringComparison.Ordinal);
+        var (_, campaign) = StrategicLandingTests.Create(rules: rules, files: rules is null ? null : RequiredFiles("BLANKS", "TESTSET"));
         campaign.BattleTerrainFiles = TerrainFiles();
         var requested = AssertLandingRequested(campaign);
         var result = campaign.Execute(new AnswerLanding(requested.Confirmation, LandingAnswer.Yes));
@@ -200,6 +230,34 @@ public sealed class BattleStartTests
     }
 
     [Fact]
+    public void TheCraftAndTheUfoLandOnLandingZonesAndTheirMapsAndRoutesLoadAfterTheScript()
+    {
+        var (campaign, _) = Requested(Rules, "UFO_CRAFTED");
+        Assert.IsType<BattleStarted>(Assert.Single(campaign.Execute(new StartBattle()).Events));
+        var map = Battle(campaign).Map;
+        var cells = Enumerable.Range(0, 9).Select(cell => (X: cell % 3, Y: cell / 3)).ToArray();
+        // The block names under a craft or UFO name the craft or UFO type and its map block.
+        var craft = Assert.Single(cells, cell => map.TerrainName(cell.X, cell.Y) == "SHIP");
+        Assert.Equal("SHIPBLOCK", map.BlockName(craft.X, craft.Y));
+        var ufo = cells.Where(cell => map.TerrainName(cell.X, cell.Y) == "UFO_SCOUT").ToArray();
+        Assert.Equal(2, ufo.Length);
+        Assert.All(ufo, cell => Assert.Equal("SCOUTBLOCK", map.BlockName(cell.X, cell.Y)));
+        Assert.Equal(6, cells.Count(cell => map.BlockName(cell.X, cell.Y) == "SMALL"));
+        // The UFO's data sets follow the terrain's, then the craft's; their tiles replace the landing zone's.
+        Assert.Equal(["BLANKS", "TESTSET", "BLANKS", "UFOSET", "BLANKS", "SHIPSET"], map.DataSets.Select(static set => set.Name));
+        var craftTile = map.TileIndex(new(craft.X * 10 + 5, craft.Y * 10 + 5, 0));
+        Assert.Equal((0, 5), map.Part(craftTile, BattleTilePart.Floor));
+        Assert.Equal(7, map.MapData(craftTile, BattleTilePart.Floor)!.Armor);
+        Assert.True(map.IsDiscovered(craftTile, BattleTilePart.Floor));
+        Assert.Equal((0, 3), map.Part(map.TileIndex(new(ufo[0].X * 10 + 5, ufo[0].Y * 10 + 5, 0)), BattleTilePart.Floor));
+        // The landing zone blocks keep no routes of their own; the craft's route has the craft segment.
+        var real = map.Nodes.Where(static node => !node.IsDummy).ToArray();
+        Assert.Equal(7, real.Length);
+        var craftNode = Assert.Single(real, static node => node.Segment == 1000);
+        Assert.Equal(new BattlePosition(craft.X * 10 + 4, craft.Y * 10 + 4, 0), craftNode.Position);
+    }
+
+    [Fact]
     public void AMapThatDoesNotFillIsRefusedAndLeavesTheCampaignAsItWas()
     {
         // "Map failed to fully generate." is an exception in the reference; the port refuses and puts its draws back.
@@ -255,5 +313,11 @@ public sealed class BattleStartTests
         var commands = content.RuntimeRules.Battle.MapScripts["RESIZED"].Commands;
         Assert.Equal((2, 2, 2, 4, 3), (commands[0].SizeX, commands[0].SizeY, commands[0].SizeZ, commands[3].Label, commands[2].Label));
         Assert.Equal([-3], commands[3].Conditionals);
+        // RuleCraft and RuleUfo battlescapeTerrainData: terrains of their own, named by their "name".
+        var ship = content.RuntimeRules.Crafts.GetRequiredValue("SHIP").BattlescapeTerrain!;
+        Assert.Equal(("SHIP_MAP", "BLANKS,SHIPSET", "SHIPBLOCK"), (ship.Id, string.Join(',', ship.MapDataSets), Assert.Single(ship.MapBlocks).Name));
+        var scout = content.RuntimeRules.Ufos.GetRequiredValue("UFO_SCOUT").BattlescapeTerrain!;
+        Assert.Equal(("SCOUT_MAP", 20, "0,5"), (scout.Id, Assert.Single(scout.MapBlocks).Length, string.Join(',', scout.MapBlocks[0].Groups)));
+        Assert.Null(content.RuntimeRules.Ufos.GetRequiredValue("UFO_HUNTER").BattlescapeTerrain);
     }
 }

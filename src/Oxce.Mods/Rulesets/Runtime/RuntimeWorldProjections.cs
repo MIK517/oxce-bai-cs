@@ -85,6 +85,9 @@ public sealed record RuntimeUfoRule(
     IReadOnlyDictionary<string, RuntimeUfoStats> RaceBonuses,
     RuleHandleList<RuntimeScriptFamily> Scripts)
 {
+    /// <summary>RuleUfo::getBattlescapeTerrainData: the UFO's map, or null.</summary>
+    public RuntimeTerrain? BattlescapeTerrain { get; init; }
+
     public int Radius { get; init; }
     public int WeaponRange { get; init; }
     public int WeaponPower { get; init; }
@@ -210,6 +213,10 @@ public sealed record RuntimeStartingCondition(IReadOnlyList<string> AllowedCraft
     IReadOnlyList<string> AllowedSoldierTypes, IReadOnlyList<string> ForbiddenSoldierTypes,
     IReadOnlyDictionary<string, int> RequiredItems, bool DestroyRequiredItems, bool RequireCommanderOnboard)
 {
+    /// <summary>RuleStartingCondition::getCraftReplacement: the craft whose map replaces a source craft's.</summary>
+    public IReadOnlyDictionary<string, string> CraftTransformations { get; init; } =
+        new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(StringComparer.Ordinal));
+
     public bool IsCraftPermitted(string craftType) => Permitted(AllowedCraft, ForbiddenCraft, craftType);
 
     public bool IsSoldierTypePermitted(string soldierType) => Permitted(AllowedSoldierTypes, ForbiddenSoldierTypes, soldierType);

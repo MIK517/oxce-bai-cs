@@ -48,8 +48,8 @@ internal static class BattleGenerator
         }
         if (script is null) throw new MapGenerationException($"Map generator encountered an error: {terrainScript} script not found.");
         var globeTerrain = GlobeTerrain(rules, request, terrain, random);
-        var map = BattleMapGenerator.Generate(rules.Battle, loader, random, request.MissionType, terrain, globeTerrain, script,
-            battle.Width, battle.Length, battle.Height);
+        var map = BattleMapGenerator.Generate(rules, loader, random, request.MissionType, terrain, globeTerrain, script,
+            battle.Width, battle.Length, battle.Height, Inputs(campaign, request, deployment));
         if (map.Width == 0 || map.Length == 0 || map.Height == 0)
             throw new MapGenerationException($"Map script {scriptId} leaves an empty {map.Width}x{map.Length}x{map.Height} map.");
         return new BattleState(request.MissionType, id, map, battle.TurnLimit, battle.ChronoTrigger, battle.CheatTurn)
@@ -92,6 +92,24 @@ internal static class BattleGenerator
             name = RuntimeTerrainCriterion.Pick(texture.Terrains, request.Target.Longitude, request.Target.Latitude, random.NextInclusive);
         return rules.Battle.Terrains.GetValueOrDefault(name)
             ?? throw new MapGenerationException($"Map generator encountered an error: terrain '{name}' does not exist.");
+    }
+
+    /// <summary>
+    /// The craft (BattlescapeGenerator::setCraft), the target UFO (setUfo, UFO targets only), the deployment's custom UFO
+    /// and the starting condition: the deployment's, else the mission texture's (run).
+    /// </summary>
+    private static BattleMapInputs Inputs(CampaignState campaign, CampaignDeploymentRequest request, RuntimeAlienDeploymentRule deployment)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        var craft = request.CraftTypeId.Length != 0 && rules.Crafts.TryGet(request.CraftTypeId, out _) ? request.CraftTypeId : "";
+        var ufo = request.Target.Kind == WorldTargetKind.Ufo
+            ? campaign.Capture().World.Ufos.FirstOrDefault(candidate => candidate.UniqueId == request.Target.UniqueId)?.RuleId ?? ""
+            : "";
+        var conditionId = deployment.StartingCondition.Length != 0 && rules.StartingConditions.TryGet(deployment.StartingCondition, out _)
+            ? deployment.StartingCondition : Texture(rules, request.MissionTexture)?.StartingCondition ?? "";
+        var condition = conditionId.Length != 0 && rules.StartingConditions.TryGet(conditionId, out var handle)
+            ? rules.StartingConditions[handle].Value : null;
+        return new BattleMapInputs(craft, ufo, deployment.Battle.CustomUfo, condition);
     }
 
     /// <summary>BattlescapeGenerator::setDepth: the deployment's depth range wins over the terrain's.</summary>

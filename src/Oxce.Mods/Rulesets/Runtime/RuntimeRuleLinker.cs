@@ -245,6 +245,9 @@ public static class RuntimeRuleLinker
                 ArmorGroupLimits = rule.Value.ArmorGroupLimits,
                 PilotMinimumStats = rule.Value.PilotMinimumStats,
                 RequiredPilotBonuses = rule.Value.RequiredPilotBonuses,
+                BattlescapeTerrain = RuntimeBattleRules.Inline(rule.Value.BattlescapeTerrain),
+                MapVisible = rule.Value.Booleans["mapVisible"],
+                Groups = Array.AsReadOnly(rule.Value.Groups.ToArray()),
             });
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -510,7 +513,11 @@ public static class RuntimeRuleLinker
                 content.TerrainDeployment.StartingConditions, static rule => new RuntimeStartingCondition(
                     rule.Value.NameCollections["allowedCraft"], rule.Value.NameCollections["forbiddenCraft"],
                     rule.Value.NameCollections["allowedSoldierTypes"], rule.Value.NameCollections["forbiddenSoldierTypes"],
-                    rule.Value.RequiredItems, rule.Value.DestroyRequiredItems, rule.Value.RequireCommanderOnboard)),
+                    rule.Value.RequiredItems, rule.Value.DestroyRequiredItems, rule.Value.RequireCommanderOnboard)
+                {
+                    CraftTransformations = new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(
+                        new Dictionary<string, string>(rule.Value.CraftTransformations, StringComparer.Ordinal)),
+                }),
             BuildFamily<MissionScriptRuleFamily, StrategicScriptRule, RuntimeMissionScriptRule>(generation,
                 content.MissionEvents.MissionScripts, rule => BuildMissionScript(rule, "missionScripts")),
             BuildFamily<AdhocScriptRuleFamily, StrategicScriptRule, RuntimeMissionScriptRule>(generation,
@@ -626,6 +633,7 @@ public static class RuntimeRuleLinker
                     "STR_LARGE" => 3,
                     _ => 4,
                 },
+                BattlescapeTerrain = RuntimeBattleRules.Inline(source.BattlescapeTerrain),
             };
         }
 

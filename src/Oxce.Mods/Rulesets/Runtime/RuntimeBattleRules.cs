@@ -50,6 +50,9 @@ public sealed class RuntimeBattleRules
             new ReadOnlyDictionary<string, RuntimeMapScript>(scripts));
     }
 
+    /// <summary>A craft's or UFO's own terrain, projected like the terrains section's.</summary>
+    internal static RuntimeTerrain? Inline(InlineTerrainRule? rule) => rule is null ? null : Terrain(rule.Name, rule.Rule);
+
     private static RuntimeTerrain Terrain(string id, TerrainRule rule) => new(id, List(rule.MapDataSets),
         List(rule.MapBlocks.Select(static block => new RuntimeMapBlock(block.Name, block.Width, block.Length, block.Height,
             List(block.Groups), List(block.RevealedFloors), List(block.CraftInventoryTile)))),
