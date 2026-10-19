@@ -197,6 +197,11 @@ Tests: `BattleStartTests.DigTunnelOpensTheMarkedEdgeBetweenTwoBlocks`.
 ## Next: rest of S3b
 
 - Vertical levels (`populateVerticalLevels`, `loadVerticalLevels`, their segments in `loadNodes` and the second pass of
-  `attachNodeLinks`, the craft and UFO vertical level loads); still raw YAML in the typed map script.
+  `attachNodeLinks`, the craft and UFO vertical level loads); still raw YAML in the typed map script. Notes for the port:
+  `MapScript::initVerticalLevel` overwrites the command's own block and group selection (not only the scratch copies),
+  so later executions keep the last level's selection; the reference's change outlives the battle because map scripts
+  are shared mod data, which the port should keep to one generation and record as an intentional difference.
+  `getSizeZ` there is the MAP header height once a block has loaded, the rule's height before. Several paths read an
+  empty level list or a missing block (`_verticalLevels.back()`, `block->getSizeZ()`); those become generation refusals.
 - Craft skins: the craft's skin index in the strategic save and `refreshMapDataSets`.
 - Then S4 (X-COM deployment on the craft's tiles).
