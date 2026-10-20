@@ -70,7 +70,7 @@ internal sealed class UnitEquipment
     public BattleItem? CreateItemForUnit(string itemType, BattleUnit unit, bool fixedWeapon = false)
     {
         var item = NewItem(itemType);
-        if (!AddItem(item, unit, allowSecondClip: false, allowAutoLoadout: fixedWeapon, allowUnloadedWeapons: fixedWeapon))
+        if (!AddItem(item, unit, allowSecondClip: false, allowAutoLoadout: fixedWeapon, allowUnloadedWeapons: fixedWeapon, allowInfinite: false, testMode: false))
         {
             // The C3 fallback can leave a deleted item in the unit's inventory, which the reference then reads freed.
             if (item.OwnerUnitId is not null)
@@ -162,8 +162,12 @@ internal sealed class UnitEquipment
             if (ItemRule(itemType).BattleType == Ammo) CreateItemForUnit(itemType, unit, fixedWeapon: true);
     }
 
-    /// <summary>BattleUnit::addItem with testMode off and allowInfinite off.</summary>
-    private bool AddItem(BattleItem item, BattleUnit unit, bool allowSecondClip, bool allowAutoLoadout, bool allowUnloadedWeapons)
+    /// <summary>
+    /// BattleUnit::addItem. Test mode only keeps the section fitting from moving the item: as in the reference, a fixed
+    /// weapon still takes its default slot and ammunition still loads into a hand weapon.
+    /// </summary>
+    public bool AddItem(BattleItem item, BattleUnit unit, bool allowSecondClip, bool allowAutoLoadout, bool allowUnloadedWeapons,
+        bool allowInfinite, bool testMode)
     {
         var rightHand = Inventory(RightHand);
         var leftHand = Inventory(LeftHand);
@@ -179,7 +183,7 @@ internal sealed class UnitEquipment
         if (standardPlayerUnit)
         {
             weight = CarriedWeight(unit, armor) + TotalWeight(item);
-            if (rule.BattleType is not (Firearm or Melee))
+            if (rule.BattleType is not (Firearm or Melee) && !allowInfinite)
             {
                 var tally = 0;
                 foreach (var carried in _battle.InventoryOf(unit))
@@ -198,14 +202,14 @@ internal sealed class UnitEquipment
                 var slot = Inventory(battleRule.DefaultInventorySlot);
                 if (ItemAt(unit, slot, 0, 0) is null)
                 {
-                    item.OwnerUnitId = unit.Id;
+                    MoveToOwner(item, unit);
                     item.Slot = slot.Id;
                     item.SlotX = battleRule.DefaultInventorySlotX;
                     item.SlotY = battleRule.DefaultInventorySlotY;
                     placed = true;
                 }
             }
-            if (!placed && (Fit(rightHand, item, unit) || Fit(leftHand, item, unit))) placed = true;
+            if (!placed && (Fit(rightHand, item, unit, testMode) || Fit(leftHand, item, unit, testMode))) placed = true;
             if (placed)
             {
                 item.XcomProperty = player;
@@ -226,8 +230,8 @@ internal sealed class UnitEquipment
             if (loaded && (unit.SoldierId is null || allowAutoLoadout))
             {
                 // C1: the right hand, or the left for a unit that may hold two main weapons.
-                if (Fit(rightHand, item, unit)) placed = true;
-                if (!placed && (!player || armor.AllowTwoMainWeapons) && Fit(leftHand, item, unit)) placed = true;
+                if (Fit(rightHand, item, unit, testMode)) placed = true;
+                if (!placed && (!player || armor.AllowTwoMainWeapons) && Fit(leftHand, item, unit, testMode)) placed = true;
             }
             // An unplaced weapon falls through to the ammunition case.
             ammoCase = !placed;
@@ -257,7 +261,7 @@ internal sealed class UnitEquipment
             if (rule.BattleType == PsiAmp && unit.Faction == BattleFaction.Hostile)
             {
                 // C2: hostiles hold a psi-amp.
-                if (Fit(rightHand, item, unit) || Fit(leftHand, item, unit)) placed = true;
+                if (Fit(rightHand, item, unit, testMode) || Fit(leftHand, item, unit, testMode)) placed = true;
             }
             else if ((unit.SoldierId is null || allowAutoLoadout) && unit.Stats.Strength >= weight)
             {
@@ -265,7 +269,7 @@ internal sealed class UnitEquipment
                 if (standardPlayerUnit && battleRule.DefaultInventorySlot.Length != 0)
                 {
                     var slot = Inventory(battleRule.DefaultInventorySlot);
-                    if (slot.Type != RuntimeBattleInventory.Ground) placed = Fit(slot, item, unit);
+                    if (slot.Type != RuntimeBattleInventory.Ground) placed = Fit(slot, item, unit, testMode);
                 }
                 // D2: the slot order of the item's first category that has one.
                 if (!placed && standardPlayerUnit &&
@@ -275,15 +279,15 @@ internal sealed class UnitEquipment
                     {
                         var slot = Inventory(name);
                         if (slot.Type == RuntimeBattleInventory.Ground) continue;
-                        placed = Fit(slot, item, unit);
+                        placed = Fit(slot, item, unit, testMode);
                         if (placed) break;
                     }
                 }
-                if (!placed) placed = FitCheapest(item, unit, rightHand, leftHand);
+                if (!placed) placed = FitCheapest(item, unit, rightHand, leftHand, testMode);
                 // C3: every slot section in list order; the item ends in the last that fits.
                 if (!placed)
                     foreach (var slot in _equipment.Inventories)
-                        if (slot.Type == RuntimeBattleInventory.Slot) placed = Fit(slot, item, unit);
+                        if (slot.Type == RuntimeBattleInventory.Slot) placed = Fit(slot, item, unit, testMode);
             }
         }
 
@@ -295,7 +299,7 @@ internal sealed class UnitEquipment
     /// addItem's storage search: the non-hand section the item fits with the lowest move cost to the hand to optimize for
     /// (the left only when it alone is empty), ties broken by the cost to the other hand.
     /// </summary>
-    private bool FitCheapest(BattleItem item, BattleUnit unit, RuntimeBattleInventory rightHand, RuntimeBattleInventory leftHand)
+    private bool FitCheapest(BattleItem item, BattleUnit unit, RuntimeBattleInventory rightHand, RuntimeBattleInventory leftHand, bool testMode)
     {
         var bestPrimary = int.MaxValue;
         var bestSecondary = int.MaxValue;
@@ -316,7 +320,7 @@ internal sealed class UnitEquipment
                 best = slot;
             }
         }
-        return best is { Type: RuntimeBattleInventory.Slot } && Fit(best, item, unit);
+        return best is { Type: RuntimeBattleInventory.Slot } && Fit(best, item, unit, testMode);
     }
 
     /// <summary>RuleInventory::getCost.</summary>
@@ -340,7 +344,7 @@ internal sealed class UnitEquipment
             if (Overlaps(unit, item, slot, 0, 0)) return false;
             if (!test)
             {
-                item.OwnerUnitId = unit.Id;
+                MoveToOwner(item, unit);
                 item.Slot = slot.Id;
             }
             return true;
@@ -351,7 +355,7 @@ internal sealed class UnitEquipment
             if (Overlaps(unit, item, slot, position.X, position.Y) || !FitsInSlot(slot, battleRule, position.X, position.Y)) continue;
             if (!test)
             {
-                item.OwnerUnitId = unit.Id;
+                MoveToOwner(item, unit);
                 item.Slot = slot.Id;
                 item.SlotX = position.X;
                 item.SlotY = position.Y;
@@ -390,6 +394,18 @@ internal sealed class UnitEquipment
         return false;
     }
 
+    /// <summary>BattleItem::moveToOwner: the item leaves its tile and goes to the unit (or to no owner).</summary>
+    public static void MoveToOwner(BattleItem item, BattleUnit? unit)
+    {
+        item.Tile = null;
+        item.OwnerUnitId = unit?.Id;
+    }
+
+    /// <summary>BattleUnit::hasInventory.</summary>
+    public bool HasInventory(BattleUnit unit) => Armor(unit.ArmorId).HasInventory;
+
+    public BattleItem? ItemAt(BattleUnit unit, string slot, int x, int y) => ItemAt(unit, Inventory(slot), x, y);
+
     /// <summary>BattleUnit::getItem(slot, x, y): the carried item covering a cell of a section.</summary>
     private BattleItem? ItemAt(BattleUnit unit, RuntimeBattleInventory slot, int x, int y)
     {
@@ -408,7 +424,7 @@ internal sealed class UnitEquipment
     private BattleItem? HandWeapon(BattleUnit unit, string hand) => _battle.InventoryOf(unit).FirstOrDefault(item => item.Slot == hand);
 
     /// <summary>BattleItem::setAmmoPreMission: loads the ammo into its slot when the slot is empty.</summary>
-    private bool SetAmmoPreMission(BattleItem weapon, BattleItem ammo)
+    public bool SetAmmoPreMission(BattleItem weapon, BattleItem ammo)
     {
         var slot = SlotForAmmo(weapon, ammo.ItemType);
         if (slot < 0 || weapon.AmmoSlots[slot] is not null) return false;
@@ -416,7 +432,7 @@ internal sealed class UnitEquipment
         if (weapon.IsWeaponWithAmmo && weapon.AmmoSlots[slot] != weapon.Id)
         {
             weapon.AmmoSlots[slot] = ammo.Id;
-            ammo.OwnerUnitId = null;
+            MoveToOwner(ammo, null);
             ammo.Slot = "";
             ammo.IsAmmo = true;
         }
@@ -424,7 +440,7 @@ internal sealed class UnitEquipment
     }
 
     /// <summary>RuleItem::getSlotForAmmo: the first slot whose compatible ammo lists the item, or -1.</summary>
-    private int SlotForAmmo(BattleItem weapon, string ammoType)
+    public int SlotForAmmo(BattleItem weapon, string ammoType)
     {
         var compatible = ItemRule(weapon.ItemType).CompatibleAmmo;
         for (var slot = 0; slot < Math.Min(compatible.Count, BattleItem.AmmoSlotCount); slot++)
@@ -434,13 +450,16 @@ internal sealed class UnitEquipment
     }
 
     /// <summary>BattleItem::haveAnyAmmo: loaded (an empty clip counts) for its aimed, auto or snap shot, or its hit for melee.</summary>
-    private bool HaveAnyAmmo(BattleItem item)
+    public bool HaveAnyAmmo(BattleItem item)
     {
         if (!item.IsWeaponWithAmmo) return true;
         return ItemRule(item.ItemType).BattleType == Melee
             ? AmmoForAction(item, 3) is not null
             : AmmoForAction(item, 0) is not null || AmmoForAction(item, 1) is not null || AmmoForAction(item, 2) is not null;
     }
+
+    /// <summary>BattleItem::haveAllAmmo: every ammo slot holds something (the weapon itself for a slot that takes none).</summary>
+    public static bool HaveAllAmmo(BattleItem item) => item.AmmoSlots.All(static slot => slot is not null);
 
     /// <summary>BattleItem::getAmmoForAction (const): the item feeding an action, null when unloaded or spent.</summary>
     private BattleItem? AmmoForAction(BattleItem item, int action)
@@ -455,7 +474,7 @@ internal sealed class UnitEquipment
     }
 
     /// <summary>BattleItem::getTotalWeight: the item and the ammo loaded in it.</summary>
-    private int TotalWeight(BattleItem item)
+    public int TotalWeight(BattleItem item)
     {
         var weight = ItemRule(item.ItemType).Weight;
         foreach (var slot in item.AmmoSlots)
@@ -469,7 +488,7 @@ internal sealed class UnitEquipment
 
     private BattleItem Find(int id) => _battle.Items.First(item => item.Id == id);
 
-    private RuntimeItemRule ItemRule(string itemType) => _rules.Items.TryGet(itemType, out var handle)
+    public RuntimeItemRule ItemRule(string itemType) => _rules.Items.TryGet(itemType, out var handle)
         ? _rules.Items[handle].Value : throw new MapGenerationException($"Item {itemType} does not exist.");
 
     private RuntimeBattleArmor Armor(string armorId) => _equipment.Armors.TryGetValue(armorId, out var armor)

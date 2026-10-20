@@ -341,11 +341,39 @@ morale), `Soldier::prepareStatsWithBonuses`, `getBonuses`, `UnitStats::obeyFixed
 - Not ported here: the CreateUnit, CreateItem and ApplySoldierBonuses script hooks (tactical script bindings, branch 8);
   `getBonuses`' listOrder insertion quirk, which can keep two bonuses with the same list order (the port keeps each
   bonus once).
-- Not yet (the rest of S4b): equipment layouts (`placeItemByLayout`, the soldiers' saved layouts), `loadWeapons`,
-  `autoEquip`.
+- Equipment layouts, `loadWeapons` and `autoEquip` follow in part 5.
 
 Tests: `BattleStartTests.AVehicleCarriesItsSpecialItemItsFixedWeaponAndTheWeaponsLoadedAmmo`,
 `ASoldiersArmorBuiltInItemsFillTheHandsTheWeaponAndTheCheapestSection`.
+
+## S4b, part 5 — Equipment layouts and the craft's cargo distribution (2026-10-21)
+
+Reference: `Soldier::load` (equipment layout), `EquipmentLayoutItem::load`, `BattlescapeGenerator::deployXCOM` (after the
+craft's items), `placeItemByLayout`, `reloadFixedWeaponsByLayout`, `loadWeapons`, `autoEquip`, `BattleUnit::addItem`
+(allowInfinite, testMode), `BattleItem::moveToOwner`, `haveAllAmmo`.
+
+- Part 5a: `SoldierPersonalState.EquipmentLayout` (`SoldierLayoutItem`: item, section, position, the four ammo slots,
+  fuse timer, fixed) is read from the soldier's `equipmentLayout`; an entry naming a missing item, section or ammunition
+  is dropped as `Soldier::load` logs and skips it. The save keeps writing the soldier's own node (layouts are not
+  edited in the port yet). Campaign options gain `disableAutoEquip`, `oxceAlternateCraftEquipmentManagement`,
+  `preprimeGrenades` and `includePrimeStateInSavedLayout`.
+- Part 5b: `XcomCargo` after the craft's items: every tile item becomes X-COM property and goes by layout (ammunition
+  waits unless the alternate craft equipment management option is on), fixed weapons load their layout ammo, unfixed
+  ground weapons load in load order, extra ammunition follows the layouts, then `autoEquip` (strongest soldier first,
+  heaviest item first, one best-scoring item per soldier per pass, flares skipped in light, pre-primed grenades by the
+  option). `addItem` gains allowInfinite and test mode; as in the reference, test mode still moves a fixed weapon into
+  its default slot and still loads ammunition into a hand weapon. Moving an item to an owner takes it off its tile.
+- Intentional differences: `std::sort` leaves equal load orders, strengths and weights unspecified; the port keeps the
+  tile's and the battle's order. Unit inventories are the owned items in creation order rather than the order they
+  arrived; nothing in generation depends on that order.
+- Refusal: `reloadFixedWeaponsByLayout` walks the live tile inventory while loading erases from it; a fixed weapon that
+  would load a second layout ammo item after the first (reading past the shrunken vector in the reference) refuses.
+- Not ported: `BattleUnit::setInventoryTile` and the units' visibility reset (presentation, branch 3).
+
+Tests: `CampaignSaveRegressionFixtureTests.LayoutEntriesNamingMissingRulesAreDroppedOnLoadWhileTheSoldierNodeKeepsThem`,
+`BattleStartTests.ASoldierWithALayoutTakesItsLayoutWeaponLoadedWithItsLayoutAmmo`,
+`ASoldierWithoutALayoutIsAutoEquippedFromTheLoadedGroundItems`,
+`TheCraftsItemsStartOnTheCraftInventoryTileAndALayoutlessSoldierTakesThem`.
 
 ## S5 groundwork — Deployment data and alien quantities (2026-10-20)
 
@@ -368,5 +396,5 @@ Tests: `AlienQuantitiesTests`, `AlienRacesTests`; the deployment data projection
 ## Next
 
 - Craft skins: the craft's skin index in the strategic save and `refreshMapDataSets`.
-- S4b: starting-condition vehicle and item restrictions, save-side custom deployments, equipment layouts
-  (`placeItemByLayout`, `loadWeapons`, `autoEquip`); then the rest of S5 (`deployAliens`, civilians, objectives) and S6.
+- S4b: starting-condition vehicle and item restrictions (they send disabled vehicles and items back to base storage),
+  save-side custom deployments; then the rest of S5 (`deployAliens`, civilians, objectives) and S6.

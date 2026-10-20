@@ -76,7 +76,9 @@ public sealed class RuntimeBattleEquipment
                 values.GetInteger("painKiller"),
                 values.GetInteger("stimulant"),
                 List(rule.Value.Categories.Select(category => categoryReplacements.GetValueOrDefault(category, category))),
-                List(AmmoActions.Select(action => rule.Value.Actions[action].AmmoSlot)));
+                List(AmmoActions.Select(action => rule.Value.Actions[action].AmmoSlot)),
+                values.GetInteger("fuseType"),
+                rule.Value.EffectiveLoadOrder);
         }, StringComparer.Ordinal);
         var armors = personnel.Armors.Rules.ToDictionary(static rule => rule.Id, static rule => new RuntimeBattleArmor(
             List(rule.Value.BuiltInWeapons), rule.Value.Strings["specialWeapon"], rule.Value.Strings["selfDestructItem"],
@@ -117,8 +119,8 @@ public sealed record RuntimeInventorySlot(int X, int Y);
 
 /// <summary>
 /// RuleItem's equipment fields: fixed weapon, default inventory slot and position, inventory size, supported sections,
-/// turret type, psi and mana requirements, rechargeable ammo, medikit quantities, categories (after replacement) and the
-/// aimed, auto, snap and melee actions' ammo slots.
+/// turret type, psi and mana requirements, rechargeable ammo, medikit quantities, categories (after replacement), the
+/// aimed, auto, snap and melee actions' ammo slots, the fuse type (-3 none) and the load order.
 /// </summary>
 public sealed record RuntimeBattleItem(
     bool Fixed,
@@ -136,7 +138,9 @@ public sealed record RuntimeBattleItem(
     int PainKillerQuantity,
     int StimulantQuantity,
     IReadOnlyList<string> Categories,
-    IReadOnlyList<int> ActionAmmoSlots);
+    IReadOnlyList<int> ActionAmmoSlots,
+    int FuseType,
+    int LoadOrder);
 
 /// <summary>Armor's equipment fields: built-in weapons, special and self-destruct items, two main weapons, inventory, weight.</summary>
 public sealed record RuntimeBattleArmor(

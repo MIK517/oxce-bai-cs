@@ -21,7 +21,7 @@ public sealed class StrategicLandingTests
 {
     internal static (RuntimeContent Content, CampaignState Campaign) Create(bool seasons = false, string? rules = null,
         IReadOnlyDictionary<string, byte[]>? files = null, IReadOnlyList<CraftVehicleSnapshot>? vehicles = null,
-        IReadOnlyDictionary<string, int>? items = null)
+        IReadOnlyDictionary<string, int>? items = null, IReadOnlyList<SoldierLayoutItem>? layout = null)
     {
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], rules, files: files);
         var snapshot = CreateLifecycleSnapshot(content);
@@ -48,7 +48,10 @@ public sealed class StrategicLandingTests
                         Items = items ?? craft.Logistics!.Items,
                     },
                 })],
-                Soldiers = [owner.Soldiers[0] with { Personal = owner.Soldiers[0].Personal! with { CraftType = "SHIP", CraftId = 1 } },
+                Soldiers = [owner.Soldiers[0] with { Personal = owner.Soldiers[0].Personal! with
+                    {
+                        CraftType = "SHIP", CraftId = 1, EquipmentLayout = layout ?? owner.Soldiers[0].Personal!.EquipmentLayout,
+                    } },
                     .. owner.Soldiers.Skip(1).Select(soldier => soldier with { Personal = soldier.Personal! with { CraftType = "", CraftId = 0 } })],
             }],
         };

@@ -81,6 +81,9 @@ internal sealed class XcomDeployment
         if (_battle.Units.Count == 0)
             throw new MapGenerationException("Map generator encountered an error: no xcom units could be placed on the map.");
         AddCraftItems(request);
+        var layouts = owner.Soldiers.Where(soldier => request.Soldiers.Contains(soldier.Id) && soldier.Personal is not null)
+            .ToDictionary(static soldier => soldier.Id, static soldier => soldier.Personal!.EquipmentLayout);
+        XcomCargo.Distribute(_battle, _equipment, _rules, campaign.Options, layouts, request.Shade);
     }
 
     /// <summary>

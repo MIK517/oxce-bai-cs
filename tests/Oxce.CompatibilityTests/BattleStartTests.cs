@@ -255,14 +255,15 @@ public sealed class BattleStartTests
     });
 
     private static (CampaignState Campaign, CampaignDeploymentRequest Request) Requested(string? rules, string ufo = "UFO_SCOUT",
-        IReadOnlyList<CraftVehicleSnapshot>? vehicles = null, IReadOnlyDictionary<string, int>? items = null)
+        IReadOnlyList<CraftVehicleSnapshot>? vehicles = null, IReadOnlyDictionary<string, int>? items = null,
+        IReadOnlyList<SoldierLayoutItem>? layout = null)
     {
         // The landing UFO is UFO_SCOUT: the deployment under test takes its name and the default one steps aside.
         if (rules is not null && ufo != "UFO_SCOUT")
             rules = rules.Replace("type: UFO_SCOUT\n    width", "type: UFO_SCOUT_DEFAULT\n    width", StringComparison.Ordinal)
                 .Replace("type: " + ufo + "\n", "type: UFO_SCOUT\n", StringComparison.Ordinal);
         var (_, campaign) = StrategicLandingTests.Create(rules: rules, files: rules is null ? null : RequiredFiles("BLANKS", "TESTSET"),
-            vehicles: vehicles, items: items);
+            vehicles: vehicles, items: items, layout: layout);
         campaign.BattleTerrainFiles = TerrainFiles();
         var requested = AssertLandingRequested(campaign);
         var result = campaign.Execute(new AnswerLanding(requested.Confirmation, LandingAnswer.Yes));
@@ -476,6 +477,38 @@ public sealed class BattleStartTests
         Assert.True(battle.Items[2].IsAmmo);
     }
 
+    [Fact]
+    public void ASoldierWithALayoutTakesItsLayoutWeaponLoadedWithItsLayoutAmmo()
+    {
+        var layout = new SoldierLayoutItem("GUN", "STR_RIGHT_HAND", 0, 0, ["CLIP", "", "", ""], -1, false);
+        var (campaign, _) = Requested(Rules, "UFO_CRAFTED", items: new Dictionary<string, int> { ["GUN"] = 1, ["CLIP"] = 2 }, layout: [layout]);
+        Assert.IsType<BattleStarted>(Assert.Single(campaign.Execute(new StartBattle()).Events));
+        var battle = Battle(campaign);
+        var soldier = Assert.Single(battle.Units);
+        // placeItemByLayout: the gun goes to the layout's slot once the first ground clip loads into it; the extra clip
+        // has no layout slot, and a soldier with a layout takes nothing in autoEquip.
+        Assert.Equal([(0, "GUN", (int?)soldier.Id, "STR_RIGHT_HAND", (BattlePosition?)null), (1, "CLIP", null, "", null),
+                (2, "CLIP", null, "STR_GROUND", battle.CraftInventoryTile)],
+            battle.Items.Select(static item => (item.Id, item.ItemType, item.OwnerUnitId, item.Slot, item.Tile)));
+        Assert.Equal(1, battle.Items[0].AmmoSlots[0]);
+        Assert.True(battle.Items.All(static item => item.XcomProperty));
+    }
+
+    [Fact]
+    public void ASoldierWithoutALayoutIsAutoEquippedFromTheLoadedGroundItems()
+    {
+        var (campaign, _) = Requested(Rules, "UFO_CRAFTED", items: new Dictionary<string, int> { ["GUN"] = 1, ["CLIP"] = 1, ["GRENADE"] = 1 });
+        Assert.IsType<BattleStarted>(Assert.Single(campaign.Execute(new StartBattle()).Events));
+        var battle = Battle(campaign);
+        var soldier = Assert.Single(battle.Units);
+        // loadWeapons loads the clip into the gun on the ground; autoEquip then hands out one item per pass, the heaviest
+        // first: the loaded gun to the right hand, then the grenade to the section cheapest from the empty left hand.
+        Assert.Equal([(0, "GUN", (int?)soldier.Id, "STR_RIGHT_HAND"), (1, "CLIP", null, ""), (2, "GRENADE", soldier.Id, "STR_BACK_PACK")],
+            battle.Items.Select(static item => (item.Id, item.ItemType, item.OwnerUnitId, item.Slot)));
+        Assert.Equal(1, battle.Items[0].AmmoSlots[0]);
+        Assert.All(battle.Items, static item => Assert.Null(item.Tile));
+    }
+
     [Theory]
     [InlineData("UFO_SUITED")]
     [InlineData("UFO_REPLACED")]
@@ -492,15 +525,17 @@ public sealed class BattleStartTests
     }
 
     [Fact]
-    public void TheCraftsItemsLieOnTheCraftInventoryTileAsXcomProperty()
+    public void TheCraftsItemsStartOnTheCraftInventoryTileAndALayoutlessSoldierTakesThem()
     {
         var (campaign, request) = Requested(Rules, "UFO_CRAFTED", items: new Dictionary<string, int> { ["SUPPLY"] = 2 });
         Assert.Equal(2, request.Items["SUPPLY"]);
         Assert.IsType<BattleStarted>(Assert.Single(campaign.Execute(new StartBattle()).Events));
         var battle = Battle(campaign);
-        // createItemForTile for each item of the craft: IDs in creation order, on the ground slot of the inventory tile.
-        Assert.Equal([(0, "SUPPLY", battle.CraftInventoryTile, "STR_GROUND", true), (1, "SUPPLY", battle.CraftInventoryTile, "STR_GROUND", true)],
-            battle.Items.Select(static item => (item.Id, item.ItemType, item.Tile, item.Slot, item.XcomProperty)));
+        // createItemForTile for each item of the craft (IDs in creation order, X-COM property); autoEquip then gives both
+        // to the soldier, who has no layout: the belt, cheapest from the empty right hand, cell by cell.
+        var soldier = Assert.Single(battle.Units);
+        Assert.Equal([(0, "SUPPLY", (int?)soldier.Id, "STR_BELT", 0, true), (1, "SUPPLY", soldier.Id, "STR_BELT", 1, true)],
+            battle.Items.Select(static item => (item.Id, item.ItemType, item.OwnerUnitId, item.Slot, item.SlotX, item.XcomProperty)));
         Assert.Equal(2, battle.NextItemId);
     }
 
