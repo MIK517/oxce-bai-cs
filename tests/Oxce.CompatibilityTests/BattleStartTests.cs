@@ -92,6 +92,9 @@ public sealed class BattleStartTests
               - {name: CROSSING, width: 10, length: 10, groups: [4]}
               - {name: ROOF, width: 10, length: 10, height: 1, groups: [6]}
             script: BASIC
+        invs:
+          - id: STR_GROUND
+            type: 2
         enviroEffects:
           - type: ENV_SUIT
             armorTransformations: {ARMOR: SUIT}
@@ -213,14 +216,14 @@ public sealed class BattleStartTests
     });
 
     private static (CampaignState Campaign, CampaignDeploymentRequest Request) Requested(string? rules, string ufo = "UFO_SCOUT",
-        IReadOnlyList<CraftVehicleSnapshot>? vehicles = null)
+        IReadOnlyList<CraftVehicleSnapshot>? vehicles = null, IReadOnlyDictionary<string, int>? items = null)
     {
         // The landing UFO is UFO_SCOUT: the deployment under test takes its name and the default one steps aside.
         if (rules is not null && ufo != "UFO_SCOUT")
             rules = rules.Replace("type: UFO_SCOUT\n    width", "type: UFO_SCOUT_DEFAULT\n    width", StringComparison.Ordinal)
                 .Replace("type: " + ufo + "\n", "type: UFO_SCOUT\n", StringComparison.Ordinal);
         var (_, campaign) = StrategicLandingTests.Create(rules: rules, files: rules is null ? null : RequiredFiles("BLANKS", "TESTSET"),
-            vehicles: vehicles);
+            vehicles: vehicles, items: items);
         campaign.BattleTerrainFiles = TerrainFiles();
         var requested = AssertLandingRequested(campaign);
         var result = campaign.Execute(new AnswerLanding(requested.Confirmation, LandingAnswer.Yes));
@@ -392,6 +395,19 @@ public sealed class BattleStartTests
         Assert.Equal(("SUIT", "ARMOR", 1), (soldier.ArmorId, soldier.OriginalArmorId, soldier.MovementType));
         var personal = campaign.Capture().Bases[0].Soldiers.Single(state => state.Id == Assert.Single(request.Soldiers)).Personal!;
         Assert.Equal("ARMOR", personal.Armor);
+    }
+
+    [Fact]
+    public void TheCraftsItemsLieOnTheCraftInventoryTileAsXcomProperty()
+    {
+        var (campaign, request) = Requested(Rules, "UFO_CRAFTED", items: new Dictionary<string, int> { ["SUPPLY"] = 2 });
+        Assert.Equal(2, request.Items["SUPPLY"]);
+        Assert.IsType<BattleStarted>(Assert.Single(campaign.Execute(new StartBattle()).Events));
+        var battle = Battle(campaign);
+        // createItemForTile for each item of the craft: IDs in creation order, on the ground slot of the inventory tile.
+        Assert.Equal([(0, "SUPPLY", battle.CraftInventoryTile, "STR_GROUND", true), (1, "SUPPLY", battle.CraftInventoryTile, "STR_GROUND", true)],
+            battle.Items.Select(static item => (item.Id, item.ItemType, item.Tile, item.Slot, item.XcomProperty)));
+        Assert.Equal(2, battle.NextItemId);
     }
 
     [Fact]

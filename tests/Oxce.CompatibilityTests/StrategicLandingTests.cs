@@ -20,7 +20,8 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicLandingTests
 {
     internal static (RuntimeContent Content, CampaignState Campaign) Create(bool seasons = false, string? rules = null,
-        IReadOnlyDictionary<string, byte[]>? files = null, IReadOnlyList<CraftVehicleSnapshot>? vehicles = null)
+        IReadOnlyDictionary<string, byte[]>? files = null, IReadOnlyList<CraftVehicleSnapshot>? vehicles = null,
+        IReadOnlyDictionary<string, int>? items = null)
     {
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], rules, files: files);
         var snapshot = CreateLifecycleSnapshot(content);
@@ -44,6 +45,7 @@ public sealed class StrategicLandingTests
                         Destination = new WorldTargetReference(WorldTargetKind.Ufo, WorldTargetReference.UfoType, ufo.Id,
                             ufo.Longitude, ufo.Latitude) { UniqueId = ufo.UniqueId },
                         Vehicles = vehicles ?? craft.Logistics!.Vehicles,
+                        Items = items ?? craft.Logistics!.Items,
                     },
                 })],
                 Soldiers = [owner.Soldiers[0] with { Personal = owner.Soldiers[0].Personal! with { CraftType = "SHIP", CraftId = 1 } },

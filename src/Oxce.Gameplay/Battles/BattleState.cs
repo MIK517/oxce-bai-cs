@@ -17,6 +17,7 @@ internal sealed class BattleState
     internal const int MaximumMapHeight = 64;
 
     private readonly List<BattleUnit> _units = [];
+    private readonly List<BattleItem> _items = [];
 
     internal BattleState(string missionType, string deploymentId, BattleMap map, int turnLimit, int chronoTrigger, int cheatTurn)
     {
@@ -69,6 +70,30 @@ internal sealed class BattleState
     public long Revision { get; private set; }
 
     public IReadOnlyList<BattleUnit> Units => _units;
+
+    /// <summary>SavedBattleGame::getItems, in creation order.</summary>
+    public IReadOnlyList<BattleItem> Items => _items;
+
+    /// <summary>SavedBattleGame::getCurrentItemId: the ID the next item gets.</summary>
+    public int NextItemId { get; private set; }
+
+    /// <summary>SavedBattleGame::createItemForTile: a new item on the ground of a tile (or nowhere when the tile is null).</summary>
+    internal BattleItem CreateItemForTile(string itemType, int clipSize, BattlePosition? tile)
+    {
+        if (tile is { } position && !Contains(position)) throw new InvalidOperationException($"Item tile {position} is outside the map.");
+        var item = new BattleItem(NextItemId++, itemType)
+        {
+            Tile = tile,
+            Slot = tile is null ? "" : GroundSlot,
+            AmmoQuantity = clipSize,
+        };
+        _items.Add(item);
+        Revision++;
+        return item;
+    }
+
+    /// <summary>Mod::getInventoryGround.</summary>
+    internal const string GroundSlot = "STR_GROUND";
 
     /// <summary>SavedBattleGame::getTileIndex.</summary>
     public int TileIndex(BattlePosition position) => Map.TileIndex(position);

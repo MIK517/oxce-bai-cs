@@ -285,6 +285,24 @@ Reference: `BattlescapeGenerator::deployXCOM` (the armor pass), `RuleEnviroEffec
 
 Tests: `BattleStartTests.TheEnvironmentOrTheStartingConditionChangesTheSoldiersBattleArmor`.
 
+## S4b, part 3 — Battle items and the craft's cargo (2026-10-20)
+
+Reference: `SavedBattleGame::createItemForTile`, `getCurrentItemId`, `BattleItem::BattleItem`, `Mod::getInventoryGround`,
+`BattlescapeGenerator::deployXCOM` (the craft's items and their X-COM property).
+
+- `BattleItem`: ID in creation order, item type, tile or carrying unit, inventory slot and position, ammo quantity (the
+  clip size to start), fuse timer (-1), X-COM property. `BattleState.Items` and `NextItemId`.
+- After the X-COM units, every item the craft carries becomes battle items on the ground of the craft inventory tile
+  (none on the map when there is no inventory tile), marked as X-COM property. The mod must have an `STR_GROUND`
+  inventory (the reference throws without one).
+- Intentional difference: the reference walks the craft's item map in `RuleItem` pointer order, an allocation detail;
+  the port uses the item rules' order, which that follows in practice.
+- Not yet (the rest of S4b): vehicle weapons and ammunition (`addXCOMVehicle`'s `createItemForUnit`, inventory fitting),
+  which come before the craft's items and so shift their IDs once added; medikit quantities; equipment layouts
+  (`placeItemByLayout`, the soldiers' saved layouts), `loadWeapons` and `autoEquip`; unit statistics.
+
+Tests: `BattleStartTests.TheCraftsItemsLieOnTheCraftInventoryTileAsXcomProperty`.
+
 ## S5 groundwork — Deployment data and alien quantities (2026-10-20)
 
 Reference: `AlienDeployment::load` (`data`), the `DeploymentData` and `ItemSet` readers, `BattlescapeGenerator::deployAliens`

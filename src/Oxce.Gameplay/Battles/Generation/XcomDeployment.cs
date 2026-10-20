@@ -78,6 +78,25 @@ internal sealed class XcomDeployment
             if (soldier.ArmorSize == 1) AddUnit(soldier);
         if (_battle.Units.Count == 0)
             throw new MapGenerationException("Map generator encountered an error: no xcom units could be placed on the map.");
+        AddCraftItems(request);
+    }
+
+    /// <summary>
+    /// deployXCOM's craft items: each item the craft carries, one battle item per unit of quantity, on the craft inventory
+    /// tile, all X-COM property. The reference walks the craft's item map in RuleItem pointer order (allocation order, an
+    /// implementation detail); the port uses the item rules' order, which that follows in practice. Equipment layouts,
+    /// weapon loading and auto-equip follow in a later part of S4b.
+    /// </summary>
+    private void AddCraftItems(CampaignDeploymentRequest request)
+    {
+        if (!_rules.Inventories.TryGet(BattleState.GroundSlot, out _))
+            throw new MapGenerationException("The mod has no STR_GROUND inventory.");
+        foreach (var rule in _rules.Items.Rules)
+        {
+            if (!request.Items.TryGetValue(rule.Id, out var quantity)) continue;
+            for (var count = 0; count < quantity; count++)
+                _battle.CreateItemForTile(rule.Id, rule.Value.ClipSize, _battle.CraftInventoryTile).XcomProperty = _battle.CraftInventoryTile is not null;
+        }
     }
 
     private (string Id, RuntimeArmorRule Armor) Vehicle(string itemId)
