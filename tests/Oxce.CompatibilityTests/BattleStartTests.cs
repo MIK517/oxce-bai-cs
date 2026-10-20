@@ -52,6 +52,12 @@ public sealed class BattleStartTests
             height: 2
             terrains: [TEST_TERRAIN]
             script: TUNNEL
+          - type: UFO_LEVELS
+            width: 20
+            length: 10
+            height: 3
+            terrains: [TEST_TERRAIN]
+            script: LEVELS
           - type: UFO_UNFILLED
             width: 20
             length: 20
@@ -67,6 +73,7 @@ public sealed class BattleStartTests
               - {name: ROAD_EW, width: 10, length: 10, groups: [2]}
               - {name: ROAD_NS, width: 10, length: 10, groups: [3]}
               - {name: CROSSING, width: 10, length: 10, groups: [4]}
+              - {name: ROOF, width: 10, length: 10, height: 1, groups: [6]}
             script: BASIC
         crafts:
           - type: SHIP
@@ -113,6 +120,13 @@ public sealed class BattleStartTests
                     - {type: floor, set: 1, entry: 1}
                     - {type: northWall, set: 1, entry: 0}
                     - {type: corner, set: 1, entry: 0}
+          - type: LEVELS
+            commands:
+              - type: fillArea
+                verticalLevels:
+                  - {type: ground, groups: [0]}
+                  - {type: middle, groups: [0]}
+                  - {type: ceiling, blocks: [5]}
           - type: UNFILLED
             commands:
               - {type: addBlock, groups: [1]}
@@ -127,14 +141,18 @@ public sealed class BattleStartTests
         ["ROUTES/BIG.RMP"] = [],
         ["MAPS/SMALL.MAP"] = Map(10, 10, 2),
         // A node on the east edge linking east (253), west (251) and to the second node, which lies outside the
-        // block (x 12) and is culled.
-        ["ROUTES/SMALL.RMP"] = [.. RouteNode(9, 5, 0, [253, 251, 1], rank: 4), .. RouteNode(12, 5, 0, [])],
+        // block (x 12) and is culled; then an X-COM spawn node (rank 1, priority 1).
+        ["ROUTES/SMALL.RMP"] = [.. RouteNode(9, 5, 0, [253, 251, 1], rank: 4), .. RouteNode(12, 5, 0, []),
+            .. RouteNode(2, 2, 0, [], rank: 1, priority: 1)],
         ["MAPS/ROAD_EW.MAP"] = Map(10, 10, 2),
         ["ROUTES/ROAD_EW.RMP"] = [],
         ["MAPS/ROAD_NS.MAP"] = Map(10, 10, 2),
         ["ROUTES/ROAD_NS.RMP"] = [],
         ["MAPS/CROSSING.MAP"] = Map(10, 10, 3),
-        ["TERRAIN/SHIPSET.MCD"] = Mcd(Record((42, 7))),
+        ["MAPS/ROOF.MAP"] = Map(10, 10, 3),
+        ["ROUTES/ROOF.RMP"] = [],
+        // The craft's floor is a start point (special type 1).
+        ["TERRAIN/SHIPSET.MCD"] = Mcd(Record((42, 7), (59, 1))),
         ["TERRAIN/UFOSET.MCD"] = Mcd(Record((42, 8))),
         ["MAPS/SHIPBLOCK.MAP"] = Map(10, 10, 2),
         ["ROUTES/SHIPBLOCK.RMP"] = RouteNode(4, 4, 0, []),
@@ -196,11 +214,11 @@ public sealed class BattleStartTests
 
         // Routes: one segment per placed block in row order (BIG has none), node IDs across blocks, culled nodes kept as
         // dummies; attachNodeLinks joins the east link of the first SMALL to the west link of the second.
-        Assert.Equal([false, true, false, true], map.Nodes.Select(static node => node.IsDummy));
-        var (west, east) = (map.Nodes[0], map.Nodes[2]);
+        Assert.Equal([false, true, false, false, true, false], map.Nodes.Select(static node => node.IsDummy));
+        var (west, east) = (map.Nodes[0], map.Nodes[3]);
         Assert.Equal((0, new BattlePosition(9, 15, 0), 1, 4), (west.Id, west.Position, west.Segment, west.Rank));
-        Assert.Equal((2, new BattlePosition(19, 15, 0), 2), (east.Id, east.Position, east.Segment));
-        Assert.Equal([2, -5, -1, -1, -1], west.Links);
+        Assert.Equal((3, new BattlePosition(19, 15, 0), 2), (east.Id, east.Position, east.Segment));
+        Assert.Equal([3, -5, -1, -1, -1], west.Links);
         Assert.Equal([-3, 0, -1, -1, -1], east.Links);
 
         // The geoscape is frozen: time, other commands, a second start and saving are refused.
@@ -270,9 +288,37 @@ public sealed class BattleStartTests
         Assert.Equal((0, 3), map.Part(map.TileIndex(new(ufo[0].X * 10 + 5, ufo[0].Y * 10 + 5, 0)), BattleTilePart.Floor));
         // The landing zone blocks keep no routes of their own; the craft's route has the craft segment.
         var real = map.Nodes.Where(static node => !node.IsDummy).ToArray();
-        Assert.Equal(7, real.Length);
+        Assert.Equal(13, real.Length);
         var craftNode = Assert.Single(real, static node => node.Segment == 1000);
         Assert.Equal(new BattlePosition(craft.X * 10 + 4, craft.Y * 10 + 4, 0), craftNode.Position);
+
+        // deployXCOM: the craft's soldier stands on the first start tile of the craft in tile order, which is also the
+        // craft inventory tile, and is the selected unit.
+        var battle = Battle(campaign);
+        var soldier = Assert.Single(battle.Units);
+        var first = new BattlePosition(craft.X * 10, craft.Y * 10, 0);
+        Assert.Equal((BattleFaction.Player, first, first, soldier.Id), (soldier.Faction, soldier.Position, battle.CraftInventoryTile, battle.SelectedUnitId));
+        Assert.Equal(soldier.Id, map.UnitAt(map.TileIndex(first)));
+        Assert.Equal(soldier.SoldierId, soldier.Id);
+        Assert.Equal(BattleController.Human(0), soldier.Controller);
+    }
+
+    [Fact]
+    public void WithoutACraftMapTheSoldierSpawnsOnAnXcomNode()
+    {
+        var (campaign, request) = Requested(Rules);
+        Assert.IsType<BattleStarted>(Assert.Single(campaign.Execute(new StartBattle()).Events));
+        var battle = Battle(campaign);
+        // getSpawnNode: the X-COM nodes (rank 1) share the highest priority; the soldier takes one of them, with a random
+        // facing, and its tile is the inventory tile.
+        var soldier = Assert.Single(battle.Units);
+        Assert.Equal(Assert.Single(request.Soldiers), soldier.Id);
+        var spawns = battle.Map.Nodes.Where(static node => !node.IsDummy && node.Rank == 1).Select(static node => node.Position).ToArray();
+        Assert.Equal(2, spawns.Length);
+        Assert.Contains(soldier.Position!.Value, spawns);
+        Assert.Equal(soldier.Position, battle.CraftInventoryTile);
+        Assert.InRange(soldier.Direction, 0, 7);
+        Assert.Equal([soldier.Id], campaign.GetQuery<IBattleQuery>()!.QueryBattle(BattleViewer.LocalPlayer)!.Units.Select(static unit => unit.Id));
     }
 
     [Fact]
@@ -292,6 +338,31 @@ public sealed class BattleStartTests
         Assert.Equal((0, 1), Part(10, 3, BattleTilePart.NorthWall));
         Assert.Equal((-1, -1), Part(10, 4, BattleTilePart.NorthWall));
         Assert.Equal((0, 1), Part(10, 4, BattleTilePart.Floor));
+    }
+
+    [Fact]
+    public void VerticalLevelsStackTheGroundAFillerAndTheReservedCeiling()
+    {
+        var (campaign, _) = Requested(Rules, "UFO_LEVELS");
+        Assert.IsType<BattleStarted>(Assert.Single(campaign.Execute(new StartBattle()).Events));
+        var map = Battle(campaign).Map;
+        (int, int) Floor(int x, int z) => map.Part(map.TileIndex(new(x, 5, z)), BattleTilePart.Floor);
+        // On each block: the ground (SMALL, one level), the ceiling reserved first (ROOF, height 1 from its rule),
+        // then a middle level (SMALL) filling the one level left, and the ceiling loaded on top.
+        foreach (var x in new[] { 5, 15 })
+            Assert.Equal([(0, 1), (0, 1), (1, 1)], Enumerable.Range(0, 3).Select(z => Floor(x, z)));
+        // Each level's routes form a segment after the ground's; the ground node gets a vertical link to the node above.
+        var real = map.Nodes.Where(static node => !node.IsDummy).ToArray();
+        Assert.Equal(8, real.Length);
+        var upper = real.Where(static node => node.Position.Z == 1).ToArray();
+        Assert.Equal(4, upper.Length);
+        Assert.All(upper, node => Assert.True(node.Segment > 1));
+        foreach (var lower in real.Where(static node => node.Position.Z == 0))
+        {
+            var above = Assert.Single(upper, node => node.Position.X == lower.Position.X && node.Position.Y == lower.Position.Y);
+            Assert.Contains(above.Id, lower.Links);
+            Assert.Contains(lower.Id, above.Links);
+        }
     }
 
     [Fact]

@@ -248,6 +248,8 @@ public static class RuntimeRuleLinker
                 BattlescapeTerrain = RuntimeBattleRules.Inline(rule.Value.BattlescapeTerrain),
                 MapVisible = rule.Value.Booleans["mapVisible"],
                 Groups = Array.AsReadOnly(rule.Value.Groups.ToArray()),
+                Deployment = Array.AsReadOnly(rule.Value.Deployment.Select(static point => (IReadOnlyList<int>)Array.AsReadOnly(point.ToArray())).ToArray()),
+                InventoryTile = Array.AsReadOnly(rule.Value.CraftInventoryTile.ToArray()),
             });
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -307,6 +309,7 @@ public static class RuntimeRuleLinker
                 rule.Value.Strings["storeItem"],
                 OptionalItem(itemHandles, rule.Value.Strings["storeItem"]))
             {
+                MovementType = rule.Value.Integers["movementType"],
                 Type = rule.Id,
                 Group = rule.Value.Integers["group"],
                 CorpseGeoscape = OptionalItem(itemHandles, rule.Value.Strings["corpseGeo"]),
@@ -380,6 +383,7 @@ public static class RuntimeRuleLinker
             Monthly = content.CampaignStart.Settings.Monthly,
             DefeatScore = content.CampaignStart.Settings.DefeatScore,
             DefeatFunds = content.CampaignStart.Settings.DefeatFunds,
+            ExtendedHwpLoadOrder = content.CampaignStart.Settings.ExtendedHwpLoadOrder,
             Cutscenes = new ReadOnlyDictionary<string, RuntimeCutscene>(new SortedDictionary<string, RuntimeCutscene>(
                 content.Presentation.Videos.Rules.ToDictionary(static rule => rule.Id,
                     static rule => new RuntimeCutscene(rule.Value.WinGame, rule.Value.LoseGame), StringComparer.Ordinal),
@@ -517,6 +521,8 @@ public static class RuntimeRuleLinker
                 {
                     CraftTransformations = new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(
                         new Dictionary<string, string>(rule.Value.CraftTransformations, StringComparer.Ordinal)),
+                    RestrictsArmor = rule.Value.NameCollections["allowedArmors"].Count != 0 || rule.Value.NameCollections["forbiddenArmors"].Count != 0,
+                    RestrictsEquipment = EquipmentRestrictionKeys.Any(key => rule.Value.NameCollections[key].Count != 0),
                 }),
             BuildFamily<MissionScriptRuleFamily, StrategicScriptRule, RuntimeMissionScriptRule>(generation,
                 content.MissionEvents.MissionScripts, rule => BuildMissionScript(rule, "missionScripts")),
@@ -773,6 +779,7 @@ public static class RuntimeRuleLinker
                     Terrains = Array.AsReadOnly(source.Terrains.ToArray()),
                     MapScript = source.Strings["script"],
                     MapScripts = Array.AsReadOnly(source.MapScripts.ToArray()),
+                    EnviroEffects = source.Strings["enviroEffects"],
                     MinimumDepth = source.Depth.Count > 0 ? source.Depth[0] : 0,
                     MaximumDepth = source.Depth.Count > 1 ? source.Depth[1] : 0,
                     CustomUfo = source.Strings["customUfo"],
@@ -975,6 +982,10 @@ public static class RuntimeRuleLinker
             rule.Id,
             Handle = new RuleHandle<TFamily>(generation, index),
         }).ToDictionary(static pair => pair.Id, static pair => pair.Handle, StringComparer.Ordinal);
+
+    /// <summary>RuleStartingCondition's vehicle and item restriction lists.</summary>
+    private static readonly string[] EquipmentRestrictionKeys =
+        ["allowedVehicles", "forbiddenVehicles", "allowedItems", "forbiddenItems", "allowedItemCategories", "forbiddenItemCategories"];
 
     private static readonly IReadOnlyDictionary<string, ulong> EmptyWeights =
         new ReadOnlyDictionary<string, ulong>(new Dictionary<string, ulong>(StringComparer.Ordinal));

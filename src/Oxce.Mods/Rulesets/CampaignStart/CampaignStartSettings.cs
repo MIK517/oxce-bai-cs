@@ -61,6 +61,7 @@ public sealed class CampaignStartSettings
         DefeatScore = builder.DefeatScore;
         DefeatFunds = builder.DefeatFunds;
         DifficultyDemigod = builder.DifficultyDemigod;
+        ExtendedHwpLoadOrder = builder.ExtendedHwpLoadOrder;
         BaseNamesFirst = builder.BaseNamesFirst.AsReadOnly();
         BaseNamesMiddle = builder.BaseNamesMiddle.AsReadOnly();
         BaseNamesLast = builder.BaseNamesLast.AsReadOnly();
@@ -207,6 +208,9 @@ public sealed class CampaignStartSettings
     public int DefeatScore { get; }
     public int DefeatFunds { get; }
     public bool DifficultyDemigod { get; }
+
+    /// <summary>Mod::EXTENDED_HWP_LOAD_ORDER (<c>extendedHwpLoadOrder</c>): 2x2 vehicles first, 1x1 vehicles after the 2x2 soldiers.</summary>
+    public bool ExtendedHwpLoadOrder { get; init; }
     public IReadOnlyList<string> BaseNamesFirst { get; }
     public IReadOnlyList<string> BaseNamesMiddle { get; }
     public IReadOnlyList<string> BaseNamesLast { get; }
@@ -282,6 +286,7 @@ internal sealed class CampaignStartSettingsBuilder
     public int DefeatScore { get; set; }
     public int DefeatFunds { get; set; }
     public bool DifficultyDemigod { get; set; }
+    public bool ExtendedHwpLoadOrder { get; set; }
     public List<string> BaseNamesFirst { get; } = [];
     public List<string> BaseNamesMiddle { get; } = [];
     public List<string> BaseNamesLast { get; } = [];

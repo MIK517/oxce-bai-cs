@@ -9,8 +9,8 @@ public sealed record RuntimeMapScript(string Id, IReadOnlyList<RuntimeMapScriptC
 
 /// <summary>
 /// One MapScript command as <c>MapScript::load</c> leaves it: block selection (groups or blocks, frequencies, maximum
-/// uses), rectangles, conditions and repetition, and the digTunnel data. <see cref="HasVerticalLevels"/> marks the part
-/// the generator does not run yet.
+/// uses), rectangles, conditions and repetition, the digTunnel data and the vertical levels. <see cref="VerticalLevelsInvalid"/>
+/// holds the reason a malformed verticalLevels node is unusable (the reference throws reading it).
 /// </summary>
 public sealed record RuntimeMapScriptCommand(
     MapScriptCommandType Type,
@@ -37,7 +37,34 @@ public sealed record RuntimeMapScriptCommand(
     IReadOnlyList<string> RandomTerrain,
     int Label,
     RuntimeTunnelData? Tunnel,
-    bool HasVerticalLevels);
+    IReadOnlyList<RuntimeVerticalLevel> VerticalLevels,
+    string? VerticalLevelsInvalid);
+
+/// <summary>VerticalLevelType.</summary>
+public enum VerticalLevelType
+{
+    Ground,
+    Middle,
+    Ceiling,
+    Empty,
+    Decoration,
+    Craft,
+    Line,
+}
+
+/// <summary>
+/// VerticalLevel as <c>VerticalLevel::load</c> leaves it: type (an unknown type loads as middle), groups or blocks (reading
+/// "blocks" clears the groups), size (1, 1, -1; a decoration's height defaults to 0), maximum repeats (-1) and terrain.
+/// </summary>
+public sealed record RuntimeVerticalLevel(
+    VerticalLevelType Type,
+    IReadOnlyList<int> Groups,
+    IReadOnlyList<int> Blocks,
+    int SizeX,
+    int SizeY,
+    int SizeZ,
+    int MaximumRepeats,
+    string Terrain);
 
 /// <summary>
 /// MapScript <c>tunnelData</c>: the level to drill on and the MCD replacements by part (westWall, northWall, corner,
@@ -64,8 +91,65 @@ internal static class RuntimeMapScriptProjection
             command.VerticalGroup, command.HorizontalGroup, command.CrossingGroup, command.CanBeSkipped,
             command.MarkAsReinforcementsBlock, command.ExecutionChances, command.Executions, command.UfoName,
             command.CraftName, List(command.RandomTerrain), command.Label, Tunnel(command.TunnelData),
-            command.VerticalLevels is not null);
+            VerticalLevels(command.VerticalLevels, out var invalid), invalid);
     }
+
+    /// <summary>MapScript::load's verticalLevels: the entries that have a "type", in order.</summary>
+    private static ReadOnlyCollection<RuntimeVerticalLevel> VerticalLevels(YamlNode? node, out string? invalid)
+    {
+        invalid = null;
+        var levels = new List<RuntimeVerticalLevel>();
+        if (node is null) return List(levels);
+        try
+        {
+            foreach (var item in YamlValueReader.ReadSequence(node, static item => item))
+            {
+                if (item is not YamlMappingNode map) throw new YamlFormatException("verticalLevels entries must be mappings.", item.Span);
+                if (!map.TryGet("type", out var typeNode)) continue;
+                var type = YamlValueReader.ReadString(typeNode!) switch
+                {
+                    "ground" => VerticalLevelType.Ground,
+                    "ceiling" => VerticalLevelType.Ceiling,
+                    "empty" => VerticalLevelType.Empty,
+                    "decoration" => VerticalLevelType.Decoration,
+                    "craft" => VerticalLevelType.Craft,
+                    "line" => VerticalLevelType.Line,
+                    _ => VerticalLevelType.Middle,
+                };
+                int[] size = [1, 1, type == VerticalLevelType.Decoration ? 0 : -1];
+                if (map.TryGet("size", out var sizeNode))
+                {
+                    if (sizeNode is YamlSequenceNode sequence)
+                    {
+                        var values = YamlValueReader.ReadSequence(sequence, YamlValueReader.ReadInt32);
+                        for (var index = 0; index < Math.Min(3, values.Length); index++) size[index] = values[index];
+                    }
+                    else
+                    {
+                        size[0] = size[1] = YamlValueReader.ReadInt32(sizeNode!);
+                    }
+                }
+                var groups = map.TryGet("groups", out var groupNode) ? Integers(groupNode!) : [];
+                var blocks = new List<int>();
+                if (map.TryGet("blocks", out var blockNode))
+                {
+                    groups = [];
+                    blocks.AddRange(Integers(blockNode!));
+                }
+                levels.Add(new RuntimeVerticalLevel(type, List(groups), List(blocks), size[0], size[1], size[2],
+                    map.ReadInt32("maxRepeats", -1), map.ReadString("terrain", "")));
+            }
+        }
+        catch (Exception exception) when (exception is YamlFormatException or FormatException or InvalidDataException or OverflowException)
+        {
+            invalid = exception.Message;
+        }
+        return List(levels);
+    }
+
+    private static int[] Integers(YamlNode node) => node is YamlSequenceNode
+        ? YamlValueReader.ReadSequence(node, YamlValueReader.ReadInt32)
+        : [YamlValueReader.ReadInt32(node)];
 
     /// <summary>MapScript::load's tunnelData: level (0) and MCDReplacements of type, entry (-1) and set (-1).</summary>
     private static RuntimeTunnelData? Tunnel(YamlNode? node)

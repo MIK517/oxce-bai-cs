@@ -10,8 +10,8 @@ Phase 7 branch 1 (`claude/battle-generation`), from `main` at `2b0c81fb`. Plan:
 | S0 planning | Done (2026-10-18) |
 | S1 battle aggregate | Done (2026-10-18) |
 | S2 runtime battle terrain | Done (2026-10-19) |
-| S3 map generation | S3a, S3c, `addLine`, `addCraft`, `addUFO` and `digTunnel` done (2026-10-19); vertical levels and craft skins open |
-| S4 X-COM deployment | Not started |
+| S3 map generation | Done (2026-10-20) except craft skins |
+| S4 X-COM deployment | S4a (roster and placement) done (2026-10-20); S4b open |
 | S5 alien and civilian deployment | Not started |
 | S6 base defense and other entry points | Not started |
 | S7 acceptance and branch audit | Not started |
@@ -109,7 +109,7 @@ Reference: `BattlescapeGenerator::run` (terrain, depth, shade and map script cho
 - Corrections found on the way: a deployment's own `script` defaulted to `DEFAULT` in the typed catalog, which would have
   overridden every terrain's script; the reference leaves it empty. An alien-base landing recorded mission texture 0
   for the reference's null texture; it is now -1.
-- Not yet: vertical levels refuse with a named S3b reason; base defense maps refuse until S6; map block items are S5.
+- Not yet: base defense maps refuse until S6; map block items are S5.
 - Intentional differences: the level-0 floor fill uses set 0 object 1 (the reference uses BLANKS object 1 by pointer,
   which is set 0 whenever BLANKS is loaded first); a rectangle outside the block grid is treated as occupied (the reference
   reads outside its arrays).
@@ -129,7 +129,6 @@ Reference: `BattlescapeGenerator::loadNodes`, `loadRMP`, `attachNodeLinks`, `Nod
 - `attachNodeLinks` runs both passes as the reference does: edge links joined through the neighbouring segment, then
   by block position with vertical links between nodes of one block on adjacent levels within three tiles. The upward
   test compares the level with the map height rather than the top level, as in the reference.
-- Not yet: vertical-level segments arrive with the rest of S3b.
 
 Tests: `BattleStartTests` checks segments, IDs across blocks, a culled node and its terminated link, and the east-west
 join between two blocks.
@@ -194,14 +193,68 @@ Reference: `BattlescapeGenerator::drillModules`, `addBlock` (drill edges), `MapS
 
 Tests: `BattleStartTests.DigTunnelOpensTheMarkedEdgeBetweenTwoBlocks`.
 
-## Next: rest of S3b
+## S3b, part 4 — Vertical levels (2026-10-20)
 
-- Vertical levels (`populateVerticalLevels`, `loadVerticalLevels`, their segments in `loadNodes` and the second pass of
-  `attachNodeLinks`, the craft and UFO vertical level loads); still raw YAML in the typed map script. Notes for the port:
-  `MapScript::initVerticalLevel` overwrites the command's own block and group selection (not only the scratch copies),
-  so later executions keep the last level's selection; the reference's change outlives the battle because map scripts
-  are shared mod data, which the port should keep to one generation and record as an intentional difference.
-  `getSizeZ` there is the MAP header height once a block has loaded, the rule's height before. Several paths read an
-  empty level list or a missing block (`_verticalLevels.back()`, `block->getSizeZ()`); those become generation refusals.
+Reference: `BattlescapeGenerator::generateMap` (levels per execution), `populateVerticalLevels`, `loadVerticalLevels`,
+`addCraft` (the first level's landing zone), `addLine` (placed positions), `removeBlocks` and `loadNodes` (level
+segments), `init`, `MapScript::initVerticalLevel`, `VerticalLevel::load`.
+
+- `RuntimeMapScriptCommand.VerticalLevels` (`RuntimeVerticalLevel`) parses `verticalLevels` as `VerticalLevel::load`
+  does: entries without a type are skipped, an unknown type is middle, "blocks" clears the groups, size defaults
+  (1, 1, -1) with a decoration's height 0, `maxRepeats` -1. A malformed node refuses generation when its command runs.
+- Each execution repopulates the working levels (ground first, group 1 by default for a craft or UFO; then the craft
+  level used once, the line level, and every middle, empty and decoration level; then the ceiling) and starts the
+  command's selection from the first level, or from the line level for `addLine`. `addBlock`, `fillArea`, `addLine`,
+  `addCraft` and `addUFO` record their placed positions and stack levels on each: the ground or line level already
+  placed, the ceiling reserved first if it fits, then fillers in turn while they fit (20 misses at most). An `addLine`
+  whose first level is not its line re-places the ground and loads the line block as a filler. A craft level raises
+  the craft or UFO. Each loaded level is a route segment after the ground segments; `removeBlock` and `resize` drop them.
+- `MapScriptSelection.InitVerticalLevel` replaces the command's own selection, as `initVerticalLevel` does, for the rest
+  of the command's executions. In the reference the change also outlives the battle, because map scripts are shared
+  mod data; the port keeps it to one generation (intentional difference).
+- A block's height is its MAP header's once any battle has read the block, else its rule's (`MapBlock::getSizeZ` after
+  `setSizeZ`). The loader that keeps read blocks lives with the campaign; the reference's blocks live with the mod.
+- Deterministic choices where the reference misbehaves: no levels left for the command (it dereferences an empty list)
+  and a first level without a block or size refuse; no ceiling is reserved when the ground was the only level (it reads
+  past the list); a filler position past the list after the ceiling is reserved wraps to the first filler; levels that
+  never add height stop after 10,000 rounds with a refusal (the reference loops forever).
+
+Tests: `BattleStartTests.VerticalLevelsStackTheGroundAFillerAndTheReservedCeiling` (stacked floors, level segments and
+the vertical links between them).
+
+## S4a — X-COM roster and placement (2026-10-20)
+
+Reference: `BattlescapeGenerator::deployXCOM` (unit order), `addXCOMVehicle`, `addXCOMUnit` (craft start tiles, the
+craft rule's deployment, spawn nodes), `canPlaceXCOMUnit`, `setCustomCraftInventoryTile`, `placeUnitNearFriend`,
+`loadMAP` (map block inventory tiles), `SavedBattleGame::getSpawnNode`, `setUnitPosition`, `Tile::getTUCost`,
+`hasNoFloor`, the tile cache's terrain level, `RuleItem::getVehicleUnit`, `Mod::EXTENDED_HWP_LOAD_ORDER`.
+
+- After the map, the craft's vehicles and soldiers become player units controlled by player slot 0, in the reference's
+  order: 2x2 vehicles (all vehicles without `extendedHwpLoadOrder`), soldiers in 2x2 armor, the remaining 1x1
+  vehicles, then 1x1 soldiers, soldiers in base order. Soldiers keep their IDs; vehicles are numbered from
+  `BattleUnit::MAX_SOLDIER_ID`. The first unit placed is the selected unit.
+- Placement: with a craft map, the craft rule's `deployment` points when it has them, else the first start-point tile in
+  tile order that takes the unit; without one, a random X-COM spawn node (rank 1) of the highest priority that suits the
+  unit, with a random facing. `setUnitPosition`'s checks apply (inside the map, no other unit, passable, a floor unless
+  flying, no low big wall, raised tiles lift the unit). The first start tile checked, the craft rule's inventory tile or
+  a random map block inventory tile becomes `BattleState.CraftInventoryTile`. A unit that finds no place stays out; no
+  unit at all refuses ("no xcom units could be placed on the map").
+- `BattleMap` keeps which unit stands on each tile; `BattleUnit` gains its type, soldier ID, armor, size, movement type
+  and facing. Runtime content: the craft's `deployment` and inventory tile, the armor's movement type,
+  `extendedHwpLoadOrder`, the deployment's `enviroEffects`, the enviro effects' armor transformations and the starting
+  condition's armor and equipment restriction flags.
+- Named S4b refusals: units larger than one tile (`setUnitPosition` needs pathfinding's blocked-direction checks),
+  armor transformations and starting-condition armor or equipment restrictions (they change the soldiers' armor and
+  send items home), and `placeUnitNearFriend` once a unit is placed (it also needs the direction checks).
+- Not yet (S4b): the save-side custom deployments (`customRuleCraftDeployments`, a craft's custom soldier and vehicle
+  deployment), which the strategic save does not read yet; the craft's items and their equipment layouts; unit
+  statistics.
+
+Tests: `BattleStartTests` (the craft's soldier on the first start tile and inventory tile; a soldier on an X-COM spawn
+node without a craft map); the route expectations follow the X-COM spawn node added to the test block.
+
+## Next
+
 - Craft skins: the craft's skin index in the strategic save and `refreshMapDataSets`.
-- Then S4 (X-COM deployment on the craft's tiles).
+- S4b: the S4a refusals above, save-side custom deployments, the craft's items and equipment layouts (`placeItemByLayout`,
+  `loadWeapons`, `autoEquip`), vehicle items, unit statistics; then S5 and S6.

@@ -71,6 +71,12 @@ internal sealed class BattleTerrainLoader(RuntimeBattleRules rules, IBattleTerra
         return null;
     }
 
+    /// <summary>
+    /// The height a map block has once its MAP has been read: <c>loadMAP</c> sets the block's size from the header, and the
+    /// reference keeps that on the shared block for later battles. Null before the first read.
+    /// </summary>
+    public int? LoadedLevels(string blockName) => _blocks.TryGetValue(blockName, out var block) ? block.Map.Levels : null;
+
     /// <summary>Every data set of a terrain, in order (<c>RuleTerrain::getMapData</c> indexes across them).</summary>
     public string? TryLoadTerrain(RuntimeTerrain terrain, out IReadOnlyList<BattleMapDataSet>? dataSets)
     {

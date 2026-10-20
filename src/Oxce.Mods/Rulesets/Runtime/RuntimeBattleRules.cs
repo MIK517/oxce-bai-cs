@@ -35,6 +35,10 @@ public sealed class RuntimeBattleRules
     /// <summary>Mod::getMapScript, by ID.</summary>
     public IReadOnlyDictionary<string, RuntimeMapScript> MapScripts { get; }
 
+    /// <summary>RuleEnviroEffects::getArmorTransformation sources and targets, by enviro effects ID.</summary>
+    public IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> EnviroArmorTransformations { get; private init; } =
+        new ReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>(new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.Ordinal));
+
     internal static RuntimeBattleRules Link(TerrainDeploymentRuleCatalog content)
     {
         ArgumentNullException.ThrowIfNull(content);
@@ -45,9 +49,14 @@ public sealed class RuntimeBattleRules
             new RuntimeMcdPatchEntry(entry.Index, Map(entry.Integers), Map(entry.Booleans), entry.Lofts is null ? null : List(entry.Lofts))))));
         var scripts = content.MapScripts.ToDictionary(static pair => pair.Key, static pair => RuntimeMapScriptProjection.Project(pair.Value),
             StringComparer.Ordinal);
+        var enviro = content.EnviroEffects.Rules.ToDictionary(static rule => rule.Id,
+            static rule => (IReadOnlyDictionary<string, string>)Map(rule.Value.ArmorTransformations), StringComparer.Ordinal);
         return new(List(content.Terrains.Rules.Select(static rule => rule.Id)),
             new ReadOnlyDictionary<string, RuntimeTerrain>(terrains), new ReadOnlyDictionary<string, RuntimeMcdPatch>(patches),
-            new ReadOnlyDictionary<string, RuntimeMapScript>(scripts));
+            new ReadOnlyDictionary<string, RuntimeMapScript>(scripts))
+        {
+            EnviroArmorTransformations = new ReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>(enviro),
+        };
     }
 
     /// <summary>A craft's or UFO's own terrain, projected like the terrains section's.</summary>

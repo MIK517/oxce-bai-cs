@@ -53,6 +53,12 @@ internal sealed class BattleState
     /// <summary>SavedBattleGame::getGlobalShade (0-15).</summary>
     public int GlobalShade { get; init; }
 
+    /// <summary>SavedBattleGame::getSelectedUnit: the first X-COM unit placed, or null.</summary>
+    public int? SelectedUnitId { get; internal set; }
+
+    /// <summary>The craft inventory tile: where the X-COM units' equipment starts (BattleUnit::setInventoryTile).</summary>
+    public BattlePosition? CraftInventoryTile { get; internal set; }
+
     /// <summary>SavedBattleGame::_turn: 0 until the first turn starts after the briefing.</summary>
     public int Turn { get; private set; }
 
@@ -74,8 +80,21 @@ internal sealed class BattleState
         ArgumentNullException.ThrowIfNull(unit);
         if (_units.Exists(existing => existing.Id == unit.Id))
             throw new InvalidOperationException($"Battle unit {unit.Id} already exists.");
-        if (unit.Position is { } position && !Contains(position))
-            throw new InvalidOperationException($"Battle unit {unit.Id} is outside the map.");
+        if (unit.Position is { } position)
+        {
+            for (var x = 0; x < unit.ArmorSize; x++)
+                for (var y = 0; y < unit.ArmorSize; y++)
+                {
+                    var covered = new BattlePosition(position.X + x, position.Y + y, position.Z);
+                    if (!Contains(covered)) throw new InvalidOperationException($"Battle unit {unit.Id} is outside the map.");
+                    if (Map.UnitAt(Map.TileIndex(covered)) is { } other && other != unit.Id)
+                        throw new InvalidOperationException($"Battle unit {unit.Id} stands on unit {other}.");
+                }
+            // BattleUnit::setTile: every tile under the unit's armor.
+            for (var x = 0; x < unit.ArmorSize; x++)
+                for (var y = 0; y < unit.ArmorSize; y++)
+                    Map.SetUnitAt(Map.TileIndex(new BattlePosition(position.X + x, position.Y + y, position.Z)), unit.Id);
+        }
         _units.Add(unit);
         Revision++;
     }
@@ -133,6 +152,20 @@ internal sealed class BattleUnit
     public int Id { get; }
     public BattleFaction Faction { get; }
     public BattleController Controller { get; }
+
+    /// <summary>BattleUnit::getType: the soldier type or the unit rule.</summary>
+    public string UnitType { get; init; } = "";
+
+    /// <summary>The geoscape soldier this unit is, or null for vehicles and aliens.</summary>
+    public int? SoldierId { get; init; }
+
+    /// <summary>The armor the unit fights in (after transformations and replacements) and its size and movement type.</summary>
+    public string ArmorId { get; init; } = "";
+    public int ArmorSize { get; init; } = 1;
+    public int MovementType { get; init; }
+
+    /// <summary>BattleUnit::getDirection (0-7).</summary>
+    public int Direction { get; set; }
 
     /// <summary>The unit's tile, or null while it is not on the map.</summary>
     public BattlePosition? Position { get; set; }

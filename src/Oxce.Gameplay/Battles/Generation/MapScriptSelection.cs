@@ -13,17 +13,23 @@ internal sealed class MapScriptSelection
     public const int Undefined = -1;
     public const int DefaultGroup = 0;
 
-    private readonly RuntimeMapScriptCommand _command;
-    private readonly List<int> _groups;
-    private readonly List<int> _blocks;
-    private readonly List<int> _frequencies;
-    private readonly List<int> _maximumUses;
+    private List<int> _baseGroups;
+    private List<int> _baseBlocks;
+    private readonly int _sizeX;
+    private readonly int _sizeY;
+    private List<int> _groups;
+    private List<int> _blocks;
+    private List<int> _frequencies;
+    private List<int> _maximumUses;
     private int _cumulativeFrequency;
 
     /// <summary>MapScript::init.</summary>
     public MapScriptSelection(RuntimeMapScriptCommand command)
     {
-        _command = command;
+        _baseGroups = [.. command.Groups];
+        _baseBlocks = [.. command.Blocks];
+        _sizeX = command.SizeX;
+        _sizeY = command.SizeY;
         _groups = [.. command.Groups];
         _blocks = [.. command.Blocks];
         _frequencies = [.. command.Frequencies];
@@ -31,11 +37,26 @@ internal sealed class MapScriptSelection
         foreach (var frequency in command.Frequencies) _cumulativeFrequency = checked(_cumulativeFrequency + frequency);
     }
 
+    /// <summary>
+    /// MapScript::initVerticalLevel: the level's blocks and groups replace the command's own selection (not only the
+    /// scratch copies), each with weight 1 and no use limit.
+    /// </summary>
+    public void InitVerticalLevel(IReadOnlyList<int> blocks, IReadOnlyList<int> groups)
+    {
+        _baseBlocks = [.. blocks];
+        _baseGroups = [.. groups];
+        _cumulativeFrequency = Math.Max(blocks.Count, groups.Count);
+        _blocks = [.. blocks];
+        _groups = [.. groups];
+        _frequencies = [.. Enumerable.Repeat(1, _cumulativeFrequency)];
+        _maximumUses = [.. Enumerable.Repeat(-1, _cumulativeFrequency)];
+    }
+
     /// <summary>MapScript::getNextBlock: a block by index, or a random block of the command's size from a picked group.</summary>
     public RuntimeMapBlock? NextBlock(RuntimeTerrain terrain, IRandomSource random)
     {
-        if (_command.Blocks.Count == 0)
-            return RandomBlock(terrain, _command.SizeX * 10, _command.SizeY * 10, GroupNumber(random), force: true, random);
+        if (_baseBlocks.Count == 0)
+            return RandomBlock(terrain, _sizeX * 10, _sizeY * 10, GroupNumber(random), force: true, random);
         var result = Pick(_blocks, random);
         return result != Undefined && result < terrain.MapBlocks.Count && result >= 0 ? terrain.MapBlocks[result] : null;
     }
@@ -54,7 +75,7 @@ internal sealed class MapScriptSelection
         return compliant.Count == 0 ? null : compliant[random.NextInclusive(0, compliant.Count - 1)];
     }
 
-    private int GroupNumber(IRandomSource random) => _command.Groups.Count == 0 ? DefaultGroup : Pick(_groups, random);
+    private int GroupNumber(IRandomSource random) => _baseGroups.Count == 0 ? DefaultGroup : Pick(_groups, random);
 
     private int Pick(List<int> values, IRandomSource random)
     {

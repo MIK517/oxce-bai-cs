@@ -47,6 +47,11 @@ internal sealed class BattleMapGenerator
     private readonly List<(RuntimeMapBlock Map, int X, int Y, int Width, int Length)> _ufoMaps = [];
     private readonly List<int> _ufoZ = [];
     private bool[,] _landingZone = new bool[0, 0];
+    private readonly List<LevelState> _verticalLevels = [];
+    private readonly List<(int X, int Y)> _placedBlockRects = [];
+    private readonly List<(RuntimeMapBlock Block, int X, int Y, int Z)> _verticalLevelSegments = [];
+    private RuntimeTerrain? _alternateTerrain;
+    private readonly List<BattlePosition> _backupInventoryTiles = [];
     private string _scriptId = "";
 
     private BattleMapGenerator(RuntimeRuleCatalog rules, BattleTerrainLoader loader, IRandomSource random, string missionType,
@@ -66,7 +71,7 @@ internal sealed class BattleMapGenerator
     }
 
     /// <summary>Generates the terrain map for a battle, or throws <see cref="MapGenerationException"/> with the reason.</summary>
-    public static BattleMap Generate(RuntimeRuleCatalog rules, BattleTerrainLoader loader, IRandomSource random, string missionType,
+    public static BattleMapResult Generate(RuntimeRuleCatalog rules, BattleTerrainLoader loader, IRandomSource random, string missionType,
         RuntimeTerrain terrain, RuntimeTerrain globeTerrain, RuntimeMapScript script, int width, int length, int height,
         BattleMapInputs inputs)
     {
@@ -74,7 +79,8 @@ internal sealed class BattleMapGenerator
         ArgumentNullException.ThrowIfNull(inputs);
         var generator = new BattleMapGenerator(rules, loader, random, missionType, terrain, globeTerrain, width, length, height, inputs);
         generator.Run(script);
-        return generator._map;
+        return new BattleMapResult(generator._map, generator._craftDeployed, generator._craftPosition.X, generator._craftPosition.Y,
+            generator._craftZ, generator._craftRuleId, generator._backupInventoryTiles.AsReadOnly());
     }
 
     private void Run(RuntimeMapScript script)
@@ -98,18 +104,39 @@ internal sealed class BattleMapGenerator
             if (_craftDeployed && command.CraftGroups.Count != 0 && !command.CraftGroups.Any(CraftRule.Groups.Contains)) continue;
             // RNG::percent draws even for a certain chance.
             if (!RandomChance.Percent(_random, command.ExecutionChances)) continue;
-            if (command.HasVerticalLevels)
-                throw new MapGenerationException("Map script vertical levels are generated in Phase 7 branch 1 S3b.");
+            if (command.VerticalLevelsInvalid is { } invalidLevels)
+                throw new MapGenerationException($"Map script verticalLevels are invalid: {invalidLevels}");
             var selection = new MapScriptSelection(command);
             // One success flag for all executions of the command (the reference's reference into the map).
             var success = false;
             for (var execution = 0; execution < command.Executions; execution++)
             {
+                _alternateTerrain = null;
+                var doLevels = PopulateVerticalLevels(command);
+                var current = 0;
+                // An addLine with levels starts from its line level, not the ground or the first level.
+                if (doLevels && command.Type == MapScriptCommandType.AddLine)
+                {
+                    current = _verticalLevels.FindIndex(static level => level.Type == VerticalLevelType.Line);
+                    if (current < 0)
+                        throw new MapGenerationException(
+                            "Map generator encountered an error: An addLine command with verticalLevels doesn't contain a level for the line.");
+                }
+                _placedBlockRects.Clear();
                 var terrain = _terrain;
                 if (command.RandomTerrain.Count != 0)
                     terrain = PickTerrain(command.RandomTerrain[_random.NextInclusive(0, command.RandomTerrain.Count - 1)]);
+                _alternateTerrain = terrain;
+                if (doLevels)
+                {
+                    // The reference dereferences the first level even when none applies to the command.
+                    if (_verticalLevels.Count == 0)
+                        throw new MapGenerationException("Map script verticalLevels leave no level for this command.");
+                    selection.InitVerticalLevel(_verticalLevels[current].Blocks, _verticalLevels[current].Groups);
+                    if (_verticalLevels[current].Terrain.Length != 0) terrain = PickTerrain(_verticalLevels[current].Terrain);
+                }
                 _markAsReinforcementsBlock = command.MarkAsReinforcementsBlock ? 1 : 0;
-                success = Execute(command, selection, terrain, success);
+                success = Execute(command, selection, terrain, success, doLevels);
             }
             conditionals[command.Label] = success;
         }
@@ -164,33 +191,45 @@ internal sealed class BattleMapGenerator
         return true;
     }
 
-    private bool Execute(RuntimeMapScriptCommand command, MapScriptSelection selection, RuntimeTerrain terrain, bool success)
+    private bool Execute(RuntimeMapScriptCommand command, MapScriptSelection selection, RuntimeTerrain terrain, bool success, bool doLevels)
     {
         switch (command.Type)
         {
             case MapScriptCommandType.AddBlock:
                 {
                     var block = selection.NextBlock(terrain, _random);
-                    return block is not null && SelectPosition(command.Rectangles, block, out var x, out var y) && AddBlock(x, y, block, terrain)
-                        || success;
+                    if (block is null || !SelectPosition(command.Rectangles, block, out var x, out var y)) return success;
+                    var added = AddBlock(x, y, block, terrain);
+                    if (added && doLevels)
+                    {
+                        _placedBlockRects.Add((x, y));
+                        LoadVerticalLevels(command, selection, repopulate: false);
+                    }
+                    return added || success;
                 }
             case MapScriptCommandType.FillArea:
                 {
                     for (var block = selection.NextBlock(terrain, _random); block is not null; block = selection.NextBlock(terrain, _random))
                     {
-                        // Fill area succeeds if even one block is added.
+                        // Fill area succeeds if even one block is added; every selected position gets its levels.
                         if (!SelectPosition(command.Rectangles, block, out var x, out var y)) break;
                         success = AddBlock(x, y, block, terrain) || success;
+                        _placedBlockRects.Add((x, y));
                     }
+                    if (doLevels && _placedBlockRects.Count != 0) LoadVerticalLevels(command, selection, repopulate: true);
                     return success;
                 }
             case MapScriptCommandType.AddLine:
-                return AddLine(command.Direction, command.Rectangles, terrain, command.VerticalGroup, command.HorizontalGroup,
-                    command.CrossingGroup);
+                {
+                    var added = AddLine(command.Direction, command.Rectangles, terrain, command.VerticalGroup, command.HorizontalGroup,
+                        command.CrossingGroup);
+                    if (doLevels && added) LoadVerticalLevels(command, selection, repopulate: true);
+                    return added;
+                }
             case MapScriptCommandType.AddCraft:
-                return AddCraftCommand(command, selection, terrain) || success;
+                return AddCraftCommand(command, selection, terrain, doLevels) || success;
             case MapScriptCommandType.AddUfo:
-                return AddUfoCommand(command, selection, terrain) || success;
+                return AddUfoCommand(command, selection, terrain, doLevels) || success;
             case MapScriptCommandType.DigTunnel:
                 DrillModules(command, terrain);
                 // This command is fail-proof.
@@ -219,6 +258,8 @@ internal sealed class BattleMapGenerator
         _segments = new int[width / 10, length / 10];
         _landingZone = new bool[width / 10, length / 10];
         _drillMap = new MapDirection[width / 10, length / 10];
+        _verticalLevels.Clear();
+        _verticalLevelSegments.Clear();
         _blocksToDo = width / 10 * (length / 10);
     }
 
@@ -325,6 +366,7 @@ internal sealed class BattleMapGenerator
                     ?? throw new MapGenerationException(
                         $"Map script command `addLine` failed (1). Terrain {terrain.Id}, block group {typeToAdd}, script {_scriptId}");
                 AddBlock(x, y, block, terrain);
+                if (!_placedBlockRects.Contains((x, y))) _placedBlockRects.Add((x, y));
             }
             else if (existing.Groups.Contains(comparator))
             {
@@ -334,6 +376,7 @@ internal sealed class BattleMapGenerator
                 _blocks[x, y] = crossing;
                 ClearModule(x * 10, y * 10, 10, 10);
                 LoadMap(crossing, x * 10, y * 10, 0, terrain, LoadExtraTerrain(terrain), discovered: false);
+                if (!_placedBlockRects.Contains((x, y))) _placedBlockRects.Add((x, y));
             }
         }
         return true;
@@ -440,6 +483,188 @@ internal sealed class BattleMapGenerator
             }
     }
 
+    /// <summary>
+    /// BattlescapeGenerator::populateVerticalLevels: copies of the command's levels in their working order: the first
+    /// ground level (group 1 by default for a craft or UFO), then the fillers (the first craft level for a craft or UFO,
+    /// used once; the first line level for addLine; every middle, empty and decoration level), then the first ceiling.
+    /// False when the command has no levels.
+    /// </summary>
+    private bool PopulateVerticalLevels(RuntimeMapScriptCommand command)
+    {
+        _verticalLevels.Clear();
+        if (command.VerticalLevels.Count == 0) return false;
+        var craftCommand = command.Type is MapScriptCommandType.AddCraft or MapScriptCommandType.AddUfo;
+        if (command.VerticalLevels.FirstOrDefault(static level => level.Type == VerticalLevelType.Ground) is { } ground)
+        {
+            var state = new LevelState(ground);
+            if (craftCommand && state.Groups.Count == 0) state.Groups = [1];
+            _verticalLevels.Add(state);
+        }
+        var fillerFound = false;
+        foreach (var level in command.VerticalLevels)
+            switch (level.Type)
+            {
+                case VerticalLevelType.Craft when craftCommand && !fillerFound:
+                    _verticalLevels.Add(new LevelState(level) { MaximumRepeats = 1 });
+                    fillerFound = true;
+                    break;
+                case VerticalLevelType.Line when command.Type == MapScriptCommandType.AddLine && !fillerFound:
+                    _verticalLevels.Add(new LevelState(level));
+                    fillerFound = true;
+                    break;
+                case VerticalLevelType.Middle or VerticalLevelType.Empty or VerticalLevelType.Decoration:
+                    _verticalLevels.Add(new LevelState(level));
+                    break;
+            }
+        if (command.VerticalLevels.FirstOrDefault(static level => level.Type == VerticalLevelType.Ceiling) is { } ceiling)
+            _verticalLevels.Add(new LevelState(ceiling));
+        return true;
+    }
+
+    /// <summary>
+    /// BattlescapeGenerator::loadVerticalLevels: stacks levels on each placed position up to the command's height (the map
+    /// height when unset or larger): the ground (or line) level already placed, the ceiling reserved first, then the
+    /// fillers in turn while they fit (at most 20 misses). An addLine whose first level is not its line re-places the
+    /// ground and loads the line block as a filler. A craft level raises the craft or UFO; the craft map itself loads after
+    /// the script. Every loaded level becomes a route segment. A block's height is its MAP header's once read, else its
+    /// rule's, as the reference's shared block keeps it.
+    /// </summary>
+    private void LoadVerticalLevels(RuntimeMapScriptCommand command, MapScriptSelection selection, bool repopulate,
+        RuntimeMapBlock? craftMap = null)
+    {
+        var visible = _missionType == BaseDefenseMissionType;
+        foreach (var (x, y) in _placedBlockRects.ToArray())
+        {
+            if (repopulate) PopulateVerticalLevels(command);
+            if (_verticalLevels.Count == 0)
+                throw new MapGenerationException("Map script verticalLevels leave no level for this command.");
+            var block = BlockAt(x, y);
+            var current = 0;
+            var terrain = _alternateTerrain ?? _terrain;
+            var zOffset = 0;
+            var levelsLeft = command.SizeZ < 1 || command.SizeZ > _map.Height ? _map.Height : command.SizeZ;
+            RuntimeMapBlock? lineBlock = null;
+            if (command.Type == MapScriptCommandType.AddLine && _verticalLevels[0].Type != VerticalLevelType.Line)
+            {
+                lineBlock = _blocks[x, y];
+                ClearModule(x * 10, y * 10, 10, 10);
+                // Re-added by addBlock.
+                _blocksToDo++;
+                selection.InitVerticalLevel(_verticalLevels[0].Blocks, _verticalLevels[0].Groups);
+                var groundTerrain = PickTerrain(_verticalLevels[0].Terrain);
+                block = selection.NextBlock(groundTerrain, _random);
+                if (block is not null) AddBlock(x, y, block, groundTerrain);
+            }
+            var z = LevelHeight(_verticalLevels[current], block);
+            zOffset += z;
+            levelsLeft -= z;
+            if (_verticalLevels[current].Type is VerticalLevelType.Ground or VerticalLevelType.Line) _verticalLevels.RemoveAt(current);
+            else current++;
+
+            // Reserve the space for the ceiling (none when no level is left, where the reference reads past its list).
+            RuntimeMapBlock? ceilingBlock = null;
+            var ceilingTerrain = terrain;
+            if (_verticalLevels.Count != 0 && _verticalLevels[^1].Type == VerticalLevelType.Ceiling)
+            {
+                var ceiling = _verticalLevels[^1];
+                selection.InitVerticalLevel(ceiling.Blocks, ceiling.Groups);
+                if (ceiling.Terrain.Length != 0) ceilingTerrain = PickTerrain(ceiling.Terrain);
+                ceilingBlock = selection.NextBlock(ceilingTerrain, _random);
+                if (ceilingBlock is not null)
+                {
+                    z = ceiling.SizeZ == -1 ? BlockHeight(ceilingBlock) : ceiling.SizeZ;
+                    if (z > levelsLeft) ceilingBlock = null;
+                    else
+                    {
+                        levelsLeft -= z;
+                        _verticalLevels.RemoveAt(_verticalLevels.Count - 1);
+                    }
+                }
+            }
+
+            const int maximumTries = 20;
+            var tries = 0;
+            // The reference loops forever on levels that add no height; the port stops after this many rounds.
+            for (var rounds = 0; _verticalLevels.Count > 0 && levelsLeft > 0 && tries <= maximumTries; rounds++)
+            {
+                if (rounds > MaximumLevelRounds)
+                    throw new MapGenerationException("Map script verticalLevels repeat levels that add no height.");
+                if (current >= _verticalLevels.Count) current = 0;
+                var level = _verticalLevels[current];
+                var levelTerrain = terrain;
+                RuntimeMapBlock? levelBlock = null;
+                z = 0;
+                switch (level.Type)
+                {
+                    case VerticalLevelType.Craft:
+                        if (command.Type == MapScriptCommandType.AddCraft && zOffset > _craftZ) _craftZ = zOffset;
+                        else if (command.Type == MapScriptCommandType.AddUfo && zOffset > _ufoZ[^1]) _ufoZ[^1] = zOffset;
+                        z = level.SizeZ == -1 ? BlockHeight(craftMap!) : level.SizeZ;
+                        if (z > levelsLeft)
+                            throw new MapGenerationException($"Map Generator has encountered an error: craft or ufo map{craftMap!.Name}could not be placed because either the map is too tall or the verticalLevels place it too high.");
+                        break;
+                    case VerticalLevelType.Empty:
+                        z = level.SizeZ == -1 ? 1 : level.SizeZ;
+                        break;
+                    default:
+                        if (level.Terrain.Length != 0) levelTerrain = PickTerrain(level.Terrain);
+                        if (command.Type == MapScriptCommandType.AddLine && level.Type == VerticalLevelType.Line && lineBlock is not null)
+                        {
+                            levelBlock = lineBlock;
+                        }
+                        else
+                        {
+                            selection.InitVerticalLevel(level.Blocks, level.Groups);
+                            levelBlock = selection.NextBlock(levelTerrain, _random);
+                        }
+                        if (levelBlock is not null) z = level.SizeZ == -1 ? BlockHeight(levelBlock) : level.SizeZ;
+                        else tries++;
+                        break;
+                }
+                if (z > levelsLeft)
+                {
+                    tries++;
+                    continue;
+                }
+                if (levelBlock is not null)
+                {
+                    LoadMap(levelBlock, x * 10, y * 10, zOffset, levelTerrain, LoadExtraTerrain(levelTerrain), visible);
+                    _verticalLevelSegments.Add((levelBlock, x, y, zOffset));
+                }
+                levelsLeft -= z;
+                zOffset += z;
+                if (--level.MaximumRepeats == 0) _verticalLevels.RemoveAt(current);
+                else current++;
+            }
+            if (ceilingBlock is not null)
+            {
+                LoadMap(ceilingBlock, x * 10, y * 10, zOffset, ceilingTerrain, LoadExtraTerrain(ceilingTerrain), visible);
+                _verticalLevelSegments.Add((ceilingBlock, x, y, zOffset));
+            }
+        }
+    }
+
+    private const int MaximumLevelRounds = 10_000;
+
+    /// <summary>A level's height: its own size, or the block's when it has none (a missing block there is fatal in the reference).</summary>
+    private int LevelHeight(LevelState level, RuntimeMapBlock? block) => level.SizeZ != -1 ? level.SizeZ
+        : block is not null ? BlockHeight(block)
+        : throw new MapGenerationException("Map script verticalLevels found no block for the first level.");
+
+    /// <summary>MapBlock::getSizeZ: the MAP header's height once the block has been read, else the rule's.</summary>
+    private int BlockHeight(RuntimeMapBlock block) => _loader.LoadedLevels(block.Name) ?? block.Height;
+
+    /// <summary>A working copy of a vertical level; its repeats count down as it is used.</summary>
+    private sealed class LevelState(RuntimeVerticalLevel level)
+    {
+        public VerticalLevelType Type { get; } = level.Type;
+        public IReadOnlyList<int> Groups { get; set; } = level.Groups;
+        public IReadOnlyList<int> Blocks { get; } = level.Blocks;
+        public int SizeZ { get; } = level.SizeZ;
+        public int MaximumRepeats { get; set; } = level.MaximumRepeats;
+        public string Terrain { get; } = level.Terrain;
+    }
+
     /// <summary>The checkBlock command: is there a block (of a group, or one of the listed blocks) in the rectangles?</summary>
     private bool CheckBlock(RuntimeMapScriptCommand command, RuntimeTerrain terrain, bool success)
     {
@@ -508,6 +733,7 @@ internal sealed class BattleMapGenerator
                     _blocks[dx, dy] = null;
                     _covered[dx, dy] = false;
                     _blocksToDo++;
+                    _verticalLevelSegments.RemoveAll(segment => segment.X == dx && segment.Y == dy);
                 }
         }
         return deleted.Count != 0;
@@ -559,7 +785,7 @@ internal sealed class BattleMapGenerator
     /// its landing zone gets blocks from the command's selection. An unplaced craft fails the map unless the command
     /// has a label.
     /// </summary>
-    private bool AddCraftCommand(RuntimeMapScriptCommand command, MapScriptSelection selection, RuntimeTerrain terrain)
+    private bool AddCraftCommand(RuntimeMapScriptCommand command, MapScriptSelection selection, RuntimeTerrain terrain, bool doLevels)
     {
         if (_craftRuleId.Length == 0) return false;
         var replacement = Craft(command.CraftName) is null ? null : command.CraftName;
@@ -578,7 +804,8 @@ internal sealed class BattleMapGenerator
         }
         _craftMap = craftMap;
         _craftPosition = position;
-        LoadLandingZone(position, terrain);
+        LoadLandingZone(position, terrain, doLevels);
+        if (doLevels) LoadVerticalLevels(command, selection, repopulate: true, craftMap);
         _craftDeployed = true;
         return true;
     }
@@ -587,7 +814,7 @@ internal sealed class BattleMapGenerator
     /// The addUFO command: the command's UFO, else the battle's UFO, else the deployment's custom UFO. The UFO terrain
     /// found by an earlier command stays in use when a later one finds none, as in the reference.
     /// </summary>
-    private bool AddUfoCommand(RuntimeMapScriptCommand command, MapScriptSelection selection, RuntimeTerrain terrain)
+    private bool AddUfoCommand(RuntimeMapScriptCommand command, MapScriptSelection selection, RuntimeTerrain terrain, bool doLevels)
     {
         if (Ufo(command.UfoName) is { } named)
         {
@@ -616,8 +843,9 @@ internal sealed class BattleMapGenerator
             return false;
         }
         _ufoMaps.Add((ufoMap, position.X, position.Y, position.Width, position.Length));
-        LoadLandingZone(position, terrain);
+        LoadLandingZone(position, terrain, doLevels);
         _ufoZ.Add(0);
+        if (doLevels) LoadVerticalLevels(command, selection, repopulate: true, ufoMap);
         return true;
     }
 
@@ -631,6 +859,8 @@ internal sealed class BattleMapGenerator
         position = default;
         if (!SelectPosition(command.Rectangles, craftMap.Width, craftMap.Length, out var x, out var y)) return false;
         position = (x, y, craftMap.Width / 10, craftMap.Length / 10);
+        // With levels, the landing zone comes from the first level (the ground).
+        if (_verticalLevels.Count != 0) selection.InitVerticalLevel(_verticalLevels[0].Blocks, _verticalLevels[0].Groups);
         for (var dx = 0; dx < position.Width; dx++)
             for (var dy = 0; dy < position.Length; dy++)
             {
@@ -645,12 +875,15 @@ internal sealed class BattleMapGenerator
     }
 
     /// <summary>The landing zone blocks' maps, loaded as soon as the craft or UFO is placed.</summary>
-    private void LoadLandingZone((int X, int Y, int Width, int Length) position, RuntimeTerrain terrain)
+    private void LoadLandingZone((int X, int Y, int Width, int Length) position, RuntimeTerrain terrain, bool doLevels)
     {
         for (var x = position.X; x < position.X + position.Width; x++)
             for (var y = position.Y; y < position.Y + position.Length; y++)
                 if (_blocks[x, y] is { } block)
+                {
                     LoadMap(block, x * 10, y * 10, 0, terrain, LoadExtraTerrain(terrain), _missionType == BaseDefenseMissionType);
+                    if (doLevels) _placedBlockRects.Add((x, y));
+                }
     }
 
     /// <summary>The block names and segments under a craft or UFO name it, not the terrain.</summary>
@@ -711,6 +944,13 @@ internal sealed class BattleMapGenerator
                 if (ufoIndex >= 0 && _ufoZ[ufoIndex] == 0) _ufoZ[ufoIndex] = level;
                 break;
             }
+        // Map block items (and the inventory pile) sit on the craft's or UFO's raised level.
+        var itemZ = offsetZ;
+        if (craft && itemZ == 0) itemZ += _craftZ;
+        if (ufoIndex >= 0 && itemZ == 0) itemZ += _ufoZ[ufoIndex];
+        if (block.CraftInventoryTile.Count >= 3)
+            _backupInventoryTiles.Add(new BattlePosition(block.CraftInventoryTile[0] + offsetX, block.CraftInventoryTile[1] + offsetY,
+                block.CraftInventoryTile[2] + itemZ));
         if (z > _map.Height - 1)
             throw new MapGenerationException(_missionType == BaseDefenseMissionType
                 ? "Something is wrong with your base, check your log file for additional information."
@@ -781,6 +1021,7 @@ internal sealed class BattleMapGenerator
                 if (_blocks[x, y] is { } block && !(block.Groups.Contains(LandingZoneGroup) && _landingZone[x, y] && _craftZ == 0))
                     LoadRoutes(block, x * 10, y * 10, 0, segment++);
             }
+        foreach (var (block, x, y, z) in _verticalLevelSegments) LoadRoutes(block, x * 10, y * 10, z, segment++);
     }
 
     /// <summary>
@@ -912,6 +1153,13 @@ internal sealed class BattleMapGenerator
 /// none), the deployment's custom UFO and the starting condition.
 /// </summary>
 internal sealed record BattleMapInputs(string CraftId, string UfoId, string CustomUfo, RuntimeStartingCondition? StartingCondition);
+
+/// <summary>
+/// The generated map and what the unit deployment needs from the generation: whether and where the craft landed (block
+/// cells and level), which craft's rules it ended with, and the map blocks' inventory tiles.
+/// </summary>
+internal sealed record BattleMapResult(BattleMap Map, bool CraftDeployed, int CraftX, int CraftY, int CraftZ, string CraftRuleId,
+    IReadOnlyList<BattlePosition> BackupInventoryTiles);
 
 /// <summary>A reason battle generation stopped (the reference throws or crashes there).</summary>
 internal sealed class MapGenerationException(string reason) : Exception(reason);

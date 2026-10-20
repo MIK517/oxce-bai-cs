@@ -18,6 +18,7 @@ internal sealed class BattleMap
     private int[] _ids = [];
     private int[] _sets = [];
     private byte[] _discovered = [];
+    private int[] _units = [];
     private string[,] _terrainNames = new string[0, 0];
     private string[,] _blockNames = new string[0, 0];
     private int[,] _reinforcements = new int[0, 0];
@@ -66,6 +67,8 @@ internal sealed class BattleMap
         Array.Fill(_ids, -1);
         Array.Fill(_sets, -1);
         _discovered = new byte[tiles];
+        _units = new int[tiles];
+        Array.Fill(_units, NoUnit);
         _terrainNames = Fill(width / 10, length / 10, "");
         _blockNames = Fill(width / 10, length / 10, "");
         _reinforcements = new int[width / 10, length / 10];
@@ -102,6 +105,49 @@ internal sealed class BattleMap
         _ids[tile * PartCount + (int)part] = id < 0 ? -1 : id;
         _sets[tile * PartCount + (int)part] = id < 0 ? -1 : set;
     }
+
+    private const int NoUnit = int.MinValue;
+
+    /// <summary>Tile::getUnit: the ID of the unit standing on the tile, or null.</summary>
+    public int? UnitAt(int tile) => _units[tile] == NoUnit ? null : _units[tile];
+
+    public void SetUnitAt(int tile, int? unitId) => _units[tile] = unitId ?? NoUnit;
+
+    /// <summary>MapData::getTUCost: walking, flying or sliding (movement types 0, 1, 2).</summary>
+    public static int MovementCost(BattleMapData data, int movementType) => movementType switch
+    {
+        0 => data.TimeUnitsWalk,
+        1 => data.TimeUnitsFly,
+        2 => data.TimeUnitsSlide,
+        _ => 0,
+    };
+
+    /// <summary>
+    /// Tile::getTUCost: 0 for an empty part, an open UFO door (none is open on a new map) or a big wall of type 4 or more
+    /// in the object part; otherwise the part's cost.
+    /// </summary>
+    public int TimeUnitCost(int tile, BattleTilePart part, int movementType) => MapData(tile, part) is not { } data ? 0
+        : part == BattleTilePart.ObjectPart && data.BigWall >= 4 ? 0
+        : MovementCost(data, movementType);
+
+    /// <summary>Tile's cached terrain level: the floor's, or the object's when lower (more negative is higher).</summary>
+    public int TerrainLevel(int tile)
+    {
+        var level = MapData(tile, BattleTilePart.Floor)?.TerrainLevel ?? 0;
+        return MapData(tile, BattleTilePart.ObjectPart) is { } item ? Math.Min(item.TerrainLevel, level) : level;
+    }
+
+    /// <summary>Tile::hasNoFloor: no floor (or a no-floor floor), unless the tile below is raised to the full height.</summary>
+    public bool HasNoFloor(BattlePosition position)
+    {
+        var tile = TileIndex(position);
+        var noFloor = MapData(tile, BattleTilePart.Floor) is not { } floor || floor.HasNoFloor;
+        if (noFloor && position.Z > 0 && TerrainLevel(TileIndex(position with { Z = position.Z - 1 })) == -24) return false;
+        return noFloor;
+    }
+
+    /// <summary>Tile::getFloorSpecialTileType (TILE, 0, without a floor).</summary>
+    public int FloorSpecialType(int tile) => MapData(tile, BattleTilePart.Floor)?.SpecialType ?? 0;
 
     public bool IsDiscovered(int tile, BattleTilePart part) => (_discovered[tile] & (1 << (int)part)) != 0;
 

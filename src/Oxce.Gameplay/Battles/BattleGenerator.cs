@@ -48,17 +48,23 @@ internal static class BattleGenerator
         }
         if (script is null) throw new MapGenerationException($"Map generator encountered an error: {terrainScript} script not found.");
         var globeTerrain = GlobeTerrain(rules, request, terrain, random);
-        var map = BattleMapGenerator.Generate(rules, loader, random, request.MissionType, terrain, globeTerrain, script,
-            battle.Width, battle.Length, battle.Height, Inputs(campaign, request, deployment));
+        var inputs = Inputs(campaign, request, deployment);
+        var generated = BattleMapGenerator.Generate(rules, loader, random, request.MissionType, terrain, globeTerrain, script,
+            battle.Width, battle.Length, battle.Height, inputs);
+        var map = generated.Map;
         if (map.Width == 0 || map.Length == 0 || map.Height == 0)
             throw new MapGenerationException($"Map script {scriptId} leaves an empty {map.Width}x{map.Length}x{map.Height} map.");
-        return new BattleState(request.MissionType, id, map, battle.TurnLimit, battle.ChronoTrigger, battle.CheatTurn)
+        var state = new BattleState(request.MissionType, id, map, battle.TurnLimit, battle.ChronoTrigger, battle.CheatTurn)
         {
             TerrainId = terrain.Id,
             MapScriptId = scriptId,
             Depth = depth,
             GlobalShade = shade,
         };
+        // run: the deployment's environmental effects, else the terrain's.
+        var enviro = rules.Battle.EnviroArmorTransformations.ContainsKey(battle.EnviroEffects) ? battle.EnviroEffects : terrain.EnviroEffects;
+        XcomDeployment.Deploy(campaign, request, state, generated, inputs.StartingCondition, enviro);
+        return state;
     }
 
     /// <summary>

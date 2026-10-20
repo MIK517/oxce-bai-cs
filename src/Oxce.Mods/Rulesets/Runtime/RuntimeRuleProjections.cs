@@ -221,6 +221,12 @@ public sealed record RuntimeCraftRule(
     RuleHandleList<CraftWeaponRuleFamily> FixedWeapons,
     RuleHandleList<RuntimeScriptFamily> Scripts)
 {
+    /// <summary>RuleCraft::getDeployment: [x, y, z, direction] spawn points relative to the craft map.</summary>
+    public IReadOnlyList<IReadOnlyList<int>> Deployment { get; init; } = [];
+
+    /// <summary>RuleCraft::getCraftInventoryTile: [x, y, z] relative to the craft map, or fewer values for none.</summary>
+    public IReadOnlyList<int> InventoryTile { get; init; } = [];
+
     /// <summary>RuleCraft::getGroups: map script commands with craft groups run only for a craft in one of them.</summary>
     public IReadOnlyList<int> Groups { get; init; } = [];
 
@@ -358,6 +364,9 @@ public sealed record RuntimeArmorRule(
     string StoreItemId,
     RuleHandle<ItemRuleFamily>? StoreItem)
 {
+    /// <summary>Armor::getMovementType: 0 walk, 1 fly, 2 slide.</summary>
+    public int MovementType { get; init; }
+
     public string Type { get; init; } = "";
     public RuntimeArmorVision Vision { get; init; } = RuntimeArmorVision.Default;
     public RuleHandle<ItemRuleFamily>? CorpseGeoscape { get; init; }
@@ -521,6 +530,9 @@ public sealed record RuntimeCampaignSettings(
     RuleHandle<FacilityRuleFamily>? DestroyedFacility,
     IReadOnlyList<RuntimeStartingBaseTemplate> StartingBases)
 {
+    /// <summary>Mod::EXTENDED_HWP_LOAD_ORDER: 2x2 vehicles first, 1x1 vehicles after the 2x2 soldiers.</summary>
+    public bool ExtendedHwpLoadOrder { get; init; }
+
     public RuntimeGlobe Globe { get; init; } = RuntimeGlobe.Empty;
     public int BuildTimeReductionScaling { get; init; } = 100;
     public int CustomTrainingFactor { get; init; } = 100;

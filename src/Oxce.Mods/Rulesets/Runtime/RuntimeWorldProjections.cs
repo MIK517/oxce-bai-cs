@@ -213,6 +213,12 @@ public sealed record RuntimeStartingCondition(IReadOnlyList<string> AllowedCraft
     IReadOnlyList<string> AllowedSoldierTypes, IReadOnlyList<string> ForbiddenSoldierTypes,
     IReadOnlyDictionary<string, int> RequiredItems, bool DestroyRequiredItems, bool RequireCommanderOnboard)
 {
+    /// <summary>Whether <c>allowedArmors</c> or <c>forbiddenArmors</c> restrict the soldiers' armor.</summary>
+    public bool RestrictsArmor { get; init; }
+
+    /// <summary>Whether vehicles, items or item categories are allowed or forbidden.</summary>
+    public bool RestrictsEquipment { get; init; }
+
     /// <summary>RuleStartingCondition::getCraftReplacement: the craft whose map replaces a source craft's.</summary>
     public IReadOnlyDictionary<string, string> CraftTransformations { get; init; } =
         new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(StringComparer.Ordinal));
@@ -322,6 +328,9 @@ public sealed record RuntimeDeploymentBattle(
     public int MinimumDepth { get; init; }
 
     public int MaximumDepth { get; init; }
+
+    /// <summary>AlienDeployment <c>enviroEffects</c> ("" for the terrain's).</summary>
+    public string EnviroEffects { get; init; } = "";
 
     /// <summary>AlienDeployment <c>customUfo</c>: the UFO an addUFO command uses when the battle has none.</summary>
     public string CustomUfo { get; init; } = "";

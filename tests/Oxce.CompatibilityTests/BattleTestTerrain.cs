@@ -40,13 +40,14 @@ internal static class BattleTestTerrain
         return [.. bytes];
     }
 
-    /// <summary>One 24-byte RMP node: local y, x, z, five raw links (251-255 are the edge and unused values), rank.</summary>
-    public static byte[] RouteNode(int x, int y, int z, byte[] links, byte rank = 0)
+    /// <summary>One 24-byte RMP node: local y, x, z, five raw links (251-255 are the edge and unused values), rank, priority.</summary>
+    public static byte[] RouteNode(int x, int y, int z, byte[] links, byte rank = 0, byte priority = 0)
     {
         var node = new byte[24];
         (node[0], node[1], node[2]) = ((byte)y, (byte)x, (byte)z);
         for (var link = 0; link < 5; link++) node[4 + link * 3] = link < links.Length ? links[link] : (byte)255;
         node[20] = rank;
+        node[23] = priority;
         return node;
     }
 

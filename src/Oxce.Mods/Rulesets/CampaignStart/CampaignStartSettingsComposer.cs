@@ -105,6 +105,7 @@ internal static class CampaignStartSettingsComposer
         b.DefeatScore = Read(root, "defeatScore", b.DefeatScore);
         b.DefeatFunds = Read(root, "defeatFunds", b.DefeatFunds);
         b.DifficultyDemigod = Read(root, "difficultyDemigod", b.DifficultyDemigod);
+        b.ExtendedHwpLoadOrder = Read(root, "extendedHwpLoadOrder", b.ExtendedHwpLoadOrder);
         ApplyNames(root, "baseNamesFirst", b.BaseNamesFirst, false);
         ApplyNames(root, "baseNamesMiddle", b.BaseNamesMiddle, false);
         ApplyNames(root, "baseNamesLast", b.BaseNamesLast, false);

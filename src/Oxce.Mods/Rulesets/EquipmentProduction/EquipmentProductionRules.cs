@@ -48,6 +48,8 @@ public sealed record CraftRule(
     IReadOnlyList<string> FixedWeapons,
     IReadOnlyList<string> RequiredPilotBonuses)
 {
+    /// <summary>RuleCraft::getDeployment: [x, y, z, direction] spawn points relative to the craft map.</summary>
+    public IReadOnlyList<IReadOnlyList<int>> Deployment { get; init; } = [];
     /// <summary>RuleCraft::getBattlescapeTerrainData: the craft's own map, or null.</summary>
     public TerrainDeployment.InlineTerrainRule? BattlescapeTerrain { get; init; }
     public IReadOnlyDictionary<string, short> PilotMinimumStats { get; init; } = new System.Collections.ObjectModel.ReadOnlyDictionary<string, short>(new Dictionary<string, short>());
@@ -236,6 +238,7 @@ internal sealed class CraftWeaponBuilder(string id)
 internal sealed class CraftBuilder
 {
     public TerrainDeployment.InlineTerrainRule? BattlescapeTerrain { get; set; }
+    public List<IReadOnlyList<int>> Deployment { get; set; } = [];
 
     public CraftBuilder(string id, int listOrder)
     {

@@ -111,7 +111,9 @@ internal sealed class CraftRuleLoader : TypedRuleFamilyLoader<CraftBuilder, Craf
         if (reader.TryGet("pilotSoldierBonusesRequired", out var pilotBonuses))
             builder.RequiredPilotBonuses = EquipmentYaml.StringList(pilotBonuses!);
         reader.ApplyMapping("battlescapeTerrainData", nested => builder.BattlescapeTerrain = TerrainDeployment.TerrainRuleLoader.ReadInline(nested));
-        reader.Defer("deployment", "craft deployment loading belongs to the deployment slice");
+        if (reader.TryGet("deployment", out var deployment))
+            builder.Deployment = [.. YamlValueReader.ReadSequence(deployment!, static item =>
+                (IReadOnlyList<int>)Array.AsReadOnly(YamlValueReader.ReadSequence(item, YamlValueReader.ReadInt32)))];
         if (reader.TryGet("pilotMinStatsRequired", out var pilotStats))
             PersonnelTacticalYaml.ApplyStats(builder.PilotMinimumStats, pilotStats!, nonZeroMerge: false);
         reader.DeferRemaining("dynamic craft script values require Phase 4 registration");
@@ -137,7 +139,11 @@ internal sealed class CraftRuleLoader : TypedRuleFamilyLoader<CraftBuilder, Craf
         Array.AsReadOnly((string[])builder.WeaponStrings.Clone()),
         Array.AsReadOnly((string[])builder.FixedWeapons.Clone()),
         builder.RequiredPilotBonuses.AsReadOnly())
-    { PilotMinimumStats = PersonnelTacticalYaml.FreezeStats(builder.PilotMinimumStats).Values, BattlescapeTerrain = builder.BattlescapeTerrain };
+    {
+        PilotMinimumStats = PersonnelTacticalYaml.FreezeStats(builder.PilotMinimumStats).Values,
+        BattlescapeTerrain = builder.BattlescapeTerrain,
+        Deployment = builder.Deployment.AsReadOnly(),
+    };
 
     private static void ApplyWeaponTypes(CraftBuilder builder, RulePropertyReader reader)
     {
