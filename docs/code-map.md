@@ -18,7 +18,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 204 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 207 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 98 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
@@ -27,7 +27,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
 | [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 321 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
-| [Oxce.UnitTests](#oxceunittests) | 104 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
+| [Oxce.UnitTests](#oxceunittests) | 107 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
 | [Oxce.FixtureTool](#oxcefixturetool) | 1 | FixtureSupport, Formats, Mods, Savegames |
 | [Oxce.ResourceBrowser](#oxceresourcebrowser) | 2 | Formats, Mods, Platform.Sdl, Rendering, Resources |
@@ -337,7 +337,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 204 files.
+`src/Oxce.Gameplay` - 207 files.
 
 ### `Oxce.Gameplay`
 
@@ -1003,6 +1003,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RuntimeAlienRaceRule` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - The strategic projection of an alien race: retaliation aggression and the retaliation mission timeline in rule order (AlienRace::retaliat...
 - `RuntimeAlienDeploymentRule` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - The runtime projection of an alien deployment: site and alien-base bookkeeping, and in `Battle` the battlescape properties the battle gen...
 - `RuntimeDeploymentBattle` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - AlienDeployment battlescape properties read by `BattlescapeGenerator::run`: the map size (`getDimensions`), `turnLimit`, `chronoTrigger`...
+- `RuntimeDeploymentData` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - DeploymentData: an alien rank (or a custom unit type), quantities by difficulty (low, medium, high), random extras (`dQty`, `extraQty`),...
 - `RuntimeAlienRaceEvolution` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - Reference: `AlienDeployment::getAlienRaceEvolution` tuples.
 
 ### `Oxce.Mods.Rulesets.TerrainDeployment`
@@ -1553,13 +1554,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.UnitTests
 
-`tests/Oxce.UnitTests` - 104 files.
+`tests/Oxce.UnitTests` - 107 files.
 
 ### `Oxce.UnitTests`
 
 - `AllocationMeasurement` (class) [AllocationMeasurement.cs](../tests/Oxce.UnitTests/AllocationMeasurement.cs)
 
-<details><summary>103 test classes</summary>
+<details><summary>106 test classes</summary>
 
 - `ProjectDependencyTests` ([ProjectDependencyTests.cs](../tests/Oxce.UnitTests/Architecture/ProjectDependencyTests.cs))
 - `DiagnosticTests` ([DiagnosticTests.cs](../tests/Oxce.UnitTests/Core/DiagnosticTests.cs))
@@ -1599,6 +1600,9 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `XcomPaletteCodecTests` ([XcomPaletteCodecTests.cs](../tests/Oxce.UnitTests/Formats/XcomPaletteCodecTests.cs))
 - `YamlCompatibilityReaderTests` ([YamlCompatibilityReaderTests.cs](../tests/Oxce.UnitTests/Formats/YamlCompatibilityReaderTests.cs))
 - `YamlCompatibilityWriterTests` ([YamlCompatibilityWriterTests.cs](../tests/Oxce.UnitTests/Formats/YamlCompatibilityWriterTests.cs))
+- `AlienQuantitiesTests` ([AlienQuantitiesTests.cs](../tests/Oxce.UnitTests/Gameplay/AlienQuantitiesTests.cs))
+- `AlienRacesTests` ([AlienRacesTests.cs](../tests/Oxce.UnitTests/Gameplay/AlienRacesTests.cs))
+- `BattlePathingTests` ([BattlePathingTests.cs](../tests/Oxce.UnitTests/Gameplay/BattlePathingTests.cs))
 - `BattleStateTests` ([BattleStateTests.cs](../tests/Oxce.UnitTests/Gameplay/BattleStateTests.cs))
 - `CampaignCapabilityRegistryTests` ([CampaignCapabilityRegistryTests.cs](../tests/Oxce.UnitTests/Gameplay/CampaignCapabilityRegistryTests.cs))
 - `CampaignFoundationTests` ([CampaignFoundationTests.cs](../tests/Oxce.UnitTests/Gameplay/CampaignFoundationTests.cs))

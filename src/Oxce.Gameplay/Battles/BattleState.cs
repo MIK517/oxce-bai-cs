@@ -161,6 +161,9 @@ internal sealed class BattleUnit
 
     /// <summary>The armor the unit fights in (after transformations and replacements) and its size and movement type.</summary>
     public string ArmorId { get; init; } = "";
+
+    /// <summary>The geoscape soldier's own armor when the battle armor differs (transformed or replaced), else "".</summary>
+    public string OriginalArmorId { get; init; } = "";
     public int ArmorSize { get; init; } = 1;
     public int MovementType { get; init; }
 

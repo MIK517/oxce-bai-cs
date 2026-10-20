@@ -28,6 +28,9 @@ public sealed class BattleStartTests
             cheatTurn: 12
             shade: 9
             terrains: [TEST_TERRAIN]
+            data:
+              - {alienRank: 2, lowQty: 1, highQty: 3, dQty: 1, percentageOutsideUfo: 50, itemSets: [[ITEM_A], [ITEM_B, ITEM_C]]}
+              - {customUnitType: VEHICLE, lowQty: 1}
           - type: UFO_RESIZED
             width: 30
             length: 30
@@ -58,6 +61,20 @@ public sealed class BattleStartTests
             height: 3
             terrains: [TEST_TERRAIN]
             script: LEVELS
+          - type: UFO_SUITED
+            width: 30
+            length: 30
+            height: 2
+            terrains: [TEST_TERRAIN]
+            script: CRAFTED
+            enviroEffects: ENV_SUIT
+          - type: UFO_REPLACED
+            width: 30
+            length: 30
+            height: 2
+            terrains: [TEST_TERRAIN]
+            script: CRAFTED
+            startingCondition: SC_REPLACE
           - type: UFO_UNFILLED
             width: 20
             length: 20
@@ -75,6 +92,40 @@ public sealed class BattleStartTests
               - {name: CROSSING, width: 10, length: 10, groups: [4]}
               - {name: ROOF, width: 10, length: 10, height: 1, groups: [6]}
             script: BASIC
+        enviroEffects:
+          - type: ENV_SUIT
+            armorTransformations: {ARMOR: SUIT}
+        startingConditions:
+          - type: SC_REPLACE
+            forbiddenArmors: [ARMOR]
+            defaultArmor: {RECRUIT: {SUIT: 2}}
+        armors:
+          - type: SUIT
+            movementType: 1
+            storeItem: SUPPLY
+            corpseBattle: [CORPSE]
+            corpseGeo: CORPSE
+            loftempsSet: [0]
+          - type: VEHICLE_ARMOR
+            size: 2
+            corpseBattle: [CORPSE, CORPSE, CORPSE, CORPSE]
+            corpseGeo: CORPSE
+            loftempsSet: [0, 0, 0, 0]
+          - type: SMALL_VEHICLE_ARMOR
+            size: 1
+            corpseBattle: [CORPSE]
+            corpseGeo: CORPSE
+            loftempsSet: [0]
+        items:
+          - type: VEHICLE
+            fixedWeapon: true
+          - type: VEHICLE_B
+            fixedWeapon: true
+        units:
+          - type: VEHICLE
+            armor: VEHICLE_ARMOR
+          - type: VEHICLE_B
+            armor: SMALL_VEHICLE_ARMOR
         crafts:
           - type: SHIP
             battlescapeTerrainData:
@@ -161,13 +212,15 @@ public sealed class BattleStartTests
         ["ROUTES/CROSSING.RMP"] = [],
     });
 
-    private static (CampaignState Campaign, CampaignDeploymentRequest Request) Requested(string? rules, string ufo = "UFO_SCOUT")
+    private static (CampaignState Campaign, CampaignDeploymentRequest Request) Requested(string? rules, string ufo = "UFO_SCOUT",
+        IReadOnlyList<CraftVehicleSnapshot>? vehicles = null)
     {
         // The landing UFO is UFO_SCOUT: the deployment under test takes its name and the default one steps aside.
         if (rules is not null && ufo != "UFO_SCOUT")
             rules = rules.Replace("type: UFO_SCOUT\n    width", "type: UFO_SCOUT_DEFAULT\n    width", StringComparison.Ordinal)
                 .Replace("type: " + ufo + "\n", "type: UFO_SCOUT\n", StringComparison.Ordinal);
-        var (_, campaign) = StrategicLandingTests.Create(rules: rules, files: rules is null ? null : RequiredFiles("BLANKS", "TESTSET"));
+        var (_, campaign) = StrategicLandingTests.Create(rules: rules, files: rules is null ? null : RequiredFiles("BLANKS", "TESTSET"),
+            vehicles: vehicles);
         campaign.BattleTerrainFiles = TerrainFiles();
         var requested = AssertLandingRequested(campaign);
         var result = campaign.Execute(new AnswerLanding(requested.Confirmation, LandingAnswer.Yes));
@@ -304,6 +357,44 @@ public sealed class BattleStartTests
     }
 
     [Fact]
+    public void VehiclesComeFirstAndALargeVehicleTakesFourStartTiles()
+    {
+        var (campaign, request) = Requested(Rules, "UFO_CRAFTED", [new("VEHICLE", 0), new("VEHICLE_B", 0)]);
+        Assert.Equal(["VEHICLE", "VEHICLE_B"], request.Vehicles);
+        Assert.IsType<BattleStarted>(Assert.Single(campaign.Execute(new StartBattle()).Events));
+        var battle = Battle(campaign);
+        var map = battle.Map;
+        var craft = Enumerable.Range(0, 9).Select(cell => (X: cell % 3, Y: cell / 3)).Single(cell => map.TerrainName(cell.X, cell.Y) == "SHIP");
+        var (x, y) = (craft.X * 10, craft.Y * 10);
+        // Without extendedHwpLoadOrder every vehicle comes first, in craft order, numbered from MAX_SOLDIER_ID; then the
+        // soldier. Each takes the first start tile in tile order that fits it.
+        Assert.Equal([(BattleState.MaximumSoldierId, "VEHICLE", 2, new BattlePosition(x, y, 0)),
+                (BattleState.MaximumSoldierId + 1, "VEHICLE_B", 1, new BattlePosition(x + 2, y, 0)),
+                (Assert.Single(request.Soldiers), battle.Units[2].UnitType, 1, new BattlePosition(x + 3, y, 0))],
+            battle.Units.Select(static unit => (unit.Id, unit.UnitType, unit.ArmorSize, unit.Position!.Value)));
+        Assert.Equal(BattleState.MaximumSoldierId, battle.SelectedUnitId);
+        // The large vehicle stands on all four of its tiles.
+        foreach (var (dx, dy) in new[] { (0, 0), (1, 0), (0, 1), (1, 1) })
+            Assert.Equal(BattleState.MaximumSoldierId, map.UnitAt(map.TileIndex(new(x + dx, y + dy, 0))));
+        Assert.Null(battle.Units[0].SoldierId);
+    }
+
+    [Theory]
+    [InlineData("UFO_SUITED")]
+    [InlineData("UFO_REPLACED")]
+    public void TheEnvironmentOrTheStartingConditionChangesTheSoldiersBattleArmor(string deployment)
+    {
+        // RuleEnviroEffects::getArmorTransformation, or RuleStartingCondition::getArmorReplacement for a forbidden armor:
+        // the battle unit wears the suit (a flyer); the geoscape soldier keeps its own armor.
+        var (campaign, request) = Requested(Rules, deployment);
+        Assert.IsType<BattleStarted>(Assert.Single(campaign.Execute(new StartBattle()).Events));
+        var soldier = Assert.Single(Battle(campaign).Units);
+        Assert.Equal(("SUIT", "ARMOR", 1), (soldier.ArmorId, soldier.OriginalArmorId, soldier.MovementType));
+        var personal = campaign.Capture().Bases[0].Soldiers.Single(state => state.Id == Assert.Single(request.Soldiers)).Personal!;
+        Assert.Equal("ARMOR", personal.Armor);
+    }
+
+    [Fact]
     public void WithoutACraftMapTheSoldierSpawnsOnAnXcomNode()
     {
         var (campaign, request) = Requested(Rules);
@@ -427,5 +518,12 @@ public sealed class BattleStartTests
         var scout = content.RuntimeRules.Ufos.GetRequiredValue("UFO_SCOUT").BattlescapeTerrain!;
         Assert.Equal(("SCOUT_MAP", 20, "0,5"), (scout.Id, Assert.Single(scout.MapBlocks).Length, string.Join(',', scout.MapBlocks[0].Groups)));
         Assert.Null(content.RuntimeRules.Ufos.GetRequiredValue("UFO_HUNTER").BattlescapeTerrain);
+        // AlienDeployment data: rank, quantities, outside chance and item sets by alien item level.
+        var data = deployments.GetRequiredValue("UFO_SCOUT").Battle.Data;
+        Assert.Equal((2, "", 1, 0, 3, 1, 0, 50), (data[0].AlienRank, data[0].CustomUnitType, data[0].LowQuantity, data[0].MediumQuantity,
+            data[0].HighQuantity, data[0].DifficultyQuantity, data[0].ExtraQuantity, data[0].PercentageOutsideUfo));
+        Assert.Equal(["ITEM_A", "ITEM_B|ITEM_C"], data[0].ItemSets.Select(static set => string.Join('|', set)));
+        Assert.Equal(("VEHICLE", 0), (data[1].CustomUnitType, data[1].AlienRank));
+        Assert.Null(deployments.GetRequiredValue("UFO_SCOUT").Battle.DataInvalid);
     }
 }

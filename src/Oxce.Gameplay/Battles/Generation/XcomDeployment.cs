@@ -13,15 +13,10 @@ namespace Oxce.Gameplay.Battles.Generation;
 /// </summary>
 internal sealed class XcomDeployment
 {
-    internal const string LargeUnitPlacement =
-        "Placing a unit larger than one tile needs the pathfinding direction checks (Phase 7 branch 1 S4b).";
-    internal const string ArmorChanges =
-        "X-COM deployment with armor transformations or armor and equipment restrictions arrives in Phase 7 branch 1 S4b.";
-    internal const string NearFriendPlacement =
-        "Placing X-COM units next to each other without spawn nodes arrives in Phase 7 branch 1 S4b.";
+    internal const string EquipmentRestrictions =
+        "X-COM deployment with starting-condition vehicle and item restrictions arrives with the craft's items (Phase 7 branch 1 S4b).";
 
-    /// <summary>Pathfinding::INVALID_MOVE_COST.</summary>
-    private const int InvalidMoveCost = 255;
+    private const int InvalidMoveCost = BattlePathing.InvalidMoveCost;
 
     /// <summary>SpecialTileType START_POINT.</summary>
     private const int StartPoint = 1;
@@ -38,25 +33,29 @@ internal sealed class XcomDeployment
     private readonly BattleMapResult _generated;
     private readonly RuntimeRuleCatalog _rules;
     private readonly IRandomSource _random;
+    private readonly RuntimeStartingCondition? _startingCondition;
+    private readonly IReadOnlyDictionary<string, string>? _armorTransformations;
     private int _unitSequence = BattleState.MaximumSoldierId;
 
-    private XcomDeployment(BattleState battle, BattleMapResult generated, RuntimeRuleCatalog rules, IRandomSource random)
+    private XcomDeployment(BattleState battle, BattleMapResult generated, RuntimeRuleCatalog rules, IRandomSource random,
+        RuntimeStartingCondition? startingCondition, IReadOnlyDictionary<string, string>? armorTransformations)
     {
         _battle = battle;
         _map = battle.Map;
         _generated = generated;
         _rules = rules;
         _random = random;
+        _startingCondition = startingCondition;
+        _armorTransformations = armorTransformations;
     }
 
     public static void Deploy(CampaignState campaign, CampaignDeploymentRequest request, BattleState battle, BattleMapResult generated,
         RuntimeStartingCondition? startingCondition, string enviroEffects)
     {
         var rules = campaign.Content.RuntimeRules;
-        if (startingCondition is { RestrictsArmor: true } or { RestrictsEquipment: true } ||
-            rules.Battle.EnviroArmorTransformations.TryGetValue(enviroEffects, out var transformations) && transformations.Count != 0)
-            throw new MapGenerationException(ArmorChanges);
-        new XcomDeployment(battle, generated, rules, campaign.Random).Run(campaign, request);
+        if (startingCondition is { RestrictsEquipment: true }) throw new MapGenerationException(EquipmentRestrictions);
+        new XcomDeployment(battle, generated, rules, campaign.Random, startingCondition,
+            rules.Battle.EnviroArmorTransformations.GetValueOrDefault(enviroEffects)).Run(campaign, request);
     }
 
     private void Run(CampaignState campaign, CampaignDeploymentRequest request)
@@ -92,17 +91,45 @@ internal sealed class XcomDeployment
     private BattleUnit Soldier(CampaignState.SoldierState soldier)
     {
         var personal = soldier.Personal ?? throw new MapGenerationException($"Soldier {soldier.Id} has no personal state.");
-        if (!_rules.Armors.TryGet(personal.Armor, out var handle))
-            throw new MapGenerationException($"Soldier {soldier.Id} wears unknown armor {personal.Armor}.");
-        var armor = _rules.Armors[handle].Value;
+        var own = Armor(personal.Armor) ?? throw new MapGenerationException($"Soldier {soldier.Id} wears unknown armor {personal.Armor}.");
+        var soldierType = _rules.Soldiers.GetExternalId(soldier.Rule);
+        var (armorId, armor) = BattleArmor(soldierType, personal.Armor, own);
         return new BattleUnit(soldier.Id, BattleFaction.Player, BattleController.Human(0))
         {
-            UnitType = _rules.Soldiers.GetExternalId(soldier.Rule),
+            UnitType = soldierType,
             SoldierId = soldier.Id,
-            ArmorId = personal.Armor,
+            ArmorId = armorId,
+            OriginalArmorId = armorId == personal.Armor ? "" : personal.Armor,
             ArmorSize = armor.Size,
             MovementType = armor.MovementType,
         };
+    }
+
+    private RuntimeArmorRule? Armor(string id) => id.Length != 0 && _rules.Armors.TryGet(id, out var handle) ? _rules.Armors[handle].Value : null;
+
+    /// <summary>
+    /// deployXCOM's armor pass: the environment's transformation of the soldier's armor when it is no larger, else the
+    /// starting condition's replacement (RuleStartingCondition::getArmorReplacement, a weighted pick for a disallowed
+    /// armor) when it is no larger. The reference changes the geoscape soldier's armor for the battle and restores it in
+    /// the debriefing; the port gives the battle unit the armor and leaves the soldier as it was.
+    /// </summary>
+    private (string Id, RuntimeArmorRule Armor) BattleArmor(string soldierType, string armorId, RuntimeArmorRule armor)
+    {
+        if (_armorTransformations is not null && _armorTransformations.TryGetValue(armorId, out var transformedId))
+        {
+            var transformed = Armor(transformedId) ?? throw new MapGenerationException($"Armor transformation target {transformedId} does not exist.");
+            if (armor.Size >= transformed.Size) return (transformedId, transformed);
+        }
+        if (_startingCondition is not { } condition) return (armorId, armor);
+        var allowed = condition.ForbiddenArmors.Count != 0 ? !condition.ForbiddenArmors.Contains(armorId)
+            : condition.AllowedArmors.Count == 0 || condition.AllowedArmors.Contains(armorId);
+        if (allowed || !condition.DefaultArmor.TryGetValue(soldierType, out var weights)) return (armorId, armor);
+        var pick = WorldAlienMissionGeneration.Choose(
+            weights.Where(static pair => pair.Value > 0).ToDictionary(static pair => pair.Key, static pair => (ulong)pair.Value, StringComparer.Ordinal), _random);
+        if (pick is "" or "noChange") return (armorId, armor);
+        var replaced = Armor(pick) ?? throw new MapGenerationException($"Default armor {pick} does not exist.");
+        // A soldier cannot switch into a bigger armor.
+        return replaced.Size > armor.Size ? (armorId, armor) : (pick, replaced);
     }
 
     /// <summary>BattlescapeGenerator::addXCOMVehicle: a player unit numbered after the soldiers' ID range.</summary>
@@ -135,8 +162,12 @@ internal sealed class XcomDeployment
                 unit.Direction = _random.NextInclusive(0, 7);
                 return true;
             }
-            // placeUnitNearFriend finds no friend before the first unit is placed.
-            if (_battle.MissionType != "STR_BASE_DEFENSE" && _battle.Units.Count != 0) throw new MapGenerationException(NearFriendPlacement);
+            if (_battle.MissionType != "STR_BASE_DEFENSE" && PlaceNearFriend(unit))
+            {
+                _battle.CraftInventoryTile ??= unit.Position;
+                unit.Direction = _random.NextInclusive(0, 7);
+                return true;
+            }
             return false;
         }
         var craft = _rules.Crafts.GetRequiredValue(_generated.CraftRuleId);
@@ -266,7 +297,74 @@ internal sealed class XcomDeployment
                     y = size + 1;
                 }
             }
-        if (size > 0) throw new MapGenerationException(LargeUnitPlacement);
-        return position with { Z = position.Z + zOffset };
+        var placed = position with { Z = position.Z + zOffset };
+        // A large unit must not straddle a wall between its tiles.
+        if (size > 0)
+            for (var direction = 2; direction <= 4; direction++)
+                if (BattlePathing.IsBlockedDirection(_map, unit.MovementType, placed, direction)) return null;
+        return placed;
+    }
+
+    /// <summary>
+    /// BattlescapeGenerator::placeUnitNearFriend: up to ten times, a random placed unit of the same side at least as large
+    /// (100 draws at most) and a place next to it.
+    /// </summary>
+    private bool PlaceNearFriend(BattleUnit unit)
+    {
+        if (_battle.Units.Count == 0) return false;
+        for (var attempt = 0; attempt != 10; attempt++)
+        {
+            BattlePosition? entry = null;
+            var largeFriend = false;
+            var tries = 100;
+            while (entry is null && tries != 0)
+            {
+                var friend = _battle.Units[_random.NextInclusive(0, _battle.Units.Count - 1)];
+                if (friend.Faction == unit.Faction && friend.Position is { } at && friend.ArmorSize >= unit.ArmorSize)
+                {
+                    entry = at;
+                    largeFriend = friend.ArmorSize > 1;
+                }
+                tries--;
+            }
+            if (tries != 0 && PlaceNearPosition(unit, entry!.Value, largeFriend)) return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// SavedBattleGame::placeUnitNearPosition: the position itself, then the eight neighbours (offset by the unit's and the
+    /// friend's size) not walled off from it, then one level up for a flyer over open air.
+    /// </summary>
+    private bool PlaceNearPosition(BattleUnit unit, BattlePosition entry, bool largeFriend)
+    {
+        if (TryPosition(unit, entry) is { } here)
+        {
+            unit.Position = here;
+            return true;
+        }
+        var me = -unit.ArmorSize;
+        var you = largeFriend ? 2 : 1;
+        ReadOnlySpan<int> xs = [0, you, you, you, 0, me, me, me];
+        ReadOnlySpan<int> ys = [me, me, 0, you, you, you, 0, me];
+        for (var direction = 0; direction <= 7; direction++)
+        {
+            var offset = new BattlePosition(entry.X + xs[direction], entry.Y + ys[direction], entry.Z);
+            // Position division truncates toward zero, as C++ does.
+            var half = new BattlePosition(entry.X + xs[direction] / 2, entry.Y + ys[direction] / 2, entry.Z);
+            if (_map.Contains(offset) && _map.Contains(half) &&
+                !BattlePathing.IsBlockedDirection(_map, unit.MovementType, half, direction) && TryPosition(unit, offset) is { } placed)
+            {
+                unit.Position = placed;
+                return true;
+            }
+        }
+        var above = entry with { Z = entry.Z + 1 };
+        if (unit.MovementType == 1 && _map.Contains(above) && _map.HasNoFloor(above) && TryPosition(unit, above) is { } flying)
+        {
+            unit.Position = flying;
+            return true;
+        }
+        return false;
     }
 }

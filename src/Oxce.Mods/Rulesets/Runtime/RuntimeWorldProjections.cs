@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Oxce.Formats.Yaml;
 
 namespace Oxce.Mods.Rulesets.Runtime;
 
@@ -213,8 +214,13 @@ public sealed record RuntimeStartingCondition(IReadOnlyList<string> AllowedCraft
     IReadOnlyList<string> AllowedSoldierTypes, IReadOnlyList<string> ForbiddenSoldierTypes,
     IReadOnlyDictionary<string, int> RequiredItems, bool DestroyRequiredItems, bool RequireCommanderOnboard)
 {
-    /// <summary>Whether <c>allowedArmors</c> or <c>forbiddenArmors</c> restrict the soldiers' armor.</summary>
-    public bool RestrictsArmor { get; init; }
+    /// <summary><c>allowedArmors</c> and <c>forbiddenArmors</c> (the forbidden list wins when both are given).</summary>
+    public IReadOnlyList<string> AllowedArmors { get; init; } = [];
+    public IReadOnlyList<string> ForbiddenArmors { get; init; } = [];
+
+    /// <summary><c>defaultArmor</c>: by soldier type, the weighted armors a disallowed armor is replaced with ("noChange" keeps it).</summary>
+    public IReadOnlyDictionary<string, IReadOnlyDictionary<string, int>> DefaultArmor { get; init; } =
+        new ReadOnlyDictionary<string, IReadOnlyDictionary<string, int>>(new Dictionary<string, IReadOnlyDictionary<string, int>>(StringComparer.Ordinal));
 
     /// <summary>Whether vehicles, items or item categories are allowed or forbidden.</summary>
     public bool RestrictsEquipment { get; init; }
@@ -240,6 +246,10 @@ public sealed record RuntimeAlienRaceRule(string Id, int RetaliationAggression, 
     /// <summary>AlienRace::getBaseCustomDeploy and getBaseCustomMission: alien-base battle deployments.</summary>
     public string BaseCustomDeploy { get; init; } = string.Empty;
     public string BaseCustomMission { get; init; } = string.Empty;
+
+    /// <summary>AlienRace <c>members</c> by rank, and <c>membersRandom</c> (one set per rank; it wins when present).</summary>
+    public IReadOnlyList<string> Members { get; init; } = [];
+    public IReadOnlyList<IReadOnlyList<string>> RandomMembers { get; init; } = [];
 }
 
 /// <summary>
@@ -334,6 +344,56 @@ public sealed record RuntimeDeploymentBattle(
 
     /// <summary>AlienDeployment <c>customUfo</c>: the UFO an addUFO command uses when the battle has none.</summary>
     public string CustomUfo { get; init; } = "";
+
+    /// <summary>AlienDeployment <c>data</c>: the alien groups to deploy.</summary>
+    public IReadOnlyList<RuntimeDeploymentData> Data { get; init; } = [];
+
+    /// <summary>Why the <c>data</c> node is unusable (the reference throws reading it), or null.</summary>
+    public string? DataInvalid { get; init; }
+}
+
+/// <summary>
+/// DeploymentData: an alien rank (or a custom unit type), quantities by difficulty (low, medium, high), random extras
+/// (<c>dQty</c>, <c>extraQty</c>), the chance to deploy outside the UFO, and the item sets by alien item level.
+/// </summary>
+public sealed record RuntimeDeploymentData(
+    int AlienRank,
+    string CustomUnitType,
+    int LowQuantity,
+    int MediumQuantity,
+    int HighQuantity,
+    int DifficultyQuantity,
+    int ExtraQuantity,
+    int PercentageOutsideUfo,
+    IReadOnlyList<IReadOnlyList<string>> ItemSets,
+    IReadOnlyList<IReadOnlyList<string>> ExtraRandomItems)
+{
+    internal static IReadOnlyList<RuntimeDeploymentData> ReadAll(IReadOnlyList<Oxce.Formats.Yaml.YamlNode> nodes, out string? invalid)
+    {
+        invalid = null;
+        var result = new List<RuntimeDeploymentData>();
+        try
+        {
+            foreach (var node in nodes)
+            {
+                if (node is not Oxce.Formats.Yaml.YamlMappingNode map)
+                    throw new Oxce.Formats.Yaml.YamlFormatException("Deployment data entries must be mappings.", node.Span);
+                result.Add(new RuntimeDeploymentData(map.ReadInt32("alienRank", 0), map.ReadString("customUnitType", ""),
+                    map.ReadInt32("lowQty", 0), map.ReadInt32("medQty", 0), map.ReadInt32("highQty", 0), map.ReadInt32("dQty", 0),
+                    map.ReadInt32("extraQty", 0), map.ReadInt32("percentageOutsideUfo", 0), Sets(map, "itemSets"), Sets(map, "extraRandomItems")));
+            }
+        }
+        catch (Exception exception) when (exception is Oxce.Formats.Yaml.YamlFormatException or FormatException or InvalidDataException or OverflowException)
+        {
+            invalid = exception.Message;
+        }
+        return Array.AsReadOnly(result.ToArray());
+    }
+
+    private static ReadOnlyCollection<IReadOnlyList<string>> Sets(YamlMappingNode map, string key) =>
+        !map.TryGet(key, out var node) ? Array.AsReadOnly(Array.Empty<IReadOnlyList<string>>())
+            : Array.AsReadOnly(Oxce.Formats.Yaml.YamlValueReader.ReadSequence(node!, static set => (IReadOnlyList<string>)
+                Array.AsReadOnly(Oxce.Formats.Yaml.YamlValueReader.ReadSequence(set, Oxce.Formats.Yaml.YamlValueReader.ReadString))));
 }
 
 /// <summary>Reference: <c>AlienDeployment::getAlienRaceEvolution</c> tuples.</summary>

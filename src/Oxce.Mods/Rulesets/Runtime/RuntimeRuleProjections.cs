@@ -530,6 +530,9 @@ public sealed record RuntimeCampaignSettings(
     RuleHandle<FacilityRuleFamily>? DestroyedFacility,
     IReadOnlyList<RuntimeStartingBaseTemplate> StartingBases)
 {
+    /// <summary>Mod::isDemigod (<c>difficultyDemigod</c>): aliens deploy their maximum random extras.</summary>
+    public bool DifficultyDemigod { get; init; }
+
     /// <summary>Mod::EXTENDED_HWP_LOAD_ORDER: 2x2 vehicles first, 1x1 vehicles after the 2x2 soldiers.</summary>
     public bool ExtendedHwpLoadOrder { get; init; }
 

@@ -11,8 +11,8 @@ Phase 7 branch 1 (`claude/battle-generation`), from `main` at `2b0c81fb`. Plan:
 | S1 battle aggregate | Done (2026-10-18) |
 | S2 runtime battle terrain | Done (2026-10-19) |
 | S3 map generation | Done (2026-10-20) except craft skins |
-| S4 X-COM deployment | S4a (roster and placement) done (2026-10-20); S4b open |
-| S5 alien and civilian deployment | Not started |
+| S4 X-COM deployment | S4a, large units and armor changes done (2026-10-20); items, custom deployments and unit statistics open |
+| S5 alien and civilian deployment | Groundwork (deployment data, alien quantities) done (2026-10-20) |
 | S6 base defense and other entry points | Not started |
 | S7 acceptance and branch audit | Not started |
 
@@ -243,9 +243,8 @@ craft rule's deployment, spawn nodes), `canPlaceXCOMUnit`, `setCustomCraftInvent
   and facing. Runtime content: the craft's `deployment` and inventory tile, the armor's movement type,
   `extendedHwpLoadOrder`, the deployment's `enviroEffects`, the enviro effects' armor transformations and the starting
   condition's armor and equipment restriction flags.
-- Named S4b refusals: units larger than one tile (`setUnitPosition` needs pathfinding's blocked-direction checks),
-  armor transformations and starting-condition armor or equipment restrictions (they change the soldiers' armor and
-  send items home), and `placeUnitNearFriend` once a unit is placed (it also needs the direction checks).
+- Named S4b refusal: starting-condition vehicle and item restrictions (they send vehicles and items home), which arrive
+  with the craft's items. Large units, `placeUnitNearFriend` and armor changes followed in S4b parts 1 and 2 (below).
 - Not yet (S4b): the save-side custom deployments (`customRuleCraftDeployments`, a craft's custom soldier and vehicle
   deployment), which the strategic save does not read yet; the craft's items and their equipment layouts; unit
   statistics.
@@ -253,8 +252,60 @@ craft rule's deployment, spawn nodes), `canPlaceXCOMUnit`, `setCustomCraftInvent
 Tests: `BattleStartTests` (the craft's soldier on the first start tile and inventory tile; a soldier on an X-COM spawn
 node without a craft map); the route expectations follow the X-COM spawn node added to the test block.
 
+## S4b, part 1 — Large units and placement next to a friend (2026-10-20)
+
+Reference: `SavedBattleGame::setUnitPosition` (the direction checks for large units), `placeUnitNearPosition`,
+`BattlescapeGenerator::placeUnitNearFriend`, `Pathfinding::isBlockedDirection` and `isBlocked` (wall and big wall parts),
+`Pathfinding::getMovementType`.
+
+- `BattlePathing.IsBlockedDirection` ports the wall checks of `isBlockedDirection` for all eight directions: west and north
+  walls with impassable wall parts, big walls in the object part and the neighbours' facing big walls, the map edge. The
+  floor part (units in the way, falling), missiles and open UFO doors belong to pathfinding in branch 4; no generation
+  path asks for them. `strictBlockedChecking` is off, its default, until the port has battle options.
+- A unit larger than one tile is placed only where no wall lies between its tiles (east, south-east, south).
+- Without spawn nodes, a unit is placed next to a random placed friend at least as large (ten rounds of up to 100 draws):
+  on the friend's tile, then the eight neighbours not walled off from it, then one level up for a flyer over open air.
+  A neighbour whose halfway tile is outside the map is skipped (the reference would read a missing tile).
+
+Tests: `BattlePathingTests`; `BattleStartTests.VehiclesComeFirstAndALargeVehicleTakesFourStartTiles`.
+
+## S4b, part 2 — Battle armor (2026-10-20)
+
+Reference: `BattlescapeGenerator::deployXCOM` (the armor pass), `RuleEnviroEffects::getArmorTransformation`,
+`RuleStartingCondition::getArmorReplacement`, `WeightedOptions::choose`, `Mod::getRule` (an empty name is no rule).
+
+- Each soldier's battle armor: the environment's transformation (the deployment's `enviroEffects`, else the terrain's)
+  when it is no larger, else for an armor the starting condition does not allow, a weighted pick from its
+  `defaultArmor` for the soldier type ("noChange" keeps it), when it is no larger. The pick draws in base order, before
+  the soldiers are placed, as the reference's pass does.
+- Intentional difference: the reference sets the geoscape soldier's armor for the battle and restores it in the
+  debriefing; the port gives the battle unit the armor (`BattleUnit.ArmorId`, with `OriginalArmorId`) and leaves the
+  soldier unchanged. Branch 2 writes the reference's form into battle saves.
+- Runtime content: the starting condition's allowed and forbidden armors and default armor.
+
+Tests: `BattleStartTests.TheEnvironmentOrTheStartingConditionChangesTheSoldiersBattleArmor`.
+
+## S5 groundwork — Deployment data and alien quantities (2026-10-20)
+
+Reference: `AlienDeployment::load` (`data`), the `DeploymentData` and `ItemSet` readers, `BattlescapeGenerator::deployAliens`
+(race and quantity per group), `AlienRace::getMember`, `Mod::isDemigod`.
+
+- `RuntimeDeploymentBattle.Data` (`RuntimeDeploymentData`): alien rank or custom unit type, low, medium and high
+  quantities, `dQty`, `extraQty`, the chance to deploy outside the UFO, item sets and extra random items. A malformed
+  `data` node is kept as `DataInvalid`, for the deployment to refuse when it runs.
+- `AlienQuantities.Quantity`: the difficulty's base quantity, then the `dQty` and `extraQty` extras, their maximum with
+  `difficultyDemigod` (now in `RuntimeCampaignSettings`) and otherwise random, drawn in that order.
+- `AlienRaces.Resolve` (the deployment's race, else the battle's, with the `_UNDERWATER` variant below the surface; an
+  unknown race refuses) and `AlienRaces.Member` (`AlienRace::getMember`: the rank's random set when the race has random
+  sets, else the rank's member; a missing rank refuses). `RuntimeAlienRaceRule` gains `Members` and `RandomMembers`.
+- Not yet: placement on nodes inside or outside the UFO, alien units and their items by item level, civilians and
+  objectives; deployAliens runs after the X-COM deployment in S5.
+
+Tests: `AlienQuantitiesTests`, `AlienRacesTests`; the deployment data projection in `BattleStartTests`.
+
 ## Next
 
 - Craft skins: the craft's skin index in the strategic save and `refreshMapDataSets`.
-- S4b: the S4a refusals above, save-side custom deployments, the craft's items and equipment layouts (`placeItemByLayout`,
-  `loadWeapons`, `autoEquip`), vehicle items, unit statistics; then S5 and S6.
+- S4b: starting-condition vehicle and item restrictions, save-side custom deployments, the craft's items and equipment layouts (`placeItemByLayout`,
+  `loadWeapons`, `autoEquip`), vehicle items, unit statistics; then the rest of S5 (`deployAliens`, civilians, objectives)
+  and S6.

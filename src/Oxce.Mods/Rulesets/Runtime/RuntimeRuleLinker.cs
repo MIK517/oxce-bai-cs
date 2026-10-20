@@ -384,6 +384,7 @@ public static class RuntimeRuleLinker
             DefeatScore = content.CampaignStart.Settings.DefeatScore,
             DefeatFunds = content.CampaignStart.Settings.DefeatFunds,
             ExtendedHwpLoadOrder = content.CampaignStart.Settings.ExtendedHwpLoadOrder,
+            DifficultyDemigod = content.CampaignStart.Settings.DifficultyDemigod,
             Cutscenes = new ReadOnlyDictionary<string, RuntimeCutscene>(new SortedDictionary<string, RuntimeCutscene>(
                 content.Presentation.Videos.Rules.ToDictionary(static rule => rule.Id,
                     static rule => new RuntimeCutscene(rule.Value.WinGame, rule.Value.LoseGame), StringComparer.Ordinal),
@@ -512,6 +513,8 @@ public static class RuntimeRuleLinker
                 {
                     BaseCustomDeploy = rule.Value.BaseCustomDeploy,
                     BaseCustomMission = rule.Value.BaseCustomMission,
+                    Members = Array.AsReadOnly(rule.Value.Members.ToArray()),
+                    RandomMembers = Array.AsReadOnly(rule.Value.RandomMembers.Select(static set => (IReadOnlyList<string>)Array.AsReadOnly(set.ToArray())).ToArray()),
                 }),
             BuildFamily<StartingConditionRuleFamily, StartingConditionRule, RuntimeStartingCondition>(generation,
                 content.TerrainDeployment.StartingConditions, static rule => new RuntimeStartingCondition(
@@ -521,7 +524,12 @@ public static class RuntimeRuleLinker
                 {
                     CraftTransformations = new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(
                         new Dictionary<string, string>(rule.Value.CraftTransformations, StringComparer.Ordinal)),
-                    RestrictsArmor = rule.Value.NameCollections["allowedArmors"].Count != 0 || rule.Value.NameCollections["forbiddenArmors"].Count != 0,
+                    AllowedArmors = Array.AsReadOnly(rule.Value.NameCollections["allowedArmors"].ToArray()),
+                    ForbiddenArmors = Array.AsReadOnly(rule.Value.NameCollections["forbiddenArmors"].ToArray()),
+                    DefaultArmor = new System.Collections.ObjectModel.ReadOnlyDictionary<string, IReadOnlyDictionary<string, int>>(
+                        rule.Value.DefaultArmor.ToDictionary(static pair => pair.Key, static pair => (IReadOnlyDictionary<string, int>)
+                            new System.Collections.ObjectModel.ReadOnlyDictionary<string, int>(
+                                new Dictionary<string, int>(pair.Value, StringComparer.Ordinal)), StringComparer.Ordinal)),
                     RestrictsEquipment = EquipmentRestrictionKeys.Any(key => rule.Value.NameCollections[key].Count != 0),
                 }),
             BuildFamily<MissionScriptRuleFamily, StrategicScriptRule, RuntimeMissionScriptRule>(generation,
@@ -783,6 +791,8 @@ public static class RuntimeRuleLinker
                     MinimumDepth = source.Depth.Count > 0 ? source.Depth[0] : 0,
                     MaximumDepth = source.Depth.Count > 1 ? source.Depth[1] : 0,
                     CustomUfo = source.Strings["customUfo"],
+                    Data = RuntimeDeploymentData.ReadAll(source.DeploymentData, out var dataInvalid),
+                    DataInvalid = dataInvalid,
                 },
             };
         }
