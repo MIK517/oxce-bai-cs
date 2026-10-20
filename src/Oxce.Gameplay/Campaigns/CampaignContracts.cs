@@ -19,7 +19,9 @@ public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool Ca
     bool AggressiveRetaliation = true, bool CraftLaunchAlways = false, bool SuppressLandingWithoutEquipment = false,
     bool SuppressRedundantHunterAlert = true, bool RetainCorpses = false, bool DogfightAI = true,
     bool RememberDisabledCraftWeapons = false, bool GlobeSeasons = false, int WoundedDefendBaseIf = 100,
-    bool PsiStrengthEval = false, bool GeoscapeEventsInstantDelivery = true, bool Autosave = true)
+    bool PsiStrengthEval = false, bool GeoscapeEventsInstantDelivery = true, bool Autosave = true,
+    bool DisableAutoEquip = false, bool AlternateCraftEquipmentManagement = false, int PreprimeGrenades = 0,
+    bool IncludePrimeStateInSavedLayout = false)
 {
     /// <summary>Every option with its external key, in record order (the order saves write them).</summary>
     public static IReadOnlyList<CampaignOptionField> Fields { get; } =
@@ -49,6 +51,13 @@ public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool Ca
         CampaignOptionField.Flag("oxceGeoscapeEventsInstantDelivery", o => o.GeoscapeEventsInstantDelivery,
             (o, v) => o with { GeoscapeEventsInstantDelivery = v }),
         CampaignOptionField.Flag("autosave", o => o.Autosave, (o, v) => o with { Autosave = v }),
+        // Battle equipment (BattlescapeGenerator::deployXCOM, autoEquip, placeItemByLayout).
+        CampaignOptionField.Flag("disableAutoEquip", o => o.DisableAutoEquip, (o, v) => o with { DisableAutoEquip = v }),
+        CampaignOptionField.Flag("oxceAlternateCraftEquipmentManagement", o => o.AlternateCraftEquipmentManagement,
+            (o, v) => o with { AlternateCraftEquipmentManagement = v }),
+        CampaignOptionField.Number("preprimeGrenades", true, o => o.PreprimeGrenades, (o, v) => o with { PreprimeGrenades = v }),
+        CampaignOptionField.Flag("includePrimeStateInSavedLayout", o => o.IncludePrimeStateInSavedLayout,
+            (o, v) => o with { IncludePrimeStateInSavedLayout = v }),
     ];
 
     /// <summary>

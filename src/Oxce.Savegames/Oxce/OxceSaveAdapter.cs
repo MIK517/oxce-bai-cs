@@ -876,6 +876,7 @@ public static partial class OxceSaveAdapter
             ReplacedArmor = map.ReadString("replacedArmor", ""),
             TransformedArmor = map.ReadString("transformedArmor", ""),
             PersonalEquipmentArmor = map.ReadString("personalEquipmentArmor", ""),
+            EquipmentLayout = ReadEquipmentLayout(map, content),
             Recovery = (float)map.ReadDouble("recovery", 0),
             PsiTraining = map.ReadBoolean("psiTraining", false),
             Training = map.ReadBoolean("training", false),
@@ -886,6 +887,35 @@ public static partial class OxceSaveAdapter
 
         ReadOnlyDictionary<string, short> Stats(string key) => new(ReadIntMap(map, key).ToDictionary(
             p => p.Key, p => checked((short)p.Value), StringComparer.Ordinal));
+    }
+
+    // Soldier::load: an entry whose item, section or ammunition does not exist is logged and skipped.
+    private static ReadOnlyCollection<SoldierLayoutItem> ReadEquipmentLayout(YamlMappingNode soldier, RuntimeContent content)
+    {
+        var rules = content.RuntimeRules;
+        var result = new List<SoldierLayoutItem>();
+        foreach (var entry in Maps(soldier, "equipmentLayout"))
+        {
+            var item = entry.ReadString("itemType", "");
+            var slot = entry.ReadString("slot", "");
+            if (!rules.Items.TryGet(item, out _) || !rules.Inventories.TryGet(slot, out _)) continue;
+            var ammo = new string[4];
+            Array.Fill(ammo, "");
+            if (entry.TryGet("ammoItemSlots", out var slots) && slots is YamlSequenceNode sequence)
+            {
+                // EquipmentLayoutItem::load reads up to four slots, stopping at the first missing one; NONE is empty.
+                for (var index = 0; index < Math.Min(4, sequence.Items.Count); index++)
+                {
+                    var name = YamlValueReader.ReadString(sequence.Items[index]);
+                    ammo[index] = name == "NONE" ? "" : name;
+                }
+            }
+            else if (entry.TryGet("ammoItem", out var single)) ammo[0] = YamlValueReader.ReadString(single!);
+            if (ammo.Any(name => name.Length != 0 && !rules.Items.TryGet(name, out _))) continue;
+            result.Add(new(item, slot, entry.ReadInt32("slotX", 0), entry.ReadInt32("slotY", 0), Array.AsReadOnly(ammo),
+                entry.ReadInt32("fuseTimer", -1), entry.ReadBoolean("fixed", false)));
+        }
+        return result.AsReadOnly();
     }
 
     private static CraftSnapshot ReadCraft(YamlMappingNode map, WorldMarkerIndex markers, RuntimeContent content)
