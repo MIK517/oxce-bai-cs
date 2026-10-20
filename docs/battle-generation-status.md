@@ -393,8 +393,43 @@ Reference: `AlienDeployment::load` (`data`), the `DeploymentData` and `ItemSet` 
 
 Tests: `AlienQuantitiesTests`, `AlienRacesTests`; the deployment data projection in `BattleStartTests`.
 
+
+## S5, part 1 — Alien units (2026-10-21)
+
+Reference: `BattlescapeGenerator::run` (alien item level, the alien custom deployment, the "no alien units" check),
+`deployAliens`, `addAlien`, `Node::nodeRank`, `SavedBattleGame::createTempUnit`, `BattleUnit::adjustStats`,
+`UnitStats::percent`, `Mod::getStatAdjustment`, `getAlienItemLevels`, `TileEngine::faceWindow`, `BattleUnit::directionTo`,
+`Position::distance2d`, `Mod::loadFile` (`alienItemLevels`, `statGrowthMultipliers`, `statGrowthMultipliersAbs`,
+`aimAndArmorMultipliers`, `aimMultipliers`, `armorMultipliers`, `armorMultipliersAbs`, `extendedForceSpawn`).
+
+- Settings: `alienItemLevels`, the five difficulties' stat adjustments and `extendedForceSpawn` are parsed into the
+  campaign start settings and projected (`RuntimeCampaignSettings.AlienItemLevels`, `StatAdjustments`,
+  `ExtendedForceSpawn`). Deployments project `forcePercentageOutsideUfo` and their civilian fields.
+- `BattlePlacement` holds what X-COM and alien placement share (spawn nodes by rank, setUnitPosition's checks, placing
+  near a friend).
+- `AlienDeployment`: the alien custom deployment when it has data, else the battle's; the race (deployment's, else the
+  battle's, `_UNDERWATER` when deep); reinforcement deployment, race and item level recorded; the alien item level is
+  the month capped at the mod's last. Per group and alien, in the reference's draw order: the quantity, the damaged-UFO
+  skip, the race member or custom unit, the outside chance (only with a UFO unless forced), the spawn node (outside: rank
+  0 only; else the rank's seven node ranks), the item level draw, then `initUnit` with that item level and the group's
+  item set and extra random items. A placed alien faces a window, or the first unit when within 20 tiles and the
+  difficulty's odds hit, else a random direction; without a node it is placed near a friend on demigod or with
+  `extendedForceSpawn`. Hostile statistics: the unit's plus its armor's, then percentage growth times the difficulty
+  coefficient, the firing multiplier and absolute growth. Unit IDs continue after the X-COM vehicles.
+- `BattleUnit.Rank` and `StartNodeId` (the AI start node); `BattleState.AlienItemLevel` and the reinforcement fields.
+- Refusals: a deployment with civilians (until part 2); a missing alien item level row or one shorter than ten; a
+  negative alien rank (the reference indexes before the table); an unknown unit.
+- Fixed: the cargo distribution's flare check used the request's shade instead of the battle's world shade.
+- Not yet: the armor values `adjustStats` scales (armor arrives with combat, branch 5), civilians, objectives, UFO power
+  sources, the weapon pile option, crashed-UFO damage.
+
+Tests: `BattleStartTests.AliensSpawnOnNodesByRankWithDifficultyStatisticsAndTheirItemSet`; every battle scenario now
+deploys an alien, as a generated battle must have one.
+
 ## Next
 
 - Craft skins: the craft's skin index in the strategic save and `refreshMapDataSets`.
 - S4b: starting-condition vehicle and item restrictions (they send disabled vehicles and items back to base storage),
-  save-side custom deployments; then the rest of S5 (`deployAliens`, civilians, objectives) and S6.
+  save-side custom deployments.
+- S5: civilians (`deployCivilians`, before the aliens for a positive civilian spawn node rank), objectives
+  (`setupObjectives`), the weapon pile, UFO power sources (`fuelPowerSources`, crashed `explodePowerSources`); then S6.

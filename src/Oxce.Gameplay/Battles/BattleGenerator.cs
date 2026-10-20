@@ -14,6 +14,8 @@ namespace Oxce.Gameplay.Battles;
 /// </summary>
 internal static class BattleGenerator
 {
+    internal const string CivilianDeployment = "Deployments with civilians arrive with the civilian deployment (Phase 7 branch 1 S5).";
+
     /// <summary>Why no battle can be generated from the request, or null.</summary>
     public static CampaignReason? Refusal(CampaignState campaign, CampaignDeploymentRequest request) =>
         Deployment(campaign, request) is null ? CampaignBattles.NoBattleDeployment : null;
@@ -63,7 +65,14 @@ internal static class BattleGenerator
         };
         // run: the deployment's environmental effects, else the terrain's.
         var enviro = rules.Battle.EnviroArmorTransformations.ContainsKey(battle.EnviroEffects) ? battle.EnviroEffects : terrain.EnviroEffects;
-        XcomDeployment.Deploy(campaign, request, state, generated, inputs.StartingCondition, enviro);
+        var unitSequence = XcomDeployment.Deploy(campaign, request, state, generated, inputs.StartingCondition, enviro);
+        if (battle.Civilians != 0 || battle.CiviliansByType.Count != 0)
+            throw new MapGenerationException(CivilianDeployment);
+        // run: the alien custom deployment when it has data, else the battle's deployment.
+        var (alienId, alienDeployment) = request.AlienCustomDeploymentId.Length != 0 &&
+            rules.AlienDeployments.TryGet(request.AlienCustomDeploymentId, out var custom) && rules.AlienDeployments[custom].Value.Battle.Data.Count != 0
+            ? (request.AlienCustomDeploymentId, rules.AlienDeployments[custom].Value) : (id, deployment);
+        AlienDeployment.Deploy(campaign, request, state, alienId, alienDeployment, unitSequence);
         return state;
     }
 

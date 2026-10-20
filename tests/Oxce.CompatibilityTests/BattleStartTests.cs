@@ -28,39 +28,53 @@ public sealed class BattleStartTests
             cheatTurn: 12
             shade: 9
             terrains: [TEST_TERRAIN]
+            race: RACE_TEST
             data:
               - {alienRank: 2, lowQty: 1, highQty: 3, dQty: 1, percentageOutsideUfo: 50, itemSets: [[ITEM_A], [ITEM_B, ITEM_C]]}
-              - {customUnitType: VEHICLE, lowQty: 1}
+              - {customUnitType: VEHICLE, lowQty: 1, itemSets: [[]]}
+          - type: UFO_ALIENS
+            width: 20
+            length: 20
+            height: 2
+            terrains: [TEST_TERRAIN]
+            script: BASIC
+            race: RACE_TEST
+            data: [{alienRank: 2, lowQty: 2, highQty: 2, itemSets: [[GUN, CLIP], [GRENADE]]}]
           - type: UFO_RESIZED
             width: 30
             length: 30
             height: 2
             terrains: [TEST_TERRAIN]
             script: RESIZED
+            data: [{customUnitType: ALIEN, lowQty: 1, itemSets: [[]]}]
           - type: UFO_ROADS
             width: 30
             length: 30
             height: 2
             terrains: [TEST_TERRAIN]
             script: ROADS
+            data: [{customUnitType: ALIEN, lowQty: 1, itemSets: [[]]}]
           - type: UFO_CRAFTED
             width: 30
             length: 30
             height: 2
             terrains: [TEST_TERRAIN]
             script: CRAFTED
+            data: [{customUnitType: ALIEN, lowQty: 1, itemSets: [[]]}]
           - type: UFO_TUNNEL
             width: 20
             length: 10
             height: 2
             terrains: [TEST_TERRAIN]
             script: TUNNEL
+            data: [{customUnitType: ALIEN, lowQty: 1, itemSets: [[]]}]
           - type: UFO_LEVELS
             width: 20
             length: 10
             height: 3
             terrains: [TEST_TERRAIN]
             script: LEVELS
+            data: [{customUnitType: ALIEN, lowQty: 1, itemSets: [[]]}]
           - type: UFO_SUITED
             width: 30
             length: 30
@@ -68,6 +82,7 @@ public sealed class BattleStartTests
             terrains: [TEST_TERRAIN]
             script: CRAFTED
             enviroEffects: ENV_SUIT
+            data: [{customUnitType: ALIEN, lowQty: 1, itemSets: [[]]}]
           - type: UFO_REPLACED
             width: 30
             length: 30
@@ -75,12 +90,14 @@ public sealed class BattleStartTests
             terrains: [TEST_TERRAIN]
             script: CRAFTED
             startingCondition: SC_REPLACE
+            data: [{customUnitType: ALIEN, lowQty: 1, itemSets: [[]]}]
           - type: UFO_UNFILLED
             width: 20
             length: 20
             height: 2
             terrains: [TEST_TERRAIN]
             script: UNFILLED
+            data: [{customUnitType: ALIEN, lowQty: 1, itemSets: [[]]}]
         terrains:
           - name: TEST_TERRAIN
             mapDataSets: [BLANKS, TESTSET]
@@ -92,6 +109,13 @@ public sealed class BattleStartTests
               - {name: CROSSING, width: 10, length: 10, groups: [4]}
               - {name: ROOF, width: 10, length: 10, height: 1, groups: [6]}
             script: BASIC
+        alienItemLevels: [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
+        statGrowthMultipliers: {tu: 10}
+        statGrowthMultipliersAbs: [{}, {}, {tu: 5}]
+        aimMultipliers: [1, 1, 0.5]
+        alienRaces:
+          - id: RACE_TEST
+            members: [ALIEN, ALIEN, ALIEN, ALIEN, ALIEN, ALIEN, ALIEN, ALIEN]
         invs:
           - id: STR_GROUND
             type: 2
@@ -163,6 +187,9 @@ public sealed class BattleStartTests
           - type: VEHICLE_B
             fixedWeapon: true
         units:
+          - type: ALIEN
+            armor: SMALL_VEHICLE_ARMOR
+            stats: {tu: 50, firing: 61}
           - type: VEHICLE
             armor: VEHICLE_ARMOR
             stats: {tu: 60, health: 50}
@@ -233,9 +260,9 @@ public sealed class BattleStartTests
         ["MAPS/BIG.MAP"] = Map(10, 20, 3, 0),
         ["ROUTES/BIG.RMP"] = [],
         ["MAPS/SMALL.MAP"] = Map(10, 10, 2),
-        // A node on the east edge linking east (253), west (251) and to the second node, which lies outside the
+        // A node on the east edge (an alien spawn node, rank 4) linking east (253), west (251) and to the second node, which lies outside the
         // block (x 12) and is culled; then an X-COM spawn node (rank 1, priority 1).
-        ["ROUTES/SMALL.RMP"] = [.. RouteNode(9, 5, 0, [253, 251, 1], rank: 4), .. RouteNode(12, 5, 0, []),
+        ["ROUTES/SMALL.RMP"] = [.. RouteNode(9, 5, 0, [253, 251, 1], rank: 4, priority: 1), .. RouteNode(12, 5, 0, []),
             .. RouteNode(2, 2, 0, [], rank: 1, priority: 1)],
         ["MAPS/ROAD_EW.MAP"] = Map(10, 10, 2),
         ["ROUTES/ROAD_EW.RMP"] = [],
@@ -270,6 +297,14 @@ public sealed class BattleStartTests
         return (campaign, Assert.IsType<DeploymentRequested>(Assert.Single(result.Events)).Request);
     }
 
+    /// <summary>Starts the battle, reporting the refusal reason when there is one.</summary>
+    private static BattleStarted Started(CampaignState campaign)
+    {
+        var events = campaign.Execute(new StartBattle()).Events;
+        Assert.Equal("", events.OfType<CampaignActionBlocked>().SingleOrDefault()?.Reason.ToString() ?? "");
+        return Assert.IsType<BattleStarted>(Assert.Single(events));
+    }
+
     private static string Refusal(CampaignState campaign, ICampaignCommand command) =>
         Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(command).Events)).Reason;
 
@@ -283,7 +318,7 @@ public sealed class BattleStartTests
         Assert.Equal(("STR_UFO_GROUND_ASSAULT", "UFO_SCOUT"), (request.MissionType, request.DeploymentId));
         Assert.Null(campaign.GetQuery<IBattleQuery>()!.QueryBattle(BattleViewer.LocalPlayer));
 
-        var started = Assert.IsType<BattleStarted>(Assert.Single(campaign.Execute(new StartBattle()).Events));
+        var started = Started(campaign);
         Assert.Equal(new BattleStarted("STR_UFO_GROUND_ASSAULT", "UFO_SCOUT"), started);
         Assert.Null(campaign.GetQuery<ICampaignLandingQuery>()!.QueryDeploymentRequest());
 
@@ -332,7 +367,7 @@ public sealed class BattleStartTests
     public void ResizeCheckBlockRemoveBlockAndConditionalsFollowTheReference()
     {
         var (campaign, _) = Requested(Rules, "UFO_RESIZED");
-        Assert.IsType<BattleStarted>(Assert.Single(campaign.Execute(new StartBattle()).Events));
+        Started(campaign);
         var map = Battle(campaign).Map;
         // resize to 2x2 blocks; BIG on the second row; checkBlock finds nothing on the first row (label 3 fails), so
         // removeBlock runs and takes BIG away (label 4 succeeds), and fillArea fills all four blocks with SMALL.
@@ -345,7 +380,7 @@ public sealed class BattleStartTests
     public void AddLineInBothDirectionsCrossesTheRoadsAndKeepsTheReplacedBlocksName()
     {
         var (campaign, _) = Requested(Rules, "UFO_ROADS");
-        Assert.IsType<BattleStarted>(Assert.Single(campaign.Execute(new StartBattle()).Events));
+        Started(campaign);
         var map = Battle(campaign).Map;
         var names = new string[3, 3];
         for (var x = 0; x < 3; x++)
@@ -365,7 +400,7 @@ public sealed class BattleStartTests
     public void TheCraftAndTheUfoLandOnLandingZonesAndTheirMapsAndRoutesLoadAfterTheScript()
     {
         var (campaign, _) = Requested(Rules, "UFO_CRAFTED");
-        Assert.IsType<BattleStarted>(Assert.Single(campaign.Execute(new StartBattle()).Events));
+        Started(campaign);
         var map = Battle(campaign).Map;
         var cells = Enumerable.Range(0, 9).Select(cell => (X: cell % 3, Y: cell / 3)).ToArray();
         // The block names under a craft or UFO name the craft or UFO type and its map block.
@@ -391,7 +426,7 @@ public sealed class BattleStartTests
         // deployXCOM: the craft's soldier stands on the first start tile of the craft in tile order, which is also the
         // craft inventory tile, and is the selected unit.
         var battle = Battle(campaign);
-        var soldier = Assert.Single(battle.Units);
+        var soldier = Assert.Single(battle.Units, static unit => unit.Faction == BattleFaction.Player);
         var first = new BattlePosition(craft.X * 10, craft.Y * 10, 0);
         Assert.Equal((BattleFaction.Player, first, first, soldier.Id), (soldier.Faction, soldier.Position, battle.CraftInventoryTile, battle.SelectedUnitId));
         Assert.Equal(soldier.Id, map.UnitAt(map.TileIndex(first)));
@@ -404,7 +439,7 @@ public sealed class BattleStartTests
     {
         var (campaign, request) = Requested(Rules, "UFO_CRAFTED", [new("VEHICLE", 0), new("VEHICLE_B", 0)]);
         Assert.Equal(["VEHICLE", "VEHICLE_B"], request.Vehicles);
-        Assert.IsType<BattleStarted>(Assert.Single(campaign.Execute(new StartBattle()).Events));
+        Started(campaign);
         var battle = Battle(campaign);
         var map = battle.Map;
         var craft = Enumerable.Range(0, 9).Select(cell => (X: cell % 3, Y: cell / 3)).Single(cell => map.TerrainName(cell.X, cell.Y) == "SHIP");
@@ -414,7 +449,8 @@ public sealed class BattleStartTests
         Assert.Equal([(BattleState.MaximumSoldierId, "VEHICLE", 2, new BattlePosition(x, y, 0)),
                 (BattleState.MaximumSoldierId + 1, "VEHICLE_B", 1, new BattlePosition(x + 2, y, 0)),
                 (Assert.Single(request.Soldiers), battle.Units[2].UnitType, 1, new BattlePosition(x + 3, y, 0))],
-            battle.Units.Select(static unit => (unit.Id, unit.UnitType, unit.ArmorSize, unit.Position!.Value)));
+            battle.Units.Where(static unit => unit.Faction == BattleFaction.Player)
+                .Select(static unit => (unit.Id, unit.UnitType, unit.ArmorSize, unit.Position!.Value)));
         Assert.Equal(BattleState.MaximumSoldierId, battle.SelectedUnitId);
         // The large vehicle stands on all four of its tiles.
         foreach (var (dx, dy) in new[] { (0, 0), (1, 0), (0, 1), (1, 1) })
@@ -427,7 +463,7 @@ public sealed class BattleStartTests
     {
         var (campaign, request) = Requested(Rules, "UFO_CRAFTED", [new("VEHICLE", 25), new("VEHICLE_B", 0)]);
         Assert.Equal([25, 0], request.VehicleAmmo);
-        Assert.IsType<BattleStarted>(Assert.Single(campaign.Execute(new StartBattle()).Events));
+        Started(campaign);
         var battle = Battle(campaign);
         var (vehicle, small) = (battle.Units[0].Id, battle.Units[1].Id);
         // initUnit's special built-in item (the armor's special weapon, in no section), then addXCOMVehicle's fixed weapon
@@ -462,9 +498,9 @@ public sealed class BattleStartTests
     {
         // The environment puts the soldier in the suit, whose built-in items come in list order with ammunition last.
         var (campaign, _) = Requested(Rules, "UFO_SUITED");
-        Assert.IsType<BattleStarted>(Assert.Single(campaign.Execute(new StartBattle()).Events));
+        Started(campaign);
         var battle = Battle(campaign);
-        var soldier = Assert.Single(battle.Units);
+        var soldier = Assert.Single(battle.Units, static unit => unit.Faction == BattleFaction.Player);
         Assert.Equal(0, soldier.Stats.PsiSkill);
         // The psi-amp special weapon needs psi skill, so the soldier has none. The gun goes to the right hand (C1); the
         // grenade to the storage section cheapest to reach from the empty left hand (the back pack, 2, over the belt, 4);
@@ -478,13 +514,41 @@ public sealed class BattleStartTests
     }
 
     [Fact]
+    public void AliensSpawnOnNodesByRankWithDifficultyStatisticsAndTheirItemSet()
+    {
+        var (campaign, _) = Requested(Rules, "UFO_ALIENS");
+        Assert.Equal(CampaignDifficulty.Veteran, campaign.Difficulty);
+        Started(campaign);
+        var battle = Battle(campaign);
+        var aliens = battle.Units.Where(static unit => unit.Faction == BattleFaction.Hostile).ToArray();
+        // Two rank-2 aliens of the deployment's race on the two SMALL blocks' rank-4 nodes (Node::nodeRank's second
+        // choice for an engineer), numbered after the X-COM units.
+        Assert.Equal(2, aliens.Length);
+        Assert.All(aliens, alien =>
+        {
+            Assert.Equal(("ALIEN", 2, BattleControllerKind.Ai), (alien.UnitType, alien.Rank, alien.Controller.Kind));
+            var node = battle.Map.Nodes.Single(node => !node.IsDummy && node.Id == alien.StartNodeId);
+            Assert.Equal((4, node.Position), (node.Rank, alien.Position!.Value));
+            // Veteran: 10% TU growth times coefficient 2 (50 to 60), firing halved (61 to 30), then the absolute growth (+5 TU).
+            Assert.Equal((65, 30), (alien.TimeUnits, (int)alien.Stats.Firing));
+            // Item level 0's set: the gun in the right hand, the clip loaded into it.
+            var gun = Assert.Single(battle.Items, item => item.OwnerUnitId == alien.Id);
+            Assert.Equal(("GUN", "STR_RIGHT_HAND"), (gun.ItemType, gun.Slot));
+            Assert.Equal("CLIP", battle.Items.Single(item => item.Id == gun.AmmoSlots[0]).ItemType);
+        });
+        Assert.Equal(BattleState.MaximumSoldierId, aliens.Min(static alien => alien.Id));
+        Assert.Equal(("UFO_SCOUT", "RACE_TEST", 0, 0),
+            (battle.ReinforcementsDeployment, battle.ReinforcementsRace, battle.ReinforcementsItemLevel, battle.AlienItemLevel));
+    }
+
+    [Fact]
     public void ASoldierWithALayoutTakesItsLayoutWeaponLoadedWithItsLayoutAmmo()
     {
         var layout = new SoldierLayoutItem("GUN", "STR_RIGHT_HAND", 0, 0, ["CLIP", "", "", ""], -1, false);
         var (campaign, _) = Requested(Rules, "UFO_CRAFTED", items: new Dictionary<string, int> { ["GUN"] = 1, ["CLIP"] = 2 }, layout: [layout]);
-        Assert.IsType<BattleStarted>(Assert.Single(campaign.Execute(new StartBattle()).Events));
+        Started(campaign);
         var battle = Battle(campaign);
-        var soldier = Assert.Single(battle.Units);
+        var soldier = Assert.Single(battle.Units, static unit => unit.Faction == BattleFaction.Player);
         // placeItemByLayout: the gun goes to the layout's slot once the first ground clip loads into it; the extra clip
         // has no layout slot, and a soldier with a layout takes nothing in autoEquip.
         Assert.Equal([(0, "GUN", (int?)soldier.Id, "STR_RIGHT_HAND", (BattlePosition?)null), (1, "CLIP", null, "", null),
@@ -498,9 +562,9 @@ public sealed class BattleStartTests
     public void ASoldierWithoutALayoutIsAutoEquippedFromTheLoadedGroundItems()
     {
         var (campaign, _) = Requested(Rules, "UFO_CRAFTED", items: new Dictionary<string, int> { ["GUN"] = 1, ["CLIP"] = 1, ["GRENADE"] = 1 });
-        Assert.IsType<BattleStarted>(Assert.Single(campaign.Execute(new StartBattle()).Events));
+        Started(campaign);
         var battle = Battle(campaign);
-        var soldier = Assert.Single(battle.Units);
+        var soldier = Assert.Single(battle.Units, static unit => unit.Faction == BattleFaction.Player);
         // loadWeapons loads the clip into the gun on the ground; autoEquip then hands out one item per pass, the heaviest
         // first: the loaded gun to the right hand, then the grenade to the section cheapest from the empty left hand.
         Assert.Equal([(0, "GUN", (int?)soldier.Id, "STR_RIGHT_HAND"), (1, "CLIP", null, ""), (2, "GRENADE", soldier.Id, "STR_BACK_PACK")],
@@ -517,8 +581,8 @@ public sealed class BattleStartTests
         // RuleEnviroEffects::getArmorTransformation, or RuleStartingCondition::getArmorReplacement for a forbidden armor:
         // the battle unit wears the suit (a flyer); the geoscape soldier keeps its own armor.
         var (campaign, request) = Requested(Rules, deployment);
-        Assert.IsType<BattleStarted>(Assert.Single(campaign.Execute(new StartBattle()).Events));
-        var soldier = Assert.Single(Battle(campaign).Units);
+        Started(campaign);
+        var soldier = Assert.Single(Battle(campaign).Units, static unit => unit.Faction == BattleFaction.Player);
         Assert.Equal(("SUIT", "ARMOR", 1), (soldier.ArmorId, soldier.OriginalArmorId, soldier.MovementType));
         var personal = campaign.Capture().Bases[0].Soldiers.Single(state => state.Id == Assert.Single(request.Soldiers)).Personal!;
         Assert.Equal("ARMOR", personal.Armor);
@@ -529,11 +593,11 @@ public sealed class BattleStartTests
     {
         var (campaign, request) = Requested(Rules, "UFO_CRAFTED", items: new Dictionary<string, int> { ["SUPPLY"] = 2 });
         Assert.Equal(2, request.Items["SUPPLY"]);
-        Assert.IsType<BattleStarted>(Assert.Single(campaign.Execute(new StartBattle()).Events));
+        Started(campaign);
         var battle = Battle(campaign);
         // createItemForTile for each item of the craft (IDs in creation order, X-COM property); autoEquip then gives both
         // to the soldier, who has no layout: the belt, cheapest from the empty right hand, cell by cell.
-        var soldier = Assert.Single(battle.Units);
+        var soldier = Assert.Single(battle.Units, static unit => unit.Faction == BattleFaction.Player);
         Assert.Equal([(0, "SUPPLY", (int?)soldier.Id, "STR_BELT", 0, true), (1, "SUPPLY", soldier.Id, "STR_BELT", 1, true)],
             battle.Items.Select(static item => (item.Id, item.ItemType, item.OwnerUnitId, item.Slot, item.SlotX, item.XcomProperty)));
         Assert.Equal(2, battle.NextItemId);
@@ -543,11 +607,11 @@ public sealed class BattleStartTests
     public void WithoutACraftMapTheSoldierSpawnsOnAnXcomNode()
     {
         var (campaign, request) = Requested(Rules);
-        Assert.IsType<BattleStarted>(Assert.Single(campaign.Execute(new StartBattle()).Events));
+        Started(campaign);
         var battle = Battle(campaign);
         // getSpawnNode: the X-COM nodes (rank 1) share the highest priority; the soldier takes one of them, with a random
         // facing, and its tile is the inventory tile.
-        var soldier = Assert.Single(battle.Units);
+        var soldier = Assert.Single(battle.Units, static unit => unit.Faction == BattleFaction.Player);
         Assert.Equal(Assert.Single(request.Soldiers), soldier.Id);
         var spawns = battle.Map.Nodes.Where(static node => !node.IsDummy && node.Rank == 1).Select(static node => node.Position).ToArray();
         Assert.Equal(2, spawns.Length);
@@ -561,7 +625,7 @@ public sealed class BattleStartTests
     public void DigTunnelOpensTheMarkedEdgeBetweenTwoBlocks()
     {
         var (campaign, _) = Requested(Rules, "UFO_TUNNEL");
-        Assert.IsType<BattleStarted>(Assert.Single(campaign.Execute(new StartBattle()).Events));
+        Started(campaign);
         var map = Battle(campaign).Map;
         (int, int) Part(int x, int y, BattleTilePart part) => map.Part(map.TileIndex(new(x, y, 0)), part);
         // drillModules east across rows 3-6: the floor replacement (TESTSET 1) on the west block's last column, the north
@@ -580,7 +644,7 @@ public sealed class BattleStartTests
     public void VerticalLevelsStackTheGroundAFillerAndTheReservedCeiling()
     {
         var (campaign, _) = Requested(Rules, "UFO_LEVELS");
-        Assert.IsType<BattleStarted>(Assert.Single(campaign.Execute(new StartBattle()).Events));
+        Started(campaign);
         var map = Battle(campaign).Map;
         (int, int) Floor(int x, int z) => map.Part(map.TileIndex(new(x, 5, z)), BattleTilePart.Floor);
         // On each block: the ground (SMALL, one level), the ceiling reserved first (ROOF, height 1 from its rule),

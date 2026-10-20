@@ -18,7 +18,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 211 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 213 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 99 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
@@ -337,7 +337,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 211 files.
+`src/Oxce.Gameplay` - 213 files.
 
 ### `Oxce.Gameplay`
 
@@ -783,6 +783,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StartingBaseVariant` (enum) [CampaignStartSettings.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartSettings.cs)
 - `CampaignStartTime` (record) [CampaignStartSettings.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartSettings.cs)
 - `CampaignStartSettings` (class) [CampaignStartSettings.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartSettings.cs)
+- `StatAdjustmentSettings` (record) [CampaignStartSettings.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartSettings.cs) - StatAdjustment without its growth multiplier: percentage and absolute stat growth, aim and armor multipliers.
 
 ### `Oxce.Mods.Rulesets.Content`
 
@@ -988,6 +989,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RuntimeCampaignSettings` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
 - `RuntimeScriptFamily` (struct) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
 - `RuntimeScriptRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeStatAdjustment` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs) - StatAdjustment: percentage and absolute stat growth, aim and armor multipliers (the growth multiplier is the difficulty coefficient).
 - `RuntimeSoldierNamePool` (record) [RuntimeSoldierNamePool.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeSoldierNamePool.cs)
 - `RuntimeSoldierTemplate` (record) [RuntimeSoldierTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeSoldierTemplate.cs)
 - `RuntimeScriptTrigger<TFamily>` (record) [RuntimeStrategicScriptRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeStrategicScriptRules.cs) - A trigger retains missing IDs: negative tests of absent rules can be meaningful.

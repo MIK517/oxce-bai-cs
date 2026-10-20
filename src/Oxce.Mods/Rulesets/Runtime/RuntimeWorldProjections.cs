@@ -345,6 +345,16 @@ public sealed record RuntimeDeploymentBattle(
     /// <summary>AlienDeployment <c>customUfo</c>: the UFO an addUFO command uses when the battle has none.</summary>
     public string CustomUfo { get; init; } = "";
 
+    /// <summary>AlienDeployment <c>forcePercentageOutsideUfo</c>: outside spawns apply without a UFO too.</summary>
+    public bool ForcePercentageOutsideUfo { get; init; }
+
+    /// <summary>AlienDeployment <c>civilians</c>, <c>civiliansByType</c> and <c>civilianSpawnNodeRank</c>.</summary>
+    public int Civilians { get; init; }
+
+    public IReadOnlyDictionary<string, int> CiviliansByType { get; init; } = new System.Collections.ObjectModel.ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
+
+    public int CivilianSpawnNodeRank { get; init; }
+
     /// <summary>AlienDeployment <c>data</c>: the alien groups to deploy.</summary>
     public IReadOnlyList<RuntimeDeploymentData> Data { get; init; } = [];
 

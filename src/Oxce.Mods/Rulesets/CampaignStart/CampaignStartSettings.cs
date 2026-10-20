@@ -62,6 +62,9 @@ public sealed class CampaignStartSettings
         DefeatFunds = builder.DefeatFunds;
         DifficultyDemigod = builder.DifficultyDemigod;
         ExtendedHwpLoadOrder = builder.ExtendedHwpLoadOrder;
+        ExtendedForceSpawn = builder.ExtendedForceSpawn;
+        AlienItemLevels = Array.AsReadOnly(builder.AlienItemLevels.Select(static levels => (IReadOnlyList<int>)levels.AsReadOnly()).ToArray());
+        StatAdjustments = Array.AsReadOnly(builder.StatAdjustments.Select(static adjustment => adjustment.Build()).ToArray());
         BaseNamesFirst = builder.BaseNamesFirst.AsReadOnly();
         BaseNamesMiddle = builder.BaseNamesMiddle.AsReadOnly();
         BaseNamesLast = builder.BaseNamesLast.AsReadOnly();
@@ -211,6 +214,19 @@ public sealed class CampaignStartSettings
 
     /// <summary>Mod::EXTENDED_HWP_LOAD_ORDER (<c>extendedHwpLoadOrder</c>): 2x2 vehicles first, 1x1 vehicles after the 2x2 soldiers.</summary>
     public bool ExtendedHwpLoadOrder { get; init; }
+
+    /// <summary>Mod::EXTENDED_FORCE_SPAWN (<c>extendedForceSpawn</c>): aliens without a spawn node are placed near a friend.</summary>
+    public bool ExtendedForceSpawn { get; init; }
+
+    /// <summary>Mod::getAlienItemLevels: for each month, ten item levels one of which an alien draws.</summary>
+    public IReadOnlyList<IReadOnlyList<int>> AlienItemLevels { get; init; } = [];
+
+    /// <summary>
+    /// Mod::getStatAdjustment for each of the five difficulties (statGrowthMultipliers, statGrowthMultipliersAbs,
+    /// aimAndArmorMultipliers, aimMultipliers, armorMultipliers, armorMultipliersAbs); the growth multiplier is the
+    /// difficulty coefficient.
+    /// </summary>
+    public IReadOnlyList<StatAdjustmentSettings> StatAdjustments { get; init; } = [];
     public IReadOnlyList<string> BaseNamesFirst { get; }
     public IReadOnlyList<string> BaseNamesMiddle { get; }
     public IReadOnlyList<string> BaseNamesLast { get; }
@@ -287,6 +303,9 @@ internal sealed class CampaignStartSettingsBuilder
     public int DefeatFunds { get; set; }
     public bool DifficultyDemigod { get; set; }
     public bool ExtendedHwpLoadOrder { get; set; }
+    public bool ExtendedForceSpawn { get; set; }
+    public List<List<int>> AlienItemLevels { get; set; } = [];
+    public StatAdjustmentBuilder[] StatAdjustments { get; } = [new(0.5, 0.5), new(1, 1), new(1, 1), new(1, 1), new(1, 1)];
     public List<string> BaseNamesFirst { get; } = [];
     public List<string> BaseNamesMiddle { get; } = [];
     public List<string> BaseNamesLast { get; } = [];
@@ -295,4 +314,26 @@ internal sealed class CampaignStartSettingsBuilder
     public Dictionary<string, string> FixedUserOptions { get; } = new(StringComparer.Ordinal);
     public CampaignInterceptionSettingsBuilder Interception { get; } = new();
     public CampaignMonthlySettingsBuilder Monthly { get; } = new();
+}
+
+/// <summary>StatAdjustment without its growth multiplier: percentage and absolute stat growth, aim and armor multipliers.</summary>
+public sealed record StatAdjustmentSettings(
+    IReadOnlyDictionary<string, short> StatGrowth,
+    IReadOnlyDictionary<string, short> StatGrowthAbsolute,
+    double AimMultiplier,
+    double ArmorMultiplier,
+    int ArmorMultiplierAbsolute);
+
+internal sealed class StatAdjustmentBuilder(double aim, double armor)
+{
+    public Dictionary<string, short> StatGrowth { get; } = new(StringComparer.Ordinal);
+    public Dictionary<string, short> StatGrowthAbsolute { get; } = new(StringComparer.Ordinal);
+    public double AimMultiplier { get; set; } = aim;
+    public double ArmorMultiplier { get; set; } = armor;
+    public int ArmorMultiplierAbsolute { get; set; }
+
+    public StatAdjustmentSettings Build() => new(
+        new System.Collections.ObjectModel.ReadOnlyDictionary<string, short>(new Dictionary<string, short>(StatGrowth, StringComparer.Ordinal)),
+        new System.Collections.ObjectModel.ReadOnlyDictionary<string, short>(new Dictionary<string, short>(StatGrowthAbsolute, StringComparer.Ordinal)),
+        AimMultiplier, ArmorMultiplier, ArmorMultiplierAbsolute);
 }

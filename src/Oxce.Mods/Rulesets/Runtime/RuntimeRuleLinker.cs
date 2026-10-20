@@ -384,6 +384,14 @@ public static class RuntimeRuleLinker
             DefeatScore = content.CampaignStart.Settings.DefeatScore,
             DefeatFunds = content.CampaignStart.Settings.DefeatFunds,
             ExtendedHwpLoadOrder = content.CampaignStart.Settings.ExtendedHwpLoadOrder,
+            ExtendedForceSpawn = content.CampaignStart.Settings.ExtendedForceSpawn,
+            AlienItemLevels = Array.AsReadOnly(content.CampaignStart.Settings.AlienItemLevels
+                .Select(static levels => (IReadOnlyList<int>)Array.AsReadOnly(levels.ToArray())).ToArray()),
+            StatAdjustments = Array.AsReadOnly(content.CampaignStart.Settings.StatAdjustments.Select(static adjustment =>
+                new RuntimeStatAdjustment(
+                    new ReadOnlyDictionary<string, short>(adjustment.StatGrowth.ToDictionary(static pair => pair.Key, static pair => pair.Value, StringComparer.Ordinal)),
+                    new ReadOnlyDictionary<string, short>(adjustment.StatGrowthAbsolute.ToDictionary(static pair => pair.Key, static pair => pair.Value, StringComparer.Ordinal)),
+                    adjustment.AimMultiplier, adjustment.ArmorMultiplier, adjustment.ArmorMultiplierAbsolute)).ToArray()),
             DifficultyDemigod = content.CampaignStart.Settings.DifficultyDemigod,
             Cutscenes = new ReadOnlyDictionary<string, RuntimeCutscene>(new SortedDictionary<string, RuntimeCutscene>(
                 content.Presentation.Videos.Rules.ToDictionary(static rule => rule.Id,
@@ -791,6 +799,11 @@ public static class RuntimeRuleLinker
                     MinimumDepth = source.Depth.Count > 0 ? source.Depth[0] : 0,
                     MaximumDepth = source.Depth.Count > 1 ? source.Depth[1] : 0,
                     CustomUfo = source.Strings["customUfo"],
+                    ForcePercentageOutsideUfo = source.Booleans["forcePercentageOutsideUfo"],
+                    Civilians = source.Integers["civilians"],
+                    CivilianSpawnNodeRank = source.Integers["civilianSpawnNodeRank"],
+                    CiviliansByType = new ReadOnlyDictionary<string, int>(source.CiviliansByType.ToDictionary(
+                        static pair => pair.Key, static pair => pair.Value, StringComparer.Ordinal)),
                     Data = RuntimeDeploymentData.ReadAll(source.DeploymentData, out var dataInvalid),
                     DataInvalid = dataInvalid,
                 },

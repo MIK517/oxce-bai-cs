@@ -71,6 +71,14 @@ internal sealed class BattleState
 
     public IReadOnlyList<BattleUnit> Units => _units;
 
+    /// <summary>SavedBattleGame::getAlienItemLevel: the month row of Mod::getAlienItemLevels the aliens draw from.</summary>
+    public int AlienItemLevel { get; internal set; }
+
+    /// <summary>SavedBattleGame's reinforcements deployment, race and item level (the alien deployment's, kept for later waves).</summary>
+    public string ReinforcementsDeployment { get; internal set; } = "";
+    public string ReinforcementsRace { get; internal set; } = "";
+    public int ReinforcementsItemLevel { get; internal set; }
+
     /// <summary>SavedBattleGame::getItems, in creation order.</summary>
     public IReadOnlyList<BattleItem> Items => _items;
 
@@ -222,6 +230,12 @@ internal sealed class BattleUnit
     public int Mana { get; set; }
     public int Morale { get; set; } = 100;
     public int StunLevel { get; set; }
+
+    /// <summary>BattleUnit::getRankInt (aliens: the deployment rank).</summary>
+    public int Rank { get; set; }
+
+    /// <summary>AIModule::setStartNode: the node an alien spawned on, or null.</summary>
+    public int? StartNodeId { get; set; }
 
     /// <summary>BattleUnit::getTurretType: the turret sprite of a vehicle's weapon, -1 without one.</summary>
     public int TurretType { get; set; } = -1;

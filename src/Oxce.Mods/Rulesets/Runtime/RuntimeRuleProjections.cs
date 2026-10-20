@@ -536,6 +536,15 @@ public sealed record RuntimeCampaignSettings(
     /// <summary>Mod::EXTENDED_HWP_LOAD_ORDER: 2x2 vehicles first, 1x1 vehicles after the 2x2 soldiers.</summary>
     public bool ExtendedHwpLoadOrder { get; init; }
 
+    /// <summary>Mod::EXTENDED_FORCE_SPAWN.</summary>
+    public bool ExtendedForceSpawn { get; init; }
+
+    /// <summary>Mod::getAlienItemLevels.</summary>
+    public IReadOnlyList<IReadOnlyList<int>> AlienItemLevels { get; init; } = [];
+
+    /// <summary>Mod::getStatAdjustment by difficulty, without the growth multiplier (the difficulty coefficient).</summary>
+    public IReadOnlyList<RuntimeStatAdjustment> StatAdjustments { get; init; } = [];
+
     public RuntimeGlobe Globe { get; init; } = RuntimeGlobe.Empty;
     public int BuildTimeReductionScaling { get; init; } = 100;
     public int CustomTrainingFactor { get; init; } = 100;
@@ -582,3 +591,11 @@ public sealed record RuntimeCampaignSettings(
 public readonly struct RuntimeScriptFamily;
 
 public sealed record RuntimeScriptRule(ContentScriptArtifact Artifact);
+
+/// <summary>StatAdjustment: percentage and absolute stat growth, aim and armor multipliers (the growth multiplier is the difficulty coefficient).</summary>
+public sealed record RuntimeStatAdjustment(
+    IReadOnlyDictionary<string, short> StatGrowth,
+    IReadOnlyDictionary<string, short> StatGrowthAbsolute,
+    double AimMultiplier,
+    double ArmorMultiplier,
+    int ArmorMultiplierAbsolute);
