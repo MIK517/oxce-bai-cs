@@ -95,6 +95,16 @@ public sealed class BattleStartTests
         invs:
           - id: STR_GROUND
             type: 2
+          - id: STR_RIGHT_HAND
+            type: 1
+          - id: STR_LEFT_HAND
+            type: 1
+          - id: STR_BELT
+            slots: [[0, 0], [1, 0]]
+            costs: {STR_RIGHT_HAND: 4, STR_LEFT_HAND: 4}
+          - id: STR_BACK_PACK
+            slots: [[0, 0]]
+            costs: {STR_RIGHT_HAND: 8, STR_LEFT_HAND: 2}
         enviroEffects:
           - type: ENV_SUIT
             armorTransformations: {ARMOR: SUIT}
@@ -105,28 +115,57 @@ public sealed class BattleStartTests
         armors:
           - type: SUIT
             movementType: 1
+            builtInWeapons: [GUN, CLIP, GRENADE]
+            specialWeapon: AMP
             storeItem: SUPPLY
             corpseBattle: [CORPSE]
             corpseGeo: CORPSE
             loftempsSet: [0]
           - type: VEHICLE_ARMOR
             size: 2
+            allowInv: false
+            specialWeapon: RAM
+            stats: {tu: 10}
             corpseBattle: [CORPSE, CORPSE, CORPSE, CORPSE]
             corpseGeo: CORPSE
             loftempsSet: [0, 0, 0, 0]
           - type: SMALL_VEHICLE_ARMOR
             size: 1
+            allowInv: false
             corpseBattle: [CORPSE]
             corpseGeo: CORPSE
             loftempsSet: [0]
         items:
           - type: VEHICLE
             fixedWeapon: true
+            battleType: 1
+            compatibleAmmo: [VEHICLE_AMMO]
+            turretType: 2
+          - type: VEHICLE_AMMO
+            battleType: 2
+            clipSize: 30
+          - type: RAM
+            battleType: 3
+            clipSize: -1
+          - type: GUN
+            battleType: 1
+            compatibleAmmo: [CLIP]
+            weight: 1
+          - type: CLIP
+            battleType: 2
+            clipSize: 12
+            weight: 1
+          - type: GRENADE
+            battleType: 4
+            weight: 1
+          - type: AMP
+            battleType: 9
           - type: VEHICLE_B
             fixedWeapon: true
         units:
           - type: VEHICLE
             armor: VEHICLE_ARMOR
+            stats: {tu: 60, health: 50}
           - type: VEHICLE_B
             armor: SMALL_VEHICLE_ARMOR
         crafts:
@@ -380,6 +419,61 @@ public sealed class BattleStartTests
         foreach (var (dx, dy) in new[] { (0, 0), (1, 0), (0, 1), (1, 1) })
             Assert.Equal(BattleState.MaximumSoldierId, map.UnitAt(map.TileIndex(new(x + dx, y + dy, 0))));
         Assert.Null(battle.Units[0].SoldierId);
+    }
+
+    [Fact]
+    public void AVehicleCarriesItsSpecialItemItsFixedWeaponAndTheWeaponsLoadedAmmo()
+    {
+        var (campaign, request) = Requested(Rules, "UFO_CRAFTED", [new("VEHICLE", 25), new("VEHICLE_B", 0)]);
+        Assert.Equal([25, 0], request.VehicleAmmo);
+        Assert.IsType<BattleStarted>(Assert.Single(campaign.Execute(new StartBattle()).Events));
+        var battle = Battle(campaign);
+        var (vehicle, small) = (battle.Units[0].Id, battle.Units[1].Id);
+        // initUnit's special built-in item (the armor's special weapon, in no section), then addXCOMVehicle's fixed weapon
+        // in the right hand and its clip ammunition, loaded into the weapon with the vehicle's ammo; the small vehicle's
+        // weapon takes no ammunition. The craft's cargo follows.
+        Assert.Equal([(0, "RAM", (int?)vehicle, "", true, false), (1, "VEHICLE", vehicle, "STR_RIGHT_HAND", false, false),
+                (2, "VEHICLE_AMMO", null, "", false, true), (3, "VEHICLE_B", small, "STR_RIGHT_HAND", false, false)],
+            battle.Items.Take(4).Select(static item => (item.Id, item.ItemType, item.OwnerUnitId, item.Slot, item.IsSpecialWeapon, item.IsAmmo)));
+        Assert.Equal([0], battle.Units[0].SpecialWeaponIds);
+        // Slots without compatible ammo need none: they hold the weapon itself.
+        Assert.Equal([2, 1, 1, 1], battle.Items[1].AmmoSlots);
+        Assert.Equal(25, battle.Items[2].AmmoQuantity);
+        // addItem marks what it places as X-COM property; createItemForUnitSpecialBuiltin does not.
+        Assert.Equal([false, true, true, true], battle.Items.Take(4).Select(static item => item.XcomProperty));
+        // The unit rule's statistics plus the armor's; the turret is the weapon's.
+        Assert.Equal((70, 50, 0, 100, 2), (battle.Units[0].TimeUnits, battle.Units[0].Health, battle.Units[0].Mana, battle.Units[0].Morale,
+            battle.Units[0].TurretType));
+        Assert.Equal(-1, battle.Units[1].TurretType);
+        // A soldier's statistics are its current statistics plus its soldier bonuses (the fixture's commendation gives
+        // PILOT_BONUS, +10 TU) plus its armor's.
+        var soldier = battle.Units[2];
+        var personal = campaign.Capture().Bases[0].Soldiers.Single(state => state.Id == soldier.SoldierId).Personal!;
+        Assert.Equal("PILOT_BONUS", campaign.Content.RuntimeRules.Commendations.GetRequiredValue(Assert.Single(personal.Commendations).RuleId)
+            .SoldierBonusTypes[0]);
+        var armor = campaign.Content.RuntimeRules.Armors.GetRequiredValue(soldier.ArmorId).Stats;
+        int Stat(string key) => personal.CurrentStats[key] + armor.GetValueOrDefault(key);
+        Assert.Equal((Stat("tu") + 10, Stat("stamina"), Stat("health"), 100), (soldier.TimeUnits, soldier.Energy, soldier.Health, soldier.Morale));
+    }
+
+    [Fact]
+    public void ASoldiersArmorBuiltInItemsFillTheHandsTheWeaponAndTheCheapestSection()
+    {
+        // The environment puts the soldier in the suit, whose built-in items come in list order with ammunition last.
+        var (campaign, _) = Requested(Rules, "UFO_SUITED");
+        Assert.IsType<BattleStarted>(Assert.Single(campaign.Execute(new StartBattle()).Events));
+        var battle = Battle(campaign);
+        var soldier = Assert.Single(battle.Units);
+        Assert.Equal(0, soldier.Stats.PsiSkill);
+        // The psi-amp special weapon needs psi skill, so the soldier has none. The gun goes to the right hand (C1); the
+        // grenade to the storage section cheapest to reach from the empty left hand (the back pack, 2, over the belt, 4);
+        // the clip loads into the gun.
+        Assert.Empty(soldier.SpecialWeaponIds);
+        Assert.Equal([(0, "GUN", (int?)soldier.Id, "STR_RIGHT_HAND", 0), (1, "GRENADE", soldier.Id, "STR_BACK_PACK", 0), (2, "CLIP", null, "", 0)],
+            battle.Items.Where(static item => item.ItemType != "SUPPLY")
+                .Select(static item => (item.Id, item.ItemType, item.OwnerUnitId, item.Slot, item.SlotX)));
+        Assert.Equal(2, battle.Items[0].AmmoSlots[0]);
+        Assert.True(battle.Items[2].IsAmmo);
     }
 
     [Theory]

@@ -35,6 +35,7 @@ internal sealed class XcomDeployment
     private readonly IRandomSource _random;
     private readonly RuntimeStartingCondition? _startingCondition;
     private readonly IReadOnlyDictionary<string, string>? _armorTransformations;
+    private readonly UnitEquipment _equipment;
     private int _unitSequence = BattleState.MaximumSoldierId;
 
     private XcomDeployment(BattleState battle, BattleMapResult generated, RuntimeRuleCatalog rules, IRandomSource random,
@@ -47,6 +48,7 @@ internal sealed class XcomDeployment
         _random = random;
         _startingCondition = startingCondition;
         _armorTransformations = armorTransformations;
+        _equipment = new UnitEquipment(battle, rules, random);
     }
 
     public static void Deploy(CampaignState campaign, CampaignDeploymentRequest request, BattleState battle, BattleMapResult generated,
@@ -63,19 +65,19 @@ internal sealed class XcomDeployment
         var owner = campaign.BaseStates.Find(candidate => candidate.Id == request.BaseId)
             ?? throw new MapGenerationException($"The deployment request's base {request.BaseId} no longer exists.");
         var extended = _rules.Campaign.ExtendedHwpLoadOrder;
-        var vehicles = request.Vehicles.Select(Vehicle).ToArray();
+        var vehicles = request.Vehicles.Select((id, index) => Vehicle(id, index < request.VehicleAmmo.Count ? request.VehicleAmmo[index] : null)).ToArray();
         // 2x2 vehicles first (all vehicles without the extended order).
         foreach (var vehicle in vehicles)
             if (vehicle.Armor.Size > 1 || !extended) AddVehicle(vehicle);
         var soldiers = owner.Soldiers.Where(soldier => request.Soldiers.Contains(soldier.Id)).Select(Soldier).ToArray();
         // Soldiers in 2x2 armor, then the remaining 1x1 vehicles, then the 1x1 soldiers.
         foreach (var soldier in soldiers)
-            if (soldier.ArmorSize > 1) AddUnit(soldier);
+            if (soldier.ArmorSize > 1) AddSoldier(soldier);
         if (extended)
             foreach (var vehicle in vehicles)
                 if (vehicle.Armor.Size == 1) AddVehicle(vehicle);
         foreach (var soldier in soldiers)
-            if (soldier.ArmorSize == 1) AddUnit(soldier);
+            if (soldier.ArmorSize == 1) AddSoldier(soldier);
         if (_battle.Units.Count == 0)
             throw new MapGenerationException("Map generator encountered an error: no xcom units could be placed on the map.");
         AddCraftItems(request);
@@ -95,16 +97,17 @@ internal sealed class XcomDeployment
         {
             if (!request.Items.TryGetValue(rule.Id, out var quantity)) continue;
             for (var count = 0; count < quantity; count++)
-                _battle.CreateItemForTile(rule.Id, rule.Value.ClipSize, _battle.CraftInventoryTile).XcomProperty = _battle.CraftInventoryTile is not null;
+                _equipment.CreateItemForTile(rule.Id, _battle.CraftInventoryTile).XcomProperty = _battle.CraftInventoryTile is not null;
         }
     }
 
-    private (string Id, RuntimeArmorRule Armor) Vehicle(string itemId)
+    private Vehicle Vehicle(string itemId, int? ammo)
     {
         // RuleItem::getVehicleUnit: the unit of the same name as the fixed-weapon item, wearing its armor.
-        if (!_rules.Items.TryGet(itemId, out var item) || _rules.Items[item].Value.VehicleArmor is not { } armor)
+        if (!_rules.Items.TryGet(itemId, out var item) || _rules.Items[item].Value.VehicleArmor is not { } armor ||
+            !_rules.Battle.Equipment.Units.TryGetValue(itemId, out var unit))
             throw new MapGenerationException($"Vehicle item {itemId} has no vehicle unit.");
-        return (itemId, _rules.Armors[armor].Value);
+        return new(itemId, _rules.Armors[armor].Value, unit, ammo);
     }
 
     private BattleUnit Soldier(CampaignState.SoldierState soldier)
@@ -113,6 +116,17 @@ internal sealed class XcomDeployment
         var own = Armor(personal.Armor) ?? throw new MapGenerationException($"Soldier {soldier.Id} wears unknown armor {personal.Armor}.");
         var soldierType = _rules.Soldiers.GetExternalId(soldier.Rule);
         var (armorId, armor) = BattleArmor(soldierType, personal.Armor, own);
+        // Soldier::prepareStatsWithBonuses: current statistics, soldier bonuses and the battle armor's statistics.
+        var stats = (BattleUnitStats.From(CampaignState.StatsWithBonuses(personal, _rules)) + BattleUnitStats.From(armor.Stats))
+            .ObeyFixedMinimum();
+        var health = Math.Max(1, stats.Health - personal.HealthMissing);
+        var morale = 100;
+        // Wounded soldiers (defending the base) start with lowered morale.
+        if (SoldierReadiness.IsWounded(personal, _rules.Campaign.ManaWoundThreshold, _rules.Campaign.HealthWoundThreshold))
+        {
+            morale = 75;
+            health = Math.Max(1, health - (int)Math.Ceiling(personal.Recovery));
+        }
         return new BattleUnit(soldier.Id, BattleFaction.Player, BattleController.Human(0))
         {
             UnitType = soldierType,
@@ -121,6 +135,12 @@ internal sealed class XcomDeployment
             OriginalArmorId = armorId == personal.Armor ? "" : personal.Armor,
             ArmorSize = armor.Size,
             MovementType = armor.MovementType,
+            Stats = stats,
+            TimeUnits = stats.TimeUnits,
+            Energy = stats.Stamina,
+            Health = health,
+            Mana = Math.Max(0, stats.Mana - personal.ManaMissing),
+            Morale = morale,
         };
     }
 
@@ -151,22 +171,49 @@ internal sealed class XcomDeployment
         return replaced.Size > armor.Size ? (armorId, armor) : (pick, replaced);
     }
 
-    /// <summary>BattlescapeGenerator::addXCOMVehicle: a player unit numbered after the soldiers' ID range.</summary>
-    private void AddVehicle((string Id, RuntimeArmorRule Armor) vehicle) => AddUnit(new BattleUnit(_unitSequence++, BattleFaction.Player,
-        BattleController.Human(0))
+    /// <summary>
+    /// BattlescapeGenerator::addXCOMVehicle: a player unit numbered after the soldiers' ID range, with the unit rule's and
+    /// its armor's statistics; once placed it takes its fixed weapon and that weapon's clip ammunition with the vehicle's
+    /// ammo.
+    /// </summary>
+    private void AddVehicle(Vehicle vehicle)
     {
-        UnitType = vehicle.Id,
-        ArmorId = vehicle.Armor.Type,
-        ArmorSize = vehicle.Armor.Size,
-        MovementType = vehicle.Armor.MovementType,
-    });
+        var stats = (BattleUnitStats.From(vehicle.Unit.Stats) + BattleUnitStats.From(vehicle.Armor.Stats)).ObeyFixedMinimum();
+        var unit = new BattleUnit(_unitSequence++, BattleFaction.Player, BattleController.Human(0))
+        {
+            UnitType = vehicle.Id,
+            ArmorId = vehicle.Armor.Type,
+            ArmorSize = vehicle.Armor.Size,
+            MovementType = vehicle.Armor.MovementType,
+            Stats = stats,
+            TimeUnits = stats.TimeUnits,
+            Energy = stats.Stamina,
+            Health = stats.Health,
+            Mana = stats.Mana,
+        };
+        if (!AddUnit(unit, vehicle.Unit, "")) return;
+        _equipment.CreateItemForUnit(vehicle.Id, unit, fixedWeapon: true);
+        if (_equipment.VehicleClipAmmo(vehicle.Id) is { } clip)
+        {
+            var ammo = vehicle.Ammo ?? throw new MapGenerationException($"The deployment request records no ammo for vehicle {vehicle.Id}.");
+            if (_equipment.CreateItemForUnit(clip, unit) is { } item) item.AmmoQuantity = ammo;
+        }
+        unit.TurretType = _equipment.BattleItemRule(vehicle.Id).TurretType;
+    }
 
-    /// <summary>BattlescapeGenerator::addXCOMUnit; a unit that finds no place stays out of the battle.</summary>
-    private void AddUnit(BattleUnit unit)
+    private void AddSoldier(BattleUnit unit) => AddUnit(unit, null, unit.UnitType);
+
+    /// <summary>
+    /// BattlescapeGenerator::addXCOMUnit: a placed unit joins the battle and SavedBattleGame::initUnit equips it; a unit
+    /// that finds no place stays out of the battle.
+    /// </summary>
+    private bool AddUnit(BattleUnit unit, RuntimeBattleUnitRule? unitRule, string soldierType)
     {
-        if (!Place(unit)) return;
+        if (!Place(unit)) return false;
         _battle.AddUnit(unit);
         _battle.SelectedUnitId ??= unit.Id;
+        _equipment.InitUnit(unit, unitRule, soldierType);
+        return true;
     }
 
     private bool Place(BattleUnit unit)
@@ -387,3 +434,6 @@ internal sealed class XcomDeployment
         return false;
     }
 }
+
+/// <summary>A vehicle on board: its item, armor, unit rule and Vehicle::getAmmo (null when the request records none).</summary>
+internal sealed record Vehicle(string Id, RuntimeArmorRule Armor, RuntimeBattleUnitRule Unit, int? Ammo);

@@ -18,8 +18,8 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 208 | Core, Mods, Scripting |
-| [Oxce.Mods](#oxcemods) | 98 | Core, Formats, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 210 | Core, Mods, Scripting |
+| [Oxce.Mods](#oxcemods) | 99 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
@@ -337,7 +337,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 208 files.
+`src/Oxce.Gameplay` - 210 files.
 
 ### `Oxce.Gameplay`
 
@@ -656,7 +656,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Mods
 
-`src/Oxce.Mods` - 98 files.
+`src/Oxce.Mods` - 99 files.
 
 ### `Oxce.Mods`
 
@@ -917,6 +917,12 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `AdhocScriptRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
 - `ArcScriptRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
 - `EventScriptRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `RuntimeBattleEquipment` (class) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - What the battle reads when it equips units (SavedBattleGame::initUnit, createItemForUnit, BattleUnit::addItem, setSpecialWeapon): the inv...
+- `RuntimeBattleInventory` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - RuleInventory as the battle reads it.
+- `RuntimeInventorySlot` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs)
+- `RuntimeBattleItem` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - RuleItem's equipment fields: fixed weapon, default inventory slot and position, inventory size, supported sections, turret type, psi and...
+- `RuntimeBattleArmor` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - Armor's equipment fields: built-in weapons, special and self-destruct items, two main weapons, inventory, weight.
+- `RuntimeBattleUnitRule` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - Unit's battle fields: statistics, built-in weapon sets (plain and weighted), melee and psi weapons, living weapon, race.
 - `RuntimeBattleRules` (class) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - The rule families only the battlescape reads (Phase 7, ADR 0038), linked as one group by `Link`, apart from the strategic families.
 - `RuntimeTerrain` (record) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - RuleTerrain as the battle generator reads it (sprites and ambience stay with presentation).
 - `RuntimeMapBlock` (record) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - MapBlock: size (the MAP header's height replaces `Height` when loaded), groups and revealed floors.

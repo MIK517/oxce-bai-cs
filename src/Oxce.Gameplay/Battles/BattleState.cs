@@ -77,20 +77,34 @@ internal sealed class BattleState
     /// <summary>SavedBattleGame::getCurrentItemId: the ID the next item gets.</summary>
     public int NextItemId { get; private set; }
 
-    /// <summary>SavedBattleGame::createItemForTile: a new item on the ground of a tile (or nowhere when the tile is null).</summary>
-    internal BattleItem CreateItemForTile(string itemType, int clipSize, BattlePosition? tile)
+    /// <summary>
+    /// <c>new BattleItem(rule, getCurrentItemId())</c>: an item with the next ID, which is taken whether or not the item
+    /// is kept (an item that fits nowhere is deleted but its ID stays used).
+    /// </summary>
+    internal BattleItem NewItem(string itemType) => new(NextItemId++, itemType);
+
+    /// <summary>Adds a created item to the battle's items (SavedBattleGame::getItems push_back).</summary>
+    internal void AddItem(BattleItem item)
     {
-        if (tile is { } position && !Contains(position)) throw new InvalidOperationException($"Item tile {position} is outside the map.");
-        var item = new BattleItem(NextItemId++, itemType)
-        {
-            Tile = tile,
-            Slot = tile is null ? "" : GroundSlot,
-            AmmoQuantity = clipSize,
-        };
+        ArgumentNullException.ThrowIfNull(item);
+        if (item.Tile is { } position && !Contains(position)) throw new InvalidOperationException($"Item tile {position} is outside the map.");
         _items.Add(item);
         Revision++;
+    }
+
+    /// <summary>SavedBattleGame::createItemForTile: the item on the ground of a tile (or nowhere when the tile is null).</summary>
+    internal BattleItem AddItemOnTile(BattleItem item, BattlePosition? tile)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        item.Tile = tile;
+        item.Slot = tile is null ? "" : GroundSlot;
+        AddItem(item);
         return item;
     }
+
+    /// <summary>BattleUnit::getInventory: the items a unit carries in its inventory sections, in the order they arrived.</summary>
+    internal IEnumerable<BattleItem> InventoryOf(BattleUnit unit) =>
+        _items.Where(item => item.OwnerUnitId == unit.Id && item.Slot.Length != 0);
 
     /// <summary>Mod::getInventoryGround.</summary>
     internal const string GroundSlot = "STR_GROUND";
@@ -197,6 +211,23 @@ internal sealed class BattleUnit
 
     /// <summary>The unit's tile, or null while it is not on the map.</summary>
     public BattlePosition? Position { get; set; }
+
+    /// <summary>BattleUnit::getBaseStats: the soldier's statistics with all bonuses, or the unit rule's plus its armor's.</summary>
+    public BattleUnitStats Stats { get; init; }
+
+    /// <summary>BattleUnit::getTimeUnits, getEnergy, getHealth, getMana, getMorale, getStunlevel.</summary>
+    public int TimeUnits { get; set; }
+    public int Energy { get; set; }
+    public int Health { get; set; }
+    public int Mana { get; set; }
+    public int Morale { get; set; } = 100;
+    public int StunLevel { get; set; }
+
+    /// <summary>BattleUnit::getTurretType: the turret sprite of a vehicle's weapon, -1 without one.</summary>
+    public int TurretType { get; set; } = -1;
+
+    /// <summary>BattleUnit::getSpecialWeapon: the special built-in items, at most SPEC_WEAPON_MAX.</summary>
+    public List<int> SpecialWeaponIds { get; } = [];
 
     public bool IsSpottedBy(BattleFaction faction) => (_spottedBy & (1 << (int)faction)) != 0;
 

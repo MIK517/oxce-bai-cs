@@ -102,6 +102,7 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery, Battles.ICa
         {
             Soldiers = [.. owner.Soldiers.Where(Aboard).Select(static soldier => soldier.Id)],
             Vehicles = [.. state.Vehicles.Select(static vehicle => vehicle.RuleId)],
+            VehicleAmmo = [.. state.Vehicles.Select(static vehicle => vehicle.Ammo)],
             Items = new System.Collections.ObjectModel.ReadOnlyDictionary<string, int>(new Dictionary<string, int>(state.Items, StringComparer.Ordinal)),
         };
         return new CampaignCommandResult([new DeploymentRequested(_deploymentRequest)]);
@@ -339,6 +340,7 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery, Battles.ICa
                 _deploymentRequest = request with
                 {
                     Vehicles = [.. state.Vehicles.Select(static vehicle => vehicle.RuleId)],
+                    VehicleAmmo = [.. state.Vehicles.Select(static vehicle => vehicle.Ammo)],
                     Items = new System.Collections.ObjectModel.ReadOnlyDictionary<string, int>(
                         new Dictionary<string, int>(state.Items, StringComparer.Ordinal)),
                 };

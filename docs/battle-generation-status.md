@@ -303,6 +303,50 @@ Reference: `SavedBattleGame::createItemForTile`, `getCurrentItemId`, `BattleItem
 
 Tests: `BattleStartTests.TheCraftsItemsLieOnTheCraftInventoryTileAsXcomProperty`.
 
+## S4b, part 4 — Unit statistics and built-in equipment (2026-10-21)
+
+Reference: `BattleUnit::BattleUnit` (soldier and unit-rule constructors: statistics, time units, energy, health, mana,
+morale), `Soldier::prepareStatsWithBonuses`, `getBonuses`, `UnitStats::obeyFixedMinimum`, `SavedBattleGame::initUnit`,
+`addFixedItems`, `createItemForUnit`, `createItemForUnitSpecialBuiltin`, `BattleUnit::setSpecialWeapon`, `addItem`,
+`fitItemToInventory`, `getItem`, `getRightHandWeapon`, `getCarriedWeight`, `Inventory::overlapItems`,
+`RuleInventory::fitItemInSlot`, `getCost`, `BattleItem::BattleItem`, `setAmmoPreMission`, `setAmmoForSlot`,
+`haveAnyAmmo`, `getAmmoForAction`, `getTotalWeight`, `RuleItem::getVehicleClipAmmo`, `getSlotForAmmo`,
+`canBePlacedIntoInventorySection`, `BattlescapeGenerator::addXCOMVehicle`, `addXCOMUnit`.
+
+- Runtime content: `RuntimeBattleRules.Equipment` (`RuntimeBattleEquipment`): inventory sections in `Mod::getInvsList`
+  order with their slots and move costs; the item fields the strategic projection lacks (fixed weapon, default slot and
+  position, inventory size, supported sections, turret type, psi and mana requirements, rechargeable ammo, medikit
+  quantities, categories after replacement, the actions' ammo slots); armor built-in, special and self-destruct items,
+  two main weapons, inventory and weight; unit statistics, built-in and weighted weapon sets, melee and psi weapons,
+  living weapon and race; soldier special weapons; category inventory orders; weapon sets.
+- `BattleUnitStats` (twelve 16-bit statistics, wrapping sums, the fixed minimum). A soldier's statistics are its current
+  statistics plus its soldier bonuses plus the battle armor's; health and mana subtract what is missing, and a wounded
+  soldier starts at morale 75 with the wound recovery off its health. A vehicle has its unit rule's statistics plus its
+  armor's.
+- `UnitEquipment`: each placed unit gets its special built-in items (owned, in no section; psi items skipped without
+  psi skill; a firearm or melee special weapon without a clip size refuses as the reference throws), then the armor's
+  built-in weapons, the unit's built-in set for item level 0, a weighted weapon set, and a living weapon, ammunition
+  after the rest. `addItem` is ported whole: the weight and duplicate checks for standard player units, fixed weapons
+  in their default slot or a hand, psi and mana requirements, C1 hands, loading ammunition into a hand weapon, C2
+  psi-amps for hostiles, D1 default slot, D2 category order, the cheapest storage section and the C3 fallback.
+- Vehicles: after placement, the fixed weapon (turret type from it), then its clip ammunition, loaded into the weapon
+  with the vehicle's ammo. The deployment request now records each vehicle's ammo (`VehicleAmmo`, saved as
+  `vehicleAmmo` in the port-only request node and checked against the vehicle count on load).
+- Items get IDs in the reference's order: an item that fits nowhere still uses its ID. Medikits start with their heal,
+  pain killer and stimulant quantities; weapons fill the ammo slots that take no ammunition with themselves.
+- Refusals where the reference crashes or fails to load: a missing hand inventory, default slot or category section; a
+  missing move cost; a missing item, armor or weapon set; a living-weapon race shorter than four characters; a vehicle's
+  fixed ammo slot outside its ammo slots; the C3 fallback leaving an item in a section after reporting it unplaced
+  (the reference keeps a freed item); a vehicle with clip ammunition and no recorded ammo (base defense, S6).
+- Not ported here: the CreateUnit, CreateItem and ApplySoldierBonuses script hooks (tactical script bindings, branch 8);
+  `getBonuses`' listOrder insertion quirk, which can keep two bonuses with the same list order (the port keeps each
+  bonus once).
+- Not yet (the rest of S4b): equipment layouts (`placeItemByLayout`, the soldiers' saved layouts), `loadWeapons`,
+  `autoEquip`.
+
+Tests: `BattleStartTests.AVehicleCarriesItsSpecialItemItsFixedWeaponAndTheWeaponsLoadedAmmo`,
+`ASoldiersArmorBuiltInItemsFillTheHandsTheWeaponAndTheCheapestSection`.
+
 ## S5 groundwork — Deployment data and alien quantities (2026-10-20)
 
 Reference: `AlienDeployment::load` (`data`), the `DeploymentData` and `ItemSet` readers, `BattlescapeGenerator::deployAliens`
@@ -324,6 +368,5 @@ Tests: `AlienQuantitiesTests`, `AlienRacesTests`; the deployment data projection
 ## Next
 
 - Craft skins: the craft's skin index in the strategic save and `refreshMapDataSets`.
-- S4b: starting-condition vehicle and item restrictions, save-side custom deployments, the craft's items and equipment layouts (`placeItemByLayout`,
-  `loadWeapons`, `autoEquip`), vehicle items, unit statistics; then the rest of S5 (`deployAliens`, civilians, objectives)
-  and S6.
+- S4b: starting-condition vehicle and item restrictions, save-side custom deployments, equipment layouts
+  (`placeItemByLayout`, `loadWeapons`, `autoEquip`); then the rest of S5 (`deployAliens`, civilians, objectives) and S6.

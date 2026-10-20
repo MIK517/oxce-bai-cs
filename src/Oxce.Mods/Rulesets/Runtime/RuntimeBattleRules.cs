@@ -39,7 +39,10 @@ public sealed class RuntimeBattleRules
     public IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> EnviroArmorTransformations { get; private init; } =
         new ReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>(new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.Ordinal));
 
-    internal static RuntimeBattleRules Link(TerrainDeploymentRuleCatalog content)
+    /// <summary>The rules the battle reads when it equips units.</summary>
+    public RuntimeBattleEquipment Equipment { get; private init; } = RuntimeBattleEquipment.Empty;
+
+    internal static RuntimeBattleRules Link(TerrainDeploymentRuleCatalog content, RuntimeBattleEquipment? equipment = null)
     {
         ArgumentNullException.ThrowIfNull(content);
         var terrains = new Dictionary<string, RuntimeTerrain>(StringComparer.Ordinal);
@@ -56,6 +59,7 @@ public sealed class RuntimeBattleRules
             new ReadOnlyDictionary<string, RuntimeMapScript>(scripts))
         {
             EnviroArmorTransformations = new ReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>(enviro),
+            Equipment = equipment ?? RuntimeBattleEquipment.Empty,
         };
     }
 

@@ -27,6 +27,9 @@ public sealed record CampaignDeploymentRequest(
     /// <summary>Vehicles on board by rule id, in craft order.</summary>
     public IReadOnlyList<string> Vehicles { get; init; } = [];
 
+    /// <summary>Vehicle::getAmmo for each vehicle in <see cref="Vehicles"/> (empty when not recorded).</summary>
+    public IReadOnlyList<int> VehicleAmmo { get; init; } = [];
+
     /// <summary>BattlescapeGenerator::setUfoDamagePercentage for a base defense (lessAliensDuringBaseDefense).</summary>
     public int UfoDamagePercentage { get; init; }
 

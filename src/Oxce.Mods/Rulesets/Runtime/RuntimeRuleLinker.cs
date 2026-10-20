@@ -546,7 +546,7 @@ public static class RuntimeRuleLinker
             scriptBuild.Family,
             settings)
         {
-            Battle = RuntimeBattleRules.Link(content.TerrainDeployment),
+            Battle = RuntimeBattleRules.Link(content.TerrainDeployment, RuntimeBattleEquipment.Link(content, categoryReplacements)),
         };
         cancellationToken.ThrowIfCancellationRequested();
         return new RuntimeRuleLinkResult(catalog, compatibility, Array.AsReadOnly(issues.ToArray()));
