@@ -503,6 +503,17 @@ Tests: `BattleStartTests.TheStartingConditionSendsDisabledVehiclesAndItemsBackTo
 ## Next
 
 - Craft skins: the craft's skin index in the strategic save and `refreshMapDataSets`.
-- S4b: save-side custom deployments (the craft's `customSoldierDeployment` and `customVehicleDeployment`, the save's
-  `customRuleCraftDeployments`).
+- S4b: save-side custom deployments. Notes for the next part:
+  - The craft node's `customSoldierDeployment` (map soldier ID → [[x, y, z], dir], `std::pair` as a two-element sequence)
+    and `customVehicleDeployment` (list of {type, pos, dir}; `used` is a per-battle flag reset by
+    `Craft::resetTemporaryCustomVehicleDeploymentFlags`) are read in `Craft::load`. The save root's
+    `customRuleCraftDeployments` (craft type → list of [x, y, z, dir]) is read in `SavedGame::load`. The port preserves
+    all three raw; read them into the craft logistics state and the campaign snapshot without changing what is written.
+  - `addXCOMUnit` order with a deployed craft: the craft's own custom deployment when `Craft::hasCustomDeployment` and the
+    craft's rules are the battle's craft rules (a soldier missing from the map crashes the reference: refuse; a vehicle
+    takes the first unused entry of its type; none found throws "custom craft deployment failed"; the unit is placed
+    only when every tile passes `canPlaceXCOMUnit` and `setUnitPosition` succeeds, facing the entry's direction); then
+    `SavedBattleGame::hasCustomDeployment(craftRules)` (the rule's `deployment` or the save override) with
+    `getCustomDeployment` preferring the save override over the rule (XcomDeployment.Place already handles the rule
+    list); then the start tiles.
 - S6: base defense maps and the remaining entry points.
