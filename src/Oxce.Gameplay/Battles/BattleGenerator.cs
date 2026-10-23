@@ -64,6 +64,7 @@ internal static class BattleGenerator
         };
         // run: the deployment's environmental effects, else the terrain's.
         var enviro = rules.Battle.EnviroArmorTransformations.ContainsKey(battle.EnviroEffects) ? battle.EnviroEffects : terrain.EnviroEffects;
+        CreateMapItems(state, rules, random, generated.Items);
         var unitSequence = XcomDeployment.Deploy(campaign, request, state, generated, inputs.StartingCondition, enviro);
         // run: the alien item level is the month, capped at the last month the mod lists.
         var levels = rules.Campaign.AlienItemLevels;
@@ -77,6 +78,28 @@ internal static class BattleGenerator
         unitSequence = AlienDeployment.Deploy(campaign, request, state, alienId, alienDeployment, unitSequence);
         if (battle.CivilianSpawnNodeRank == 0) CivilianDeployment.Deploy(state, rules, random, battle, terrain, unitSequence);
         return state;
+    }
+
+    /// <summary>The map blocks' items, created in loadMAP's order (their fuse timers, ammo quantities and loaded ammo).</summary>
+    private static void CreateMapItems(BattleState state, RuntimeRuleCatalog rules, IRandomSource random, IReadOnlyList<BattleMapItem> items)
+    {
+        var equipment = new UnitEquipment(state, rules, random);
+        var created = new List<BattleItem>(items.Count);
+        foreach (var placement in items)
+        {
+            var item = equipment.CreateItemForTile(placement.ItemType, placement.Tile);
+            if (placement.FuseTimer is { } fuse) item.FuseTimer = fuse;
+            if (placement.AmmoQuantity is { } quantity) item.AmmoQuantity = quantity;
+            if (placement.LoadInto >= 0)
+            {
+                // BattleItem::setAmmoForSlot: the ammo leaves the tile and goes into the weapon.
+                created[placement.LoadInto].AmmoSlots[placement.Slot] = item.Id;
+                UnitEquipment.MoveToOwner(item, null);
+                item.Slot = "";
+                item.IsAmmo = true;
+            }
+            created.Add(item);
+        }
     }
 
     /// <summary>

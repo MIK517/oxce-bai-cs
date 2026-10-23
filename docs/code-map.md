@@ -19,7 +19,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
 | [Oxce.Gameplay](#oxcegameplay) | 214 | Core, Mods, Scripting |
-| [Oxce.Mods](#oxcemods) | 99 | Core, Formats, Scripting |
+| [Oxce.Mods](#oxcemods) | 100 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
@@ -657,7 +657,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Mods
 
-`src/Oxce.Mods` - 99 files.
+`src/Oxce.Mods` - 100 files.
 
 ### `Oxce.Mods`
 
@@ -942,6 +942,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RuntimeGlobeColors` (record) [RuntimeGlobe.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeGlobe.cs) - Globe palette indices.
 - `RuntimeItemDamageRule` (record) [RuntimeItemDamageRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeItemDamageRules.cs) - Float fields owned by each RuleItem damage copy; script queries do not apply tactical damage.
 - `RuntimeDamageConversions` (record) [RuntimeItemDamageRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeItemDamageRules.cs)
+- `RuntimeBlockPosition` (record) [RuntimeMapBlockItems.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapBlockItems.cs) - A map block position (Position: three Sint16 values).
+- `RuntimeMapBlockItem` (record) [RuntimeMapBlockItems.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapBlockItems.cs) - MapBlock `items`: an item type and the positions it lies on.
+- `RuntimeFuseRange` (record) [RuntimeMapBlockItems.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapBlockItems.cs) - MapBlock `fuseTimers`: the fuse timer range an item type is primed with.
+- `RuntimeRandomizedItems` (record) [RuntimeMapBlockItems.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapBlockItems.cs) - RandomizedItems: an amount of items picked from a list (once, or per item when mixed) at a position.
+- `RuntimeExtendedItems` (record) [RuntimeMapBlockItems.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapBlockItems.cs) - ExtendedItems: an item at positions, a fuse timer range and the ammo (type and quantity) loaded into it.
+- `RuntimeAmmoDefinition` (record) [RuntimeMapBlockItems.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapBlockItems.cs)
+- `RuntimeMapBlockItems` (record) [RuntimeMapBlockItems.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapBlockItems.cs) - The items a map block places (MapBlock::load's items, fuseTimers, randomizedItems, extendedItems).
 - `RuntimeMapScript` (record) [RuntimeMapScripts.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapScripts.cs) - A map script (Mod::getMapScript): its commands in order.
 - `RuntimeMapScriptCommand` (record) [RuntimeMapScripts.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapScripts.cs) - One MapScript command as `MapScript::load` leaves it: block selection (groups or blocks, frequencies, maximum uses), rectangles, conditio...
 - `VerticalLevelType` (enum) [RuntimeMapScripts.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapScripts.cs) - VerticalLevelType.

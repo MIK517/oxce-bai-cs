@@ -68,7 +68,12 @@ public sealed class RuntimeBattleRules
 
     private static RuntimeTerrain Terrain(string id, TerrainRule rule) => new(id, List(rule.MapDataSets),
         List(rule.MapBlocks.Select(static block => new RuntimeMapBlock(block.Name, block.Width, block.Length, block.Height,
-            List(block.Groups), List(block.RevealedFloors), List(block.CraftInventoryTile)))),
+            List(block.Groups), List(block.RevealedFloors), List(block.CraftInventoryTile))
+        {
+            Items = RuntimeMapBlockItems.Read(block.Items, block.FuseTimers, block.RandomizedItems, block.ExtendedItems, out var invalid)
+                ?? RuntimeMapBlockItems.None,
+            ItemsInvalid = invalid,
+        })),
         rule.EnviroEffects, List(rule.CivilianTypes), rule.MinimumDepth, rule.MaximumDepth, rule.MapScript, List(rule.MapScripts));
 
     private static ReadOnlyCollection<T> List<T>(IEnumerable<T> source) => Array.AsReadOnly(source.ToArray());
@@ -97,7 +102,14 @@ public sealed record RuntimeMapBlock(
     int Height,
     IReadOnlyList<int> Groups,
     IReadOnlyList<int> RevealedFloors,
-    IReadOnlyList<int> CraftInventoryTile);
+    IReadOnlyList<int> CraftInventoryTile)
+{
+    /// <summary>The items the block places when it is loaded.</summary>
+    public RuntimeMapBlockItems Items { get; init; } = RuntimeMapBlockItems.None;
+
+    /// <summary>Why the block's item nodes are unusable (the reference fails to load them), or null.</summary>
+    public string? ItemsInvalid { get; init; }
+}
 
 /// <summary>MCDPatch: entries in rule order.</summary>
 public sealed record RuntimeMcdPatch(IReadOnlyList<RuntimeMcdPatchEntry> Entries);

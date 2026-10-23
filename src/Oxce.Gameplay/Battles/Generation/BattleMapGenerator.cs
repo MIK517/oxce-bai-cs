@@ -52,6 +52,8 @@ internal sealed class BattleMapGenerator
     private readonly List<(RuntimeMapBlock Block, int X, int Y, int Z)> _verticalLevelSegments = [];
     private RuntimeTerrain? _alternateTerrain;
     private readonly List<BattlePosition> _backupInventoryTiles = [];
+    private readonly List<BattleMapItem> _items = [];
+    private bool _generateFuel = true;
     private string _scriptId = "";
 
     private BattleMapGenerator(RuntimeRuleCatalog rules, BattleTerrainLoader loader, IRandomSource random, string missionType,
@@ -80,7 +82,11 @@ internal sealed class BattleMapGenerator
         var generator = new BattleMapGenerator(rules, loader, random, missionType, terrain, globeTerrain, width, length, height, inputs);
         generator.Run(script);
         return new BattleMapResult(generator._map, generator._craftDeployed, generator._craftPosition.X, generator._craftPosition.Y,
-            generator._craftZ, generator._craftRuleId, generator._backupInventoryTiles.AsReadOnly());
+            generator._craftZ, generator._craftRuleId, generator._backupInventoryTiles.AsReadOnly())
+        {
+            Items = generator._items.AsReadOnly(),
+            GenerateFuel = generator._generateFuel,
+        };
     }
 
     private void Run(RuntimeMapScript script)
@@ -974,6 +980,111 @@ internal sealed class BattleMapGenerator
                 z--;
             }
         }
+        PlaceBlockItems(block, offsetX, offsetY, itemZ, file.Width, file.Length, file.Levels);
+    }
+
+    // BattleType BT_CORPSE and BattleFuseType BFT_NONE.
+    private const int CorpseBattleType = 11;
+    private const int NoFuse = -3;
+
+    /// <summary>
+    /// loadMAP's map block items: the block's items (with their fuse timer range), randomized items and extended items
+    /// with their ammo. The random draws happen here, in the reference's order; the items are created once the battle
+    /// exists, in this order, so they take the first item IDs as in the reference.
+    /// </summary>
+    private void PlaceBlockItems(RuntimeMapBlock block, int offsetX, int offsetY, int offsetZ, int width, int length, int levels)
+    {
+        if (block.ItemsInvalid is { } invalid) throw new MapGenerationException($"Map block {block.Name}: {invalid}");
+        var items = block.Items;
+        // A block with an items array means fuel is not deployed algorithmically.
+        if (_generateFuel) _generateFuel = items.Items.Count == 0;
+        BattlePosition Tile(RuntimeBlockPosition position, string kind, string type)
+        {
+            if (position.X >= width || position.Y >= length || position.Z >= levels)
+                throw new MapGenerationException($"{kind} {type} is outside of map block {block.Name}, position: [{position.X},{position.Y},{position.Z}], " +
+                    $"block size: [{width},{length},{levels}]");
+            return new(position.X + offsetX, position.Y + offsetY, position.Z + offsetZ);
+        }
+        RuntimeItemRule Rule(string type, string kind)
+        {
+            if (!_catalog.Items.TryGet(type, out var handle)) throw new MapGenerationException($"Map block {block.Name} places unknown item '{type}'.");
+            var rule = _catalog.Items[handle].Value;
+            if (rule.BattleType == CorpseBattleType)
+                throw new MapGenerationException($"Placing corpse items (battleType: 11) on the map is not allowed. {kind}: {type}, map block: {block.Name}");
+            return rule;
+        }
+        int Fuse(int minimum, int maximum) => minimum <= maximum ? _random.NextInclusive(minimum, maximum)
+            : throw new MapGenerationException($"Map block {block.Name} has a fuse timer range [{minimum}, {maximum}] that is reversed.");
+
+        foreach (var item in items.Items)
+        {
+            Rule(item.Type, "Item");
+            var fuse = items.FuseTimers.GetValueOrDefault(item.Type);
+            foreach (var position in item.Positions)
+                _items.Add(new(item.Type, Tile(position, "Item", item.Type), fuse is null ? null : Fuse(fuse.Minimum, fuse.Maximum)));
+        }
+        foreach (var random in items.RandomizedItems)
+        {
+            if (random.ItemList.Count == 0) continue;
+            var type = random.ItemList[_random.NextInclusive(0, random.ItemList.Count - 1)];
+            var rule = _catalog.Items.TryGet(type, out var first) ? _catalog.Items[first].Value
+                : throw new MapGenerationException($"Map block {block.Name} places unknown item '{type}'.");
+            for (var count = 0; count < random.Amount; count++)
+            {
+                if (random.Mixed)
+                {
+                    type = random.ItemList[_random.NextInclusive(0, random.ItemList.Count - 1)];
+                    rule = Rule(type, "Item");
+                }
+                else Rule(type, "Item");
+                var tile = Tile(random.Position, "Random item", type);
+                int? fuse = _catalog.Battle.Equipment.Items[type].FuseType != NoFuse && random.FuseTimerMinimum > -1 &&
+                    random.FuseTimerMaximum > -1 && random.FuseTimerMinimum <= random.FuseTimerMaximum
+                    ? _random.NextInclusive(random.FuseTimerMinimum, random.FuseTimerMaximum) : null;
+                _items.Add(new(type, tile, fuse));
+            }
+        }
+        foreach (var extended in items.ExtendedItems)
+        {
+            var rule = Rule(extended.Type, "Item");
+            var weaponWithAmmo = rule.BattleType is 1 or 3 && rule.CompatibleAmmo.Take(4).Any(static slot => slot.Count != 0);
+            foreach (var position in extended.Positions)
+            {
+                var tile = Tile(position, "Extended item", extended.Type);
+                int? fuse = extended.FuseTimerMinimum > -1 && extended.FuseTimerMaximum > -1 && extended.FuseTimerMinimum <= extended.FuseTimerMaximum
+                    ? _random.NextInclusive(extended.FuseTimerMinimum, extended.FuseTimerMaximum) : null;
+                var weapon = _items.Count;
+                _items.Add(new(extended.Type, tile, fuse));
+                var loaded = new HashSet<int>();
+                foreach (var ammo in extended.Ammo)
+                {
+                    var ammoRule = Rule(ammo.Type, "Ammo item");
+                    var placed = new BattleMapItem(ammo.Type, tile, null)
+                    {
+                        AmmoQuantity = ammo.Quantity > 0 && ammo.Quantity < ammoRule.ClipSize ? ammo.Quantity : null,
+                    };
+                    if (weaponWithAmmo)
+                    {
+                        var slot = SlotForAmmo(rule, ammo.Type);
+                        if (slot == -1)
+                            throw new MapGenerationException($"Ammo is not compatible. Weapon: {extended.Type}, ammo: {ammo.Type}, map block: {block.Name}");
+                        if (!loaded.Add(slot))
+                            throw new MapGenerationException($"Weapon is already loaded. Weapon: {extended.Type}, ammo: {ammo.Type}, map block: {block.Name}");
+                        placed = placed with { LoadInto = weapon, Slot = slot };
+                    }
+                    _items.Add(placed);
+                }
+            }
+        }
+    }
+
+    /// <summary>RuleItem::getSlotForAmmo.</summary>
+    private int SlotForAmmo(RuntimeItemRule weapon, string ammo)
+    {
+        for (var slot = 0; slot < Math.Min(4, weapon.CompatibleAmmo.Count); slot++)
+            foreach (var handle in weapon.CompatibleAmmo[slot])
+                if (_catalog.Items.GetExternalId(handle) == ammo) return slot;
+        return -1;
     }
 
     /// <summary>One MAP tile part: RuleTerrain::getMapData across the terrain's data sets, BLANKS 0 when past them.</summary>
@@ -1159,7 +1270,25 @@ internal sealed record BattleMapInputs(string CraftId, string UfoId, string Cust
 /// cells and level), which craft's rules it ended with, and the map blocks' inventory tiles.
 /// </summary>
 internal sealed record BattleMapResult(BattleMap Map, bool CraftDeployed, int CraftX, int CraftY, int CraftZ, string CraftRuleId,
-    IReadOnlyList<BattlePosition> BackupInventoryTiles);
+    IReadOnlyList<BattlePosition> BackupInventoryTiles)
+{
+    /// <summary>The map blocks' items, in the order loadMAP created them.</summary>
+    public IReadOnlyList<BattleMapItem> Items { get; init; } = [];
+
+    /// <summary>BattlescapeGenerator::_generateFuel: false once a loaded block had an items array.</summary>
+    public bool GenerateFuel { get; init; } = true;
+}
+
+/// <summary>
+/// A map block item to create on a tile: its fuse timer and ammo quantity when set, and the earlier item (and slot) it is
+/// loaded into, or -1.
+/// </summary>
+internal sealed record BattleMapItem(string ItemType, BattlePosition Tile, int? FuseTimer)
+{
+    public int? AmmoQuantity { get; init; }
+    public int LoadInto { get; init; } = -1;
+    public int Slot { get; init; }
+}
 
 /// <summary>A reason battle generation stopped (the reference throws or crashes there).</summary>
 internal sealed class MapGenerationException(string reason) : Exception(reason);

@@ -442,6 +442,25 @@ for rank 0, none for a negative rank), `deployCivilians`, `addCivilian`.
 
 Tests: `BattleStartTests.CiviliansOfAPositiveSpawnRankComeBeforeTheAliensAsVips`.
 
+
+## S5, part 3 — Map block items (2026-10-23)
+
+Reference: `MapBlock::load` (`items`, `fuseTimers`, `randomizedItems`, `extendedItems`), `RandomizedItems`,
+`ExtendedItems`, `Position` and `std::pair` YAML reading, `BattlescapeGenerator::loadMAP` (items, `_generateFuel`).
+
+- `RuntimeMapBlock.Items` (`RuntimeMapBlockItems`): items by type in std::map order with their positions, fuse timer
+  ranges, randomized items and extended items with their ammo definitions; a malformed node is recorded and refuses
+  when the block is loaded.
+- `loadMAP` records each block's items after its tiles, drawing the fuse timers and random picks in the reference's
+  order; a block with an items array turns off algorithmic fuel. The battle creates them in that order before the X-COM
+  deployment, so they take the first item IDs; an extended weapon's ammo is created on the tile, its quantity lowered
+  when asked, and loaded into the weapon's compatible slot.
+- Refusals where the reference throws: an unknown item, a corpse item, a position outside the block, ammo that is not
+  compatible or a slot already loaded; also a reversed fuse timer range on a block's items array (RNG::generate's
+  range is undefined then).
+
+Tests: `BattleStartTests.MapBlockItemsTakeTheFirstItemIdsWithTheirFuseTimersAndLoadedAmmo`.
+
 ## Next
 
 - Craft skins: the craft's skin index in the strategic save and `refreshMapDataSets`.

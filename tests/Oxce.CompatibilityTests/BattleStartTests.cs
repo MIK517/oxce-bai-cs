@@ -51,6 +51,13 @@ public sealed class BattleStartTests
             markCiviliansAsVIP: true
             civiliansByType: {CIVILIAN: 2}
             data: [{alienRank: 5, lowQty: 1, highQty: 1, itemSets: [[]]}]
+          - type: UFO_ARMORY
+            width: 20
+            length: 20
+            height: 2
+            terrains: [TEST_TERRAIN]
+            script: ARMORY
+            data: [{customUnitType: ALIEN, lowQty: 1, itemSets: [[]]}]
           - type: UFO_RESIZED
             width: 30
             length: 30
@@ -119,6 +126,14 @@ public sealed class BattleStartTests
               - {name: ROAD_NS, width: 10, length: 10, groups: [3]}
               - {name: CROSSING, width: 10, length: 10, groups: [4]}
               - {name: ROOF, width: 10, length: 10, height: 1, groups: [6]}
+              - name: ARMORY
+                width: 10
+                length: 10
+                groups: [7]
+                items: {GRENADE: [[1, 1, 0], [2, 1, 0]]}
+                fuseTimers: {GRENADE: [3, 3]}
+                randomizedItems: [{position: [3, 3, 0], amount: 2, itemList: [CLIP]}]
+                extendedItems: [{type: GUN, pos: [[4, 4, 0]], ammoDef: [[CLIP, 5]]}]
             script: BASIC
         alienItemLevels: [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
         statGrowthMultipliers: {tu: 10}
@@ -221,6 +236,10 @@ public sealed class BattleStartTests
               mapDataSets: [BLANKS, UFOSET]
               mapBlocks: [{name: SCOUTBLOCK, width: 10, length: 20, groups: [0, 5]}]
         mapScripts:
+          - type: ARMORY
+            commands:
+              - {type: addBlock, groups: [7], rects: [[0, 0, 1, 1]]}
+              - {type: fillArea}
           - type: BASIC
             commands:
               - {type: addBlock, size: [2, 1], rects: [[0, 0, 2, 1]]}
@@ -292,6 +311,8 @@ public sealed class BattleStartTests
         ["MAPS/SCOUTBLOCK.MAP"] = Map(20, 10, 2),
         ["ROUTES/SCOUTBLOCK.RMP"] = [],
         ["ROUTES/CROSSING.RMP"] = [],
+        ["MAPS/ARMORY.MAP"] = Map(10, 10, 2),
+        ["ROUTES/ARMORY.RMP"] = RouteNode(8, 8, 0, [], rank: 4, priority: 1),
     });
 
     private static (CampaignState Campaign, CampaignDeploymentRequest Request) Requested(string? rules, string ufo = "UFO_SCOUT",
@@ -572,6 +593,23 @@ public sealed class BattleStartTests
             Assert.True(civilian.Id < alien.Id);
         });
         Assert.Equal(4, battle.Map.Nodes.Single(node => !node.IsDummy && node.Id == alien.StartNodeId).Rank);
+    }
+
+    [Fact]
+    public void MapBlockItemsTakeTheFirstItemIdsWithTheirFuseTimersAndLoadedAmmo()
+    {
+        var (campaign, _) = Requested(Rules, "UFO_ARMORY");
+        Started(campaign);
+        var battle = Battle(campaign);
+        // loadMAP: the block's items (std::map order, fuse timers drawn from their range), the randomized items (one pick,
+        // two of it), then the extended gun with its clip loaded at quantity 5; all before the X-COM items.
+        Assert.Equal([(0, "GRENADE", (BattlePosition?)new BattlePosition(1, 1, 0), "STR_GROUND", 3), (1, "GRENADE", new BattlePosition(2, 1, 0), "STR_GROUND", 3),
+                (2, "CLIP", new BattlePosition(3, 3, 0), "STR_GROUND", -1), (3, "CLIP", new BattlePosition(3, 3, 0), "STR_GROUND", -1),
+                (4, "GUN", new BattlePosition(4, 4, 0), "STR_GROUND", -1), (5, "CLIP", null, "", -1)],
+            battle.Items.Take(6).Select(static item => (item.Id, item.ItemType, item.Tile, item.Slot, item.FuseTimer)));
+        Assert.Equal(5, battle.Items[4].AmmoSlots[0]);
+        Assert.Equal((5, true, false), (battle.Items[5].AmmoQuantity, battle.Items[5].IsAmmo, battle.Items[5].XcomProperty));
+        Assert.Equal(12, battle.Items[2].AmmoQuantity);
     }
 
     [Fact]
