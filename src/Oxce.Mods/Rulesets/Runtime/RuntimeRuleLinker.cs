@@ -802,6 +802,7 @@ public static class RuntimeRuleLinker
                     ForcePercentageOutsideUfo = source.Booleans["forcePercentageOutsideUfo"],
                     Civilians = source.Integers["civilians"],
                     CivilianSpawnNodeRank = source.Integers["civilianSpawnNodeRank"],
+                    MarkCiviliansAsVip = source.Booleans["markCiviliansAsVIP"],
                     CiviliansByType = new ReadOnlyDictionary<string, int>(source.CiviliansByType.ToDictionary(
                         static pair => pair.Key, static pair => pair.Value, StringComparer.Ordinal)),
                     Data = RuntimeDeploymentData.ReadAll(source.DeploymentData, out var dataInvalid),

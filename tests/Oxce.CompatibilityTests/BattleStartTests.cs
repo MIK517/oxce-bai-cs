@@ -40,6 +40,17 @@ public sealed class BattleStartTests
             script: BASIC
             race: RACE_TEST
             data: [{alienRank: 2, lowQty: 2, highQty: 2, itemSets: [[GUN, CLIP], [GRENADE]]}]
+          - type: UFO_CIVILIANS
+            width: 30
+            length: 30
+            height: 2
+            terrains: [TEST_TERRAIN]
+            script: CRAFTED
+            race: RACE_TEST
+            civilianSpawnNodeRank: 4
+            markCiviliansAsVIP: true
+            civiliansByType: {CIVILIAN: 2}
+            data: [{alienRank: 5, lowQty: 1, highQty: 1, itemSets: [[]]}]
           - type: UFO_RESIZED
             width: 30
             length: 30
@@ -187,6 +198,8 @@ public sealed class BattleStartTests
           - type: VEHICLE_B
             fixedWeapon: true
         units:
+          - type: CIVILIAN
+            armor: SMALL_VEHICLE_ARMOR
           - type: ALIEN
             armor: SMALL_VEHICLE_ARMOR
             stats: {tu: 50, firing: 61}
@@ -539,6 +552,26 @@ public sealed class BattleStartTests
         Assert.Equal(BattleState.MaximumSoldierId, aliens.Min(static alien => alien.Id));
         Assert.Equal(("UFO_SCOUT", "RACE_TEST", 0, 0),
             (battle.ReinforcementsDeployment, battle.ReinforcementsRace, battle.ReinforcementsItemLevel, battle.AlienItemLevel));
+    }
+
+    [Fact]
+    public void CiviliansOfAPositiveSpawnRankComeBeforeTheAliensAsVips()
+    {
+        var (campaign, _) = Requested(Rules, "UFO_CIVILIANS");
+        Started(campaign);
+        var battle = Battle(campaign);
+        // civiliansByType rounds half the maximum up: one or two civilians, neutral VIPs on rank-4 nodes, numbered
+        // before the alien, which takes another rank-4 node (a soldier's second choice).
+        var civilians = battle.Units.Where(static unit => unit.Faction == BattleFaction.Neutral).ToArray();
+        Assert.InRange(civilians.Length, 1, 2);
+        var alien = Assert.Single(battle.Units, static unit => unit.Faction == BattleFaction.Hostile);
+        Assert.All(civilians, civilian =>
+        {
+            Assert.Equal(("CIVILIAN", true, BattleControllerKind.Ai), (civilian.UnitType, civilian.IsVip, civilian.Controller.Kind));
+            Assert.Equal(4, battle.Map.Nodes.Single(node => !node.IsDummy && node.Id == civilian.StartNodeId).Rank);
+            Assert.True(civilian.Id < alien.Id);
+        });
+        Assert.Equal(4, battle.Map.Nodes.Single(node => !node.IsDummy && node.Id == alien.StartNodeId).Rank);
     }
 
     [Fact]

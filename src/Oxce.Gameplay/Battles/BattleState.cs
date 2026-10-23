@@ -231,6 +231,9 @@ internal sealed class BattleUnit
     public int Morale { get; set; } = 100;
     public int StunLevel { get; set; }
 
+    /// <summary>BattleUnit::isVIP: a civilian the deployment marks as a VIP.</summary>
+    public bool IsVip { get; set; }
+
     /// <summary>BattleUnit::getRankInt (aliens: the deployment rank).</summary>
     public int Rank { get; set; }
 

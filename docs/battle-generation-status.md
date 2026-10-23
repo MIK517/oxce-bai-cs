@@ -417,7 +417,7 @@ Reference: `BattlescapeGenerator::run` (alien item level, the alien custom deplo
   `extendedForceSpawn`. Hostile statistics: the unit's plus its armor's, then percentage growth times the difficulty
   coefficient, the firing multiplier and absolute growth. Unit IDs continue after the X-COM vehicles.
 - `BattleUnit.Rank` and `StartNodeId` (the AI start node); `BattleState.AlienItemLevel` and the reinforcement fields.
-- Refusals: a deployment with civilians (until part 2); a missing alien item level row or one shorter than ten; a
+- Refusals: a missing alien item level row or one shorter than ten; a
   negative alien rank (the reference indexes before the table); an unknown unit.
 - Fixed: the cargo distribution's flare check used the request's shade instead of the battle's world shade.
 - Not yet: the armor values `adjustStats` scales (armor arrives with combat, branch 5), civilians, objectives, UFO power
@@ -426,10 +426,25 @@ Reference: `BattlescapeGenerator::run` (alien item level, the alien custom deplo
 Tests: `BattleStartTests.AliensSpawnOnNodesByRankWithDifficultyStatisticsAndTheirItemSet`; every battle scenario now
 deploys an alien, as a generated battle must have one.
 
+
+## S5, part 2 — Civilians (2026-10-23)
+
+Reference: `BattlescapeGenerator::run` (civilians before the aliens for a positive civilian spawn node rank, after them
+for rank 0, none for a negative rank), `deployCivilians`, `addCivilian`.
+
+- `CivilianDeployment`: the deployment's `civilians` (half the maximum rounded down to the maximum) of the terrain's random
+  civilian types, then each `civiliansByType` entry in std::map order (half rounded up), as neutral AI units on spawn
+  nodes of the civilian rank or near a friend, facing a random direction, VIPs when the deployment says so, then
+  `initUnit` with an item level drawn from the alien item levels (only for a placed civilian, as in the reference).
+- The alien item level is now set before either deployment, as `run` does.
+- `BattleUnit.IsVip`; deployments project `markCiviliansAsVIP`.
+- Refusal: civilians without a type on a terrain with no civilian types (the reference reads past the empty list).
+
+Tests: `BattleStartTests.CiviliansOfAPositiveSpawnRankComeBeforeTheAliensAsVips`.
+
 ## Next
 
 - Craft skins: the craft's skin index in the strategic save and `refreshMapDataSets`.
 - S4b: starting-condition vehicle and item restrictions (they send disabled vehicles and items back to base storage),
   save-side custom deployments.
-- S5: civilians (`deployCivilians`, before the aliens for a positive civilian spawn node rank), objectives
-  (`setupObjectives`), the weapon pile, UFO power sources (`fuelPowerSources`, crashed `explodePowerSources`); then S6.
+- S5: objectives (`setupObjectives`), the weapon pile, UFO power sources (`fuelPowerSources`, crashed `explodePowerSources`); then S6.

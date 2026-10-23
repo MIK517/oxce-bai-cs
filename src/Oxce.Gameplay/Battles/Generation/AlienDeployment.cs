@@ -51,9 +51,6 @@ internal sealed class AlienDeployment
     {
         var rules = campaign.Content.RuntimeRules;
         var deployer = new AlienDeployment(battle, rules, campaign.Random, (int)campaign.Difficulty, unitSequence);
-        // run: the alien item level is the month, capped at the last month the mod lists.
-        var levels = rules.Campaign.AlienItemLevels;
-        battle.AlienItemLevel = levels.Count == 0 ? campaign.MonthsPassed : Math.Min(campaign.MonthsPassed, levels.Count - 1);
         var count = battle.Units.Count;
         deployer.Run(campaign, request, deploymentId, deployment);
         if (battle.Units.Count == count) throw new MapGenerationException("Map generator encountered an error: no alien units could be placed on the map.");

@@ -355,6 +355,9 @@ public sealed record RuntimeDeploymentBattle(
 
     public int CivilianSpawnNodeRank { get; init; }
 
+    /// <summary>AlienDeployment <c>markCiviliansAsVIP</c>.</summary>
+    public bool MarkCiviliansAsVip { get; init; }
+
     /// <summary>AlienDeployment <c>data</c>: the alien groups to deploy.</summary>
     public IReadOnlyList<RuntimeDeploymentData> Data { get; init; } = [];
 

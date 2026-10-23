@@ -14,7 +14,6 @@ namespace Oxce.Gameplay.Battles;
 /// </summary>
 internal static class BattleGenerator
 {
-    internal const string CivilianDeployment = "Deployments with civilians arrive with the civilian deployment (Phase 7 branch 1 S5).";
 
     /// <summary>Why no battle can be generated from the request, or null.</summary>
     public static CampaignReason? Refusal(CampaignState campaign, CampaignDeploymentRequest request) =>
@@ -66,13 +65,17 @@ internal static class BattleGenerator
         // run: the deployment's environmental effects, else the terrain's.
         var enviro = rules.Battle.EnviroArmorTransformations.ContainsKey(battle.EnviroEffects) ? battle.EnviroEffects : terrain.EnviroEffects;
         var unitSequence = XcomDeployment.Deploy(campaign, request, state, generated, inputs.StartingCondition, enviro);
-        if (battle.Civilians != 0 || battle.CiviliansByType.Count != 0)
-            throw new MapGenerationException(CivilianDeployment);
+        // run: the alien item level is the month, capped at the last month the mod lists.
+        var levels = rules.Campaign.AlienItemLevels;
+        state.AlienItemLevel = levels.Count == 0 ? campaign.MonthsPassed : Math.Min(campaign.MonthsPassed, levels.Count - 1);
+        // Civilians come before the aliens for a positive civilian spawn node rank, else after them.
+        if (battle.CivilianSpawnNodeRank > 0) unitSequence = CivilianDeployment.Deploy(state, rules, random, battle, terrain, unitSequence);
         // run: the alien custom deployment when it has data, else the battle's deployment.
         var (alienId, alienDeployment) = request.AlienCustomDeploymentId.Length != 0 &&
             rules.AlienDeployments.TryGet(request.AlienCustomDeploymentId, out var custom) && rules.AlienDeployments[custom].Value.Battle.Data.Count != 0
             ? (request.AlienCustomDeploymentId, rules.AlienDeployments[custom].Value) : (id, deployment);
-        AlienDeployment.Deploy(campaign, request, state, alienId, alienDeployment, unitSequence);
+        unitSequence = AlienDeployment.Deploy(campaign, request, state, alienId, alienDeployment, unitSequence);
+        if (battle.CivilianSpawnNodeRank == 0) CivilianDeployment.Deploy(state, rules, random, battle, terrain, unitSequence);
         return state;
     }
 
