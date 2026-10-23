@@ -121,6 +121,14 @@ public sealed class BattleStartTests
             script: CRAFTED
             enviroEffects: ENV_SUIT
             data: [{customUnitType: ALIEN, lowQty: 1, itemSets: [[]]}]
+          - type: UFO_GEAR
+            width: 30
+            length: 30
+            height: 2
+            terrains: [TEST_TERRAIN]
+            script: CRAFTED
+            startingCondition: SC_GEAR
+            data: [{customUnitType: ALIEN, lowQty: 1, itemSets: [[]]}]
           - type: UFO_REPLACED
             width: 30
             length: 30
@@ -182,6 +190,9 @@ public sealed class BattleStartTests
           - type: ENV_SUIT
             armorTransformations: {ARMOR: SUIT}
         startingConditions:
+          - type: SC_GEAR
+            forbiddenVehicles: [VEHICLE_B]
+            forbiddenItems: [GRENADE, VEHICLE_AMMO]
           - type: SC_REPLACE
             forbiddenArmors: [ARMOR]
             defaultArmor: {RECRUIT: {SUIT: 2}}
@@ -680,6 +691,26 @@ public sealed class BattleStartTests
     {
         var (campaign, _) = Requested(Rules, "UFO_JUNK");
         Assert.Equal(BattleGenerator.PrimedJunk, Refusal(campaign, new StartBattle()));
+    }
+
+    [Fact]
+    public void TheStartingConditionSendsDisabledVehiclesAndItemsBackToBaseStorage()
+    {
+        var (campaign, _) = Requested(Rules, "UFO_GEAR", [new("VEHICLE", 25), new("VEHICLE_B", 0)],
+            new Dictionary<string, int> { ["GRENADE"] = 2, ["SUPPLY"] = 1 });
+        var before = campaign.Capture().Bases[0].Items;
+        Started(campaign);
+        var battle = Battle(campaign);
+        // VEHICLE_B is forbidden; VEHICLE's clip ammo is, so it stays home too, with the clips it loads (its own clip size
+        // of 0 makes that the clip's 30). The grenades are forbidden; the supply comes along.
+        Assert.DoesNotContain(battle.Units, static unit => unit.UnitType.StartsWith("VEHICLE", StringComparison.Ordinal));
+        Assert.Equal(new Dictionary<string, int> { ["VEHICLE"] = 1, ["VEHICLE_AMMO"] = 30, ["VEHICLE_B"] = 1, ["GRENADE"] = 2 },
+            battle.ReturnedToBase.ToDictionary(static pair => pair.Key, static pair => pair.Value));
+        Assert.DoesNotContain(battle.Items, static item => item.ItemType == "GRENADE");
+        Assert.Single(battle.Items, static item => item.ItemType == "SUPPLY");
+        var after = campaign.Capture().Bases[0].Items;
+        foreach (var (type, quantity) in battle.ReturnedToBase)
+            Assert.Equal(before.GetValueOrDefault(type) + quantity, after.GetValueOrDefault(type));
     }
 
     [Fact]

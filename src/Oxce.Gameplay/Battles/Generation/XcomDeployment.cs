@@ -13,9 +13,6 @@ namespace Oxce.Gameplay.Battles.Generation;
 /// </summary>
 internal sealed class XcomDeployment
 {
-    internal const string EquipmentRestrictions =
-        "X-COM deployment with starting-condition vehicle and item restrictions arrives with the craft's items (Phase 7 branch 1 S4b).";
-
     /// <summary>SpecialTileType START_POINT.</summary>
     private const int StartPoint = 1;
 
@@ -52,7 +49,6 @@ internal sealed class XcomDeployment
         RuntimeStartingCondition? startingCondition, string enviroEffects)
     {
         var rules = campaign.Content.RuntimeRules;
-        if (startingCondition is { RestrictsEquipment: true }) throw new MapGenerationException(EquipmentRestrictions);
         var deployment = new XcomDeployment(battle, generated, rules, campaign.Random, startingCondition,
             rules.Battle.EnviroArmorTransformations.GetValueOrDefault(enviroEffects));
         deployment.Run(campaign, request);
@@ -64,7 +60,21 @@ internal sealed class XcomDeployment
         var owner = campaign.BaseStates.Find(candidate => candidate.Id == request.BaseId)
             ?? throw new MapGenerationException($"The deployment request's base {request.BaseId} no longer exists.");
         var extended = _rules.Campaign.ExtendedHwpLoadOrder;
-        var vehicles = request.Vehicles.Select((id, index) => Vehicle(id, index < request.VehicleAmmo.Count ? request.VehicleAmmo[index] : null)).ToArray();
+        var vehicles = new List<Vehicle>();
+        for (var index = 0; index < request.Vehicles.Count; index++)
+        {
+            var vehicle = Vehicle(request.Vehicles[index], index < request.VehicleAmmo.Count ? request.VehicleAmmo[index] : null);
+            var clip = _equipment.VehicleClipAmmo(vehicle.Id);
+            if (_startingCondition is { } condition &&
+                (!condition.IsVehiclePermitted(vehicle.Id) || clip is not null && !ItemPermitted(condition, clip, request)))
+            {
+                // A disabled vehicle goes back to base storage, with the clips it loads.
+                _battle.ReturnToBase(vehicle.Id, 1);
+                if (clip is not null) _battle.ReturnToBase(clip, VehicleClipsLoaded(vehicle.Id, clip));
+                continue;
+            }
+            vehicles.Add(vehicle);
+        }
         // 2x2 vehicles first (all vehicles without the extended order).
         foreach (var vehicle in vehicles)
             if (vehicle.Armor.Size > 1 || !extended) AddVehicle(vehicle);
@@ -98,9 +108,36 @@ internal sealed class XcomDeployment
         foreach (var rule in _rules.Items.Rules)
         {
             if (!request.Items.TryGetValue(rule.Id, out var quantity)) continue;
+            if (_startingCondition is { } condition && !ItemPermitted(condition, rule.Id, request))
+            {
+                // A disabled item goes back to base storage.
+                _battle.ReturnToBase(rule.Id, quantity);
+                continue;
+            }
             for (var count = 0; count < quantity; count++)
                 _equipment.CreateItemForTile(rule.Id, _battle.CraftInventoryTile).XcomProperty = _battle.CraftInventoryTile is not null;
         }
+    }
+
+    /// <summary>RuleStartingCondition::isItemPermitted with the item's categories and, when ammo shares categories, those of the craft's primary ammo for a firearm.</summary>
+    private bool ItemPermitted(RuntimeStartingCondition condition, string itemType, CampaignDeploymentRequest request)
+    {
+        if (!_rules.Items.TryGet(itemType, out var handle)) return condition.IsItemPermitted(itemType, null);
+        var item = _rules.Items[handle].Value;
+        IEnumerable<string> categories = item.Categories;
+        if (_rules.Campaign.ShareAmmoCategories && item.BattleType == 1 && item.CompatibleAmmo.Count != 0)
+            foreach (var ammo in item.CompatibleAmmo[0])
+                if (request.Items.GetValueOrDefault(_rules.Items.GetExternalId(ammo)) > 0)
+                    categories = categories.Concat(_rules.Items[ammo].Value.Categories);
+        return condition.IsItemPermitted(itemType, categories);
+    }
+
+    /// <summary>RuleItem::getVehicleClipsLoaded: the clips that fill the vehicle (the weapon's capacity over the clip's), or the clip size.</summary>
+    private int VehicleClipsLoaded(string vehicleItem, string clip)
+    {
+        var weapon = _rules.Items.GetRequiredValue(vehicleItem).ClipSize;
+        var ammo = _rules.Items.GetRequiredValue(clip).ClipSize;
+        return ammo > 0 && weapon > 0 ? weapon / ammo : ammo;
     }
 
     private Vehicle Vehicle(string itemId, int? ammo)

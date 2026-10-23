@@ -78,6 +78,17 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
             return Blocked(new CampaignReason(GenerationFailedCode, failure.Message));
         }
         battle.Validate();
+        // deployXCOM sends disabled vehicles and items back to the base's storage.
+        if (battle.ReturnedToBase.Count != 0)
+        {
+            var owner = campaign.BaseStates.Find(candidate => candidate.Id == request.BaseId)!;
+            var items = campaign.Content.RuntimeRules.Items;
+            foreach (var (type, quantity) in battle.ReturnedToBase)
+            {
+                var handle = items.GetRequired(type);
+                owner.Items[handle] = checked(owner.Items.GetValueOrDefault(handle) + quantity);
+            }
+        }
         handOver.ConsumeDeploymentRequest();
         _battle = battle;
         return new CampaignCommandResult([new BattleStarted(battle.MissionType, battle.DeploymentId)]);

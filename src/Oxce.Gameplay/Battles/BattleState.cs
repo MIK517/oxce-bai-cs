@@ -83,6 +83,17 @@ internal sealed class BattleState
     public int ObjectiveType { get; internal set; } = -1;
     public int ObjectiveCount { get; internal set; }
 
+    private readonly Dictionary<string, int> _returnedToBase = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// What the starting condition sent back to base storage (disabled vehicles with their clips, disabled items); the
+    /// campaign adds it to the base when the battle starts.
+    /// </summary>
+    public IReadOnlyDictionary<string, int> ReturnedToBase => _returnedToBase;
+
+    internal void ReturnToBase(string itemType, int quantity) =>
+        _returnedToBase[itemType] = checked(_returnedToBase.GetValueOrDefault(itemType) + quantity);
+
     private readonly List<BattleItem> _guaranteedRecovered = [];
 
     /// <summary>SavedBattleGame::getGuaranteedRecoveredItems: items off the map that go home after the battle, by ID.</summary>

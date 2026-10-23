@@ -482,9 +482,27 @@ Reference: `BattlescapeGenerator::setupObjectives`, `run` (after the civilians),
 Tests: `BattleStartTests.ObjectivesCountTheTargetPartsPowerSourcesGetFuelAndTheWeaponPileGoesHome`,
 `MapGrenadesPrimedToExplodeAtTheStartRefuseUntilExplosionsExist`.
 
+
+## S4b, part 6 — Starting-condition vehicle and item restrictions (2026-10-23)
+
+Reference: `BattlescapeGenerator::deployXCOM` (disabled vehicles and items), `RuleStartingCondition::isVehiclePermitted`,
+`isItemPermitted`, `RuleItem::getVehicleClipsLoaded`, `Mod::getShareAmmoCategories`.
+
+- Starting conditions project their allowed and forbidden vehicles, items and item categories; `shareAmmoCategories`
+  is parsed. `isItemPermitted`: the item lists decide first, then the item's categories (with the craft's primary ammo
+  categories for a firearm when ammo shares categories) against the forbidden or else the allowed categories.
+- A vehicle that is forbidden, or whose clip ammunition is, stays out of the battle and goes back to base storage with
+  `getVehicleClipsLoaded` clips (no unit ID is used); a forbidden craft item goes back to base storage.
+- `BattleState.ReturnedToBase` records them during generation; the campaign adds them to the base's storage only when
+  the battle starts, so a refused generation changes nothing. The craft keeps its own record, as in the reference
+  (the debriefing settles it).
+
+Tests: `BattleStartTests.TheStartingConditionSendsDisabledVehiclesAndItemsBackToBaseStorage`,
+`RuntimeStartingConditionTests`.
+
 ## Next
 
 - Craft skins: the craft's skin index in the strategic save and `refreshMapDataSets`.
-- S4b: starting-condition vehicle and item restrictions (they send disabled vehicles and items back to base storage),
-  save-side custom deployments.
+- S4b: save-side custom deployments (the craft's `customSoldierDeployment` and `customVehicleDeployment`, the save's
+  `customRuleCraftDeployments`).
 - S6: base defense maps and the remaining entry points.

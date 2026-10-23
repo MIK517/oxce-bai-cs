@@ -225,6 +225,48 @@ public sealed record RuntimeStartingCondition(IReadOnlyList<string> AllowedCraft
     /// <summary>Whether vehicles, items or item categories are allowed or forbidden.</summary>
     public bool RestrictsEquipment { get; init; }
 
+    /// <summary><c>allowedVehicles</c>, <c>forbiddenVehicles</c>, <c>allowedItems</c>, <c>forbiddenItems</c>,
+    /// <c>allowedItemCategories</c> and <c>forbiddenItemCategories</c>.</summary>
+    public IReadOnlyList<string> AllowedVehicles { get; init; } = [];
+    public IReadOnlyList<string> ForbiddenVehicles { get; init; } = [];
+    public IReadOnlyList<string> AllowedItems { get; init; } = [];
+    public IReadOnlyList<string> ForbiddenItems { get; init; } = [];
+    public IReadOnlyList<string> AllowedItemCategories { get; init; } = [];
+    public IReadOnlyList<string> ForbiddenItemCategories { get; init; } = [];
+
+    public bool IsVehiclePermitted(string vehicleType) => Permitted(AllowedVehicles, ForbiddenVehicles, vehicleType);
+
+    /// <summary>
+    /// RuleStartingCondition::isItemPermitted: the item lists decide first (an explicitly allowed item is permitted, an
+    /// explicitly forbidden one is not); then, for a known item, its categories (and those of the craft's ammo for a
+    /// firearm when ammo shares categories) against the forbidden or else the allowed categories.
+    /// </summary>
+    public bool IsItemPermitted(string itemType, IEnumerable<string>? categories)
+    {
+        var itemResult = true;
+        if (ForbiddenItems.Count != 0)
+        {
+            if (ForbiddenItems.Contains(itemType)) return false;
+        }
+        else if (AllowedItems.Count != 0)
+        {
+            if (AllowedItems.Contains(itemType)) return true;
+            itemResult = false;
+        }
+        var checkForbidden = ForbiddenItemCategories.Count != 0;
+        var checkAllowed = !checkForbidden && AllowedItemCategories.Count != 0;
+        var categoryResult = !checkAllowed;
+        if ((checkForbidden || checkAllowed) && categories is not null)
+        {
+            foreach (var category in categories)
+            {
+                if (checkForbidden && ForbiddenItemCategories.Contains(category)) return false;
+                if (checkAllowed && AllowedItemCategories.Contains(category)) return true;
+            }
+        }
+        return itemResult && categoryResult;
+    }
+
     /// <summary>RuleStartingCondition::getCraftReplacement: the craft whose map replaces a source craft's.</summary>
     public IReadOnlyDictionary<string, string> CraftTransformations { get; init; } =
         new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(StringComparer.Ordinal));

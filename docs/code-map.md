@@ -27,7 +27,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
 | [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 321 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
-| [Oxce.UnitTests](#oxceunittests) | 108 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
+| [Oxce.UnitTests](#oxceunittests) | 109 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
 | [Oxce.FixtureTool](#oxcefixturetool) | 1 | FixtureSupport, Formats, Mods, Savegames |
 | [Oxce.ResourceBrowser](#oxceresourcebrowser) | 2 | Formats, Mods, Platform.Sdl, Rendering, Resources |
@@ -1570,13 +1570,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.UnitTests
 
-`tests/Oxce.UnitTests` - 108 files.
+`tests/Oxce.UnitTests` - 109 files.
 
 ### `Oxce.UnitTests`
 
 - `AllocationMeasurement` (class) [AllocationMeasurement.cs](../tests/Oxce.UnitTests/AllocationMeasurement.cs)
 
-<details><summary>107 test classes</summary>
+<details><summary>108 test classes</summary>
 
 - `ProjectDependencyTests` ([ProjectDependencyTests.cs](../tests/Oxce.UnitTests/Architecture/ProjectDependencyTests.cs))
 - `DiagnosticTests` ([DiagnosticTests.cs](../tests/Oxce.UnitTests/Core/DiagnosticTests.cs))
@@ -1665,6 +1665,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RulesetComposerTests` ([RulesetComposerTests.cs](../tests/Oxce.UnitTests/Mods/RulesetComposerTests.cs))
 - `RuntimeGlobeProjectionTests` ([RuntimeGlobeProjectionTests.cs](../tests/Oxce.UnitTests/Mods/RuntimeGlobeProjectionTests.cs))
 - `RuntimeRuleLinkerTests` ([RuntimeRuleLinkerTests.cs](../tests/Oxce.UnitTests/Mods/RuntimeRuleLinkerTests.cs))
+- `RuntimeStartingConditionTests` ([RuntimeStartingConditionTests.cs](../tests/Oxce.UnitTests/Mods/RuntimeStartingConditionTests.cs))
 - `RuntimeTerrainCriterionTests` ([RuntimeTerrainCriterionTests.cs](../tests/Oxce.UnitTests/Mods/RuntimeTerrainCriterionTests.cs))
 - `StrategicScriptLinkingTests` ([StrategicScriptLinkingTests.cs](../tests/Oxce.UnitTests/Mods/StrategicScriptLinkingTests.cs))
 - `TerrainDeploymentRuleCatalogTests` ([TerrainDeploymentRuleCatalogTests.cs](../tests/Oxce.UnitTests/Mods/TerrainDeploymentRuleCatalogTests.cs))
