@@ -461,9 +461,30 @@ Reference: `MapBlock::load` (`items`, `fuseTimers`, `randomizedItems`, `extended
 
 Tests: `BattleStartTests.MapBlockItemsTakeTheFirstItemIdsWithTheirFuseTimersAndLoadedAmmo`.
 
+
+## S5, part 4 — Objectives, the weapon pile and power sources (2026-10-23)
+
+Reference: `BattlescapeGenerator::setupObjectives`, `run` (after the civilians), `sendItemsToLimbo`, `fuelPowerSources`,
+`explodePowerSources`, `explodeOtherJunk`, `Mod::getAlienFuelName`, `getBughuntMinTurn`.
+
+- Settings: `alienFuel` (a [name, quantity] pair) and `bughuntMinTurn` (999 by default). Deployments project
+  `objectiveType`, `objectivesRequired`, `bughuntMinTurn`, `escapeType`, `vipSurvivalPercentage` and `noWeaponPile`.
+- `setupObjectives`: bug hunt off, the deployment's minimum bug hunt turn when set (else the mod's), the VIP survival
+  percentage and escape type, and the objective type and count when map parts of that special type exist (all of
+  them, or the required number when fewer).
+- With `noWeaponPile`, the items left on the craft inventory tile and their loaded ammo leave the map and the battle's
+  items for `GuaranteedRecoveredItems` (by ID), fuse timers reset. Unless a loaded block had an items array, each UFO
+  power source (object special type 2, in tile order) gets the alien fuel item.
+- Refusals until explosions exist (branch 5): a crashed UFO whose map has power sources (`explodePowerSources`), and
+  map grenades primed with fuse timer -2 that are neither X-COM property, special weapons nor spawners
+  (`explodeOtherJunk`); also alien fuel that names no item when a power source needs it (the reference throws).
+
+Tests: `BattleStartTests.ObjectivesCountTheTargetPartsPowerSourcesGetFuelAndTheWeaponPileGoesHome`,
+`MapGrenadesPrimedToExplodeAtTheStartRefuseUntilExplosionsExist`.
+
 ## Next
 
 - Craft skins: the craft's skin index in the strategic save and `refreshMapDataSets`.
 - S4b: starting-condition vehicle and item restrictions (they send disabled vehicles and items back to base storage),
   save-side custom deployments.
-- S5: objectives (`setupObjectives`), the weapon pile, UFO power sources (`fuelPowerSources`, crashed `explodePowerSources`); then S6.
+- S6: base defense maps and the remaining entry points.

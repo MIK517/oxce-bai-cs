@@ -107,6 +107,13 @@ internal static class CampaignStartSettingsComposer
         b.DifficultyDemigod = Read(root, "difficultyDemigod", b.DifficultyDemigod);
         b.ExtendedHwpLoadOrder = Read(root, "extendedHwpLoadOrder", b.ExtendedHwpLoadOrder);
         b.ExtendedForceSpawn = Read(root, "extendedForceSpawn", b.ExtendedForceSpawn);
+        b.BughuntMinTurn = Read(root, "bughuntMinTurn", b.BughuntMinTurn);
+        // std::pair reads from a two-element sequence; anything else leaves the pair as it was.
+        if (root.TryGet("alienFuel", out var fuel) && fuel is YamlSequenceNode { Items.Count: 2 } fuelPair)
+        {
+            b.AlienFuelName = YamlValueReader.ReadString(fuelPair.Items[0]);
+            b.AlienFuelQuantity = YamlValueReader.ReadInt32(fuelPair.Items[1]);
+        }
         if (root.TryGet("alienItemLevels", out var itemLevels))
         {
             if (itemLevels is not YamlSequenceNode levels)

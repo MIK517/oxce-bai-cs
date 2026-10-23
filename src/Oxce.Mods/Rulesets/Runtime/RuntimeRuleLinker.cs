@@ -385,6 +385,9 @@ public static class RuntimeRuleLinker
             DefeatFunds = content.CampaignStart.Settings.DefeatFunds,
             ExtendedHwpLoadOrder = content.CampaignStart.Settings.ExtendedHwpLoadOrder,
             ExtendedForceSpawn = content.CampaignStart.Settings.ExtendedForceSpawn,
+            AlienFuelName = content.CampaignStart.Settings.AlienFuelName,
+            AlienFuelQuantity = content.CampaignStart.Settings.AlienFuelQuantity,
+            BughuntMinTurn = content.CampaignStart.Settings.BughuntMinTurn,
             AlienItemLevels = Array.AsReadOnly(content.CampaignStart.Settings.AlienItemLevels
                 .Select(static levels => (IReadOnlyList<int>)Array.AsReadOnly(levels.ToArray())).ToArray()),
             StatAdjustments = Array.AsReadOnly(content.CampaignStart.Settings.StatAdjustments.Select(static adjustment =>
@@ -803,6 +806,12 @@ public static class RuntimeRuleLinker
                     Civilians = source.Integers["civilians"],
                     CivilianSpawnNodeRank = source.Integers["civilianSpawnNodeRank"],
                     MarkCiviliansAsVip = source.Booleans["markCiviliansAsVIP"],
+                    ObjectiveType = source.Integers["objectiveType"],
+                    ObjectivesRequired = source.Integers["objectivesRequired"],
+                    BughuntMinTurn = source.Integers["bughuntMinTurn"],
+                    EscapeType = source.Integers["escapeType"],
+                    VipSurvivalPercentage = source.Integers["vipSurvivalPercentage"],
+                    NoWeaponPile = source.Booleans["noWeaponPile"],
                     CiviliansByType = new ReadOnlyDictionary<string, int>(source.CiviliansByType.ToDictionary(
                         static pair => pair.Key, static pair => pair.Value, StringComparer.Ordinal)),
                     Data = RuntimeDeploymentData.ReadAll(source.DeploymentData, out var dataInvalid),

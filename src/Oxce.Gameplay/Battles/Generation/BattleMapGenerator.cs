@@ -1263,7 +1263,11 @@ internal sealed class BattleMapGenerator
 /// What the battle brings to the map besides its terrain: the landing craft (empty for none), the target UFO (empty for
 /// none), the deployment's custom UFO and the starting condition.
 /// </summary>
-internal sealed record BattleMapInputs(string CraftId, string UfoId, string CustomUfo, RuntimeStartingCondition? StartingCondition);
+internal sealed record BattleMapInputs(string CraftId, string UfoId, string CustomUfo, RuntimeStartingCondition? StartingCondition)
+{
+    /// <summary>The battle's UFO crashed (Ufo::CRASHED): its power sources explode at the start.</summary>
+    public bool UfoCrashed { get; init; }
+}
 
 /// <summary>
 /// The generated map and what the unit deployment needs from the generation: whether and where the craft landed (block

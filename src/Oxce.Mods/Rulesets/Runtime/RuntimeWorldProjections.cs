@@ -358,6 +358,18 @@ public sealed record RuntimeDeploymentBattle(
     /// <summary>AlienDeployment <c>markCiviliansAsVIP</c>.</summary>
     public bool MarkCiviliansAsVip { get; init; }
 
+    /// <summary>AlienDeployment <c>objectiveType</c> (a special tile type, -1 for none) and <c>objectivesRequired</c> (0 for all).</summary>
+    public int ObjectiveType { get; init; } = -1;
+    public int ObjectivesRequired { get; init; }
+
+    /// <summary>AlienDeployment <c>bughuntMinTurn</c> (0 for the mod's), <c>escapeType</c> and <c>vipSurvivalPercentage</c>.</summary>
+    public int BughuntMinTurn { get; init; }
+    public int EscapeType { get; init; }
+    public int VipSurvivalPercentage { get; init; }
+
+    /// <summary>AlienDeployment <c>noWeaponPile</c>: the craft's leftover items go home instead of lying on the map.</summary>
+    public bool NoWeaponPile { get; init; }
+
     /// <summary>AlienDeployment <c>data</c>: the alien groups to deploy.</summary>
     public IReadOnlyList<RuntimeDeploymentData> Data { get; init; } = [];
 

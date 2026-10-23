@@ -78,7 +78,8 @@ public sealed class RuntimeBattleEquipment
                 List(rule.Value.Categories.Select(category => categoryReplacements.GetValueOrDefault(category, category))),
                 List(AmmoActions.Select(action => rule.Value.Actions[action].AmmoSlot)),
                 values.GetInteger("fuseType"),
-                rule.Value.EffectiveLoadOrder);
+                rule.Value.EffectiveLoadOrder,
+                !string.IsNullOrEmpty(values.NullableName("spawnUnit")) || !string.IsNullOrEmpty(values.NullableName("spawnItem")));
         }, StringComparer.Ordinal);
         var armors = personnel.Armors.Rules.ToDictionary(static rule => rule.Id, static rule => new RuntimeBattleArmor(
             List(rule.Value.BuiltInWeapons), rule.Value.Strings["specialWeapon"], rule.Value.Strings["selfDestructItem"],
@@ -140,7 +141,8 @@ public sealed record RuntimeBattleItem(
     IReadOnlyList<string> Categories,
     IReadOnlyList<int> ActionAmmoSlots,
     int FuseType,
-    int LoadOrder);
+    int LoadOrder,
+    bool Spawns);
 
 /// <summary>Armor's equipment fields: built-in weapons, special and self-destruct items, two main weapons, inventory, weight.</summary>
 public sealed record RuntimeBattleArmor(

@@ -63,6 +63,9 @@ public sealed class CampaignStartSettings
         DifficultyDemigod = builder.DifficultyDemigod;
         ExtendedHwpLoadOrder = builder.ExtendedHwpLoadOrder;
         ExtendedForceSpawn = builder.ExtendedForceSpawn;
+        AlienFuelName = builder.AlienFuelName;
+        AlienFuelQuantity = builder.AlienFuelQuantity;
+        BughuntMinTurn = builder.BughuntMinTurn;
         AlienItemLevels = Array.AsReadOnly(builder.AlienItemLevels.Select(static levels => (IReadOnlyList<int>)levels.AsReadOnly()).ToArray());
         StatAdjustments = Array.AsReadOnly(builder.StatAdjustments.Select(static adjustment => adjustment.Build()).ToArray());
         BaseNamesFirst = builder.BaseNamesFirst.AsReadOnly();
@@ -218,6 +221,13 @@ public sealed class CampaignStartSettings
     /// <summary>Mod::EXTENDED_FORCE_SPAWN (<c>extendedForceSpawn</c>): aliens without a spawn node are placed near a friend.</summary>
     public bool ExtendedForceSpawn { get; init; }
 
+    /// <summary>Mod::getAlienFuelName and getAlienFuelQuantity (<c>alienFuel</c>: [name, quantity]).</summary>
+    public string AlienFuelName { get; init; } = "";
+    public int AlienFuelQuantity { get; init; }
+
+    /// <summary>Mod::getBughuntMinTurn (<c>bughuntMinTurn</c>).</summary>
+    public int BughuntMinTurn { get; init; } = 999;
+
     /// <summary>Mod::getAlienItemLevels: for each month, ten item levels one of which an alien draws.</summary>
     public IReadOnlyList<IReadOnlyList<int>> AlienItemLevels { get; init; } = [];
 
@@ -304,6 +314,9 @@ internal sealed class CampaignStartSettingsBuilder
     public bool DifficultyDemigod { get; set; }
     public bool ExtendedHwpLoadOrder { get; set; }
     public bool ExtendedForceSpawn { get; set; }
+    public string AlienFuelName { get; set; } = "";
+    public int AlienFuelQuantity { get; set; }
+    public int BughuntMinTurn { get; set; } = 999;
     public List<List<int>> AlienItemLevels { get; set; } = [];
     public StatAdjustmentBuilder[] StatAdjustments { get; } = [new(0.5, 0.5), new(1, 1), new(1, 1), new(1, 1), new(1, 1)];
     public List<string> BaseNamesFirst { get; } = [];

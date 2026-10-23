@@ -65,6 +65,7 @@ internal static class BattleGenerator
         // run: the deployment's environmental effects, else the terrain's.
         var enviro = rules.Battle.EnviroArmorTransformations.ContainsKey(battle.EnviroEffects) ? battle.EnviroEffects : terrain.EnviroEffects;
         CreateMapItems(state, rules, random, generated.Items);
+        SetupObjectives(state, battle, rules);
         var unitSequence = XcomDeployment.Deploy(campaign, request, state, generated, inputs.StartingCondition, enviro);
         // run: the alien item level is the month, capped at the last month the mod lists.
         var levels = rules.Campaign.AlienItemLevels;
@@ -77,7 +78,78 @@ internal static class BattleGenerator
             ? (request.AlienCustomDeploymentId, rules.AlienDeployments[custom].Value) : (id, deployment);
         unitSequence = AlienDeployment.Deploy(campaign, request, state, alienId, alienDeployment, unitSequence);
         if (battle.CivilianSpawnNodeRank == 0) CivilianDeployment.Deploy(state, rules, random, battle, terrain, unitSequence);
+        if (state.CraftInventoryTile is { } pile && battle.NoWeaponPile) SendItemsToLimbo(state, pile);
+        if (generated.GenerateFuel) FuelPowerSources(state, rules, random);
+        // explodePowerSources and explodeOtherJunk need explosions and terrain destruction.
+        if (inputs.UfoCrashed && ObjectTiles(map, PowerSource).Any()) throw new MapGenerationException(CrashedPowerSources);
+        if (state.Items.Any(item => item.Tile is not null && !item.XcomProperty && !item.IsSpecialWeapon && item.FuseTimer == -2 &&
+                rules.Items.GetRequiredValue(item.ItemType).BattleType == GrenadeBattleType && !rules.Battle.Equipment.Items[item.ItemType].Spawns))
+            throw new MapGenerationException(PrimedJunk);
         return state;
+    }
+
+    internal const string CrashedPowerSources =
+        "A crashed UFO's power sources explode when the battle starts; explosions arrive with combat (Phase 7 branch 5).";
+    internal const string PrimedJunk =
+        "Map grenades primed to explode at the start (fuse timer -2) need explosions, which arrive with combat (Phase 7 branch 5).";
+
+    // SpecialTileType UFO_POWER_SOURCE and BattleType BT_GRENADE.
+    private const int PowerSource = 2;
+    private const int GrenadeBattleType = 4;
+
+    /// <summary>
+    /// BattlescapeGenerator::setupObjectives: bug hunt off, its minimum turn (the deployment's when set), the VIP rules,
+    /// and the objective type and count when the map has map parts of that special type (all of them, or the required
+    /// number when fewer).
+    /// </summary>
+    private static void SetupObjectives(BattleState state, RuntimeDeploymentBattle battle, RuntimeRuleCatalog rules)
+    {
+        state.BughuntMode = false;
+        state.BughuntMinTurn = battle.BughuntMinTurn > 0 ? battle.BughuntMinTurn : rules.Campaign.BughuntMinTurn;
+        state.VipSurvivalPercentage = battle.VipSurvivalPercentage;
+        state.VipEscapeType = battle.EscapeType;
+        if (battle.ObjectiveType <= -1) return;
+        var map = state.Map;
+        var count = 0;
+        for (var tile = 0; tile < map.TileCount; tile++)
+            foreach (var part in Enum.GetValues<BattleTilePart>())
+                if (map.MapData(tile, part) is { } data && data.SpecialType == battle.ObjectiveType) count++;
+        if (count == 0) return;
+        state.ObjectiveType = battle.ObjectiveType;
+        state.ObjectiveCount = count < battle.ObjectivesRequired || battle.ObjectivesRequired == 0 ? count : battle.ObjectivesRequired;
+    }
+
+    /// <summary>The tiles (in tile order) whose object part has the special type (Tile::getObjectSpecialTileType).</summary>
+    private static IEnumerable<BattlePosition> ObjectTiles(BattleMap map, int specialType)
+    {
+        for (var tile = 0; tile < map.TileCount; tile++)
+            if (map.MapData(tile, BattleTilePart.ObjectPart)?.SpecialType == specialType)
+                yield return new(tile % map.Width, tile / map.Width % map.Length, tile / (map.Width * map.Length));
+    }
+
+    /// <summary>BattlescapeGenerator::fuelPowerSources: an alien fuel item on each power source.</summary>
+    private static void FuelPowerSources(BattleState state, RuntimeRuleCatalog rules, IRandomSource random)
+    {
+        var equipment = new UnitEquipment(state, rules, random);
+        foreach (var tile in ObjectTiles(state.Map, PowerSource).ToArray())
+        {
+            if (!rules.Items.TryGet(rules.Campaign.AlienFuelName, out _))
+                throw new MapGenerationException($"The map has a UFO power source but the alien fuel '{rules.Campaign.AlienFuelName}' is no item.");
+            equipment.CreateItemForTile(rules.Campaign.AlienFuelName, tile);
+        }
+    }
+
+    /// <summary>BattlescapeGenerator::sendItemsToLimbo: the craft inventory tile's items and their loaded ammo go home unused.</summary>
+    private static void SendItemsToLimbo(BattleState state, BattlePosition pile)
+    {
+        var leaving = new List<BattleItem>();
+        foreach (var item in state.Items.Where(item => item.Tile == pile).ToArray())
+        {
+            leaving.Add(item);
+            foreach (var slot in item.AmmoSlots)
+                if (slot is { } id && id != item.Id) leaving.Add(state.Items.First(ammo => ammo.Id == id));
+        }
+        state.SendToLimbo(leaving);
     }
 
     /// <summary>The map blocks' items, created in loadMAP's order (their fuse timers, ammo quantities and loaded ammo).</summary>
@@ -143,14 +215,16 @@ internal static class BattleGenerator
     {
         var rules = campaign.Content.RuntimeRules;
         var craft = request.CraftTypeId.Length != 0 && rules.Crafts.TryGet(request.CraftTypeId, out _) ? request.CraftTypeId : "";
-        var ufo = request.Target.Kind == WorldTargetKind.Ufo
-            ? campaign.Capture().World.Ufos.FirstOrDefault(candidate => candidate.UniqueId == request.Target.UniqueId)?.RuleId ?? ""
-            : "";
+        var snapshot = request.Target.Kind == WorldTargetKind.Ufo
+            ? campaign.Capture().World.Ufos.FirstOrDefault(candidate => candidate.UniqueId == request.Target.UniqueId)
+            : null;
+        var ufo = snapshot?.RuleId ?? "";
+        var crashed = snapshot?.Status == UfoStatus.Crashed;
         var conditionId = deployment.StartingCondition.Length != 0 && rules.StartingConditions.TryGet(deployment.StartingCondition, out _)
             ? deployment.StartingCondition : Texture(rules, request.MissionTexture)?.StartingCondition ?? "";
         var condition = conditionId.Length != 0 && rules.StartingConditions.TryGet(conditionId, out var handle)
             ? rules.StartingConditions[handle].Value : null;
-        return new BattleMapInputs(craft, ufo, deployment.Battle.CustomUfo, condition);
+        return new BattleMapInputs(craft, ufo, deployment.Battle.CustomUfo, condition) { UfoCrashed = crashed };
     }
 
     /// <summary>BattlescapeGenerator::setDepth: the deployment's depth range wins over the terrain's.</summary>

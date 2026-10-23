@@ -539,6 +539,11 @@ public sealed record RuntimeCampaignSettings(
     /// <summary>Mod::EXTENDED_FORCE_SPAWN.</summary>
     public bool ExtendedForceSpawn { get; init; }
 
+    /// <summary>Mod::getAlienFuelName, getAlienFuelQuantity and getBughuntMinTurn.</summary>
+    public string AlienFuelName { get; init; } = "";
+    public int AlienFuelQuantity { get; init; }
+    public int BughuntMinTurn { get; init; } = 999;
+
     /// <summary>Mod::getAlienItemLevels.</summary>
     public IReadOnlyList<IReadOnlyList<int>> AlienItemLevels { get; init; } = [];
 

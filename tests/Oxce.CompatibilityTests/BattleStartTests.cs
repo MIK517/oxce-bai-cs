@@ -51,6 +51,26 @@ public sealed class BattleStartTests
             markCiviliansAsVIP: true
             civiliansByType: {CIVILIAN: 2}
             data: [{alienRank: 5, lowQty: 1, highQty: 1, itemSets: [[]]}]
+          - type: UFO_POWER
+            width: 20
+            length: 20
+            height: 2
+            terrains: [TEST_TERRAIN]
+            script: POWER
+            objectiveType: 2
+            objectivesRequired: 1
+            vipSurvivalPercentage: 60
+            escapeType: 2
+            bughuntMinTurn: 7
+            noWeaponPile: true
+            data: [{customUnitType: ALIEN, lowQty: 1, itemSets: [[]]}]
+          - type: UFO_JUNK
+            width: 20
+            length: 20
+            height: 2
+            terrains: [TEST_TERRAIN]
+            script: JUNK
+            data: [{customUnitType: ALIEN, lowQty: 1, itemSets: [[]]}]
           - type: UFO_ARMORY
             width: 20
             length: 20
@@ -126,6 +146,8 @@ public sealed class BattleStartTests
               - {name: ROAD_NS, width: 10, length: 10, groups: [3]}
               - {name: CROSSING, width: 10, length: 10, groups: [4]}
               - {name: ROOF, width: 10, length: 10, height: 1, groups: [6]}
+              - {name: POWER, width: 10, length: 10, groups: [8]}
+              - {name: JUNK, width: 10, length: 10, groups: [9], items: {GRENADE: [[1, 1, 0]]}, fuseTimers: {GRENADE: [-2, -2]}}
               - name: ARMORY
                 width: 10
                 length: 10
@@ -136,6 +158,7 @@ public sealed class BattleStartTests
                 extendedItems: [{type: GUN, pos: [[4, 4, 0]], ammoDef: [[CLIP, 5]]}]
             script: BASIC
         alienItemLevels: [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
+        alienFuel: [CLIP, 50]
         statGrowthMultipliers: {tu: 10}
         statGrowthMultipliersAbs: [{}, {}, {tu: 5}]
         aimMultipliers: [1, 1, 0.5]
@@ -236,6 +259,14 @@ public sealed class BattleStartTests
               mapDataSets: [BLANKS, UFOSET]
               mapBlocks: [{name: SCOUTBLOCK, width: 10, length: 20, groups: [0, 5]}]
         mapScripts:
+          - type: POWER
+            commands:
+              - {type: addBlock, groups: [8], rects: [[0, 0, 1, 1]]}
+              - {type: fillArea}
+          - type: JUNK
+            commands:
+              - {type: addBlock, groups: [9], rects: [[0, 0, 1, 1]]}
+              - {type: fillArea}
           - type: ARMORY
             commands:
               - {type: addBlock, groups: [7], rects: [[0, 0, 1, 1]]}
@@ -284,10 +315,18 @@ public sealed class BattleStartTests
               - {type: addBlock, groups: [1]}
         """;
 
+    /// <summary>A one-level MAP with MAP ID 4 (the power source) as the object part of the given tiles.</summary>
+    private static byte[] WithObjects(byte[] map, params int[] tiles)
+    {
+        foreach (var tile in tiles) map[3 + tile * 4 + 3] = 4;
+        return map;
+    }
+
     private static Files TerrainFiles() => new(new()
     {
         ["TERRAIN/BLANKS.MCD"] = Mcd(Record(), Record((42, 1))),
-        ["TERRAIN/TESTSET.MCD"] = Mcd(Record((42, 2)), Record((42, 3))),
+        // TESTSET's third object (MAP ID 4) is a UFO power source (special type 2).
+        ["TERRAIN/TESTSET.MCD"] = Mcd(Record((42, 2)), Record((42, 3)), Record((42, 4), (59, 2))),
         // BIG has a floor on its top level only; SMALL has one level of TESTSET's first object.
         ["MAPS/BIG.MAP"] = Map(10, 20, 3, 0),
         ["ROUTES/BIG.RMP"] = [],
@@ -312,6 +351,10 @@ public sealed class BattleStartTests
         ["ROUTES/SCOUTBLOCK.RMP"] = [],
         ["ROUTES/CROSSING.RMP"] = [],
         ["MAPS/ARMORY.MAP"] = Map(10, 10, 2),
+        ["MAPS/POWER.MAP"] = WithObjects(Map(10, 10, 2), 55, 56),
+        ["ROUTES/POWER.RMP"] = RouteNode(8, 8, 0, [], rank: 4, priority: 1),
+        ["MAPS/JUNK.MAP"] = Map(10, 10, 2),
+        ["ROUTES/JUNK.RMP"] = RouteNode(8, 8, 0, [], rank: 4, priority: 1),
         ["ROUTES/ARMORY.RMP"] = RouteNode(8, 8, 0, [], rank: 4, priority: 1),
     });
 
@@ -610,6 +653,33 @@ public sealed class BattleStartTests
         Assert.Equal(5, battle.Items[4].AmmoSlots[0]);
         Assert.Equal((5, true, false), (battle.Items[5].AmmoQuantity, battle.Items[5].IsAmmo, battle.Items[5].XcomProperty));
         Assert.Equal(12, battle.Items[2].AmmoQuantity);
+    }
+
+    [Fact]
+    public void ObjectivesCountTheTargetPartsPowerSourcesGetFuelAndTheWeaponPileGoesHome()
+    {
+        var (campaign, _) = Requested(Rules, "UFO_POWER", items: new Dictionary<string, int> { ["SUPPLY"] = 5 });
+        Started(campaign);
+        var battle = Battle(campaign);
+        // setupObjectives: two power sources match objective type 2; one is required. The deployment's bug hunt turn
+        // and VIP rules apply.
+        Assert.Equal((2, 1, false, 7, 60, 2), (battle.ObjectiveType, battle.ObjectiveCount, battle.BughuntMode, battle.BughuntMinTurn,
+            battle.VipSurvivalPercentage, battle.VipEscapeType));
+        // fuelPowerSources: the alien fuel on each power source, in tile order.
+        Assert.Equal([new BattlePosition(5, 5, 0), new BattlePosition(6, 5, 0)],
+            battle.Items.Where(static item => item.ItemType == "CLIP").Select(static item => item.Tile!.Value));
+        // noWeaponPile: what the soldier did not take leaves the craft inventory tile for guaranteed recovery.
+        Assert.DoesNotContain(battle.Items, item => item.Tile == battle.CraftInventoryTile);
+        Assert.NotEmpty(battle.GuaranteedRecoveredItems);
+        Assert.All(battle.GuaranteedRecoveredItems, static item => Assert.Equal(("SUPPLY", (BattlePosition?)null, -1), (item.ItemType, item.Tile, item.FuseTimer)));
+        Assert.Equal(5, battle.Items.Count(static item => item.ItemType == "SUPPLY") + battle.GuaranteedRecoveredItems.Count);
+    }
+
+    [Fact]
+    public void MapGrenadesPrimedToExplodeAtTheStartRefuseUntilExplosionsExist()
+    {
+        var (campaign, _) = Requested(Rules, "UFO_JUNK");
+        Assert.Equal(BattleGenerator.PrimedJunk, Refusal(campaign, new StartBattle()));
     }
 
     [Fact]

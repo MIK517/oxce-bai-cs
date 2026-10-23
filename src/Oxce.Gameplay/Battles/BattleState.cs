@@ -71,6 +71,37 @@ internal sealed class BattleState
 
     public IReadOnlyList<BattleUnit> Units => _units;
 
+    /// <summary>SavedBattleGame's bug hunt mode (off at the start) and the turn it may start from.</summary>
+    public bool BughuntMode { get; internal set; }
+    public int BughuntMinTurn { get; internal set; }
+
+    /// <summary>SavedBattleGame::getVIPSurvivalPercentage and getVIPEscapeType.</summary>
+    public int VipSurvivalPercentage { get; internal set; }
+    public int VipEscapeType { get; internal set; }
+
+    /// <summary>SavedBattleGame::getObjectiveType (a special tile type, -1 for none) and getObjectiveCount.</summary>
+    public int ObjectiveType { get; internal set; } = -1;
+    public int ObjectiveCount { get; internal set; }
+
+    private readonly List<BattleItem> _guaranteedRecovered = [];
+
+    /// <summary>SavedBattleGame::getGuaranteedRecoveredItems: items off the map that go home after the battle, by ID.</summary>
+    public IReadOnlyList<BattleItem> GuaranteedRecoveredItems => _guaranteedRecovered;
+
+    /// <summary>BattlescapeGenerator::sendItemsToLimbo: the items leave the map (and the battle's items) for guaranteed recovery.</summary>
+    internal void SendToLimbo(IReadOnlyCollection<BattleItem> items)
+    {
+        foreach (var item in items)
+        {
+            item.Tile = null;
+            item.FuseTimer = -1;
+        }
+        _items.RemoveAll(items.Contains);
+        _guaranteedRecovered.AddRange(items);
+        _guaranteedRecovered.Sort(static (left, right) => left.Id.CompareTo(right.Id));
+        Revision++;
+    }
+
     /// <summary>SavedBattleGame::getAlienItemLevel: the month row of Mod::getAlienItemLevels the aliens draw from.</summary>
     public int AlienItemLevel { get; internal set; }
 
