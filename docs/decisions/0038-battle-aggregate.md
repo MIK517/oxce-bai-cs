@@ -108,7 +108,9 @@ not new cases in `RuntimeRuleLinker`.
   the base's position (`getRandomBaseTerrain` draws `RNG::generate(1, 0)`, a modulo by zero), a facility outside the
   map's block grid (written out of bounds), a map name shorter than two characters (`substr` throws), facility vertical
   levels that leave no level, and a base module tile past the last whole block (`calculateModuleMap` indexes past its
-  grid) refuse with a named reason.
+  grid) refuse with a named reason. So do a base defense deployment without terrains under a texture with terrains (the
+  texture pick dereferences the missing UFO or mission site) and a base defense dummy unit with no alien race to take it
+  from (`front()` of an empty list).
 
 ## Consequences
 

@@ -79,7 +79,12 @@ public sealed class RuntimeBattleEquipment
                 List(AmmoActions.Select(action => rule.Value.Actions[action].AmmoSlot)),
                 values.GetInteger("fuseType"),
                 rule.Value.EffectiveLoadOrder,
-                !string.IsNullOrEmpty(values.NullableName("spawnUnit")) || !string.IsNullOrEmpty(values.NullableName("spawnItem")));
+                !string.IsNullOrEmpty(values.NullableName("spawnUnit")) || !string.IsNullOrEmpty(values.NullableName("spawnItem")))
+            {
+                BigSprite = rule.Value.ResourceIndexes["bigSprite"].Index,
+                IgnoreInBaseDefense = values.Boolean("ignoreInBaseDefense"),
+                IgnoreInCraftEquip = values.Boolean("ignoreInCraftEquip"),
+            };
         }, StringComparer.Ordinal);
         var armors = personnel.Armors.Rules.ToDictionary(static rule => rule.Id, static rule => new RuntimeBattleArmor(
             List(rule.Value.BuiltInWeapons), rule.Value.Strings["specialWeapon"], rule.Value.Strings["selfDestructItem"],
@@ -142,7 +147,18 @@ public sealed record RuntimeBattleItem(
     IReadOnlyList<int> ActionAmmoSlots,
     int FuseType,
     int LoadOrder,
-    bool Spawns);
+    bool Spawns)
+{
+    /// <summary>RuleItem::getBigSprite (-1 for none): an item with one that is not fixed is an inventory item.</summary>
+    public int BigSprite { get; init; } = -1;
+
+    /// <summary>RuleItem's <c>ignoreInBaseDefense</c> (canBeEquippedBeforeBaseDefense) and <c>ignoreInCraftEquip</c>.</summary>
+    public bool IgnoreInBaseDefense { get; init; }
+    public bool IgnoreInCraftEquip { get; init; } = true;
+
+    /// <summary>RuleItem::isInventoryItem.</summary>
+    public bool IsInventoryItem => BigSprite > -1 && !Fixed;
+}
 
 /// <summary>Armor's equipment fields: built-in weapons, special and self-destruct items, two main weapons, inventory, weight.</summary>
 public sealed record RuntimeBattleArmor(

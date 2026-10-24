@@ -89,6 +89,19 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
                 owner.Items[handle] = checked(owner.Items.GetValueOrDefault(handle) + quantity);
             }
         }
+        // A base defense takes its stored vehicles and the stores its defenders equip out of the base.
+        if (battle.TakenFromBase.Count != 0)
+        {
+            var owner = campaign.BaseStates.Find(candidate => candidate.Id == request.BaseId)!;
+            var items = campaign.Content.RuntimeRules.Items;
+            foreach (var (type, quantity) in battle.TakenFromBase)
+            {
+                var handle = items.GetRequired(type);
+                var left = owner.Items.GetValueOrDefault(handle) - quantity;
+                if (left > 0) owner.Items[handle] = left;
+                else owner.Items.Remove(handle);
+            }
+        }
         handOver.ConsumeDeploymentRequest();
         _battle = battle;
         return new CampaignCommandResult([new BattleStarted(battle.MissionType, battle.DeploymentId)]);

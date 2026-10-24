@@ -11,9 +11,9 @@ Phase 7 branch 1 (`claude/battle-generation`), from `main` at `2b0c81fb`. Plan:
 | S1 battle aggregate | Done (2026-10-18) |
 | S2 runtime battle terrain | Done (2026-10-19) |
 | S3 map generation | Done (2026-10-24) |
-| S4 X-COM deployment | Done (2026-10-24) except the base defense deployment (S6) |
+| S4 X-COM deployment | Done (2026-10-24); the base defense deployment is S6 part 2 |
 | S5 alien and civilian deployment | Done (2026-10-23); crashed-UFO and map-junk explosions refuse until branch 5 |
-| S6 base defense and other entry points | In progress: base defense maps done (2026-10-24); the base defense deployment and the other entry points remain |
+| S6 base defense and other entry points | In progress: base defense maps and deployment done (2026-10-24); the other entry points remain |
 | S7 acceptance and branch audit | Not started |
 
 ## S0 — Planning (2026-10-18)
@@ -578,25 +578,64 @@ tiles and the lone (-1, -1, -1), the inventory tile and its absence, module map,
 the campaign stream left alone, the seed formula, each reachable refusal, rule loading). The refusals for a request
 whose base is gone and a base defense without a base layout guard states the campaign cannot reach.
 
+## S6, part 2 — Base defense deployment (2026-10-24)
+
+Reference: `BattlescapeGenerator::deployXCOM` (the `_base` without `_craft` branches, the dummy unit, the base's stores and
+the crafts' items), `addXCOMVehicle`, `addXCOMUnit`, `Base::setupDefenses`, `Soldier::hasFullHealth`, `canDefendBase`,
+`RuleItem::isInventoryItem`, `isUsefulBattlescapeItem`, `canBeEquippedBeforeBaseDefense`, `canBeEquippedToCraftInventory`,
+`getVehicleClipSize`, `SavedGame::isResearched`, `SavedBattleGame::getBaseStorageItems`.
+
+- `XcomDeployment.RunBaseDefense` (a base defense request has no craft): the vehicles `setupDefenses` collects, the
+  crafts' that are not out with their own ammo, then the stored ones loaded with `getVehicleClipSize`
+  (`CampaignWorld.StoredDefenders`, now static), all before the soldiers and without the extended 1x1 split; then the
+  base's soldiers in base order with deployXCOM's own condition (full health or `canDefendBase`, not on a craft that is
+  out), 2x2 before 1x1. That differs from `Base::getAvailableSoldiers`, which the request's `Soldiers` follow: a craft's
+  wounded crew is in the request but stays out of the battle. Placement is the spawn-node path (no near-friend
+  fallback).
+- Nobody placed: a summoned player unit (`BattleUnit.SummonedPlayerUnit`) of the first race's first member, with its
+  unit and armor statistics and no equipment, on tile (0, 0, 0), which becomes the inventory tile and the selected unit.
+  No race (`NoRaceForDummy`; the reference takes `front()` of an empty list) or a member that is no unit with an armor
+  refuses. The first can't be reached from the campaign: the attacking mission's race exists. A base
+  defense whose deployment has no terrains under a texture with terrains refuses too: `run` picks the texture's terrain
+  at the UFO or the mission site, and a base defense has neither (a null dereference in the reference).
+- Items: the base's stores that are allowed before a base defense, inventory items (`RuntimeBattleItem.BigSprite` above
+  -1 and not fixed), useful in battle or craft-equippable (`IgnoreInCraftEquip`), with researched requirements (debug mode
+  counts), then the items of the crafts that are not out (unfiltered), on the inventory tile as X-COM property, in item
+  rule order; then the usual layouts and auto-equip (`XcomCargo`). No starting-condition check applies to them or to the
+  vehicles, as in the reference.
+- `BattleState.BaseStorageItems` (the debriefing's record): the base's stores for every battle with a base, after
+  `setupDefenses` for a base defense. `BattleState.TakenFromBase`: the stored vehicles and their clips and the equipped
+  stores; `CampaignBattles` removes them from the base when the battle starts, so a refused generation changes nothing.
+  The port's base attack left the stored vehicles in the stores until now (`CampaignWorldBaseAttacks`).
+- Units made from unit rules (the vehicles, the dummy, aliens and civilians: `createTempUnit`) now wear the environment's
+  armor transformation (`BattleState.ArmorTransformations`, set before deployXCOM as `applyEnviroEffects` does; the
+  `BattleUnit(Unit*)` constructor has no size check, unlike the soldiers' pass). This also fixes the craft path's
+  vehicles and the S5 aliens and civilians, which wore their own armor.
+- Not needed: `disableSoldierEquipment` is set by Ctrl+Alt on the inventory screens just before `runInventory`, is not
+  saved, and deployXCOM clears it, so it is always false in a battle; `_baseInventory` is only set by `runInventory`
+  (the base equipment screen), never for a battle; the `getMonthsPassed() == -1` branches are unreachable, since
+  `AdvanceCampaignTime` moves MonthsPassed from -1 to 0 before the world ticks.
+- Not ported here: `SavedBattleGame::randomizeItemLocations` over `StorageSpace`, which runs in `startFirstTurn`
+  (Phase 7 branch 6, turns).
+
+Tests: `BaseDefenseDeploymentTests` (vehicle and defender order with a 2x2 soldier, the fit wounded soldier deployed,
+the unfit crew and the out craft's crew left out, the out craft's vehicle and items left out, clip ammo and both
+`getVehicleClipSize` branches, the stores taken and kept, debug mode research, the record, the dummy, the dummy whose
+member is no unit, the missing ground inventory, the environment's armor on vehicles, the dummy and aliens), `BaseDefenseMapTests.ADeploymentWithoutTerrainsUnderATextureWithTerrainsRefusesTheBaseDefense`;
+`BattleStartTests.TheStartingConditionSendsDisabledVehiclesAndItemsBackToBaseStorage`
+(the record for a craft mission).
+
 ## Next
 
-- S6, part 2: the base defense deployment. Notes for the next part:
-  - The hook is the refusal at the top of `XcomDeployment.Run` (`BaseDefenseDeployment`). `BattleGenerator.GenerateMap`
-    already leaves `BattleState.StorageSpace`, `BaseModules` and `CraftInventoryTile` (generateBaseMap's, which may be
-    null when the stores' ground level is 0 and no facility has `storageTiles`) on the state. `XcomDeployment.Place`
-    already skips `placeUnitNearFriend` for a base defense.
-  - Reference `deployXCOM` with `_base` and no craft (~983-1300): vehicles from `_base->getVehicles()` (filled by
-    `Base::setupDefenses`; the port's request carries them as `Vehicles` with no ammo list, see `BaseDefenders` in
-    `CampaignWorldBaseAttacks`), soldiers from the base (`request.Soldiers`, from `getAvailableSoldiers(true, true)`),
-    the armor transformation loop over the base's soldiers, the dummy summoned player unit from the first race's first
-    member on tile 0 when nothing could be placed (~1197), then the base's storage items that
-    `canBeEquippedBeforeBaseDefense`, are inventory items, useful or craft-equippable and researched, onto the inventory
-    tile (removed from base storage), only when `getMonthsPassed() != -1` (~1258; -1 is the new battle mode), and the
-    items of crafts not out (~1293). Equipment then spreads over
-    `getStorageSpace` (`SavedBattleGame::randomizeItemLocations`, ~1836). Check `_baseInventory` and the starting condition
-    there.
+- S6, part 3: the remaining entry points. Notes for the next part:
+  - Reference: `ConfirmLandingState::btnYesClick` with a mission site (`setMissionSite`, the site's texture and
+    deployment, `getAlienCustomDeploy`) or an alien base (`setAlienBase`), and `ConfirmCydoniaState` (the final mission:
+    `bgen.setAlienRace`, `nextStage` for multi-stage missions). The port's requests come from `CampaignWorldLandings`
+    and `LaunchFinalMission`; check what each request carries against what `BattleGenerator.Deployment`, `PickTerrain`
+    (the mission site is the texture target, `Target *target = _ufo; if (_mission) target = _mission;`) and `Inputs` read.
+    A base defense terrain pick with a texture that has terrains and a deployment without them dereferences a null
+    target in the reference and refuses in the port (`BattleGenerator.TextureTerrainWithoutTarget`); an alien base gets
+    no mission texture (`setWorldTexture(0, ...)`), so check that its request's `MissionTexture` is -1.
   - `LoadMap` writes a block wider than the map's remaining width into the next row's tiles (the reference's
     `getTile` index arithmetic does the same); worth a refusal check when the deployment's side is not a multiple of 10.
-- S6, part 3: the remaining entry points: `ConfirmLandingState` with a mission site (`setMissionSite`) or alien base
-  (`setAlienBase`), `ConfirmCydoniaState` (final mission, `nextStage` for multi-stage). The port's requests come from
-  `CampaignWorldLandings` and `LaunchFinalMission`.
+  - After the entry points: S7 acceptance on the corpus and the branch audit.

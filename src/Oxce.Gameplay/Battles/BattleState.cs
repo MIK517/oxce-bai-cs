@@ -1,3 +1,5 @@
+using Oxce.Mods.Rulesets.Runtime;
+
 namespace Oxce.Gameplay.Battles;
 
 /// <summary>
@@ -60,6 +62,20 @@ internal sealed class BattleState
     /// <summary>The craft inventory tile: where the X-COM units' equipment starts (BattleUnit::setInventoryTile).</summary>
     public BattlePosition? CraftInventoryTile { get; internal set; }
 
+    /// <summary>
+    /// SavedBattleGame::applyEnviroEffects: the environment's armor transformations (armor to armor), which every unit
+    /// created from a unit rule wears (the BattleUnit(Unit*) constructor), or null.
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? ArmorTransformations { get; internal set; }
+
+    /// <summary>The armor a unit created from a unit rule wears: the environment's transformation of its own, if any.</summary>
+    internal RuntimeArmorRule TempUnitArmor(RuntimeRuleCatalog rules, RuntimeArmorRule armor)
+    {
+        if (ArmorTransformations is null || !ArmorTransformations.TryGetValue(armor.Type, out var transformed)) return armor;
+        return rules.Armors.TryGet(transformed, out var handle) ? rules.Armors[handle].Value
+            : throw new Generation.MapGenerationException($"Armor transformation target {transformed} does not exist.");
+    }
+
     /// <summary>SavedBattleGame::getStorageSpace: a base defense's storage tiles, where the base's stores go.</summary>
     public IReadOnlyList<BattlePosition> StorageSpace { get; init; } = [];
 
@@ -99,6 +115,23 @@ internal sealed class BattleState
 
     internal void ReturnToBase(string itemType, int quantity) =>
         _returnedToBase[itemType] = checked(_returnedToBase.GetValueOrDefault(itemType) + quantity);
+
+    private readonly Dictionary<string, int> _takenFromBase = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// What a base defense takes out of the base's storage: the stored vehicles and their clips (Base::setupDefenses) and
+    /// the stores the defenders equip (deployXCOM); the campaign removes it when the battle starts.
+    /// </summary>
+    public IReadOnlyDictionary<string, int> TakenFromBase => _takenFromBase;
+
+    internal void TakeFromBase(string itemType, int quantity) =>
+        _takenFromBase[itemType] = checked(_takenFromBase.GetValueOrDefault(itemType) + quantity);
+
+    /// <summary>
+    /// SavedBattleGame::getBaseStorageItems: the base's storage as deployXCOM found it (after setupDefenses took the stored
+    /// vehicles), for the debriefing's list of recovered items.
+    /// </summary>
+    public IReadOnlyDictionary<string, int> BaseStorageItems { get; internal set; } = new Dictionary<string, int>(StringComparer.Ordinal);
 
     private readonly List<BattleItem> _guaranteedRecovered = [];
 
@@ -287,6 +320,9 @@ internal sealed class BattleUnit
 
     /// <summary>AIModule::setStartNode: the node an alien spawned on, or null.</summary>
     public int? StartNodeId { get; set; }
+
+    /// <summary>BattleUnit::isSummonedPlayerUnit: a player unit that does not count for the battle's outcome.</summary>
+    public bool SummonedPlayerUnit { get; init; }
 
     /// <summary>BattleUnit::getTurretType: the turret sprite of a vehicle's weapon, -1 without one.</summary>
     public int TurretType { get; set; } = -1;

@@ -73,8 +73,8 @@ internal sealed class CivilianDeployment
     {
         if (!_rules.Battle.Equipment.Units.TryGetValue(type, out var unitRule) || !_rules.Units.TryGet(type, out var handle))
             throw new MapGenerationException($"Unit {type} does not exist.");
-        var armor = _rules.Units[handle].Value.Armor is { } armorHandle ? _rules.Armors[armorHandle].Value
-            : throw new MapGenerationException($"Unit {type} has no armor.");
+        var armor = _battle.TempUnitArmor(_rules, _rules.Units[handle].Value.Armor is { } armorHandle ? _rules.Armors[armorHandle].Value
+            : throw new MapGenerationException($"Unit {type} has no armor."));
         var stats = (BattleUnitStats.From(unitRule.Stats) + BattleUnitStats.From(armor.Stats)).ObeyFixedMinimum();
         var unit = new BattleUnit(_unitSequence++, BattleFaction.Neutral, BattleController.Ai)
         {

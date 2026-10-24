@@ -132,9 +132,11 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
     /// be loaded and stays in the stores. Returns the vehicles and what they take out of the stores.
     /// </summary>
     private (IReadOnlyList<string> Vehicles, IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int> Taken) StoredDefenders(
-        CampaignState.BaseState owner)
+        CampaignState.BaseState owner) => StoredDefenders(campaign.Content.RuntimeRules, owner);
+
+    internal static (IReadOnlyList<string> Vehicles, IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int> Taken) StoredDefenders(
+        RuntimeRuleCatalog rules, CampaignState.BaseState owner)
     {
-        var rules = campaign.Content.RuntimeRules;
         var vehicles = new List<string>();
         var taken = new Dictionary<RuleHandle<ItemRuleFamily>, int>();
         foreach (var item in rules.Items.Rules)
@@ -492,6 +494,14 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
         return _deploymentRequest;
     }
 
+    /// <summary>Soldier::canDefendBase: the health left after the wound recovery and missing health, in percent, reaches <c>oxceWoundedDefendBaseIf</c>.</summary>
+    internal static bool CanDefendBase(SoldierPersonalState personal, CampaignOptions options)
+    {
+        var health = (int)personal.CurrentStats.GetValueOrDefault("health");
+        return health > 0 && Math.Max(0, health - (int)Math.Ceiling(personal.Recovery) - personal.HealthMissing) * 100 / health >=
+            options.WoundedDefendBaseIf;
+    }
+
     /// <summary>
     /// Base::getAvailableSoldiers(true, true) and the craft vehicles Base::setupDefenses collects: soldiers on
     /// crafts that are not out, and unassigned soldiers who are unwounded or fit enough (Soldier::canDefendBase
@@ -511,11 +521,8 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
                 if (craft?.Logistics?.Status != "STR_OUT") soldiers.Add(soldier.Id);
                 continue;
             }
-            var health = (int)personal.CurrentStats.GetValueOrDefault("health");
-            var wounded = SoldierReadiness.IsWounded(personal, rules.Campaign.ManaWoundThreshold, rules.Campaign.HealthWoundThreshold);
-            var fit = health > 0 && Math.Max(0, health - (int)Math.Ceiling(personal.Recovery) - personal.HealthMissing) * 100 / health >=
-                campaign.Options.WoundedDefendBaseIf;
-            if (!wounded || fit) soldiers.Add(soldier.Id);
+            if (!SoldierReadiness.IsWounded(personal, rules.Campaign.ManaWoundThreshold, rules.Campaign.HealthWoundThreshold) ||
+                CanDefendBase(personal, campaign.Options)) soldiers.Add(soldier.Id);
         }
         var vehicles = new List<string>();
         foreach (var craft in owner.Crafts)

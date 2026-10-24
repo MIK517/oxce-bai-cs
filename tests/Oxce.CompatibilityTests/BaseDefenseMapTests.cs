@@ -133,7 +133,7 @@ public sealed class BaseDefenseMapTests
     private static readonly string[] Blocks =
         ["XB_00", "XB_03", "XB_04", "XB_05", "XB_08", "XB_09", "XB_10", "XB_11", "TOWER_G", "TOWER_C", "DIRT_A", "DIRT_B", "ALT_G"];
 
-    private static Files TerrainFiles(Action<Dictionary<string, byte[]>>? adjust = null)
+    internal static Files TerrainFiles(Action<Dictionary<string, byte[]>>? adjust = null)
     {
         var files = new Dictionary<string, byte[]>
         {
@@ -163,8 +163,9 @@ public sealed class BaseDefenseMapTests
     /// An undefended base with the given facilities under a retaliation UFO about to arrive (StrategicBaseAttackTests'
     /// set-up): the next second requests the base defense.
     /// </summary>
-    private static (CampaignState Campaign, CampaignDeploymentRequest Request) Requested(IReadOnlyList<FacilitySnapshot> facilities,
-        string extraRules = "", ulong seed = 11, Func<string, string>? rules = null, Action<Dictionary<string, byte[]>>? files = null)
+    internal static (CampaignState Campaign, CampaignDeploymentRequest Request) Requested(IReadOnlyList<FacilitySnapshot> facilities,
+        string extraRules = "", ulong seed = 11, Func<string, string>? rules = null, Action<Dictionary<string, byte[]>>? files = null,
+        Func<BaseSnapshot, BaseSnapshot>? adjustBase = null, Func<CampaignSnapshot, CampaignSnapshot>? adjust = null)
     {
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], (rules?.Invoke(Rules) ?? Rules) + extraRules,
             files: RequiredFiles("BLANKS", "XSET"));
@@ -182,13 +183,14 @@ public sealed class BaseDefenseMapTests
         snapshot = snapshot with
         {
             Time = new CampaignTime(1, 1, 1, 1999, 1, 0, 5),
-            Bases = [owner with { Facilities = facilities }, .. snapshot.Bases.Skip(1)],
+            Bases = [(adjustBase ?? (static owner => owner))(owner with { Facilities = facilities }), .. snapshot.Bases.Skip(1)],
             World = snapshot.World with
             {
                 Missions = [new AlienMissionSnapshot(4, "MISSION_RETALIATION", "REGION", "RACE_A", 1, 0, 1500, 1, -1)],
                 Ufos = [ufo],
             },
         };
+        if (adjust is not null) snapshot = adjust(snapshot);
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(seed));
         campaign.BattleTerrainFiles = TerrainFiles(files);
         var request = Assert.IsType<DeploymentRequested>(Assert.Single(campaign.Execute(new AdvanceCampaignTime(1)).Events
@@ -197,12 +199,12 @@ public sealed class BaseDefenseMapTests
         return (campaign, request);
     }
 
-    private static FacilitySnapshot Facility(string type, int x, int y, int buildTime = 0, bool hadPrevious = false) =>
+    internal static FacilitySnapshot Facility(string type, int x, int y, int buildTime = 0, bool hadPrevious = false) =>
         new(type, x, y, buildTime, 0, false, false, hadPrevious);
 
     // On the 4x3 block grid: the stores, a 2x2 hangar and the tower in the top row, the shelf below the stores, a room
     // under construction that had a previous facility below it, and an unbuilt room in the far corner.
-    private static readonly FacilitySnapshot[] Layout =
+    internal static readonly FacilitySnapshot[] Layout =
     [
         Facility("XB_STORES", 0, 0),
         Facility("XB_HANGAR", 1, 0),
@@ -215,7 +217,7 @@ public sealed class BaseDefenseMapTests
     private static BattleState MapOf(CampaignState campaign, CampaignDeploymentRequest request) =>
         BattleGenerator.GenerateMap(campaign, request, new BattleTerrainLoader(campaign.Content.RuntimeRules.Battle, TerrainFiles())).State;
 
-    private static string Refusal(CampaignState campaign) =>
+    internal static string Refusal(CampaignState campaign) =>
         Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(new StartBattle()).Events)).Reason;
 
     [Fact]
@@ -261,16 +263,6 @@ public sealed class BaseDefenseMapTests
         Assert.Equal(new BattleBaseModule(2, 2), battle.BaseModules[3, 0]);
         Assert.Equal(new BattleBaseModule(-1, -1), battle.BaseModules[0, 0]);
         Assert.Equal((4, 3), (battle.BaseModules.GetLength(0), battle.BaseModules.GetLength(1)));
-    }
-
-    [Fact]
-    public void TheBaseDefenseDeploymentIsRefusedAfterTheMapAndLeavesTheRequestPending()
-    {
-        var (campaign, request) = Requested(Layout);
-        var before = campaign.Capture();
-        Assert.Equal(XcomDeployment.BaseDefenseDeployment, Refusal(campaign));
-        Assert.Equivalent(before, campaign.Capture(), strict: true);
-        Assert.Equivalent(request, campaign.GetQuery<ICampaignLandingQuery>()!.QueryDeploymentRequest(), strict: true);
     }
 
     [Fact]
@@ -394,6 +386,15 @@ public sealed class BaseDefenseMapTests
         var (campaign, request) = Requested(Layout, FromLocation);
         var failure = Assert.Throws<MapGenerationException>(() => MapOf(campaign, request with { GlobeTexture = 77 }));
         Assert.Equal("The base's globe texture 77 does not exist, so it has no base terrain.", failure.Message);
+    }
+
+    [Fact]
+    public void ADeploymentWithoutTerrainsUnderATextureWithTerrainsRefusesTheBaseDefense()
+    {
+        // run picks the texture's terrain at the UFO or the mission site; a base defense has neither.
+        var (campaign, _) = Requested(Layout, "globe:\n  textures:\n    - {id: 10, terrain: [{name: XBASE_T}]}\n",
+            rules: static rules => rules.Replace("    terrains: [XBASE_T]\n", "", StringComparison.Ordinal));
+        Assert.Equal(BattleGenerator.TextureTerrainWithoutTarget, Refusal(campaign));
     }
 
     [Fact]

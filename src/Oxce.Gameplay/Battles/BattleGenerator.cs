@@ -28,6 +28,8 @@ internal static class BattleGenerator
         var map = state.Map;
         // run: the deployment's environmental effects, else the terrain's.
         var enviro = rules.Battle.EnviroArmorTransformations.ContainsKey(battle.EnviroEffects) ? battle.EnviroEffects : terrain.EnviroEffects;
+        // deployXCOM: applyEnviroEffects, before any unit exists.
+        state.ArmorTransformations = rules.Battle.EnviroArmorTransformations.GetValueOrDefault(enviro);
         CreateMapItems(state, rules, random, generated.Items);
         SetupObjectives(state, battle, rules);
         var unitSequence = XcomDeployment.Deploy(campaign, request, state, generated, inputs.StartingCondition, enviro);
@@ -150,6 +152,9 @@ internal static class BattleGenerator
         return unchecked((ulong)(long)(longitude * latitude * 1e6));
     }
 
+    internal const string TextureTerrainWithoutTarget =
+        "A base defense deployment without terrains would pick from its globe texture's terrains at no target, where the reference crashes.";
+
     internal const string CrashedPowerSources =
         "A crashed UFO's power sources explode when the battle starts; explosions arrive with combat (Phase 7 branch 5).";
     internal const string PrimedJunk =
@@ -263,6 +268,9 @@ internal static class BattleGenerator
             name = battle.Terrains.Count != 0 ? battle.Terrains[random.NextInclusive(0, battle.Terrains.Count - 1)]
                 : rules.Battle.TerrainOrder.Count != 0 ? rules.Battle.TerrainOrder[0]
                 : throw new MapGenerationException("Map generator encountered an error: No valid terrain found.");
+        // The texture's pick is at the UFO or the mission site; a base defense has neither (a null target in the reference).
+        else if (request.Target.Kind == WorldTargetKind.Base)
+            throw new MapGenerationException(TextureTerrainWithoutTarget);
         else
             name = RuntimeTerrainCriterion.Pick(texture.Terrains, request.Target.Longitude, request.Target.Latitude, random.NextInclusive);
         return rules.Battle.Terrains.GetValueOrDefault(name)

@@ -773,6 +773,10 @@ public sealed class BattleStartTests
         var after = campaign.Capture().Bases[0].Items;
         foreach (var (type, quantity) in battle.ReturnedToBase)
             Assert.Equal(before.GetValueOrDefault(type) + quantity, after.GetValueOrDefault(type));
+        // SavedBattleGame::getBaseStorageItems: the debriefing's record is the storage before anything went back.
+        Assert.Equal(before.Where(static pair => pair.Value > 0).OrderBy(static pair => pair.Key, StringComparer.Ordinal),
+            battle.BaseStorageItems.OrderBy(static pair => pair.Key, StringComparer.Ordinal));
+        Assert.Empty(battle.TakenFromBase);
     }
 
     private static Func<CampaignSnapshot, CampaignSnapshot> CustomDeployment(

@@ -109,7 +109,8 @@ internal sealed class AlienDeployment
     /// <summary>BattlescapeGenerator::addAlien.</summary>
     private BattleUnit? AddAlien(string name, RuntimeBattleUnitRule unitRule, RuntimeUnitRule rule, int alienRank, bool outside)
     {
-        var armor = rule.Armor is { } handle ? _rules.Armors[handle].Value : throw new MapGenerationException($"Unit {name} has no armor.");
+        var armor = _battle.TempUnitArmor(_rules,
+            rule.Armor is { } handle ? _rules.Armors[handle].Value : throw new MapGenerationException($"Unit {name} has no armor."));
         var stats = AdjustedStats((BattleUnitStats.From(unitRule.Stats) + BattleUnitStats.From(armor.Stats)).ObeyFixedMinimum());
         var unit = new BattleUnit(_unitSequence++, BattleFaction.Hostile, BattleController.Ai)
         {

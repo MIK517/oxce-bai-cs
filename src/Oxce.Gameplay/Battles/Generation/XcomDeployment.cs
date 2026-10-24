@@ -7,9 +7,9 @@ using Oxce.Mods.Rulesets.Runtime;
 namespace Oxce.Gameplay.Battles.Generation;
 
 /// <summary>
-/// BattlescapeGenerator::deployXCOM for a landed craft: the craft's vehicles and soldiers become player units in the
+/// BattlescapeGenerator::deployXCOM: for a landed craft, the craft's vehicles and soldiers become player units in the
 /// reference's order and are placed on the craft's start tiles, at the craft rule's deployment points, or on X-COM spawn
-/// nodes when no craft map was placed. Equipment, unit statistics and the base defense deployment follow in later slices.
+/// nodes when no craft map was placed; for a base defense, the base's vehicles, defenders and stores.
 /// </summary>
 internal sealed class XcomDeployment
 {
@@ -59,15 +59,21 @@ internal sealed class XcomDeployment
         return deployment._unitSequence;
     }
 
-    /// <summary>deployXCOM for a base defense: the base's soldiers and vehicles instead of a craft's.</summary>
-    internal const string BaseDefenseDeployment =
-        "A base defense deploys the base's soldiers, vehicles and stores (Phase 7 branch 1 S6).";
+    /// <summary>deployXCOM's dummy takes <c>getAlienRacesList().front()</c>, undefined for a mod without races.</summary>
+    internal const string NoRaceForDummy = "A base defense without a placed defender needs an alien race for its dummy unit.";
 
     private void Run(CampaignState campaign, CampaignDeploymentRequest request)
     {
-        if (request.MissionType == "STR_BASE_DEFENSE") throw new MapGenerationException(BaseDefenseDeployment);
         var owner = campaign.BaseStates.Find(candidate => candidate.Id == request.BaseId)
             ?? throw new MapGenerationException($"The deployment request's base {request.BaseId} no longer exists.");
+        if (request.MissionType == "STR_BASE_DEFENSE" && request.CraftTypeId.Length == 0)
+        {
+            RunBaseDefense(campaign, owner);
+            return;
+        }
+        // The base's storage, for the debriefing (before disabled vehicles and items go back to it).
+        _battle.BaseStorageItems = _rules.Items.Rules.Select(rule => (rule.Id, Quantity: owner.Items.GetValueOrDefault(_rules.Items.GetRequired(rule.Id))))
+            .Where(static pair => pair.Quantity > 0).ToDictionary(static pair => pair.Id, static pair => pair.Quantity, StringComparer.Ordinal).AsReadOnly();
         _craftType = request.CraftTypeId;
         _craft = owner.Crafts.Find(craft => craft.Id == request.CraftId && _rules.Crafts.GetExternalId(craft.Rule) == request.CraftTypeId)?.Logistics;
         // Craft::resetTemporaryCustomVehicleDeploymentFlags.
@@ -107,6 +113,131 @@ internal sealed class XcomDeployment
         var layouts = owner.Soldiers.Where(soldier => request.Soldiers.Contains(soldier.Id) && soldier.Personal is not null)
             .ToDictionary(static soldier => soldier.Id, static soldier => soldier.Personal!.EquipmentLayout);
         XcomCargo.Distribute(_battle, _equipment, _rules, campaign.Options, layouts, _battle.GlobalShade);
+    }
+
+    /// <summary>
+    /// deployXCOM for a base defense (a base and no craft): the base's storage is recorded for the debriefing; the
+    /// vehicles Base::setupDefenses collected (those of crafts that are not out, with their ammo, then those left in the
+    /// stores, loaded full) come first; then the base's soldiers that are unwounded or fit to defend and not on a craft
+    /// that is out, 2x2 before 1x1. With nobody placed, a summoned dummy of the first race's first member stands on the
+    /// first tile so the battle is lost at once. The stores the defenders can use and the items of the crafts that are not
+    /// out then start on the inventory tile, and the stores taken leave the base when the battle starts.
+    /// </summary>
+    private void RunBaseDefense(CampaignState campaign, CampaignState.BaseState owner)
+    {
+        var (storedVehicles, taken) = CampaignWorld.StoredDefenders(_rules, owner);
+        var storage = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var rule in _rules.Items.Rules)
+        {
+            var handle = _rules.Items.GetRequired(rule.Id);
+            var quantity = owner.Items.GetValueOrDefault(handle) - taken.GetValueOrDefault(handle);
+            if (quantity > 0) storage[rule.Id] = quantity;
+        }
+        _battle.BaseStorageItems = storage.AsReadOnly();
+        foreach (var (handle, quantity) in taken) _battle.TakeFromBase(_rules.Items.GetExternalId(handle), quantity);
+
+        var crafts = owner.Crafts.Where(static craft => craft.Logistics is { Status: not "STR_OUT" }).Select(static craft => craft.Logistics!).ToArray();
+        var vehicles = crafts.SelectMany(static craft => craft.Vehicles).Select(vehicle => Vehicle(vehicle.RuleId, vehicle.Ammo))
+            .Concat(storedVehicles.Select(id => Vehicle(id, VehicleClipSize(id)))).ToArray();
+        foreach (var vehicle in vehicles) AddVehicle(vehicle);
+        var defenders = owner.Soldiers.Where(soldier => DefendsBase(owner, soldier, campaign.Options)).ToArray();
+        var soldiers = defenders.Select(Soldier).ToArray();
+        foreach (var soldier in soldiers)
+            if (soldier.ArmorSize > 1) AddSoldier(soldier);
+        foreach (var soldier in soldiers)
+            if (soldier.ArmorSize == 1) AddSoldier(soldier);
+        // A base with soldiers but nowhere to spawn them (a previous defense destroyed everything but the lift).
+        if (_battle.Units.Count == 0) AddDummy();
+        if (!_rules.Inventories.TryGet(BattleState.GroundSlot, out _))
+            throw new MapGenerationException("The mod has no STR_GROUND inventory.");
+        // The base's stores the defenders can use. The reference walks its stores in RuleItem address order; the port
+        // uses the item rules' order, as for the craft's items.
+        foreach (var (type, quantity) in storage)
+        {
+            if (!UsableInBaseDefense(campaign, type)) continue;
+            for (var count = 0; count < quantity; count++)
+                _equipment.CreateItemForTile(type, _battle.CraftInventoryTile).XcomProperty = _battle.CraftInventoryTile is not null;
+            _battle.TakeFromBase(type, quantity);
+        }
+        foreach (var craft in crafts)
+            foreach (var rule in _rules.Items.Rules)
+                for (var count = 0; count < craft.Items.GetValueOrDefault(rule.Id); count++)
+                    _equipment.CreateItemForTile(rule.Id, _battle.CraftInventoryTile).XcomProperty = _battle.CraftInventoryTile is not null;
+        var layouts = defenders.Where(static soldier => soldier.Personal is not null)
+            .ToDictionary(static soldier => soldier.Id, static soldier => soldier.Personal!.EquipmentLayout);
+        XcomCargo.Distribute(_battle, _equipment, _rules, campaign.Options, layouts, _battle.GlobalShade);
+    }
+
+    /// <summary>
+    /// deployXCOM's base defender: a soldier with full health or fit to defend the base (Soldier::canDefendBase), not on a
+    /// craft that is out. Unlike Base::getAvailableSoldiers, a craft's crew needs the health too.
+    /// </summary>
+    private bool DefendsBase(CampaignState.BaseState owner, CampaignState.SoldierState soldier, CampaignOptions options)
+    {
+        if (soldier.Personal is not { } personal) return false;
+        if (SoldierReadiness.IsWounded(personal, _rules.Campaign.ManaWoundThreshold, _rules.Campaign.HealthWoundThreshold) &&
+            !CampaignWorld.CanDefendBase(personal, options)) return false;
+        if (personal.CraftType.Length == 0) return true;
+        var craft = owner.Crafts.FirstOrDefault(candidate => candidate.Id == personal.CraftId &&
+            _rules.Crafts.GetExternalId(candidate.Rule) == personal.CraftType);
+        return craft?.Logistics?.Status != "STR_OUT";
+    }
+
+    /// <summary>
+    /// deployXCOM's stores for a base defense: an item allowed before a base defense (not <c>ignoreInBaseDefense</c>),
+    /// an inventory item (a big sprite and no fixed weapon), useful in battle (not a corpse or battle type 0) or
+    /// equippable on a craft, whose requirements are researched (SavedGame::isResearched, true in debug mode).
+    /// </summary>
+    private bool UsableInBaseDefense(CampaignState campaign, string type)
+    {
+        var item = _rules.Items.GetRequiredValue(type);
+        if (!_rules.Battle.Equipment.Items.TryGetValue(type, out var battle)) return false;
+        if (battle.IgnoreInBaseDefense || !battle.IsInventoryItem) return false;
+        if (item.BattleType is 0 or 11 && battle.IgnoreInCraftEquip) return false;
+        var research = campaign.ArcResearch;
+        return item.Requirements.All(requirement => research.IsResearched(_rules.Research.GetExternalId(requirement)));
+    }
+
+    /// <summary>RuleItem::getVehicleClipSize: the vehicle weapon's clip size when both it and its clip have one, else the clip's.</summary>
+    private int? VehicleClipSize(string vehicleItem)
+    {
+        var weapon = _rules.Items.GetRequiredValue(vehicleItem).ClipSize;
+        if (_equipment.VehicleClipAmmo(vehicleItem) is not { } clip) return weapon;
+        var ammo = _rules.Items.GetRequiredValue(clip).ClipSize;
+        return ammo > 0 && weapon > 0 ? weapon : ammo;
+    }
+
+    /// <summary>
+    /// deployXCOM's dummy: a summoned player unit of the first race's first member (BattleUnit from the unit rule) on the
+    /// map's first tile, which also becomes the inventory tile. The reference takes the front of empty lists there.
+    /// </summary>
+    private void AddDummy()
+    {
+        if (_rules.AlienRaces.Rules.Count == 0) throw new MapGenerationException(NoRaceForDummy);
+        var race = _rules.AlienRaces.Rules[0];
+        var name = AlienRaces.Member(race.Id, race.Value, 0, _random);
+        if (!_rules.Units.TryGet(name, out var handle) || _rules.Units[handle].Value.Armor is not { } armorHandle ||
+            !_rules.Battle.Equipment.Units.TryGetValue(name, out var unitRule))
+            throw new MapGenerationException($"The base defense's dummy unit {name} is no unit with an armor.");
+        var armor = _battle.TempUnitArmor(_rules, _rules.Armors[armorHandle].Value);
+        var stats = (BattleUnitStats.From(unitRule.Stats) + BattleUnitStats.From(armor.Stats)).ObeyFixedMinimum();
+        var unit = new BattleUnit(_unitSequence++, BattleFaction.Player, BattleController.Human(0))
+        {
+            UnitType = name,
+            ArmorId = armor.Type,
+            ArmorSize = armor.Size,
+            MovementType = armor.MovementType,
+            Stats = stats,
+            TimeUnits = stats.TimeUnits,
+            Energy = stats.Stamina,
+            Health = stats.Health,
+            Mana = stats.Mana,
+            SummonedPlayerUnit = true,
+            Position = new BattlePosition(0, 0, 0),
+        };
+        _battle.AddUnit(unit);
+        _battle.SelectedUnitId = unit.Id;
+        _battle.CraftInventoryTile = unit.Position;
     }
 
     /// <summary>
@@ -160,7 +291,8 @@ internal sealed class XcomDeployment
         if (!_rules.Items.TryGet(itemId, out var item) || _rules.Items[item].Value.VehicleArmor is not { } armor ||
             !_rules.Battle.Equipment.Units.TryGetValue(itemId, out var unit))
             throw new MapGenerationException($"Vehicle item {itemId} has no vehicle unit.");
-        return new(itemId, _rules.Armors[armor].Value, unit, ammo);
+        // createTempUnit: the environment transforms the vehicle unit's armor.
+        return new(itemId, _battle.TempUnitArmor(_rules, _rules.Armors[armor].Value), unit, ammo);
     }
 
     private BattleUnit Soldier(CampaignState.SoldierState soldier)
