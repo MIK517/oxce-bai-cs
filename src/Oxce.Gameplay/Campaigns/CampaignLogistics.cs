@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Oxce.Mods.Rulesets.Runtime;
 using Oxce.Mods.Rulesets.CampaignStart;
 
@@ -14,10 +15,30 @@ public sealed partial class CampaignState
         registry.Timed(CampaignTimeTrigger.OneHour, CampaignTimeOrder.HourTransfers, "transfers", AdvanceTransfers);
         registry.Timed(CampaignTimeTrigger.OneMonth, CampaignTimeOrder.MonthPurchaseLimits, "purchase limits",
             _ => _monthlyPurchaseLog.Clear());
-        registry.Capture(snapshot => snapshot with { MonthlyPurchaseLog = CampaignSnapshot.ReadOnlyIds(_monthlyPurchaseLog) });
+        registry.Capture(snapshot => snapshot with
+        {
+            MonthlyPurchaseLog = CampaignSnapshot.ReadOnlyIds(_monthlyPurchaseLog),
+            CustomRuleCraftDeployments = CustomRuleCraftDeployments,
+        });
         registry.Restore(snapshot =>
-            _monthlyPurchaseLog = new Dictionary<string, int>(snapshot.MonthlyPurchaseLog, StringComparer.Ordinal));
+        {
+            _monthlyPurchaseLog = new Dictionary<string, int>(snapshot.MonthlyPurchaseLog, StringComparer.Ordinal);
+            CustomRuleCraftDeployments = CopyCraftDeployments(snapshot.CustomRuleCraftDeployments);
+        });
     }
+
+    private static ReadOnlyDictionary<string, IReadOnlyList<IReadOnlyList<int>>> CopyCraftDeployments(
+        IReadOnlyDictionary<string, IReadOnlyList<IReadOnlyList<int>>> source) =>
+        new ReadOnlyDictionary<string, IReadOnlyList<IReadOnlyList<int>>>(source.ToDictionary(
+            static pair => string.IsNullOrWhiteSpace(pair.Key) ? throw new InvalidDataException("A custom craft deployment has no craft type.") : pair.Key,
+            static pair => CampaignSnapshot.ReadOnly((pair.Value ?? throw new InvalidDataException("A custom craft deployment is missing."))
+                .Select(static point => point ?? throw new InvalidDataException("A custom craft deployment point is missing."))
+                .Select(static point => CampaignSnapshot.ReadOnly(point))),
+            StringComparer.Ordinal));
+
+    /// <summary>SavedGame::_customRuleCraftDeployments: craft type to [x, y, z, dir] points overriding the rule's deployment.</summary>
+    internal IReadOnlyDictionary<string, IReadOnlyList<IReadOnlyList<int>>> CustomRuleCraftDeployments { get; private set; } =
+        CampaignSnapshot.EmptyCraftDeployments;
 
     public const int MaximumLogisticsLines = 10_000;
     private long _nextQuoteId;

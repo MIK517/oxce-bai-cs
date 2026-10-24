@@ -28,7 +28,8 @@ public sealed partial class CampaignState
     {
         if (state is null) return null;
         if (!double.IsFinite(state.Longitude) || !double.IsFinite(state.Latitude)) throw new InvalidDataException("Craft coordinates must be finite.");
-        if (state.Fuel < 0 || state.Damage < 0 || state.Weapons.Count > 4 || state.Vehicles.Count > MaximumLogisticsLines)
+        if (state.Fuel < 0 || state.Damage < 0 || state.Weapons.Count > 4 || state.Vehicles.Count > MaximumLogisticsLines ||
+            state.CustomSoldierDeployment.Count > MaximumLogisticsLines || state.CustomVehicleDeployment.Count > MaximumLogisticsLines)
             throw new InvalidDataException("Craft logistics values exceed their supported range.");
         if (state.Vehicles.Where(vehicle => vehicle.PreservationKey.Length != 0)
             .Select(vehicle => vehicle.PreservationKey).Distinct(StringComparer.Ordinal).Count() !=
@@ -55,6 +56,11 @@ public sealed partial class CampaignState
             Weapons = CampaignSnapshot.ReadOnly(state.Weapons),
             Vehicles = CampaignSnapshot.ReadOnly(state.Vehicles),
             Items = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>(state.Items, StringComparer.Ordinal)),
+            CustomSoldierDeployment = new ReadOnlyDictionary<int, CraftDeploymentPoint>(new Dictionary<int, CraftDeploymentPoint>(
+                state.CustomSoldierDeployment.Select(static pair => KeyValuePair.Create(pair.Key,
+                    pair.Value ?? throw new InvalidDataException("A custom soldier deployment point is missing."))))),
+            CustomVehicleDeployment = CampaignSnapshot.ReadOnly(state.CustomVehicleDeployment.Select(static vehicle =>
+                vehicle?.Point is null || vehicle.Type is null ? throw new InvalidDataException("A custom vehicle deployment is incomplete.") : vehicle)),
         };
     }
 

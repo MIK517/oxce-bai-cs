@@ -532,6 +532,8 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CampaignState` (class) [CampaignWorldScriptContext.cs](../src/Oxce.Gameplay/Campaigns/CampaignWorldScriptContext.cs)
 - `CraftWeaponSnapshot` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs)
 - `CraftVehicleSnapshot` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs)
+- `CraftDeploymentPoint` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs) - A custom deployment point relative to the craft map (Position) and the unit's facing.
+- `CraftVehicleDeployment` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs) - Craft.h VehicleDeploymentData without the per-battle `used` flag.
 - `CraftLogisticsState` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs)
 - `CraftEffectiveStats` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs)
 - `CraftUnitCapacities` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs)

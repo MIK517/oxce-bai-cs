@@ -293,6 +293,56 @@ public sealed class StrategicReadinessFixtureTests
     }
 
     [Fact]
+    public void AddingCrewALargerArmorOrAVehicleResetsTheCraftsCustomDeployment()
+    {
+        var (content, campaign, _, facilityBase) = CreateReadinessScenario();
+        var recruit = content.RuntimeRules.Soldiers[content.RuntimeRules.Soldiers.GetRequired("RECRUIT")].Value;
+        var stats = recruit.MinimumStats.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+        var shipRule = content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("SHIP")].Value;
+        var deployed = CraftLogistics.Purchase(shipRule, content.RuntimeRules, 0, 0) with
+        {
+            CustomSoldierDeployment = new Dictionary<int, CraftDeploymentPoint> { [77] = new(1, 1, 0, 2) },
+            CustomVehicleDeployment = [new("VEHICLE", new(2, 2, 0, 4))],
+        };
+        CampaignState WithCrew(string craftType, string armor)
+        {
+            var state = campaign.Capture();
+            var owner = state.Bases.Single(b => b.Id == facilityBase.Id) with
+            {
+                Soldiers = [new SoldierSnapshot("RECRUIT", 77)
+                    { Personal = new("Crew", "", 0, 0, 0, 0, armor, stats, stats) { CraftType = craftType, CraftId = craftType.Length == 0 ? 0 : 1 } }],
+                Crafts = [new CraftSnapshot("SHIP", 1) { Logistics = deployed }],
+                Items = new Dictionary<string, int>(StringComparer.Ordinal) { ["VEHICLE"] = 1 },
+            };
+            return CampaignState.Restore(state with { Bases = state.Bases.Select(b => b.Id == owner.Id ? owner : b).ToArray() },
+                content, new SplitMix64RandomSource(42));
+        }
+        CraftLogisticsState Ship(CampaignState state) => state.Capture().Bases.Single(b => b.Id == facilityBase.Id).Crafts.Single().Logistics!;
+
+        // Soldier::setCraft(craft, true) in CraftSoldiersState.
+        var assigned = WithCrew("", "ARMOR");
+        Assert.True(Ship(assigned).HasCustomDeployment);
+        Assert.IsType<CampaignPersonnelChanged>(Assert.Single(assigned.Execute(new AssignSoldierToCraft(facilityBase.Id, 77, "SHIP", 1)).Events));
+        Assert.False(Ship(assigned).HasCustomDeployment);
+        // The reset deployment leaves the save; Craft::save writes the fields only when they are not empty.
+        Assert.DoesNotContain("customSoldierDeployment", OxceSaveAdapter.EmitNewCampaign(assigned.Capture()), StringComparison.Ordinal);
+
+        // Soldier::setArmor(armor, true): only a larger armor of a soldier on the craft resets it.
+        var armored = WithCrew("SHIP", "LARGE_ARMOR");
+        Assert.IsType<CampaignPersonnelChanged>(Assert.Single(armored.Execute(new EquipSoldierArmor(facilityBase.Id, 77, "ARMOR")).Events));
+        Assert.True(Ship(armored).HasCustomDeployment);
+        Assert.IsType<CampaignPersonnelChanged>(Assert.Single(armored.Execute(new EquipSoldierArmor(facilityBase.Id, 77, "LARGE_ARMOR")).Events));
+        Assert.False(Ship(armored).HasCustomDeployment);
+
+        // CraftEquipmentState: adding a vehicle resets it; the deployment is written back as Craft::save does until then.
+        var equipped = WithCrew("", "ARMOR");
+        var yaml = OxceSaveAdapter.EmitNewCampaign(equipped.Capture());
+        Assert.Equivalent(deployed.CustomVehicleDeployment, Ship(TestFixtures.LoadLogisticsSave(yaml, content, seed: 42).Campaign).CustomVehicleDeployment, strict: true);
+        Assert.IsType<CampaignPersonnelChanged>(Assert.Single(equipped.Execute(new ChangeCraftVehicle(facilityBase.Id, "SHIP", 1, "VEHICLE", true)).Events));
+        Assert.False(Ship(equipped).HasCustomDeployment);
+    }
+
+    [Fact]
     public void SoldierTransformationsFormAnIndependentCompatibilitySlice()
     {
         var (content, campaign, facilityState, facilityBase) = CreateReadinessScenario();

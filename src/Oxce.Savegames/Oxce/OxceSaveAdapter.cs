@@ -222,6 +222,13 @@ public static partial class OxceSaveAdapter
             ResearchDiarySequence = body.ReadUInt64("oxcePortResearchDiarySequence", 0),
             ManufactureRuleStatus = ReadIntMap(body, "manufactureRuleStatus"),
             MonthlyPurchaseLog = ReadIntMap(body, "monthlyPurchaseLimitLog"),
+            // Read only: the node stays as the reference wrote it.
+            CustomRuleCraftDeployments = body.TryGet("customRuleCraftDeployments", out var craftDeployments)
+                ? new ReadOnlyDictionary<string, IReadOnlyList<IReadOnlyList<int>>>(YamlValueReader.ReadMap(craftDeployments!,
+                    YamlValueReader.ReadString, node => (IReadOnlyList<IReadOnlyList<int>>)Array.AsReadOnly(
+                        YamlValueReader.ReadSequence(node, point => (IReadOnlyList<int>)Array.AsReadOnly(
+                            YamlValueReader.ReadSequence(point, YamlValueReader.ReadInt32)))), StringComparer.Ordinal))
+                : CampaignSnapshot.EmptyCraftDeployments,
             DebugMode = body.ReadBoolean("debug", false),
             Warned = body.ReadBoolean("warned", false),
             MissionStatistics = Array.AsReadOnly(Maps(body, "missionStatistics").Select(ReadMissionStatistic).ToArray()),
@@ -732,8 +739,18 @@ public static partial class OxceSaveAdapter
                     Pair("size", vehicle.Size is { } size ? Integer(size) : null),
                     Pair("spaceOccupied", vehicle.SpaceOccupied is { } space ? Integer(space) : null)]);
             }))),
+            // Craft::save writes them only when not empty; a reset deployment leaves the node.
+            Pair("customSoldierDeployment", state.CustomSoldierDeployment.Count == 0 ? null : Mapping(state.CustomSoldierDeployment
+                .OrderBy(static pair => pair.Key).Select(pair => Pair(pair.Key.ToString(CultureInfo.InvariantCulture),
+                    Sequence([DeploymentPosition(pair.Value), Integer(pair.Value.Direction)]))))),
+            Pair("customVehicleDeployment", state.CustomVehicleDeployment.Count == 0 ? null : Sequence(state.CustomVehicleDeployment
+                .Select(vehicle => Mapping([Pair("type", Scalar(vehicle.Type)), Pair("pos", DeploymentPosition(vehicle.Point)),
+                    Pair("dir", Integer(vehicle.Point.Direction))])))),
         ]);
     }
+
+    private static YamlSequenceNode DeploymentPosition(CraftDeploymentPoint point) =>
+        Sequence([Integer(point.X), Integer(point.Y), Integer(point.Z)]);
 
     private static YamlMappingNode BuildTransfer(TransferSnapshot value, SaveEntityIndex index) =>
         Overlay(MatchingSource(index.Transfers.GetValueOrDefault(value.Id), value.PreservationKey, $"transfer:{value.Id}"),
@@ -1007,7 +1024,29 @@ public static partial class OxceSaveAdapter
             SpeedLongitude = map.ReadDouble("speedLon", 0),
             SpeedLatitude = map.ReadDouble("speedLat", 0),
             SpeedRadian = map.ReadDouble("speedRadian", 0),
+            CustomSoldierDeployment = map.TryGet("customSoldierDeployment", out var soldiers)
+                ? new ReadOnlyDictionary<int, CraftDeploymentPoint>(YamlValueReader.ReadMap(soldiers!, YamlValueReader.ReadInt32, node =>
+                {
+                    // std::pair<Position, int>: [[x, y, z], dir].
+                    var (position, direction) = YamlValueReader.ReadPair(node, ReadPosition, YamlValueReader.ReadInt32);
+                    return new CraftDeploymentPoint(position.X, position.Y, position.Z, direction);
+                }))
+                : new ReadOnlyDictionary<int, CraftDeploymentPoint>(new Dictionary<int, CraftDeploymentPoint>()),
+            // VehicleDeploymentData: a missing type stays empty, a missing pos is [-1, -1, -1].
+            CustomVehicleDeployment = Array.AsReadOnly(Maps(map, "customVehicleDeployment").Select(vehicle =>
+            {
+                var position = vehicle.TryGet("pos", out var pos) ? ReadPosition(pos!) : (X: -1, Y: -1, Z: -1);
+                return new CraftVehicleDeployment(vehicle.ReadString("type", ""),
+                    new(position.X, position.Y, position.Z, vehicle.ReadInt32("dir", 0)));
+            }).ToArray()),
         };
+    }
+
+    /// <summary>Position's reader: a sequence of three Sint16 values.</summary>
+    private static (int X, int Y, int Z) ReadPosition(YamlNode node)
+    {
+        var (x, y, z) = YamlValueReader.ReadTuple(node, YamlValueReader.ReadInt16, YamlValueReader.ReadInt16, YamlValueReader.ReadInt16);
+        return (x, y, z);
     }
 
     private static TransferSnapshot ReadTransfer(

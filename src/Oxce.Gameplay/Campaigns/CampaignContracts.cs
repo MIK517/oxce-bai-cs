@@ -277,6 +277,8 @@ public sealed record CampaignSnapshot(
     public IReadOnlyDictionary<string, int> ResearchRuleStatus { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
     public IReadOnlyDictionary<string, int> ManufactureRuleStatus { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
     public IReadOnlyDictionary<string, int> MonthlyPurchaseLog { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
+    /// <summary>SavedGame::_customRuleCraftDeployments: craft type to its [x, y, z, dir] deployment points.</summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<IReadOnlyList<int>>> CustomRuleCraftDeployments { get; init; } = EmptyCraftDeployments;
     public bool DebugMode { get; init; }
     /// <summary>SavedGame::_warned: the monthly report has warned about funds at or below defeatFunds.</summary>
     public bool Warned { get; init; }
@@ -284,6 +286,9 @@ public sealed record CampaignSnapshot(
     public IReadOnlyList<MissionStatisticSnapshot> MissionStatistics { get; init; } = [];
     public CampaignOptions Options { get; init; } = new();
     public WorldSnapshot World { get; init; } = WorldSnapshot.Empty;
+
+    public static readonly IReadOnlyDictionary<string, IReadOnlyList<IReadOnlyList<int>>> EmptyCraftDeployments =
+        new ReadOnlyDictionary<string, IReadOnlyList<IReadOnlyList<int>>>(new Dictionary<string, IReadOnlyList<IReadOnlyList<int>>>());
 
     internal static IReadOnlyList<T> ReadOnly<T>(IEnumerable<T> values) => Array.AsReadOnly(values.ToArray());
 

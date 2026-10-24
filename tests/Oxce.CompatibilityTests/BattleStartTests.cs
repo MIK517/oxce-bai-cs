@@ -1,8 +1,11 @@
+using Oxce.Core.Random;
 using Oxce.Gameplay.Battles;
 using Oxce.Gameplay.Battles.Terrain;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Runtime;
+using Oxce.Savegames.Oxce;
+using Oxce.TestSupport;
 using Xunit;
 using static Oxce.CompatibilityTests.BattleTestTerrain;
 using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
@@ -371,18 +374,24 @@ public sealed class BattleStartTests
 
     private static (CampaignState Campaign, CampaignDeploymentRequest Request) Requested(string? rules, string ufo = "UFO_SCOUT",
         IReadOnlyList<CraftVehicleSnapshot>? vehicles = null, IReadOnlyDictionary<string, int>? items = null,
-        IReadOnlyList<SoldierLayoutItem>? layout = null)
+        IReadOnlyList<SoldierLayoutItem>? layout = null, Func<CampaignSnapshot, CampaignSnapshot>? adjust = null)
     {
         // The landing UFO is UFO_SCOUT: the deployment under test takes its name and the default one steps aside.
         if (rules is not null && ufo != "UFO_SCOUT")
             rules = rules.Replace("type: UFO_SCOUT\n    width", "type: UFO_SCOUT_DEFAULT\n    width", StringComparison.Ordinal)
                 .Replace("type: " + ufo + "\n", "type: UFO_SCOUT\n", StringComparison.Ordinal);
-        var (_, campaign) = StrategicLandingTests.Create(rules: rules, files: rules is null ? null : RequiredFiles("BLANKS", "TESTSET"),
+        var (content, campaign) = StrategicLandingTests.Create(rules: rules, files: rules is null ? null : RequiredFiles("BLANKS", "TESTSET"),
             vehicles: vehicles, items: items, layout: layout);
         campaign.BattleTerrainFiles = TerrainFiles();
         var requested = AssertLandingRequested(campaign);
         var result = campaign.Execute(new AnswerLanding(requested.Confirmation, LandingAnswer.Yes));
-        return (campaign, Assert.IsType<DeploymentRequested>(Assert.Single(result.Events)).Request);
+        var request = Assert.IsType<DeploymentRequested>(Assert.Single(result.Events)).Request;
+        if (adjust is not null)
+        {
+            campaign = CampaignState.Restore(adjust(campaign.Capture()), content, new SplitMix64RandomSource(17));
+            campaign.BattleTerrainFiles = TerrainFiles();
+        }
+        return (campaign, request);
     }
 
     /// <summary>Starts the battle, reporting the refusal reason when there is one.</summary>
@@ -711,6 +720,141 @@ public sealed class BattleStartTests
         var after = campaign.Capture().Bases[0].Items;
         foreach (var (type, quantity) in battle.ReturnedToBase)
             Assert.Equal(before.GetValueOrDefault(type) + quantity, after.GetValueOrDefault(type));
+    }
+
+    private static Func<CampaignSnapshot, CampaignSnapshot> CustomDeployment(
+        CraftDeploymentPoint? soldier, IReadOnlyList<CraftVehicleDeployment>? vehicles,
+        IReadOnlyList<IReadOnlyList<int>>? shipOverride = null) => snapshot =>
+    {
+        // The base's first soldier is the one on board.
+        var soldierId = snapshot.Bases[0].Soldiers[0].Id;
+        snapshot = snapshot.WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                CustomSoldierDeployment = soldier is null ? craft.Logistics!.CustomSoldierDeployment
+                    : new Dictionary<int, CraftDeploymentPoint> { [soldierId] = soldier },
+                CustomVehicleDeployment = vehicles ?? craft.Logistics!.CustomVehicleDeployment,
+            },
+        });
+        return shipOverride is null ? snapshot : snapshot with
+        {
+            CustomRuleCraftDeployments = new Dictionary<string, IReadOnlyList<IReadOnlyList<int>>> { ["SHIP"] = shipOverride },
+        };
+    };
+
+    /// <summary>The SHIP rule with its own deployment point: the craft's corner, facing 7.</summary>
+    private static readonly string RuleDeployment = Rules.Replace("  - type: SHIP\n", "  - type: SHIP\n    deployment: [[0, 0, 0, 7]]\n", StringComparison.Ordinal);
+
+    private static BattlePosition CraftOrigin(BattleMap map, string craftType = "SHIP")
+    {
+        var craft = Enumerable.Range(0, 9).Select(cell => (X: cell % 3, Y: cell / 3)).Single(cell => map.TerrainName(cell.X, cell.Y) == craftType);
+        return new(craft.X * 10, craft.Y * 10, 0);
+    }
+
+    [Fact]
+    public void TheCraftsOwnCustomDeploymentPlacesSoldiersByIdAndVehiclesByTypeInOrder()
+    {
+        // Craft::_customSoldierDeployment and _customVehicleDeployment; the save's override for the craft type is ignored
+        // while the craft has its own (BattlescapeGenerator::addXCOMUnit tries the craft's first).
+        var (campaign, request) = Requested(Rules, "UFO_CRAFTED", [new("VEHICLE_B", 0), new("VEHICLE_B", 0)],
+            adjust: CustomDeployment(new(3, 4, 0, 5),
+                [new("VEHICLE", new(0, 0, 0, 0)), new("VEHICLE_B", new(7, 7, 0, 1)), new("VEHICLE_B", new(5, 1, 0, 2))],
+                [[9, 9, 0, 3]]));
+        Started(campaign);
+        var battle = Battle(campaign);
+        var origin = CraftOrigin(battle.Map);
+        // Each vehicle takes the first unused point of its type.
+        Assert.Equal([(BattleState.MaximumSoldierId, origin with { X = origin.X + 7, Y = origin.Y + 7 }, 1),
+                (BattleState.MaximumSoldierId + 1, origin with { X = origin.X + 5, Y = origin.Y + 1 }, 2),
+                (Assert.Single(request.Soldiers), origin with { X = origin.X + 3, Y = origin.Y + 4 }, 5)],
+            battle.Units.Where(static unit => unit.Faction == BattleFaction.Player).Select(static unit => (unit.Id, unit.Position!.Value, unit.Direction)));
+        // The first start tile checked is the craft inventory tile.
+        Assert.Equal(origin with { X = origin.X + 7, Y = origin.Y + 7 }, battle.CraftInventoryTile);
+    }
+
+    [Fact]
+    public void TheSavesCraftTypeDeploymentOverridesTheRuleAndAUnitThatFitsNoPointStaysOut()
+    {
+        // SavedBattleGame::getCustomDeployment: the save's points for SHIP, in order, ahead of the rule's own point. The
+        // large vehicle does not fit at the craft's corner (its other tiles are not start tiles), so it takes the second
+        // point; the soldier takes the first.
+        var (campaign, request) = Requested(RuleDeployment, "UFO_CRAFTED", [new("VEHICLE", 0)],
+            adjust: CustomDeployment(null, null, [[9, 9, 0, 3], [6, 6, 0, 4]]));
+        Started(campaign);
+        var battle = Battle(campaign);
+        var origin = CraftOrigin(battle.Map);
+        Assert.Equal([(BattleState.MaximumSoldierId, origin with { X = origin.X + 6, Y = origin.Y + 6 }, 4),
+                (Assert.Single(request.Soldiers), origin with { X = origin.X + 9, Y = origin.Y + 9 }, 3)],
+            battle.Units.Where(static unit => unit.Faction == BattleFaction.Player).Select(static unit => (unit.Id, unit.Position!.Value, unit.Direction)));
+
+        // An empty override still replaces the start tiles: nobody is placed.
+        (campaign, _) = Requested(Rules, "UFO_CRAFTED", adjust: CustomDeployment(null, null, []));
+        Assert.Equal("Map generator encountered an error: no xcom units could be placed on the map.", Refusal(campaign, new StartBattle()));
+
+        // BattleUnit::setDirection keeps a saved direction unchecked; the port refuses one outside 0-7.
+        (campaign, _) = Requested(Rules, "UFO_CRAFTED", adjust: CustomDeployment(null, null, [[9, 9, 0, 8]]));
+        Assert.Equal("A custom craft deployment faces direction 8, outside 0-7.", Refusal(campaign, new StartBattle()));
+        (campaign, _) = Requested(Rules, "UFO_CRAFTED", adjust: CustomDeployment(new(3, 4, 0, -1), null));
+        Assert.Equal("A custom craft deployment faces direction -1, outside 0-7.", Refusal(campaign, new StartBattle()));
+    }
+
+    [Fact]
+    public void TheCraftRulesPointsApplyWithoutAnOverrideAndAReplacedCraftRuleIgnoresTheCraftsOwnDeployment()
+    {
+        // RuleCraft::getDeployment when the save has no override for the craft type.
+        var (campaign, request) = Requested(RuleDeployment, "UFO_CRAFTED");
+        Started(campaign);
+        var battle = Battle(campaign);
+        var soldier = Assert.Single(battle.Units, static unit => unit.Faction == BattleFaction.Player);
+        Assert.Equal((Assert.Single(request.Soldiers), CraftOrigin(battle.Map), 7), (soldier.Id, soldier.Position!.Value, soldier.Direction));
+
+        // addCraft's craftName replaces the battle's craft rules, so the craft's own deployment (made for SHIP) does not
+        // apply: the soldier takes SHIP_B's first start tile.
+        var replaced = Rules.Replace("crafts:\n", "crafts:\n  - type: SHIP_B\n    battlescapeTerrainData:\n      name: SHIP_B_MAP\n" +
+                "      mapDataSets: [BLANKS, SHIPSET]\n      mapBlocks: [{name: SHIPBLOCK, width: 10, length: 10}]\n", StringComparison.Ordinal)
+            .Replace("- {type: addCraft}", "- {type: addCraft, craftName: SHIP_B}", StringComparison.Ordinal);
+        (campaign, _) = Requested(replaced, "UFO_CRAFTED", adjust: CustomDeployment(new(3, 4, 0, 5), null));
+        Started(campaign);
+        battle = Battle(campaign);
+        soldier = Assert.Single(battle.Units, static unit => unit.Faction == BattleFaction.Player);
+        Assert.Equal(CraftOrigin(battle.Map, "SHIP_B"), soldier.Position);
+    }
+
+    [Fact]
+    public void CustomDeploymentsAreReadFromTheSaveAndWrittenBackAsTheyWere()
+    {
+        // Craft::load (customSoldierDeployment: std::map<int, std::pair<Position, int>>; customVehicleDeployment: type,
+        // pos, dir with a missing pos at [-1, -1, -1]) and SavedGame::load (customRuleCraftDeployments).
+        var (content, campaign) = StrategicLandingTests.Create();
+        var soldier = campaign.Capture().Bases[0].Soldiers[0].Id;
+        var yaml = System.Text.RegularExpressions.Regex.Replace(OxceSaveAdapter.EmitNewCampaign(campaign.Capture()),
+            @"type: SHIP\n(\s+)id: 1\n", match => match.Value +
+                $"{match.Groups[1].Value}customSoldierDeployment: {{{soldier}: [[1, 2, 0], 5]}}\n" +
+                $"{match.Groups[1].Value}customVehicleDeployment: [{{type: VEHICLE, pos: [3, 4, 1], dir: 2}}, {{type: VEHICLE_B}}]\n");
+        Assert.Contains("customVehicleDeployment", yaml, StringComparison.Ordinal);
+        yaml += "customRuleCraftDeployments: {SHIP: [[1, 2, 0, 3], [4, 5, 0, 6]]}\n";
+        var loaded = TestFixtures.LoadLogisticsSave(yaml, content, 17);
+        var snapshot = loaded.Campaign.Capture();
+        var ship = snapshot.Bases[0].Crafts.Single(static craft => craft.RuleId == "SHIP").Logistics!;
+        Assert.Equal(new CraftDeploymentPoint(1, 2, 0, 5), Assert.Single(ship.CustomSoldierDeployment, pair => pair.Key == soldier).Value);
+        Assert.Equal([new("VEHICLE", new(3, 4, 1, 2)), new("VEHICLE_B", new(-1, -1, -1, 0))], ship.CustomVehicleDeployment);
+        Assert.Equal([[1, 2, 0, 3], [4, 5, 0, 6]], snapshot.CustomRuleCraftDeployments["SHIP"]);
+        // The port writes nothing of its own for them; the loaded nodes stay and read back the same.
+        var rewritten = OxceSaveAdapter.EmitLoadedCampaign(snapshot, loaded.Source);
+        foreach (var key in new[] { "customSoldierDeployment", "customVehicleDeployment", "customRuleCraftDeployments" })
+            Assert.Contains(key, rewritten, StringComparison.Ordinal);
+        Assert.Equivalent(snapshot, TestFixtures.LoadLogisticsSave(rewritten, content, 17).Campaign.Capture(), strict: true);
+    }
+
+    [Fact]
+    public void ACustomCraftDeploymentWithoutAPointForAUnitIsRefused()
+    {
+        // The reference crashes on the missing soldier (std::map::at) and throws for a vehicle without an unused point.
+        var (campaign, _) = Requested(Rules, "UFO_CRAFTED", adjust: CustomDeployment(null, [new("VEHICLE", new(0, 0, 0, 0))]));
+        Assert.StartsWith("Craft SHIP has no custom deployment point for soldier", Refusal(campaign, new StartBattle()), StringComparison.Ordinal);
+        (campaign, _) = Requested(Rules, "UFO_CRAFTED", [new("VEHICLE_B", 0)], adjust: CustomDeployment(null, [new("VEHICLE", new(0, 0, 0, 0))]));
+        Assert.Equal("Unit generator encountered an error: custom craft deployment failed.", Refusal(campaign, new StartBattle()));
     }
 
     [Fact]

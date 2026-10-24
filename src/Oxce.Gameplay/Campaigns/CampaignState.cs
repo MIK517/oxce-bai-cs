@@ -320,6 +320,8 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             ArgumentException.ThrowIfNullOrWhiteSpace(purchase.Key);
             if (purchase.Value < 0) throw new InvalidDataException("Monthly purchase counts cannot be negative.");
         }
+        if (snapshot.CustomRuleCraftDeployments.Sum(static pair => pair.Value.Count) > MaximumLogisticsLines)
+            throw new InvalidDataException("Custom craft deployments exceed their supported size.");
 
         var previousRandomState = random.State;
         try

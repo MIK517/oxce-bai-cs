@@ -29,6 +29,10 @@ internal sealed class XcomDeployment
     private readonly UnitEquipment _equipment;
     private readonly BattlePlacement _placement;
     private int _unitSequence = BattleState.MaximumSoldierId;
+    private string _craftType = "";
+    private CraftLogisticsState? _craft;
+    private bool[] _vehicleDeploymentUsed = [];
+    private IReadOnlyDictionary<string, IReadOnlyList<IReadOnlyList<int>>> _customRuleCraftDeployments = CampaignSnapshot.EmptyCraftDeployments;
 
     private XcomDeployment(BattleState battle, BattleMapResult generated, RuntimeRuleCatalog rules, IRandomSource random,
         RuntimeStartingCondition? startingCondition, IReadOnlyDictionary<string, string>? armorTransformations)
@@ -59,6 +63,11 @@ internal sealed class XcomDeployment
     {
         var owner = campaign.BaseStates.Find(candidate => candidate.Id == request.BaseId)
             ?? throw new MapGenerationException($"The deployment request's base {request.BaseId} no longer exists.");
+        _craftType = request.CraftTypeId;
+        _craft = owner.Crafts.Find(craft => craft.Id == request.CraftId && _rules.Crafts.GetExternalId(craft.Rule) == request.CraftTypeId)?.Logistics;
+        // Craft::resetTemporaryCustomVehicleDeploymentFlags.
+        _vehicleDeploymentUsed = new bool[_craft?.CustomVehicleDeployment.Count ?? 0];
+        _customRuleCraftDeployments = campaign.CustomRuleCraftDeployments;
         var extended = _rules.Campaign.ExtendedHwpLoadOrder;
         var vehicles = new List<Vehicle>();
         for (var index = 0; index < request.Vehicles.Count; index++)
@@ -277,13 +286,19 @@ internal sealed class XcomDeployment
         }
         var craft = _rules.Crafts.GetRequiredValue(_generated.CraftRuleId);
         SetCustomCraftInventoryTile();
-        if (craft.Deployment.Count != 0)
+        if (_craft is { HasCustomDeployment: true } custom && _craftType == _generated.CraftRuleId)
+            return PlaceCustom(unit, custom);
+        // SavedBattleGame::hasCustomDeployment / getCustomDeployment: the save's override for the craft type, even an
+        // empty one, else the craft rule's points.
+        var deployment = _customRuleCraftDeployments.TryGetValue(_generated.CraftRuleId, out var overridden) ? overridden
+            : craft.Deployment.Count != 0 ? craft.Deployment : null;
+        if (deployment is not null)
         {
-            // SavedBattleGame::getCustomDeployment: the craft rule's points, relative to the craft map.
-            foreach (var point in craft.Deployment)
+            // Points relative to the craft map.
+            foreach (var point in deployment)
             {
                 if (point.Count < 4) throw new MapGenerationException($"Craft {_generated.CraftRuleId} has a deployment point without four values.");
-                var position = new BattlePosition(point[0] + _generated.CraftX * 10, point[1] + _generated.CraftY * 10, point[2] + _generated.CraftZ);
+                var position = CraftPosition(point[0], point[1], point[2]);
                 var free = true;
                 for (var x = 0; x < unit.ArmorSize; x++)
                     for (var y = 0; y < unit.ArmorSize; y++)
@@ -291,7 +306,7 @@ internal sealed class XcomDeployment
                 if (free && _placement.TryPosition(unit, position) is { } placed)
                 {
                     unit.Position = placed;
-                    unit.Direction = point[3];
+                    unit.Direction = CustomDirection(point[3]);
                     return true;
                 }
             }
@@ -309,6 +324,54 @@ internal sealed class XcomDeployment
         }
         return false;
     }
+
+    /// <summary>
+    /// addXCOMUnit with the craft's own custom deployment (the battle's craft rules are the craft's): a soldier takes its
+    /// saved point, a vehicle the first unused point of its type. The unit is placed there only when every tile it covers
+    /// is a start tile and the position takes it; otherwise it stays out of the battle.
+    /// </summary>
+    private bool PlaceCustom(BattleUnit unit, CraftLogisticsState craft)
+    {
+        CraftDeploymentPoint? point = null;
+        if (unit.SoldierId is { } soldier)
+        {
+            // The reference's map lookup crashes for a soldier without a point.
+            point = craft.CustomSoldierDeployment.GetValueOrDefault(soldier)
+                ?? throw new MapGenerationException($"Craft {_craftType} has no custom deployment point for soldier {soldier}.");
+        }
+        else
+        {
+            for (var index = 0; index < craft.CustomVehicleDeployment.Count; index++)
+            {
+                var vehicle = craft.CustomVehicleDeployment[index];
+                if (vehicle.Type != unit.UnitType || _vehicleDeploymentUsed[index]) continue;
+                point = vehicle.Point;
+                _vehicleDeploymentUsed[index] = true;
+                break;
+            }
+        }
+        if (point is null) throw new MapGenerationException("Unit generator encountered an error: custom craft deployment failed.");
+        var position = CraftPosition(point.X, point.Y, point.Z);
+        var free = true;
+        for (var x = 0; x < unit.ArmorSize; x++)
+            for (var y = 0; y < unit.ArmorSize; y++)
+                free = free && CanPlaceXcomUnit(position with { X = position.X + x, Y = position.Y + y });
+        if (!free || _placement.TryPosition(unit, position) is not { } placed) return false;
+        unit.Position = placed;
+        unit.Direction = CustomDirection(point.Direction);
+        return true;
+    }
+
+    /// <summary>A point relative to the craft map as the reference's Position holds it: Sint16 coordinates.</summary>
+    private BattlePosition CraftPosition(int x, int y, int z) =>
+        new((short)(x + _generated.CraftX * 10), (short)(y + _generated.CraftY * 10), (short)(z + _generated.CraftZ));
+
+    /// <summary>
+    /// BattleUnit::setDirection stores a saved direction unchecked and later lookups index by it; the port refuses one
+    /// outside 0-7.
+    /// </summary>
+    private static int CustomDirection(int direction) => direction is >= 0 and <= 7 ? direction
+        : throw new MapGenerationException($"A custom craft deployment faces direction {direction}, outside 0-7.");
 
     private BattlePosition Position(int tile) =>
         new(tile % _map.Width, tile / _map.Width % _map.Length, tile / (_map.Width * _map.Length));

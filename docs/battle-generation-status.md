@@ -11,8 +11,8 @@ Phase 7 branch 1 (`claude/battle-generation`), from `main` at `2b0c81fb`. Plan:
 | S1 battle aggregate | Done (2026-10-18) |
 | S2 runtime battle terrain | Done (2026-10-19) |
 | S3 map generation | Done (2026-10-20) except craft skins |
-| S4 X-COM deployment | S4a, large units and armor changes done (2026-10-20); items, custom deployments and unit statistics open |
-| S5 alien and civilian deployment | Groundwork (deployment data, alien quantities) done (2026-10-20) |
+| S4 X-COM deployment | Done (2026-10-24) except the base defense deployment (S6) |
+| S5 alien and civilian deployment | Done (2026-10-23); crashed-UFO and map-junk explosions refuse until branch 5 |
 | S6 base defense and other entry points | Not started |
 | S7 acceptance and branch audit | Not started |
 
@@ -245,7 +245,7 @@ craft rule's deployment, spawn nodes), `canPlaceXCOMUnit`, `setCustomCraftInvent
   condition's armor and equipment restriction flags.
 - Named S4b refusal: starting-condition vehicle and item restrictions (they send vehicles and items home), which arrive
   with the craft's items. Large units, `placeUnitNearFriend` and armor changes followed in S4b parts 1 and 2 (below).
-- Not yet (S4b): the save-side custom deployments (`customRuleCraftDeployments`, a craft's custom soldier and vehicle
+- Left for S4b, all done by part 7: the save-side custom deployments (`customRuleCraftDeployments`, a craft's custom soldier and vehicle
   deployment), which the strategic save does not read yet; the craft's items and their equipment layouts; unit
   statistics.
 
@@ -500,20 +500,47 @@ Reference: `BattlescapeGenerator::deployXCOM` (disabled vehicles and items), `Ru
 Tests: `BattleStartTests.TheStartingConditionSendsDisabledVehiclesAndItemsBackToBaseStorage`,
 `RuntimeStartingConditionTests`.
 
+## S4b, part 7 — Save-side custom deployments (2026-10-24)
+
+Reference: `Craft::load` (`customSoldierDeployment`, `customVehicleDeployment`), `read(VehicleDeploymentData)`,
+`Craft::hasCustomDeployment`, `resetTemporaryCustomVehicleDeploymentFlags`, `SavedGame::load`
+(`customRuleCraftDeployments`), `SavedBattleGame::hasCustomDeployment`, `getCustomDeployment`,
+`BattlescapeGenerator::deployXCOM`, `addXCOMUnit`, the `std::pair` and `Position` YAML readers.
+
+- `CraftLogisticsState.CustomSoldierDeployment` (soldier ID → `CraftDeploymentPoint`) and `CustomVehicleDeployment`
+  (`CraftVehicleDeployment`: type and point, a missing `pos` is [-1, -1, -1]), written back from the state only when not
+  empty, as `Craft::save` does. `Craft::resetCustomDeployment` clears both when a soldier is assigned to the craft
+  (`AssignSoldierToCraft`), a crew soldier changes to a larger armor (`EquipSoldierArmor`) or a vehicle is added
+  (`ChangeCraftVehicle`). Setting a deployment (the battle's deployment preview) is UI work for later branches.
+- `CampaignSnapshot.CustomRuleCraftDeployments`: read only, the save keeps its loaded node (nothing in the port changes
+  it; the preview's `saveDummyCraftDeployment` would).
+- `addXCOMUnit` with a deployed craft: the craft's own custom deployment when it has one and its rules are the battle's
+  craft rules (a soldier takes its point, a vehicle the first unused point of its unit type); else the save's override
+  for the battle's craft type, even an empty one, else the craft rule's points; else the start tiles. A unit that fits
+  none of its custom points stays out of the battle, as in the reference. Positions wrap to Sint16 like `Position`.
+- Refusals where the reference fails or goes undefined: a soldier without a point in the craft's custom deployment
+  (`std::map::at` crashes), a vehicle without an unused point of its type ("custom craft deployment failed"), and a
+  custom direction outside 0-7 (`setDirection` keeps it and later lookups index by it).
+
+Tests: `BattleStartTests.TheCraftsOwnCustomDeploymentPlacesSoldiersByIdAndVehiclesByTypeInOrder`,
+`TheSavesCraftTypeDeploymentOverridesTheRuleAndAUnitThatFitsNoPointStaysOut`,
+`TheCraftRulesPointsApplyWithoutAnOverrideAndAReplacedCraftRuleIgnoresTheCraftsOwnDeployment`,
+`CustomDeploymentsAreReadFromTheSaveAndWrittenBackAsTheyWere`, `ACustomCraftDeploymentWithoutAPointForAUnitIsRefused`;
+`StrategicReadinessFixtureTests.AddingCrewALargerArmorOrAVehicleResetsTheCraftsCustomDeployment`.
+
 ## Next
 
-- Craft skins: the craft's skin index in the strategic save and `refreshMapDataSets`.
-- S4b: save-side custom deployments. Notes for the next part:
-  - The craft node's `customSoldierDeployment` (map soldier ID → [[x, y, z], dir], `std::pair` as a two-element sequence)
-    and `customVehicleDeployment` (list of {type, pos, dir}; `used` is a per-battle flag reset by
-    `Craft::resetTemporaryCustomVehicleDeploymentFlags`) are read in `Craft::load`. The save root's
-    `customRuleCraftDeployments` (craft type → list of [x, y, z, dir]) is read in `SavedGame::load`. The port preserves
-    all three raw; read them into the craft logistics state and the campaign snapshot without changing what is written.
-  - `addXCOMUnit` order with a deployed craft: the craft's own custom deployment when `Craft::hasCustomDeployment` and the
-    craft's rules are the battle's craft rules (a soldier missing from the map crashes the reference: refuse; a vehicle
-    takes the first unused entry of its type; none found throws "custom craft deployment failed"; the unit is placed
-    only when every tile passes `canPlaceXCOMUnit` and `setUnitPosition` succeeds, facing the entry's direction); then
-    `SavedBattleGame::hasCustomDeployment(craftRules)` (the rule's `deployment` or the save override) with
-    `getCustomDeployment` preferring the save override over the rule (XcomDeployment.Place already handles the rule
-    list); then the start tiles.
+- Craft skins: the craft's skin index in the strategic save and `refreshMapDataSets`. Notes for the next part:
+  - `Craft::load` reads `skinIndex` (default 0) and resets it to 0 when above the craft rule's `maxSkinIndex` (a negative
+    index is kept); `Craft::save` writes it only when nonzero. The port projects nothing yet: `maxSkinIndex` is only a
+    known key with default 0 in `EquipmentProductionRules.cs`, and the craft node keeps `skinIndex` raw. Read it into
+    `CraftLogisticsState` and write it back from the state like the custom deployments (S4b part 7).
+  - `generateMap`, after the UFOs: when a craft map was placed, `_craftRules->getBattlescapeTerrainData()->refreshMapDataSets(
+    _craft->getSkinIndex())` renames every data set except `BLANKS` to `<name>_<skin>` (skin 0 keeps the plain names);
+    `_craftRules` may be a replaced craft rule (map script `addCraft` or the starting condition) while the skin is the
+    craft's own. `Mod::getMapDataSet` creates an unknown set on demand, so a skin without its MCD fails when the data is
+    loaded: the port's terrain loader should refuse with the missing file. The reference's `_lastCraftSkinIndex` caches
+    the renaming on the shared rule object; the port derives the names per battle instead.
+  - Files: `BattleMapGenerator.cs` (the craft's data sets are added where `CraftRule` terrain is loaded), the craft rule
+    projection (`RuntimeCraftRule`) for `maxSkinIndex`, `OxceSaveAdapter.ReadCraftLogistics`.
 - S6: base defense maps and the remaining entry points.
