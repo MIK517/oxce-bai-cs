@@ -57,37 +57,18 @@ internal sealed class CivilianDeployment
                     throw new MapGenerationException($"Terrain {terrain.Id} has no civilian types for the deployment's civilians.");
                 type = terrain.CivilianTypes[_random.NextInclusive(0, terrain.CivilianTypes.Count - 1)];
             }
-            if (AddCivilian(type, nodeRank) is not { } civilian) continue;
+            var (unitRule, armor) = _battle.UnitRule(_rules, type);
+            if (AddCivilian(type, unitRule, armor, nodeRank) is not { } civilian) continue;
             civilian.IsVip = markAsVip;
-            var levels = _rules.Campaign.AlienItemLevels;
-            if (_battle.AlienItemLevel < 0 || _battle.AlienItemLevel >= levels.Count || levels[_battle.AlienItemLevel].Count < 10)
-                throw new MapGenerationException($"The mod has no ten alien item levels for month {_battle.AlienItemLevel}.");
             // Civilians' built-in weapon sets follow the alien item levels.
-            var itemLevel = levels[_battle.AlienItemLevel][_random.NextInclusive(0, 9)];
-            _equipment.InitUnit(civilian, _rules.Battle.Equipment.Units[type], "", itemLevel);
+            _equipment.InitUnit(civilian, unitRule, "", _equipment.DrawItemLevel());
         }
     }
 
     /// <summary>BattlescapeGenerator::addCivilian: a neutral unit on a spawn node of the rank, else near a friend.</summary>
-    private BattleUnit? AddCivilian(string type, int nodeRank)
+    private BattleUnit? AddCivilian(string type, RuntimeBattleUnitRule unitRule, RuntimeArmorRule armor, int nodeRank)
     {
-        if (!_rules.Battle.Equipment.Units.TryGetValue(type, out var unitRule) || !_rules.Units.TryGet(type, out var handle))
-            throw new MapGenerationException($"Unit {type} does not exist.");
-        var armor = _battle.TempUnitArmor(_rules, _rules.Units[handle].Value.Armor is { } armorHandle ? _rules.Armors[armorHandle].Value
-            : throw new MapGenerationException($"Unit {type} has no armor."));
-        var stats = (BattleUnitStats.From(unitRule.Stats) + BattleUnitStats.From(armor.Stats)).ObeyFixedMinimum();
-        var unit = new BattleUnit(_unitSequence++, BattleFaction.Neutral, BattleController.Ai)
-        {
-            UnitType = type,
-            ArmorId = armor.Type,
-            ArmorSize = armor.Size,
-            MovementType = _battle.MovementType(armor),
-            Stats = stats,
-            TimeUnits = stats.TimeUnits,
-            Energy = stats.Stamina,
-            Health = stats.Health,
-            Mana = stats.Mana,
-        };
+        var unit = _battle.TempUnit(_unitSequence++, BattleFaction.Neutral, BattleController.Ai, type, unitRule, armor);
         if (_placement.SpawnNode(nodeRank, unit) is { } node)
         {
             // getSpawnNode only returns a node the unit can stand on.

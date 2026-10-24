@@ -98,6 +98,39 @@ internal sealed class BattleState
             : throw new Generation.MapGenerationException($"Armor transformation target {transformed} does not exist.");
     }
 
+    /// <summary>Mod::getUnit with the required flag: the unit rule a battle unit is created from, and the armor it wears here.</summary>
+    internal (RuntimeBattleUnitRule Rule, RuntimeArmorRule Armor) UnitRule(RuntimeRuleCatalog rules, string type)
+    {
+        if (!rules.Battle.Equipment.Units.TryGetValue(type, out var unitRule) || !rules.Units.TryGet(type, out var handle))
+            throw new Generation.MapGenerationException($"Unit {type} does not exist.");
+        return rules.Units[handle].Value.Armor is { } armor ? (unitRule, TempUnitArmor(rules, rules.Armors[armor].Value))
+            : throw new Generation.MapGenerationException($"Unit {type} has no armor.");
+    }
+
+    /// <summary>
+    /// SavedBattleGame::createTempUnit (the BattleUnit(Unit*) constructor): the unit rule's and the armor's statistics,
+    /// adjusted (a hostile unit's difficulty), with full time units, energy, health and mana.
+    /// </summary>
+    internal BattleUnit TempUnit(int id, BattleFaction faction, BattleController controller, string type, RuntimeBattleUnitRule rule,
+        RuntimeArmorRule armor, Func<BattleUnitStats, BattleUnitStats>? adjust = null, bool summoned = false)
+    {
+        var stats = (BattleUnitStats.From(rule.Stats) + BattleUnitStats.From(armor.Stats)).ObeyFixedMinimum();
+        if (adjust is not null) stats = adjust(stats);
+        return new BattleUnit(id, faction, controller)
+        {
+            UnitType = type,
+            ArmorId = armor.Type,
+            ArmorSize = armor.Size,
+            MovementType = MovementType(armor),
+            Stats = stats,
+            TimeUnits = stats.TimeUnits,
+            Energy = stats.Stamina,
+            Health = stats.Health,
+            Mana = stats.Mana,
+            SummonedPlayerUnit = summoned,
+        };
+    }
+
     /// <summary>
     /// Armor::getMovementTypeByDepth, which every BattleUnit constructor applies: a floating armor (3) flies underwater
     /// and walks on land, a sinking one (4) the reverse; walk, fly and slide stay.
@@ -243,18 +276,14 @@ internal sealed class BattleState
             throw new InvalidOperationException($"Battle unit {unit.Id} already exists.");
         if (unit.Position is { } position)
         {
-            for (var x = 0; x < unit.ArmorSize; x++)
-                for (var y = 0; y < unit.ArmorSize; y++)
-                {
-                    var covered = new BattlePosition(position.X + x, position.Y + y, position.Z);
-                    if (!Contains(covered)) throw new InvalidOperationException($"Battle unit {unit.Id} is outside the map.");
-                    if (Map.UnitAt(Map.TileIndex(covered)) is { } other && other != unit.Id)
-                        throw new InvalidOperationException($"Battle unit {unit.Id} stands on unit {other}.");
-                }
+            foreach (var covered in BattleMap.Footprint(position, unit.ArmorSize))
+            {
+                if (!Contains(covered)) throw new InvalidOperationException($"Battle unit {unit.Id} is outside the map.");
+                if (Map.UnitAt(Map.TileIndex(covered)) is { } other && other != unit.Id)
+                    throw new InvalidOperationException($"Battle unit {unit.Id} stands on unit {other}.");
+            }
             // BattleUnit::setTile: every tile under the unit's armor.
-            for (var x = 0; x < unit.ArmorSize; x++)
-                for (var y = 0; y < unit.ArmorSize; y++)
-                    Map.SetUnitAt(Map.TileIndex(new BattlePosition(position.X + x, position.Y + y, position.Z)), unit.Id);
+            foreach (var covered in BattleMap.Footprint(position, unit.ArmorSize)) Map.SetUnitAt(Map.TileIndex(covered), unit.Id);
         }
         _units.Add(unit);
         Revision++;
@@ -296,13 +325,9 @@ internal sealed class BattleState
             if (!ids.Add(unit.Id)) throw new InvalidOperationException($"Battle unit {unit.Id} is listed twice.");
             if (unit.Position is not { } position) continue;
             if (!Contains(position)) throw new InvalidOperationException($"Battle unit {unit.Id} is outside the map.");
-            for (var x = 0; x < unit.ArmorSize; x++)
-                for (var y = 0; y < unit.ArmorSize; y++)
-                {
-                    var covered = new BattlePosition(position.X + x, position.Y + y, position.Z);
-                    if (!Contains(covered) || Map.UnitAt(Map.TileIndex(covered)) != unit.Id)
-                        throw new InvalidOperationException($"Battle unit {unit.Id} is not on its tile {covered}.");
-                }
+            foreach (var covered in BattleMap.Footprint(position, unit.ArmorSize))
+                if (!Contains(covered) || Map.UnitAt(Map.TileIndex(covered)) != unit.Id)
+                    throw new InvalidOperationException($"Battle unit {unit.Id} is not on its tile {covered}.");
             if (Generation.BattlePlacement.TryPosition(Map, unit, position) != position)
                 throw new InvalidOperationException($"Battle unit {unit.Id} cannot stand at {position}.");
         }

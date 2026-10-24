@@ -172,6 +172,17 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     // Concrete lists keep per-tick world loops on struct enumerators.
     internal List<BaseState> BaseStates => _bases;
 
+    /// <summary>The base with the ID, or null.</summary>
+    internal BaseState? BaseById(int id) => _bases.Find(candidate => candidate.Id == id);
+
+    /// <summary>The index in the base's crafts of the craft with the ID and type (crafts are numbered per type), or -1.</summary>
+    internal int CraftIndex(BaseState owner, int craftId, string craftType) =>
+        owner.Crafts.FindIndex(craft => craft.Id == craftId && _content.RuntimeRules.Crafts.GetExternalId(craft.Rule) == craftType);
+
+    /// <summary>The base's craft with the ID and type, or null.</summary>
+    internal CraftState? CraftById(BaseState owner, int craftId, string craftType) =>
+        CraftIndex(owner, craftId, craftType) is var index and >= 0 ? owner.Crafts[index] : null;
+
     internal List<CountryState> CountryStates => _countries;
 
     internal List<RegionState> RegionStates => _regions;

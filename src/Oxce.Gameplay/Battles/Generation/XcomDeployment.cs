@@ -71,7 +71,7 @@ internal sealed class XcomDeployment
 
     private void Run(CampaignState campaign, CampaignDeploymentRequest request)
     {
-        var owner = campaign.BaseStates.Find(candidate => candidate.Id == request.BaseId)
+        var owner = campaign.BaseById(request.BaseId)
             ?? throw new MapGenerationException($"The deployment request's base {request.BaseId} no longer exists.");
         if (request.MissionType == "STR_BASE_DEFENSE" && request.CraftTypeId.Length == 0)
         {
@@ -82,7 +82,7 @@ internal sealed class XcomDeployment
         _battle.BaseStorageItems = _rules.Items.Rules.Select(rule => (rule.Id, Quantity: owner.Items.GetValueOrDefault(_rules.Items.GetRequired(rule.Id))))
             .Where(static pair => pair.Quantity > 0).ToDictionary(static pair => pair.Id, static pair => pair.Quantity, StringComparer.Ordinal).AsReadOnly();
         _craftType = request.CraftTypeId;
-        _craft = owner.Crafts.Find(craft => craft.Id == request.CraftId && _rules.Crafts.GetExternalId(craft.Rule) == request.CraftTypeId)?.Logistics;
+        _craft = campaign.CraftById(owner, request.CraftId, request.CraftTypeId)?.Logistics;
         // Craft::resetTemporaryCustomVehicleDeploymentFlags.
         _vehicleDeploymentUsed = new bool[_craft?.CustomVehicleDeployment.Count ?? 0];
         _customRuleCraftDeployments = campaign.CustomRuleCraftDeployments;
@@ -152,7 +152,7 @@ internal sealed class XcomDeployment
         var vehicles = crafts.SelectMany(static craft => craft.Vehicles).Select(vehicle => Vehicle(vehicle.RuleId, vehicle.Ammo))
             .Concat(storedVehicles.Select(id => Vehicle(id, VehicleClipSize(id)))).ToArray();
         foreach (var vehicle in vehicles) AddVehicle(vehicle);
-        var defenders = owner.Soldiers.Where(soldier => DefendsBase(owner, soldier, campaign.Options)).ToArray();
+        var defenders = owner.Soldiers.Where(soldier => DefendsBase(campaign, owner, soldier)).ToArray();
         var soldiers = defenders.Select(Soldier).ToArray();
         foreach (var soldier in soldiers)
             if (soldier.ArmorSize > 1) AddSoldier(soldier);
@@ -184,15 +184,13 @@ internal sealed class XcomDeployment
     /// deployXCOM's base defender: a soldier with full health or fit to defend the base (Soldier::canDefendBase), not on a
     /// craft that is out. Unlike Base::getAvailableSoldiers, a craft's crew needs the health too.
     /// </summary>
-    private bool DefendsBase(CampaignState.BaseState owner, CampaignState.SoldierState soldier, CampaignOptions options)
+    private bool DefendsBase(CampaignState campaign, CampaignState.BaseState owner, CampaignState.SoldierState soldier)
     {
         if (soldier.Personal is not { } personal) return false;
         if (SoldierReadiness.IsWounded(personal, _rules.Campaign.ManaWoundThreshold, _rules.Campaign.HealthWoundThreshold) &&
-            !CampaignWorld.CanDefendBase(personal, options)) return false;
+            !CampaignWorld.CanDefendBase(personal, campaign.Options)) return false;
         if (personal.CraftType.Length == 0) return true;
-        var craft = owner.Crafts.FirstOrDefault(candidate => candidate.Id == personal.CraftId &&
-            _rules.Crafts.GetExternalId(candidate.Rule) == personal.CraftType);
-        return craft?.Logistics?.Status != "STR_OUT";
+        return campaign.CraftById(owner, personal.CraftId, personal.CraftType)?.Logistics?.Status != "STR_OUT";
     }
 
     /// <summary>
@@ -230,24 +228,8 @@ internal sealed class XcomDeployment
         if (_rules.AlienRaces.Rules.Count == 0) throw new MapGenerationException(NoRaceForDummy);
         var race = _rules.AlienRaces.Rules[0];
         var name = AlienRaces.Member(race.Id, race.Value, 0, _random);
-        if (!_rules.Units.TryGet(name, out var handle) || _rules.Units[handle].Value.Armor is not { } armorHandle ||
-            !_rules.Battle.Equipment.Units.TryGetValue(name, out var unitRule))
-            throw new MapGenerationException($"The base defense's dummy unit {name} is no unit with an armor.");
-        var armor = _battle.TempUnitArmor(_rules, _rules.Armors[armorHandle].Value);
-        var stats = (BattleUnitStats.From(unitRule.Stats) + BattleUnitStats.From(armor.Stats)).ObeyFixedMinimum();
-        var unit = new BattleUnit(_unitSequence++, BattleFaction.Player, BattleController.Human(0))
-        {
-            UnitType = name,
-            ArmorId = armor.Type,
-            ArmorSize = armor.Size,
-            MovementType = _battle.MovementType(armor),
-            Stats = stats,
-            TimeUnits = stats.TimeUnits,
-            Energy = stats.Stamina,
-            Health = stats.Health,
-            Mana = stats.Mana,
-            SummonedPlayerUnit = true,
-        };
+        var (unitRule, armor) = _battle.UnitRule(_rules, name);
+        var unit = _battle.TempUnit(_unitSequence++, BattleFaction.Player, BattleController.Human(0), name, unitRule, armor, summoned: true);
         var firstTile = new BattlePosition(0, 0, 0);
         unit.Position = _placement.TryPosition(unit, firstTile);
         _battle.AddUnit(unit);
@@ -378,19 +360,7 @@ internal sealed class XcomDeployment
     /// </summary>
     private void AddVehicle(Vehicle vehicle)
     {
-        var stats = (BattleUnitStats.From(vehicle.Unit.Stats) + BattleUnitStats.From(vehicle.Armor.Stats)).ObeyFixedMinimum();
-        var unit = new BattleUnit(_unitSequence++, BattleFaction.Player, BattleController.Human(0))
-        {
-            UnitType = vehicle.Id,
-            ArmorId = vehicle.Armor.Type,
-            ArmorSize = vehicle.Armor.Size,
-            MovementType = _battle.MovementType(vehicle.Armor),
-            Stats = stats,
-            TimeUnits = stats.TimeUnits,
-            Energy = stats.Stamina,
-            Health = stats.Health,
-            Mana = stats.Mana,
-        };
+        var unit = _battle.TempUnit(_unitSequence++, BattleFaction.Player, BattleController.Human(0), vehicle.Id, vehicle.Unit, vehicle.Armor);
         if (!AddUnit(unit, vehicle.Unit, "")) return;
         _equipment.CreateItemForUnit(vehicle.Id, unit, fixedWeapon: true);
         if (_equipment.VehicleClipAmmo(vehicle.Id) is { } clip)
@@ -451,11 +421,7 @@ internal sealed class XcomDeployment
             {
                 if (point.Count < 4) throw new MapGenerationException($"Craft {_generated.CraftRuleId} has a deployment point without four values.");
                 var position = CraftPosition(point[0], point[1], point[2]);
-                var free = true;
-                for (var x = 0; x < unit.ArmorSize; x++)
-                    for (var y = 0; y < unit.ArmorSize; y++)
-                        free = free && CanPlaceXcomUnit(position with { X = position.X + x, Y = position.Y + y });
-                if (free && _placement.TryPosition(unit, position) is { } placed)
+                if (BattleMap.Footprint(position, unit.ArmorSize).All(CanPlaceXcomUnit) && _placement.TryPosition(unit, position) is { } placed)
                 {
                     unit.Position = placed;
                     unit.Direction = CustomDirection(point[3]);
@@ -467,7 +433,7 @@ internal sealed class XcomDeployment
         // The first start tile, in tile order, that takes the unit.
         for (var tile = 0; tile < _map.TileCount; tile++)
         {
-            var position = Position(tile);
+            var position = _map.PositionOf(tile);
             if (CanPlaceXcomUnit(position) && _placement.TryPosition(unit, position) is { } placed)
             {
                 unit.Position = placed;
@@ -504,11 +470,9 @@ internal sealed class XcomDeployment
         }
         if (point is null) throw new MapGenerationException("Unit generator encountered an error: custom craft deployment failed.");
         var position = CraftPosition(point.X, point.Y, point.Z);
-        var free = true;
-        for (var x = 0; x < unit.ArmorSize; x++)
-            for (var y = 0; y < unit.ArmorSize; y++)
-                free = free && CanPlaceXcomUnit(position with { X = position.X + x, Y = position.Y + y });
-        if (!free || _placement.TryPosition(unit, position) is not { } placed) return false;
+        // Every tile the unit covers, until one fails (canPlaceXCOMUnit marks the first start tile as the inventory tile).
+        if (!BattleMap.Footprint(position, unit.ArmorSize).All(CanPlaceXcomUnit) || _placement.TryPosition(unit, position) is not { } placed)
+            return false;
         unit.Position = placed;
         unit.Direction = CustomDirection(point.Direction);
         return true;
@@ -524,9 +488,6 @@ internal sealed class XcomDeployment
     /// </summary>
     private static int CustomDirection(int direction) => direction is >= 0 and <= 7 ? direction
         : throw new MapGenerationException($"A custom craft deployment faces direction {direction}, outside 0-7.");
-
-    private BattlePosition Position(int tile) =>
-        new(tile % _map.Width, tile / _map.Width % _map.Length, tile / (_map.Width * _map.Length));
 
     /// <summary>
     /// BattlescapeGenerator::canPlaceXCOMUnit: a start point floor that can be walked on, with no object; the first such
@@ -552,9 +513,7 @@ internal sealed class XcomDeployment
         if (_battle.CraftInventoryTile is null && _generated.CraftDeployed)
         {
             var coordinates = _rules.Crafts.GetRequiredValue(_generated.CraftRuleId).InventoryTile;
-            if (coordinates.Count >= 3)
-                CanPlaceXcomUnit(new BattlePosition(coordinates[0] + _generated.CraftX * 10, coordinates[1] + _generated.CraftY * 10,
-                    coordinates[2] + _generated.CraftZ));
+            if (coordinates.Count >= 3) CanPlaceXcomUnit(CraftPosition(coordinates[0], coordinates[1], coordinates[2]));
         }
         if (_battle.CraftInventoryTile is null && _generated.BackupInventoryTiles.Count != 0)
         {

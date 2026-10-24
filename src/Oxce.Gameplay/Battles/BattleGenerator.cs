@@ -137,7 +137,7 @@ internal static class BattleGenerator
         BattleMapInputs inputs, IRandomSource random)
     {
         var rules = campaign.Content.RuntimeRules;
-        var owner = campaign.BaseStates.Find(candidate => candidate.Id == request.BaseId)
+        var owner = campaign.BaseById(request.BaseId)
             ?? throw new MapGenerationException($"The deployment request's base {request.BaseId} no longer exists.");
         var layout = new BattleBaseLayout(Array.AsReadOnly(owner.Facilities.Select(facility => new BattleBaseFacility(
             rules.Facilities.GetExternalId(facility.Rule), rules.Facilities[facility.Rule].Value, facility.X, facility.Y,
@@ -205,7 +205,7 @@ internal static class BattleGenerator
     {
         for (var tile = 0; tile < map.TileCount; tile++)
             if (map.MapData(tile, BattleTilePart.ObjectPart)?.SpecialType == specialType)
-                yield return new(tile % map.Width, tile / map.Width % map.Length, tile / (map.Width * map.Length));
+                yield return map.PositionOf(tile);
     }
 
     /// <summary>BattlescapeGenerator::fuelPowerSources: an alien fuel item on each power source.</summary>
@@ -308,8 +308,8 @@ internal static class BattleGenerator
             ? deployment.StartingCondition : Texture(rules, request.MissionTexture)?.StartingCondition ?? "";
         var condition = conditionId.Length != 0 && rules.StartingConditions.TryGet(conditionId, out var handle)
             ? rules.StartingConditions[handle].Value : null;
-        var skin = campaign.BaseStates.Find(candidate => candidate.Id == request.BaseId)?.Crafts.Find(candidate =>
-            candidate.Id == request.CraftId && rules.Crafts.GetExternalId(candidate.Rule) == request.CraftTypeId)?.Logistics?.SkinIndex ?? 0;
+        var skin = campaign.BaseById(request.BaseId) is { } owner
+            ? campaign.CraftById(owner, request.CraftId, request.CraftTypeId)?.Logistics?.SkinIndex ?? 0 : 0;
         return new BattleMapInputs(craft, ufo, deployment.Battle.CustomUfo, condition)
         {
             StartingConditionId = condition is null ? "" : conditionId,

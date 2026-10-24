@@ -793,6 +793,24 @@ Tests: `BattleStartTests.AFloatingArmorWalksOnLandAndFliesUnderwater` (land, und
 `BattleStateTests.UnitsResolveFloatingAndSinkingArmorsByTheBattlesDepth` (every type),
 `StrategicLandingTests.AnAlienBaseRequestFromAnOlderSaveHasNoMissionTexture`.
 
+## S7, part 4 — Deduplication (2026-10-24)
+
+No behaviour change and no change to the random draws' order; the pinned corpus shapes are unchanged.
+
+- `BattleState.UnitRule` (Mod::getUnit with its armor) and `BattleState.TempUnit` (createTempUnit) build the units
+  aliens, civilians, vehicles and the base defense's dummy come from. A missing dummy unit now refuses with the same
+  "Unit … does not exist." as an alien or civilian.
+- `UnitEquipment.DrawItemLevel` is the alien and civilian item level draw; `UnitEquipment.SlotForAmmo` serves the map
+  block items too.
+- `BattleMap.PositionOf` (tile index to position) and `BattleMap.Footprint` (a unit's tiles, x outer as the reference
+  loops) replace the copies in the generator, the X-COM placement and the battle's unit checks.
+- `CampaignState.BaseById`, `CraftIndex` and `CraftById` replace the base and craft lookups of the battle code,
+  `CampaignPersonnel` and the base attack's defenders.
+- `CampaignBattles.Start` changes the base's storage in one loop for the returned and the taken items; a zero quantity
+  no longer leaves an empty storage entry.
+- The craft rule's inventory tile goes through `CraftPosition` (with the reference's Sint16 coordinates), and the map
+  generator keeps the base defense check in one field.
+
 ## Next
 
 Branch 1 is complete; the maintainer merges it. Branch 2 (`claude/battle-save`, [plan](phase-7-plan.md#delivery-shape))

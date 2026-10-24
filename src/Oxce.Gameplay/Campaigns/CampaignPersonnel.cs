@@ -66,7 +66,7 @@ public sealed partial class CampaignState
             owner.Soldiers[index] = owner.Soldiers[index] with { Personal = personal with { CraftType = "", CraftId = 0 } };
             return new([new CampaignPersonnelChanged(owner.Id, command.SoldierId)]);
         }
-        var craft = owner.Crafts.SingleOrDefault(c => c.Id == command.CraftId && _content.RuntimeRules.Crafts.GetExternalId(c.Rule) == command.CraftRuleId);
+        var craft = CraftById(owner, command.CraftId, command.CraftRuleId);
         if (craft is null || craft.Logistics is null) return Blocked("Craft was not found or is unresolved.");
         var rule = _content.RuntimeRules.Crafts[craft.Rule].Value;
         var armor = _content.RuntimeRules.Armors.GetRequiredValue(personal.Armor);
@@ -113,8 +113,7 @@ public sealed partial class CampaignState
             return Blocked("Required armor is not in stores.");
         if (personal.CraftType.Length != 0)
         {
-            var craft = owner.Crafts.SingleOrDefault(c => c.Id == personal.CraftId &&
-                _content.RuntimeRules.Crafts.GetExternalId(c.Rule) == personal.CraftType);
+            var craft = CraftById(owner, personal.CraftId, personal.CraftType);
             if (craft?.Logistics is null || !CanChangeAssignedArmor(owner, craft, command.SoldierId, previous, next))
                 return Blocked("STR_NOT_ENOUGH_CRAFT_SPACE");
         }
@@ -129,8 +128,7 @@ public sealed partial class CampaignState
         owner.Soldiers[index] = owner.Soldiers[index] with { Personal = personal with { Armor = command.ArmorRuleId } };
         // Soldier::setArmor(armor, true): a larger armor invalidates the craft's custom deployment.
         if (personal.CraftType.Length != 0 && previous.Size < next.Size)
-            ResetCustomDeployment(owner, owner.Crafts.FindIndex(c => c.Id == personal.CraftId &&
-                _content.RuntimeRules.Crafts.GetExternalId(c.Rule) == personal.CraftType));
+            ResetCustomDeployment(owner, CraftIndex(owner, personal.CraftId, personal.CraftType));
         return new([new CampaignPersonnelChanged(owner.Id, command.SoldierId)]);
     }
 
@@ -178,7 +176,7 @@ public sealed partial class CampaignState
     private CampaignCommandResult EquipWeapon(EquipCraftWeapon command)
     {
         var owner = FindBase(command.BaseId);
-        var index = owner.Crafts.FindIndex(c => c.Id == command.CraftId && _content.RuntimeRules.Crafts.GetExternalId(c.Rule) == command.CraftRuleId);
+        var index = CraftIndex(owner, command.CraftId, command.CraftRuleId);
         if (index < 0 || owner.Crafts[index].Logistics is not { } logistics) return Blocked("Craft was not found or is unresolved.");
         if ((uint)command.Slot >= (uint)logistics.Weapons.Count) return Blocked("Craft weapon slot is outside its range.");
         var craftRule = _content.RuntimeRules.Crafts[owner.Crafts[index].Rule].Value;
@@ -233,7 +231,7 @@ public sealed partial class CampaignState
     private CampaignCommandResult ChangeVehicle(ChangeCraftVehicle command)
     {
         var owner = FindBase(command.BaseId);
-        var index = owner.Crafts.FindIndex(c => c.Id == command.CraftId && _content.RuntimeRules.Crafts.GetExternalId(c.Rule) == command.CraftRuleId);
+        var index = CraftIndex(owner, command.CraftId, command.CraftRuleId);
         if (index < 0 || owner.Crafts[index].Logistics is not { } logistics) return Blocked("Craft was not found or is unresolved.");
         var itemHandle = _content.RuntimeRules.Items.GetRequired(command.VehicleRuleId);
         var item = _content.RuntimeRules.Items[itemHandle].Value;

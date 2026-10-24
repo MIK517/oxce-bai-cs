@@ -76,11 +76,9 @@ internal sealed class AlienDeployment
                 var name = data.CustomUnitType.Length == 0 ? AlienRaces.Member(raceId, race, data.AlienRank, _random) : data.CustomUnitType;
                 var outside = RandomChance.Percent(_random, data.PercentageOutsideUfo);
                 if (!ufo && !deployment.Battle.ForcePercentageOutsideUfo) outside = false;
-                if (!_rules.Battle.Equipment.Units.TryGetValue(name, out var unitRule) || !_rules.Units.TryGet(name, out var unitHandle))
-                    throw new MapGenerationException($"Unit {name} does not exist.");
-                var unit = AddAlien(name, unitRule, _rules.Units[unitHandle].Value, data.AlienRank, outside);
-                var levelRow = AlienItemLevelRow();
-                var itemLevel = levelRow[_random.NextInclusive(0, 9)];
+                var (unitRule, armor) = _battle.UnitRule(_rules, name);
+                var unit = AddAlien(name, unitRule, armor, data.AlienRank, outside);
+                var itemLevel = _equipment.DrawItemLevel();
                 if (unit is null) continue;
                 _equipment.InitUnit(unit, unitRule, "", itemLevel);
                 if (unitRule.LivingWeapon) continue;
@@ -97,33 +95,10 @@ internal sealed class AlienDeployment
         }
     }
 
-    /// <summary>Mod::getAlienItemLevels().at(alien item level): the reference throws for a missing month or a short row.</summary>
-    private IReadOnlyList<int> AlienItemLevelRow()
-    {
-        var levels = _rules.Campaign.AlienItemLevels;
-        if (_battle.AlienItemLevel < 0 || _battle.AlienItemLevel >= levels.Count || levels[_battle.AlienItemLevel].Count < 10)
-            throw new MapGenerationException($"The mod has no ten alien item levels for month {_battle.AlienItemLevel}.");
-        return levels[_battle.AlienItemLevel];
-    }
-
     /// <summary>BattlescapeGenerator::addAlien.</summary>
-    private BattleUnit? AddAlien(string name, RuntimeBattleUnitRule unitRule, RuntimeUnitRule rule, int alienRank, bool outside)
+    private BattleUnit? AddAlien(string name, RuntimeBattleUnitRule unitRule, RuntimeArmorRule armor, int alienRank, bool outside)
     {
-        var armor = _battle.TempUnitArmor(_rules,
-            rule.Armor is { } handle ? _rules.Armors[handle].Value : throw new MapGenerationException($"Unit {name} has no armor."));
-        var stats = AdjustedStats((BattleUnitStats.From(unitRule.Stats) + BattleUnitStats.From(armor.Stats)).ObeyFixedMinimum());
-        var unit = new BattleUnit(_unitSequence++, BattleFaction.Hostile, BattleController.Ai)
-        {
-            UnitType = name,
-            ArmorId = armor.Type,
-            ArmorSize = armor.Size,
-            MovementType = _battle.MovementType(armor),
-            Stats = stats,
-            TimeUnits = stats.TimeUnits,
-            Energy = stats.Stamina,
-            Health = stats.Health,
-            Mana = stats.Mana,
-        };
+        var unit = _battle.TempUnit(_unitSequence++, BattleFaction.Hostile, BattleController.Ai, name, unitRule, armor, AdjustedStats);
         // Safety against index out of bounds.
         if (alienRank > 7) alienRank = 7;
         if (alienRank < 0) throw new MapGenerationException($"Deployment data has a negative alien rank {alienRank}.");

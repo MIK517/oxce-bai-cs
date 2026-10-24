@@ -516,9 +516,7 @@ internal sealed partial class CampaignWorld : ICampaignBaseDefenseQuery
             if (soldier.Personal is not { } personal) continue;
             if (personal.CraftType.Length != 0)
             {
-                var craft = owner.Crafts.FirstOrDefault(candidate => candidate.Id == personal.CraftId &&
-                    rules.Crafts.GetExternalId(candidate.Rule) == personal.CraftType);
-                if (craft?.Logistics?.Status != "STR_OUT") soldiers.Add(soldier.Id);
+                if (campaign.CraftById(owner, personal.CraftId, personal.CraftType)?.Logistics?.Status != "STR_OUT") soldiers.Add(soldier.Id);
                 continue;
             }
             if (!SoldierReadiness.IsWounded(personal, rules.Campaign.ManaWoundThreshold, rules.Campaign.HealthWoundThreshold) ||

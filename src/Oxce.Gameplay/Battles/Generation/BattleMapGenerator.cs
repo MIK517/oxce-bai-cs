@@ -25,7 +25,8 @@ internal sealed class BattleMapGenerator
     private readonly RuntimeRuleCatalog _catalog;
     private readonly BattleTerrainLoader _loader;
     private readonly IRandomSource _random;
-    private readonly string _missionType;
+    // A base defense: the map comes from the base, cannot be resized, and every block it loads is visible (discovered).
+    private readonly bool _baseDefense;
     private readonly RuntimeTerrain _terrain;
     private readonly RuntimeTerrain _globeTerrain;
     private readonly RuntimeTerrain _baseTerrain;
@@ -71,7 +72,7 @@ internal sealed class BattleMapGenerator
         _rules = rules.Battle;
         _loader = loader;
         _random = random;
-        _missionType = missionType;
+        _baseDefense = missionType == BaseDefenseMissionType;
         _terrain = terrain;
         _globeTerrain = globeTerrain;
         _baseTerrain = inputs.BaseTerrain ?? terrain;
@@ -106,7 +107,7 @@ internal sealed class BattleMapGenerator
         foreach (var set in LoadTerrain(_terrain)) _map.AddDataSet(set);
         _loadedTerrains[_terrain] = 0;
         // This mission type is "hard-coded" in terms of map layout.
-        if (_missionType == BaseDefenseMissionType) GenerateBaseMap();
+        if (_baseDefense) GenerateBaseMap();
 
         var conditionals = new Dictionary<int, bool>();
         foreach (var command in script.Commands)
@@ -548,8 +549,7 @@ internal sealed class BattleMapGenerator
         for (var dy = 0; dy <= sizeY; dy++) _drillMap[x + sizeX, y + dy] = MapDirection.Horizontal;
         _drillMap[x + sizeX, y + sizeY] = MapDirection.Both;
         _blocks[x, y] = block;
-        var visible = _missionType == BaseDefenseMissionType;
-        LoadMap(block, x * 10, y * 10, 0, terrain, LoadExtraTerrain(terrain), visible);
+        LoadMap(block, x * 10, y * 10, 0, terrain, LoadExtraTerrain(terrain), _baseDefense);
         return true;
     }
 
@@ -760,7 +760,6 @@ internal sealed class BattleMapGenerator
     private void LoadVerticalLevels(RuntimeMapScriptCommand command, MapScriptSelection selection, bool repopulate,
         RuntimeMapBlock? craftMap = null)
     {
-        var visible = _missionType == BaseDefenseMissionType;
         foreach (var (x, y) in _placedBlockRects.ToArray())
         {
             if (repopulate) PopulateVerticalLevels(command);
@@ -856,7 +855,7 @@ internal sealed class BattleMapGenerator
                 }
                 if (levelBlock is not null)
                 {
-                    LoadMap(levelBlock, x * 10, y * 10, zOffset, levelTerrain, LoadExtraTerrain(levelTerrain), visible);
+                    LoadMap(levelBlock, x * 10, y * 10, zOffset, levelTerrain, LoadExtraTerrain(levelTerrain), _baseDefense);
                     _verticalLevelSegments.Add((levelBlock, x, y, zOffset));
                 }
                 levelsLeft -= z;
@@ -866,7 +865,7 @@ internal sealed class BattleMapGenerator
             }
             if (ceilingBlock is not null)
             {
-                LoadMap(ceilingBlock, x * 10, y * 10, zOffset, ceilingTerrain, LoadExtraTerrain(ceilingTerrain), visible);
+                LoadMap(ceilingBlock, x * 10, y * 10, zOffset, ceilingTerrain, LoadExtraTerrain(ceilingTerrain), _baseDefense);
                 _verticalLevelSegments.Add((ceilingBlock, x, y, zOffset));
             }
         }
@@ -981,7 +980,7 @@ internal sealed class BattleMapGenerator
     /// <summary>The resize command, allowed only before any block is placed.</summary>
     private void Resize(RuntimeMapScriptCommand command)
     {
-        if (_missionType == BaseDefenseMissionType)
+        if (_baseDefense)
             throw new MapGenerationException("Map Generator encountered an error: Base defense map cannot be resized.");
         if (_blocksToDo < _map.Width / 10 * (_map.Length / 10))
             throw new MapGenerationException("Map Generator encountered an error: One does not simply resize the map after adding blocks.");
@@ -1121,7 +1120,7 @@ internal sealed class BattleMapGenerator
             for (var y = position.Y; y < position.Y + position.Length; y++)
                 if (_blocks[x, y] is { } block)
                 {
-                    LoadMap(block, x * 10, y * 10, 0, terrain, LoadExtraTerrain(terrain), _missionType == BaseDefenseMissionType);
+                    LoadMap(block, x * 10, y * 10, 0, terrain, LoadExtraTerrain(terrain), _baseDefense);
                     if (doLevels) _placedBlockRects.Add((x, y));
                 }
     }
@@ -1192,7 +1191,7 @@ internal sealed class BattleMapGenerator
             _backupInventoryTiles.Add(new BattlePosition(block.CraftInventoryTile[0] + offsetX, block.CraftInventoryTile[1] + offsetY,
                 block.CraftInventoryTile[2] + itemZ));
         if (z > _map.Height - 1)
-            throw new MapGenerationException(_missionType == BaseDefenseMissionType
+            throw new MapGenerationException(_baseDefense
                 ? "Something is wrong with your base, check your log file for additional information."
                 : "Something is wrong in your map definitions, craft/ufo map is too tall?");
         // After the height checks, a block running past the map's east or south side (a vertical level's block picked
@@ -1304,7 +1303,7 @@ internal sealed class BattleMapGenerator
                     };
                     if (weaponWithAmmo)
                     {
-                        var slot = SlotForAmmo(rule, ammo.Type);
+                        var slot = UnitEquipment.SlotForAmmo(_catalog, rule, ammo.Type);
                         if (slot == -1)
                             throw new MapGenerationException($"Ammo is not compatible. Weapon: {extended.Type}, ammo: {ammo.Type}, map block: {block.Name}");
                         if (!loaded.Add(slot))
@@ -1315,15 +1314,6 @@ internal sealed class BattleMapGenerator
                 }
             }
         }
-    }
-
-    /// <summary>RuleItem::getSlotForAmmo.</summary>
-    private int SlotForAmmo(RuntimeItemRule weapon, string ammo)
-    {
-        for (var slot = 0; slot < Math.Min(4, weapon.CompatibleAmmo.Count); slot++)
-            foreach (var handle in weapon.CompatibleAmmo[slot])
-                if (_catalog.Items.GetExternalId(handle) == ammo) return slot;
-        return -1;
     }
 
     /// <summary>One MAP tile part: RuleTerrain::getMapData across the terrain's data sets, BLANKS 0 when past them.</summary>

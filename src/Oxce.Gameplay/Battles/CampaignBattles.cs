@@ -78,33 +78,27 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
             return Blocked(new CampaignReason(GenerationFailedCode, failure.Message));
         }
         battle.Validate();
-        // deployXCOM sends disabled vehicles and items back to the base's storage.
-        if (battle.ReturnedToBase.Count != 0)
-        {
-            var owner = campaign.BaseStates.Find(candidate => candidate.Id == request.BaseId)!;
-            var items = campaign.Content.RuntimeRules.Items;
-            foreach (var (type, quantity) in battle.ReturnedToBase)
-            {
-                var handle = items.GetRequired(type);
-                owner.Items[handle] = checked(owner.Items.GetValueOrDefault(handle) + quantity);
-            }
-        }
-        // A base defense takes its stored vehicles and the stores its defenders equip out of the base.
-        if (battle.TakenFromBase.Count != 0)
-        {
-            var owner = campaign.BaseStates.Find(candidate => candidate.Id == request.BaseId)!;
-            var items = campaign.Content.RuntimeRules.Items;
-            foreach (var (type, quantity) in battle.TakenFromBase)
-            {
-                var handle = items.GetRequired(type);
-                var left = owner.Items.GetValueOrDefault(handle) - quantity;
-                if (left > 0) owner.Items[handle] = left;
-                else owner.Items.Remove(handle);
-            }
-        }
+        // deployXCOM sends disabled vehicles and items back to the base's storage; a base defense takes its stored
+        // vehicles and the stores its defenders equip out of it.
+        var owner = campaign.BaseById(request.BaseId)!;
+        ChangeStorage(owner, battle.ReturnedToBase, 1);
+        ChangeStorage(owner, battle.TakenFromBase, -1);
         handOver.ConsumeDeploymentRequest();
         _battle = battle;
         return new CampaignCommandResult([new BattleStarted(battle.MissionType, battle.DeploymentId)]);
+    }
+
+    /// <summary>Adds (sign 1) or removes (sign -1) the quantities from the base's storage; an emptied entry goes.</summary>
+    private void ChangeStorage(CampaignState.BaseState owner, IReadOnlyDictionary<string, int> quantities, int sign)
+    {
+        var items = campaign.Content.RuntimeRules.Items;
+        foreach (var (type, quantity) in quantities)
+        {
+            var handle = items.GetRequired(type);
+            var left = checked(owner.Items.GetValueOrDefault(handle) + sign * quantity);
+            if (left > 0) owner.Items[handle] = left;
+            else owner.Items.Remove(handle);
+        }
     }
 
     private static CampaignCommandResult Blocked(CampaignReason reason) =>

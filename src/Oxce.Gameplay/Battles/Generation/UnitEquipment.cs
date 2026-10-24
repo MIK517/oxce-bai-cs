@@ -440,13 +440,29 @@ internal sealed class UnitEquipment
     }
 
     /// <summary>RuleItem::getSlotForAmmo: the first slot whose compatible ammo lists the item, or -1.</summary>
-    public int SlotForAmmo(BattleItem weapon, string ammoType)
+    public int SlotForAmmo(BattleItem weapon, string ammoType) => SlotForAmmo(_rules, ItemRule(weapon.ItemType), ammoType);
+
+    /// <inheritdoc cref="SlotForAmmo(BattleItem, string)"/>
+    internal static int SlotForAmmo(RuntimeRuleCatalog rules, RuntimeItemRule weapon, string ammoType)
     {
-        var compatible = ItemRule(weapon.ItemType).CompatibleAmmo;
+        var compatible = weapon.CompatibleAmmo;
         for (var slot = 0; slot < Math.Min(compatible.Count, BattleItem.AmmoSlotCount); slot++)
             foreach (var handle in compatible[slot])
-                if (_rules.Items.GetExternalId(handle) == ammoType) return slot;
+                if (rules.Items.GetExternalId(handle) == ammoType) return slot;
         return -1;
+    }
+
+    /// <summary>
+    /// The item level of an alien or civilian: <c>Mod::getAlienItemLevels().at(alien item level).at(RNG::generate(0, 9))</c>,
+    /// where the reference throws for a missing month or a short row.
+    /// </summary>
+    public int DrawItemLevel()
+    {
+        var levels = _rules.Campaign.AlienItemLevels;
+        var month = _battle.AlienItemLevel;
+        if (month < 0 || month >= levels.Count || levels[month].Count < 10)
+            throw new MapGenerationException($"The mod has no ten alien item levels for month {month}.");
+        return levels[month][_random.NextInclusive(0, 9)];
     }
 
     /// <summary>BattleItem::haveAnyAmmo: loaded (an empty clip counts) for its aimed, auto or snap shot, or its hit for melee.</summary>

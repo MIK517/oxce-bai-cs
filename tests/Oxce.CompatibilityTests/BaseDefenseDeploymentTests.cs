@@ -266,7 +266,7 @@ public sealed class BaseDefenseDeploymentTests
         var rules = Deployment.Replace("type: SECTOID", "type: NOT_SECTOID", StringComparison.Ordinal);
         var (campaign, _) = Requested(Room, rules, files: AlienNodes);
         var before = campaign.Capture();
-        Assert.Equal("The base defense's dummy unit SECTOID is no unit with an armor.", Refusal(campaign));
+        Assert.Equal("Unit SECTOID does not exist.", Refusal(campaign));
         Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 

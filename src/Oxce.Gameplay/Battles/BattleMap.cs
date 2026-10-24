@@ -86,6 +86,17 @@ internal sealed class BattleMap
 
     public int TileIndex(BattlePosition position) => position.X + position.Y * Width + position.Z * Width * Length;
 
+    /// <summary>The position of a tile index (Tile::getPosition), the inverse of <see cref="TileIndex"/>.</summary>
+    public BattlePosition PositionOf(int tile) => new(tile % Width, tile / Width % Length, tile / (Width * Length));
+
+    /// <summary>The tiles a unit of the armor size covers from its position, x outer and y inner as the reference loops.</summary>
+    public static IEnumerable<BattlePosition> Footprint(BattlePosition position, int size)
+    {
+        for (var x = 0; x < size; x++)
+            for (var y = 0; y < size; y++)
+                yield return position with { X = position.X + x, Y = position.Y + y };
+    }
+
     /// <summary>A tile part's map data ID and data set index (Tile::getMapData), or (-1, -1) when the part is empty.</summary>
     public (int Id, int Set) Part(int tile, BattleTilePart part) =>
         (_ids[tile * PartCount + (int)part], _sets[tile * PartCount + (int)part]);
