@@ -200,6 +200,17 @@ public sealed record RuntimeFacilityRule(
     public bool Hyperwave { get; init; }
     public bool MindShield { get; init; }
     public int MindShieldPower { get; init; } = 1;
+
+    /// <summary>
+    /// RuleBaseFacility::getVerticalLevels: the levels a base defense map stacks on the facility (the entries that have a
+    /// "type"); <see cref="VerticalLevelsInvalid"/> holds the reason a malformed node is unusable (the reference throws
+    /// reading it).
+    /// </summary>
+    public IReadOnlyList<RuntimeVerticalLevel> VerticalLevels { get; init; } = [];
+    public string? VerticalLevelsInvalid { get; init; }
+
+    /// <summary>RuleBaseFacility::getStorageTiles: the tiles a base defense puts the stores on, relative to the facility.</summary>
+    public IReadOnlyList<FacilityPosition> StorageTiles { get; init; } = [];
 }
 
 public sealed record RuntimeCraftRule(
@@ -544,6 +555,9 @@ public sealed record RuntimeCampaignSettings(
 
     /// <summary>Mod::getShareAmmoCategories: a firearm also has the categories of the craft's primary ammo.</summary>
     public bool ShareAmmoCategories { get; init; }
+
+    /// <summary>Mod::getBaseDefenseMapFromLocation: 1 makes the base defense map depend on the base's position.</summary>
+    public int BaseDefenseMapFromLocation { get; init; }
 
     /// <summary>Mod::getAlienFuelName, getAlienFuelQuantity and getBughuntMinTurn.</summary>
     public string AlienFuelName { get; init; } = "";

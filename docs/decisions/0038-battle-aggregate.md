@@ -99,6 +99,16 @@ not new cases in `RuntimeRuleLinker`.
   each battle (`name_skin` for any nonzero skin), as a first battle does.
 - Custom craft deployments: a soldier without a point (`std::map::at` crashes) and a saved direction outside 0-7
   (`BattleUnit::setDirection` keeps it; later lookups index by it) refuse the generation with a named reason.
+- Base defense maps from the base's location (`baseDefenseMapFromLocation: 1`): `generateMap` reseeds the one RNG
+  stream from `lon * lat * 1e6` and restores it after `attachNodeLinks`. The port has no global seed: the base terrain
+  pick and the whole map generation draw from a separate `SplitMix64RandomSource` seeded with that value, so the same
+  base position gives the same layout and the campaign's stream is left as the reference leaves its own. The C++
+  conversion of a negative product to `uint64_t` is undefined; the port wraps it through a signed 64-bit integer, as
+  x86-64 compilers do. A missing globe texture (dereferenced by the reference), a texture without a base terrain for
+  the base's position (`getRandomBaseTerrain` draws `RNG::generate(1, 0)`, a modulo by zero), a facility outside the
+  map's block grid (written out of bounds), a map name shorter than two characters (`substr` throws), facility vertical
+  levels that leave no level, and a base module tile past the last whole block (`calculateModuleMap` indexes past its
+  grid) refuse with a named reason.
 
 ## Consequences
 

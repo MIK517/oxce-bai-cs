@@ -59,8 +59,13 @@ internal sealed class XcomDeployment
         return deployment._unitSequence;
     }
 
+    /// <summary>deployXCOM for a base defense: the base's soldiers and vehicles instead of a craft's.</summary>
+    internal const string BaseDefenseDeployment =
+        "A base defense deploys the base's soldiers, vehicles and stores (Phase 7 branch 1 S6).";
+
     private void Run(CampaignState campaign, CampaignDeploymentRequest request)
     {
+        if (request.MissionType == "STR_BASE_DEFENSE") throw new MapGenerationException(BaseDefenseDeployment);
         var owner = campaign.BaseStates.Find(candidate => candidate.Id == request.BaseId)
             ?? throw new MapGenerationException($"The deployment request's base {request.BaseId} no longer exists.");
         _craftType = request.CraftTypeId;

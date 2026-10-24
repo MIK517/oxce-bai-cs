@@ -21,6 +21,8 @@ public sealed record InlineTerrainRule(string Name, TerrainRule Rule);
 
 public enum MapScriptCommandType
 {
+    /// <summary>MSC_UNDEFINED: the command <c>generateBaseMap</c> builds for a facility's vertical levels.</summary>
+    Undefined = -1,
     AddBlock, AddLine, AddCraft, AddUfo, DigTunnel, FillArea, CheckBlock, RemoveBlock, Resize,
 }
 

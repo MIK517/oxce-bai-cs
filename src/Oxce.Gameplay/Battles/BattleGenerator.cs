@@ -21,6 +21,44 @@ internal static class BattleGenerator
 
     public static BattleState Generate(CampaignState campaign, CampaignDeploymentRequest request, BattleTerrainLoader loader)
     {
+        var (state, generated, inputs, terrain, id, deployment) = GenerateMap(campaign, request, loader);
+        var rules = campaign.Content.RuntimeRules;
+        var random = campaign.Random;
+        var battle = deployment.Battle;
+        var map = state.Map;
+        // run: the deployment's environmental effects, else the terrain's.
+        var enviro = rules.Battle.EnviroArmorTransformations.ContainsKey(battle.EnviroEffects) ? battle.EnviroEffects : terrain.EnviroEffects;
+        CreateMapItems(state, rules, random, generated.Items);
+        SetupObjectives(state, battle, rules);
+        var unitSequence = XcomDeployment.Deploy(campaign, request, state, generated, inputs.StartingCondition, enviro);
+        // run: the alien item level is the month, capped at the last month the mod lists.
+        var levels = rules.Campaign.AlienItemLevels;
+        state.AlienItemLevel = levels.Count == 0 ? campaign.MonthsPassed : Math.Min(campaign.MonthsPassed, levels.Count - 1);
+        // Civilians come before the aliens for a positive civilian spawn node rank, else after them.
+        if (battle.CivilianSpawnNodeRank > 0) unitSequence = CivilianDeployment.Deploy(state, rules, random, battle, terrain, unitSequence);
+        // run: the alien custom deployment when it has data, else the battle's deployment.
+        var (alienId, alienDeployment) = request.AlienCustomDeploymentId.Length != 0 &&
+            rules.AlienDeployments.TryGet(request.AlienCustomDeploymentId, out var custom) && rules.AlienDeployments[custom].Value.Battle.Data.Count != 0
+            ? (request.AlienCustomDeploymentId, rules.AlienDeployments[custom].Value) : (id, deployment);
+        unitSequence = AlienDeployment.Deploy(campaign, request, state, alienId, alienDeployment, unitSequence);
+        if (battle.CivilianSpawnNodeRank == 0) CivilianDeployment.Deploy(state, rules, random, battle, terrain, unitSequence);
+        if (state.CraftInventoryTile is { } pile && battle.NoWeaponPile) SendItemsToLimbo(state, pile);
+        if (generated.GenerateFuel) FuelPowerSources(state, rules, random);
+        // explodePowerSources and explodeOtherJunk need explosions and terrain destruction.
+        if (inputs.UfoCrashed && ObjectTiles(map, PowerSource).Any()) throw new MapGenerationException(CrashedPowerSources);
+        if (state.Items.Any(item => item.Tile is not null && !item.XcomProperty && !item.IsSpecialWeapon && item.FuseTimer == -2 &&
+                rules.Items.GetRequiredValue(item.ItemType).BattleType == GrenadeBattleType && !rules.Battle.Equipment.Items[item.ItemType].Spawns))
+            throw new MapGenerationException(PrimedJunk);
+        return state;
+    }
+
+    /// <summary>The battle with its map, before any unit or item is placed, and what the rest of the generation needs.</summary>
+    internal sealed record GeneratedMap(BattleState State, BattleMapResult Generated, BattleMapInputs Inputs, RuntimeTerrain Terrain,
+        string DeploymentId, RuntimeAlienDeploymentRule Deployment);
+
+    /// <summary>run up to generateMap: the terrain, depth, shade and script, then the map (throws as <see cref="Generate"/>).</summary>
+    internal static GeneratedMap GenerateMap(CampaignState campaign, CampaignDeploymentRequest request, BattleTerrainLoader loader)
+    {
         var (id, deployment) = Deployment(campaign, request)
             ?? throw new InvalidOperationException("The deployment request was not checked before generation.");
         var rules = campaign.Content.RuntimeRules;
@@ -50,7 +88,9 @@ internal static class BattleGenerator
         if (script is null) throw new MapGenerationException($"Map generator encountered an error: {terrainScript} script not found.");
         var globeTerrain = GlobeTerrain(rules, request, terrain, random);
         var inputs = Inputs(campaign, request, deployment);
-        var generated = BattleMapGenerator.Generate(rules, loader, random, request.MissionType, terrain, globeTerrain, script,
+        IRandomSource mapRandom = random;
+        if (request.MissionType == BaseDefenseMissionType) (inputs, mapRandom) = WithBase(campaign, request, inputs, random);
+        var generated = BattleMapGenerator.Generate(rules, loader, mapRandom, request.MissionType, terrain, globeTerrain, script,
             battle.Width, battle.Length, battle.Height, inputs);
         var map = generated.Map;
         if (map.Width == 0 || map.Length == 0 || map.Height == 0)
@@ -61,31 +101,53 @@ internal static class BattleGenerator
             MapScriptId = scriptId,
             Depth = depth,
             GlobalShade = shade,
+            StorageSpace = generated.StorageSpace,
+            BaseModules = generated.BaseModules,
+            // generateBaseMap's inventory tile, which deployXCOM keeps.
+            CraftInventoryTile = generated.BaseInventoryTile,
         };
-        // run: the deployment's environmental effects, else the terrain's.
-        var enviro = rules.Battle.EnviroArmorTransformations.ContainsKey(battle.EnviroEffects) ? battle.EnviroEffects : terrain.EnviroEffects;
-        CreateMapItems(state, rules, random, generated.Items);
-        SetupObjectives(state, battle, rules);
-        var unitSequence = XcomDeployment.Deploy(campaign, request, state, generated, inputs.StartingCondition, enviro);
-        // run: the alien item level is the month, capped at the last month the mod lists.
-        var levels = rules.Campaign.AlienItemLevels;
-        state.AlienItemLevel = levels.Count == 0 ? campaign.MonthsPassed : Math.Min(campaign.MonthsPassed, levels.Count - 1);
-        // Civilians come before the aliens for a positive civilian spawn node rank, else after them.
-        if (battle.CivilianSpawnNodeRank > 0) unitSequence = CivilianDeployment.Deploy(state, rules, random, battle, terrain, unitSequence);
-        // run: the alien custom deployment when it has data, else the battle's deployment.
-        var (alienId, alienDeployment) = request.AlienCustomDeploymentId.Length != 0 &&
-            rules.AlienDeployments.TryGet(request.AlienCustomDeploymentId, out var custom) && rules.AlienDeployments[custom].Value.Battle.Data.Count != 0
-            ? (request.AlienCustomDeploymentId, rules.AlienDeployments[custom].Value) : (id, deployment);
-        unitSequence = AlienDeployment.Deploy(campaign, request, state, alienId, alienDeployment, unitSequence);
-        if (battle.CivilianSpawnNodeRank == 0) CivilianDeployment.Deploy(state, rules, random, battle, terrain, unitSequence);
-        if (state.CraftInventoryTile is { } pile && battle.NoWeaponPile) SendItemsToLimbo(state, pile);
-        if (generated.GenerateFuel) FuelPowerSources(state, rules, random);
-        // explodePowerSources and explodeOtherJunk need explosions and terrain destruction.
-        if (inputs.UfoCrashed && ObjectTiles(map, PowerSource).Any()) throw new MapGenerationException(CrashedPowerSources);
-        if (state.Items.Any(item => item.Tile is not null && !item.XcomProperty && !item.IsSpecialWeapon && item.FuseTimer == -2 &&
-                rules.Items.GetRequiredValue(item.ItemType).BattleType == GrenadeBattleType && !rules.Battle.Equipment.Items[item.ItemType].Spawns))
-            throw new MapGenerationException(PrimedJunk);
-        return state;
+        return new(state, generated, inputs, terrain, id, deployment);
+    }
+
+    private const string BaseDefenseMissionType = "STR_BASE_DEFENSE";
+
+    /// <summary>
+    /// generateMap's base defense inputs: the base's facilities and, with <c>baseDefenseMapFromLocation: 1</c>, the base
+    /// terrain from the base's globe texture and a map drawn from a stream seeded by the base's position. The reference
+    /// reseeds its one stream and restores it after attachNodeLinks; the port draws the map from a separate stream, which
+    /// leaves the campaign's stream as the reference leaves its own (ADR 0038).
+    /// </summary>
+    private static (BattleMapInputs Inputs, IRandomSource Random) WithBase(CampaignState campaign, CampaignDeploymentRequest request,
+        BattleMapInputs inputs, IRandomSource random)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        var owner = campaign.BaseStates.Find(candidate => candidate.Id == request.BaseId)
+            ?? throw new MapGenerationException($"The deployment request's base {request.BaseId} no longer exists.");
+        var layout = new BattleBaseLayout(Array.AsReadOnly(owner.Facilities.Select(facility => new BattleBaseFacility(
+            rules.Facilities.GetExternalId(facility.Rule), rules.Facilities[facility.Rule].Value, facility.X, facility.Y,
+            facility.BuildTime == 0 || facility.HadPreviousFacility)).ToArray()));
+        inputs = inputs with { Base = layout };
+        if (rules.Campaign.BaseDefenseMapFromLocation != 1) return (inputs, random);
+        var seeded = new SplitMix64RandomSource(BaseSeed(owner.Longitude, owner.Latitude));
+        // The reference dereferences a missing texture.
+        var texture = Texture(rules, request.GlobeTexture)
+            ?? throw new MapGenerationException($"The base's globe texture {request.GlobeTexture} does not exist, so it has no base terrain.");
+        var name = RuntimeTerrainCriterion.Pick(texture.BaseTerrains, owner.Longitude, owner.Latitude, seeded.NextInclusive);
+        var baseTerrain = rules.Battle.Terrains.GetValueOrDefault(name)
+            ?? throw new MapGenerationException(
+                $"Map generator encountered an error: base terrain '{name}' of globe texture {request.GlobeTexture} does not exist.");
+        return (inputs with { BaseTerrain = baseTerrain }, seeded);
+    }
+
+    /// <summary>
+    /// generateMap's base seed, <c>uint64_t baseSeed = baseLon * baseLat * 1e6</c> with a zero coordinate counting as 1.
+    /// A negative product, undefined in C++, wraps as the usual x86-64 conversion through a signed integer does.
+    /// </summary>
+    internal static ulong BaseSeed(double longitude, double latitude)
+    {
+        if (longitude == 0) longitude = 1.0;
+        if (latitude == 0) latitude = 1.0;
+        return unchecked((ulong)(long)(longitude * latitude * 1e6));
     }
 
     internal const string CrashedPowerSources =

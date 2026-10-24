@@ -94,8 +94,8 @@ internal static class RuntimeMapScriptProjection
             VerticalLevels(command.VerticalLevels, out var invalid), invalid);
     }
 
-    /// <summary>MapScript::load's verticalLevels: the entries that have a "type", in order.</summary>
-    private static ReadOnlyCollection<RuntimeVerticalLevel> VerticalLevels(YamlNode? node, out string? invalid)
+    /// <summary>MapScript::load's and RuleBaseFacility::load's verticalLevels: the entries that have a "type", in order.</summary>
+    internal static ReadOnlyCollection<RuntimeVerticalLevel> VerticalLevels(YamlNode? node, out string? invalid)
     {
         invalid = null;
         var levels = new List<RuntimeVerticalLevel>();

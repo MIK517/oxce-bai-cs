@@ -60,6 +60,12 @@ internal sealed class BattleState
     /// <summary>The craft inventory tile: where the X-COM units' equipment starts (BattleUnit::setInventoryTile).</summary>
     public BattlePosition? CraftInventoryTile { get; internal set; }
 
+    /// <summary>SavedBattleGame::getStorageSpace: a base defense's storage tiles, where the base's stores go.</summary>
+    public IReadOnlyList<BattlePosition> StorageSpace { get; init; } = [];
+
+    /// <summary>SavedBattleGame::getModuleMap: per 10x10 block, a base defense's module tiles (empty for other battles).</summary>
+    public Generation.BattleBaseModule[,] BaseModules { get; init; } = new Generation.BattleBaseModule[0, 0];
+
     /// <summary>SavedBattleGame::_turn: 0 until the first turn starts after the briefing.</summary>
     public int Turn { get; private set; }
 

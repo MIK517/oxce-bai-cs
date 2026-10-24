@@ -64,6 +64,7 @@ public sealed class CampaignStartSettings
         ExtendedHwpLoadOrder = builder.ExtendedHwpLoadOrder;
         ExtendedForceSpawn = builder.ExtendedForceSpawn;
         ShareAmmoCategories = builder.ShareAmmoCategories;
+        BaseDefenseMapFromLocation = builder.BaseDefenseMapFromLocation;
         AlienFuelName = builder.AlienFuelName;
         AlienFuelQuantity = builder.AlienFuelQuantity;
         BughuntMinTurn = builder.BughuntMinTurn;
@@ -225,6 +226,9 @@ public sealed class CampaignStartSettings
     /// <summary>Mod::getShareAmmoCategories (<c>shareAmmoCategories</c>).</summary>
     public bool ShareAmmoCategories { get; init; }
 
+    /// <summary>Mod::getBaseDefenseMapFromLocation (<c>baseDefenseMapFromLocation</c>).</summary>
+    public int BaseDefenseMapFromLocation { get; init; }
+
     /// <summary>Mod::getAlienFuelName and getAlienFuelQuantity (<c>alienFuel</c>: [name, quantity]).</summary>
     public string AlienFuelName { get; init; } = "";
     public int AlienFuelQuantity { get; init; }
@@ -319,6 +323,7 @@ internal sealed class CampaignStartSettingsBuilder
     public bool ExtendedHwpLoadOrder { get; set; }
     public bool ExtendedForceSpawn { get; set; }
     public bool ShareAmmoCategories { get; set; }
+    public int BaseDefenseMapFromLocation { get; set; }
     public string AlienFuelName { get; set; } = "";
     public int AlienFuelQuantity { get; set; }
     public int BughuntMinTurn { get; set; } = 999;

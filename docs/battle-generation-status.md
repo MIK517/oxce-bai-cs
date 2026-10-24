@@ -13,7 +13,7 @@ Phase 7 branch 1 (`claude/battle-generation`), from `main` at `2b0c81fb`. Plan:
 | S3 map generation | Done (2026-10-24) |
 | S4 X-COM deployment | Done (2026-10-24) except the base defense deployment (S6) |
 | S5 alien and civilian deployment | Done (2026-10-23); crashed-UFO and map-junk explosions refuse until branch 5 |
-| S6 base defense and other entry points | Not started |
+| S6 base defense and other entry points | In progress: base defense maps done (2026-10-24); the base defense deployment and the other entry points remain |
 | S7 acceptance and branch audit | Not started |
 
 ## S0 — Planning (2026-10-18)
@@ -543,24 +543,60 @@ and `Craft::save` (`skinIndex`), `RuleCraft::load` (`maxSkinIndex`), `Mod::getMa
 Tests: `BattleStartTests.ASkinnedCraftLoadsItsSkinsDataSetsExceptBlanks`,
 `TheCraftsSkinIndexIsReadUpToTheRulesMaximumAndWrittenBack`.
 
+## S6, part 1 — Base defense maps (2026-10-24)
+
+Reference: `BattlescapeGenerator::generateMap` (the base defense branch and `baseDefenseMapFromLocation`),
+`generateBaseMap`, `SavedBattleGame::calculateModuleMap`, `getStorageSpace`, `BaseFacility::isBuiltOrHadPreviousFacility`,
+`RuleBaseFacility::load` (`verticalLevels`, `storageTiles`), `Texture::getRandomBaseTerrain`, `Mod::getTerrain`,
+`RuleTerrain::getMapBlock`, `GeoscapeState` (~3700, the base defense's textures).
+
+- Facility rules keep `verticalLevels` (parsed as a map script command's, the last mod's node replacing the earlier one;
+  no longer deferred) and project them with `storageTiles` onto `RuntimeFacilityRule`; `baseDefenseMapFromLocation` is
+  a global setting (`RuntimeCampaignSettings.BaseDefenseMapFromLocation`).
+- `BattleMapGenerator.GenerateBaseMap` runs before the script: each built facility (or one that had a previous
+  facility), in base order, places its blocks: its vertical levels as an addBlock-like command (`MapScriptCommandType.Undefined`)
+  at its position, else per cell, in row order, the block named by the map name's last two characters read with
+  `atoi` plus the cell number. Its cells lose their drill marks except along its south and east edges. A storage
+  facility adds `StorageSpace` tiles: the rule's `storageTiles` (checked by tens, as the reference does; a
+  (-1, -1, -1) entry ends the list as placed), else the checkerboard on each cell's ground level, whose first cell
+  sets the inventory tile at its centre one level down (none when that is below the map). Then the module map
+  (`BattleState.BaseModules`, both counts starting from 1, (-1, -1) for blocks without base module objects; a module
+  tile past the last whole block of a map side that is not a multiple of 10 refuses). The
+  script fills and drills the rest; `generateBaseMap` itself clears nothing.
+- With `baseDefenseMapFromLocation: 1` the base terrain comes from the base's globe texture (`baseTerrain`) and the whole
+  map draws from a `SplitMix64` stream seeded with `lon * lat * 1e6` (a zero coordinate counts as 1); the campaign's
+  stream is untouched, as the reference restores its seed ([ADR 0038](decisions/0038-battle-aggregate.md)).
+- `BattleGenerator.GenerateMap` is the map half of `Generate` (tests read the map before units exist); the base's
+  inventory tile, storage space and module map go on the `BattleState`.
+- Refusals: a facility outside the map's block grid, a map name under two characters, facility vertical levels that are
+  malformed, leave no level, or have no block on the first level, a map block the terrain lacks, storage tiles that place
+  nothing, a missing globe texture or base terrain with the location setting. The base defense deployment itself refuses
+  in `XcomDeployment` (`BaseDefenseDeployment`, Phase 7 branch 1 S6) after the map is generated.
+
+Tests: `BaseDefenseMapTests` (layout, block names, drilling, the checkerboard's exclusions and map edges, rule storage
+tiles and the lone (-1, -1, -1), the inventory tile and its absence, module map, the location seed and base terrain,
+the campaign stream left alone, the seed formula, each reachable refusal, rule loading). The refusals for a request
+whose base is gone and a base defense without a base layout guard states the campaign cannot reach.
+
 ## Next
 
-- S6: base defense maps and the remaining entry points. Notes for the next part:
-  - `BattleMapGenerator` refuses a base defense right after loading the terrain ("Base defense maps are generated from
-    the base layout (Phase 7 branch 1 S6)"); that is the hook. The port already has the base-defense `visible` flags in
-    `LoadMap` and the resize refusal, and `XcomDeployment.Place` skips `placeUnitNearFriend` for it.
-  - Reference: `generateMap` (~2890) runs `generateBaseMap` before the script when the mission type is
-    `STR_BASE_DEFENSE`; with `baseDefenseMapFromLocation: 1` it reseeds the RNG from `lon * lat * 1e6` (a zero
-    coordinate counts as 1.0), picks `_baseTerrain` from the globe texture's `getRandomBaseTerrain(base)` and restores
-    the seed after `attachNodeLinks`. The port has no global RNG seed: a deterministic sub-stream (a `SplitMix64` seeded
-    from that value) for the base map's draws is the likely equivalent, and needs an ADR note since the stream is
-    shared in the reference.
-  - `generateBaseMap` (~3423): each built facility (or one that had a previous facility) places blocks from its rule
-    (`verticalLevels` as an addBlock-like command, else its map name), storage tiles (`storageTiles` or a checkerboard),
-    then `clearModule` for the rest. `deployXCOM` for a base defense takes soldiers from the base, not a craft, and
-    `setupDefenses` vehicles; a base with soldiers but no spawn spot force-spawns a dummy summoned unit from the first
-    race (~1197).
-  - Entry points still to check: `ConfirmLandingState` with a mission site (`setMissionSite`) or alien base
-    (`setAlienBase`), `ConfirmCydoniaState` (final mission, `nextStage` for multi-stage), `GeoscapeState` ~3700 (base
-    defense). The port's requests come from `CampaignWorldLandings`, `CampaignWorldBaseAttacks` and
-    `LaunchFinalMission`.
+- S6, part 2: the base defense deployment. Notes for the next part:
+  - The hook is the refusal at the top of `XcomDeployment.Run` (`BaseDefenseDeployment`). `BattleGenerator.GenerateMap`
+    already leaves `BattleState.StorageSpace`, `BaseModules` and `CraftInventoryTile` (generateBaseMap's, which may be
+    null when the stores' ground level is 0 and no facility has `storageTiles`) on the state. `XcomDeployment.Place`
+    already skips `placeUnitNearFriend` for a base defense.
+  - Reference `deployXCOM` with `_base` and no craft (~983-1300): vehicles from `_base->getVehicles()` (filled by
+    `Base::setupDefenses`; the port's request carries them as `Vehicles` with no ammo list, see `BaseDefenders` in
+    `CampaignWorldBaseAttacks`), soldiers from the base (`request.Soldiers`, from `getAvailableSoldiers(true, true)`),
+    the armor transformation loop over the base's soldiers, the dummy summoned player unit from the first race's first
+    member on tile 0 when nothing could be placed (~1197), then the base's storage items that
+    `canBeEquippedBeforeBaseDefense`, are inventory items, useful or craft-equippable and researched, onto the inventory
+    tile (removed from base storage), only when `getMonthsPassed() != -1` (~1258; -1 is the new battle mode), and the
+    items of crafts not out (~1293). Equipment then spreads over
+    `getStorageSpace` (`SavedBattleGame::randomizeItemLocations`, ~1836). Check `_baseInventory` and the starting condition
+    there.
+  - `LoadMap` writes a block wider than the map's remaining width into the next row's tiles (the reference's
+    `getTile` index arithmetic does the same); worth a refusal check when the deployment's side is not a multiple of 10.
+- S6, part 3: the remaining entry points: `ConfirmLandingState` with a mission site (`setMissionSite`) or alien base
+  (`setAlienBase`), `ConfirmCydoniaState` (final mission, `nextStage` for multi-stage). The port's requests come from
+  `CampaignWorldLandings` and `LaunchFinalMission`.

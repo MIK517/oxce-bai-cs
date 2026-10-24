@@ -179,6 +179,9 @@ public static class RuntimeRuleLinker
                 Hyperwave = rule.Value.HyperWave,
                 MindShield = rule.Value.MindShield,
                 MindShieldPower = rule.Value.MindPower,
+                VerticalLevels = RuntimeMapScriptProjection.VerticalLevels(rule.Value.VerticalLevels, out var invalidLevels),
+                VerticalLevelsInvalid = invalidLevels,
+                StorageTiles = rule.Value.StorageTiles,
             });
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -387,6 +390,7 @@ public static class RuntimeRuleLinker
             ExtendedHwpLoadOrder = content.CampaignStart.Settings.ExtendedHwpLoadOrder,
             ExtendedForceSpawn = content.CampaignStart.Settings.ExtendedForceSpawn,
             ShareAmmoCategories = content.CampaignStart.Settings.ShareAmmoCategories,
+            BaseDefenseMapFromLocation = content.CampaignStart.Settings.BaseDefenseMapFromLocation,
             AlienFuelName = content.CampaignStart.Settings.AlienFuelName,
             AlienFuelQuantity = content.CampaignStart.Settings.AlienFuelQuantity,
             BughuntMinTurn = content.CampaignStart.Settings.BughuntMinTurn,

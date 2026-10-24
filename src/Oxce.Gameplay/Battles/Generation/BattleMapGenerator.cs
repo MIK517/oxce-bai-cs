@@ -4,6 +4,7 @@ using Oxce.Formats.Binary;
 using Oxce.Formats.Terrain;
 using Oxce.Gameplay.Battles.Terrain;
 using Oxce.Gameplay.Campaigns;
+using Oxce.Mods.Rulesets.CampaignStart;
 using Oxce.Mods.Rulesets.Runtime;
 using Oxce.Mods.Rulesets.TerrainDeployment;
 
@@ -28,6 +29,9 @@ internal sealed class BattleMapGenerator
     private readonly RuntimeTerrain _terrain;
     private readonly RuntimeTerrain _globeTerrain;
     private readonly RuntimeTerrain _baseTerrain;
+    private readonly List<BattlePosition> _storageSpace = [];
+    private BattlePosition? _baseInventoryTile;
+    private BattleBaseModule[,] _baseModules = new BattleBaseModule[0, 0];
     private readonly BattleMap _map;
     private readonly Dictionary<RuntimeTerrain, int> _loadedTerrains = new(ReferenceEqualityComparer.Instance);
     private RuntimeMapBlock?[,] _blocks = new RuntimeMapBlock?[0, 0];
@@ -70,7 +74,7 @@ internal sealed class BattleMapGenerator
         _missionType = missionType;
         _terrain = terrain;
         _globeTerrain = globeTerrain;
-        _baseTerrain = terrain;
+        _baseTerrain = inputs.BaseTerrain ?? terrain;
         _map = new BattleMap(width, length, height);
     }
 
@@ -88,6 +92,9 @@ internal sealed class BattleMapGenerator
         {
             Items = generator._items.AsReadOnly(),
             GenerateFuel = generator._generateFuel,
+            StorageSpace = generator._storageSpace.AsReadOnly(),
+            BaseInventoryTile = generator._baseInventoryTile,
+            BaseModules = generator._baseModules,
         };
     }
 
@@ -98,8 +105,8 @@ internal sealed class BattleMapGenerator
         // Load in the default terrain data.
         foreach (var set in LoadTerrain(_terrain)) _map.AddDataSet(set);
         _loadedTerrains[_terrain] = 0;
-        if (_missionType == BaseDefenseMissionType)
-            throw new MapGenerationException("Base defense maps are generated from the base layout (Phase 7 branch 1 S6).");
+        // This mission type is "hard-coded" in terms of map layout.
+        if (_missionType == BaseDefenseMissionType) GenerateBaseMap();
 
         var conditionals = new Dictionary<int, bool>();
         foreach (var command in script.Commands)
@@ -184,6 +191,199 @@ internal sealed class BattleMapGenerator
         }
         FillLevelZeroFloors();
         AttachNodeLinks();
+    }
+
+    /// <summary>
+    /// BattlescapeGenerator::generateBaseMap: each built facility (or one that had a previous facility), in the base's
+    /// order, places its blocks before the script runs: its vertical levels as an addBlock-like command on its position,
+    /// else one block per cell named from its map name, counting up in row order. Its cells lose their drilling marks
+    /// except along its south and east edges. A storage facility adds its storage tiles (its rule's, else a checkerboard
+    /// on each cell's ground level) and the first one the inventory tile. Then the module map is counted. Filling and
+    /// drilling are left to the script.
+    /// </summary>
+    private void GenerateBaseMap()
+    {
+        var layout = _inputs.Base ?? throw new MapGenerationException("The base defense has no base to generate the map from.");
+        foreach (var facility in layout.Facilities)
+        {
+            if (!facility.Built) continue;
+            var rule = facility.Rule;
+            var xLimit = facility.X + rule.SizeX - 1;
+            var yLimit = facility.Y + rule.SizeY - 1;
+            // The reference writes outside its block grid there.
+            if (facility.X < 0 || facility.Y < 0 || xLimit >= _map.Width / 10 || yLimit >= _map.Length / 10)
+                throw new MapGenerationException(
+                    $"Facility {facility.Id} at {facility.X}, {facility.Y} does not fit the {_map.Width}x{_map.Length} base defense map.");
+            if (rule.VerticalLevelsInvalid is { } invalidLevels)
+                throw new MapGenerationException($"Facility {facility.Id} verticalLevels are invalid: {invalidLevels}");
+            // The normal method for placing items on the ground, or an explicit definition?
+            var storageCheckerboard = rule.StorageTiles.Count == 0;
+            var byLevels = rule.VerticalLevels.Count != 0;
+            if (byLevels) AddFacilityLevels(facility);
+            var number = 0;
+            for (var y = facility.Y; y <= yLimit; y++)
+                for (var x = facility.X; x <= xLimit; x++)
+                {
+                    // The map name only when the levels did not load the facility.
+                    if (!byLevels)
+                    {
+                        // std::string::substr throws for a shorter name (std::out_of_range).
+                        if (rule.MapName.Length < 2)
+                            throw new MapGenerationException($"Facility {facility.Id} map name '{rule.MapName}' is too short to number its blocks.");
+                        var name = FacilityBlockName(rule.MapName, number);
+                        var block = _terrain.MapBlocks.FirstOrDefault(candidate => candidate.Name == name)
+                            ?? throw new MapGenerationException(
+                                $"Map generator encountered an error: map block {name} is not defined in terrain {_terrain.Id}.");
+                        AddBlock(x, y, block, _terrain);
+                    }
+                    _drillMap[x, y] = MapDirection.None;
+                    number++;
+                    if (rule.Storage > 0 && storageCheckerboard) AddCheckerboardStorage(x, y);
+                }
+            if (rule.Storage > 0 && !storageCheckerboard) AddRuleStorage(facility);
+            for (var x = facility.X; x <= xLimit; x++) _drillMap[x, yLimit] = MapDirection.Vertical;
+            for (var y = facility.Y; y <= yLimit; y++) _drillMap[xLimit, y] = MapDirection.Horizontal;
+            _drillMap[xLimit, yLimit] = MapDirection.Both;
+        }
+        CalculateModuleMap();
+    }
+
+    /// <summary>
+    /// generateBaseMap's vertical levels: a command of the facility's size holding its levels picks the first level's
+    /// block (on the level's terrain, else the deployment's), adds it at the facility and stacks the other levels on it.
+    /// </summary>
+    private void AddFacilityLevels(BattleBaseFacility facility)
+    {
+        var rule = facility.Rule;
+        var command = new RuntimeMapScriptCommand(MapScriptCommandType.Undefined, [], [], [], rule.SizeX, rule.SizeY, 0, [], [], [], [],
+            MapDirection.None, 0, 0, 0, CanBeSkipped: true, MarkAsReinforcementsBlock: false, ExecutionChances: 100, Executions: 1,
+            UfoName: "", CraftName: "", RandomTerrain: [], Label: 0, Tunnel: null, rule.VerticalLevels, VerticalLevelsInvalid: null);
+        PopulateVerticalLevels(command);
+        // The reference dereferences the first level even when none is left.
+        if (_verticalLevels.Count == 0)
+            throw new MapGenerationException($"Facility {facility.Id} verticalLevels leave no level to place.");
+        var selection = new MapScriptSelection(command);
+        var first = _verticalLevels[0];
+        selection.InitVerticalLevel(first.Blocks, first.Groups);
+        var terrain = PickTerrain(first.Terrain);
+        _placedBlockRects.Clear();
+        var block = selection.NextBlock(terrain, _random)
+            ?? throw new MapGenerationException($"Map generator encountered an error: facility {facility.Id} has no block on first verticalLevel.");
+        AddBlock(facility.X, facility.Y, block, terrain);
+        _placedBlockRects.Add((facility.X, facility.Y));
+        // Not used in this case.
+        _alternateTerrain = null;
+        LoadVerticalLevels(command, selection, repopulate: false);
+    }
+
+    /// <summary>
+    /// generateBaseMap's block name for a facility cell: the map name with its last two characters read as a number
+    /// (atoi) plus the cell's number, written back with at least two digits (a name of two characters or more).
+    /// </summary>
+    internal static string FacilityBlockName(string mapName, int number)
+    {
+        var mapNumber = unchecked(Atoi(mapName.AsSpan(mapName.Length - 2)) + number);
+        return mapName[..^2] + (mapNumber < 10 ? "0" : "") + mapNumber.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>atoi: leading white space, an optional sign, then the digits up to the first other character.</summary>
+    private static int Atoi(ReadOnlySpan<char> text)
+    {
+        var index = 0;
+        while (index < text.Length && text[index] is ' ' or '\t' or '\n' or '\v' or '\f' or '\r') index++;
+        var negative = false;
+        if (index < text.Length && text[index] is '+' or '-') negative = text[index++] == '-';
+        var value = 0;
+        for (; index < text.Length && char.IsAsciiDigit(text[index]); index++) value = value * 10 + (text[index] - '0');
+        return negative ? -value : value;
+    }
+
+    /// <summary>
+    /// generateBaseMap's general stores: every other tile (x + y even) of the cell on its ground level (the highest level
+    /// with a floor at the cell's corner) that has a floor and no object, and whose east and south neighbours exist
+    /// without a west or north wall. The first such cell also puts the inventory tile at its centre one level lower, where
+    /// the map has that level.
+    /// </summary>
+    private void AddCheckerboardStorage(int blockX, int blockY)
+    {
+        int groundLevel;
+        for (groundLevel = _map.Height - 1; groundLevel >= 0; groundLevel--)
+            if (!NoFloor(new BattlePosition(blockX * 10, blockY * 10, groundLevel))) break;
+        for (var k = blockX * 10; k != (blockX + 1) * 10; k++)
+            for (var l = blockY * 10; l != (blockY + 1) * 10; l++)
+            {
+                if ((k + l) % 2 != 0) continue;
+                var position = new BattlePosition(k, l, groundLevel);
+                var east = position with { X = k + 1 };
+                var south = position with { Y = l + 1 };
+                if (!_map.Contains(position) || !_map.Contains(east) || !_map.Contains(south)) continue;
+                var tile = _map.TileIndex(position);
+                if (_map.MapData(tile, BattleTilePart.Floor) is not null && _map.MapData(tile, BattleTilePart.ObjectPart) is null &&
+                    _map.MapData(_map.TileIndex(east), BattleTilePart.WestWall) is null &&
+                    _map.MapData(_map.TileIndex(south), BattleTilePart.NorthWall) is null)
+                    _storageSpace.Add(position);
+            }
+        // The inventory tile goes on the lower floor, just to be safe (getTile is null below the map).
+        var inventory = new BattlePosition(blockX * 10 + 5, blockY * 10 + 5, groundLevel - 1);
+        if (_baseInventoryTile is null && _map.Contains(inventory)) _baseInventoryTile = inventory;
+    }
+
+    /// <summary>Tile::hasNoFloor without the battle: no floor, or a floor that is no floor.</summary>
+    private bool NoFloor(BattlePosition position) =>
+        _map.MapData(_map.TileIndex(position), BattleTilePart.Floor) is not { } floor || floor.HasNoFloor;
+
+    /// <summary>
+    /// generateBaseMap's explicit storage tiles: each of the rule's tiles inside the facility (by tens, as the reference
+    /// checks it) and the map; a (-1, -1, -1) entry ends the list and counts as placed. The first tile placed is the
+    /// inventory tile if there is none yet.
+    /// </summary>
+    private void AddRuleStorage(BattleBaseFacility facility)
+    {
+        var rule = facility.Rule;
+        var valid = false;
+        foreach (var position in rule.StorageTiles)
+        {
+            if (position == new FacilityPosition(-1, -1, -1))
+            {
+                valid = true;
+                break;
+            }
+            // Logged and skipped.
+            if (position.X < 0 || position.X / 10 > rule.SizeX || position.Y < 0 || position.Y / 10 > rule.SizeY ||
+                position.Z < 0 || position.Z > _map.Height)
+                continue;
+            var tile = new BattlePosition(facility.X * 10 + position.X, facility.Y * 10 + position.Y, position.Z);
+            if (!_map.Contains(tile)) continue;
+            valid = true;
+            _storageSpace.Add(tile);
+            _baseInventoryTile ??= tile;
+        }
+        if (!valid) throw new MapGenerationException($"Could not place items on given tiles in storage facility {facility.Id}");
+    }
+
+    /// <summary>
+    /// SavedBattleGame::calculateModuleMap: per block, the tiles whose object is a base module (MapData::isBaseModule),
+    /// both counts starting from 1; a block without any keeps (-1, -1). A module tile past the last whole block (a map
+    /// side that is not a multiple of 10) refuses.
+    /// </summary>
+    private void CalculateModuleMap()
+    {
+        _baseModules = new BattleBaseModule[_map.Width / 10, _map.Length / 10];
+        for (var x = 0; x < _baseModules.GetLength(0); x++)
+            for (var y = 0; y < _baseModules.GetLength(1); y++) _baseModules[x, y] = new(-1, -1);
+        for (var x = 0; x != _map.Width; x++)
+            for (var y = 0; y != _map.Length; y++)
+                for (var z = 0; z != _map.Height; z++)
+                {
+                    if (_map.MapData(_map.TileIndex(new BattlePosition(x, y, z)), BattleTilePart.ObjectPart) is not { IsBaseModule: true }) continue;
+                    // The reference indexes past its module grid there (undefined behaviour).
+                    if (x / 10 >= _baseModules.GetLength(0) || y / 10 >= _baseModules.GetLength(1))
+                        throw new MapGenerationException(
+                            $"Base module tile {x}, {y}, {z} lies past the last whole block of the {_map.Width}x{_map.Length} base defense map.");
+                    var count = _baseModules[x / 10, y / 10].Remaining;
+                    count += count > 0 ? 1 : 2;
+                    _baseModules[x / 10, y / 10] = new(count, count);
+                }
     }
 
     private static bool ConditionsHold(RuntimeMapScriptCommand command, Dictionary<int, bool> conditionals)
@@ -1284,7 +1484,22 @@ internal sealed record BattleMapInputs(string CraftId, string UfoId, string Cust
 
     /// <summary>Craft::getSkinIndex of the landing craft.</summary>
     public int CraftSkin { get; init; }
+
+    /// <summary>The defended base's layout (BattlescapeGenerator::setBase), for a base defense.</summary>
+    public BattleBaseLayout? Base { get; init; }
+
+    /// <summary>BattlescapeGenerator::_baseTerrain when it is not the deployment's terrain (baseDefenseMapFromLocation).</summary>
+    public RuntimeTerrain? BaseTerrain { get; init; }
 }
+
+/// <summary>The facilities of the defended base, in the base's order.</summary>
+internal sealed record BattleBaseLayout(IReadOnlyList<BattleBaseFacility> Facilities);
+
+/// <summary>A base facility: its rule, its position on the base grid and BaseFacility::isBuiltOrHadPreviousFacility.</summary>
+internal sealed record BattleBaseFacility(string Id, RuntimeFacilityRule Rule, int X, int Y, bool Built);
+
+/// <summary>SavedBattleGame::getModuleMap for one block: the base module tiles left and in all (-1 for a block without any).</summary>
+internal readonly record struct BattleBaseModule(int Remaining, int Total);
 
 /// <summary>
 /// The generated map and what the unit deployment needs from the generation: whether and where the craft landed (block
@@ -1298,6 +1513,15 @@ internal sealed record BattleMapResult(BattleMap Map, bool CraftDeployed, int Cr
 
     /// <summary>BattlescapeGenerator::_generateFuel: false once a loaded block had an items array.</summary>
     public bool GenerateFuel { get; init; } = true;
+
+    /// <summary>SavedBattleGame::getStorageSpace: the base defense's storage tiles, in generateBaseMap's order.</summary>
+    public IReadOnlyList<BattlePosition> StorageSpace { get; init; } = [];
+
+    /// <summary>The inventory tile generateBaseMap chose (BattlescapeGenerator::_craftInventoryTile), or null.</summary>
+    public BattlePosition? BaseInventoryTile { get; init; }
+
+    /// <summary>SavedBattleGame::calculateModuleMap's result for a base defense (empty otherwise).</summary>
+    public BattleBaseModule[,] BaseModules { get; init; } = new BattleBaseModule[0, 0];
 }
 
 /// <summary>
