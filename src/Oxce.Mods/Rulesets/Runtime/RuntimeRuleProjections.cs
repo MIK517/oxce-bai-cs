@@ -378,7 +378,7 @@ public sealed record RuntimeArmorRule(
     string StoreItemId,
     RuleHandle<ItemRuleFamily>? StoreItem)
 {
-    /// <summary>Armor::getMovementType: 0 walk, 1 fly, 2 slide.</summary>
+    /// <summary>Armor::getMovementType: 0 walk, 1 fly, 2 slide, 3 float, 4 sink (battle units resolve the last two by depth).</summary>
     public int MovementType { get; init; }
 
     public string Type { get; init; } = "";

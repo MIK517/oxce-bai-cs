@@ -124,6 +124,24 @@ public sealed class BattleStartTests
             script: CRAFTED
             enviroEffects: ENV_SUIT
             data: [{customUnitType: ALIEN, lowQty: 1, itemSets: [[]]}]
+          - type: UFO_FLOAT
+            width: 30
+            length: 30
+            height: 2
+            terrains: [TEST_TERRAIN]
+            script: CRAFTED
+            enviroEffects: ENV_FLOAT
+            data: [{customUnitType: ALIEN, lowQty: 1, itemSets: [[]]}]
+          - type: UFO_FLOAT_DEEP
+            width: 30
+            length: 30
+            height: 2
+            terrains: [TEST_TERRAIN]
+            script: CRAFTED
+            enviroEffects: ENV_FLOAT
+            depth: [1, 1]
+            race: RACE_TEST
+            data: [{customUnitType: ALIEN, lowQty: 1, itemSets: [[]]}]
           - type: UFO_GEAR
             width: 30
             length: 30
@@ -191,6 +209,8 @@ public sealed class BattleStartTests
         alienRaces:
           - id: RACE_TEST
             members: [ALIEN, ALIEN, ALIEN, ALIEN, ALIEN, ALIEN, ALIEN, ALIEN]
+          - id: RACE_TEST_UNDERWATER
+            members: [ALIEN, ALIEN, ALIEN, ALIEN, ALIEN, ALIEN, ALIEN, ALIEN]
         invs:
           - id: STR_GROUND
             type: 2
@@ -207,6 +227,8 @@ public sealed class BattleStartTests
         enviroEffects:
           - type: ENV_SUIT
             armorTransformations: {ARMOR: SUIT}
+          - type: ENV_FLOAT
+            armorTransformations: {ARMOR: FLOAT_SUIT}
         startingConditions:
           - type: SC_GEAR
             forbiddenVehicles: [VEHICLE_B]
@@ -220,6 +242,11 @@ public sealed class BattleStartTests
             builtInWeapons: [GUN, CLIP, GRENADE]
             specialWeapon: AMP
             storeItem: SUPPLY
+            corpseBattle: [CORPSE]
+            corpseGeo: CORPSE
+            loftempsSet: [0]
+          - type: FLOAT_SUIT
+            movementType: 3
             corpseBattle: [CORPSE]
             corpseGeo: CORPSE
             loftempsSet: [0]
@@ -1001,6 +1028,20 @@ public sealed class BattleStartTests
         Assert.Equal(("SUIT", "ARMOR", 1), (soldier.ArmorId, soldier.OriginalArmorId, soldier.MovementType));
         var personal = campaign.Capture().Bases[0].Soldiers.Single(state => state.Id == Assert.Single(request.Soldiers)).Personal!;
         Assert.Equal("ARMOR", personal.Armor);
+    }
+
+    [Theory]
+    [InlineData("UFO_FLOAT", 0, 0)]
+    [InlineData("UFO_FLOAT_DEEP", 1, 1)]
+    public void AFloatingArmorWalksOnLandAndFliesUnderwater(string deployment, int depth, int movementType)
+    {
+        // Armor::getMovementTypeByDepth (TFTD's ion armor is movementType 3): the battle unit walks on land and flies
+        // underwater, which decides the nodes and tiles it can be placed on.
+        var (campaign, _) = Requested(Rules, deployment);
+        Started(campaign);
+        var battle = Battle(campaign);
+        var soldier = Assert.Single(battle.Units, static unit => unit.Faction == BattleFaction.Player);
+        Assert.Equal((depth, "FLOAT_SUIT", movementType), (battle.Depth, soldier.ArmorId, soldier.MovementType));
     }
 
     [Fact]

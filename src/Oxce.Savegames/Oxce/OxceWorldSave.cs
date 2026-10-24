@@ -532,11 +532,13 @@ public static partial class OxceSaveAdapter
         var vehicleAmmo = Array.AsReadOnly(Sequence(map, "vehicleAmmo").Select(static node => YamlValueReader.ReadInt32(node)).ToArray());
         if (vehicleAmmo.Count != 0 && vehicleAmmo.Count != vehicles.Count)
             throw new InvalidDataException("A deployment request records ammo for a different number of vehicles than it carries.");
+        var target = ReadTargetReference(map, markers, 0, 0) ?? throw new InvalidDataException("A deployment request needs its target.");
+        // An alien base has no mission texture (setWorldTexture(0, globeTexture)); saves before Phase 7 recorded it as 0.
+        var missionTexture = target.Kind == WorldTargetKind.AlienBase ? -1 : map.ReadInt32("missionTexture", -1);
         return new CampaignDeploymentRequest(map.ReadString("missionType", ""), map.ReadString("deployment", ""),
             map.ReadString("alienCustomDeploy", ""), map.ReadString("alienCustomMission", ""), map.ReadString("race", ""),
-            map.ReadInt32("missionTexture", -1), map.ReadInt32("globeTexture", -1), map.ReadInt32("shade", 0),
-            ReadTargetReference(map, markers, 0, 0) ?? throw new InvalidDataException("A deployment request needs its target."),
-            map.ReadInt32("base", 0), RequiredString(craft, "type"), craft.ReadInt32("id", 0))
+            missionTexture, map.ReadInt32("globeTexture", -1), map.ReadInt32("shade", 0),
+            target, map.ReadInt32("base", 0), RequiredString(craft, "type"), craft.ReadInt32("id", 0))
         {
             Soldiers = Array.AsReadOnly(Sequence(map, "soldiers").Select(static node => YamlValueReader.ReadInt32(node)).ToArray()),
             Vehicles = vehicles,

@@ -98,6 +98,17 @@ internal sealed class BattleState
             : throw new Generation.MapGenerationException($"Armor transformation target {transformed} does not exist.");
     }
 
+    /// <summary>
+    /// Armor::getMovementTypeByDepth, which every BattleUnit constructor applies: a floating armor (3) flies underwater
+    /// and walks on land, a sinking one (4) the reverse; walk, fly and slide stay.
+    /// </summary>
+    internal int MovementType(RuntimeArmorRule armor) => armor.MovementType switch
+    {
+        3 => Depth > 0 ? 1 : 0,
+        4 => Depth == 0 ? 1 : 0,
+        var type => type,
+    };
+
     /// <summary>SavedBattleGame::getStorageSpace: a base defense's storage tiles, where the base's stores go.</summary>
     public IReadOnlyList<BattlePosition> StorageSpace { get; init; } = [];
 

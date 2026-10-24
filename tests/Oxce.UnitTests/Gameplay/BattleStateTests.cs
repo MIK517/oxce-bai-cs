@@ -1,4 +1,5 @@
 using Oxce.Gameplay.Battles;
+using Oxce.Mods.Rulesets.Runtime;
 using Xunit;
 
 namespace Oxce.UnitTests.Gameplay;
@@ -58,5 +59,20 @@ public sealed class BattleStateTests
         Assert.True(BattleMap.IsSupportedSize(60, 60, 8));
         Assert.Throws<ArgumentOutOfRangeException>(() => new BattleMap(-10, 10, 1));
         Assert.Throws<ArgumentOutOfRangeException>(() => BattleController.Human(-1));
+    }
+
+    [Theory]
+    [InlineData(0, 2, 0)]
+    [InlineData(1, 0, 1)]
+    [InlineData(2, 2, 2)]
+    [InlineData(3, 0, 0)]
+    [InlineData(3, 1, 1)]
+    [InlineData(4, 0, 1)]
+    [InlineData(4, 2, 0)]
+    public void UnitsResolveFloatingAndSinkingArmorsByTheBattlesDepth(int armorMovement, int depth, int expected)
+    {
+        // Armor::getMovementTypeByDepth: float flies underwater and walks on land, sink the reverse.
+        var battle = new BattleState("STR_UFO_CRASH_RECOVERY", "STR_SMALL_SCOUT", new BattleMap(10, 10, 1), 0, 0, 20) { Depth = depth };
+        Assert.Equal(expected, battle.MovementType(new RuntimeArmorRule(0, 1, 1, "", null) { MovementType = armorMovement }));
     }
 }

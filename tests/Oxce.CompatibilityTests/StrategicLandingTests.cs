@@ -271,6 +271,20 @@ public sealed class StrategicLandingTests
         return (content, CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17)));
     }
 
+    [Fact]
+    public void AnAlienBaseRequestFromAnOlderSaveHasNoMissionTexture()
+    {
+        // Saves written before Phase 7 recorded an alien base request's missing mission texture as 0.
+        var (content, campaign) = CreateAt(alienBase: true);
+        var requested = AssertLandingRequested(campaign);
+        campaign.Execute(new AnswerLanding(requested.Confirmation, LandingAnswer.Yes));
+        var save = OxceSaveAdapter.EmitNewCampaign(campaign.Capture());
+        var older = save.Replace("missionTexture: \"-1\"", "missionTexture: 0", StringComparison.Ordinal);
+        Assert.NotEqual(save, older);
+        var reloaded = TestFixtures.LoadLogisticsSave(older, content, 17, "older-base-request.sav").Campaign;
+        Assert.Equal(-1, Landings(reloaded).QueryDeploymentRequest()!.MissionTexture);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

@@ -81,7 +81,7 @@ internal sealed class CivilianDeployment
             UnitType = type,
             ArmorId = armor.Type,
             ArmorSize = armor.Size,
-            MovementType = armor.MovementType,
+            MovementType = _battle.MovementType(armor),
             Stats = stats,
             TimeUnits = stats.TimeUnits,
             Energy = stats.Stamina,

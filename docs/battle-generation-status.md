@@ -760,6 +760,39 @@ Tests: `BattleStartTests.EnviroEffectsDrawEachFactionsConditionAndTheBattleRecor
 `ARequestSavedWithoutVehicleAmmoTakesTheAmmoOfTheCraftsVehicles`, `ARequestWithoutVehicleAmmoWhoseCraftDiffersIsRefused`
 (other vehicles, no craft).
 
+## S7, part 3 — Second branch audit (2026-10-24)
+
+Reviewed `git diff main...HEAD` again against `BattlescapeGenerator::run`, `deployXCOM`, `addXCOMUnit`,
+`addXCOMVehicle`, `deployAliens`, `addAlien`, `deployCivilians`, `generateMap`, `loadMAP`, `loadVerticalLevels`,
+`addCraft`, `addLine`, `addBlock`, `drillModules`, `selectPosition`, `autoEquip`, `placeItemByLayout`,
+`reloadFixedWeaponsByLayout`, `loadWeapons`, `sendItemsToLimbo`, `SavedBattleGame::initUnit`, `createItemForUnit`,
+`getSpawnNode`, `setUnitPosition`, `placeUnitNearPosition`, `BattleUnit::addItem`, the `BattleUnit` constructors and
+`GeoscapeState::handleBaseDefense`.
+
+- Fixed:
+  - `Armor::getMovementTypeByDepth`: every `BattleUnit` constructor turns a floating armor (movement type 3, TFTD's
+    `STR_MAGNETIC_ION_ARMOR_UC`) into a flyer underwater and a walker on land, and a sinking one (4) the reverse. The
+    port kept the raw type, so an ion-armored soldier underwater could not use flying spawn nodes or stand over open
+    water, and on land it ignored walk costs. `BattleState.MovementType` now resolves it for soldiers, vehicles, the
+    dummy, aliens and civilians. No pinned corpus shape changed.
+  - A deployment request for an alien base saved before S3a recorded the missing mission texture as 0 (the reference
+    passes null), so the battle would take texture 0's starting condition or terrains. The save reader now gives an
+    alien base request no mission texture whatever it recorded.
+  - `docs/phase-6-refusal-inventory.md` had not been regenerated on this branch (`--check` failed): it now lists the
+    battle reasons (931 in all).
+- Checked and matching: the generation order of draws (terrain, depth, scripts, globe and base terrain, map, enviro
+  conditions, X-COM, civilians, aliens, music); the base defense's separate map stream, restored only for
+  `baseDefenseMapFromLocation`; map block items (fuse timers, randomized and extended items, ammo loading);
+  vertical levels, landing zones, roads, tunnels and checkBlock/removeBlock; spawn nodes, placement and placing near a
+  friend; built-in, special and living weapons; addItem's sections and the cheapest storage; layouts, weapon
+  loading, auto-equip and the weapon pile.
+- Left as recorded: `isStandardPlayerUnit` and `setXCOMProperty` also exclude summoned player units; the only one
+  here is the base defense's dummy, which gets no items, so the port's check without it gives the same battles.
+
+Tests: `BattleStartTests.AFloatingArmorWalksOnLandAndFliesUnderwater` (land, underwater),
+`BattleStateTests.UnitsResolveFloatingAndSinkingArmorsByTheBattlesDepth` (every type),
+`StrategicLandingTests.AnAlienBaseRequestFromAnOlderSaveHasNoMissionTexture`.
+
 ## Next
 
 Branch 1 is complete; the maintainer merges it. Branch 2 (`claude/battle-save`, [plan](phase-7-plan.md#delivery-shape))
