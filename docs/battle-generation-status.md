@@ -10,7 +10,7 @@ Phase 7 branch 1 (`claude/battle-generation`), from `main` at `2b0c81fb`. Plan:
 | S0 planning | Done (2026-10-18) |
 | S1 battle aggregate | Done (2026-10-18) |
 | S2 runtime battle terrain | Done (2026-10-19) |
-| S3 map generation | Done (2026-10-20) except craft skins |
+| S3 map generation | Done (2026-10-24) |
 | S4 X-COM deployment | Done (2026-10-24) except the base defense deployment (S6) |
 | S5 alien and civilian deployment | Done (2026-10-23); crashed-UFO and map-junk explosions refuse until branch 5 |
 | S6 base defense and other entry points | Not started |
@@ -170,8 +170,7 @@ zone), `Node::CRAFTSEGMENT` and `UFOSEGMENT`, `RuleStartingCondition::getCraftRe
   maps with their routes (segment 2000), then the craft's (segment 1000), each stacked on the highest floor below it
   and clearing the object part; the craft's area and border are discovered as the craft's `mapVisible` says. The block
   names there are the craft or UFO type and its map block.
-- Not yet: craft skins (`RuleTerrain::refreshMapDataSets`); the port does not keep the craft's skin index, which is the
-  reference's no-op case.
+- Craft skins followed in S3, part 5 (below).
 
 Tests: `BattleStartTests.TheCraftAndTheUfoLandOnLandingZonesAndTheirMapsAndRoutesLoadAfterTheScript` and the inline
 terrain links in `DeploymentBattlePropertiesAreLinkedWithTheReferenceDefaults`.
@@ -528,19 +527,40 @@ Tests: `BattleStartTests.TheCraftsOwnCustomDeploymentPlacesSoldiersByIdAndVehicl
 `CustomDeploymentsAreReadFromTheSaveAndWrittenBackAsTheyWere`, `ACustomCraftDeploymentWithoutAPointForAUnitIsRefused`;
 `StrategicReadinessFixtureTests.AddingCrewALargerArmorOrAVehicleResetsTheCraftsCustomDeployment`.
 
+## S3, part 5 — Craft skins (2026-10-24)
+
+Reference: `RuleTerrain::refreshMapDataSets`, `BattlescapeGenerator::generateMap` (the craft's data sets), `Craft::load`
+and `Craft::save` (`skinIndex`), `RuleCraft::load` (`maxSkinIndex`), `Mod::getMapDataSet`.
+
+- `RuntimeCraftRule.MaximumSkinIndex`; `CraftLogisticsState.SkinIndex`, read from the craft node (a skin above the
+  rule's maximum, even a negative one, falls back to 0) and written only when nonzero.
+- The landing craft's skin renames the battle's craft terrain data sets, except `BLANKS`, to `name_skin` before they
+  load; the terrain is the battle's craft rule's (possibly replaced by `addCraft` or the starting condition), the skin
+  the craft's own. MCD patches of the skinned name apply. The port derives the names per battle, where the reference
+  renames the shared rule from its last skin ([ADR 0038](decisions/0038-battle-aggregate.md)).
+- A skin whose data set has no MCD refuses with the missing file, where the reference throws on loading it.
+
+Tests: `BattleStartTests.ASkinnedCraftLoadsItsSkinsDataSetsExceptBlanks`,
+`TheCraftsSkinIndexIsReadUpToTheRulesMaximumAndWrittenBack`.
+
 ## Next
 
-- Craft skins: the craft's skin index in the strategic save and `refreshMapDataSets`. Notes for the next part:
-  - `Craft::load` reads `skinIndex` (default 0) and resets it to 0 when above the craft rule's `maxSkinIndex` (a negative
-    index is kept); `Craft::save` writes it only when nonzero. The port projects nothing yet: `maxSkinIndex` is only a
-    known key with default 0 in `EquipmentProductionRules.cs`, and the craft node keeps `skinIndex` raw. Read it into
-    `CraftLogisticsState` and write it back from the state like the custom deployments (S4b part 7).
-  - `generateMap`, after the UFOs: when a craft map was placed, `_craftRules->getBattlescapeTerrainData()->refreshMapDataSets(
-    _craft->getSkinIndex())` renames every data set except `BLANKS` to `<name>_<skin>` (skin 0 keeps the plain names);
-    `_craftRules` may be a replaced craft rule (map script `addCraft` or the starting condition) while the skin is the
-    craft's own. `Mod::getMapDataSet` creates an unknown set on demand, so a skin without its MCD fails when the data is
-    loaded: the port's terrain loader should refuse with the missing file. The reference's `_lastCraftSkinIndex` caches
-    the renaming on the shared rule object; the port derives the names per battle instead.
-  - Files: `BattleMapGenerator.cs` (the craft's data sets are added where `CraftRule` terrain is loaded), the craft rule
-    projection (`RuntimeCraftRule`) for `maxSkinIndex`, `OxceSaveAdapter.ReadCraftLogistics`.
-- S6: base defense maps and the remaining entry points.
+- S6: base defense maps and the remaining entry points. Notes for the next part:
+  - `BattleMapGenerator` refuses a base defense right after loading the terrain ("Base defense maps are generated from
+    the base layout (Phase 7 branch 1 S6)"); that is the hook. The port already has the base-defense `visible` flags in
+    `LoadMap` and the resize refusal, and `XcomDeployment.Place` skips `placeUnitNearFriend` for it.
+  - Reference: `generateMap` (~2890) runs `generateBaseMap` before the script when the mission type is
+    `STR_BASE_DEFENSE`; with `baseDefenseMapFromLocation: 1` it reseeds the RNG from `lon * lat * 1e6` (a zero
+    coordinate counts as 1.0), picks `_baseTerrain` from the globe texture's `getRandomBaseTerrain(base)` and restores
+    the seed after `attachNodeLinks`. The port has no global RNG seed: a deterministic sub-stream (a `SplitMix64` seeded
+    from that value) for the base map's draws is the likely equivalent, and needs an ADR note since the stream is
+    shared in the reference.
+  - `generateBaseMap` (~3423): each built facility (or one that had a previous facility) places blocks from its rule
+    (`verticalLevels` as an addBlock-like command, else its map name), storage tiles (`storageTiles` or a checkerboard),
+    then `clearModule` for the rest. `deployXCOM` for a base defense takes soldiers from the base, not a craft, and
+    `setupDefenses` vehicles; a base with soldiers but no spawn spot force-spawns a dummy summoned unit from the first
+    race (~1197).
+  - Entry points still to check: `ConfirmLandingState` with a mission site (`setMissionSite`) or alien base
+    (`setAlienBase`), `ConfirmCydoniaState` (final mission, `nextStage` for multi-stage), `GeoscapeState` ~3700 (base
+    defense). The port's requests come from `CampaignWorldLandings`, `CampaignWorldBaseAttacks` and
+    `LaunchFinalMission`.

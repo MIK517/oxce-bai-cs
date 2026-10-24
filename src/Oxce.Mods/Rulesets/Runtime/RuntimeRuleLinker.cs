@@ -247,6 +247,7 @@ public static class RuntimeRuleLinker
                 RequiredPilotBonuses = rule.Value.RequiredPilotBonuses,
                 BattlescapeTerrain = RuntimeBattleRules.Inline(rule.Value.BattlescapeTerrain),
                 MapVisible = rule.Value.Booleans["mapVisible"],
+                MaximumSkinIndex = rule.Value.Integers["maxSkinIndex"],
                 Groups = Array.AsReadOnly(rule.Value.Groups.ToArray()),
                 Deployment = Array.AsReadOnly(rule.Value.Deployment.Select(static point => (IReadOnlyList<int>)Array.AsReadOnly(point.ToArray())).ToArray()),
                 InventoryTile = Array.AsReadOnly(rule.Value.CraftInventoryTile.ToArray()),

@@ -38,6 +38,7 @@ internal sealed class BattleMapGenerator
     private int _markAsReinforcementsBlock;
     private readonly BattleMapInputs _inputs;
     private string _craftRuleId;
+    private readonly int _craftSkin;
     private bool _craftDeployed;
     private RuntimeMapBlock? _craftMap;
     private (int X, int Y, int Width, int Length) _craftPosition;
@@ -61,6 +62,7 @@ internal sealed class BattleMapGenerator
     {
         _inputs = inputs;
         _craftRuleId = inputs.CraftId;
+        _craftSkin = inputs.CraftSkin;
         _catalog = rules;
         _rules = rules.Battle;
         _loader = loader;
@@ -168,7 +170,7 @@ internal sealed class BattleMapGenerator
         if (_craftMap is { } craftMap)
         {
             var craft = CraftRule;
-            var craftTerrain = craft.BattlescapeTerrain!;
+            var craftTerrain = Skinned(craft.BattlescapeTerrain!, _craftSkin);
             foreach (var set in LoadTerrain(craftTerrain)) _map.AddDataSet(set);
             LoadMap(craftMap, _craftPosition.X * 10, _craftPosition.Y * 10, _craftZ, craftTerrain, dataSetOffset + craftDataSetOffset,
                 craft.MapVisible, craft: true);
@@ -782,6 +784,18 @@ internal sealed class BattleMapGenerator
     private const int CraftSegment = 1000;
     private const int UfoSegment = 2000;
 
+    /// <summary>
+    /// RuleTerrain::refreshMapDataSets: with a skin, every data set but BLANKS becomes <c>name_skin</c>. The reference
+    /// renames the shared rule from its previous skin, so a negative skin gives <c>name_skin</c> only when the previous
+    /// skin was 0 or the same, else the plain name; the port always derives the names from the rule's own, as for a
+    /// first battle (ADR 0038).
+    /// </summary>
+    private static RuntimeTerrain Skinned(RuntimeTerrain terrain, int skin) => skin == 0 ? terrain : terrain with
+    {
+        MapDataSets = Array.AsReadOnly(terrain.MapDataSets.Select(name => name == "BLANKS" ? name
+            : FormattableString.Invariant($"{name}_{skin}")).ToArray()),
+    };
+
     private RuntimeCraftRule CraftRule => Craft(_craftRuleId)
         ?? throw new MapGenerationException($"Craft {_craftRuleId} does not exist.");
 
@@ -1267,6 +1281,9 @@ internal sealed record BattleMapInputs(string CraftId, string UfoId, string Cust
 {
     /// <summary>The battle's UFO crashed (Ufo::CRASHED): its power sources explode at the start.</summary>
     public bool UfoCrashed { get; init; }
+
+    /// <summary>Craft::getSkinIndex of the landing craft.</summary>
+    public int CraftSkin { get; init; }
 }
 
 /// <summary>

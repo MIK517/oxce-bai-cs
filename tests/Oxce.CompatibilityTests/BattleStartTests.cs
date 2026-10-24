@@ -358,6 +358,8 @@ public sealed class BattleStartTests
         ["ROUTES/ROOF.RMP"] = [],
         // The craft's floor is a start point (special type 1).
         ["TERRAIN/SHIPSET.MCD"] = Mcd(Record((42, 7), (59, 1))),
+        // The craft's skin 2: the same start point floor with armor 9.
+        ["TERRAIN/SHIPSET_2.MCD"] = Mcd(Record((42, 9), (59, 1))),
         ["TERRAIN/UFOSET.MCD"] = Mcd(Record((42, 8))),
         ["MAPS/SHIPBLOCK.MAP"] = Map(10, 10, 2),
         ["ROUTES/SHIPBLOCK.RMP"] = RouteNode(4, 4, 0, []),
@@ -529,6 +531,57 @@ public sealed class BattleStartTests
         Assert.Equal(soldier.Id, map.UnitAt(map.TileIndex(first)));
         Assert.Equal(soldier.SoldierId, soldier.Id);
         Assert.Equal(BattleController.Human(0), soldier.Controller);
+    }
+
+    [Fact]
+    public void ASkinnedCraftLoadsItsSkinsDataSetsExceptBlanks()
+    {
+        // RuleTerrain::refreshMapDataSets with Craft::getSkinIndex: SHIPSET becomes SHIPSET_2, BLANKS stays; the MCD patch
+        // of the skinned name applies (getMCDPatch(mds->getName()) after the renaming).
+        static Func<CampaignSnapshot, CampaignSnapshot> Skin(int skin) => snapshot => snapshot.WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with { SkinIndex = skin },
+        });
+        var patched = Rules + "\nMCDPatches:\n  - type: SHIPSET_2\n    data: [{MCDIndex: 0, armor: 11}]\n";
+        var (campaign, _) = Requested(patched, "UFO_CRAFTED", adjust: Skin(2));
+        Started(campaign);
+        var map = Battle(campaign).Map;
+        Assert.Equal(["BLANKS", "SHIPSET_2"], map.DataSets.TakeLast(2).Select(static set => set.Name));
+        Assert.Equal(11, map.MapData(map.TileIndex(CraftOrigin(map)), BattleTilePart.Floor)!.Armor);
+
+        // A replaced craft rule (addCraft's craftName) is renamed with the landing craft's own skin.
+        var replaced = patched.Replace("crafts:\n", "crafts:\n  - type: SHIP_B\n    battlescapeTerrainData:\n      name: SHIP_B_MAP\n" +
+                "      mapDataSets: [BLANKS, SHIPSET]\n      mapBlocks: [{name: SHIPBLOCK, width: 10, length: 10}]\n", StringComparison.Ordinal)
+            .Replace("- {type: addCraft}", "- {type: addCraft, craftName: SHIP_B}", StringComparison.Ordinal);
+        (campaign, _) = Requested(replaced, "UFO_CRAFTED", adjust: Skin(2));
+        Started(campaign);
+        map = Battle(campaign).Map;
+        Assert.Equal(11, map.MapData(map.TileIndex(CraftOrigin(map, "SHIP_B")), BattleTilePart.Floor)!.Armor);
+
+        // A skin without its data set fails when the data is loaded; a negative skin is a name like any other.
+        (campaign, _) = Requested(Rules, "UFO_CRAFTED", adjust: Skin(3));
+        Assert.Equal("Terrain file TERRAIN/SHIPSET_3.MCD is missing.", Refusal(campaign, new StartBattle()));
+        (campaign, _) = Requested(Rules, "UFO_CRAFTED", adjust: Skin(-1));
+        Assert.Equal("Terrain file TERRAIN/SHIPSET_-1.MCD is missing.", Refusal(campaign, new StartBattle()));
+    }
+
+    [Theory]
+    [InlineData(2, 2, 2)]
+    [InlineData(2, 3, 0)]
+    [InlineData(2, -1, -1)]
+    [InlineData(-2, -1, 0)]
+    public void TheCraftsSkinIndexIsReadUpToTheRulesMaximumAndWrittenBack(int maximum, int saved, int loaded)
+    {
+        // Craft::load: a skin above maxSkinIndex, even a negative one, falls back to 0; Craft::save writes a nonzero skin.
+        var (content, campaign) = StrategicLandingTests.Create(rules: $"crafts:\n  - type: SHIP\n    maxSkinIndex: {maximum}\n");
+        Assert.Equal(maximum, content.RuntimeRules.Crafts.GetRequiredValue("SHIP").MaximumSkinIndex);
+        var yaml = System.Text.RegularExpressions.Regex.Replace(OxceSaveAdapter.EmitNewCampaign(campaign.Capture()),
+            @"type: SHIP\n(\s+)id: 1\n", match => match.Value + $"{match.Groups[1].Value}skinIndex: {saved}\n");
+        var snapshot = TestFixtures.LoadLogisticsSave(yaml, content, 17).Campaign.Capture();
+        Assert.Equal(loaded, snapshot.Bases[0].Crafts.Single(static craft => craft.RuleId == "SHIP").Logistics!.SkinIndex);
+        var rewritten = OxceSaveAdapter.EmitNewCampaign(snapshot);
+        Assert.Equal(loaded != 0, rewritten.Contains("skinIndex", StringComparison.Ordinal));
+        Assert.Equivalent(snapshot, TestFixtures.LoadLogisticsSave(rewritten, content, 17).Campaign.Capture(), strict: true);
     }
 
     [Fact]

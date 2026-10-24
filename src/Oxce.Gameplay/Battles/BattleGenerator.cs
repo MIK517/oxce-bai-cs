@@ -224,7 +224,9 @@ internal static class BattleGenerator
             ? deployment.StartingCondition : Texture(rules, request.MissionTexture)?.StartingCondition ?? "";
         var condition = conditionId.Length != 0 && rules.StartingConditions.TryGet(conditionId, out var handle)
             ? rules.StartingConditions[handle].Value : null;
-        return new BattleMapInputs(craft, ufo, deployment.Battle.CustomUfo, condition) { UfoCrashed = crashed };
+        var skin = campaign.BaseStates.Find(candidate => candidate.Id == request.BaseId)?.Crafts.Find(candidate =>
+            candidate.Id == request.CraftId && rules.Crafts.GetExternalId(candidate.Rule) == request.CraftTypeId)?.Logistics?.SkinIndex ?? 0;
+        return new BattleMapInputs(craft, ufo, deployment.Battle.CustomUfo, condition) { UfoCrashed = crashed, CraftSkin = skin };
     }
 
     /// <summary>BattlescapeGenerator::setDepth: the deployment's depth range wins over the terrain's.</summary>

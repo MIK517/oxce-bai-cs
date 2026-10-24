@@ -92,6 +92,14 @@ hostile-side visibility) goes in an `oxcePortBattle` node that the reference ign
 their save parts with the battle registry. Rule families the battle adds are linked through per-family registrations,
 not new cases in `RuntimeRuleLinker`.
 
+### Generation choices where the reference depends on history or crashes
+
+- Craft skins: `RuleTerrain::refreshMapDataSets` renames the shared terrain rule from the skin last used, so a negative
+  skin gives `name_skin` only when the previous skin was 0 or the same. The port derives the names from the rule's own
+  each battle (`name_skin` for any nonzero skin), as a first battle does.
+- Custom craft deployments: a soldier without a point (`std::map::at` crashes) and a saved direction outside 0-7
+  (`BattleUnit::setDirection` keeps it; later lookups index by it) refuse the generation with a named reason.
+
 ## Consequences
 
 - Battle rules are written once. The cost is up-front validation of content and restored state, which the

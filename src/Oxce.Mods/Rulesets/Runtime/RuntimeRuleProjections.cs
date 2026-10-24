@@ -230,6 +230,9 @@ public sealed record RuntimeCraftRule(
     /// <summary>RuleCraft::getGroups: map script commands with craft groups run only for a craft in one of them.</summary>
     public IReadOnlyList<int> Groups { get; init; } = [];
 
+    /// <summary>RuleCraft::getMaxSkinIndex: the highest skin a craft of this type may use.</summary>
+    public int MaximumSkinIndex { get; init; }
+
     /// <summary>RuleCraft::isMapVisible: whether the craft's map starts discovered.</summary>
     public bool MapVisible { get; init; } = true;
 

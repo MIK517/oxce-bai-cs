@@ -746,6 +746,7 @@ public static partial class OxceSaveAdapter
             Pair("customVehicleDeployment", state.CustomVehicleDeployment.Count == 0 ? null : Sequence(state.CustomVehicleDeployment
                 .Select(vehicle => Mapping([Pair("type", Scalar(vehicle.Type)), Pair("pos", DeploymentPosition(vehicle.Point)),
                     Pair("dir", Integer(vehicle.Point.Direction))])))),
+            Pair("skinIndex", state.SkinIndex == 0 ? null : Integer(state.SkinIndex)),
         ]);
     }
 
@@ -940,10 +941,15 @@ public static partial class OxceSaveAdapter
         var type = RequiredString(map, "type");
         var id = map.ReadInt32("id", 0);
         var preservationKey = map.ReadString("oxcePortEntityKey", $"craft:{type}:{id}");
+        var logistics = ReadCraftLogistics(map, preservationKey, markers);
+        // Craft::load: a skin above the craft rule's maxSkinIndex, even a negative one, falls back to 0.
+        if (logistics is not null && content.RuntimeRules.Crafts.TryGet(type, out var rule) &&
+            logistics.SkinIndex > content.RuntimeRules.Crafts[rule].Value.MaximumSkinIndex)
+            logistics = logistics with { SkinIndex = 0 };
         return new(type, id)
         {
             PreservationKey = preservationKey,
-            Logistics = ReadCraftLogistics(map, preservationKey, markers),
+            Logistics = logistics,
             ScriptValues = ReadScriptValues(map, content, "Craft"),
         };
     }
@@ -1024,6 +1030,7 @@ public static partial class OxceSaveAdapter
             SpeedLongitude = map.ReadDouble("speedLon", 0),
             SpeedLatitude = map.ReadDouble("speedLat", 0),
             SpeedRadian = map.ReadDouble("speedRadian", 0),
+            SkinIndex = map.ReadInt32("skinIndex", 0),
             CustomSoldierDeployment = map.TryGet("customSoldierDeployment", out var soldiers)
                 ? new ReadOnlyDictionary<int, CraftDeploymentPoint>(YamlValueReader.ReadMap(soldiers!, YamlValueReader.ReadInt32, node =>
                 {
