@@ -25,6 +25,8 @@ public static class WorldCommandReasons
     internal const string TargetSelf = "A craft cannot escort itself.";
     internal const string ForeignBase = "A craft can return only to its own base; use a transfer to change bases.";
     internal const string LandingTargetGone = "The landing target no longer offers a mission.";
+    internal const string AlienBaseRaceUnknown =
+        "The alien base's race does not exist, so it has no base custom deployment to land on (the reference crashes there).";
     internal const string NoInterception = "There is no such interception.";
     internal const string InterceptionsOpen = "Open interception windows stop the clock until they are minimized.";
     internal const string InterceptionMode = "The interception does not offer that mode.";
@@ -57,6 +59,7 @@ public static class WorldCommandReasons
         new("target.self", TargetSelf),
         new("target.foreign-base", ForeignBase),
         new("landing.no-mission", LandingTargetGone),
+        new("landing.unknown-base-race", AlienBaseRaceUnknown),
         new("interception.none", NoInterception),
         new("interception.open", InterceptionsOpen),
         new("interception.mode", InterceptionMode),

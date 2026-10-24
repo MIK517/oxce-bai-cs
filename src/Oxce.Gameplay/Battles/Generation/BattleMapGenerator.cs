@@ -364,7 +364,8 @@ internal sealed class BattleMapGenerator
     /// <summary>
     /// SavedBattleGame::calculateModuleMap: per block, the tiles whose object is a base module (MapData::isBaseModule),
     /// both counts starting from 1; a block without any keeps (-1, -1). A module tile past the last whole block (a map
-    /// side that is not a multiple of 10) refuses.
+    /// side that is not a multiple of 10) refuses; only a block running past the map's side could put one there, and
+    /// <see cref="LoadMap"/> refuses that block first, so this stays as a guard.
     /// </summary>
     private void CalculateModuleMap()
     {
@@ -1175,6 +1176,11 @@ internal sealed class BattleMapGenerator
             throw new MapGenerationException(_missionType == BaseDefenseMissionType
                 ? "Something is wrong with your base, check your log file for additional information."
                 : "Something is wrong in your map definitions, craft/ufo map is too tall?");
+        // After the height checks, a block running past the map's east or south side (a vertical level's block picked
+        // by index can be larger than its cell): the reference's getTile returns null there and loadMAP dereferences it.
+        if (offsetX + file.Width > _map.Width || offsetY + file.Length > _map.Length)
+            throw new MapGenerationException(
+                $"Map block {path} ({file.Width}x{file.Length}) placed at ({offsetX}, {offsetY}) runs past the {_map.Width}x{_map.Length} map.");
         foreach (var record in file.Tiles)
         {
             var tile = _map.TileIndex(new BattlePosition(x, y, z));

@@ -21,9 +21,9 @@ public sealed class StrategicLandingTests
 {
     internal static (RuntimeContent Content, CampaignState Campaign) Create(bool seasons = false, string? rules = null,
         IReadOnlyDictionary<string, byte[]>? files = null, IReadOnlyList<CraftVehicleSnapshot>? vehicles = null,
-        IReadOnlyDictionary<string, int>? items = null, IReadOnlyList<SoldierLayoutItem>? layout = null)
+        IReadOnlyDictionary<string, int>? items = null, IReadOnlyList<SoldierLayoutItem>? layout = null, string? finalRules = null)
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], rules, files: files);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], rules, finalRules: finalRules, files: files);
         var snapshot = CreateLifecycleSnapshot(content);
         var ufo = snapshot.World.Ufos[0] with { SecondsRemaining = 3600, Detected = true };
         var owner = snapshot.Bases[0];

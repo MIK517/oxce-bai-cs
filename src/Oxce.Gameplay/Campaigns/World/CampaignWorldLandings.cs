@@ -315,6 +315,11 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery, Battles.ICa
         switch (command.Answer)
         {
             case LandingAnswer.Yes:
+                // checkStartingCondition reads the alien base race's base custom mission after the armor check, and
+                // btnYesClick its base custom deployment: an unknown race is a null AlienRace there. Yes refuses first.
+                if (campaign.HasAllowedArmorsOnboard(owner, craft) && landing.Target.Kind == WorldTargetKind.AlienBase &&
+                    TargetAlienBase(landing.Target) is { } landedBase && !campaign.Content.RuntimeRules.AlienRaces.TryGet(landedBase.Race, out _))
+                    return Blocked(WorldCommandReasons.AlienBaseRaceUnknown);
                 if (StartingConditionRefusal(owner, craft, state, landing, out var condition) is { } refusal)
                 {
                     owner.Crafts[index] = craft with { Logistics = SetDestination(state, maximum, BaseReference(owner)) };

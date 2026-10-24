@@ -13,7 +13,7 @@ Phase 7 branch 1 (`claude/battle-generation`), from `main` at `2b0c81fb`. Plan:
 | S3 map generation | Done (2026-10-24) |
 | S4 X-COM deployment | Done (2026-10-24); the base defense deployment is S6 part 2 |
 | S5 alien and civilian deployment | Done (2026-10-23); crashed-UFO and map-junk explosions refuse until branch 5 |
-| S6 base defense and other entry points | In progress: base defense maps and deployment done (2026-10-24); the other entry points remain |
+| S6 base defense and other entry points | Done (2026-10-24) |
 | S7 acceptance and branch audit | Not started |
 
 ## S0 — Planning (2026-10-18)
@@ -561,7 +561,8 @@ Reference: `BattlescapeGenerator::generateMap` (the base defense branch and `bas
   (-1, -1, -1) entry ends the list as placed), else the checkerboard on each cell's ground level, whose first cell
   sets the inventory tile at its centre one level down (none when that is below the map). Then the module map
   (`BattleState.BaseModules`, both counts starting from 1, (-1, -1) for blocks without base module objects; a module
-  tile past the last whole block of a map side that is not a multiple of 10 refuses). The
+  tile past the last whole block of a map side that is not a multiple of 10 refuses, though since S6 part 3 the block
+  that would put it there refuses first, as it runs past the map's side). The
   script fills and drills the rest; `generateBaseMap` itself clears nothing.
 - With `baseDefenseMapFromLocation: 1` the base terrain comes from the base's globe texture (`baseTerrain`) and the whole
   map draws from a `SplitMix64` stream seeded with `lon * lat * 1e6` (a zero coordinate counts as 1); the campaign's
@@ -625,17 +626,57 @@ member is no unit, the missing ground inventory, the environment's armor on vehi
 `BattleStartTests.TheStartingConditionSendsDisabledVehiclesAndItemsBackToBaseStorage`
 (the record for a craft mission).
 
+## S6, part 3 — Mission sites, alien bases and the final mission (2026-10-24)
+
+Reference: `ConfirmLandingState::btnYesClick` (the mission site and alien base branches), `ConfirmCydoniaState::btnYesClick`,
+`BattlescapeGenerator::run` (`setAlienCustom`, the terrain pick's target), `setMissionSite`, `setAlienBase`, `setCraft`,
+`setWorldShade`, `deployAliens` (the race), `SavedBattleGame::setAlienCustom`, `Texture::getRandomTerrain`.
+
+- The requests of the three entry points already carried what `run` reads (`CampaignWorldLandings`, Phase 6 branch 5):
+  a site's deployment as the mission type, its custom deployment and race and its texture; an alien base's deployment as
+  the mission type, its race's `baseCustomDeploy` and `baseCustomMission`, and mission texture -1
+  (`setWorldTexture(0, ...)`); the final mission's first `finalDestination` deployment in deployment order with that
+  deployment's race, no textures and shade 0 (the generator's defaults). The generator needed no new branch: the
+  terrain pick is at the request's target, which is the site for a site (`if (_mission) target = _mission;`); an alien
+  base or the final mission has no mission texture, so its deployment's terrains or the mod's first terrain apply.
+- Yes at an alien base whose race does not exist refuses (`landing.unknown-base-race`), after the armor check and
+  before the starting condition, as `checkStartingCondition` and `btnYesClick` read the race's base custom mission and
+  deployment from a null `AlienRace`. The request used to fall back silently to the base's own deployment.
+- `BattleState.AlienCustomDeploy` and `AlienCustomMission` (`setAlienCustom`, for briefing, debriefing and `nextStage`).
+- Checked, not ported here:
+  - `setInBattlescape` on the craft, the UFO, the site, the alien base and the base. Only battle-time and later code reads the
+    flags: a save written during the battle (refused, `battle.save-unsupported`, branch 2), `nextStage`'s race fallback,
+    `finishBattle`, the briefing reopened from the battlescape and the debriefing (branches 3 and 7); the strategic side
+    is frozen meanwhile. Branch 2 sets them with the battle save. The port models the flag only on UFOs, sites and
+    alien bases so far.
+  - `nextStage` (multi-stage missions such as the final mission's second stage) runs when a stage ends
+    (`BattlescapeState::finishBattle`), which is branch 7's.
+- `loadMAP` past the map's east or south side now refuses (`BattleMapGenerator.LoadMap`, after the height checks, as
+  in the reference): the reference's `getTile`
+  returns null there and it crashes, where the port's tile index ran into the next row. Map blocks are multiples of 10
+  and the placements check the block grid, but a vertical level's block named by index (`MapScript::getNextBlock`) may
+  be larger than its cell.
+
+Tests: `BattleEntryPointTests` (a site's terrain picked at the site from its texture, its custom deployment's aliens
+with the site's race; an alien base's race custom mission and deployment without a mission texture, its own deployment
+without them, the unknown race's refusal; the final mission's deployment, race, shade and landed craft),
+`BattleStartTests.AVerticalLevelsBlockRunningPastTheMapsSideIsRefused` (east and south),
+`BaseDefenseMapTests.ALevelBlockPastTheMapsSideRefusesBeforeTheModuleMap` (formerly the module map's refusal test).
+
 ## Next
 
-- S6, part 3: the remaining entry points. Notes for the next part:
-  - Reference: `ConfirmLandingState::btnYesClick` with a mission site (`setMissionSite`, the site's texture and
-    deployment, `getAlienCustomDeploy`) or an alien base (`setAlienBase`), and `ConfirmCydoniaState` (the final mission:
-    `bgen.setAlienRace`, `nextStage` for multi-stage missions). The port's requests come from `CampaignWorldLandings`
-    and `LaunchFinalMission`; check what each request carries against what `BattleGenerator.Deployment`, `PickTerrain`
-    (the mission site is the texture target, `Target *target = _ufo; if (_mission) target = _mission;`) and `Inputs` read.
-    A base defense terrain pick with a texture that has terrains and a deployment without them dereferences a null
-    target in the reference and refuses in the port (`BattleGenerator.TextureTerrainWithoutTarget`); an alien base gets
-    no mission texture (`setWorldTexture(0, ...)`), so check that its request's `MissionTexture` is -1.
-  - `LoadMap` writes a block wider than the map's remaining width into the next row's tiles (the reference's
-    `getTile` index arithmetic does the same); worth a refusal check when the deployment's side is not a multiple of 10.
-  - After the entry points: S7 acceptance on the corpus and the branch audit.
+- S7: headless acceptance on the corpus, then the branch audit. Notes for the next part:
+  - Acceptance ([plan](phase-7-plan.md#branch-1--battle-generation)): the Rosigma `early/Early.sav` terror landing (the
+    [first acceptance scenario](phase-6-status.md#first-phase-7-acceptance-scenario)) and staged vanilla UFO, TFTD and
+    base-defense requests generate battles that pass `BattleState.Validate`, with fixed-seed structure pinned (terrain,
+    map script, blocks, unit counts per faction, node count); malformed terrain resources fail at load with an
+    actionable error. Private tests skip without `fixtures/private/` (`TestFixtures.RequirePrivateInstallation` and
+    friends); the installation's files reach the generator through `VirtualBattleTerrainFiles` and
+    `CampaignState.BattleTerrainFiles`. `PrivateStrategicWorldTests` and `PrivateStrategicLogisticsTests` show how the
+    corpus saves are loaded.
+  - The entry points' synthetic coverage is in `BattleStartTests` (UFOs), `BaseDefenseMapTests`,
+    `BaseDefenseDeploymentTests` and `BattleEntryPointTests`; `BattleStartTests.Rules` and `TerrainFiles` are shared.
+  - Real mods will reach refusals the synthetic tests only name (crashed-UFO power sources and primed map grenades
+    until branch 5, `MapGenerationException` messages for content errors); an acceptance save that stops on one needs a
+    different save or a recorded reason, not a weaker check.
+  - Then the branch audit (`git diff main...HEAD`, `AGENTS.md`): every remaining named refusal names its owning branch.

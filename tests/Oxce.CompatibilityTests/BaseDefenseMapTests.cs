@@ -308,10 +308,11 @@ public sealed class BaseDefenseMapTests
     }
 
     [Fact]
-    public void ABaseModuleTilePastTheLastWholeBlockRefusesTheBattle()
+    public void ALevelBlockPastTheMapsSideRefusesBeforeTheModuleMap()
     {
-        // A 45 tiles wide map and a tower whose ceiling block is 20 wide, with a base module on its column 12: the levels
-        // load it past the last whole block before the module map is counted.
+        // A 45 tiles wide map and a tower whose ceiling block is 20 wide, with a base module on its column 12: loaded at
+        // x 30, the block runs past the map's side, where the reference's getTile returns null and loadMAP crashes. Only
+        // such a block reaches the tiles past the last whole block, so the module map's own check is not reached.
         var (campaign, _) = Requested([Facility("XB_TOWER", 3, 0)],
             rules: static rules => rules.Replace("width: 40", "width: 45", StringComparison.Ordinal)
                 .Replace("{name: TOWER_C, width: 10", "{name: TOWER_C, width: 20", StringComparison.Ordinal),
@@ -321,7 +322,7 @@ public sealed class BaseDefenseMapTests
                 wide[3 + 12 * 4 + 3] = 3;
                 files["MAPS/TOWER_C.MAP"] = wide;
             });
-        Assert.Equal("Base module tile 42, 0, 1 lies past the last whole block of the 45x30 base defense map.", Refusal(campaign));
+        Assert.Equal("Map block MAPS/TOWER_C.MAP (20x10) placed at (30, 0) runs past the 45x30 map.", Refusal(campaign));
     }
 
     [Fact]

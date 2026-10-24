@@ -50,6 +50,13 @@ internal sealed class BattleState
     /// <summary>SavedBattleGame::getLastUsedMapScript.</summary>
     public string MapScriptId { get; init; } = "";
 
+    /// <summary>
+    /// SavedBattleGame::getAlienCustomDeploy and getAlienCustomMission (setAlienCustom in run): the request's alien custom
+    /// deployment and mission, empty when there is none. Briefing, debriefing and nextStage read them.
+    /// </summary>
+    public string AlienCustomDeploy { get; init; } = "";
+    public string AlienCustomMission { get; init; } = "";
+
     /// <summary>SavedBattleGame::getDepth: 0 above water, otherwise the underwater depth.</summary>
     public int Depth { get; init; }
 

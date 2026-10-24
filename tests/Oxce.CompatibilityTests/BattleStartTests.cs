@@ -20,7 +20,7 @@ namespace Oxce.CompatibilityTests;
 public sealed class BattleStartTests
 {
     // BLANKS has two objects (blank, scorched earth); TESTSET's objects follow it as MAP IDs 2 and 3.
-    private const string Rules = """
+    internal const string Rules = """
         alienDeployments:
           - type: UFO_SCOUT
             width: 20
@@ -140,6 +140,20 @@ public sealed class BattleStartTests
             script: CRAFTED
             startingCondition: SC_REPLACE
             data: [{customUnitType: ALIEN, lowQty: 1, itemSets: [[]]}]
+          - type: UFO_OVERRUN
+            width: 20
+            length: 20
+            height: 6
+            terrains: [TEST_TERRAIN]
+            script: OVERRUN
+            data: [{customUnitType: ALIEN, lowQty: 1, itemSets: [[]]}]
+          - type: UFO_OVERRUN_SOUTH
+            width: 20
+            length: 20
+            height: 6
+            terrains: [TEST_TERRAIN]
+            script: OVERRUN_SOUTH
+            data: [{customUnitType: ALIEN, lowQty: 1, itemSets: [[]]}]
           - type: UFO_UNFILLED
             width: 20
             length: 20
@@ -167,6 +181,7 @@ public sealed class BattleStartTests
                 fuseTimers: {GRENADE: [3, 3]}
                 randomizedItems: [{position: [3, 3, 0], amount: 2, itemList: [CLIP]}]
                 extendedItems: [{type: GUN, pos: [[4, 4, 0]], ammoDef: [[CLIP, 5]]}]
+              - {name: TALL, width: 10, length: 20, groups: [11]}
             script: BASIC
         alienItemLevels: [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
         alienFuel: [CLIP, 50]
@@ -324,6 +339,24 @@ public sealed class BattleStartTests
                   - {type: ground, groups: [0]}
                   - {type: middle, groups: [0]}
                   - {type: ceiling, blocks: [5]}
+          - type: OVERRUN
+            commands:
+              - type: addBlock
+                size: [1, 1]
+                rects: [[1, 0, 1, 1]]
+                verticalLevels:
+                  - {type: ground, blocks: [1]}
+                  - {type: ceiling, blocks: [0]}
+              - {type: fillArea}
+          - type: OVERRUN_SOUTH
+            commands:
+              - type: addBlock
+                size: [1, 1]
+                rects: [[0, 1, 1, 1]]
+                verticalLevels:
+                  - {type: ground, blocks: [1]}
+                  - {type: ceiling, blocks: [9]}
+              - {type: fillArea}
           - type: UNFILLED
             commands:
               - {type: addBlock, groups: [1]}
@@ -336,7 +369,7 @@ public sealed class BattleStartTests
         return map;
     }
 
-    private static Files TerrainFiles() => new(new()
+    internal static Files TerrainFiles() => new(new()
     {
         ["TERRAIN/BLANKS.MCD"] = Mcd(Record(), Record((42, 1))),
         // TESTSET's third object (MAP ID 4) is a UFO power source (special type 2).
@@ -372,6 +405,8 @@ public sealed class BattleStartTests
         ["MAPS/JUNK.MAP"] = Map(10, 10, 2),
         ["ROUTES/JUNK.RMP"] = RouteNode(8, 8, 0, [], rank: 4, priority: 1),
         ["ROUTES/ARMORY.RMP"] = RouteNode(8, 8, 0, [], rank: 4, priority: 1),
+        ["MAPS/TALL.MAP"] = Map(20, 10, 2),
+        ["ROUTES/TALL.RMP"] = [],
     });
 
     private static (CampaignState Campaign, CampaignDeploymentRequest Request) Requested(string? rules, string ufo = "UFO_SCOUT",
@@ -1036,6 +1071,20 @@ public sealed class BattleStartTests
             Assert.Contains(above.Id, lower.Links);
             Assert.Contains(lower.Id, above.Links);
         }
+    }
+
+    [Theory]
+    [InlineData("UFO_OVERRUN", "Map block MAPS/BIG.MAP (20x10) placed at (10, 0) runs past the 20x20 map.")]
+    [InlineData("UFO_OVERRUN_SOUTH", "Map block MAPS/TALL.MAP (10x20) placed at (0, 10) runs past the 20x20 map.")]
+    public void AVerticalLevelsBlockRunningPastTheMapsSideIsRefused(string deployment, string reason)
+    {
+        // On the east (or south) cell of a 20x20 map, the ground is SMALL and the ceiling names BIG, 20 wide (or TALL,
+        // 20 long), by index: the reference's getTile returns null past the side and loadMAP dereferences it.
+        var (campaign, _) = Requested(Rules, deployment);
+        var before = campaign.Capture();
+        var blocked = Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(new StartBattle()).Events));
+        Assert.Equal((CampaignBattles.GenerationFailedCode, reason), (blocked.Code, blocked.Reason));
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
     [Fact]

@@ -101,6 +101,8 @@ internal static class BattleGenerator
         {
             TerrainId = terrain.Id,
             MapScriptId = scriptId,
+            AlienCustomDeploy = request.AlienCustomDeploymentId,
+            AlienCustomMission = request.AlienCustomMissionId,
             Depth = depth,
             GlobalShade = shade,
             StorageSpace = generated.StorageSpace,
