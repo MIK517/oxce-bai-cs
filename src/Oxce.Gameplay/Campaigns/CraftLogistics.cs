@@ -10,6 +10,10 @@ public sealed record CraftVehicleSnapshot(string RuleId, int Ammo)
     public int? SpaceOccupied { get; init; }
     public string PreservationKey { get; init; } = string.Empty;
 }
+/// <summary>A custom deployment point relative to the craft map (Position) and the unit's facing.</summary>
+public sealed record CraftDeploymentPoint(int X, int Y, int Z, int Direction);
+/// <summary>Craft.h VehicleDeploymentData without the per-battle <c>used</c> flag.</summary>
+public sealed record CraftVehicleDeployment(string Type, CraftDeploymentPoint Point);
 public sealed record CraftLogisticsState(int Fuel, int Damage, string Status,
     IReadOnlyList<CraftWeaponSnapshot?> Weapons, IReadOnlyDictionary<string, int> Items,
     IReadOnlyList<CraftVehicleSnapshot> Vehicles)
@@ -39,6 +43,15 @@ public sealed record CraftLogisticsState(int Fuel, int Damage, string Status,
     public double SpeedLongitude { get; init; }
     public double SpeedLatitude { get; init; }
     public double SpeedRadian { get; init; }
+    /// <summary>Craft::_customSoldierDeployment: soldier ID to point, set by the battle's deployment preview.</summary>
+    public IReadOnlyDictionary<int, CraftDeploymentPoint> CustomSoldierDeployment { get; init; } =
+        new ReadOnlyDictionary<int, CraftDeploymentPoint>(new Dictionary<int, CraftDeploymentPoint>());
+    /// <summary>Craft::_customVehicleDeployment, in save order.</summary>
+    public IReadOnlyList<CraftVehicleDeployment> CustomVehicleDeployment { get; init; } = [];
+    /// <summary>Craft::_skinIndex: 0 for the plain sprite and battle map, else the skin's number.</summary>
+    public int SkinIndex { get; init; }
+    /// <summary>Craft::hasCustomDeployment.</summary>
+    public bool HasCustomDeployment => CustomSoldierDeployment.Count != 0 || CustomVehicleDeployment.Count != 0;
 }
 
 public sealed record CraftEffectiveStats(int SoldierCapacity, int VehicleCapacity,

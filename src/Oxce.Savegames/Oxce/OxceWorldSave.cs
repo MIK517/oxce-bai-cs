@@ -519,6 +519,7 @@ public static partial class OxceSaveAdapter
         Pair("craft", Mapping([Pair("type", Scalar(request.CraftTypeId)), Pair("id", Integer(request.CraftId))])),
         Pair("soldiers", Sequence(request.Soldiers.Select(static id => (YamlNode)Integer(id)))),
         Pair("vehicles", Sequence(request.Vehicles.Select(static id => (YamlNode)Scalar(id)))),
+        Pair("vehicleAmmo", request.VehicleAmmo.Count == 0 ? null : Sequence(request.VehicleAmmo.Select(static ammo => (YamlNode)Integer(ammo)))),
         Pair("items", IntMapping(request.Items.OrderBy(static pair => pair.Key, StringComparer.Ordinal))),
         Pair("ufoDamagePercentage", request.UfoDamagePercentage == 0 ? null : Integer(request.UfoDamagePercentage)),
     ]);
@@ -527,14 +528,21 @@ public static partial class OxceSaveAdapter
     {
         var craft = map.TryGet("craft", out var node) && node is YamlMappingNode craftMap ? craftMap
             : throw new InvalidDataException("A deployment request needs its craft.");
+        var vehicles = Array.AsReadOnly(Sequence(map, "vehicles").Select(static node => YamlValueReader.ReadString(node)).ToArray());
+        var vehicleAmmo = Array.AsReadOnly(Sequence(map, "vehicleAmmo").Select(static node => YamlValueReader.ReadInt32(node)).ToArray());
+        if (vehicleAmmo.Count != 0 && vehicleAmmo.Count != vehicles.Count)
+            throw new InvalidDataException("A deployment request records ammo for a different number of vehicles than it carries.");
+        var target = ReadTargetReference(map, markers, 0, 0) ?? throw new InvalidDataException("A deployment request needs its target.");
+        // An alien base has no mission texture (setWorldTexture(0, globeTexture)); saves before Phase 7 recorded it as 0.
+        var missionTexture = target.Kind == WorldTargetKind.AlienBase ? -1 : map.ReadInt32("missionTexture", -1);
         return new CampaignDeploymentRequest(map.ReadString("missionType", ""), map.ReadString("deployment", ""),
             map.ReadString("alienCustomDeploy", ""), map.ReadString("alienCustomMission", ""), map.ReadString("race", ""),
-            map.ReadInt32("missionTexture", -1), map.ReadInt32("globeTexture", -1), map.ReadInt32("shade", 0),
-            ReadTargetReference(map, markers, 0, 0) ?? throw new InvalidDataException("A deployment request needs its target."),
-            map.ReadInt32("base", 0), RequiredString(craft, "type"), craft.ReadInt32("id", 0))
+            missionTexture, map.ReadInt32("globeTexture", -1), map.ReadInt32("shade", 0),
+            target, map.ReadInt32("base", 0), RequiredString(craft, "type"), craft.ReadInt32("id", 0))
         {
             Soldiers = Array.AsReadOnly(Sequence(map, "soldiers").Select(static node => YamlValueReader.ReadInt32(node)).ToArray()),
-            Vehicles = Array.AsReadOnly(Sequence(map, "vehicles").Select(static node => YamlValueReader.ReadString(node)).ToArray()),
+            Vehicles = vehicles,
+            VehicleAmmo = vehicleAmmo,
             Items = ReadIntMap(map, "items"),
             UfoDamagePercentage = map.ReadInt32("ufoDamagePercentage", 0),
         };

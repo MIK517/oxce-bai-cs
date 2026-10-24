@@ -245,21 +245,24 @@ public sealed partial class CampaignState
         return true;
     }
 
-    private Dictionary<string, short> StatsWithBonuses(SoldierPersonalState soldier)
+    private Dictionary<string, short> StatsWithBonuses(SoldierPersonalState soldier) => StatsWithBonuses(soldier, _content.RuntimeRules);
+
+    /// <summary>Soldier::prepareStatsWithBonuses before the armor: current statistics plus every soldier bonus (Soldier::getBonuses).</summary>
+    internal static Dictionary<string, short> StatsWithBonuses(SoldierPersonalState soldier, RuntimeRuleCatalog rules)
     {
         var stats = new Dictionary<string, short>(soldier.CurrentStats, StringComparer.Ordinal);
         var bonuses = new HashSet<RuleHandle<SoldierBonusRuleFamily>>();
         foreach (var id in soldier.TransformationBonuses.Keys)
-            if (_content.RuntimeRules.SoldierBonuses.TryGet(id, out var handle)) bonuses.Add(handle);
+            if (rules.SoldierBonuses.TryGet(id, out var handle)) bonuses.Add(handle);
         foreach (var commendation in soldier.Commendations)
-            if (_content.RuntimeRules.Commendations.TryGet(commendation.RuleId, out var commendationHandle))
+            if (rules.Commendations.TryGet(commendation.RuleId, out var commendationHandle))
             {
-                var types = _content.RuntimeRules.Commendations[commendationHandle].Value.SoldierBonusTypes;
-                if (types.Count != 0 && _content.RuntimeRules.SoldierBonuses.TryGet(types[Math.Clamp(commendation.DecorationLevel, 0, types.Count - 1)], out var bonus))
+                var types = rules.Commendations[commendationHandle].Value.SoldierBonusTypes;
+                if (types.Count != 0 && rules.SoldierBonuses.TryGet(types[Math.Clamp(commendation.DecorationLevel, 0, types.Count - 1)], out var bonus))
                     bonuses.Add(bonus);
             }
         foreach (var bonus in bonuses)
-            foreach (var pair in _content.RuntimeRules.SoldierBonuses[bonus].Value.Stats)
+            foreach (var pair in rules.SoldierBonuses[bonus].Value.Stats)
                 stats[pair.Key] = unchecked((short)(stats.GetValueOrDefault(pair.Key) + pair.Value));
         return stats;
     }

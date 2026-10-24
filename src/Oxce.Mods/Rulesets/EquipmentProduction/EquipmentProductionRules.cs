@@ -48,6 +48,10 @@ public sealed record CraftRule(
     IReadOnlyList<string> FixedWeapons,
     IReadOnlyList<string> RequiredPilotBonuses)
 {
+    /// <summary>RuleCraft::getDeployment: [x, y, z, direction] spawn points relative to the craft map.</summary>
+    public IReadOnlyList<IReadOnlyList<int>> Deployment { get; init; } = [];
+    /// <summary>RuleCraft::getBattlescapeTerrainData: the craft's own map, or null.</summary>
+    public TerrainDeployment.InlineTerrainRule? BattlescapeTerrain { get; init; }
     public IReadOnlyDictionary<string, short> PilotMinimumStats { get; init; } = new System.Collections.ObjectModel.ReadOnlyDictionary<string, short>(new Dictionary<string, short>());
     public int EffectiveMaximumUnits => Integers["maxUnitsLimit"] < 0
         ? Stats.Get("soldiers")
@@ -71,6 +75,8 @@ public sealed record UfoRule(
     UfoStats Stats,
     IReadOnlyDictionary<string, UfoStats> RaceBonuses)
 {
+    /// <summary>RuleUfo::getBattlescapeTerrainData: the UFO's own map, or null.</summary>
+    public TerrainDeployment.InlineTerrainRule? BattlescapeTerrain { get; init; }
     public int EffectiveRadius => Integers["radius"] >= 0 ? Integers["radius"] : Size switch
     {
         "STR_VERY_SMALL" => 2,
@@ -231,6 +237,9 @@ internal sealed class CraftWeaponBuilder(string id)
 
 internal sealed class CraftBuilder
 {
+    public TerrainDeployment.InlineTerrainRule? BattlescapeTerrain { get; set; }
+    public List<IReadOnlyList<int>> Deployment { get; set; } = [];
+
     public CraftBuilder(string id, int listOrder)
     {
         Id = id;
@@ -312,6 +321,8 @@ internal sealed class CraftBuilder
 
 internal sealed class UfoBuilder(string id)
 {
+    public TerrainDeployment.InlineTerrainRule? BattlescapeTerrain { get; set; }
+
     public string Id { get; } = id;
     public string Size { get; set; } = "STR_VERY_SMALL";
     public string ModSprite { get; set; } = string.Empty;

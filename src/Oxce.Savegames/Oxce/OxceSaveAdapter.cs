@@ -222,6 +222,13 @@ public static partial class OxceSaveAdapter
             ResearchDiarySequence = body.ReadUInt64("oxcePortResearchDiarySequence", 0),
             ManufactureRuleStatus = ReadIntMap(body, "manufactureRuleStatus"),
             MonthlyPurchaseLog = ReadIntMap(body, "monthlyPurchaseLimitLog"),
+            // Read only: the node stays as the reference wrote it.
+            CustomRuleCraftDeployments = body.TryGet("customRuleCraftDeployments", out var craftDeployments)
+                ? new ReadOnlyDictionary<string, IReadOnlyList<IReadOnlyList<int>>>(YamlValueReader.ReadMap(craftDeployments!,
+                    YamlValueReader.ReadString, node => (IReadOnlyList<IReadOnlyList<int>>)Array.AsReadOnly(
+                        YamlValueReader.ReadSequence(node, point => (IReadOnlyList<int>)Array.AsReadOnly(
+                            YamlValueReader.ReadSequence(point, YamlValueReader.ReadInt32)))), StringComparer.Ordinal))
+                : CampaignSnapshot.EmptyCraftDeployments,
             DebugMode = body.ReadBoolean("debug", false),
             Warned = body.ReadBoolean("warned", false),
             MissionStatistics = Array.AsReadOnly(Maps(body, "missionStatistics").Select(ReadMissionStatistic).ToArray()),
@@ -732,8 +739,19 @@ public static partial class OxceSaveAdapter
                     Pair("size", vehicle.Size is { } size ? Integer(size) : null),
                     Pair("spaceOccupied", vehicle.SpaceOccupied is { } space ? Integer(space) : null)]);
             }))),
+            // Craft::save writes them only when not empty; a reset deployment leaves the node.
+            Pair("customSoldierDeployment", state.CustomSoldierDeployment.Count == 0 ? null : Mapping(state.CustomSoldierDeployment
+                .OrderBy(static pair => pair.Key).Select(pair => Pair(pair.Key.ToString(CultureInfo.InvariantCulture),
+                    Sequence([DeploymentPosition(pair.Value), Integer(pair.Value.Direction)]))))),
+            Pair("customVehicleDeployment", state.CustomVehicleDeployment.Count == 0 ? null : Sequence(state.CustomVehicleDeployment
+                .Select(vehicle => Mapping([Pair("type", Scalar(vehicle.Type)), Pair("pos", DeploymentPosition(vehicle.Point)),
+                    Pair("dir", Integer(vehicle.Point.Direction))])))),
+            Pair("skinIndex", state.SkinIndex == 0 ? null : Integer(state.SkinIndex)),
         ]);
     }
+
+    private static YamlSequenceNode DeploymentPosition(CraftDeploymentPoint point) =>
+        Sequence([Integer(point.X), Integer(point.Y), Integer(point.Z)]);
 
     private static YamlMappingNode BuildTransfer(TransferSnapshot value, SaveEntityIndex index) =>
         Overlay(MatchingSource(index.Transfers.GetValueOrDefault(value.Id), value.PreservationKey, $"transfer:{value.Id}"),
@@ -876,6 +894,7 @@ public static partial class OxceSaveAdapter
             ReplacedArmor = map.ReadString("replacedArmor", ""),
             TransformedArmor = map.ReadString("transformedArmor", ""),
             PersonalEquipmentArmor = map.ReadString("personalEquipmentArmor", ""),
+            EquipmentLayout = ReadEquipmentLayout(map, content),
             Recovery = (float)map.ReadDouble("recovery", 0),
             PsiTraining = map.ReadBoolean("psiTraining", false),
             Training = map.ReadBoolean("training", false),
@@ -888,15 +907,49 @@ public static partial class OxceSaveAdapter
             p => p.Key, p => checked((short)p.Value), StringComparer.Ordinal));
     }
 
+    // Soldier::load: an entry whose item, section or ammunition does not exist is logged and skipped.
+    private static ReadOnlyCollection<SoldierLayoutItem> ReadEquipmentLayout(YamlMappingNode soldier, RuntimeContent content)
+    {
+        var rules = content.RuntimeRules;
+        var result = new List<SoldierLayoutItem>();
+        foreach (var entry in Maps(soldier, "equipmentLayout"))
+        {
+            var item = entry.ReadString("itemType", "");
+            var slot = entry.ReadString("slot", "");
+            if (!rules.Items.TryGet(item, out _) || !rules.Inventories.TryGet(slot, out _)) continue;
+            var ammo = new string[4];
+            Array.Fill(ammo, "");
+            if (entry.TryGet("ammoItemSlots", out var slots) && slots is YamlSequenceNode sequence)
+            {
+                // EquipmentLayoutItem::load reads up to four slots, stopping at the first missing one; NONE is empty.
+                for (var index = 0; index < Math.Min(4, sequence.Items.Count); index++)
+                {
+                    var name = YamlValueReader.ReadString(sequence.Items[index]);
+                    ammo[index] = name == "NONE" ? "" : name;
+                }
+            }
+            else if (entry.TryGet("ammoItem", out var single)) ammo[0] = YamlValueReader.ReadString(single!);
+            if (ammo.Any(name => name.Length != 0 && !rules.Items.TryGet(name, out _))) continue;
+            result.Add(new(item, slot, entry.ReadInt32("slotX", 0), entry.ReadInt32("slotY", 0), Array.AsReadOnly(ammo),
+                entry.ReadInt32("fuseTimer", -1), entry.ReadBoolean("fixed", false)));
+        }
+        return result.AsReadOnly();
+    }
+
     private static CraftSnapshot ReadCraft(YamlMappingNode map, WorldMarkerIndex markers, RuntimeContent content)
     {
         var type = RequiredString(map, "type");
         var id = map.ReadInt32("id", 0);
         var preservationKey = map.ReadString("oxcePortEntityKey", $"craft:{type}:{id}");
+        var logistics = ReadCraftLogistics(map, preservationKey, markers);
+        // Craft::load: a skin above the craft rule's maxSkinIndex, even a negative one, falls back to 0.
+        if (logistics is not null && content.RuntimeRules.Crafts.TryGet(type, out var rule) &&
+            logistics.SkinIndex > content.RuntimeRules.Crafts[rule].Value.MaximumSkinIndex)
+            logistics = logistics with { SkinIndex = 0 };
         return new(type, id)
         {
             PreservationKey = preservationKey,
-            Logistics = ReadCraftLogistics(map, preservationKey, markers),
+            Logistics = logistics,
             ScriptValues = ReadScriptValues(map, content, "Craft"),
         };
     }
@@ -977,7 +1030,30 @@ public static partial class OxceSaveAdapter
             SpeedLongitude = map.ReadDouble("speedLon", 0),
             SpeedLatitude = map.ReadDouble("speedLat", 0),
             SpeedRadian = map.ReadDouble("speedRadian", 0),
+            SkinIndex = map.ReadInt32("skinIndex", 0),
+            CustomSoldierDeployment = map.TryGet("customSoldierDeployment", out var soldiers)
+                ? new ReadOnlyDictionary<int, CraftDeploymentPoint>(YamlValueReader.ReadMap(soldiers!, YamlValueReader.ReadInt32, node =>
+                {
+                    // std::pair<Position, int>: [[x, y, z], dir].
+                    var (position, direction) = YamlValueReader.ReadPair(node, ReadPosition, YamlValueReader.ReadInt32);
+                    return new CraftDeploymentPoint(position.X, position.Y, position.Z, direction);
+                }))
+                : new ReadOnlyDictionary<int, CraftDeploymentPoint>(new Dictionary<int, CraftDeploymentPoint>()),
+            // VehicleDeploymentData: a missing type stays empty, a missing pos is [-1, -1, -1].
+            CustomVehicleDeployment = Array.AsReadOnly(Maps(map, "customVehicleDeployment").Select(vehicle =>
+            {
+                var position = vehicle.TryGet("pos", out var pos) ? ReadPosition(pos!) : (X: -1, Y: -1, Z: -1);
+                return new CraftVehicleDeployment(vehicle.ReadString("type", ""),
+                    new(position.X, position.Y, position.Z, vehicle.ReadInt32("dir", 0)));
+            }).ToArray()),
         };
+    }
+
+    /// <summary>Position's reader: a sequence of three Sint16 values.</summary>
+    private static (int X, int Y, int Z) ReadPosition(YamlNode node)
+    {
+        var (x, y, z) = YamlValueReader.ReadTuple(node, YamlValueReader.ReadInt16, YamlValueReader.ReadInt16, YamlValueReader.ReadInt16);
+        return (x, y, z);
     }
 
     private static TransferSnapshot ReadTransfer(

@@ -19,7 +19,9 @@ public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool Ca
     bool AggressiveRetaliation = true, bool CraftLaunchAlways = false, bool SuppressLandingWithoutEquipment = false,
     bool SuppressRedundantHunterAlert = true, bool RetainCorpses = false, bool DogfightAI = true,
     bool RememberDisabledCraftWeapons = false, bool GlobeSeasons = false, int WoundedDefendBaseIf = 100,
-    bool PsiStrengthEval = false, bool GeoscapeEventsInstantDelivery = true, bool Autosave = true)
+    bool PsiStrengthEval = false, bool GeoscapeEventsInstantDelivery = true, bool Autosave = true,
+    bool DisableAutoEquip = false, bool AlternateCraftEquipmentManagement = false, int PreprimeGrenades = 0,
+    bool IncludePrimeStateInSavedLayout = false)
 {
     /// <summary>Every option with its external key, in record order (the order saves write them).</summary>
     public static IReadOnlyList<CampaignOptionField> Fields { get; } =
@@ -49,6 +51,13 @@ public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool Ca
         CampaignOptionField.Flag("oxceGeoscapeEventsInstantDelivery", o => o.GeoscapeEventsInstantDelivery,
             (o, v) => o with { GeoscapeEventsInstantDelivery = v }),
         CampaignOptionField.Flag("autosave", o => o.Autosave, (o, v) => o with { Autosave = v }),
+        // Battle equipment (BattlescapeGenerator::deployXCOM, autoEquip, placeItemByLayout).
+        CampaignOptionField.Flag("disableAutoEquip", o => o.DisableAutoEquip, (o, v) => o with { DisableAutoEquip = v }),
+        CampaignOptionField.Flag("oxceAlternateCraftEquipmentManagement", o => o.AlternateCraftEquipmentManagement,
+            (o, v) => o with { AlternateCraftEquipmentManagement = v }),
+        CampaignOptionField.Number("preprimeGrenades", true, o => o.PreprimeGrenades, (o, v) => o with { PreprimeGrenades = v }),
+        CampaignOptionField.Flag("includePrimeStateInSavedLayout", o => o.IncludePrimeStateInSavedLayout,
+            (o, v) => o with { IncludePrimeStateInSavedLayout = v }),
     ];
 
     /// <summary>
@@ -268,6 +277,8 @@ public sealed record CampaignSnapshot(
     public IReadOnlyDictionary<string, int> ResearchRuleStatus { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
     public IReadOnlyDictionary<string, int> ManufactureRuleStatus { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
     public IReadOnlyDictionary<string, int> MonthlyPurchaseLog { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
+    /// <summary>SavedGame::_customRuleCraftDeployments: craft type to its [x, y, z, dir] deployment points.</summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<IReadOnlyList<int>>> CustomRuleCraftDeployments { get; init; } = EmptyCraftDeployments;
     public bool DebugMode { get; init; }
     /// <summary>SavedGame::_warned: the monthly report has warned about funds at or below defeatFunds.</summary>
     public bool Warned { get; init; }
@@ -275,6 +286,9 @@ public sealed record CampaignSnapshot(
     public IReadOnlyList<MissionStatisticSnapshot> MissionStatistics { get; init; } = [];
     public CampaignOptions Options { get; init; } = new();
     public WorldSnapshot World { get; init; } = WorldSnapshot.Empty;
+
+    public static readonly IReadOnlyDictionary<string, IReadOnlyList<IReadOnlyList<int>>> EmptyCraftDeployments =
+        new ReadOnlyDictionary<string, IReadOnlyList<IReadOnlyList<int>>>(new Dictionary<string, IReadOnlyList<IReadOnlyList<int>>>());
 
     internal static IReadOnlyList<T> ReadOnly<T>(IEnumerable<T> values) => Array.AsReadOnly(values.ToArray());
 

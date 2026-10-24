@@ -48,13 +48,12 @@ public interface ICampaignLandingQuery
 /// intentional difference, ADR 0032) so does a craft left without a destination, which would make the
 /// reference throw on Yes. No sends the craft home and Patrol leaves it circling.
 /// </summary>
-internal sealed partial class CampaignWorld : ICampaignLandingQuery
+internal sealed partial class CampaignWorld : ICampaignLandingQuery, Battles.ICampaignDeploymentHandOver
 {
     private readonly List<CampaignLandingConfirmation> _landings = [];
     private int _nextLanding = 1;
-    // D4: at most one deployment request; saved, never withdrawn, taken once by the Phase 7 seam.
+    // D4: at most one deployment request; saved, never withdrawn, consumed when its battle is generated.
     private CampaignDeploymentRequest? _deploymentRequest;
-    private bool _deploymentRequestTaken;
 
     private void RegisterLandings(CampaignCapabilityRegistry registry)
     {
@@ -65,13 +64,13 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery
                 : _baseDefense is not null ? WorldCommandReasons.BaseDefenseOpen
                 : _landings.Count != 0 ? WorldCommandReasons.LandingConfirmationsOpen : null);
         registry.Command<AnswerLanding>(AnswerLanding);
-        registry.Command<TakeDeploymentRequest>(_ => TakeDeploymentRequest());
+        registry.Operation<Battles.ICampaignDeploymentHandOver>(this);
         registry.Command<LaunchFinalMission>(LaunchFinalMission);
         // D4: the campaign waits at the launch point. Time stops in its preflight (above); every other
-        // command except the Phase 7 seam refuses, so nothing changes the craft, crew or world first.
+        // command except starting the battle refuses, so nothing changes the craft, crew or world first.
         // EnterCampaignWorld is a no-op once the world has begun, which a pending request implies.
         registry.CommandGate(command => _deploymentRequest is not null &&
-            command is not (World.TakeDeploymentRequest or AdvanceCampaignTime or EnterCampaignWorld)
+            command is not (Battles.StartBattle or AdvanceCampaignTime or EnterCampaignWorld)
             ? Blocked(WorldCommandReasons.DeploymentRequestPending) : null);
     }
 
@@ -103,9 +102,9 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery
         {
             Soldiers = [.. owner.Soldiers.Where(Aboard).Select(static soldier => soldier.Id)],
             Vehicles = [.. state.Vehicles.Select(static vehicle => vehicle.RuleId)],
+            VehicleAmmo = [.. state.Vehicles.Select(static vehicle => vehicle.Ammo)],
             Items = new System.Collections.ObjectModel.ReadOnlyDictionary<string, int>(new Dictionary<string, int>(state.Items, StringComparer.Ordinal)),
         };
-        _deploymentRequestTaken = false;
         return new CampaignCommandResult([new DeploymentRequested(_deploymentRequest)]);
     }
 
@@ -137,12 +136,9 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery
         return null;
     }
 
-    private CampaignCommandResult TakeDeploymentRequest()
-    {
-        if (_deploymentRequest is not { } request || _deploymentRequestTaken) return Blocked(WorldCommandReasons.NoDeploymentRequest);
-        _deploymentRequestTaken = true;
-        return new CampaignCommandResult([new DeploymentRequestTaken(request)]);
-    }
+    CampaignDeploymentRequest? Battles.ICampaignDeploymentHandOver.PendingDeploymentRequest => _deploymentRequest;
+
+    void Battles.ICampaignDeploymentHandOver.ConsumeDeploymentRequest() => _deploymentRequest = null;
 
     public IReadOnlyList<CampaignLandingConfirmation> QueryLandingConfirmations() => campaign.Read(() =>
         (IReadOnlyList<CampaignLandingConfirmation>)[.. _landings.SkipWhile(IsStaleLanding)]);
@@ -274,8 +270,8 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery
                     customDeploy = raceRule?.BaseCustomDeploy ?? "";
                     customMission = raceRule?.BaseCustomMission ?? "";
                     race = alienBase.Race;
-                    // BattlescapeGenerator::setWorldTexture(0, globeTexture) for alien bases.
-                    missionTexture = 0;
+                    // BattlescapeGenerator::setWorldTexture(0, globeTexture) for alien bases: no mission texture.
+                    missionTexture = -1;
                     break;
                 }
             default:
@@ -319,6 +315,11 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery
         switch (command.Answer)
         {
             case LandingAnswer.Yes:
+                // checkStartingCondition reads the alien base race's base custom mission after the armor check, and
+                // btnYesClick its base custom deployment: an unknown race is a null AlienRace there. Yes refuses first.
+                if (campaign.HasAllowedArmorsOnboard(owner, craft) && landing.Target.Kind == WorldTargetKind.AlienBase &&
+                    TargetAlienBase(landing.Target) is { } landedBase && !campaign.Content.RuntimeRules.AlienRaces.TryGet(landedBase.Race, out _))
+                    return Blocked(WorldCommandReasons.AlienBaseRaceUnknown);
                 if (StartingConditionRefusal(owner, craft, state, landing, out var condition) is { } refusal)
                 {
                     owner.Crafts[index] = craft with { Logistics = SetDestination(state, maximum, BaseReference(owner)) };
@@ -344,10 +345,10 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery
                 _deploymentRequest = request with
                 {
                     Vehicles = [.. state.Vehicles.Select(static vehicle => vehicle.RuleId)],
+                    VehicleAmmo = [.. state.Vehicles.Select(static vehicle => vehicle.Ammo)],
                     Items = new System.Collections.ObjectModel.ReadOnlyDictionary<string, int>(
                         new Dictionary<string, int>(state.Items, StringComparer.Ordinal)),
                 };
-                _deploymentRequestTaken = false;
                 _landings.RemoveAt(0);
                 return new CampaignCommandResult([new DeploymentRequested(_deploymentRequest)]);
             case LandingAnswer.No:

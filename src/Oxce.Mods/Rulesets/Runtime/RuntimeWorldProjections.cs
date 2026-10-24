@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Oxce.Formats.Yaml;
 
 namespace Oxce.Mods.Rulesets.Runtime;
 
@@ -85,6 +86,9 @@ public sealed record RuntimeUfoRule(
     IReadOnlyDictionary<string, RuntimeUfoStats> RaceBonuses,
     RuleHandleList<RuntimeScriptFamily> Scripts)
 {
+    /// <summary>RuleUfo::getBattlescapeTerrainData: the UFO's map, or null.</summary>
+    public RuntimeTerrain? BattlescapeTerrain { get; init; }
+
     public int Radius { get; init; }
     public int WeaponRange { get; init; }
     public int WeaponPower { get; init; }
@@ -210,6 +214,63 @@ public sealed record RuntimeStartingCondition(IReadOnlyList<string> AllowedCraft
     IReadOnlyList<string> AllowedSoldierTypes, IReadOnlyList<string> ForbiddenSoldierTypes,
     IReadOnlyDictionary<string, int> RequiredItems, bool DestroyRequiredItems, bool RequireCommanderOnboard)
 {
+    /// <summary><c>allowedArmors</c> and <c>forbiddenArmors</c> (the forbidden list wins when both are given).</summary>
+    public IReadOnlyList<string> AllowedArmors { get; init; } = [];
+    public IReadOnlyList<string> ForbiddenArmors { get; init; } = [];
+
+    /// <summary><c>defaultArmor</c>: by soldier type, the weighted armors a disallowed armor is replaced with ("noChange" keeps it).</summary>
+    public IReadOnlyDictionary<string, IReadOnlyDictionary<string, int>> DefaultArmor { get; init; } =
+        new ReadOnlyDictionary<string, IReadOnlyDictionary<string, int>>(new Dictionary<string, IReadOnlyDictionary<string, int>>(StringComparer.Ordinal));
+
+    /// <summary>Whether vehicles, items or item categories are allowed or forbidden.</summary>
+    public bool RestrictsEquipment { get; init; }
+
+    /// <summary><c>allowedVehicles</c>, <c>forbiddenVehicles</c>, <c>allowedItems</c>, <c>forbiddenItems</c>,
+    /// <c>allowedItemCategories</c> and <c>forbiddenItemCategories</c>.</summary>
+    public IReadOnlyList<string> AllowedVehicles { get; init; } = [];
+    public IReadOnlyList<string> ForbiddenVehicles { get; init; } = [];
+    public IReadOnlyList<string> AllowedItems { get; init; } = [];
+    public IReadOnlyList<string> ForbiddenItems { get; init; } = [];
+    public IReadOnlyList<string> AllowedItemCategories { get; init; } = [];
+    public IReadOnlyList<string> ForbiddenItemCategories { get; init; } = [];
+
+    public bool IsVehiclePermitted(string vehicleType) => Permitted(AllowedVehicles, ForbiddenVehicles, vehicleType);
+
+    /// <summary>
+    /// RuleStartingCondition::isItemPermitted: the item lists decide first (an explicitly allowed item is permitted, an
+    /// explicitly forbidden one is not); then, for a known item, its categories (and those of the craft's ammo for a
+    /// firearm when ammo shares categories) against the forbidden or else the allowed categories.
+    /// </summary>
+    public bool IsItemPermitted(string itemType, IEnumerable<string>? categories)
+    {
+        var itemResult = true;
+        if (ForbiddenItems.Count != 0)
+        {
+            if (ForbiddenItems.Contains(itemType)) return false;
+        }
+        else if (AllowedItems.Count != 0)
+        {
+            if (AllowedItems.Contains(itemType)) return true;
+            itemResult = false;
+        }
+        var checkForbidden = ForbiddenItemCategories.Count != 0;
+        var checkAllowed = !checkForbidden && AllowedItemCategories.Count != 0;
+        var categoryResult = !checkAllowed;
+        if ((checkForbidden || checkAllowed) && categories is not null)
+        {
+            foreach (var category in categories)
+            {
+                if (checkForbidden && ForbiddenItemCategories.Contains(category)) return false;
+                if (checkAllowed && AllowedItemCategories.Contains(category)) return true;
+            }
+        }
+        return itemResult && categoryResult;
+    }
+
+    /// <summary>RuleStartingCondition::getCraftReplacement: the craft whose map replaces a source craft's.</summary>
+    public IReadOnlyDictionary<string, string> CraftTransformations { get; init; } =
+        new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(StringComparer.Ordinal));
+
     public bool IsCraftPermitted(string craftType) => Permitted(AllowedCraft, ForbiddenCraft, craftType);
 
     public bool IsSoldierTypePermitted(string soldierType) => Permitted(AllowedSoldierTypes, ForbiddenSoldierTypes, soldierType);
@@ -227,11 +288,15 @@ public sealed record RuntimeAlienRaceRule(string Id, int RetaliationAggression, 
     /// <summary>AlienRace::getBaseCustomDeploy and getBaseCustomMission: alien-base battle deployments.</summary>
     public string BaseCustomDeploy { get; init; } = string.Empty;
     public string BaseCustomMission { get; init; } = string.Empty;
+
+    /// <summary>AlienRace <c>members</c> by rank, and <c>membersRandom</c> (one set per rank; it wins when present).</summary>
+    public IReadOnlyList<string> Members { get; init; } = [];
+    public IReadOnlyList<IReadOnlyList<string>> RandomMembers { get; init; } = [];
 }
 
 /// <summary>
-/// The strategic projection of an alien deployment: site and alien-base bookkeeping only.
-/// Battlescape generation properties remain in the typed catalog for Phase 7.
+/// The runtime projection of an alien deployment: site and alien-base bookkeeping, and in
+/// <see cref="Battle"/> the battlescape properties the battle generator reads so far.
 /// Reference: <c>Mod/AlienDeployment.cpp</c>.
 /// </summary>
 public sealed record RuntimeAlienDeploymentRule(
@@ -277,6 +342,9 @@ public sealed record RuntimeAlienDeploymentRule(
     /// <summary>AlienDeployment::getAlienBaseDiscoveredMessage: AlienBaseState's title, or "" for the default.</summary>
     public string AlienBaseDiscoveredMessage { get; init; } = string.Empty;
 
+    /// <summary>The battlescape properties of this deployment.</summary>
+    public RuntimeDeploymentBattle Battle { get; init; } = RuntimeDeploymentBattle.Default;
+
     /// <summary>
     /// AlienDeployment::generateHuntMission / generateAlienBaseUpgrade: the timeline is stored in
     /// descending month order and the first entry at or below the given month wins.
@@ -288,6 +356,114 @@ public sealed record RuntimeAlienDeploymentRule(
             if (month >= timeline[index].FirstMonth) return timeline[index].Weights;
         return timeline.Count == 0 ? null : timeline[0].Weights;
     }
+}
+
+/// <summary>
+/// AlienDeployment battlescape properties read by <c>BattlescapeGenerator::run</c>: the map size
+/// (<c>getDimensions</c>), <c>turnLimit</c>, <c>chronoTrigger</c> (0 force lose, 1 force abort, 2 force win,
+/// 3 force win surrender), <c>cheatTurn</c> and the shade overrides (-1 for none).
+/// </summary>
+public sealed record RuntimeDeploymentBattle(
+    int Width, int Length, int Height, int TurnLimit, int ChronoTrigger, int CheatTurn, int Shade, int MinShade, int MaxShade)
+{
+    public static RuntimeDeploymentBattle Default { get; } = new(0, 0, 0, 0, 0, 20, -1, -1, -1);
+
+    /// <summary>AlienDeployment::getTerrains: the battle picks one of these, if any, over the globe texture's.</summary>
+    public IReadOnlyList<string> Terrains { get; init; } = [];
+
+    /// <summary>AlienDeployment's <c>script</c> ("" for none) and <c>mapScripts</c> (one is picked when present).</summary>
+    public string MapScript { get; init; } = "";
+
+    public IReadOnlyList<string> MapScripts { get; init; } = [];
+
+    /// <summary>AlienDeployment <c>depth</c> [min, max]; a positive maximum overrides the terrain's.</summary>
+    public int MinimumDepth { get; init; }
+
+    public int MaximumDepth { get; init; }
+
+    /// <summary>AlienDeployment <c>enviroEffects</c> ("" for the terrain's).</summary>
+    public string EnviroEffects { get; init; } = "";
+
+    /// <summary>AlienDeployment <c>music</c>: the battle picks one, else one of the terrain's (BattlescapeGenerator::setMusic).</summary>
+    public IReadOnlyList<string> Music { get; init; } = [];
+
+    /// <summary>AlienDeployment <c>customUfo</c>: the UFO an addUFO command uses when the battle has none.</summary>
+    public string CustomUfo { get; init; } = "";
+
+    /// <summary>AlienDeployment <c>forcePercentageOutsideUfo</c>: outside spawns apply without a UFO too.</summary>
+    public bool ForcePercentageOutsideUfo { get; init; }
+
+    /// <summary>AlienDeployment <c>civilians</c>, <c>civiliansByType</c> and <c>civilianSpawnNodeRank</c>.</summary>
+    public int Civilians { get; init; }
+
+    public IReadOnlyDictionary<string, int> CiviliansByType { get; init; } = new System.Collections.ObjectModel.ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
+
+    public int CivilianSpawnNodeRank { get; init; }
+
+    /// <summary>AlienDeployment <c>markCiviliansAsVIP</c>.</summary>
+    public bool MarkCiviliansAsVip { get; init; }
+
+    /// <summary>AlienDeployment <c>objectiveType</c> (a special tile type, -1 for none) and <c>objectivesRequired</c> (0 for all).</summary>
+    public int ObjectiveType { get; init; } = -1;
+    public int ObjectivesRequired { get; init; }
+
+    /// <summary>AlienDeployment <c>bughuntMinTurn</c> (0 for the mod's), <c>escapeType</c> and <c>vipSurvivalPercentage</c>.</summary>
+    public int BughuntMinTurn { get; init; }
+    public int EscapeType { get; init; }
+    public int VipSurvivalPercentage { get; init; }
+
+    /// <summary>AlienDeployment <c>noWeaponPile</c>: the craft's leftover items go home instead of lying on the map.</summary>
+    public bool NoWeaponPile { get; init; }
+
+    /// <summary>AlienDeployment <c>data</c>: the alien groups to deploy.</summary>
+    public IReadOnlyList<RuntimeDeploymentData> Data { get; init; } = [];
+
+    /// <summary>Why the <c>data</c> node is unusable (the reference throws reading it), or null.</summary>
+    public string? DataInvalid { get; init; }
+}
+
+/// <summary>
+/// DeploymentData: an alien rank (or a custom unit type), quantities by difficulty (low, medium, high), random extras
+/// (<c>dQty</c>, <c>extraQty</c>), the chance to deploy outside the UFO, and the item sets by alien item level.
+/// </summary>
+public sealed record RuntimeDeploymentData(
+    int AlienRank,
+    string CustomUnitType,
+    int LowQuantity,
+    int MediumQuantity,
+    int HighQuantity,
+    int DifficultyQuantity,
+    int ExtraQuantity,
+    int PercentageOutsideUfo,
+    IReadOnlyList<IReadOnlyList<string>> ItemSets,
+    IReadOnlyList<IReadOnlyList<string>> ExtraRandomItems)
+{
+    internal static IReadOnlyList<RuntimeDeploymentData> ReadAll(IReadOnlyList<Oxce.Formats.Yaml.YamlNode> nodes, out string? invalid)
+    {
+        invalid = null;
+        var result = new List<RuntimeDeploymentData>();
+        try
+        {
+            foreach (var node in nodes)
+            {
+                if (node is not Oxce.Formats.Yaml.YamlMappingNode map)
+                    throw new Oxce.Formats.Yaml.YamlFormatException("Deployment data entries must be mappings.", node.Span);
+                result.Add(new RuntimeDeploymentData(map.ReadInt32("alienRank", 0), map.ReadString("customUnitType", ""),
+                    map.ReadInt32("lowQty", 0), map.ReadInt32("medQty", 0), map.ReadInt32("highQty", 0), map.ReadInt32("dQty", 0),
+                    map.ReadInt32("extraQty", 0), map.ReadInt32("percentageOutsideUfo", 0), Sets(map, "itemSets"), Sets(map, "extraRandomItems")));
+            }
+        }
+        catch (Exception exception) when (exception is Oxce.Formats.Yaml.YamlFormatException or FormatException or InvalidDataException or OverflowException)
+        {
+            invalid = exception.Message;
+        }
+        return Array.AsReadOnly(result.ToArray());
+    }
+
+    private static ReadOnlyCollection<IReadOnlyList<string>> Sets(YamlMappingNode map, string key) =>
+        !map.TryGet(key, out var node) ? Array.AsReadOnly(Array.Empty<IReadOnlyList<string>>())
+            : Array.AsReadOnly(Oxce.Formats.Yaml.YamlValueReader.ReadSequence(node!, static set => (IReadOnlyList<string>)
+                Array.AsReadOnly(Oxce.Formats.Yaml.YamlValueReader.ReadSequence(set, Oxce.Formats.Yaml.YamlValueReader.ReadString))));
 }
 
 /// <summary>Reference: <c>AlienDeployment::getAlienRaceEvolution</c> tuples.</summary>

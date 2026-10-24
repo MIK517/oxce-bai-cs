@@ -105,6 +105,26 @@ internal static class CampaignStartSettingsComposer
         b.DefeatScore = Read(root, "defeatScore", b.DefeatScore);
         b.DefeatFunds = Read(root, "defeatFunds", b.DefeatFunds);
         b.DifficultyDemigod = Read(root, "difficultyDemigod", b.DifficultyDemigod);
+        b.ExtendedHwpLoadOrder = Read(root, "extendedHwpLoadOrder", b.ExtendedHwpLoadOrder);
+        b.ExtendedForceSpawn = Read(root, "extendedForceSpawn", b.ExtendedForceSpawn);
+        b.ShareAmmoCategories = Read(root, "shareAmmoCategories", b.ShareAmmoCategories);
+        b.BaseDefenseMapFromLocation = Read(root, "baseDefenseMapFromLocation", b.BaseDefenseMapFromLocation);
+        b.BughuntMinTurn = Read(root, "bughuntMinTurn", b.BughuntMinTurn);
+        // std::pair reads from a two-element sequence; anything else leaves the pair as it was.
+        if (root.TryGet("alienFuel", out var fuel) && fuel is YamlSequenceNode { Items.Count: 2 } fuelPair)
+        {
+            b.AlienFuelName = YamlValueReader.ReadString(fuelPair.Items[0]);
+            b.AlienFuelQuantity = YamlValueReader.ReadInt32(fuelPair.Items[1]);
+        }
+        if (root.TryGet("alienItemLevels", out var itemLevels))
+        {
+            if (itemLevels is not YamlSequenceNode levels)
+                throw new YamlFormatException("Global rule 'alienItemLevels' must be a sequence.", itemLevels!.Span);
+            b.AlienItemLevels = [.. levels.Items.Select(static month => month is YamlSequenceNode values
+                ? values.Items.Select(YamlValueReader.ReadInt32).ToList()
+                : throw new YamlFormatException("Each alien item level month must be a sequence.", month.Span))];
+        }
+        ApplyStatAdjustments(root, b.StatAdjustments);
         ApplyNames(root, "baseNamesFirst", b.BaseNamesFirst, false);
         ApplyNames(root, "baseNamesMiddle", b.BaseNamesMiddle, false);
         ApplyNames(root, "baseNamesLast", b.BaseNamesLast, false);
@@ -167,6 +187,42 @@ internal static class CampaignStartSettingsComposer
     }
 
     // YamlNodeReader::tryRead into a std::vector replaces the whole list.
+    // Mod::loadFile: each difficulty's entry is read in place, so a short list or a partial stat map keeps the rest.
+    private static void ApplyStatAdjustments(YamlMappingNode root, StatAdjustmentBuilder[] adjustments)
+    {
+        void PerDifficulty(string key, Action<StatAdjustmentBuilder, YamlNode> apply)
+        {
+            if (!root.TryGet(key, out var node)) return;
+            if (node is not YamlSequenceNode sequence) throw new YamlFormatException($"Global rule '{key}' must be a sequence.", node!.Span);
+            for (var index = 0; index < Math.Min(adjustments.Length, sequence.Items.Count); index++) apply(adjustments[index], sequence.Items[index]);
+        }
+        PerDifficulty("aimAndArmorMultipliers", static (adjustment, node) =>
+            adjustment.AimMultiplier = adjustment.ArmorMultiplier = YamlValueReader.ReadDouble(node));
+        PerDifficulty("aimMultipliers", static (adjustment, node) => adjustment.AimMultiplier = YamlValueReader.ReadDouble(node));
+        PerDifficulty("armorMultipliers", static (adjustment, node) => adjustment.ArmorMultiplier = YamlValueReader.ReadDouble(node));
+        PerDifficulty("armorMultipliersAbs", static (adjustment, node) => adjustment.ArmorMultiplierAbsolute = YamlValueReader.ReadInt32(node));
+        PerDifficulty("statGrowthMultipliersAbs", static (adjustment, node) => ReadStats(node, adjustment.StatGrowthAbsolute));
+        if (root.TryGet("statGrowthMultipliers", out var growth))
+        {
+            ReadStats(growth!, adjustments[0].StatGrowth);
+            foreach (var adjustment in adjustments.Skip(1))
+            {
+                adjustment.StatGrowth.Clear();
+                foreach (var pair in adjustments[0].StatGrowth) adjustment.StatGrowth[pair.Key] = pair.Value;
+            }
+        }
+    }
+
+    private static readonly string[] StatKeys =
+        ["tu", "stamina", "health", "bravery", "reactions", "firing", "throwing", "strength", "psiStrength", "psiSkill", "melee", "mana"];
+
+    private static void ReadStats(YamlNode node, Dictionary<string, short> stats)
+    {
+        if (node is not YamlMappingNode map) throw new YamlFormatException("Unit stats must be a mapping.", node.Span);
+        foreach (var key in StatKeys)
+            if (map.TryGet(key, out var value)) stats[key] = checked((short)YamlValueReader.ReadInt32(value!));
+    }
+
     private static List<int> ReadList(YamlMappingNode mapping, string key, List<int> current)
     {
         if (!mapping.TryGet(key, out var node)) return current;

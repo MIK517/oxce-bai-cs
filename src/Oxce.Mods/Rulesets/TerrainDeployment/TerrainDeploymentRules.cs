@@ -16,8 +16,13 @@ public sealed record TerrainRule(
     IReadOnlyList<RuleIndexReference> RandomAmbience, int MinimumAmbienceDelay,
     int MaximumAmbienceDelay, string MapScript, IReadOnlyList<string> MapScripts);
 
+/// <summary>RuleCraft and RuleUfo <c>battlescapeTerrainData</c>: a terrain of their own, named by its <c>name</c>.</summary>
+public sealed record InlineTerrainRule(string Name, TerrainRule Rule);
+
 public enum MapScriptCommandType
 {
+    /// <summary>MSC_UNDEFINED: the command <c>generateBaseMap</c> builds for a facility's vertical levels.</summary>
+    Undefined = -1,
     AddBlock, AddLine, AddCraft, AddUfo, DigTunnel, FillArea, CheckBlock, RemoveBlock, Resize,
 }
 
@@ -192,7 +197,8 @@ internal static class DeploymentDefaults
         ["missionBountyItem"] = "",
         ["nextStage"] = "",
         ["race"] = "",
-        ["script"] = "DEFAULT",
+        // AlienDeployment::_mapScript has no initializer: no script of its own.
+        ["script"] = "",
         ["winCutscene"] = "",
         ["loseCutscene"] = "",
         ["abortCutscene"] = "",

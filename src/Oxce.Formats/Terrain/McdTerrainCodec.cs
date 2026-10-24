@@ -80,6 +80,9 @@ public sealed class McdTerrainRecord
 
     public bool BlocksSmoke => this[37] != 0;
 
+    /// <summary>The raw Block_Smoke byte; MapData::setBlockValue blocks smoke only when it is exactly 1.</summary>
+    public byte BlockSmokeValue => this[37];
+
     public byte TimeUnitsWalk => this[39];
 
     public byte TimeUnitsSlide => this[40];

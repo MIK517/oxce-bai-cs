@@ -200,6 +200,17 @@ public sealed record RuntimeFacilityRule(
     public bool Hyperwave { get; init; }
     public bool MindShield { get; init; }
     public int MindShieldPower { get; init; } = 1;
+
+    /// <summary>
+    /// RuleBaseFacility::getVerticalLevels: the levels a base defense map stacks on the facility (the entries that have a
+    /// "type"); <see cref="VerticalLevelsInvalid"/> holds the reason a malformed node is unusable (the reference throws
+    /// reading it).
+    /// </summary>
+    public IReadOnlyList<RuntimeVerticalLevel> VerticalLevels { get; init; } = [];
+    public string? VerticalLevelsInvalid { get; init; }
+
+    /// <summary>RuleBaseFacility::getStorageTiles: the tiles a base defense puts the stores on, relative to the facility.</summary>
+    public IReadOnlyList<FacilityPosition> StorageTiles { get; init; } = [];
 }
 
 public sealed record RuntimeCraftRule(
@@ -221,6 +232,24 @@ public sealed record RuntimeCraftRule(
     RuleHandleList<CraftWeaponRuleFamily> FixedWeapons,
     RuleHandleList<RuntimeScriptFamily> Scripts)
 {
+    /// <summary>RuleCraft::getDeployment: [x, y, z, direction] spawn points relative to the craft map.</summary>
+    public IReadOnlyList<IReadOnlyList<int>> Deployment { get; init; } = [];
+
+    /// <summary>RuleCraft::getCraftInventoryTile: [x, y, z] relative to the craft map, or fewer values for none.</summary>
+    public IReadOnlyList<int> InventoryTile { get; init; } = [];
+
+    /// <summary>RuleCraft::getGroups: map script commands with craft groups run only for a craft in one of them.</summary>
+    public IReadOnlyList<int> Groups { get; init; } = [];
+
+    /// <summary>RuleCraft::getMaxSkinIndex: the highest skin a craft of this type may use.</summary>
+    public int MaximumSkinIndex { get; init; }
+
+    /// <summary>RuleCraft::isMapVisible: whether the craft's map starts discovered.</summary>
+    public bool MapVisible { get; init; } = true;
+
+    /// <summary>RuleCraft::getBattlescapeTerrainData: the craft's map, or null.</summary>
+    public RuntimeTerrain? BattlescapeTerrain { get; init; }
+
     public string Type { get; init; } = "";
     public RuntimePurchaseRequirements Purchase { get; init; } = new(0, "", "", [], []);
     /// <summary>RuleCraft::_stats, before installed weapon bonuses and capacity limits.</summary>
@@ -349,6 +378,9 @@ public sealed record RuntimeArmorRule(
     string StoreItemId,
     RuleHandle<ItemRuleFamily>? StoreItem)
 {
+    /// <summary>Armor::getMovementType: 0 walk, 1 fly, 2 slide, 3 float, 4 sink (battle units resolve the last two by depth).</summary>
+    public int MovementType { get; init; }
+
     public string Type { get; init; } = "";
     public RuntimeArmorVision Vision { get; init; } = RuntimeArmorVision.Default;
     public RuleHandle<ItemRuleFamily>? CorpseGeoscape { get; init; }
@@ -512,6 +544,32 @@ public sealed record RuntimeCampaignSettings(
     RuleHandle<FacilityRuleFamily>? DestroyedFacility,
     IReadOnlyList<RuntimeStartingBaseTemplate> StartingBases)
 {
+    /// <summary>Mod::isDemigod (<c>difficultyDemigod</c>): aliens deploy their maximum random extras.</summary>
+    public bool DifficultyDemigod { get; init; }
+
+    /// <summary>Mod::EXTENDED_HWP_LOAD_ORDER: 2x2 vehicles first, 1x1 vehicles after the 2x2 soldiers.</summary>
+    public bool ExtendedHwpLoadOrder { get; init; }
+
+    /// <summary>Mod::EXTENDED_FORCE_SPAWN.</summary>
+    public bool ExtendedForceSpawn { get; init; }
+
+    /// <summary>Mod::getShareAmmoCategories: a firearm also has the categories of the craft's primary ammo.</summary>
+    public bool ShareAmmoCategories { get; init; }
+
+    /// <summary>Mod::getBaseDefenseMapFromLocation: 1 makes the base defense map depend on the base's position.</summary>
+    public int BaseDefenseMapFromLocation { get; init; }
+
+    /// <summary>Mod::getAlienFuelName, getAlienFuelQuantity and getBughuntMinTurn.</summary>
+    public string AlienFuelName { get; init; } = "";
+    public int AlienFuelQuantity { get; init; }
+    public int BughuntMinTurn { get; init; } = 999;
+
+    /// <summary>Mod::getAlienItemLevels.</summary>
+    public IReadOnlyList<IReadOnlyList<int>> AlienItemLevels { get; init; } = [];
+
+    /// <summary>Mod::getStatAdjustment by difficulty, without the growth multiplier (the difficulty coefficient).</summary>
+    public IReadOnlyList<RuntimeStatAdjustment> StatAdjustments { get; init; } = [];
+
     public RuntimeGlobe Globe { get; init; } = RuntimeGlobe.Empty;
     public int BuildTimeReductionScaling { get; init; } = 100;
     public int CustomTrainingFactor { get; init; } = 100;
@@ -558,3 +616,11 @@ public sealed record RuntimeCampaignSettings(
 public readonly struct RuntimeScriptFamily;
 
 public sealed record RuntimeScriptRule(ContentScriptArtifact Artifact);
+
+/// <summary>StatAdjustment: percentage and absolute stat growth, aim and armor multipliers (the growth multiplier is the difficulty coefficient).</summary>
+public sealed record RuntimeStatAdjustment(
+    IReadOnlyDictionary<string, short> StatGrowth,
+    IReadOnlyDictionary<string, short> StatGrowthAbsolute,
+    double AimMultiplier,
+    double ArmorMultiplier,
+    int ArmorMultiplierAbsolute);

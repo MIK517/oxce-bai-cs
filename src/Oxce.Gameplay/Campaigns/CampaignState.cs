@@ -95,6 +95,18 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     }
 
     internal CampaignTimeProfile? ActiveTimeProfile => _timeProfile;
+
+    /// <summary>
+    /// The installation's terrain files, which battle generation reads (ADR 0038). The host attaches them; they are
+    /// not campaign state, are not saved and are not copied to shadows. Null means battles cannot be generated.
+    /// </summary>
+    public Battles.Terrain.IBattleTerrainFiles? BattleTerrainFiles
+    {
+        get { lock (_transactionGate) return _battleTerrainFiles; }
+        set { lock (_transactionGate) _battleTerrainFiles = value; }
+    }
+
+    private Battles.Terrain.IBattleTerrainFiles? _battleTerrainFiles;
     public CampaignDifficulty Difficulty { get; }
     public CampaignTime Time { get; private set; }
     public int Ending { get; private set; }
@@ -159,6 +171,17 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
 
     // Concrete lists keep per-tick world loops on struct enumerators.
     internal List<BaseState> BaseStates => _bases;
+
+    /// <summary>The base with the ID, or null.</summary>
+    internal BaseState? BaseById(int id) => _bases.Find(candidate => candidate.Id == id);
+
+    /// <summary>The index in the base's crafts of the craft with the ID and type (crafts are numbered per type), or -1.</summary>
+    internal int CraftIndex(BaseState owner, int craftId, string craftType) =>
+        owner.Crafts.FindIndex(craft => craft.Id == craftId && _content.RuntimeRules.Crafts.GetExternalId(craft.Rule) == craftType);
+
+    /// <summary>The base's craft with the ID and type, or null.</summary>
+    internal CraftState? CraftById(BaseState owner, int craftId, string craftType) =>
+        CraftIndex(owner, craftId, craftType) is var index and >= 0 ? owner.Crafts[index] : null;
 
     internal List<CountryState> CountryStates => _countries;
 
@@ -308,6 +331,8 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             ArgumentException.ThrowIfNullOrWhiteSpace(purchase.Key);
             if (purchase.Value < 0) throw new InvalidDataException("Monthly purchase counts cannot be negative.");
         }
+        if (snapshot.CustomRuleCraftDeployments.Sum(static pair => pair.Value.Count) > MaximumLogisticsLines)
+            throw new InvalidDataException("Custom craft deployments exceed their supported size.");
 
         var previousRandomState = random.State;
         try

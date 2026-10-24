@@ -7,8 +7,8 @@ namespace Oxce.Mods.Rulesets.Runtime;
 
 /// <summary>
 /// Reference: <c>Mod/Texture.cpp</c>. <c>Deployments</c> is the weighted alien-deployment table a
-/// mission site uses when its area has no explicit site type; terrain criteria stay in the typed
-/// catalog until battle generation needs them.
+/// mission site uses when its area has no explicit site type; <c>Terrains</c> and <c>BaseTerrains</c> are the
+/// weighted terrain criteria the battle generator picks from.
 /// </summary>
 public sealed record RuntimeGlobeTexture(bool IsOcean = false, bool FakeUnderwater = false)
 {
@@ -16,9 +16,49 @@ public sealed record RuntimeGlobeTexture(bool IsOcean = false, bool FakeUnderwat
     /// <summary>Texture::getStartingCondition: used when the deployment names none.</summary>
     public string StartingCondition { get; init; } = string.Empty;
 
+    /// <summary>Texture::_terrain, for Texture::getRandomTerrain.</summary>
+    public IReadOnlyList<RuntimeTerrainCriterion> Terrains { get; init; } = [];
+
+    /// <summary>Texture::_baseTerrain, for Texture::getRandomBaseTerrain.</summary>
+    public IReadOnlyList<RuntimeTerrainCriterion> BaseTerrains { get; init; } = [];
+
     internal static readonly IReadOnlyDictionary<string, ulong> EmptyDeployments =
         new ReadOnlyDictionary<string, ulong>(new Dictionary<string, ulong>(StringComparer.Ordinal));
 }
+/// <summary>
+/// TerrainCriteria: a terrain name with a weight and a globe area in radians. Without an <c>area</c> the bounds are
+/// the constructor's 0..360 and -90..90, compared with radians, so they accept every target.
+/// </summary>
+public sealed record RuntimeTerrainCriterion(string Name, int Weight, double LongitudeMinimum, double LongitudeMaximum,
+    double LatitudeMinimum, double LatitudeMaximum)
+{
+    /// <summary>
+    /// Texture::getRandomTerrain and getRandomBaseTerrain: the weighted pick among criteria with a positive weight whose
+    /// area contains the target, drawing 1..total; "" when none applies.
+    /// </summary>
+    public static string Pick(IReadOnlyList<RuntimeTerrainCriterion> criteria, double longitude, double latitude,
+        Func<int, int, int> generate)
+    {
+        ArgumentNullException.ThrowIfNull(criteria);
+        ArgumentNullException.ThrowIfNull(generate);
+        var total = 0;
+        foreach (var criterion in criteria)
+            if (criterion.Applies(longitude, latitude)) total = checked(total + criterion.Weight);
+        if (total <= 0) return "";
+        var pick = generate(1, total);
+        foreach (var criterion in criteria)
+        {
+            if (!criterion.Applies(longitude, latitude)) continue;
+            if (pick <= criterion.Weight) return criterion.Name;
+            pick -= criterion.Weight;
+        }
+        return "";
+    }
+
+    private bool Applies(double longitude, double latitude) => Weight > 0 &&
+        longitude >= LongitudeMinimum && longitude < LongitudeMaximum && latitude >= LatitudeMinimum && latitude < LatitudeMaximum;
+}
+
 public sealed record RuntimeGlobe(IReadOnlyList<WorldPolygon> Polygons, IReadOnlyDictionary<int, RuntimeGlobeTexture> Textures)
 {
     public static RuntimeGlobe Empty { get; } = new([], new ReadOnlyDictionary<int, RuntimeGlobeTexture>(new Dictionary<int, RuntimeGlobeTexture>()));
@@ -127,6 +167,8 @@ internal static class RuntimeGlobeLoader
                                 ? ReadDeployments(deployments!) : previous.Deployments,
                             StartingCondition = map.TryGet("startingCondition", out var condition)
                                 ? YamlValueReader.ReadString(condition!) : previous.StartingCondition,
+                            Terrains = map.TryGet("terrain", out var terrain) ? ReadTerrainCriteria(terrain!) : previous.Terrains,
+                            BaseTerrains = map.TryGet("baseTerrain", out var baseTerrain) ? ReadTerrainCriteria(baseTerrain!) : previous.BaseTerrains,
                         };
                     }
                     else if (map.TryGet("delete", out var deleted)) textures.Remove(YamlValueReader.ReadInt32(deleted!));
@@ -166,6 +208,22 @@ internal static class RuntimeGlobeLoader
         }
         return new ReadOnlyDictionary<string, ulong>(result);
     }
+
+    /// <summary>The TerrainCriteria reader: name, weight (1) and an optional area of four degree values.</summary>
+    private static ReadOnlyCollection<RuntimeTerrainCriterion> ReadTerrainCriteria(YamlNode node) => Array.AsReadOnly(Sequence(node).Items
+        .Select(static item =>
+        {
+            var map = item as YamlMappingNode ?? throw new InvalidDataException("Globe texture terrain requires a mapping.");
+            var name = map.TryGet("name", out var nameNode) ? YamlValueReader.ReadString(nameNode!) : "";
+            var weight = map.TryGet("weight", out var weightNode) ? YamlValueReader.ReadInt32(weightNode!) : 1;
+            if (!map.TryGet("area", out var areaNode)) return new RuntimeTerrainCriterion(name, weight, 0, 360, -90, 90);
+            var area = Sequence(areaNode!).Items.Select(YamlValueReader.ReadDouble).ToArray();
+            // The reference reads four values without checking how many there are.
+            if (area.Length < 4 || area.Any(static value => !double.IsFinite(value)))
+                throw new InvalidDataException("Globe texture terrain area requires four finite values.");
+            return new RuntimeTerrainCriterion(name, weight, area[0] * Math.PI / 180, area[1] * Math.PI / 180,
+                area[2] * Math.PI / 180, area[3] * Math.PI / 180);
+        }).ToArray());
 
     private static YamlSequenceNode Sequence(YamlNode node) => node as YamlSequenceNode ?? throw new InvalidDataException("Globe field requires a sequence.");
 }

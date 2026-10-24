@@ -129,7 +129,9 @@ public sealed class EquipmentProductionRuleCatalogTests
         Assert.Equal([1, 2, 1, 1, 1, 1, 1, 1], craft.WeaponTypes[1]);
         Assert.Empty(craft.SkinSprites);
         Assert.Equal([3, 4], craft.SelectSounds.Select(value => value.Index));
-        Assert.Contains(craftRule.DeferredProperties, property => property.Key == "battlescapeTerrainData");
+        // battlescapeTerrainData is read as the craft's own terrain, not deferred.
+        Assert.Equal("TERRAIN", craft.BattlescapeTerrain!.Name);
+        Assert.DoesNotContain(craftRule.DeferredProperties, property => property.Key == "battlescapeTerrainData");
         Assert.Contains(craftRule.DeferredProperties, property => property.Key == "customCraftValue");
 
         var ufoRule = Assert.Single(content.Ufos.Rules);

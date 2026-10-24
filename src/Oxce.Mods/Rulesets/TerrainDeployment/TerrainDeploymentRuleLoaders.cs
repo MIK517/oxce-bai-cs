@@ -9,6 +9,18 @@ internal sealed class TerrainRuleLoader : IdOnlyTypedRuleFamilyLoader<TerrainBui
 {
     public TerrainRuleLoader() : base(TerrainDeploymentYaml.Section("terrains")) { }
     protected override TerrainBuilder Create(string id) => new(id);
+
+    /// <summary>
+    /// RuleCraft::load and RuleUfo::load: each <c>battlescapeTerrainData</c> node is a new RuleTerrain named by its
+    /// <c>name</c> and loaded from the node alone, not merged with an earlier definition.
+    /// </summary>
+    internal static InlineTerrainRule ReadInline(RulePropertyReader reader)
+    {
+        var loader = new TerrainRuleLoader();
+        var builder = new TerrainBuilder(reader.ReadString("name", ""));
+        loader.Apply(builder, reader);
+        return new InlineTerrainRule(builder.Id, loader.Freeze(builder));
+    }
     protected override void Apply(TerrainBuilder builder, RulePropertyReader reader)
     {
         reader.ApplyRefNode(parent => Apply(builder, parent));

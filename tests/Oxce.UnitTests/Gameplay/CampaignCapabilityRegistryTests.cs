@@ -97,7 +97,7 @@ public sealed class CampaignCapabilityRegistryTests
             "interception start", "destroyed UFO interception cleanup", "destroyed UFO cleanup", "interception waits"],
             table.HandlerNames(CampaignTimeTrigger.FiveSeconds));
         Assert.Equal<string>(
-            ["restrictions", "monthly report", "event windows", "interceptions", "landing confirmations", "destroyed crafts", "world simulation", "craft movement", "monthly world scheduling", "craft servicing",
+            ["restrictions", "monthly report", "event windows", "interceptions", "battle", "landing confirmations", "destroyed crafts", "world simulation", "craft movement", "monthly world scheduling", "craft servicing",
                 "research and production", "craft target removal", "transfers"],
             table.PreflightNames);
         var commandTypes = typeof(ICampaignCommand).Assembly.GetTypes()

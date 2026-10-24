@@ -6,6 +6,12 @@ namespace Oxce.Gameplay.Campaigns;
 
 public sealed record SoldierCommendation(string RuleId, string Noun, int DecorationLevel);
 
+/// <summary>
+/// EquipmentLayoutItem: an item the soldier wants in a section at a position, the ammunition for each of its four
+/// ammo slots ("" for none), the fuse timer (-1 unprimed) and whether it is a fixed weapon.
+/// </summary>
+public sealed record SoldierLayoutItem(string ItemType, string Slot, int SlotX, int SlotY, IReadOnlyList<string> AmmoItems, int FuseTimer, bool Fixed);
+
 public sealed record SoldierPersonalState(
     string Name, string Callsign, int Nationality, int Gender, int Look, int LookVariant,
     string Armor, IReadOnlyDictionary<string, short> InitialStats, IReadOnlyDictionary<string, short> CurrentStats)
@@ -29,6 +35,11 @@ public sealed record SoldierPersonalState(
     public string ReplacedArmor { get; init; } = string.Empty;
     public string TransformedArmor { get; init; } = string.Empty;
     public string PersonalEquipmentArmor { get; init; } = string.Empty;
+    /// <summary>
+    /// Soldier::getEquipmentLayout as loaded (entries naming a missing item, section or ammunition dropped, as
+    /// Soldier::load logs and skips them). The save keeps writing the soldier's own node.
+    /// </summary>
+    public IReadOnlyList<SoldierLayoutItem> EquipmentLayout { get; init; } = [];
     public float Recovery { get; init; }
     public IReadOnlyDictionary<string, int> PreviousTransformations { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
     public IReadOnlyDictionary<string, int> TransformationBonuses { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());

@@ -119,6 +119,9 @@ public sealed class RuntimeRuleCatalog
     public RuntimeRuleFamily<EventScriptRuleFamily, RuntimeEventScriptRule> EventScripts { get; }
     public RuntimeRuleFamily<RuntimeScriptFamily, RuntimeScriptRule> Scripts { get; }
     public RuntimeCampaignSettings Campaign { get; }
+
+    /// <summary>The battlescape-only families (terrains, map scripts, MCD patches).</summary>
+    public RuntimeBattleRules Battle { get; init; } = RuntimeBattleRules.Empty;
 }
 
 public sealed record RuntimeRuleLinkIssue(
