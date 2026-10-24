@@ -814,6 +814,7 @@ public static class RuntimeRuleLinker
                     MinimumDepth = source.Depth.Count > 0 ? source.Depth[0] : 0,
                     MaximumDepth = source.Depth.Count > 1 ? source.Depth[1] : 0,
                     CustomUfo = source.Strings["customUfo"],
+                    Music = Array.AsReadOnly(source.Music.ToArray()),
                     ForcePercentageOutsideUfo = source.Booleans["forcePercentageOutsideUfo"],
                     Civilians = source.Integers["civilians"],
                     CivilianSpawnNodeRank = source.Integers["civilianSpawnNodeRank"],

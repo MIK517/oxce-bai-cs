@@ -28,8 +28,16 @@ internal static class BattleGenerator
         var map = state.Map;
         // run: the deployment's environmental effects, else the terrain's.
         var enviro = rules.Battle.EnviroArmorTransformations.ContainsKey(battle.EnviroEffects) ? battle.EnviroEffects : terrain.EnviroEffects;
-        // deployXCOM: applyEnviroEffects, before any unit exists.
+        // deployXCOM: applyEnviroEffects, before any unit exists: the armor transformations and, with enviro effects, a
+        // draw per faction for its environmental condition.
         state.ArmorTransformations = rules.Battle.EnviroArmorTransformations.GetValueOrDefault(enviro);
+        if (rules.Battle.EnviroGlobalChances.TryGetValue(enviro, out var chances))
+        {
+            state.EnviroEffectsId = enviro;
+            var friendly = RandomChance.Percent(random, chances.Friendly);
+            var hostile = RandomChance.Percent(random, chances.Hostile);
+            state.EnvironmentalConditions = (friendly, hostile, RandomChance.Percent(random, chances.Neutral));
+        }
         CreateMapItems(state, rules, random, generated.Items);
         SetupObjectives(state, battle, rules);
         var unitSequence = XcomDeployment.Deploy(campaign, request, state, generated, inputs.StartingCondition, enviro);
@@ -46,6 +54,9 @@ internal static class BattleGenerator
         if (battle.CivilianSpawnNodeRank == 0) CivilianDeployment.Deploy(state, rules, random, battle, terrain, unitSequence);
         if (state.CraftInventoryTile is { } pile && battle.NoWeaponPile) SendItemsToLimbo(state, pile);
         if (generated.GenerateFuel) FuelPowerSources(state, rules, random);
+        // setMusic: one of the deployment's tracks, else one of the terrain's.
+        if (battle.Music.Count != 0) state.Music = battle.Music[random.NextInclusive(0, battle.Music.Count - 1)];
+        else if (terrain.Music.Count != 0) state.Music = terrain.Music[random.NextInclusive(0, terrain.Music.Count - 1)];
         // explodePowerSources and explodeOtherJunk need explosions and terrain destruction.
         if (inputs.UfoCrashed && ObjectTiles(map, PowerSource).Any()) throw new MapGenerationException(CrashedPowerSources);
         if (state.Items.Any(item => item.Tile is not null && !item.XcomProperty && !item.IsSpecialWeapon && item.FuseTimer == -2 &&
@@ -101,6 +112,7 @@ internal static class BattleGenerator
         {
             TerrainId = terrain.Id,
             MapScriptId = scriptId,
+            StartingConditionId = inputs.StartingConditionId,
             AlienCustomDeploy = request.AlienCustomDeploymentId,
             AlienCustomMission = request.AlienCustomMissionId,
             Depth = depth,
@@ -298,7 +310,12 @@ internal static class BattleGenerator
             ? rules.StartingConditions[handle].Value : null;
         var skin = campaign.BaseStates.Find(candidate => candidate.Id == request.BaseId)?.Crafts.Find(candidate =>
             candidate.Id == request.CraftId && rules.Crafts.GetExternalId(candidate.Rule) == request.CraftTypeId)?.Logistics?.SkinIndex ?? 0;
-        return new BattleMapInputs(craft, ufo, deployment.Battle.CustomUfo, condition) { UfoCrashed = crashed, CraftSkin = skin };
+        return new BattleMapInputs(craft, ufo, deployment.Battle.CustomUfo, condition)
+        {
+            StartingConditionId = condition is null ? "" : conditionId,
+            UfoCrashed = crashed,
+            CraftSkin = skin,
+        };
     }
 
     /// <summary>BattlescapeGenerator::setDepth: the deployment's depth range wins over the terrain's.</summary>

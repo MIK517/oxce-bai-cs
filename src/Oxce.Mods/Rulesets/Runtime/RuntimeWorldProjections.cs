@@ -384,6 +384,9 @@ public sealed record RuntimeDeploymentBattle(
     /// <summary>AlienDeployment <c>enviroEffects</c> ("" for the terrain's).</summary>
     public string EnviroEffects { get; init; } = "";
 
+    /// <summary>AlienDeployment <c>music</c>: the battle picks one, else one of the terrain's (BattlescapeGenerator::setMusic).</summary>
+    public IReadOnlyList<string> Music { get; init; } = [];
+
     /// <summary>AlienDeployment <c>customUfo</c>: the UFO an addUFO command uses when the battle has none.</summary>
     public string CustomUfo { get; init; } = "";
 

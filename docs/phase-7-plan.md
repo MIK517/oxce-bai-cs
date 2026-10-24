@@ -2,8 +2,8 @@
 
 Plan date: 2026-10-18. Baseline: `main` at `2b0c81fb` (audit cleanup, PR #77). Reference:
 `../oxce-bai` (`4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`).
-Status: planning slice. Branch 1 (`claude/battle-generation`) is in progress; its slices, audits and evidence are
-recorded in [battle generation status](battle-generation-status.md).
+Status: branch 1 (`claude/battle-generation`) is complete and awaits merge; its slices, audits and evidence are
+recorded in [battle generation status](battle-generation-status.md). Branch 2 is next.
 
 ## Goal and scope
 

@@ -470,8 +470,8 @@ internal sealed class BattleMapGenerator
                 Resize(command);
                 return success;
             default:
-                throw new MapGenerationException(
-                    $"Map script command {command.Type} is generated in Phase 7 branch 1 S3b.");
+                // MapScript::load refuses unknown commands, and generateBaseMap's MSC_UNDEFINED command never runs here.
+                throw new InvalidOperationException($"Map script command {command.Type} is no command the map script runs.");
         }
     }
 
@@ -1504,6 +1504,9 @@ internal sealed class BattleMapGenerator
 /// </summary>
 internal sealed record BattleMapInputs(string CraftId, string UfoId, string CustomUfo, RuntimeStartingCondition? StartingCondition)
 {
+    /// <summary>The starting condition's ID ("" for none).</summary>
+    public string StartingConditionId { get; init; } = "";
+
     /// <summary>The battle's UFO crashed (Ufo::CRASHED): its power sources explode at the start.</summary>
     public bool UfoCrashed { get; init; }
 

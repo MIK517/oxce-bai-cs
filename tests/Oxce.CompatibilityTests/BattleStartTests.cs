@@ -1004,6 +1004,78 @@ public sealed class BattleStartTests
     }
 
     [Fact]
+    public void EnviroEffectsDrawEachFactionsConditionAndTheBattleRecordsItsConditionAndEffects()
+    {
+        // SavedBattleGame::applyEnviroEffects draws RNG::percent(globalChance) for STR_FRIENDLY, STR_HOSTILE and
+        // STR_NEUTRAL; a faction without a condition has the default chance of 100.
+        var rules = Rules.Replace("    armorTransformations: {ARMOR: SUIT}\n",
+            "    armorTransformations: {ARMOR: SUIT}\n    environmentalConditions:\n      STR_FRIENDLY: {globalChance: 100}\n" +
+            "      STR_HOSTILE: {globalChance: 0}\n", StringComparison.Ordinal);
+        var (campaign, _) = Requested(rules, "UFO_SUITED");
+        Started(campaign);
+        var battle = Battle(campaign);
+        Assert.Equal(("ENV_SUIT", (true, false, true), ""), (battle.EnviroEffectsId, battle.EnvironmentalConditions, battle.StartingConditionId));
+        // Without enviro effects nothing is drawn and every condition is off; the starting condition is recorded.
+        (campaign, _) = Requested(Rules, "UFO_GEAR");
+        Started(campaign);
+        battle = Battle(campaign);
+        Assert.Equal(("", (false, false, false), "SC_GEAR"), (battle.EnviroEffectsId, battle.EnvironmentalConditions, battle.StartingConditionId));
+    }
+
+    [Theory]
+    [InlineData("    music: [DEPLOY_MUSIC]\n", "    music: [TERRAIN_MUSIC]\n", "DEPLOY_MUSIC")]
+    [InlineData("", "    music: [TERRAIN_MUSIC]\n", "TERRAIN_MUSIC")]
+    [InlineData("", "", "")]
+    [InlineData("    music: [DEPLOY_A, DEPLOY_B, DEPLOY_C]\n", "", "DEPLOY_A|DEPLOY_B|DEPLOY_C")]
+    public void TheBattlesMusicIsTheDeploymentsElseTheTerrains(string deploymentMusic, string terrainMusic, string expected)
+    {
+        // BattlescapeGenerator::setMusic: a pick from the deployment's music, else from the terrain's, else none.
+        var (music, drawn) = Music(deploymentMusic, terrainMusic);
+        Assert.Contains(music, expected.Split('|'));
+        // The pick draws from the battle's stream (RNG::generate), even from a single track; no music draws nothing.
+        var (_, silent) = Music("", "");
+        Assert.Equal(expected.Length != 0, drawn != silent);
+    }
+
+    private static (string Music, ulong State) Music(string deploymentMusic, string terrainMusic)
+    {
+        var rules = Rules.Replace("    enviroEffects: ENV_SUIT\n", "    enviroEffects: ENV_SUIT\n" + deploymentMusic, StringComparison.Ordinal)
+            .Replace("    mapDataSets: [BLANKS, TESTSET]\n", "    mapDataSets: [BLANKS, TESTSET]\n" + terrainMusic, StringComparison.Ordinal);
+        var (campaign, _) = Requested(rules, "UFO_SUITED");
+        Started(campaign);
+        return (Battle(campaign).Music, campaign.Random.State);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ARequestWithoutVehicleAmmoWhoseCraftDiffersIsRefused(bool craftGone)
+    {
+        // A request without recorded ammo takes the craft's only while the craft carries exactly its vehicles.
+        var (campaign, _) = Requested(Rules, "UFO_CRAFTED", [new("VEHICLE", 25), new("VEHICLE_B", 0)], adjust: snapshot =>
+            snapshot with
+            {
+                World = snapshot.World with
+                {
+                    DeploymentRequest = craftGone
+                        ? snapshot.World.DeploymentRequest! with { VehicleAmmo = [], CraftId = 999 }
+                        : snapshot.World.DeploymentRequest! with { VehicleAmmo = [], Vehicles = ["VEHICLE"] },
+                },
+            });
+        Assert.Equal(Oxce.Gameplay.Battles.Generation.XcomDeployment.NoVehicleAmmo("VEHICLE"), Refusal(campaign, new StartBattle()));
+    }
+
+    [Fact]
+    public void ARequestSavedWithoutVehicleAmmoTakesTheAmmoOfTheCraftsVehicles()
+    {
+        // Requests saved before they recorded vehicle ammo: the craft still carries the request's vehicles.
+        var (campaign, _) = Requested(Rules, "UFO_CRAFTED", [new("VEHICLE", 25), new("VEHICLE_B", 0)], adjust: static snapshot =>
+            snapshot with { World = snapshot.World with { DeploymentRequest = snapshot.World.DeploymentRequest! with { VehicleAmmo = [] } } });
+        Started(campaign);
+        Assert.Equal(25, Assert.Single(Battle(campaign).Items, static item => item.ItemType == "VEHICLE_AMMO").AmmoQuantity);
+    }
+
+    [Fact]
     public void TheCraftsItemsStartOnTheCraftInventoryTileAndALayoutlessSoldierTakesThem()
     {
         var (campaign, request) = Requested(Rules, "UFO_CRAFTED", items: new Dictionary<string, int> { ["SUPPLY"] = 2 });

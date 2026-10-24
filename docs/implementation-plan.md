@@ -292,8 +292,8 @@ Exit gate:
 ## Phase 7 — Playable battlescape vertical slice
 
 The [Phase 7 delivery plan](phase-7-plan.md) splits the phase into eight branches and records the battle design in
-[ADR 0038](decisions/0038-battle-aggregate.md). Branch 1 (battle generation) is in progress:
-[battle generation status](battle-generation-status.md).
+[ADR 0038](decisions/0038-battle-aggregate.md). Branch 1 (battle generation) is complete
+and awaits merge: [battle generation status](battle-generation-status.md).
 
 Phase 7 inherits the Phase 6 named restrictions: every string in the
 [refusal inventory](phase-6-refusal-inventory.md)'s "Named restrictions" and "Tactical and battle boundaries"
@@ -412,8 +412,8 @@ content root no longer retains typed compatibility/provenance graphs, virtual re
 identity is deterministic across hosts, and managed-extension API `0.2` exposes
 separately versioned campaign query, command, and event capabilities.
 
-1. Implement [Phase 7 branch 1](phase-7-plan.md#branch-1--battle-generation) (battle generation), then the
-   following branches of the [Phase 7 plan](phase-7-plan.md). Keep each branch integrated across commands,
+1. Implement [Phase 7 branch 2](phase-7-plan.md#delivery-shape) (battle saves), then the following branches of
+   the [Phase 7 plan](phase-7-plan.md). Keep each branch integrated across commands,
    script providers, saves and UI actions.
 2. Continue adding focused executable C++ probes, compatibility matrix entries, and
    controlled benchmarks with every compatibility-sensitive slice.

@@ -929,6 +929,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RuntimeBattleUnitRule` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - Unit's battle fields: statistics, built-in weapon sets (plain and weighted), melee and psi weapons, living weapon, race.
 - `RuntimeBattleRules` (class) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - The rule families only the battlescape reads (Phase 7, ADR 0038), linked as one group by `Link`, apart from the strategic families.
 - `RuntimeTerrain` (record) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - RuleTerrain as the battle generator reads it (sprites and ambience stay with presentation).
+- `RuntimeEnviroChances` (record struct) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - The environmental conditions' global chances per faction (EnvironmentalCondition::globalChance).
 - `RuntimeMapBlock` (record) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - MapBlock: size (the MAP header's height replaces `Height` when loaded), groups and revealed floors.
 - `RuntimeMcdPatch` (record) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - MCDPatch: entries in rule order.
 - `RuntimeMcdPatchEntry` (record) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - One MCDPatch data entry: the integer and boolean properties it sets and its LOFTS, if any.

@@ -75,6 +75,21 @@ internal sealed class BattleState
     /// </summary>
     public IReadOnlyDictionary<string, string>? ArmorTransformations { get; internal set; }
 
+    /// <summary>SavedBattleGame::getStartingCondition's type ("" for none).</summary>
+    public string StartingConditionId { get; init; } = "";
+
+    /// <summary>SavedBattleGame::getEnviroEffects' type: the deployment's, else the terrain's ("" for none).</summary>
+    public string EnviroEffectsId { get; internal set; } = "";
+
+    /// <summary>
+    /// SavedBattleGame's <c>_ecEnabledFriendly</c>, <c>_ecEnabledHostile</c> and <c>_ecEnabledNeutral</c>: whether each
+    /// faction's environmental condition applies in this battle, drawn by applyEnviroEffects (all off without enviro effects).
+    /// </summary>
+    public (bool Friendly, bool Hostile, bool Neutral) EnvironmentalConditions { get; internal set; }
+
+    /// <summary>SavedBattleGame::getMusic: the deployment's or the terrain's pick ("" for none).</summary>
+    public string Music { get; internal set; } = "";
+
     /// <summary>The armor a unit created from a unit rule wears: the environment's transformation of its own, if any.</summary>
     internal RuntimeArmorRule TempUnitArmor(RuntimeRuleCatalog rules, RuntimeArmorRule armor)
     {

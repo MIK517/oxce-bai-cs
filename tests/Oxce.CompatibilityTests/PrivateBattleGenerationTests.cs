@@ -87,7 +87,7 @@ public sealed class PrivateBattleGenerationTests
         [("modded/rosigma", "Middle.sav")] = new("STR_UFO_GROUND_ASSAULT/STR_LARGE_SCOUT_BRIDGED_TOWERS/STR_TZEENTCH_MUTANT_CULT/Ufo",
             "PLAINSSAND", "PLAINS", "40x40x9",
             "PLAINS05,PLAINS07,PLAINS08,IMPULSOR,CH02BRIDGEDTOWERS,CH02BRIDGEDTOWERS,PLAINS08,IMPULSOR," +
-            "CH02BRIDGEDTOWERS,CH02BRIDGEDTOWERS,PLAINS11,PLAINS11,PLAINS01,PLAINS06,PLAINS11,PLAINS11", 9, 19, 0, 76),
+            "CH02BRIDGEDTOWERS,CH02BRIDGEDTOWERS,PLAINS11,PLAINS11,PLAINS01,PLAINS06,PLAINS11,PLAINS11", 9, 16, 0, 76),
     }, "private-battle-landings.json", (loaded, family, save) =>
     {
         var campaign = LoadSave(loaded, family, save);

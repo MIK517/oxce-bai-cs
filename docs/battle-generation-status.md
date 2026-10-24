@@ -14,7 +14,7 @@ Phase 7 branch 1 (`claude/battle-generation`), from `main` at `2b0c81fb`. Plan:
 | S4 X-COM deployment | Done (2026-10-24); the base defense deployment is S6 part 2 |
 | S5 alien and civilian deployment | Done (2026-10-23); crashed-UFO and map-junk explosions refuse until branch 5 |
 | S6 base defense and other entry points | Done (2026-10-24) |
-| S7 acceptance and branch audit | Acceptance done (2026-10-24); the branch audit is next |
+| S7 acceptance and branch audit | Done (2026-10-24); the branch is complete |
 
 ## S0 — Planning (2026-10-18)
 
@@ -337,7 +337,8 @@ morale), `Soldier::prepareStatsWithBonuses`, `getBonuses`, `UnitStats::obeyFixed
 - Refusals where the reference crashes or fails to load: a missing hand inventory, default slot or category section; a
   missing move cost; a missing item, armor or weapon set; a living-weapon race shorter than four characters; a vehicle's
   fixed ammo slot outside its ammo slots; the C3 fallback leaving an item in a section after reporting it unplaced
-  (the reference keeps a freed item); a vehicle with clip ammunition and no recorded ammo (base defense, S6).
+  (the reference keeps a freed item); a vehicle with clip ammunition and no recorded ammo (since S6 part 2 a base defense loads its stored vehicles
+  with `getVehicleClipSize`, and since S7 part 2 an older request takes the craft's ammo, so this is only a guard).
 - Not ported here: the CreateUnit, CreateItem and ApplySoldierBonuses script hooks (tactical script bindings, branch 8);
   `getBonuses`' listOrder insertion quirk, which can keep two bonuses with the same list order (the port keeps each
   bonus once).
@@ -713,17 +714,65 @@ Tests: `PrivateBattleGenerationTests` (above), `BattleStartTests.TheValidatorNam
 `BaseDefenseDeploymentTests.ADummyThatCannotStandOnTheFirstTileStaysOffTheMap` and `ADummyOnARaisedFirstTileStandsOneLevelUp`, `BattleTerrainLoaderTests.MalformedTerrainDataIsAReason`
 (a die MCD and a door's alternative with a bad type refuse, an unused one loads).
 
+## S7, part 2 — Branch audit (2026-10-24)
+
+Reviewed `git diff main...HEAD` against `AGENTS.md` "Completion standard", comparing `BattlescapeGenerator::run`,
+`deployXCOM`, `generateMap`, `SavedBattleGame::applyEnviroEffects` and `SavedBattleGame::save` (the state the generator
+leaves for the battle save) with the port.
+
+- Named refusals left, each with its owner: `battle.save-unsupported` (saving during a battle, branch 2), the crashed
+  UFO's power sources (`explodePowerSources`) and map grenades primed with fuse timer -2 (`explodeOtherJunk`), both
+  branch 5. Every other `MapGenerationException` is a content error where the reference throws, crashes or goes
+  undefined, recorded in its slice; none is a restriction. Of the [inherited refusals](phase-7-plan.md#inherited-refusals),
+  "A confirmed landing waits for its battle" retired in S1; "Active tactical battle is preserved" stays branch 2's and
+  "Crashed UFO battlescape transitions require tactical simulation" branch 7's.
+- Fixed:
+  - `applyEnviroEffects` draws `RNG::percent(globalChance)` for the friendly, hostile and neutral environmental
+    conditions whenever the battle has enviro effects (100 for a faction without a condition). The port drew nothing,
+    so every later draw of a battle with enviro effects was out of the reference's order. `RuntimeBattleRules.EnviroGlobalChances`
+    projects the chances; `BattleState.EnvironmentalConditions` (the save's `ecEnabledFriendly`, `ecEnabledHostile`,
+    `ecEnabledNeutral`, read by the turns in branch 6), `EnviroEffectsId` and `StartingConditionId` (`enviroEffectsType`,
+    `startingConditionType`) record the outcome for the battle save.
+  - `setMusic`: the battle draws one of the deployment's `music`, else one of the terrain's (`BattleState.Music`, after
+    the power sources' fuel, as in `run`). Deployments and terrains project `Music`.
+  - With these draws in the reference's order, the staged Rosigma `Middle.sav` landing deploys 16 hostiles instead of 19
+    under its pinned seed (`PrivateBattleGenerationTests`); every other pinned shape is unchanged.
+  - A deployment request saved before it recorded vehicle ammo (a port save from before S4b part 4 with a pending
+    request) refused every start with "records no ammo", leaving the campaign held for good. The ammo now comes from the
+    craft's vehicles, which the pending request keeps unchanged; the refusal stays for a craft whose vehicles differ.
+  - The map script's default case named S3b as pending; it is a defect now (`MapScript::load` refuses unknown commands
+    and `generateBaseMap`'s undefined command never reaches it). "There is no deployment request to take." names the
+    retired seam; it now reads "There is no deployment request to start a battle from."
+- Checked and left to their owners (nothing in branch 1 reads them, and none is a refusal):
+  - The terrain's ambience (`generateMap`'s ambient sound, random ambience and delays): presentation, branch 3, written
+    by the battle save in branch 2. `resetCurrentAmbienceDelay` draws from `RNG::seedless`, not the game's stream, so the
+    generator's order is unaffected.
+  - `calculateLighting` (light, branch 4); `isPreview`, the craft deployment preview (UI, branch 3); the briefing's
+    `strTarget` and `strCraftOrBase` (`BriefingState`, branch 3).
+  - `StartBattle` has no UI action yet: the landing hold's briefing and the battlescape are branch 3's, as the hold had
+    no battle to open in Phase 6.
+- Status-doc drift: S4b part 4 listed "a vehicle with clip ammunition and no recorded ammo (base defense, S6)"; S6 part 2
+  loads a base defense's stored vehicles with `getVehicleClipSize` instead, so the refusal is only the guard above
+  (`XcomDeployment.NoVehicleAmmo`). S4b part 4 now says so.
+
+Tests: `BattleStartTests.EnviroEffectsDrawEachFactionsConditionAndTheBattleRecordsItsConditionAndEffects`,
+`TheBattlesMusicIsTheDeploymentsElseTheTerrains` (deployment, terrain, none, a pick from three tracks; the pick draws),
+`ARequestSavedWithoutVehicleAmmoTakesTheAmmoOfTheCraftsVehicles`, `ARequestWithoutVehicleAmmoWhoseCraftDiffersIsRefused`
+(other vehicles, no craft).
+
 ## Next
 
-- S7: the branch audit (`git diff main...HEAD`, `AGENTS.md` "Completion standard"). Notes for the next part:
-  - Every remaining named refusal must name its owning branch. Start from the reasons in `CampaignBattles`
-    (`battle.save-unsupported`, branch 2) and the `MapGenerationException` messages in `Battles/Generation` (content
-    errors where the reference throws or crashes, which are not restrictions, such as S7's RMP link check); the crashed-UFO power source and primed
-    map grenade refusals name branch 5. Check the [inherited refusals](phase-7-plan.md#inherited-refusals): "A confirmed
-    landing waits for its battle" retired in S1.
-  - The acceptance tests above cover the generator end to end; the audit is a review, so look for behaviour the slices
-    left unported without a refusal, and for status-doc drift.
-  - Gotchas: Python on Windows writes CRLF in text mode, and the repository wants LF (`.gitattributes`); a CRLF test file
-    breaks the raw-string rule replacements in `BattleStartTests` silently (tests then fail in unrelated ways). Write
-    with `newline` set to LF, or in binary. The test runner is Microsoft Testing Platform: filter with
-    `dotnet test --project <proj> --filter-class <full name>` or `--filter-method`, not `--filter`.
+Branch 1 is complete; the maintainer merges it. Branch 2 (`claude/battle-save`, [plan](phase-7-plan.md#delivery-shape))
+starts from the merged `main`. Notes for it:
+
+- The battle state to write (`SavedBattleGame::save`) is on `BattleState`, `BattleMap` (tiles, data sets, block names,
+  nodes), `BattleUnit` and `BattleItem`; the S7 part 2 fields (`EnvironmentalConditions`, `EnviroEffectsId`,
+  `StartingConditionId`, `Music`) cover the generation-time keys. Not modelled yet: ambience (branch 3), the briefing's
+  target names, `setInBattlescape` on the craft, UFO, site and base (S6 part 3), the soldiers' armor in the reference's
+  form (S4b part 2), the port-only overlay node (ADR 0038, D6).
+- `BattleState.Validate` is meant to run on restored battles too (S7 part 1).
+- Gotchas: Python on Windows writes CRLF in text mode, and the repository wants LF (`.gitattributes`); a CRLF test file
+  breaks the raw-string rule replacements in `BattleStartTests` silently (tests then fail in unrelated ways). Write
+  with `newline` set to LF, or in binary. A Python script passed through a Bash heredoc lost the escaping of `\n` in
+  C# string literals it inserted (they became real newlines); insert such literals with the Edit tool. The test runner is Microsoft Testing Platform:
+  filter with `dotnet test --project <proj> --filter-class <full name>` or `--filter-method`, not `--filter`.

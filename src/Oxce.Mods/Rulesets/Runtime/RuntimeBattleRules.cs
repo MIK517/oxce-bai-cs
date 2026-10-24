@@ -39,6 +39,13 @@ public sealed class RuntimeBattleRules
     public IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> EnviroArmorTransformations { get; private init; } =
         new ReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>(new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.Ordinal));
 
+    /// <summary>
+    /// RuleEnviroEffects::getEnvironmetalCondition's <c>globalChance</c> for STR_FRIENDLY, STR_HOSTILE and STR_NEUTRAL (100
+    /// for a faction without a condition), by enviro effects ID.
+    /// </summary>
+    public IReadOnlyDictionary<string, RuntimeEnviroChances> EnviroGlobalChances { get; private init; } =
+        new ReadOnlyDictionary<string, RuntimeEnviroChances>(new Dictionary<string, RuntimeEnviroChances>(StringComparer.Ordinal));
+
     /// <summary>The rules the battle reads when it equips units.</summary>
     public RuntimeBattleEquipment Equipment { get; private init; } = RuntimeBattleEquipment.Empty;
 
@@ -59,9 +66,15 @@ public sealed class RuntimeBattleRules
             new ReadOnlyDictionary<string, RuntimeMapScript>(scripts))
         {
             EnviroArmorTransformations = new ReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>(enviro),
+            EnviroGlobalChances = new ReadOnlyDictionary<string, RuntimeEnviroChances>(content.EnviroEffects.Rules.ToDictionary(
+                static rule => rule.Id, static rule => new RuntimeEnviroChances(Chance(rule.Value, "STR_FRIENDLY"),
+                    Chance(rule.Value, "STR_HOSTILE"), Chance(rule.Value, "STR_NEUTRAL")), StringComparer.Ordinal)),
             Equipment = equipment ?? RuntimeBattleEquipment.Empty,
         };
     }
+
+    private static int Chance(EnviroEffectsRule rule, string faction) =>
+        rule.EnvironmentalConditions.TryGetValue(faction, out var condition) ? condition.GlobalChance : 100;
 
     /// <summary>A craft's or UFO's own terrain, projected like the terrains section's.</summary>
     internal static RuntimeTerrain? Inline(InlineTerrainRule? rule) => rule is null ? null : Terrain(rule.Name, rule.Rule);
@@ -74,7 +87,10 @@ public sealed class RuntimeBattleRules
                 ?? RuntimeMapBlockItems.None,
             ItemsInvalid = invalid,
         })),
-        rule.EnviroEffects, List(rule.CivilianTypes), rule.MinimumDepth, rule.MaximumDepth, rule.MapScript, List(rule.MapScripts));
+        rule.EnviroEffects, List(rule.CivilianTypes), rule.MinimumDepth, rule.MaximumDepth, rule.MapScript, List(rule.MapScripts))
+    {
+        Music = List(rule.Music),
+    };
 
     private static ReadOnlyCollection<T> List<T>(IEnumerable<T> source) => Array.AsReadOnly(source.ToArray());
 
@@ -92,7 +108,14 @@ public sealed record RuntimeTerrain(
     int MinimumDepth,
     int MaximumDepth,
     string MapScript,
-    IReadOnlyList<string> MapScripts);
+    IReadOnlyList<string> MapScripts)
+{
+    /// <summary>RuleTerrain <c>music</c>: the battle picks one when its deployment has none (BattlescapeGenerator::setMusic).</summary>
+    public IReadOnlyList<string> Music { get; init; } = [];
+}
+
+/// <summary>The environmental conditions' global chances per faction (EnvironmentalCondition::globalChance).</summary>
+public readonly record struct RuntimeEnviroChances(int Friendly, int Hostile, int Neutral);
 
 /// <summary>MapBlock: size (the MAP header's height replaces <see cref="Height"/> when loaded), groups and revealed floors.</summary>
 public sealed record RuntimeMapBlock(

@@ -62,6 +62,13 @@ internal sealed class XcomDeployment
     /// <summary>deployXCOM's dummy takes <c>getAlienRacesList().front()</c>, undefined for a mod without races.</summary>
     internal const string NoRaceForDummy = "A base defense without a placed defender needs an alien race for its dummy unit.";
 
+    /// <summary>
+    /// A guard for requests saved before they recorded vehicle ammo whose craft no longer carries the request's vehicles
+    /// (the reference reads <c>Vehicle::getAmmo</c> from the craft itself).
+    /// </summary>
+    internal static string NoVehicleAmmo(string vehicle) =>
+        $"The deployment request records no ammo for vehicle {vehicle}, and its craft no longer carries its vehicles.";
+
     private void Run(CampaignState campaign, CampaignDeploymentRequest request)
     {
         var owner = campaign.BaseStates.Find(candidate => candidate.Id == request.BaseId)
@@ -81,9 +88,14 @@ internal sealed class XcomDeployment
         _customRuleCraftDeployments = campaign.CustomRuleCraftDeployments;
         var extended = _rules.Campaign.ExtendedHwpLoadOrder;
         var vehicles = new List<Vehicle>();
+        // A request saved before it recorded the vehicles' ammo: the craft still carries the same vehicles (while the
+        // request is pending, the command gate blocks every command that could change them), so their ammo is the craft's.
+        var ammo = request.VehicleAmmo.Count == 0 && _craft is { } carrier &&
+            carrier.Vehicles.Select(static vehicle => vehicle.RuleId).SequenceEqual(request.Vehicles, StringComparer.Ordinal)
+            ? [.. carrier.Vehicles.Select(static vehicle => vehicle.Ammo)] : request.VehicleAmmo;
         for (var index = 0; index < request.Vehicles.Count; index++)
         {
-            var vehicle = Vehicle(request.Vehicles[index], index < request.VehicleAmmo.Count ? request.VehicleAmmo[index] : null);
+            var vehicle = Vehicle(request.Vehicles[index], index < ammo.Count ? ammo[index] : null);
             var clip = _equipment.VehicleClipAmmo(vehicle.Id);
             if (_startingCondition is { } condition &&
                 (!condition.IsVehiclePermitted(vehicle.Id) || clip is not null && !ItemPermitted(condition, clip, request)))
@@ -383,7 +395,7 @@ internal sealed class XcomDeployment
         _equipment.CreateItemForUnit(vehicle.Id, unit, fixedWeapon: true);
         if (_equipment.VehicleClipAmmo(vehicle.Id) is { } clip)
         {
-            var ammo = vehicle.Ammo ?? throw new MapGenerationException($"The deployment request records no ammo for vehicle {vehicle.Id}.");
+            var ammo = vehicle.Ammo ?? throw new MapGenerationException(NoVehicleAmmo(vehicle.Id));
             if (_equipment.CreateItemForUnit(clip, unit) is { } item) item.AmmoQuantity = ammo;
         }
         unit.TurretType = _equipment.BattleItemRule(vehicle.Id).TurretType;
