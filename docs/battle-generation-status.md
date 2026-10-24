@@ -14,7 +14,7 @@ Phase 7 branch 1 (`claude/battle-generation`), from `main` at `2b0c81fb`. Plan:
 | S4 X-COM deployment | Done (2026-10-24); the base defense deployment is S6 part 2 |
 | S5 alien and civilian deployment | Done (2026-10-23); crashed-UFO and map-junk explosions refuse until branch 5 |
 | S6 base defense and other entry points | Done (2026-10-24) |
-| S7 acceptance and branch audit | Not started |
+| S7 acceptance and branch audit | Acceptance done (2026-10-24); the branch audit is next |
 
 ## S0 — Planning (2026-10-18)
 
@@ -67,7 +67,8 @@ Reference: `MapDataSet::loadData`, `MapData` (setters, `setBlockValue`, `setStop
 - `BattleTerrainLoader` loads and keeps data sets and map blocks on demand and returns a reason for malformed
   content instead of throwing: a missing file (`getIStream` throws), a patch index past the data set
   (`MapDataSet::getObject` throws), more than 12 LOFTS in a patch (the reference writes past the array), a tile type
-  outside the four parts after patching, a MAP whose header differs from the block's size. The header is compared as
+  outside the four parts after patching on an object that replaces another (narrowed in [S7](#s7-part-1--headless-acceptance-on-the-corpus-2026-10-24)),
+  a MAP whose header differs from the block's size. The header is compared as
   signed chars, so a block side above 127 never matches, as in the reference.
 - Intentional difference: a truncated MAP file is invalid content (the codec's check); the reference leaves the
   missing tiles empty.
@@ -663,20 +664,66 @@ without them, the unknown race's refusal; the final mission's deployment, race, 
 `BattleStartTests.AVerticalLevelsBlockRunningPastTheMapsSideIsRefused` (east and south),
 `BaseDefenseMapTests.ALevelBlockPastTheMapsSideRefusesBeforeTheModuleMap` (formerly the module map's refusal test).
 
+## S7, part 1 — Headless acceptance on the corpus (2026-10-24)
+
+Reference: `MapDataSet::loadData`, `MapData::getObjectType`, `Tile::openDoor`, `Tile::destroy`,
+`TileEngine::horizontalBlockage` (the object type's readers), `SavedBattleGame::setUnitPosition`, `getSpawnNode`,
+`BattlescapeGenerator::deployXCOM` (the dummy), `addAlien` (the craft's position), `loadRMP` (links and culled nodes),
+`GeoscapeState::handleBaseDefense`.
+
+- `BattleState.Validate` (run by `StartBattle` on every generated battle) now checks the plan's invariants: every unit on
+  the map stands where `setUnitPosition` would put it (`BattlePlacement.TryPosition` returns its own position) on tiles
+  that name it, and no tile names a unit that is not in the battle; every live route node is at its index, inside the
+  map, and links only to live nodes or -1 to -5; every item has exactly one holder (a tile, an existing unit with an
+  inventory section or as a special weapon, or the one weapon it is loaded in), and none is also in guaranteed recovery.
+  A failure is a generator defect (`InvalidOperationException`), not a content refusal. Branch 2 runs it on restored
+  battles too.
+- `loadRMP` adds the block's node offset to every link up to 250 without checking the file's node count, and culling ends
+  only links to nodes culled in the same file, so a malformed RMP can link past the node list or to another block's
+  culled node. The reference generates that map and indexes past its nodes when the link is followed; the port refuses
+  it as content after `attachNodeLinks` (`BattleMapGenerator.CheckNodeLinks`). No RMP of the corpus has such a link.
+- Vanilla UFO's `BARN.MCD` object 7 has tile type 10, which refused every farm battle. The reference reads an object's
+  type only when it replaces another (a door's alternative, a non-zero die MCD), so `BattleTerrainLoader` now refuses
+  only an out-of-range type on such a replacement; an object nothing turns into keeps its type unread. A scan of the
+  vanilla UFO and TFTD MCDs finds no other out-of-range type.
+- The base defense's dummy (nobody could be placed) is placed with `setUnitPosition`'s checks on the first tile. When it
+  cannot stand there it is off the map (the reference keeps it at (0, 0, 0) without a tile); the first tile stays the
+  inventory tile, and `addAlien` faces the aliens towards (0, 0, 0) as the craft, which crashed on the null position. A
+  campaign reaches the dummy only when its defenders exist but none can be placed (no spawn node, or crew too wounded for
+  deployXCOM's own check); `handleBaseDefense` destroys a base without defenders first.
+- Acceptance (`PrivateBattleGenerationTests`, with the staged installation's own files through
+  `VirtualBattleTerrainFiles`): the Rosigma `Early.sav` terror landing (tick 6290, the first acceptance scenario);
+  landings a headless player stages by sending a manned craft to the first landed or crashed UFO or mission site in view
+  (vanilla UFO `Begining.sav`, a farm; TFTD `Begining.sav`, `IronMode.sav`, `Middle.sav`; Rosigma `Middle.sav`); and base
+  attacks staged by adding, once the world has begun, a retaliation UFO (the first retaliation mission without missiles)
+  on the assault run into the first base, so `handleBaseDefense` raises the request itself (vanilla UFO `Middle.sav`, TFTD
+  `IronMode.sav`, Rosigma `Early.sav`); TFTD `Middle.sav`'s base, whose two soldiers are on the Triton while it is out, is
+  destroyed without a battle. Each battle validates, every
+  kept unit is placed (the dummy excepted), and terrain, map script, size, the block of each 10x10 cell, units per
+  faction and node count are pinned under the save's seed (`artifacts/private-battle-*.json` record the measured
+  shapes). The Rosigma battle also checks the crew, the player's view, the hold and the `battle.save-unsupported`
+  restriction. A missing RMP or MCD, a MAP whose header differs from its block and a truncated MAP refuse the battle
+  with `battle.generation-failed`, the file's path in the reason, the campaign unchanged and the request pending.
+- No vanilla early save reaches a landing in 40 days without a player sending a craft, and none reaches a base defense,
+  hence the staging. No acceptance battle reached a named refusal (crashed-UFO power sources and primed map grenades
+  stay branch 5's).
+
+Tests: `PrivateBattleGenerationTests` (above), `BattleStartTests.TheValidatorNamesUnitsNodesAndItemsThatBreakTheBattlesInvariants`
+(every check), `BattleStartTests.AnRmpLinkToNoNodeOfTheMapIsRefused`,
+`BaseDefenseDeploymentTests.ADummyThatCannotStandOnTheFirstTileStaysOffTheMap` and `ADummyOnARaisedFirstTileStandsOneLevelUp`, `BattleTerrainLoaderTests.MalformedTerrainDataIsAReason`
+(a die MCD and a door's alternative with a bad type refuse, an unused one loads).
+
 ## Next
 
-- S7: headless acceptance on the corpus, then the branch audit. Notes for the next part:
-  - Acceptance ([plan](phase-7-plan.md#branch-1--battle-generation)): the Rosigma `early/Early.sav` terror landing (the
-    [first acceptance scenario](phase-6-status.md#first-phase-7-acceptance-scenario)) and staged vanilla UFO, TFTD and
-    base-defense requests generate battles that pass `BattleState.Validate`, with fixed-seed structure pinned (terrain,
-    map script, blocks, unit counts per faction, node count); malformed terrain resources fail at load with an
-    actionable error. Private tests skip without `fixtures/private/` (`TestFixtures.RequirePrivateInstallation` and
-    friends); the installation's files reach the generator through `VirtualBattleTerrainFiles` and
-    `CampaignState.BattleTerrainFiles`. `PrivateStrategicWorldTests` and `PrivateStrategicLogisticsTests` show how the
-    corpus saves are loaded.
-  - The entry points' synthetic coverage is in `BattleStartTests` (UFOs), `BaseDefenseMapTests`,
-    `BaseDefenseDeploymentTests` and `BattleEntryPointTests`; `BattleStartTests.Rules` and `TerrainFiles` are shared.
-  - Real mods will reach refusals the synthetic tests only name (crashed-UFO power sources and primed map grenades
-    until branch 5, `MapGenerationException` messages for content errors); an acceptance save that stops on one needs a
-    different save or a recorded reason, not a weaker check.
-  - Then the branch audit (`git diff main...HEAD`, `AGENTS.md`): every remaining named refusal names its owning branch.
+- S7: the branch audit (`git diff main...HEAD`, `AGENTS.md` "Completion standard"). Notes for the next part:
+  - Every remaining named refusal must name its owning branch. Start from the reasons in `CampaignBattles`
+    (`battle.save-unsupported`, branch 2) and the `MapGenerationException` messages in `Battles/Generation` (content
+    errors where the reference throws or crashes, which are not restrictions, such as S7's RMP link check); the crashed-UFO power source and primed
+    map grenade refusals name branch 5. Check the [inherited refusals](phase-7-plan.md#inherited-refusals): "A confirmed
+    landing waits for its battle" retired in S1.
+  - The acceptance tests above cover the generator end to end; the audit is a review, so look for behaviour the slices
+    left unported without a refusal, and for status-doc drift.
+  - Gotchas: Python on Windows writes CRLF in text mode, and the repository wants LF (`.gitattributes`); a CRLF test file
+    breaks the raw-string rule replacements in `BattleStartTests` silently (tests then fail in unrelated ways). Write
+    with `newline` set to LF, or in binary. The test runner is Microsoft Testing Platform: filter with
+    `dotnet test --project <proj> --filter-class <full name>` or `--filter-method`, not `--filter`.

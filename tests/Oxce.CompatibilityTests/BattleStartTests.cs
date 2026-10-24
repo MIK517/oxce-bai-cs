@@ -369,7 +369,14 @@ public sealed class BattleStartTests
         return map;
     }
 
-    internal static Files TerrainFiles() => new(new()
+    internal static Files TerrainFiles(Action<Dictionary<string, byte[]>>? adjust = null)
+    {
+        var files = TerrainFileMap();
+        adjust?.Invoke(files);
+        return new(files);
+    }
+
+    private static Dictionary<string, byte[]> TerrainFileMap() => new()
     {
         ["TERRAIN/BLANKS.MCD"] = Mcd(Record(), Record((42, 1))),
         // TESTSET's third object (MAP ID 4) is a UFO power source (special type 2).
@@ -407,7 +414,7 @@ public sealed class BattleStartTests
         ["ROUTES/ARMORY.RMP"] = RouteNode(8, 8, 0, [], rank: 4, priority: 1),
         ["MAPS/TALL.MAP"] = Map(20, 10, 2),
         ["ROUTES/TALL.RMP"] = [],
-    });
+    };
 
     private static (CampaignState Campaign, CampaignDeploymentRequest Request) Requested(string? rules, string ufo = "UFO_SCOUT",
         IReadOnlyList<CraftVehicleSnapshot>? vehicles = null, IReadOnlyDictionary<string, int>? items = null,
@@ -1115,6 +1122,133 @@ public sealed class BattleStartTests
         var (withRules, _) = Requested(Rules);
         withRules.BattleTerrainFiles = null;
         Assert.Equal(CampaignBattles.NoTerrainFiles.Text, Refusal(withRules, new StartBattle()));
+    }
+
+    /// <summary>
+    /// S7: the battle validator (run on every generated battle) names a unit that is not on its tiles or could not stand
+    /// there, a node outside the map or linking to no live node, and an item without exactly one holder.
+    /// </summary>
+    [Fact]
+    public void TheValidatorNamesUnitsNodesAndItemsThatBreakTheBattlesInvariants()
+    {
+        var (campaign, _) = Requested(Rules, "UFO_ALIENS");
+        Started(campaign);
+        var battle = Battle(campaign);
+        var map = battle.Map;
+        battle.Validate();
+        string Broken(Action breakIt, Action repair)
+        {
+            breakIt();
+            try { return Assert.Throws<InvalidOperationException>(battle.Validate).Message; }
+            finally
+            {
+                repair();
+                battle.Validate();
+            }
+        }
+
+        void Move(BattleUnit unit, BattlePosition to)
+        {
+            map.SetUnitAt(map.TileIndex(unit.Position!.Value), null);
+            unit.Position = to;
+            map.SetUnitAt(map.TileIndex(to), unit.Id);
+        }
+
+        // Units: off their tile, standing where setUnitPosition refuses them, or a tile naming a unit that is gone.
+        var alien = battle.Units.First(static unit => unit.Faction == BattleFaction.Hostile);
+        var at = alien.Position!.Value;
+        var free = Positions(map).First(position => map.UnitAt(map.TileIndex(position)) is null &&
+            Oxce.Gameplay.Battles.Generation.BattlePlacement.TryPosition(map, alien, position) == position);
+        Assert.Equal($"Battle unit {alien.Id} is not on its tile {free}.",
+            Broken(() => alien.Position = free, () => alien.Position = at));
+        var refused = Positions(map).First(position => map.UnitAt(map.TileIndex(position)) is null &&
+            Oxce.Gameplay.Battles.Generation.BattlePlacement.TryPosition(map, alien, position) is null);
+        Assert.Equal($"Battle unit {alien.Id} cannot stand at {refused}.", Broken(() => Move(alien, refused), () => Move(alien, at)));
+        Assert.Equal($"Tile {map.TileIndex(free)} names battle unit 4242, which is not in the battle.",
+            Broken(() => map.SetUnitAt(map.TileIndex(free), 4242), () => map.SetUnitAt(map.TileIndex(free), null)));
+
+        // Nodes: a link past the node list, to the culled node SMALL's RMP leaves as a dummy, or a value below -5.
+        var node = map.Nodes.First(static node => !node.IsDummy && node.Links.Count != 0);
+        var link = node.Links[0];
+        var dummy = map.Nodes.ToList().FindIndex(static candidate => candidate.IsDummy);
+        Assert.True(dummy >= 0);
+        foreach (var broken in new[] { map.Nodes.Count, dummy, -6 })
+            Assert.Equal($"Route node {node.Id} links to {broken}, which is no node of the map.",
+                Broken(() => node.Links[0] = broken, () => node.Links[0] = link));
+
+        // Items: the alien's gun also on a tile, carried by a missing unit or by nobody, its clip in a second weapon.
+        var gun = battle.Items.First(item => item.OwnerUnitId == alien.Id && item.AmmoSlots[0] is not null);
+        var clip = gun.AmmoSlots[0]!.Value;
+        Assert.Equal($"Battle item {gun.Id} has 2 holders.", Broken(() => gun.Tile = at, () => gun.Tile = null));
+        Assert.Equal($"Battle item {gun.Id} belongs to missing unit 4242.", Broken(() => gun.OwnerUnitId = 4242, () => gun.OwnerUnitId = alien.Id));
+        Assert.Equal($"Battle item {gun.Id} has 0 holders.", Broken(() => gun.OwnerUnitId = null, () => gun.OwnerUnitId = alien.Id));
+        var other = battle.Items.First(item => item.Id != gun.Id && item.Id != clip);
+        var otherSlot = other.AmmoSlots[3];
+        Assert.Equal($"Battle item {clip} has 2 holders.", Broken(() => other.AmmoSlots[3] = clip, () => other.AmmoSlots[3] = otherSlot));
+        Assert.Equal($"Battle item {other.Id} is loaded with {gun.Id}, which is no loaded ammo of the battle.",
+            Broken(() => other.AmmoSlots[3] = gun.Id, () => other.AmmoSlots[3] = otherSlot));
+        Assert.Equal($"Battle item {gun.Id} is outside the map.", Broken(() =>
+        {
+            gun.OwnerUnitId = null;
+            gun.Tile = new BattlePosition(map.Width, 0, 0);
+        }, () =>
+        {
+            gun.Tile = null;
+            gun.OwnerUnitId = alien.Id;
+        }));
+        var slot = gun.Slot;
+        Assert.Equal($"Battle item {gun.Id} is carried in no inventory section.", Broken(() => gun.Slot = "", () => gun.Slot = slot));
+
+        // Breaks the lists only add to, each on a battle of its own: a node at another index or outside the map, an item
+        // listed twice or also in guaranteed recovery.
+        static string Fresh(Action<BattleState> breakIt)
+        {
+            var (fresh, _) = Requested(Rules, "UFO_ALIENS");
+            Started(fresh);
+            var battle = Battle(fresh);
+            breakIt(battle);
+            return Assert.Throws<InvalidOperationException>(battle.Validate).Message;
+        }
+        Assert.Equal($"Route node 0 is at index {map.Nodes.Count}.", Fresh(static battle =>
+            battle.Map.AddNode(new BattleNode(0, new BattlePosition(1, 1, 0), 0, 0, 0, 0, 0, 0, []))));
+        Assert.Equal($"Route node {map.Nodes.Count} is outside the map.", Fresh(battle =>
+            battle.Map.AddNode(new BattleNode(map.Nodes.Count, new BattlePosition(0, 0, map.Height), 0, 0, 0, 0, 0, 0, []))));
+        Assert.Equal($"Battle item {gun.Id} is listed twice.", Fresh(battle => battle.AddItem(battle.Items.Single(item => item.Id == gun.Id))));
+        Assert.Equal($"Battle item {gun.Id} is both on the map and in guaranteed recovery.", Fresh(battle =>
+        {
+            var item = battle.Items.Single(item => item.Id == gun.Id);
+            battle.SendToLimbo([item]);
+            battle.AddItem(item);
+        }));
+    }
+
+    /// <summary>
+    /// S7: loadRMP offsets every link up to 250 without checking the file's node count, so an RMP link past the node list
+    /// (or to another block's culled node) is refused as content, the campaign left as it was.
+    /// </summary>
+    [Theory]
+    [InlineData(200, "links to 200")]
+    [InlineData(4, "links to 4")]
+    public void AnRmpLinkToNoNodeOfTheMapIsRefused(byte link, string reason)
+    {
+        var (campaign, _) = Requested(Rules, "UFO_ALIENS");
+        // The first SMALL block's first node links to a node index that does not exist (200), or past its own three nodes
+        // to the second SMALL block's culled node (index 3 + 1).
+        campaign.BattleTerrainFiles = TerrainFiles(files => files["ROUTES/SMALL.RMP"] =
+            [.. RouteNode(9, 5, 0, [253, 251, link], rank: 4, priority: 1), .. RouteNode(12, 5, 0, []),
+                .. RouteNode(2, 2, 0, [], rank: 1, priority: 1)]);
+        var before = campaign.Capture();
+        var refused = Refusal(campaign, new StartBattle());
+        Assert.StartsWith("Route node ", refused, StringComparison.Ordinal);
+        Assert.EndsWith($"{reason}, which is no node of the map.", refused, StringComparison.Ordinal);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+    }
+
+    private static IEnumerable<BattlePosition> Positions(BattleMap map)
+    {
+        for (var z = 0; z < map.Height; z++)
+            for (var y = 0; y < map.Length; y++)
+                for (var x = 0; x < map.Width; x++) yield return new BattlePosition(x, y, z);
     }
 
     [Fact]

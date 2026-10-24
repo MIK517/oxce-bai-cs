@@ -256,16 +256,85 @@ internal sealed class BattleState
             units.AsReadOnly());
     }
 
-    /// <summary>Checks the invariants every generated or restored battle keeps.</summary>
+    /// <summary>
+    /// Checks the invariants every generated battle keeps (Phase 7 branch 1 acceptance; branch 2 adds restored ones): every unit on the map
+    /// stands where <c>setUnitPosition</c> would put it, on tiles that name it; every route node lies inside the map and
+    /// links only to live nodes or the reference's special values; every item has exactly one holder (a tile, a unit, or
+    /// the one weapon it is loaded in). A failure is a generator defect, not invalid content.
+    /// </summary>
     public void Validate()
     {
         var ids = new HashSet<int>();
         foreach (var unit in _units)
         {
             if (!ids.Add(unit.Id)) throw new InvalidOperationException($"Battle unit {unit.Id} is listed twice.");
-            if (unit.Position is { } position && !Contains(position))
-                throw new InvalidOperationException($"Battle unit {unit.Id} is outside the map.");
+            if (unit.Position is not { } position) continue;
+            if (!Contains(position)) throw new InvalidOperationException($"Battle unit {unit.Id} is outside the map.");
+            for (var x = 0; x < unit.ArmorSize; x++)
+                for (var y = 0; y < unit.ArmorSize; y++)
+                {
+                    var covered = new BattlePosition(position.X + x, position.Y + y, position.Z);
+                    if (!Contains(covered) || Map.UnitAt(Map.TileIndex(covered)) != unit.Id)
+                        throw new InvalidOperationException($"Battle unit {unit.Id} is not on its tile {covered}.");
+                }
+            if (Generation.BattlePlacement.TryPosition(Map, unit, position) != position)
+                throw new InvalidOperationException($"Battle unit {unit.Id} cannot stand at {position}.");
         }
+        for (var tile = 0; tile < Map.TileCount; tile++)
+            if (Map.UnitAt(tile) is { } standing && !ids.Contains(standing))
+                throw new InvalidOperationException($"Tile {tile} names battle unit {standing}, which is not in the battle.");
+        ValidateNodes();
+        ValidateItems(ids);
+    }
+
+    // Node links: an ID in the node list, or -1 (unused) to -5 (west), the reference's values while unconnected.
+    private void ValidateNodes()
+    {
+        var nodes = Map.Nodes;
+        for (var index = 0; index < nodes.Count; index++)
+        {
+            var node = nodes[index];
+            if (node.IsDummy) continue;
+            if (node.Id != index) throw new InvalidOperationException($"Route node {node.Id} is at index {index}.");
+            if (!Contains(node.Position)) throw new InvalidOperationException($"Route node {node.Id} is outside the map.");
+            foreach (var link in node.Links)
+                if (link is < -5 || link >= nodes.Count || link >= 0 && nodes[link].IsDummy)
+                    throw new InvalidOperationException($"Route node {node.Id} links to {link}, which is no node of the map.");
+        }
+    }
+
+    private void ValidateItems(HashSet<int> units)
+    {
+        var holders = new Dictionary<int, int>();
+        foreach (var item in _items)
+        {
+            if (!holders.TryAdd(item.Id, 0)) throw new InvalidOperationException($"Battle item {item.Id} is listed twice.");
+            if (item.Tile is { } tile)
+            {
+                if (!Contains(tile)) throw new InvalidOperationException($"Battle item {item.Id} is outside the map.");
+                holders[item.Id]++;
+            }
+            if (item.OwnerUnitId is { } owner)
+            {
+                if (!units.Contains(owner)) throw new InvalidOperationException($"Battle item {item.Id} belongs to missing unit {owner}.");
+                if (item.Slot.Length == 0 && !item.IsSpecialWeapon)
+                    throw new InvalidOperationException($"Battle item {item.Id} is carried in no inventory section.");
+                holders[item.Id]++;
+            }
+        }
+        foreach (var weapon in _items)
+            foreach (var slot in weapon.AmmoSlots)
+            {
+                if (slot is not { } ammo || ammo == weapon.Id) continue;
+                if (!holders.TryGetValue(ammo, out var count) || !_items.Exists(item => item.Id == ammo && item.IsAmmo))
+                    throw new InvalidOperationException($"Battle item {weapon.Id} is loaded with {ammo}, which is no loaded ammo of the battle.");
+                holders[ammo] = count + 1;
+            }
+        foreach (var item in _guaranteedRecovered)
+            if (holders.ContainsKey(item.Id))
+                throw new InvalidOperationException($"Battle item {item.Id} is both on the map and in guaranteed recovery.");
+        foreach (var (item, count) in holders)
+            if (count != 1) throw new InvalidOperationException($"Battle item {item} has {count} holders.");
     }
 }
 

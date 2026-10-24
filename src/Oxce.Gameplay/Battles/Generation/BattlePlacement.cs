@@ -45,7 +45,10 @@ internal sealed class BattlePlacement(BattleState battle, IRandomSource random)
     /// with a floor unless the unit flies, and without a low big wall; a raised tile (terrain level -24) lifts the unit
     /// one level. Returns the position the unit would take, or null.
     /// </summary>
-    public BattlePosition? TryPosition(BattleUnit unit, BattlePosition position)
+    public BattlePosition? TryPosition(BattleUnit unit, BattlePosition position) => TryPosition(_map, unit, position);
+
+    /// <inheritdoc cref="TryPosition(BattleUnit, BattlePosition)"/>
+    internal static BattlePosition? TryPosition(BattleMap map, BattleUnit unit, BattlePosition position)
     {
         var size = unit.ArmorSize - 1;
         var zOffset = 0;
@@ -53,15 +56,15 @@ internal sealed class BattlePlacement(BattleState battle, IRandomSource random)
             for (var y = size; y >= 0; y--)
             {
                 var at = new BattlePosition(position.X + x, position.Y + y, position.Z + zOffset);
-                if (!_map.Contains(at)) return null;
-                var tile = _map.TileIndex(at);
-                var item = _map.MapData(tile, BattleTilePart.ObjectPart);
-                if (_map.UnitAt(tile) is { } other && other != unit.Id ||
-                    _map.TimeUnitCost(tile, BattleTilePart.ObjectPart, unit.MovementType) == InvalidMoveCost ||
-                    _map.HasNoFloor(at) && unit.MovementType != 1 ||
+                if (!map.Contains(at)) return null;
+                var tile = map.TileIndex(at);
+                var item = map.MapData(tile, BattleTilePart.ObjectPart);
+                if (map.UnitAt(tile) is { } other && other != unit.Id ||
+                    map.TimeUnitCost(tile, BattleTilePart.ObjectPart, unit.MovementType) == InvalidMoveCost ||
+                    map.HasNoFloor(at) && unit.MovementType != 1 ||
                     item is { BigWall: > 0 and <= 3 })
                     return null;
-                if (_map.TerrainLevel(tile) == -24)
+                if (map.TerrainLevel(tile) == -24)
                 {
                     zOffset++;
                     x = size;
@@ -72,7 +75,7 @@ internal sealed class BattlePlacement(BattleState battle, IRandomSource random)
         // A large unit must not straddle a wall between its tiles.
         if (size > 0)
             for (var direction = 2; direction <= 4; direction++)
-                if (BattlePathing.IsBlockedDirection(_map, unit.MovementType, placed, direction)) return null;
+                if (BattlePathing.IsBlockedDirection(map, unit.MovementType, placed, direction)) return null;
         return placed;
     }
 

@@ -221,6 +221,46 @@ public sealed class BaseDefenseDeploymentTests
     }
 
     [Fact]
+    public void ADummyThatCannotStandOnTheFirstTileStaysOffTheMap()
+    {
+        // setUnitPosition refuses the first tile, whose object no one can walk through: the reference's dummy keeps
+        // (0, 0, 0) without a tile, the port's is off the map; the first tile is still the inventory tile, and the aliens
+        // face (0, 0, 0) as the craft.
+        var (campaign, _) = Requested(Room, Deployment, files: files =>
+        {
+            AlienNodes(files);
+            // XSET's fourth object (MAP ID 5) costs 255 TUs to walk through (MCD byte 39).
+            files["TERRAIN/XSET.MCD"] = [.. files["TERRAIN/XSET.MCD"], .. Record((42, 5), (39, 255))];
+            files["MAPS/XB_00.MAP"][3 + 3] = 5;
+        });
+        Start(campaign);
+        var battle = Battle(campaign);
+        var dummy = Assert.Single(battle.Units, static unit => unit.Faction == BattleFaction.Player);
+        Assert.Equal((true, (BattlePosition?)null), (dummy.SummonedPlayerUnit, dummy.Position));
+        Assert.Null(battle.Map.UnitAt(0));
+        Assert.Equal(new BattlePosition(0, 0, 0), battle.CraftInventoryTile);
+        Assert.Contains(battle.Units, static unit => unit.Faction == BattleFaction.Hostile);
+    }
+
+    [Fact]
+    public void ADummyOnARaisedFirstTileStandsOneLevelUp()
+    {
+        // setUnitPosition lifts a unit off a tile of terrain level -24 (MCD byte 48); the first tile stays the inventory tile.
+        var (campaign, _) = Requested(Room, Deployment, files: files =>
+        {
+            AlienNodes(files);
+            files["TERRAIN/XSET.MCD"] = [.. files["TERRAIN/XSET.MCD"], .. Record((42, 5), (48, unchecked((byte)-24)))];
+            files["MAPS/XB_00.MAP"][3 + 3] = 5;
+        });
+        Start(campaign);
+        var battle = Battle(campaign);
+        var dummy = Assert.Single(battle.Units, static unit => unit.Faction == BattleFaction.Player);
+        Assert.Equal((true, (BattlePosition?)new BattlePosition(0, 0, 1)), (dummy.SummonedPlayerUnit, dummy.Position));
+        Assert.Equal(dummy.Id, battle.Map.UnitAt(battle.Map.TileIndex(new BattlePosition(0, 0, 1))));
+        Assert.Equal(new BattlePosition(0, 0, 0), battle.CraftInventoryTile);
+    }
+
+    [Fact]
     public void ADummyThatIsNoUnitRefusesTheBattle()
     {
         var rules = Deployment.Replace("type: SECTOID", "type: NOT_SECTOID", StringComparison.Ordinal);

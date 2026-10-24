@@ -208,8 +208,10 @@ internal sealed class XcomDeployment
     }
 
     /// <summary>
-    /// deployXCOM's dummy: a summoned player unit of the first race's first member (BattleUnit from the unit rule) on the
-    /// map's first tile, which also becomes the inventory tile. The reference takes the front of empty lists there.
+    /// deployXCOM's dummy: a summoned player unit of the first race's first member (BattleUnit from the unit rule) placed
+    /// on the map's first tile with setUnitPosition's checks (a raised tile lifts it), which also becomes the inventory
+    /// tile. When it cannot stand there the reference keeps the unit at (0, 0, 0) without a tile; the port leaves it off
+    /// the map. The reference takes the front of empty lists there.
     /// </summary>
     private void AddDummy()
     {
@@ -233,11 +235,12 @@ internal sealed class XcomDeployment
             Health = stats.Health,
             Mana = stats.Mana,
             SummonedPlayerUnit = true,
-            Position = new BattlePosition(0, 0, 0),
         };
+        var firstTile = new BattlePosition(0, 0, 0);
+        unit.Position = _placement.TryPosition(unit, firstTile);
         _battle.AddUnit(unit);
         _battle.SelectedUnitId = unit.Id;
-        _battle.CraftInventoryTile = unit.Position;
+        _battle.CraftInventoryTile = firstTile;
     }
 
     /// <summary>

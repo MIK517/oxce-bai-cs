@@ -35,10 +35,18 @@ internal sealed class BattleTerrainLoader(RuntimeBattleRules rules, IBattleTerra
         var objects = new BattleMapData[mcd.Records.Count];
         for (var index = 0; index < objects.Length; index++) objects[index] = new BattleMapData(mcd.Records[index]);
         if (_rules.McdPatches.TryGetValue(name, out var patch) && Patch(name, patch, objects) is { } invalid) return invalid;
-        // A TilePart outside the four parts would index past a tile's parts in the reference; a patch may repair it.
-        for (var index = 0; index < objects.Length; index++)
-            if ((uint)objects[index].ObjectType > (uint)BattleTilePart.ObjectPart)
-                return $"MCD {name} object {index} has an invalid tile type {(int)objects[index].ObjectType}.";
+        // The reference reads an object's type only when the object replaces another: a door's alternative
+        // (Tile::openDoor) and a non-zero die MCD (Tile::destroy, TileEngine::horizontalBlockage). A TilePart outside
+        // the four parts would index past the tile's parts there, so such a replacement is refused; an object that
+        // nothing turns into keeps its type unread (vanilla BARN object 7 has type 10). A patch may repair it.
+        string? InvalidReplacement(int replacement) =>
+            (uint)replacement < (uint)objects.Length && (uint)objects[replacement].ObjectType > (uint)BattleTilePart.ObjectPart
+                ? $"MCD {name} object {replacement} has an invalid tile type {(int)objects[replacement].ObjectType}." : null;
+        foreach (var source in objects)
+        {
+            if (source.IsDoor && InvalidReplacement(source.AlternateMcd) is { } door) return door;
+            if (source.DieMcd != 0 && InvalidReplacement(source.DieMcd) is { } dead) return dead;
+        }
         dataSet = new BattleMapDataSet(name, Array.AsReadOnly(objects));
         _dataSets.Add(name, dataSet);
         return null;

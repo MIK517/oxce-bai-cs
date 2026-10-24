@@ -98,15 +98,24 @@ public sealed class BattleTerrainLoaderTests
         {
             ["TERRAIN/OUT_OF_RANGE.MCD"] = Mcd(Record(), Record()),
             ["TERRAIN/TOO_MANY_LOFTS.MCD"] = Mcd(Record()),
-            ["TERRAIN/BAD_TYPE.MCD"] = Mcd(Record((53, 4))),
+            // Object 0 dies into object 1, whose tile type is no tile part.
+            ["TERRAIN/BAD_TYPE.MCD"] = Mcd(Record((44, 1)), Record((53, 4))),
+            // A door (offset 35) opens into its alternative, object 0 even when the alternative is 0.
+            ["TERRAIN/BAD_DOOR.MCD"] = Mcd(Record((35, 1), (53, 5))),
+            // Nothing turns into the object, so its type is never read (vanilla BARN object 7 has type 10).
+            ["TERRAIN/UNUSED_TYPE.MCD"] = Mcd(Record((53, 10)), Record((44, 0), (46, 0))),
             ["TERRAIN/REPAIRED.MCD"] = Mcd(Record((53, 4))),
         }));
         Assert.Equal("Terrain file TERRAIN/MISSING.MCD is missing.", loader.TryLoadDataSet("MISSING", out _));
         // MapDataSet::getObject throws for a patch index past the data set.
         Assert.Equal("MCD OUT_OF_RANGE has no object 2", loader.TryLoadDataSet("OUT_OF_RANGE", out _));
         Assert.Equal("MCD patch TOO_MANY_LOFTS object 0 has more than 12 LOFTS.", loader.TryLoadDataSet("TOO_MANY_LOFTS", out _));
-        Assert.Equal("MCD BAD_TYPE object 0 has an invalid tile type 4.", loader.TryLoadDataSet("BAD_TYPE", out var set));
+        // The reference reads a replacement's type (Tile::openDoor, Tile::destroy) and would index past the tile's parts.
+        Assert.Equal("MCD BAD_TYPE object 1 has an invalid tile type 4.", loader.TryLoadDataSet("BAD_TYPE", out var set));
         Assert.Null(set);
+        Assert.Equal("MCD BAD_DOOR object 0 has an invalid tile type 5.", loader.TryLoadDataSet("BAD_DOOR", out _));
+        Assert.Null(loader.TryLoadDataSet("UNUSED_TYPE", out var unused));
+        Assert.Equal(10, (int)unused!.Objects[0].ObjectType);
         // The patch runs before the check, so its objectType can repair a record's tile type.
         Assert.Null(loader.TryLoadDataSet("REPAIRED", out var repaired));
         Assert.Equal(BattleTilePart.NorthWall, repaired!.Objects[0].ObjectType);

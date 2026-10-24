@@ -191,6 +191,25 @@ internal sealed class BattleMapGenerator
         }
         FillLevelZeroFloors();
         AttachNodeLinks();
+        CheckNodeLinks();
+    }
+
+    /// <summary>
+    /// loadRMP adds the block's node offset to every link up to 250 without checking it against the file's node count, and
+    /// culling ends only the links to nodes culled in the same file, so a malformed RMP can link past the node list or to
+    /// another block's culled node. The reference generates such a map and indexes past its nodes when the link is
+    /// followed; the port refuses it as content.
+    /// </summary>
+    private void CheckNodeLinks()
+    {
+        var nodes = _map.Nodes;
+        foreach (var node in nodes)
+        {
+            if (node.IsDummy) continue;
+            foreach (var link in node.Links)
+                if (link >= nodes.Count || link >= 0 && nodes[link].IsDummy)
+                    throw new MapGenerationException($"Route node {node.Id} links to {link}, which is no node of the map.");
+        }
     }
 
     /// <summary>
