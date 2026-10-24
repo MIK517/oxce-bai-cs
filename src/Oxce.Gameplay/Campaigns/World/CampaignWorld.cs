@@ -84,7 +84,6 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         foreach (var pair in _interceptionUfos) shadow._interceptionUfos[pair.Key] = pair.Value;
         shadow._landings.AddRange(_landings);
         shadow._nextLanding = _nextLanding;
-        shadow._deploymentRequestTaken = _deploymentRequestTaken;
         shadow._ignoredUfoContacts.UnionWith(_ignoredUfoContacts);
     }
 
@@ -328,7 +327,6 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         _alienBaseBirthSequence = snapshot.World.AlienBaseBirthSequence;
         _craftLostDogfight = snapshot.World.CraftLostDogfight;
         _deploymentRequest = snapshot.World.DeploymentRequest;
-        _deploymentRequestTaken = false;
         _events.Clear();
         _generatedEvents.Clear();
         foreach (var pair in snapshot.World.GeneratedEvents) _generatedEvents.Add(pair.Key, pair.Value);

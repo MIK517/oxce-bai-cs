@@ -1,3 +1,4 @@
+using Oxce.Formats.Yaml;
 using Oxce.Mods.Rulesets.Presentation;
 
 namespace Oxce.Mods.Rulesets.CampaignStart;
@@ -107,7 +108,11 @@ public sealed record BaseFacilityRule(
     IReadOnlyList<string> BuildOverFacilities,
     IReadOnlyList<FacilityPosition> StorageTiles,
     IReadOnlyList<FacilityPosition> CraftSlots,
-    string DestroyedFacility);
+    string DestroyedFacility)
+{
+    /// <summary>RuleBaseFacility <c>verticalLevels</c> as written (the last mod's node replaces the earlier one).</summary>
+    public YamlNode? VerticalLevels { get; init; }
+}
 
 internal sealed class CountryBuilder(string id)
 {
@@ -205,4 +210,5 @@ internal sealed class BaseFacilityBuilder(string id, int listOrder)
     public List<FacilityPosition> StorageTiles { get; set; } = [];
     public List<FacilityPosition> CraftSlots { get; set; } = [];
     public string DestroyedFacility { get; set; } = string.Empty;
+    public YamlNode? VerticalLevels { get; set; }
 }

@@ -18,16 +18,16 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 192 | Core, Mods, Scripting |
-| [Oxce.Mods](#oxcemods) | 96 | Core, Formats, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 214 | Core, Mods, Scripting |
+| [Oxce.Mods](#oxcemods) | 100 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 5 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 318 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 325 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
-| [Oxce.UnitTests](#oxceunittests) | 102 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
+| [Oxce.UnitTests](#oxceunittests) | 109 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
 | [Oxce.FixtureTool](#oxcefixturetool) | 1 | FixtureSupport, Formats, Mods, Savegames |
 | [Oxce.ResourceBrowser](#oxceresourcebrowser) | 2 | Formats, Mods, Platform.Sdl, Rendering, Resources |
@@ -337,11 +337,33 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 192 files.
+`src/Oxce.Gameplay` - 214 files.
 
 ### `Oxce.Gameplay`
 
 - `AssemblyMarker` (class) [AssemblyMarker.cs](../src/Oxce.Gameplay/AssemblyMarker.cs) - Marks the assembly containing geoscape, bases, and battlescape rules.
+
+### `Oxce.Gameplay.Battles`
+
+- `BattleFaction` (enum) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - UnitFaction: the side a battle unit fights for.
+- `BattleControllerKind` (enum) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs)
+- `BattleController` (record struct) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - Who decides a unit's actions (ADR 0038): the AI, or the human in a player slot.
+- `BattleViewer` (record struct) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - Whose view a battle query answers for (ADR 0038): a faction, and the player slot within it.
+- `BattlePosition` (record struct) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - A tile position: x along the width, y along the length, z the level (0 is the ground level).
+- `StartBattle` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - Starts the battle the pending deployment request asks for (`ConfirmLandingState::btnYesClick`, `BaseDefenseState` and `ConfirmCydoniaStat...
+- `BattleStarted` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The battle a deployment request asked for has started.
+- `BattleUnitView` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - A unit as a viewer sees it.
+- `BattleOverview` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The battle as a viewer sees it; `Revision` changes with every committed battle change.
+- `IBattleQuery` (interface) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The current battle, if any, as a viewer sees it (ADR 0038: every battle query takes a viewer).
+
+### `Oxce.Gameplay.Battles.Terrain`
+
+- `BattleTilePart` (enum) [BattleMapData.cs](../src/Oxce.Gameplay/Battles/Terrain/BattleMapData.cs) - TilePart: the four parts of a tile, in MAP record order.
+- `BattleMapData` (class) [BattleMapData.cs](../src/Oxce.Gameplay/Battles/Terrain/BattleMapData.cs) - One terrain object (MapData), read from an MCD record and patched by the data set's MCD patch.
+- `BattleMapDataSet` (class) [BattleMapData.cs](../src/Oxce.Gameplay/Battles/Terrain/BattleMapData.cs) - A loaded MapDataSet: the objects of one MCD file, patched.
+- `BattleMapBlockData` (class) [BattleMapData.cs](../src/Oxce.Gameplay/Battles/Terrain/BattleMapData.cs) - A loaded map block: its MAP tiles (height from the MAP header, which `loadMAP` takes over the rule's) and the raw RMP routes, which are d...
+- `IBattleTerrainFiles` (interface) [BattleTerrainFiles.cs](../src/Oxce.Gameplay/Battles/Terrain/BattleTerrainFiles.cs) - The installation files battles read (`FileMap::getIStream`): terrain data sets, map blocks and routes.
+- `VirtualBattleTerrainFiles` (class) [BattleTerrainFiles.cs](../src/Oxce.Gameplay/Battles/Terrain/BattleTerrainFiles.cs) - Terrain files from the installation's virtual file catalog (mods override the master's files).
 
 ### `Oxce.Gameplay.Campaigns`
 
@@ -510,6 +532,8 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CampaignState` (class) [CampaignWorldScriptContext.cs](../src/Oxce.Gameplay/Campaigns/CampaignWorldScriptContext.cs)
 - `CraftWeaponSnapshot` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs)
 - `CraftVehicleSnapshot` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs)
+- `CraftDeploymentPoint` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs) - A custom deployment point relative to the craft map (Position) and the unit's facing.
+- `CraftVehicleDeployment` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs) - Craft.h VehicleDeploymentData without the per-battle `used` flag.
 - `CraftLogisticsState` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs)
 - `CraftEffectiveStats` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs)
 - `CraftUnitCapacities` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs)
@@ -535,6 +559,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `SoldierDiaryState` (record) [SoldierDiary.cs](../src/Oxce.Gameplay/Campaigns/SoldierDiary.cs) - SoldierDiary's counters, kill list and mission IDs, which commendations read.
 - `MissionStatisticSnapshot` (record) [SoldierDiary.cs](../src/Oxce.Gameplay/Campaigns/SoldierDiary.cs) - MissionStatistics: one finished battle in the save's `missionStatistics`, as commendations read it.
 - `SoldierCommendation` (record) [SoldierGeneration.cs](../src/Oxce.Gameplay/Campaigns/SoldierGeneration.cs)
+- `SoldierLayoutItem` (record) [SoldierGeneration.cs](../src/Oxce.Gameplay/Campaigns/SoldierGeneration.cs) - EquipmentLayoutItem: an item the soldier wants in a section at a position, the ammunition for each of its four ammo slots ("" for none),...
 - `SoldierPersonalState` (record) [SoldierGeneration.cs](../src/Oxce.Gameplay/Campaigns/SoldierGeneration.cs)
 - `SoldierDogfightExperience` (record) [SoldierGeneration.cs](../src/Oxce.Gameplay/Campaigns/SoldierGeneration.cs) - The interception stat gains a pilot earned today (firing, reactions, bravery).
 - `SoldierGeneration` (class) [SoldierGeneration.cs](../src/Oxce.Gameplay/Campaigns/SoldierGeneration.cs) - Initial state from Soldier::Soldier and Mod::genSoldier at reference 4df3a5e.
@@ -551,8 +576,6 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CampaignDeploymentRequest` (record) [CampaignDeploymentRequest.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignDeploymentRequest.cs) - The battle a confirmed landing asks for (D4): what `ConfirmLandingState::btnYesClick` hands to `BattlescapeGenerator`.
 - `LaunchFinalMission` (record) [CampaignDeploymentRequest.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignDeploymentRequest.cs) - SelectDestinationState's Cydonia button and ConfirmCydoniaState's Yes: the craft flies the final mission.
 - `DeploymentRequested` (record) [CampaignDeploymentRequest.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignDeploymentRequest.cs) - A confirmed landing recorded its deployment request; the campaign waits for the battle.
-- `TakeDeploymentRequest` (record) [CampaignDeploymentRequest.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignDeploymentRequest.cs) - The Phase 7 seam: takes the pending deployment request, exactly once.
-- `DeploymentRequestTaken` (record) [CampaignDeploymentRequest.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignDeploymentRequest.cs) - The request taken by `TakeDeploymentRequest`.
 - `CampaignArcUnlocked` (record) [CampaignWorldArcScripts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldArcScripts.cs) - The article that GeoscapeState opens for one granted arc.
 - `BaseDefenseStarted` (record) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs) - A retaliation UFO reached an X-COM base with defenses: the base defense window opens and pauses time.
 - `ResolveBaseDefense` (record) [CampaignWorldBaseAttacks.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldBaseAttacks.cs) - Fires the base defenses (BaseDefenseState's Start) or skips them (Skip firing), then applies the outcome.
@@ -636,7 +659,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Mods
 
-`src/Oxce.Mods` - 96 files.
+`src/Oxce.Mods` - 100 files.
 
 ### `Oxce.Mods`
 
@@ -762,6 +785,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StartingBaseVariant` (enum) [CampaignStartSettings.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartSettings.cs)
 - `CampaignStartTime` (record) [CampaignStartSettings.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartSettings.cs)
 - `CampaignStartSettings` (class) [CampaignStartSettings.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartSettings.cs)
+- `StatAdjustmentSettings` (record) [CampaignStartSettings.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartSettings.cs) - StatAdjustment without its growth multiplier: percentage and absolute stat growth, aim and armor multipliers.
 
 ### `Oxce.Mods.Rulesets.Content`
 
@@ -897,17 +921,42 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `AdhocScriptRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
 - `ArcScriptRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
 - `EventScriptRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `RuntimeBattleEquipment` (class) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - What the battle reads when it equips units (SavedBattleGame::initUnit, createItemForUnit, BattleUnit::addItem, setSpecialWeapon): the inv...
+- `RuntimeBattleInventory` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - RuleInventory as the battle reads it.
+- `RuntimeInventorySlot` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs)
+- `RuntimeBattleItem` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - RuleItem's equipment fields: fixed weapon, default inventory slot and position, inventory size, supported sections, turret type, psi and...
+- `RuntimeBattleArmor` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - Armor's equipment fields: built-in weapons, special and self-destruct items, two main weapons, inventory, weight.
+- `RuntimeBattleUnitRule` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - Unit's battle fields: statistics, built-in weapon sets (plain and weighted), melee and psi weapons, living weapon, race.
+- `RuntimeBattleRules` (class) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - The rule families only the battlescape reads (Phase 7, ADR 0038), linked as one group by `Link`, apart from the strategic families.
+- `RuntimeTerrain` (record) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - RuleTerrain as the battle generator reads it (sprites and ambience stay with presentation).
+- `RuntimeEnviroChances` (record struct) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - The environmental conditions' global chances per faction (EnvironmentalCondition::globalChance).
+- `RuntimeMapBlock` (record) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - MapBlock: size (the MAP header's height replaces `Height` when loaded), groups and revealed floors.
+- `RuntimeMcdPatch` (record) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - MCDPatch: entries in rule order.
+- `RuntimeMcdPatchEntry` (record) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - One MCDPatch data entry: the integer and boolean properties it sets and its LOFTS, if any.
 - `RuntimeCraftTemplateWeapon` (record) [RuntimeCraftTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeCraftTemplate.cs)
 - `RuntimeCraftTemplateVehicle` (record) [RuntimeCraftTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeCraftTemplate.cs)
 - `RuntimeCraftTemplate` (record) [RuntimeCraftTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeCraftTemplate.cs)
 - `RuntimeEventRule` (record) [RuntimeEventRule.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeEventRule.cs) - Scheduling inputs from RuleEvent and the payload that GeoscapeEventState::eventLogic applies.
 - `RuntimeEventPayload` (record) [RuntimeEventRule.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeEventRule.cs) - What a popped event gives or takes, in the reference's order.
 - `RuntimeGlobeTexture` (record) [RuntimeGlobe.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeGlobe.cs) - Reference: `Mod/Texture.cpp`.
+- `RuntimeTerrainCriterion` (record) [RuntimeGlobe.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeGlobe.cs) - TerrainCriteria: a terrain name with a weight and a globe area in radians.
 - `RuntimeGlobe` (record) [RuntimeGlobe.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeGlobe.cs)
 - `RuntimeGlobePolyline` (record) [RuntimeGlobe.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeGlobe.cs)
 - `RuntimeGlobeColors` (record) [RuntimeGlobe.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeGlobe.cs) - Globe palette indices.
 - `RuntimeItemDamageRule` (record) [RuntimeItemDamageRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeItemDamageRules.cs) - Float fields owned by each RuleItem damage copy; script queries do not apply tactical damage.
 - `RuntimeDamageConversions` (record) [RuntimeItemDamageRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeItemDamageRules.cs)
+- `RuntimeBlockPosition` (record) [RuntimeMapBlockItems.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapBlockItems.cs) - A map block position (Position: three Sint16 values).
+- `RuntimeMapBlockItem` (record) [RuntimeMapBlockItems.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapBlockItems.cs) - MapBlock `items`: an item type and the positions it lies on.
+- `RuntimeFuseRange` (record) [RuntimeMapBlockItems.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapBlockItems.cs) - MapBlock `fuseTimers`: the fuse timer range an item type is primed with.
+- `RuntimeRandomizedItems` (record) [RuntimeMapBlockItems.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapBlockItems.cs) - RandomizedItems: an amount of items picked from a list (once, or per item when mixed) at a position.
+- `RuntimeExtendedItems` (record) [RuntimeMapBlockItems.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapBlockItems.cs) - ExtendedItems: an item at positions, a fuse timer range and the ammo (type and quantity) loaded into it.
+- `RuntimeAmmoDefinition` (record) [RuntimeMapBlockItems.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapBlockItems.cs)
+- `RuntimeMapBlockItems` (record) [RuntimeMapBlockItems.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapBlockItems.cs) - The items a map block places (MapBlock::load's items, fuseTimers, randomizedItems, extendedItems).
+- `RuntimeMapScript` (record) [RuntimeMapScripts.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapScripts.cs) - A map script (Mod::getMapScript): its commands in order.
+- `RuntimeMapScriptCommand` (record) [RuntimeMapScripts.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapScripts.cs) - One MapScript command as `MapScript::load` leaves it: block selection (groups or blocks, frequencies, maximum uses), rectangles, conditio...
+- `VerticalLevelType` (enum) [RuntimeMapScripts.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapScripts.cs) - VerticalLevelType.
+- `RuntimeVerticalLevel` (record) [RuntimeMapScripts.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapScripts.cs) - VerticalLevel as `VerticalLevel::load` leaves it: type (an unknown type loads as middle), groups or blocks (reading "blocks" clears the g...
+- `RuntimeTunnelData` (record) [RuntimeMapScripts.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapScripts.cs) - MapScript `tunnelData`: the level to drill on and the MCD replacements by part (westWall, northWall, corner, floor) as data set and entry...
 - `RuntimePresentationContent` (class) [RuntimePresentationContent.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimePresentationContent.cs)
 - `RuntimeRuleCompatibilityEntry` (record) [RuntimeRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleCatalog.cs)
 - `RuntimeRuleCompatibilitySidecar` (class) [RuntimeRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleCatalog.cs)
@@ -950,6 +999,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RuntimeCampaignSettings` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
 - `RuntimeScriptFamily` (struct) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
 - `RuntimeScriptRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeStatAdjustment` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs) - StatAdjustment: percentage and absolute stat growth, aim and armor multipliers (the growth multiplier is the difficulty coefficient).
 - `RuntimeSoldierNamePool` (record) [RuntimeSoldierNamePool.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeSoldierNamePool.cs)
 - `RuntimeSoldierTemplate` (record) [RuntimeSoldierTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeSoldierTemplate.cs)
 - `RuntimeScriptTrigger<TFamily>` (record) [RuntimeStrategicScriptRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeStrategicScriptRules.cs) - A trigger retains missing IDs: negative tests of absent rules can be meaningful.
@@ -970,7 +1020,9 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RuntimeStartingCondition` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - A month-keyed weighted table.
 - `RuntimeWeightedTimeline` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs)
 - `RuntimeAlienRaceRule` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - The strategic projection of an alien race: retaliation aggression and the retaliation mission timeline in rule order (AlienRace::retaliat...
-- `RuntimeAlienDeploymentRule` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - The strategic projection of an alien deployment: site and alien-base bookkeeping only.
+- `RuntimeAlienDeploymentRule` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - The runtime projection of an alien deployment: site and alien-base bookkeeping, and in `Battle` the battlescape properties the battle gen...
+- `RuntimeDeploymentBattle` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - AlienDeployment battlescape properties read by `BattlescapeGenerator::run`: the map size (`getDimensions`), `turnLimit`, `chronoTrigger`...
+- `RuntimeDeploymentData` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - DeploymentData: an alien rank (or a custom unit type), quantities by difficulty (low, medium, high), random extras (`dQty`, `extraQty`),...
 - `RuntimeAlienRaceEvolution` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - Reference: `AlienDeployment::getAlienRaceEvolution` tuples.
 
 ### `Oxce.Mods.Rulesets.TerrainDeployment`
@@ -978,6 +1030,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `TerrainDeploymentRuleCatalog` (class) [TerrainDeploymentRuleCatalog.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRuleCatalog.cs)
 - `MapBlockRule` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)
 - `TerrainRule` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)
+- `InlineTerrainRule` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs) - RuleCraft and RuleUfo `battlescapeTerrainData`: a terrain of their own, named by its `name`.
 - `MapScriptCommandType` (enum) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)
 - `MapDirection` (enum) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)
 - `MapRectangle` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)
@@ -1178,16 +1231,22 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 318 files.
+`tests/Oxce.CompatibilityTests` - 325 files.
 
 ### `Oxce.CompatibilityTests`
 
+- `BattleTestTerrain` (internal class) [BattleTestTerrain.cs](../tests/Oxce.CompatibilityTests/BattleTestTerrain.cs) - Synthetic terrain files for battle tests: MCD records, MAP blocks and an in-memory file port.
 - `ContentStateDump` (internal class) [ContentStateDump.cs](../tests/Oxce.CompatibilityTests/ContentStateDump.cs) - Deterministic dump of every instance field reachable from an object graph.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>315 test classes</summary>
+<details><summary>321 test classes</summary>
 
+- `BaseDefenseDeploymentTests` ([BaseDefenseDeploymentTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseDeploymentTests.cs))
+- `BaseDefenseMapTests` ([BaseDefenseMapTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseMapTests.cs))
+- `BattleEntryPointTests` ([BattleEntryPointTests.cs](../tests/Oxce.CompatibilityTests/BattleEntryPointTests.cs))
+- `BattleStartTests` ([BattleStartTests.cs](../tests/Oxce.CompatibilityTests/BattleStartTests.cs))
+- `BattleTerrainLoaderTests` ([BattleTerrainLoaderTests.cs](../tests/Oxce.CompatibilityTests/BattleTerrainLoaderTests.cs))
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
 - `CampaignSaveRegressionFixtureTests` ([CampaignSaveRegressionFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignSaveRegressionFixtureTests.cs))
@@ -1216,6 +1275,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `PersonnelTacticalRulesFixtureTests` ([PersonnelTacticalRulesFixtureTests.cs](../tests/Oxce.CompatibilityTests/PersonnelTacticalRulesFixtureTests.cs))
 - `Phase3ContentCorpusTests` ([Phase3ContentCorpusTests.cs](../tests/Oxce.CompatibilityTests/Phase3ContentCorpusTests.cs))
 - `PresentationRulesFixtureTests` ([PresentationRulesFixtureTests.cs](../tests/Oxce.CompatibilityTests/PresentationRulesFixtureTests.cs))
+- `PrivateBattleGenerationTests` ([PrivateBattleGenerationTests.cs](../tests/Oxce.CompatibilityTests/PrivateBattleGenerationTests.cs))
 - `PrivateCampaignSaveTests` ([PrivateCampaignSaveTests.cs](../tests/Oxce.CompatibilityTests/PrivateCampaignSaveTests.cs))
 - `PrivateCatCorpusTests` ([PrivateCatCorpusTests.cs](../tests/Oxce.CompatibilityTests/PrivateCatCorpusTests.cs))
 - `PrivateCatSoundCorpusTests` ([PrivateCatSoundCorpusTests.cs](../tests/Oxce.CompatibilityTests/PrivateCatSoundCorpusTests.cs))
@@ -1517,13 +1577,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.UnitTests
 
-`tests/Oxce.UnitTests` - 102 files.
+`tests/Oxce.UnitTests` - 109 files.
 
 ### `Oxce.UnitTests`
 
 - `AllocationMeasurement` (class) [AllocationMeasurement.cs](../tests/Oxce.UnitTests/AllocationMeasurement.cs)
 
-<details><summary>101 test classes</summary>
+<details><summary>108 test classes</summary>
 
 - `ProjectDependencyTests` ([ProjectDependencyTests.cs](../tests/Oxce.UnitTests/Architecture/ProjectDependencyTests.cs))
 - `DiagnosticTests` ([DiagnosticTests.cs](../tests/Oxce.UnitTests/Core/DiagnosticTests.cs))
@@ -1563,6 +1623,11 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `XcomPaletteCodecTests` ([XcomPaletteCodecTests.cs](../tests/Oxce.UnitTests/Formats/XcomPaletteCodecTests.cs))
 - `YamlCompatibilityReaderTests` ([YamlCompatibilityReaderTests.cs](../tests/Oxce.UnitTests/Formats/YamlCompatibilityReaderTests.cs))
 - `YamlCompatibilityWriterTests` ([YamlCompatibilityWriterTests.cs](../tests/Oxce.UnitTests/Formats/YamlCompatibilityWriterTests.cs))
+- `AlienQuantitiesTests` ([AlienQuantitiesTests.cs](../tests/Oxce.UnitTests/Gameplay/AlienQuantitiesTests.cs))
+- `AlienRacesTests` ([AlienRacesTests.cs](../tests/Oxce.UnitTests/Gameplay/AlienRacesTests.cs))
+- `BattlePathingTests` ([BattlePathingTests.cs](../tests/Oxce.UnitTests/Gameplay/BattlePathingTests.cs))
+- `BattleStateTests` ([BattleStateTests.cs](../tests/Oxce.UnitTests/Gameplay/BattleStateTests.cs))
+- `BattleUnitStatsTests` ([BattleUnitStatsTests.cs](../tests/Oxce.UnitTests/Gameplay/BattleUnitStatsTests.cs))
 - `CampaignCapabilityRegistryTests` ([CampaignCapabilityRegistryTests.cs](../tests/Oxce.UnitTests/Gameplay/CampaignCapabilityRegistryTests.cs))
 - `CampaignFoundationTests` ([CampaignFoundationTests.cs](../tests/Oxce.UnitTests/Gameplay/CampaignFoundationTests.cs))
 - `CampaignLogisticsTests` ([CampaignLogisticsTests.cs](../tests/Oxce.UnitTests/Gameplay/CampaignLogisticsTests.cs))
@@ -1607,6 +1672,8 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RulesetComposerTests` ([RulesetComposerTests.cs](../tests/Oxce.UnitTests/Mods/RulesetComposerTests.cs))
 - `RuntimeGlobeProjectionTests` ([RuntimeGlobeProjectionTests.cs](../tests/Oxce.UnitTests/Mods/RuntimeGlobeProjectionTests.cs))
 - `RuntimeRuleLinkerTests` ([RuntimeRuleLinkerTests.cs](../tests/Oxce.UnitTests/Mods/RuntimeRuleLinkerTests.cs))
+- `RuntimeStartingConditionTests` ([RuntimeStartingConditionTests.cs](../tests/Oxce.UnitTests/Mods/RuntimeStartingConditionTests.cs))
+- `RuntimeTerrainCriterionTests` ([RuntimeTerrainCriterionTests.cs](../tests/Oxce.UnitTests/Mods/RuntimeTerrainCriterionTests.cs))
 - `StrategicScriptLinkingTests` ([StrategicScriptLinkingTests.cs](../tests/Oxce.UnitTests/Mods/StrategicScriptLinkingTests.cs))
 - `TerrainDeploymentRuleCatalogTests` ([TerrainDeploymentRuleCatalogTests.cs](../tests/Oxce.UnitTests/Mods/TerrainDeploymentRuleCatalogTests.cs))
 - `TypedRuleFamilyLoaderTests` ([TypedRuleFamilyLoaderTests.cs](../tests/Oxce.UnitTests/Mods/TypedRuleFamilyLoaderTests.cs))
@@ -1665,6 +1732,12 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 Shared sources compiled into several projects, and non-test types that tests reuse.
 Prefer these over local copies (see AGENTS.md, *Test conventions*).
+
+### [tests/Oxce.CompatibilityTests/BattleTestTerrain.cs](../tests/Oxce.CompatibilityTests/BattleTestTerrain.cs)
+
+- `BattleTestTerrain` (class) - Synthetic terrain files for battle tests: MCD records, MAP blocks and an in-memory file port.
+- `BattleTestTerrain.Files` (class) - Terrain files by virtual path; counts reads so tests can check caching.
+- members: `Reads`, `Read`, `Record`, `Map`, `RouteNode`, `RequiredFiles`
 
 ### [tests/Oxce.CompatibilityTests/ContentStateDump.cs](../tests/Oxce.CompatibilityTests/ContentStateDump.cs)
 

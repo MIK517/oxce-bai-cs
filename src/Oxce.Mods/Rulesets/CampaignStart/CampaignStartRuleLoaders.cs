@@ -166,7 +166,7 @@ internal sealed class BaseFacilityRuleLoader : TypedRuleFamilyLoader<BaseFacilit
         builder.HangarType = reader.ReadInt32("hangarType", builder.HangarType);
         builder.RightClickActionType = reader.ReadInt32("rightClickActionType", builder.RightClickActionType);
         ApplyBuildCosts(builder, reader);
-        reader.Defer("verticalLevels", "facility vertical map levels belong to the terrain/deployment slice");
+        if (reader.TryGet("verticalLevels", out var verticalLevels)) builder.VerticalLevels = verticalLevels;
         if (reader.TryGet("leavesBehindOnSell", out var leaves))
             builder.LeavesBehindOnSell = YamlValueReader.ReadSequence(leaves!, YamlValueReader.ReadString).ToList();
         builder.RemovalTime = reader.ReadInt32("removalTime", builder.RemovalTime);
@@ -193,7 +193,10 @@ internal sealed class BaseFacilityRuleLoader : TypedRuleFamilyLoader<BaseFacilit
         b.SickBayAbsoluteBonus, b.SickBayRelativeBonus, b.PrisonType, b.HangarType, b.RightClickActionType,
         new ReadOnlyDictionary<string, FacilityItemCost>(b.BuildCostItems), b.LeavesBehindOnSell.AsReadOnly(),
         b.RemovalTime, b.CanBeBuiltOver, b.UpgradeOnly, b.BuildOverFacilities.AsReadOnly(),
-        b.StorageTiles.AsReadOnly(), b.CraftSlots.AsReadOnly(), b.DestroyedFacility);
+        b.StorageTiles.AsReadOnly(), b.CraftSlots.AsReadOnly(), b.DestroyedFacility)
+    {
+        VerticalLevels = b.VerticalLevels,
+    };
 
     private static void ApplyBuildCosts(BaseFacilityBuilder builder, RulePropertyReader reader)
     {

@@ -14,6 +14,7 @@ public sealed partial class CampaignState
         new World.CampaignWorld(this),
         new DelegatedCampaignCapability(RegisterMonthlyCycle),
         new DelegatedCampaignCapability(RegisterEvents),
+        new Battles.CampaignBattles(this),
         .. _testCapabilities?.Invoke(this) ?? [],
     ];
 

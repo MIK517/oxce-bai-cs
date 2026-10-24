@@ -19,9 +19,11 @@ namespace Oxce.CompatibilityTests;
 /// </summary>
 public sealed class StrategicLandingTests
 {
-    private static (RuntimeContent Content, CampaignState Campaign) Create(bool seasons = false, string? rules = null)
+    internal static (RuntimeContent Content, CampaignState Campaign) Create(bool seasons = false, string? rules = null,
+        IReadOnlyDictionary<string, byte[]>? files = null, IReadOnlyList<CraftVehicleSnapshot>? vehicles = null,
+        IReadOnlyDictionary<string, int>? items = null, IReadOnlyList<SoldierLayoutItem>? layout = null, string? finalRules = null)
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], rules);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], rules, finalRules: finalRules, files: files);
         var snapshot = CreateLifecycleSnapshot(content);
         var ufo = snapshot.World.Ufos[0] with { SecondsRemaining = 3600, Detected = true };
         var owner = snapshot.Bases[0];
@@ -42,9 +44,14 @@ public sealed class StrategicLandingTests
                         Latitude = ufo.Latitude,
                         Destination = new WorldTargetReference(WorldTargetKind.Ufo, WorldTargetReference.UfoType, ufo.Id,
                             ufo.Longitude, ufo.Latitude) { UniqueId = ufo.UniqueId },
+                        Vehicles = vehicles ?? craft.Logistics!.Vehicles,
+                        Items = items ?? craft.Logistics!.Items,
                     },
                 })],
-                Soldiers = [owner.Soldiers[0] with { Personal = owner.Soldiers[0].Personal! with { CraftType = "SHIP", CraftId = 1 } },
+                Soldiers = [owner.Soldiers[0] with { Personal = owner.Soldiers[0].Personal! with
+                    {
+                        CraftType = "SHIP", CraftId = 1, EquipmentLayout = layout ?? owner.Soldiers[0].Personal!.EquipmentLayout,
+                    } },
                     .. owner.Soldiers.Skip(1).Select(soldier => soldier with { Personal = soldier.Personal! with { CraftType = "", CraftId = 0 } })],
             }],
         };
@@ -184,13 +191,9 @@ public sealed class StrategicLandingTests
             campaign.Execute(new RecallCraft(request.BaseId, "SHIP", 1)).Events)).Reason);
         Assert.Equivalent(before, campaign.Capture(), strict: true);
 
-        // The request survives a reload, and the Phase 7 seam takes it exactly once.
+        // The request survives a reload and waits for its battle.
         var reloaded = Reload(content, campaign, 17, "deployment.sav");
         Assert.Equivalent(request, Landings(reloaded).QueryDeploymentRequest(), strict: true);
-        Assert.Equivalent(request, Assert.IsType<DeploymentRequestTaken>(Assert.Single(reloaded.Execute(new TakeDeploymentRequest()).Events)).Request,
-            strict: true);
-        Assert.Equal(WorldCommandReasons.NoDeploymentRequest, Assert.IsType<CampaignActionBlocked>(Assert.Single(
-            reloaded.Execute(new TakeDeploymentRequest()).Events)).Reason);
         AssertTimeBlocked(reloaded, WorldCommandReasons.DeploymentRequestPending);
     }
 
@@ -268,6 +271,20 @@ public sealed class StrategicLandingTests
         return (content, CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17)));
     }
 
+    [Fact]
+    public void AnAlienBaseRequestFromAnOlderSaveHasNoMissionTexture()
+    {
+        // Saves written before Phase 7 recorded an alien base request's missing mission texture as 0.
+        var (content, campaign) = CreateAt(alienBase: true);
+        var requested = AssertLandingRequested(campaign);
+        campaign.Execute(new AnswerLanding(requested.Confirmation, LandingAnswer.Yes));
+        var save = OxceSaveAdapter.EmitNewCampaign(campaign.Capture());
+        var older = save.Replace("missionTexture: \"-1\"", "missionTexture: 0", StringComparison.Ordinal);
+        Assert.NotEqual(save, older);
+        var reloaded = TestFixtures.LoadLogisticsSave(older, content, 17, "older-base-request.sav").Campaign;
+        Assert.Equal(-1, Landings(reloaded).QueryDeploymentRequest()!.MissionTexture);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -279,9 +296,9 @@ public sealed class StrategicLandingTests
         var request = Assert.IsType<DeploymentRequested>(Assert.Single(
             campaign.Execute(new AnswerLanding(requested.Confirmation, LandingAnswer.Yes)).Events)).Request;
         // ConfirmLandingState::btnYesClick: the site's or base's deployment is the mission type. A site
-        // keeps its custom deployment and race; an alien base uses mission texture 0 (setWorldTexture(0, ...)).
+        // keeps its custom deployment and race; an alien base has no mission texture (setWorldTexture(0, ...) passes null).
         if (alienBase)
-            Assert.Equal(("ALIEN_BASE_DEPLOY", "ALIEN_BASE_DEPLOY", "RACE_A", 0, requested.GlobeTexture),
+            Assert.Equal(("ALIEN_BASE_DEPLOY", "ALIEN_BASE_DEPLOY", "RACE_A", -1, requested.GlobeTexture),
                 (request.MissionType, request.DeploymentId, request.Race, request.MissionTexture, request.GlobeTexture));
         else
             Assert.Equal(("SITE_DEPLOY", "SITE_DEPLOY", "STR_TERROR_MISSION", "RACE_B", requested.MissionTexture),

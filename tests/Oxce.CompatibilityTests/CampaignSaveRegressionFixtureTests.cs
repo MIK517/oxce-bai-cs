@@ -111,6 +111,22 @@ public sealed class CampaignSaveRegressionFixtureTests
         }
     }
 
+    [Fact]
+    public void LayoutEntriesNamingMissingRulesAreDroppedOnLoadWhileTheSoldierNodeKeepsThem()
+    {
+        // Soldier::load logs and skips a layout entry whose item, section or ammunition does not exist. The fixture's
+        // content has ITEM but no inventory sections, so every entry here names a missing rule.
+        var content = LoadContent();
+        Assert.True(content.RuntimeRules.Items.TryGet("ITEM", out _));
+        Assert.False(content.RuntimeRules.Inventories.TryGet("STR_RIGHT_HAND", out _));
+        var yaml = ReadFixture().Replace("equipmentLayout: [{itemType: ITEM, slot: STR_RIGHT_HAND}]",
+            "equipmentLayout: [{itemType: ITEM, slot: STR_RIGHT_HAND, ammoItemSlots: [NONE, ITEM]}, {itemType: MISSING, slot: STR_RIGHT_HAND}]",
+            StringComparison.Ordinal);
+        var loaded = OxceSaveAdapter.Load(yaml, "layout.sav", content, new SplitMix64RandomSource(0), Options());
+        Assert.Empty(Assert.Single(loaded.Campaign.Capture().Bases[0].Soldiers).Personal!.EquipmentLayout);
+        Assert.Contains("itemType: MISSING", OxceSaveAdapter.EmitLoadedCampaign(loaded.Campaign.Capture(), loaded.Source), StringComparison.Ordinal);
+    }
+
     private static string ReadFixture() => File.ReadAllText(Path.Combine(
         Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot(), "fixtures", "public", "savegames", "legacy-soldier.sav"));
 

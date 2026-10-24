@@ -11,7 +11,7 @@ internal static class StrategicReadinessTestContent
         => Load([overlay]);
 
     public static RuntimeContent Load(IReadOnlyList<string> overlays, string? extraRules = null,
-        bool extraRulesAfterOverlays = false, string? finalRules = null)
+        bool extraRulesAfterOverlays = false, string? finalRules = null, IReadOnlyDictionary<string, byte[]>? files = null)
     {
         var repository = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var root = Path.Combine(Path.GetTempPath(), $"oxce-readiness-content-{Guid.NewGuid():N}");
@@ -31,6 +31,13 @@ internal static class StrategicReadinessTestContent
                     extraRulesAfterOverlays ? "a0-generated-test.rul" : "zz-generated-test.rul"), extraRules);
             if (finalRules is not null)
                 File.WriteAllText(Path.Combine(root, "standard/logistics/Ruleset", "a--final-test.rul"), finalRules);
+            // Extra installation files (for example terrain data), by path below the master mod.
+            foreach (var (path, data) in files ?? new Dictionary<string, byte[]>())
+            {
+                var target = Path.Combine(root, "standard/logistics", path);
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                File.WriteAllBytes(target, data);
+            }
             var request = InstallationLoadRequest.ForMasterAndAddOn(root, "logistics", "-", TestFixtures.Engine);
             // Every load is built fresh, then restored from the compiled cache it wrote. The restored content
             // must be indistinguishable from the fresh build; tests then run against the restored content.
