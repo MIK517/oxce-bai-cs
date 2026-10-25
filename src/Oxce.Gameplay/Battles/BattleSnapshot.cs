@@ -9,7 +9,7 @@ namespace Oxce.Gameplay.Battles;
 /// are the <c>SavedBattleGame</c> constructor's, which a key the load does not find keeps.
 /// </summary>
 /// <remarks>
-/// S1 holds the battle root. The map (S2), the units (S3) and the items (S4) follow; until then their keys stay in the
+/// S1 holds the battle root, S2 the map and S3 the units. The items (S4) follow; until then their keys stay in the
 /// source document, which the save module overlays.
 /// </remarks>
 public sealed record BattleSnapshot(int Width, int Length, int Height, string MissionType)
@@ -125,6 +125,9 @@ public sealed record BattleSnapshot(int Width, int Length, int Height, string Mi
     /// those left, each -1 for a block without any.
     /// </summary>
     public IReadOnlyList<IReadOnlyList<BattleModuleSnapshot>> ModuleMap { get; init; } = [];
+
+    /// <summary><c>units</c>, in the battle's order (S3); a unit whose rule or armor is gone is left out on read.</summary>
+    public IReadOnlyList<BattleUnitSnapshot> Units { get; init; } = [];
 
     /// <summary>The mission type whose battles keep a module map (SavedBattleGame::load and save).</summary>
     public const string BaseDefenseMission = "STR_BASE_DEFENSE";

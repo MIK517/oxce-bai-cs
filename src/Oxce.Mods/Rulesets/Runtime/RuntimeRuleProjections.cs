@@ -454,7 +454,11 @@ public sealed record RuntimeSoldierRule(
     public IReadOnlyDictionary<string, short> DogfightExperience { get; init; } = new ReadOnlyDictionary<string, short>(new Dictionary<string, short>());
 }
 
-public sealed record RuntimeSoldierBonusRule(int ListOrder, IReadOnlyDictionary<string, short> Stats);
+public sealed record RuntimeSoldierBonusRule(int ListOrder, IReadOnlyDictionary<string, short> Stats)
+{
+    /// <summary>RuleSoldierBonus's side armor in UnitSide order (front, left = side + leftArmorDiff, right, rear, under).</summary>
+    public IReadOnlyList<int> Sides { get; init; } = [0, 0, 0, 0, 0];
+}
 public sealed record RuntimeSoldierTransformationRule(
     IReadOnlyDictionary<string, string> Strings,
     IReadOnlyDictionary<string, int> Integers,
@@ -587,6 +591,10 @@ public sealed record RuntimeCampaignSettings(
     public bool AllowCountriesToCancelAlienPact { get; init; }
     public bool BuildInfiltrationBaseCloseToTheCountry { get; init; }
     public bool InfiltrateRandomCountryInTheRegion { get; init; }
+
+    /// <summary>Mod::getAIPickUpWeaponsMoreActively and getAIPickUpWeaponsMoreActivelyCiv: a unit rule's default (-1) for hostile and other units.</summary>
+    public bool AiPickUpWeaponsMoreActively { get; init; }
+    public bool AiPickUpWeaponsMoreActivelyCivilians { get; init; }
     public IReadOnlyList<int> BuyPriceCoefficients { get; init; } = Array.AsReadOnly<int>([100, 100, 100, 100, 100]);
     public IReadOnlyList<int> SellPriceCoefficients { get; init; } = Array.AsReadOnly<int>([100, 100, 100, 100, 100]);
     public IReadOnlyList<string> HireScientistsBaseFunctions { get; init; } = [];

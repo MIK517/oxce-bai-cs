@@ -51,7 +51,7 @@ public sealed class BattleSaveRootTests
     [Fact]
     public void GeneratedBattleRootWritesReloadsAndConforms()
     {
-        var (_, battle) = Generated();
+        var (campaign, battle) = Generated();
         var snapshot = battle.Capture();
         // run and setupObjectives: the deployment's limits and shade, no briefing yet, turn 0 before the first turn.
         Assert.Equal((20, 20, 2, "STR_UFO_GROUND_ASSAULT", 15, 2, 12, 9, 0, "", ""),
@@ -68,13 +68,15 @@ public sealed class BattleSaveRootTests
         BattleSaveConformance.Check(written);
         var text = Emit(written);
         var reread = OxceBattleSave.Read(Parse(text), SharedContent.Value);
-        Assert.Equivalent(snapshot, reread, strict: true);
-        var restored = BattleState.Restore(reread, SharedContent.Value, Terrain());
-        Assert.Equivalent(snapshot, restored.Capture(), strict: true);
+        // The units read as saved and take the constructor's values on restore (BattleSaveUnitTests).
+        Assert.Equivalent(snapshot with { Units = [] }, reread with { Units = [] }, strict: true);
+        var restored = BattleState.Restore(reread, SharedContent.Value, Terrain(), campaign: BattleRestoreCampaign.From(campaign));
+        Assert.Equivalent(BattleSaveUnitTests.Loaded(snapshot), restored.Capture(), strict: true);
         // The derived state: the deployment, from the mission type's deployment or the UFO in battle.
-        Assert.Equal(battle.DeploymentId, BattleState.Restore(reread, SharedContent.Value, Terrain(), "UFO_SCOUT").DeploymentId);
+        Assert.Equal(battle.DeploymentId, BattleState.Restore(reread, SharedContent.Value, Terrain(), "UFO_SCOUT",
+            BattleRestoreCampaign.From(campaign)).DeploymentId);
         // A second write of the reloaded battle is byte-stable.
-        Assert.Equal(text, Emit(OxceBattleSave.Write(restored.Capture(), Parse(text))));
+        BattleSaveUnitTests.AssertLoadedRewriteIsStable(restored, text, SharedContent.Value, BattleRestoreCampaign.From(campaign));
     }
 
     [Fact]
@@ -183,13 +185,13 @@ public sealed class BattleSaveRootTests
     [Fact]
     public void UnknownRootKeysSurviveALoadedRewrite()
     {
-        var source = Parse("width: 1\nportFuture: {a: [1, 2]}\n" + Minimal + "turn: 3\nunits: [{id: 1}]\n");
+        var source = Parse("width: 1\nportFuture: {a: [1, 2]}\n" + Minimal + "turn: 3\nitems: [{id: 1}]\n");
         var written = OxceBattleSave.Write(OxceBattleSave.Read(source, SharedContent.Value) with { Turn = 4 }, source);
         Assert.Equal(Normalized(Parse("portFuture: {a: [1, 2]}\n")), Normalized(Keep(written, Parse("portFuture: {a: [1, 2]}\n"))));
         // Keys of later slices stay as loaded; the root keys take the battle's values, in the source's order.
-        Assert.Equal(Normalized(Parse("units: [{id: 1}]\n")), Normalized(Keep(written, Parse("units: [{id: 1}]\n"))));
+        Assert.Equal(Normalized(Parse("items: [{id: 1}]\n")), Normalized(Keep(written, Parse("items: [{id: 1}]\n"))));
         Assert.Equal("4", ((YamlScalarNode)Value(written, "turn")).Value);
-        Assert.Equal(["width", "portFuture", "selectedUnit", "turn", "units"], written.Entries.Take(5).Select(static entry => entry.ScalarKey));
+        Assert.Equal(["width", "portFuture", "selectedUnit", "turn", "items"], written.Entries.Take(5).Select(static entry => entry.ScalarKey));
     }
 
     [Fact]
@@ -297,7 +299,8 @@ public sealed class BattleSaveRootTests
     public void ARestoredBattleHasAnEmptyMapOfTheSavedSizeAndTheFirstItemId()
     {
         var battle = BattleState.Restore(new BattleSnapshot(3, 2, 1, "M") { Turn = 2, SelectedUnitId = 5 }, SharedContent.Value, Terrain());
-        Assert.Equal((3, 2, 1, 6, 2, 5, 1), (battle.Width, battle.Length, battle.Height, battle.Map.TileCount, battle.Turn, battle.SelectedUnitId,
+        // The selected unit is resolved against the loaded units: none here.
+        Assert.Equal((3, 2, 1, 6, 2, null, 1), (battle.Width, battle.Length, battle.Height, battle.Map.TileCount, battle.Turn, battle.SelectedUnitId,
             battle.NextItemId));
         Assert.Empty(battle.Units);
         battle.Validate();

@@ -8,8 +8,8 @@ namespace Oxce.CompatibilityTests;
 /// The conformance reader (Phase 7 plan, branch 2 decisions): applies the reading rules of the reference's
 /// <c>SavedBattleGame::load</c> (<c>src/Savegame/SavedBattleGame.cpp</c> at 4df3a5e) to a written <c>battleGame</c>, so a
 /// battle the port writes is one the reference loads. It stands in for a reference engine binary and checks the
-/// reference's rules, not the port's reader. S1 covers the battle root and S2 the map; S3 and S4 add the units and items,
-/// and S5 the campaign's turn rule.
+/// reference's rules, not the port's reader. S1 covers the battle root, S2 the map and S3 the units; S4 adds the items, and
+/// S5 the campaign's turn rule.
 /// </summary>
 internal static class BattleSaveConformance
 {
@@ -71,7 +71,124 @@ internal static class BattleSaveConformance
         // ScriptValuesBase::loadBase (line 426): a mapping of tag names to values.
         if (battle.TryGet("tags", out var tags)) Assert.True(IsIntegerMap(tags!), "tags must map tag names to integers.");
         CheckMap(battle);
+        CheckUnits(battle);
     }
+
+    // BattleUnit::load's integer keys (tryRead and tryReadAs<int>, src/Savegame/BattleUnit.cpp lines 635-752).
+    private static readonly string[] UnitIntegerKeys =
+    [
+        "id", "status", "direction", "directionTurret", "tu", "health", "mana", "stunlevel", "energy", "morale", "fire", "turretType",
+        "turnsSinceSpotted", "turnsLeftSpottedForSnipers", "turnsSinceSpottedByXcom", "turnsLeftSpottedForSnipersByXcom",
+        "turnsSinceSpottedByCivilian", "turnsLeftSpottedForSnipersByCivilian", "turnsSinceStunned", "turnsSinceSeenByHostile",
+        "turnsSinceSeenByNeutral", "turnsSinceSeenByPlayer", "tileLastSpottedByHostile", "tileLastSpottedByNeutral", "tileLastSpottedByPlayer",
+        "tileLastSpottedForBlindShotByHostile", "tileLastSpottedForBlindShotByNeutral", "tileLastSpottedForBlindShotByPlayer", "rankInt",
+        "rankIntUnified", "moraleRestored", "notificationShown", "killedBy", "kills", "spawnUnitFaction", "motionPoints", "customMarker",
+        "murdererId", "fatalShotSide", "fatalShotBodyPart", "mindControllerID", "movementType", "aggression", "previousOwner",
+    ];
+
+    // Its Sint16 experience keys (lines 661-668), boolean keys and string keys (tryRead into bool and std::string).
+    private static readonly string[] UnitShortKeys =
+        ["expBravery", "expReactions", "expFiring", "expThrowing", "expPsiSkill", "expPsiStrength", "expMana", "expMelee"];
+
+    private static readonly string[] UnitBooleanKeys =
+    [
+        "wantsToSurrender", "isSurrendering", "kneeled", "floating", "visible", "dontReselect", "aiMedikitUsed", "respawn", "alreadyRespawned",
+        "reactionsDisabledForLeftHand", "reactionsDisabledForRightHand", "summonedPlayerUnit", "resummonedFakeCivilian",
+        "pickUpWeaponsMoreActively", "disableIndicators", "vip", "bannedInNextStage", "allowAutoCombat", "hasPanickedLastTurn",
+    ];
+
+    private static readonly string[] UnitStringKeys =
+        ["genUnitType", "genUnitArmor", "spawnUnit", "activeHand", "preferredHandForReactions", "murdererWeapon", "murdererWeaponAmmo"];
+
+    private static readonly string[] AiIntegerKeys = ["fromNode", "toNode", "AIMode", "targetFaction"];
+
+    /// <summary>
+    /// The units (SavedBattleGame::load lines 266-304 and 354-362, BattleUnit::load, AIModule::load, BattleUnitStatistics::load).
+    /// A written unit has each key once, so useIndex's first-of-repeated rule reads what was written.
+    /// </summary>
+    private static void CheckUnits(YamlMappingNode battle)
+    {
+        if (!battle.TryGet("units", out var units)) return;
+        // writer.write("units", _units, ...) writes no empty sequence.
+        Assert.True(units is YamlSequenceNode { Items.Count: > 0 }, "units must be a non-empty sequence.");
+        foreach (var node in ((YamlSequenceNode)units!).Items)
+        {
+            Assert.True(node is YamlMappingNode, "Each unit must be a mapping.");
+            var unit = (YamlMappingNode)node;
+            var keys = unit.Entries.Select(static entry => entry.ScalarKey).ToArray();
+            Assert.Equal(keys.Length, keys.Distinct(StringComparer.Ordinal).Count());
+            // faction and id: readVal without a default (lines 268 and 270); genUnitType and genUnitArmor for a unit that is
+            // no soldier (lines 276-277). The port writes the factions the reference's arrays hold.
+            Assert.True(unit.TryGet("faction", out var faction) && IsFaction(faction!), "A unit's faction must be 0, 1 or 2.");
+            Assert.True(unit.TryGet("id", out var id) && IsInteger(id!), "A unit's id must be an integer.");
+            if (int.Parse(((YamlScalarNode)id!).Value, CultureInfo.InvariantCulture) >= 1_000_000)
+                Assert.True(unit.TryGet("genUnitType", out _) && unit.TryGet("genUnitArmor", out _), "A generated unit needs genUnitType and genUnitArmor.");
+            if (unit.TryGet("originalFaction", out var original)) Assert.True(IsFaction(original!), "A unit's originalFaction must be 0, 1 or 2.");
+            foreach (var key in UnitIntegerKeys)
+                if (unit.TryGet(key, out var value)) Assert.True(IsInteger(value!), $"Unit {key} must be an integer.");
+            foreach (var key in UnitShortKeys)
+                if (unit.TryGet(key, out var value)) Assert.True(IsShort(value!), $"Unit {key} must be a Sint16.");
+            foreach (var key in UnitBooleanKeys)
+                if (unit.TryGet(key, out var value)) Assert.True(IsBoolean(value!), $"Unit {key} must be a boolean.");
+            foreach (var key in UnitStringKeys)
+                if (unit.TryGet(key, out var value)) Assert.True(value is YamlScalarNode, $"Unit {key} must be a string.");
+            // read(Position): three required Sint16 (Position.cpp).
+            if (unit.TryGet("position", out var position))
+                Assert.True(position is YamlSequenceNode { Items.Count: 3 } coordinates && coordinates.Items.All(IsShort),
+                    "A unit's position must be three Sint16.");
+            // reader["armor"][i] and ["fatalWounds"][i].tryReadVal: SIDE_MAX and BODYPART_MAX integers.
+            if (unit.TryGet("armor", out var armor))
+                Assert.True(armor is YamlSequenceNode { Items.Count: 9 } sides && sides.Items.All(IsInteger), "A unit's armor must be nine integers.");
+            if (unit.TryGet("fatalWounds", out var wounds))
+                Assert.True(wounds is YamlSequenceNode { Items.Count: 6 } parts && parts.Items.All(IsInteger), "A unit's fatalWounds must be six integers.");
+            // read(UnitStats): Sint16 per key.
+            if (unit.TryGet("currStats", out var stats))
+                Assert.True(stats is YamlMappingNode statMap && statMap.Entries.All(static entry => IsShort(entry.Value)), "currStats must map to Sint16.");
+            // recolor[i][0] and [1].readVal<Uint8>() (lines 726-731).
+            if (unit.TryGet("recolor", out var recolor))
+                Assert.True(recolor is YamlSequenceNode pairs && pairs.Items.All(static pair => pair is YamlSequenceNode { Items.Count: 2 } colors &&
+                    colors.Items.All(IsByte)), "recolor must hold pairs of Uint8.");
+            // ArmorMoveCost::load: reader[0] and [1].readVal<int>().
+            if (unit.TryGet("moveCost", out var moveCost))
+                Assert.True(moveCost is YamlMappingNode costs && costs.Entries.All(static entry => entry.ScalarKey is "basePercent" or "baseFlyPercent" or
+                    "baseClimbPercent" or "baseNormalPercent" && entry.Value is YamlSequenceNode { Items.Count: 2 } pair && pair.Items.All(IsInteger)),
+                    "moveCost must map its kinds to integer pairs.");
+            if (unit.TryGet("meleeAttackedBy", out var attackers))
+                Assert.True(attackers is YamlSequenceNode list && list.Items.All(IsInteger), "meleeAttackedBy must be integers.");
+            if (unit.TryGet("tags", out var tags)) Assert.True(IsIntegerMap(tags!), "A unit's tags must map tag names to integers.");
+            if (unit.TryGet("AI", out var ai)) CheckAi(ai!);
+            // BattleUnitStatistics::load (or the null an empty one is written as).
+            if (unit.TryGet("tempUnitStatistics", out var statistics) && statistics is not YamlNullNode)
+            {
+                Assert.True(statistics is YamlMappingNode, "tempUnitStatistics must be a mapping or null.");
+                foreach (var entry in ((YamlMappingNode)statistics!).Entries)
+                {
+                    if (entry.ScalarKey == "kills")
+                        Assert.True(entry.Value is YamlSequenceNode kills && kills.Items.All(static kill => kill is YamlMappingNode), "Kills must be mappings.");
+                    else
+                        Assert.True(IsInteger(entry.Value) || IsBoolean(entry.Value), $"Statistic {entry.ScalarKey} must be a value.");
+                }
+            }
+        }
+    }
+
+    /// <summary>AIModule::load: readVal(-1) of the nodes and readVal of the mode, tryRead of the rest.</summary>
+    private static void CheckAi(YamlNode ai)
+    {
+        Assert.True(ai is YamlMappingNode, "AI must be a mapping.");
+        var module = (YamlMappingNode)ai;
+        foreach (var key in AiIntegerKeys)
+            if (module.TryGet(key, out var value)) Assert.True(IsInteger(value!), $"AI {key} must be an integer.");
+        if (module.TryGet("wasHitBy", out var hits)) Assert.True(hits is YamlSequenceNode hitList && hitList.Items.All(IsInteger), "AI wasHitBy must be integers.");
+        if (module.TryGet("weaponPickedUp", out var picked)) Assert.True(IsBoolean(picked!), "AI weaponPickedUp must be a boolean.");
+    }
+
+    private static bool IsFaction(YamlNode node) => node is YamlScalarNode { Value: "0" or "1" or "2" };
+
+    private static bool IsBoolean(YamlNode node) => node is YamlScalarNode { Value: "true" or "false" };
+
+    private static bool IsByte(YamlNode node) =>
+        node is YamlScalarNode scalar && byte.TryParse(scalar.Value, NumberStyles.None, CultureInfo.InvariantCulture, out _);
 
     // The field sizes the binary tile key gives (load lines 203-212): readVal<char>, one character each.
     private static readonly string[] TileSizeKeys =

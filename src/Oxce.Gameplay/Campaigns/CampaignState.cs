@@ -172,6 +172,22 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     // Concrete lists keep per-tick world loops on struct enumerators.
     internal List<BaseState> BaseStates => _bases;
 
+    /// <summary>
+    /// SavedGame::getSoldier for a battle unit: the soldier of that ID at a base, else among the dead, as its type and
+    /// personal state; null when no soldier has the ID or it has no personal state.
+    /// </summary>
+    internal Battles.BattleSoldier? BattleSoldier(int id)
+    {
+        foreach (var owner in _bases)
+            foreach (var soldier in owner.Soldiers)
+                if (soldier.Id == id)
+                    return soldier.Personal is { } personal ? new(_content.RuntimeRules.Soldiers.GetExternalId(soldier.Rule), personal) : null;
+        foreach (var dead in _deadSoldiers)
+            if (dead.Soldier.Id == id)
+                return dead.Soldier.Personal is { } personal ? new(dead.Soldier.RuleId, personal) : null;
+        return null;
+    }
+
     /// <summary>The base with the ID, or null.</summary>
     internal BaseState? BaseById(int id) => _bases.Find(candidate => candidate.Id == id);
 

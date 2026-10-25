@@ -88,13 +88,34 @@ public sealed class RuntimeBattleEquipment
         }, StringComparer.Ordinal);
         var armors = personnel.Armors.Rules.ToDictionary(static rule => rule.Id, static rule => new RuntimeBattleArmor(
             List(rule.Value.BuiltInWeapons), rule.Value.Strings["specialWeapon"], rule.Value.Strings["selfDestructItem"],
-            rule.Value.Booleans["allowTwoMainWeapons"], rule.Value.Booleans["allowInv"], rule.Value.Integers["weight"]), StringComparer.Ordinal);
+            rule.Value.Booleans["allowTwoMainWeapons"], rule.Value.Booleans["allowInv"], rule.Value.Integers["weight"])
+        {
+            Sides = List([rule.Value.Integers["frontArmor"], unchecked(rule.Value.Integers["sideArmor"] + rule.Value.Integers["leftArmorDiff"]),
+                rule.Value.Integers["sideArmor"], rule.Value.Integers["rearArmor"], rule.Value.Integers["underArmor"]]),
+            MoveCosts = new RuntimeArmorMoveCosts(Cost(rule.Value, "basePercent"), Cost(rule.Value, "baseFlyPercent"),
+                Cost(rule.Value, "baseClimbPercent"), Cost(rule.Value, "baseNormalPercent")),
+            FaceColorGroup = rule.Value.Integers["spriteFaceGroup"],
+            HairColorGroup = rule.Value.Integers["spriteHairGroup"],
+            UtileColorGroup = rule.Value.Integers["spriteUtileGroup"],
+            RankColorGroup = rule.Value.Integers["spriteRankGroup"],
+            FaceColors = List(rule.Value.SpriteColors["spriteFaceColor"]),
+            HairColors = List(rule.Value.SpriteColors["spriteHairColor"]),
+            UtileColors = List(rule.Value.SpriteColors["spriteUtileColor"]),
+            RankColors = List(rule.Value.SpriteColors["spriteRankColor"]),
+        }, StringComparer.Ordinal);
         var units = personnel.Units.Rules.ToDictionary(static rule => rule.Id, static rule => new RuntimeBattleUnitRule(
             Map(rule.Value.Stats.Values.ToDictionary(static pair => pair.Key, static pair => pair.Value, StringComparer.Ordinal)),
             List(rule.Value.BuiltInWeaponSets.Select(static set => (IReadOnlyList<string>)List(set))),
             List(rule.Value.WeightedBuiltInWeaponSets.Select(static set =>
                 (IReadOnlyDictionary<string, ulong>)Map(set.ToDictionary(static pair => pair.Key, static pair => pair.Value, StringComparer.Ordinal)))),
-            rule.Value.Strings["meleeWeapon"], rule.Value.Strings["psiWeapon"], rule.Value.Booleans["livingWeapon"], rule.Value.Strings["race"]),
+            rule.Value.Strings["meleeWeapon"], rule.Value.Strings["psiWeapon"], rule.Value.Booleans["livingWeapon"], rule.Value.Strings["race"])
+        {
+            Rank = rule.Value.Strings["rank"],
+            Aggression = rule.Value.Integers["aggression"],
+            SpawnUnit = rule.Value.Strings["spawnUnit"],
+            IsVip = rule.Value.Booleans["vip"],
+            PickUpWeaponsMoreActively = rule.Value.Integers["pickUpWeaponsMoreActively"],
+        },
             StringComparer.Ordinal);
         var soldierWeapons = personnel.Soldiers.Rules.Where(static rule => rule.Value.Strings["specialWeapon"].Length != 0)
             .ToDictionary(static rule => rule.Id, static rule => rule.Value.Strings["specialWeapon"], StringComparer.Ordinal);
@@ -106,6 +127,9 @@ public sealed class RuntimeBattleEquipment
     }
 
     private static ReadOnlyCollection<T> List<T>(IEnumerable<T> source) => Array.AsReadOnly(source.ToArray());
+
+    private static (int Time, int Energy) Cost(PersonnelTactical.ArmorRule armor, string key) =>
+        (armor.MoveCosts[key].TimePercent, armor.MoveCosts[key].EnergyPercent);
 
     private static ReadOnlyDictionary<string, T> Map<T>(Dictionary<string, T> source) => new(source);
 }
@@ -167,7 +191,31 @@ public sealed record RuntimeBattleArmor(
     string SelfDestructItem,
     bool AllowTwoMainWeapons,
     bool HasInventory,
-    int Weight);
+    int Weight)
+{
+    /// <summary>The five side armor values in UnitSide order (front, left = side + leftArmorDiff, right, rear, under).</summary>
+    public IReadOnlyList<int> Sides { get; init; } = [0, 0, 0, 0, 0];
+
+    /// <summary>Armor's <c>moveCost</c> base percentages (basePercent, baseFlyPercent, baseClimbPercent, baseNormalPercent).</summary>
+    public RuntimeArmorMoveCosts MoveCosts { get; init; } = RuntimeArmorMoveCosts.Default;
+
+    /// <summary>Armor's recolor groups (<c>spriteFaceGroup</c> and the others, 0 for none) and colors (<c>spriteFaceColor</c> and the others).</summary>
+    public int FaceColorGroup { get; init; }
+    public int HairColorGroup { get; init; }
+    public int UtileColorGroup { get; init; }
+    public int RankColorGroup { get; init; }
+    public IReadOnlyList<int> FaceColors { get; init; } = [];
+    public IReadOnlyList<int> HairColors { get; init; } = [];
+    public IReadOnlyList<int> UtileColors { get; init; } = [];
+    public IReadOnlyList<int> RankColors { get; init; } = [];
+}
+
+/// <summary>ArmorMoveCost of each base kind: (time percent, energy percent).</summary>
+public sealed record RuntimeArmorMoveCosts((int Time, int Energy) Base, (int Time, int Energy) Fly, (int Time, int Energy) Climb,
+    (int Time, int Energy) Normal)
+{
+    public static RuntimeArmorMoveCosts Default { get; } = new((100, 100), (100, 100), (100, 100), (100, 100));
+}
 
 /// <summary>Unit's battle fields: statistics, built-in weapon sets (plain and weighted), melee and psi weapons, living weapon, race.</summary>
 public sealed record RuntimeBattleUnitRule(
@@ -177,4 +225,12 @@ public sealed record RuntimeBattleUnitRule(
     string MeleeWeapon,
     string PsiWeapon,
     bool LivingWeapon,
-    string Race);
+    string Race)
+{
+    /// <summary>Unit's <c>rank</c>, <c>aggression</c>, <c>spawnUnit</c> ("" for none), <c>vip</c> and <c>pickUpWeaponsMoreActively</c> (-1 for the mod's default).</summary>
+    public string Rank { get; init; } = "";
+    public int Aggression { get; init; }
+    public string SpawnUnit { get; init; } = "";
+    public bool IsVip { get; init; }
+    public int PickUpWeaponsMoreActively { get; init; } = -1;
+}

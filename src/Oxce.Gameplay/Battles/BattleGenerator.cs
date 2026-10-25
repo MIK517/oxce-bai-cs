@@ -125,7 +125,9 @@ internal static class BattleGenerator
         };
         // generateMap: the terrain's ambience. Its first delay draws from RNG::seedless, a stream of its own, so the
         // game's draws are unchanged; the port seeds it from the campaign stream's state without drawing (ADR 0039).
-        state.SetAmbience(terrain, new SplitMix64RandomSource(random.State ^ SeedlessSalt));
+        // The same stream then draws the units' presentation values (BattleUnit's recolor and a civilian's unified rank).
+        state.Seedless = new SplitMix64RandomSource(random.State ^ SeedlessSalt);
+        state.SetAmbience(terrain, state.Seedless);
         return new(state, generated, inputs, terrain, id, deployment);
     }
 

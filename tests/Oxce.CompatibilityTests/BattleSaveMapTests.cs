@@ -89,7 +89,7 @@ public sealed class BattleSaveMapTests
     [Fact]
     public void AGeneratedMapWritesReloadsAndConforms()
     {
-        var (_, battle) = Generated();
+        var (campaign, battle) = Generated();
         var snapshot = battle.Capture();
         var map = battle.Map;
         Assert.Equal(map.DataSets.Select(static set => set.Name), snapshot.MapDataSets);
@@ -106,8 +106,8 @@ public sealed class BattleSaveMapTests
         BattleSaveConformance.Check(written);
         var text = Emit(written);
         var reread = OxceBattleSave.Read(Parse(text), SharedContent.Value);
-        Assert.Equivalent(snapshot, reread, strict: true);
-        var restored = BattleState.Restore(reread, SharedContent.Value, Terrain());
+        Assert.Equivalent(snapshot with { Units = [] }, reread with { Units = [] }, strict: true);
+        var restored = BattleState.Restore(reread, SharedContent.Value, Terrain(), campaign: BattleRestoreCampaign.From(campaign));
         for (var tile = 0; tile < map.TileCount; tile++)
             for (var part = 0; part < BattleMap.PartCount; part++)
             {
@@ -119,8 +119,8 @@ public sealed class BattleSaveMapTests
         Assert.Equal(map.MapData(floor, BattleTilePart.Floor)!.Armor, restored.Map.MapData(floor, BattleTilePart.Floor)!.Armor);
         Assert.Equal(map.Nodes.Select(static node => (node.Id, node.Position, node.IsDummy, string.Join(",", node.Links))),
             restored.Map.Nodes.Select(static node => (node.Id, node.Position, node.IsDummy, string.Join(",", node.Links))));
-        Assert.Equivalent(snapshot, restored.Capture(), strict: true);
-        Assert.Equal(text, Emit(OxceBattleSave.Write(restored.Capture(), Parse(text))));
+        Assert.Equivalent(BattleSaveUnitTests.Loaded(snapshot), restored.Capture(), strict: true);
+        BattleSaveUnitTests.AssertLoadedRewriteIsStable(restored, text, SharedContent.Value, BattleRestoreCampaign.From(campaign));
     }
 
     [Fact]

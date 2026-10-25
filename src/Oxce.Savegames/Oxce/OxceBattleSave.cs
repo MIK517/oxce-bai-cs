@@ -21,7 +21,7 @@ namespace Oxce.Savegames.Oxce;
 /// items keys (<c>units</c>, <c>items</c>, <c>itemsSpecial</c>, <c>recoverGuaranteed</c>, <c>recoverConditional</c>) stay
 /// as the source document has them until S3 and S4 read them.
 /// </remarks>
-public static class OxceBattleSave
+public static partial class OxceBattleSave
 {
     /// <summary>The code of the warnings for what the reference's load skips (it logs an error and goes on).</summary>
     public const string SkippedCode = "OXCE-BATTLE-SAVE-SKIPPED";
@@ -102,7 +102,7 @@ public static class OxceBattleSave
             TogglePersonalLight = Bool(battle, "togglePersonalLight", true),
             ToggleNightVision = Bool(battle, "toggleNightVision", false),
             ToggleBrightness = Int(battle, "toggleBrightness", 0),
-            ScriptValues = Tags(battle, content, diagnostics),
+            ScriptValues = Tags(battle, content, diagnostics, BattleSnapshot.ScriptOwner, "Battle save tag"),
             ReinforcementsBlocks = Grid(battle, "reinforcementsBlocks", YamlValueReader.ReadInt32),
             FlattenedMapTerrainNames = Grid(battle, "flattenedMapTerrainNames", YamlValueReader.ReadString),
             FlattenedMapBlockNames = Grid(battle, "flattenedMapBlockNames", YamlValueReader.ReadString),
@@ -118,6 +118,7 @@ public static class OxceBattleSave
                 : battle.TryGet("moduleMap", out var modules)
                     ? Array.AsReadOnly(Value(modules!, "moduleMap", ReadModuleMap))
                     : BattleSnapshot.UncountedModuleMap(snapshot.Width, snapshot.Length),
+            Units = Units(battle, content, diagnostics),
         };
     }
 
@@ -195,6 +196,8 @@ public static class OxceBattleSave
             Pair("nodes", Sequence(snapshot.Nodes.Select(static node => (YamlNode)WriteNode(node)))),
             Pair("moduleMap", snapshot.MissionType == BattleSnapshot.BaseDefenseMission
                 ? Grid(snapshot.ModuleMap, static module => Sequence([Integer(module.Total), Integer(module.Remaining)])) : null),
+            // writer.write("units", _units, ...): no key without units.
+            Pair("units", WriteUnits(snapshot.Units, source)),
             Pair("tuReserved", Integer(snapshot.TimeUnitsReserved)),
             Pair("kneelReserved", Boolean(snapshot.KneelReserved)),
             Pair("depth", Integer(snapshot.Depth)),
@@ -215,6 +218,7 @@ public static class OxceBattleSave
             Pair("toggleBrightness", Integer(snapshot.ToggleBrightness)),
             // saveBase: only non-zero values, and no tags node without one.
             Pair("tags", ScriptValues(Tags(snapshot.ScriptValues))),
+            Pair(PortKey, WritePort(snapshot.Units, source)),
         ]);
     }
 
@@ -284,19 +288,23 @@ public static class OxceBattleSave
     public static string UnsupportedTagType(string name, string valueType) =>
         $"Battle tags of the {valueType} value type ('{name}') are read and written with the tactical script bindings (Phase 7 branch 8).";
 
-    /// <summary>ScriptValuesBase::loadBase for the root's <c>tags</c>: an unknown tag is skipped with an error log.</summary>
-    private static ReadOnlyCollection<ScriptValueEntry> Tags(YamlMappingNode battle, RuntimeContent content, IDiagnosticSink? diagnostics)
+    /// <summary>
+    /// ScriptValuesBase::loadBase for an owner's <c>tags</c> (the root's, owner <c>BattleGame</c>, or a unit's, owner
+    /// <c>BattleUnit</c>): an unknown tag is skipped with an error log.
+    /// </summary>
+    private static ReadOnlyCollection<ScriptValueEntry> Tags(YamlMappingNode battle, RuntimeContent content, IDiagnosticSink? diagnostics,
+        string owner, string what)
     {
         if (!battle.TryGet("tags", out var node) || node is not YamlMappingNode tags) return Array.AsReadOnly(Array.Empty<ScriptValueEntry>());
-        // The script API always declares BattleGame.Tag, so the owner type exists in any content.
-        var type = content.Tags.Types.First(static candidate => candidate.Name == BattleSnapshot.ScriptOwner);
+        // The script API always declares BattleGame.Tag and BattleUnit.Tag, so the owner type exists in any content.
+        var type = content.Tags.Types.First(candidate => candidate.Name == owner);
         var values = new List<ScriptValueEntry>();
         foreach (var entry in tags.Entries)
         {
-            var name = entry.ScalarKey ?? throw new InvalidDataException("Battle save tag names must be scalars.");
+            var name = entry.ScalarKey ?? throw new InvalidDataException($"{what} names must be scalars.");
             if (!content.Tags.TryGetTag(type.Id, "Tag." + name, out var tag))
             {
-                Skipped(diagnostics, entry.Value, $"Battle save tag '{name}' is not a BattleGame tag of the mods; it is left out.");
+                Skipped(diagnostics, entry.Value, $"{what} '{name}' is not a {owner} tag of the mods; it is left out.");
                 continue;
             }
             if (tag!.ValueType != IntegerTag) throw new InvalidDataException(UnsupportedTagType(name, tag.ValueType));

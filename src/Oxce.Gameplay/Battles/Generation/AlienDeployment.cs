@@ -98,7 +98,7 @@ internal sealed class AlienDeployment
     /// <summary>BattlescapeGenerator::addAlien.</summary>
     private BattleUnit? AddAlien(string name, RuntimeBattleUnitRule unitRule, RuntimeArmorRule armor, int alienRank, bool outside)
     {
-        var unit = _battle.TempUnit(_unitSequence++, BattleFaction.Hostile, BattleController.Ai, name, unitRule, armor, AdjustedStats);
+        var unit = _battle.TempUnit(_rules, _unitSequence++, BattleFaction.Hostile, BattleController.Ai, name, unitRule, armor, _difficulty);
         // Safety against index out of bounds.
         if (alienRank > 7) alienRank = 7;
         if (alienRank < 0) throw new MapGenerationException($"Deployment data has a negative alien rank {alienRank}.");
@@ -132,35 +132,6 @@ internal sealed class AlienDeployment
         unit.Direction = direction != -1 ? direction : _random.NextInclusive(0, 7);
         _battle.AddUnit(unit);
         return unit;
-    }
-
-    /// <summary>
-    /// BattleUnit::adjustStats for a hostile unit: percentage growth times the difficulty coefficient, the firing multiplier
-    /// (truncated to the 16-bit field), absolute growth.
-    /// </summary>
-    private BattleUnitStats AdjustedStats(BattleUnitStats stats)
-    {
-        var adjustments = _rules.Campaign.StatAdjustments;
-        if (adjustments.Count == 0) return stats;
-        // Mod::getStatAdjustment: a difficulty past the last uses the last.
-        var adjustment = adjustments[Math.Min(_difficulty, adjustments.Count - 1)];
-        var multiplier = _rules.Campaign.Interception.DifficultyCoefficient(_difficulty);
-        var growth = BattleUnitStats.From(adjustment.StatGrowth);
-        stats += Percent(stats, growth, multiplier);
-        stats = stats with { Firing = unchecked((short)(int)(stats.Firing * adjustment.AimMultiplier)) };
-        return stats + BattleUnitStats.From(adjustment.StatGrowthAbsolute);
-    }
-
-    /// <summary>UnitStats::percent: each statistic times its percentage times the multiplier, over 100.</summary>
-    private static BattleUnitStats Percent(BattleUnitStats value, BattleUnitStats percent, int multiplier)
-    {
-        static short Part(short base_, short pct, int multiplier) => unchecked((short)(base_ * pct * multiplier / 100));
-        return new(Part(value.TimeUnits, percent.TimeUnits, multiplier), Part(value.Stamina, percent.Stamina, multiplier),
-            Part(value.Health, percent.Health, multiplier), Part(value.Bravery, percent.Bravery, multiplier),
-            Part(value.Reactions, percent.Reactions, multiplier), Part(value.Firing, percent.Firing, multiplier),
-            Part(value.Throwing, percent.Throwing, multiplier), Part(value.Strength, percent.Strength, multiplier),
-            Part(value.PsiStrength, percent.PsiStrength, multiplier), Part(value.PsiSkill, percent.PsiSkill, multiplier),
-            Part(value.Melee, percent.Melee, multiplier), Part(value.Mana, percent.Mana, multiplier));
     }
 
     /// <summary>TileEngine::faceWindow: the direction of a see-through wall at the position, or -1.</summary>

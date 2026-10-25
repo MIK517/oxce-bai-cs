@@ -85,10 +85,51 @@ is a corrupted save. Saves the reference writes from its generator keep these, a
 **Fire and smoke animation offsets (S2).** `Tile::load` and `loadBinary` draw an animation offset from
 `RNG::seedless` for a tile with fire or smoke. It is presentation only and not part of the port's battle state.
 
+**The unit keys written twice (S3).** `BattleUnit::save` writes `turnsSinceSpotted` and `turnsLeftSpottedForSnipers`
+first as the `Uint8` arrays themselves (their address, in hex: `0x5803c54`) and then as the hostile value, and
+`turnsSinceStunned` twice. The load reads the first of repeated keys (`useIndex`) with `tryReadAs<int>` into a `Uint8`,
+so the hostile values become the address's low byte. The port reads the same way and writes each key once, at its
+first place, with the value read (the address's low byte for a reference save, the hostile value for the port's own),
+which the reference reads back unchanged. A rewrite of a reference save is compared with its source in that form.
+
+**The diagonal armor sides and a soldier's aggression (S3).** `_currentArmor` has `SIDE_MAX` (9) sides; the
+constructors set the first five and leave the four diagonal ones uninitialized (the corpus holds garbage there), and
+`adjustStats` multiplies all nine for a hostile unit. Nothing reads the diagonal sides. The port keeps them as saved
+and gives a unit it creates 0 (`adjustStats` applies to the five sides only). The soldier constructor also leaves
+`_aggression` uninitialized (saved as garbage); the port's soldier has 0. `isBrutal`, `isNotBrutal` and
+`isCheatOnMovement` are uninitialized without their keys; the port reads them as false, and, as in the reference, they
+are never written. A kill in `tempUnitStatistics` is read by `BattleUnitKills(reader)`, which leaves `status`, `faction`,
+`mission`, `turn`, `side`, `bodypart` and `id` uninitialized without their keys; the port gives them the
+`BattleUnitKills()` constructor's values.
+
+**The constructors' seedless draws on load (S3).** A unit made from a unit rule draws its recolor (and a civilian its
+unified rank) from `RNG::seedless`, which the load overrides from the save's `recolor` and `rankIntUnified`. The port's
+generation draws them from the battle's seedless stream (after the ambience delay); a restored battle's stream is
+seeded from a constant, so a save without those keys restores the same values every time.
+
+**Units the restored battle cannot hold (S3).** The reference dereferences a null soldier for a soldier ID the campaign
+lacks, and `setTile` lets a second unit overwrite a tile's unit and puts a large unit partly outside the map. The port
+fails the load as a corrupted save for a missing soldier or one in unknown armor, a soldier unit saved in armor other
+than the campaign soldier's (a named restriction until S5 gives the campaign's soldiers their battle armor, as
+`deployXCOM` does; the reference takes the soldier's armor), two units on one tile, a repeated
+unit ID, a footprint outside the map, and a faction or original faction outside 0-2 (the reference indexes its
+per-faction arrays with it). A standing unit outside the map stands on no tile, as `getTile` returns null. The restored
+battle skips the generator's placement check: units stand where the save puts them.
+
+**Flags a reload loses (S3).** `save` writes `vip` and `pickUpWeaponsMoreActively` only when set, `dontReselect` only for
+a player's unit, and the load-only flags above never, so a reload gives a false `vip` or pick-up the unit rule's value
+and loses the others. The port writes as the reference does, so its reloads lose the same values.
+
+**Units and their parts in block style (S3).** `armor`, `fatalWounds`, `position`, `recolor`'s pairs, `moveCost`, the AI
+and the kills are flow style in the reference; the port's writer writes block style, which reads the same. A key a
+loaded unit lacks (`visible` after the load sets it) is added at the end of that unit's node.
+
 ## Consequences
 
 - A generated battle's root is written as the reference's generator leaves it; only the ambience delay's value differs,
   as any seedless draw does between two runs of the reference.
 - A generated battle's map is written as the reference writes it, except that nodes are written in block style (the
   reference's flow style reads the same).
-- Later slices (S3 to S5) add their entries here: the duplicate unit keys, the armor sides and `fuseEnabed`.
+- A generated battle's units are written as the reference's constructors leave them (with the starting condition's
+  `bannedInNextStage`), except for the diagonal armor sides, a soldier's aggression and the seedless draws' values.
+- Later slices (S4, S5) add their entries here: `fuseEnabed` and the items.

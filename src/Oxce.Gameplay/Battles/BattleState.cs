@@ -108,30 +108,6 @@ internal sealed partial class BattleState
     }
 
     /// <summary>
-    /// SavedBattleGame::createTempUnit (the BattleUnit(Unit*) constructor): the unit rule's and the armor's statistics,
-    /// adjusted (a hostile unit's difficulty), with full time units, energy, health and mana.
-    /// </summary>
-    internal BattleUnit TempUnit(int id, BattleFaction faction, BattleController controller, string type, RuntimeBattleUnitRule rule,
-        RuntimeArmorRule armor, Func<BattleUnitStats, BattleUnitStats>? adjust = null, bool summoned = false)
-    {
-        var stats = (BattleUnitStats.From(rule.Stats) + BattleUnitStats.From(armor.Stats)).ObeyFixedMinimum();
-        if (adjust is not null) stats = adjust(stats);
-        return new BattleUnit(id, faction, controller)
-        {
-            UnitType = type,
-            ArmorId = armor.Type,
-            ArmorSize = armor.Size,
-            MovementType = MovementType(armor),
-            Stats = stats,
-            TimeUnits = stats.TimeUnits,
-            Energy = stats.Stamina,
-            Health = stats.Health,
-            Mana = stats.Mana,
-            SummonedPlayerUnit = summoned,
-        };
-    }
-
-    /// <summary>
     /// Armor::getMovementTypeByDepth, which every BattleUnit constructor applies: a floating armor (3) flies underwater
     /// and walks on land, a sinking one (4) the reverse; walk, fly and slide stay.
     /// </summary>
@@ -313,22 +289,31 @@ internal sealed partial class BattleState
 
     /// <summary>
     /// Checks the invariants every generated battle keeps (Phase 7 branch 1 acceptance; branch 2 adds restored ones): every unit on the map
-    /// stands where <c>setUnitPosition</c> would put it, on tiles that name it; every route node lies inside the map and
+    /// stands where <c>setUnitPosition</c> would put it, on tiles that name it, and no unit that is out stands on the map; every route node lies inside the map and
     /// links only to live nodes or the reference's special values; every item has exactly one holder (a tile, a unit, or
     /// the one weapon it is loaded in). A failure is a generator defect, not invalid content.
     /// </summary>
-    public void Validate()
+    public void Validate() => Validate(placement: true);
+
+    /// <summary>
+    /// <see cref="Validate()"/> without the placement check when <paramref name="placement"/> is false: a restored battle's
+    /// units stand where the save puts them (resetUnitTiles), which the battle's events may have made a tile
+    /// setUnitPosition would refuse.
+    /// </summary>
+    internal void Validate(bool placement)
     {
         var ids = new HashSet<int>();
         foreach (var unit in _units)
         {
             if (!ids.Add(unit.Id)) throw new InvalidOperationException($"Battle unit {unit.Id} is listed twice.");
             if (unit.Position is not { } position) continue;
+            // resetUnitTiles: a unit that is out (dead, unconscious or ignored) stands on no tile.
+            if (unit.IsOut) throw new InvalidOperationException($"Battle unit {unit.Id} is out but stands on the map.");
             if (!Contains(position)) throw new InvalidOperationException($"Battle unit {unit.Id} is outside the map.");
             foreach (var covered in BattleMap.Footprint(position, unit.ArmorSize))
                 if (!Contains(covered) || Map.UnitAt(Map.TileIndex(covered)) != unit.Id)
                     throw new InvalidOperationException($"Battle unit {unit.Id} is not on its tile {covered}.");
-            if (Generation.BattlePlacement.TryPosition(Map, unit, position) != position)
+            if (placement && Generation.BattlePlacement.TryPosition(Map, unit, position) != position)
                 throw new InvalidOperationException($"Battle unit {unit.Id} cannot stand at {position}.");
         }
         for (var tile = 0; tile < Map.TileCount; tile++)
@@ -390,7 +375,7 @@ internal sealed partial class BattleState
 }
 
 /// <summary>A unit in a battle (BattleUnit): identity, side and controller so far.</summary>
-internal sealed class BattleUnit
+internal sealed partial class BattleUnit
 {
     // One bit per faction that has spotted this unit (ADR 0038: visibility is per faction).
     private int _spottedBy;
@@ -400,13 +385,22 @@ internal sealed class BattleUnit
         if (!Enum.IsDefined(faction)) throw new ArgumentOutOfRangeException(nameof(faction));
         if (!Enum.IsDefined(controller.Kind)) throw new ArgumentOutOfRangeException(nameof(controller));
         Id = id;
-        Faction = faction;
+        _faction = faction;
+        OriginalFaction = faction;
         Controller = controller;
     }
 
     public int Id { get; }
-    public BattleFaction Faction { get; }
-    public BattleController Controller { get; }
+    /// <summary>BattleUnit::getFaction: the side the unit fights for now (mind control changes it).</summary>
+    public BattleFaction Faction
+    {
+        get => _faction;
+        set => _faction = Enum.IsDefined(value) ? value : throw new ArgumentOutOfRangeException(nameof(value));
+    }
+
+    public BattleController Controller { get; set; }
+
+    private BattleFaction _faction;
 
     /// <summary>BattleUnit::getType: the soldier type or the unit rule.</summary>
     public string UnitType { get; init; } = "";
@@ -420,7 +414,7 @@ internal sealed class BattleUnit
     /// <summary>The geoscape soldier's own armor when the battle armor differs (transformed or replaced), else "".</summary>
     public string OriginalArmorId { get; init; } = "";
     public int ArmorSize { get; init; } = 1;
-    public int MovementType { get; init; }
+    public int MovementType { get; set; }
 
     /// <summary>BattleUnit::getDirection (0-7).</summary>
     public int Direction { get; set; }
@@ -429,7 +423,7 @@ internal sealed class BattleUnit
     public BattlePosition? Position { get; set; }
 
     /// <summary>BattleUnit::getBaseStats: the soldier's statistics with all bonuses, or the unit rule's plus its armor's.</summary>
-    public BattleUnitStats Stats { get; init; }
+    public BattleUnitStats Stats { get; set; }
 
     /// <summary>BattleUnit::getTimeUnits, getEnergy, getHealth, getMana, getMorale, getStunlevel.</summary>
     public int TimeUnits { get; set; }
@@ -445,11 +439,8 @@ internal sealed class BattleUnit
     /// <summary>BattleUnit::getRankInt (aliens: the deployment rank).</summary>
     public int Rank { get; set; }
 
-    /// <summary>AIModule::setStartNode: the node an alien spawned on, or null.</summary>
-    public int? StartNodeId { get; set; }
-
     /// <summary>BattleUnit::isSummonedPlayerUnit: a player unit that does not count for the battle's outcome.</summary>
-    public bool SummonedPlayerUnit { get; init; }
+    public bool SummonedPlayerUnit { get; set; }
 
     /// <summary>BattleUnit::getTurretType: the turret sprite of a vehicle's weapon, -1 without one.</summary>
     public int TurretType { get; set; } = -1;

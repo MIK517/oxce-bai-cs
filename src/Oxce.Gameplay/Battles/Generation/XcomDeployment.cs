@@ -229,7 +229,7 @@ internal sealed class XcomDeployment
         var race = _rules.AlienRaces.Rules[0];
         var name = AlienRaces.Member(race.Id, race.Value, 0, _random);
         var (unitRule, armor) = _battle.UnitRule(_rules, name);
-        var unit = _battle.TempUnit(_unitSequence++, BattleFaction.Player, BattleController.Human(0), name, unitRule, armor, summoned: true);
+        var unit = _battle.TempUnit(_rules, _unitSequence++, BattleFaction.Player, BattleController.Human(0), name, unitRule, armor, summoned: true);
         var firstTile = new BattlePosition(0, 0, 0);
         unit.Position = _placement.TryPosition(unit, firstTile);
         _battle.AddUnit(unit);
@@ -298,32 +298,8 @@ internal sealed class XcomDeployment
         var own = Armor(personal.Armor) ?? throw new MapGenerationException($"Soldier {soldier.Id} wears unknown armor {personal.Armor}.");
         var soldierType = _rules.Soldiers.GetExternalId(soldier.Rule);
         var (armorId, armor) = BattleArmor(soldierType, personal.Armor, own);
-        // Soldier::prepareStatsWithBonuses: current statistics, soldier bonuses and the battle armor's statistics.
-        var stats = (BattleUnitStats.From(CampaignState.StatsWithBonuses(personal, _rules)) + BattleUnitStats.From(armor.Stats))
-            .ObeyFixedMinimum();
-        var health = Math.Max(1, stats.Health - personal.HealthMissing);
-        var morale = 100;
-        // Wounded soldiers (defending the base) start with lowered morale.
-        if (SoldierReadiness.IsWounded(personal, _rules.Campaign.ManaWoundThreshold, _rules.Campaign.HealthWoundThreshold))
-        {
-            morale = 75;
-            health = Math.Max(1, health - (int)Math.Ceiling(personal.Recovery));
-        }
-        return new BattleUnit(soldier.Id, BattleFaction.Player, BattleController.Human(0))
-        {
-            UnitType = soldierType,
-            SoldierId = soldier.Id,
-            ArmorId = armorId,
-            OriginalArmorId = armorId == personal.Armor ? "" : personal.Armor,
-            ArmorSize = armor.Size,
-            MovementType = _battle.MovementType(armor),
-            Stats = stats,
-            TimeUnits = stats.TimeUnits,
-            Energy = stats.Stamina,
-            Health = health,
-            Mana = Math.Max(0, stats.Mana - personal.ManaMissing),
-            Morale = morale,
-        };
+        return _battle.SoldierUnit(_rules, soldier.Id, new BattleSoldier(soldierType, personal), armorId, armor,
+            armorId == personal.Armor ? "" : personal.Armor);
     }
 
     private RuntimeArmorRule? Armor(string id) => id.Length != 0 && _rules.Armors.TryGet(id, out var handle) ? _rules.Armors[handle].Value : null;
@@ -360,7 +336,7 @@ internal sealed class XcomDeployment
     /// </summary>
     private void AddVehicle(Vehicle vehicle)
     {
-        var unit = _battle.TempUnit(_unitSequence++, BattleFaction.Player, BattleController.Human(0), vehicle.Id, vehicle.Unit, vehicle.Armor);
+        var unit = _battle.TempUnit(_rules, _unitSequence++, BattleFaction.Player, BattleController.Human(0), vehicle.Id, vehicle.Unit, vehicle.Armor);
         if (!AddUnit(unit, vehicle.Unit, "")) return;
         _equipment.CreateItemForUnit(vehicle.Id, unit, fixedWeapon: true);
         if (_equipment.VehicleClipAmmo(vehicle.Id) is { } clip)

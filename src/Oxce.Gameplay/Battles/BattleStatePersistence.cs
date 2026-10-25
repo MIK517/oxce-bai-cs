@@ -161,6 +161,7 @@ internal sealed partial class BattleState
             node.Flags, node.Reserved, node.Priority, node.Allocated, Array.AsReadOnly(node.Links.ToArray()), node.IsDummy)).ToArray()),
         ModuleMap = Array.AsReadOnly(BaseModules.Select(static row => (IReadOnlyList<BattleModuleSnapshot>)Array.AsReadOnly(
             row.Select(static module => new BattleModuleSnapshot(module.Total, module.Remaining)).ToArray())).ToArray()),
+        Units = Array.AsReadOnly(_units.Select(CaptureUnit).ToArray()),
     };
 
     /// <summary>
@@ -204,12 +205,13 @@ internal sealed partial class BattleState
     /// <paramref name="terrain"/> (MapDataSet::loadData with the MCD patches), its tiles, nodes and block grids, and the
     /// root's values. The deployment is derived as the reference's readers derive it (<see cref="DeriveDeploymentId"/>),
     /// with <paramref name="ufoInBattlescape"/> the rule of the campaign's UFO in battle ("" for none); the armor
-    /// transformations follow the enviro effects. A value the battle cannot hold, or a restored battle that breaks
+    /// transformations follow the enviro effects. The units are made from <paramref name="campaign"/>'s soldiers and
+    /// difficulty (without one, a soldier unit is a corrupted save). A value the battle cannot hold, or a restored battle that breaks
     /// <see cref="Validate"/>, is a corrupted save. The lighting and field of view loadMapResources recomputes are Phase 7
     /// branch 4's.
     /// </summary>
     public static BattleState Restore(BattleSnapshot snapshot, RuntimeContent content, BattleTerrainLoader terrain,
-        string ufoInBattlescape = "")
+        string ufoInBattlescape = "", BattleRestoreCampaign? campaign = null)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(content);
@@ -252,9 +254,6 @@ internal sealed partial class BattleState
         battle.BughuntMinTurn = snapshot.BughuntMinTurn;
         battle.BughuntMode = snapshot.BughuntMode;
         battle.AnimFrame = snapshot.AnimFrame;
-        // S3 resolves both against the loaded units (the first player unit standing when the ID names none).
-        battle.SelectedUnitId = snapshot.SelectedUnitId == -1 ? null : snapshot.SelectedUnitId;
-        battle.UndoUnitId = snapshot.UndoUnitId == -1 ? null : snapshot.UndoUnitId;
         battle.VipEscapeType = snapshot.VipEscapeType;
         battle.VipSurvivalPercentage = snapshot.VipSurvivalPercentage;
         battle.VipsSaved = snapshot.VipsSaved;
@@ -284,7 +283,9 @@ internal sealed partial class BattleState
         battle.NextItemId = 1;
         try
         {
-            battle.Validate();
+            // The units (S3), with the selected and undo units resolved against them, then the restored battle's checks.
+            battle.RestoreUnits(snapshot, content, campaign);
+            battle.Validate(placement: false);
         }
         catch (InvalidOperationException failure)
         {

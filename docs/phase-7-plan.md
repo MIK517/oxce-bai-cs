@@ -130,7 +130,7 @@ header's `mission`, `target`, `craftOrBase` and `turn`), `LoadGameState` (a batt
   | `NextItemId` | rebuilt as the highest item ID plus one (`load`) | derived on load; the generator's gaps (IDs of discarded items) are not kept |
   | `TerrainId` | not saved; only the generator reads the terrain, the battle keeps `flattenedMapTerrainNames` | dropped |
   | `BattleNode.Segment` | `segment` is commented out in `Node::load` and `save`; only the generator reads it | dropped, 0 after a reload |
-  | `BattleUnit.StartNodeId` | `AIModule::save` writes no start node | dropped (S3 checks that nothing after generation reads it) |
+  | `BattleUnit.StartNodeId` | `AIModule::setStartNode` sets the AI module's `_fromNode`, which `AIModule::save` writes as `fromNode` | saved as the AI's `fromNode` (S3) |
   | `StorageSpace`, `CraftInventoryTile` | not saved; read by the generator and `startFirstTurn` only | dropped; no save is written before the first turn (below) |
   | `ReturnedToBase`, `TakenFromBase` | applied to the base by the generator | dropped once `StartBattle` applies them |
   | controllers, hostile and neutral spotting | not kept | `oxcePortBattle` (ADR 0038, D6) |
