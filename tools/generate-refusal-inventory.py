@@ -69,6 +69,9 @@ def classify(text):
     if text in OVERRIDES:
         return OVERRIDES[text]
     lowered = text.lower()
+    # Corrupted battle saves (Phase 7 branch 2) are input validation, not a battle boundary.
+    if lowered.startswith('battle save '):
+        return 'input'
     for key, _, pattern in CLASSES:
         if re.search(pattern, lowered):
             return key

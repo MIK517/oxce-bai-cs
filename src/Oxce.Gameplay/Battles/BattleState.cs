@@ -7,7 +7,7 @@ namespace Oxce.Gameplay.Battles;
 /// mutable classes; it is captured only at the persistence boundary. One battle belongs to one campaign, which
 /// serializes access to it.
 /// </summary>
-internal sealed class BattleState
+internal sealed partial class BattleState
 {
     /// <summary>BattleUnit::MAX_SOLDIER_ID: geoscape soldiers keep their IDs; other units are numbered from here.</summary>
     internal const int MaximumSoldierId = 1_000_000;

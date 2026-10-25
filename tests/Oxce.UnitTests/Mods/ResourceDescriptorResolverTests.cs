@@ -70,6 +70,53 @@ public sealed class ResourceDescriptorResolverTests
     }
 
     [Fact]
+    public void TerrainAmbienceResolvesTheBattleSoundsAModDeclares()
+    {
+        // RuleTerrain::load: loadSoundOffset into BATTLE.CAT (loadOffsetNode). An index at or above the shared sounds is
+        // offset into the add-on's range, declared in extraSounds (5) or not (3); a shared one and the -1 of no sound
+        // stay. A list drops its no-sound entries; a single value keeps it.
+        using var fixture = ResourceModFixture.Create(
+            "",
+            """
+            extraSounds:
+              - type: BATTLE.CAT
+                files: {5: Resources/ambience.wav}
+            terrains:
+              - name: LOOPING
+                ambience: 5
+                ambientVolume: 0.3
+              - name: UNDECLARED
+                ambience: 3
+              - name: RANDOM
+                ambienceRandom: [5, -1, 0, 3]
+                ambienceRandomDelay: [2, 7]
+              - name: SINGLE
+                ambienceRandom: -1
+              - name: SILENT
+            """);
+        fixture.WriteAddon("Resources/ambience.wav", "ambience");
+
+        var snapshot = ContentSnapshotBuilder.Build(fixture.CreatePlan(), options: new ContentSnapshotOptions
+        {
+            ResourceResolution = new ResourceResolutionOptions
+            {
+                SharedSoundCounts = new Dictionary<string, int> { ["BATTLE.CAT"] = 1 },
+            },
+        });
+
+        Assert.True(snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked),
+            string.Join(Environment.NewLine, snapshot.Diagnostics.Select(static diagnostic => diagnostic.Message)));
+        var terrains = snapshot.Content.RuntimeRules.Battle.Terrains;
+        Assert.Equal((1005, 0.3), (terrains["LOOPING"].Ambience, terrains["LOOPING"].AmbientVolume));
+        Assert.Equal(1003, terrains["UNDECLARED"].Ambience);
+        Assert.Equal([1005, 0, 1003], terrains["RANDOM"].RandomAmbience);
+        Assert.Equal([-1], terrains["SINGLE"].RandomAmbience);
+        Assert.Equal((-1, 2, 7), (terrains["RANDOM"].Ambience, terrains["RANDOM"].MinimumAmbienceDelay, terrains["RANDOM"].MaximumAmbienceDelay));
+        Assert.Equal((-1, 0.5, 0, 20, 60), (terrains["SILENT"].Ambience, terrains["SILENT"].AmbientVolume, terrains["SILENT"].RandomAmbience.Count,
+            terrains["SILENT"].MinimumAmbienceDelay, terrains["SILENT"].MaximumAmbienceDelay));
+    }
+
+    [Fact]
     public void SubdividedSpritesResolveEveryCellAndGlobeMarkersUseModOffsets()
     {
         using var fixture = ResourceModFixture.Create(

@@ -248,7 +248,7 @@ public static class RuntimeRuleLinker
                 ArmorGroupLimits = rule.Value.ArmorGroupLimits,
                 PilotMinimumStats = rule.Value.PilotMinimumStats,
                 RequiredPilotBonuses = rule.Value.RequiredPilotBonuses,
-                BattlescapeTerrain = RuntimeBattleRules.Inline(rule.Value.BattlescapeTerrain),
+                BattlescapeTerrain = RuntimeBattleRules.Inline(rule.Value.BattlescapeTerrain, resources),
                 MapVisible = rule.Value.Booleans["mapVisible"],
                 MaximumSkinIndex = rule.Value.Integers["maxSkinIndex"],
                 Groups = Array.AsReadOnly(rule.Value.Groups.ToArray()),
@@ -569,7 +569,7 @@ public static class RuntimeRuleLinker
             scriptBuild.Family,
             settings)
         {
-            Battle = RuntimeBattleRules.Link(content.TerrainDeployment, RuntimeBattleEquipment.Link(content, categoryReplacements)),
+            Battle = RuntimeBattleRules.Link(content.TerrainDeployment, resources, RuntimeBattleEquipment.Link(content, categoryReplacements)),
         };
         cancellationToken.ThrowIfCancellationRequested();
         return new RuntimeRuleLinkResult(catalog, compatibility, Array.AsReadOnly(issues.ToArray()));
@@ -670,7 +670,7 @@ public static class RuntimeRuleLinker
                     "STR_LARGE" => 3,
                     _ => 4,
                 },
-                BattlescapeTerrain = RuntimeBattleRules.Inline(source.BattlescapeTerrain),
+                BattlescapeTerrain = RuntimeBattleRules.Inline(source.BattlescapeTerrain, resources),
             };
         }
 

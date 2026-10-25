@@ -12,7 +12,7 @@ public sealed record MapBlockRule(
 public sealed record TerrainRule(
     IReadOnlyList<string> MapDataSets, IReadOnlyList<MapBlockRule> MapBlocks,
     string EnviroEffects, IReadOnlyList<string> CivilianTypes, IReadOnlyList<string> Music,
-    int MinimumDepth, int MaximumDepth, RuleIndexReference Ambience, float AmbientVolume,
+    int MinimumDepth, int MaximumDepth, RuleIndexReference Ambience, double AmbientVolume,
     IReadOnlyList<RuleIndexReference> RandomAmbience, int MinimumAmbienceDelay,
     int MaximumAmbienceDelay, string MapScript, IReadOnlyList<string> MapScripts);
 
@@ -103,7 +103,7 @@ internal sealed class TerrainBuilder(string id)
     public int MinimumDepth { get; set; }
     public int MaximumDepth { get; set; }
     public RuleIndexReference Ambience { get; set; } = new(-1, "");
-    public float AmbientVolume { get; set; } = 0.5f;
+    public double AmbientVolume { get; set; } = 0.5;
     public List<RuleIndexReference> RandomAmbience { get; set; } = [];
     public int MinimumAmbienceDelay { get; set; } = 20;
     public int MaximumAmbienceDelay { get; set; } = 60;

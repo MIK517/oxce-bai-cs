@@ -75,7 +75,7 @@ internal sealed record CompiledContentCacheReadResult(
 internal static class CompiledContentCache
 {
     internal const int FormatVersion = 1;
-    internal const int CompilerRevision = 73;
+    internal const int CompilerRevision = 74;
     private const string FileName = "content-v1.json.gz";
     private const int CacheKeyLength = 64;
     private static ReadOnlySpan<byte> HeaderMagic => "OXCECC1\n"u8;
@@ -590,7 +590,8 @@ internal sealed record CachedRuntimeContent(
     IReadOnlyList<CachedResourceDescriptor> Resources,
     IReadOnlyList<CachedResourceIndex> ResourceIndexes,
     IReadOnlyDictionary<string, IReadOnlyList<RuntimeSoldierNamePool>> SoldierNamePools,
-    IReadOnlyDictionary<string, int>? ModOffsets = null)
+    IReadOnlyDictionary<string, int>? ModOffsets = null,
+    IReadOnlyDictionary<string, int>? SharedSoundCounts = null)
 {
     public static CachedRuntimeContent Capture(ContentSnapshot snapshot) => new(
         snapshot.CompatibilityData.Catalog,
@@ -604,7 +605,8 @@ internal sealed record CachedRuntimeContent(
         resourceDescriptors,
         CachedResourceIndex.Runs(snapshot.Content.Resources.Indexes),
         snapshot.Content.RuntimeRules.Soldiers.Rules.ToDictionary(r => r.Id, r => r.Value.NamePools, StringComparer.Ordinal),
-        snapshot.Content.Resources.ModOffsets);
+        snapshot.Content.Resources.ModOffsets,
+        snapshot.Content.Resources.SharedSoundCounts);
 
     public CachedRuntimeContentRestore Restore(
         ContentSnapshotOptions options,
@@ -667,7 +669,7 @@ internal sealed record CachedRuntimeContent(
                     run.DeclaredIndex + offset, run.RuntimeIndex + offset, descriptor.Handle));
             }
         }
-        var resources = new ResolvedResourceCatalog(generation, descriptors, indexes, ModOffsets);
+        var resources = new ResolvedResourceCatalog(generation, descriptors, indexes, ModOffsets, SharedSoundCounts);
         resourceMeasurement.Dispose();
         using var linkingMeasurement = measurements.Measure(InstallationStartupStage.RuntimeRuleLinking);
         var runtimeRules = RuntimeRuleLinker.Link(

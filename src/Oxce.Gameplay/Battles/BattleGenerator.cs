@@ -121,11 +121,18 @@ internal static class BattleGenerator
             BaseModules = generated.BaseModules,
             // generateBaseMap's inventory tile, which deployXCOM keeps.
             CraftInventoryTile = generated.BaseInventoryTile,
+            ScriptValues = BattleState.EmptyScriptValues(campaign.Content),
         };
+        // generateMap: the terrain's ambience. Its first delay draws from RNG::seedless, a stream of its own, so the
+        // game's draws are unchanged; the port seeds it from the campaign stream's state without drawing (ADR 0039).
+        state.SetAmbience(terrain, new SplitMix64RandomSource(random.State ^ SeedlessSalt));
         return new(state, generated, inputs, terrain, id, deployment);
     }
 
     private const string BaseDefenseMissionType = "STR_BASE_DEFENSE";
+
+    /// <summary>Separates the seedless stream from the campaign stream it is seeded from.</summary>
+    private const ulong SeedlessSalt = 0x5EED_1E55_A3B1_E7CEUL;
 
     /// <summary>
     /// generateMap's base defense inputs: the base's facilities and, with <c>baseDefenseMapFromLocation: 1</c>, the base

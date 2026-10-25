@@ -37,10 +37,15 @@ internal sealed class TerrainRuleLoader : IdOnlyTypedRuleFamilyLoader<TerrainBui
         }
         if (reader.TryGet("ambience", out var ambience))
             builder.Ambience = PresentationYaml.ReadIndexReference(ambience!, reader.Source.ModId);
-        builder.AmbientVolume = reader.ReadSingle("ambientVolume", builder.AmbientVolume);
+        // RuleTerrain::_ambientVolume is a double.
+        builder.AmbientVolume = reader.ReadDouble("ambientVolume", builder.AmbientVolume);
         if (reader.TryGet("ambienceRandom", out var random))
+        {
             builder.RandomAmbience = TerrainDeploymentYaml.Values(random!,
                 value => PresentationYaml.ReadIndexReference(value, reader.Source.ModId), "ambienceRandom");
+            // Mod::loadSoundOffset drops a list entry that is no sound (-1, a soft error); a single value stays.
+            if (random is YamlSequenceNode) builder.RandomAmbience.RemoveAll(static sound => sound.Index == -1);
+        }
         if (reader.TryGet("ambienceRandomDelay", out var delay))
         {
             var pair = TerrainDeploymentYaml.FixedPair(delay!, [builder.MinimumAmbienceDelay, builder.MaximumAmbienceDelay], "ambienceRandomDelay");

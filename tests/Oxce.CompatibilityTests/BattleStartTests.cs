@@ -443,7 +443,7 @@ public sealed class BattleStartTests
         ["ROUTES/TALL.RMP"] = [],
     };
 
-    private static (CampaignState Campaign, CampaignDeploymentRequest Request) Requested(string? rules, string ufo = "UFO_SCOUT",
+    internal static (CampaignState Campaign, CampaignDeploymentRequest Request) Requested(string? rules, string ufo = "UFO_SCOUT",
         IReadOnlyList<CraftVehicleSnapshot>? vehicles = null, IReadOnlyDictionary<string, int>? items = null,
         IReadOnlyList<SoldierLayoutItem>? layout = null, Func<CampaignSnapshot, CampaignSnapshot>? adjust = null)
     {
@@ -466,7 +466,7 @@ public sealed class BattleStartTests
     }
 
     /// <summary>Starts the battle, reporting the refusal reason when there is one.</summary>
-    private static BattleStarted Started(CampaignState campaign)
+    internal static BattleStarted Started(CampaignState campaign)
     {
         var events = campaign.Execute(new StartBattle()).Events;
         Assert.Equal("", events.OfType<CampaignActionBlocked>().SingleOrDefault()?.Reason.ToString() ?? "");
@@ -476,7 +476,7 @@ public sealed class BattleStartTests
     private static string Refusal(CampaignState campaign, ICampaignCommand command) =>
         Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(command).Events)).Reason;
 
-    private static BattleState Battle(CampaignState campaign) =>
+    internal static BattleState Battle(CampaignState campaign) =>
         campaign.GetQuery<IBattleQuery>() is CampaignBattles battles ? battles.Battle! : throw new InvalidOperationException();
 
     [Fact]

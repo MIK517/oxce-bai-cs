@@ -280,7 +280,8 @@ public static class ResourceDescriptorResolver
         cancellationToken.ThrowIfCancellationRequested();
         return new ResourceResolutionResult(
             new ResolvedResourceCatalog(generation, descriptors, resourceIndexes.Values,
-                allocations.ToDictionary(static pair => pair.Key, static pair => pair.Value.Offset, StringComparer.Ordinal)),
+                allocations.ToDictionary(static pair => pair.Key, static pair => pair.Value.Offset, StringComparer.Ordinal),
+                sharedSounds),
             Array.AsReadOnly(issues.ToArray()));
 
         ModAllocation Allocation(string modId, RuleOperationSource source, string ownerId)

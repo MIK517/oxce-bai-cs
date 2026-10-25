@@ -20,7 +20,7 @@ namespace Oxce.Savegames.Oxce;
 public static partial class OxceSaveAdapter
 {
     private static readonly string[] TransferPayloadKeys = ["soldier", "craft", "itemId", "scientists", "engineers"];
-    private static readonly SourceSpan GeneratedSpan = new(
+    internal static readonly SourceSpan GeneratedSpan = new(
         "(generated OXCE save)", new SourcePosition(1, 1, 0), new SourcePosition(1, 1, 0));
 
     public static LoadedOxceCampaign LoadFile(
@@ -1211,7 +1211,7 @@ public static partial class OxceSaveAdapter
 
     private readonly record struct BaseFacilityIdentity(string RuleId, int X, int Y, string PreservationKey);
 
-    private static YamlMappingNode? ScriptValues(IReadOnlyList<ScriptValueEntry> values) => values.Count == 0
+    internal static YamlMappingNode? ScriptValues(IReadOnlyList<ScriptValueEntry> values) => values.Count == 0
         ? null
         : Mapping(values.Select(value => Pair(value.TagName, Integer(value.Value))));
 
@@ -1227,7 +1227,7 @@ public static partial class OxceSaveAdapter
         value.ReadInt32("year", 1999), value.ReadInt32("hour", 12), value.ReadInt32("minute", 0),
         value.ReadInt32("second", 0)).Validate();
 
-    private static YamlMappingNode Overlay(YamlMappingNode? source, IReadOnlyList<(string Key, YamlNode? Value)> values)
+    internal static YamlMappingNode Overlay(YamlMappingNode? source, IReadOnlyList<(string Key, YamlNode? Value)> values)
     {
         var replacements = values.ToDictionary(static item => item.Key, static item => item.Value, StringComparer.Ordinal);
         var emitted = new HashSet<string>(StringComparer.Ordinal);
@@ -1287,7 +1287,7 @@ public static partial class OxceSaveAdapter
         ? RequireMap(node!, key)
         : throw new InvalidDataException($"Missing required mapping '{key}'.");
 
-    private static YamlMappingNode RequireMap(YamlNode node, string name) => node as YamlMappingNode ??
+    internal static YamlMappingNode RequireMap(YamlNode node, string name) => node as YamlMappingNode ??
         throw new InvalidDataException($"OXCE save '{name}' must be a mapping.");
 
     private static string RequiredString(YamlMappingNode owner, string key) => owner.TryGet(key, out var node)
@@ -1326,18 +1326,18 @@ public static partial class OxceSaveAdapter
         return new Guid(hash[..16]);
     }
 
-    private static (string Key, YamlNode? Value) Pair(string key, YamlNode? value) => (key, value);
+    internal static (string Key, YamlNode? Value) Pair(string key, YamlNode? value) => (key, value);
     private static YamlMappingEntry PairNode(string key, YamlNode value) => new(Scalar(key), value);
-    private static YamlScalarNode Scalar(string value) => new(GeneratedSpan, value, YamlScalarStyle.Plain);
-    private static YamlScalarNode Integer(int value) => Scalar(value.ToString(CultureInfo.InvariantCulture));
+    internal static YamlScalarNode Scalar(string value) => new(GeneratedSpan, value, YamlScalarStyle.Plain);
+    internal static YamlScalarNode Integer(int value) => Scalar(value.ToString(CultureInfo.InvariantCulture));
     private static YamlScalarNode Long(long value) => Scalar(value.ToString(CultureInfo.InvariantCulture));
     private static YamlScalarNode ULong(ulong value) => Scalar(value.ToString(CultureInfo.InvariantCulture));
-    private static YamlScalarNode Real(double value) => Scalar(value.ToString("R", CultureInfo.InvariantCulture));
-    private static YamlScalarNode Boolean(bool value) => Scalar(value ? "true" : "false");
-    private static YamlSequenceNode Sequence(IEnumerable<YamlNode> values) => new(GeneratedSpan, values);
+    internal static YamlScalarNode Real(double value) => Scalar(value.ToString("R", CultureInfo.InvariantCulture));
+    internal static YamlScalarNode Boolean(bool value) => Scalar(value ? "true" : "false");
+    internal static YamlSequenceNode Sequence(IEnumerable<YamlNode> values) => new(GeneratedSpan, values);
     // Reference containers (std::map, ItemContainer::save) write keys in byte order; sorting also
     // keeps output independent of dictionary mutation history.
-    private static YamlMappingNode IntMapping(IEnumerable<KeyValuePair<string, int>> values) =>
+    internal static YamlMappingNode IntMapping(IEnumerable<KeyValuePair<string, int>> values) =>
         Mapping(values.OrderBy(static pair => pair.Key, StringComparer.Ordinal)
             .Select(static pair => Pair(pair.Key, Integer(pair.Value))));
     private static YamlMappingNode Mapping(IEnumerable<(string Key, YamlNode? Value)> values) =>
