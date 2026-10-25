@@ -106,7 +106,7 @@ public sealed class BattleSaveMapTests
         BattleSaveConformance.Check(written);
         var text = Emit(written);
         var reread = OxceBattleSave.Read(Parse(text), SharedContent.Value);
-        Assert.Equivalent(snapshot with { Units = [] }, reread with { Units = [] }, strict: true);
+        Assert.Equivalent(BattleSaveItemTests.WithoutEntities(snapshot), BattleSaveItemTests.WithoutEntities(reread), strict: true);
         var restored = BattleState.Restore(reread, SharedContent.Value, Terrain(), campaign: BattleRestoreCampaign.From(campaign));
         for (var tile = 0; tile < map.TileCount; tile++)
             for (var part = 0; part < BattleMap.PartCount; part++)

@@ -98,71 +98,79 @@ internal sealed partial class BattleState
     }
 
     /// <summary>The battle's saved state (SavedBattleGame::save); generation-only state is not part of it (the plan's table).</summary>
-    public BattleSnapshot Capture() => new(Width, Length, Height, MissionType)
+    public BattleSnapshot Capture()
     {
-        TargetName = TargetName,
-        CraftOrBaseName = CraftOrBaseName,
-        StartingConditionId = StartingConditionId,
-        EnviroEffectsId = EnviroEffectsId,
-        NameDisplay = NameDisplay,
-        EnvironmentalConditionFriendly = EnvironmentalConditions.Friendly,
-        EnvironmentalConditionHostile = EnvironmentalConditions.Hostile,
-        EnvironmentalConditionNeutral = EnvironmentalConditions.Neutral,
-        AlienCustomDeploy = AlienCustomDeploy,
-        AlienCustomMission = AlienCustomMission,
-        AlienItemLevel = AlienItemLevel,
-        MapScriptId = MapScriptId,
-        ReinforcementsDeployment = ReinforcementsDeployment,
-        ReinforcementsRace = ReinforcementsRace,
-        ReinforcementsItemLevel = ReinforcementsItemLevel,
-        ReinforcementsMemory = Counts(_reinforcementsMemory),
-        GlobalShade = GlobalShade,
-        Turn = Turn,
-        BughuntMinTurn = BughuntMinTurn,
-        BughuntMode = BughuntMode,
-        Depth = Depth,
-        AnimFrame = AnimFrame,
-        SelectedUnitId = SelectedUnitId ?? -1,
-        UndoUnitId = UndoUnitId ?? -1,
-        VipEscapeType = VipEscapeType,
-        VipSurvivalPercentage = VipSurvivalPercentage,
-        VipsSaved = VipsSaved,
-        VipsLost = VipsLost,
-        VipsWaitingOutside = VipsWaitingOutside,
-        VipsSavedScore = VipsSavedScore,
-        VipsLostScore = VipsLostScore,
-        VipsWaitingOutsideScore = VipsWaitingOutsideScore,
-        ObjectiveType = ObjectiveType,
-        ObjectivesDestroyed = ObjectivesDestroyed,
-        ObjectivesNeeded = ObjectiveCount,
-        TimeUnitsReserved = TimeUnitsReserved,
-        KneelReserved = KneelReserved,
-        Ambience = Ambience,
-        AmbientVolume = AmbientVolume,
-        AmbienceRandom = Array.AsReadOnly(AmbienceRandom.ToArray()),
-        MinimumAmbienceRandomDelay = MinimumAmbienceRandomDelay,
-        MaximumAmbienceRandomDelay = MaximumAmbienceRandomDelay,
-        CurrentAmbienceDelay = CurrentAmbienceDelay,
-        Music = Music,
-        BaseItems = Counts(BaseStorageItems),
-        TurnLimit = TurnLimit,
-        ChronoTrigger = ChronoTrigger,
-        CheatTurn = CheatTurn,
-        TogglePersonalLight = TogglePersonalLight,
-        ToggleNightVision = ToggleNightVision,
-        ToggleBrightness = ToggleBrightness,
-        ScriptValues = Array.AsReadOnly((ScriptValues?.Capture() ?? []).ToArray()),
-        ReinforcementsBlocks = Rows(Map.ReinforcementBlocks),
-        FlattenedMapTerrainNames = Rows(Map.TerrainNames),
-        FlattenedMapBlockNames = Rows(Map.BlockNames),
-        MapDataSets = Array.AsReadOnly(Map.DataSets.Select(static set => set.Name).ToArray()),
-        Tiles = CaptureTiles(),
-        Nodes = Array.AsReadOnly(Map.Nodes.Select(static node => new BattleNodeSnapshot(node.Id, node.Position, node.Type, node.Rank,
-            node.Flags, node.Reserved, node.Priority, node.Allocated, Array.AsReadOnly(node.Links.ToArray()), node.IsDummy)).ToArray()),
-        ModuleMap = Array.AsReadOnly(BaseModules.Select(static row => (IReadOnlyList<BattleModuleSnapshot>)Array.AsReadOnly(
-            row.Select(static module => new BattleModuleSnapshot(module.Total, module.Remaining)).ToArray())).ToArray()),
-        Units = Array.AsReadOnly(_units.Select(CaptureUnit).ToArray()),
-    };
+        var (items, special, conditional, guaranteed) = CaptureItems();
+        return new(Width, Length, Height, MissionType)
+        {
+            TargetName = TargetName,
+            CraftOrBaseName = CraftOrBaseName,
+            StartingConditionId = StartingConditionId,
+            EnviroEffectsId = EnviroEffectsId,
+            NameDisplay = NameDisplay,
+            EnvironmentalConditionFriendly = EnvironmentalConditions.Friendly,
+            EnvironmentalConditionHostile = EnvironmentalConditions.Hostile,
+            EnvironmentalConditionNeutral = EnvironmentalConditions.Neutral,
+            AlienCustomDeploy = AlienCustomDeploy,
+            AlienCustomMission = AlienCustomMission,
+            AlienItemLevel = AlienItemLevel,
+            MapScriptId = MapScriptId,
+            ReinforcementsDeployment = ReinforcementsDeployment,
+            ReinforcementsRace = ReinforcementsRace,
+            ReinforcementsItemLevel = ReinforcementsItemLevel,
+            ReinforcementsMemory = Counts(_reinforcementsMemory),
+            GlobalShade = GlobalShade,
+            Turn = Turn,
+            BughuntMinTurn = BughuntMinTurn,
+            BughuntMode = BughuntMode,
+            Depth = Depth,
+            AnimFrame = AnimFrame,
+            SelectedUnitId = SelectedUnitId ?? -1,
+            UndoUnitId = UndoUnitId ?? -1,
+            VipEscapeType = VipEscapeType,
+            VipSurvivalPercentage = VipSurvivalPercentage,
+            VipsSaved = VipsSaved,
+            VipsLost = VipsLost,
+            VipsWaitingOutside = VipsWaitingOutside,
+            VipsSavedScore = VipsSavedScore,
+            VipsLostScore = VipsLostScore,
+            VipsWaitingOutsideScore = VipsWaitingOutsideScore,
+            ObjectiveType = ObjectiveType,
+            ObjectivesDestroyed = ObjectivesDestroyed,
+            ObjectivesNeeded = ObjectiveCount,
+            TimeUnitsReserved = TimeUnitsReserved,
+            KneelReserved = KneelReserved,
+            Ambience = Ambience,
+            AmbientVolume = AmbientVolume,
+            AmbienceRandom = Array.AsReadOnly(AmbienceRandom.ToArray()),
+            MinimumAmbienceRandomDelay = MinimumAmbienceRandomDelay,
+            MaximumAmbienceRandomDelay = MaximumAmbienceRandomDelay,
+            CurrentAmbienceDelay = CurrentAmbienceDelay,
+            Music = Music,
+            BaseItems = Counts(BaseStorageItems),
+            TurnLimit = TurnLimit,
+            ChronoTrigger = ChronoTrigger,
+            CheatTurn = CheatTurn,
+            TogglePersonalLight = TogglePersonalLight,
+            ToggleNightVision = ToggleNightVision,
+            ToggleBrightness = ToggleBrightness,
+            ScriptValues = Array.AsReadOnly((ScriptValues?.Capture() ?? []).ToArray()),
+            ReinforcementsBlocks = Rows(Map.ReinforcementBlocks),
+            FlattenedMapTerrainNames = Rows(Map.TerrainNames),
+            FlattenedMapBlockNames = Rows(Map.BlockNames),
+            MapDataSets = Array.AsReadOnly(Map.DataSets.Select(static set => set.Name).ToArray()),
+            Tiles = CaptureTiles(),
+            Nodes = Array.AsReadOnly(Map.Nodes.Select(static node => new BattleNodeSnapshot(node.Id, node.Position, node.Type, node.Rank,
+                node.Flags, node.Reserved, node.Priority, node.Allocated, Array.AsReadOnly(node.Links.ToArray()), node.IsDummy)).ToArray()),
+            ModuleMap = Array.AsReadOnly(BaseModules.Select(static row => (IReadOnlyList<BattleModuleSnapshot>)Array.AsReadOnly(
+                row.Select(static module => new BattleModuleSnapshot(module.Total, module.Remaining)).ToArray())).ToArray()),
+            Units = Array.AsReadOnly(_units.Select(CaptureUnit).ToArray()),
+            Items = items,
+            ItemsSpecial = special,
+            RecoverConditional = conditional,
+            RecoverGuaranteed = guaranteed,
+        };
+    }
 
     /// <summary>
     /// SavedBattleGame::save's tiles: every tile that is not void (Tile::isVoid: a part with map data, smoke or an item on
@@ -171,7 +179,8 @@ internal sealed partial class BattleState
     private ReadOnlyCollection<BattleTileSnapshot> CaptureTiles()
     {
         var itemTiles = new HashSet<int>();
-        foreach (var item in _items)
+        // Tile::addItem: an item of either recovery list on the ground also makes its tile non-void.
+        foreach (var item in _items.Concat(_guaranteedRecovered).Concat(_conditionalRecovered))
             if (item.Tile is { } position) itemTiles.Add(Map.TileIndex(position));
         var tiles = new List<BattleTileSnapshot>();
         for (var tile = 0; tile < Map.TileCount; tile++)
@@ -237,6 +246,7 @@ internal sealed partial class BattleState
             Depth = snapshot.Depth,
             GlobalShade = snapshot.GlobalShade,
             StartingConditionId = snapshot.StartingConditionId,
+            Rules = rules,
         };
         battle.TargetName = snapshot.TargetName;
         battle.CraftOrBaseName = snapshot.CraftOrBaseName;
@@ -279,15 +289,15 @@ internal sealed partial class BattleState
         battle.ToggleNightVision = snapshot.ToggleNightVision;
         battle.ToggleBrightness = snapshot.ToggleBrightness;
         battle.ScriptValues = RestoreScriptValues(content, snapshot.ScriptValues);
-        // load: the item counter is the highest item ID plus one, 1 without items (S4 loads the items).
-        battle.NextItemId = 1;
         try
         {
-            // The units (S3), with the selected and undo units resolved against them, then the restored battle's checks.
+            // The units (S3), with the selected and undo units resolved against them, the items (S4) with the units'
+            // special built-in items, then the restored battle's checks.
             battle.RestoreUnits(snapshot, content, campaign);
+            battle.RestoreItems(snapshot, content);
             battle.Validate(placement: false);
         }
-        catch (InvalidOperationException failure)
+        catch (Exception failure) when (failure is InvalidOperationException or MapGenerationException)
         {
             throw new InvalidDataException($"Battle save is corrupted: {failure.Message}", failure);
         }

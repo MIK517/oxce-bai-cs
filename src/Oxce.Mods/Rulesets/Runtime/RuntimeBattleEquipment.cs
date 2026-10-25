@@ -84,6 +84,9 @@ public sealed class RuntimeBattleEquipment
                 BigSprite = rule.Value.ResourceIndexes["bigSprite"].Index,
                 IgnoreInBaseDefense = values.Boolean("ignoreInBaseDefense"),
                 IgnoreInCraftEquip = values.Boolean("ignoreInCraftEquip"),
+                InventoryMoveCostPercent = values.GetInteger("inventoryMoveCostPercent"),
+                FuseTrigger = new RuntimeFuseTrigger(rule.Value.FuseTriggers.DefaultBehavior, rule.Value.FuseTriggers.ThrowTrigger,
+                    rule.Value.FuseTriggers.ProximityTrigger),
             };
         }, StringComparer.Ordinal);
         var armors = personnel.Armors.Rules.ToDictionary(static rule => rule.Id, static rule => new RuntimeBattleArmor(
@@ -182,6 +185,18 @@ public sealed record RuntimeBattleItem(
 
     /// <summary>RuleItem::isInventoryItem.</summary>
     public bool IsInventoryItem => BigSprite > -1 && !Fixed;
+
+    /// <summary>RuleItem::getInventoryMoveCostPercent (<c>inventoryMoveCost: {basePercent}</c>).</summary>
+    public int InventoryMoveCostPercent { get; init; } = 100;
+
+    /// <summary>RuleItem::getFuseTriggerEvent's fields BattleItem::setFuseTimer reads.</summary>
+    public RuntimeFuseTrigger FuseTrigger { get; init; } = RuntimeFuseTrigger.Default;
+}
+
+/// <summary>RuleItemFuseTrigger's <c>defaultBehavior</c>, <c>throwTrigger</c> and <c>proximityTrigger</c>.</summary>
+public sealed record RuntimeFuseTrigger(bool DefaultBehavior, bool ThrowTrigger, bool ProximityTrigger)
+{
+    public static RuntimeFuseTrigger Default { get; } = new(true, false, false);
 }
 
 /// <summary>Armor's equipment fields: built-in weapons, special and self-destruct items, two main weapons, inventory, weight.</summary>

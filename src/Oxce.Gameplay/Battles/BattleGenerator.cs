@@ -122,6 +122,7 @@ internal static class BattleGenerator
             // generateBaseMap's inventory tile, which deployXCOM keeps.
             CraftInventoryTile = generated.BaseInventoryTile,
             ScriptValues = BattleState.EmptyScriptValues(campaign.Content),
+            Rules = rules,
         };
         // generateMap: the terrain's ambience. Its first delay draws from RNG::seedless, a stream of its own, so the
         // game's draws are unchanged; the port seeds it from the campaign stream's state without drawing (ADR 0039).
@@ -250,7 +251,7 @@ internal static class BattleGenerator
         foreach (var placement in items)
         {
             var item = equipment.CreateItemForTile(placement.ItemType, placement.Tile);
-            if (placement.FuseTimer is { } fuse) item.FuseTimer = fuse;
+            if (placement.FuseTimer is { } fuse) item.SetFuseTimer(fuse, equipment.BattleItemRule(item.ItemType));
             if (placement.AmmoQuantity is { } quantity) item.AmmoQuantity = quantity;
             if (placement.LoadInto >= 0)
             {

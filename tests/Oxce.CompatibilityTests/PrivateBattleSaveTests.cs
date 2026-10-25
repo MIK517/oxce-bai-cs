@@ -14,9 +14,8 @@ namespace Oxce.CompatibilityTests;
 /// <summary>
 /// Phase 7 branch 2 acceptance on the private active-battle saves (vanilla UFO, TFTD and Rosigma <c>battlescape/</c>):
 /// each <c>battleGame</c> loads into <see cref="BattleState"/> and rewrites over its source with semantic equality, a
-/// second rewrite is byte-stable, and every written battle passes the conformance reader. S1 covers the battle root and S2
-/// the map (its data sets loaded with the installation's terrain files); the units and items keys stay as the source has
-/// them until S3 and S4.
+/// second rewrite is byte-stable, and every written battle passes the conformance reader. S1 covers the battle root, S2
+/// the map (its data sets loaded with the installation's terrain files), S3 the units and S4 the items.
 /// </summary>
 public sealed class PrivateBattleSaveTests
 {

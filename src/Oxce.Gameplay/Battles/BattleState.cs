@@ -186,7 +186,9 @@ internal sealed partial class BattleState
         foreach (var item in items)
         {
             item.Tile = null;
+            // setFuseTimer(-1): unprimed, the fuse off.
             item.FuseTimer = -1;
+            item.FuseEnabled = false;
         }
         _items.RemoveAll(items.Contains);
         _guaranteedRecovered.AddRange(items);
@@ -212,7 +214,10 @@ internal sealed partial class BattleState
     /// <c>new BattleItem(rule, getCurrentItemId())</c>: an item with the next ID, which is taken whether or not the item
     /// is kept (an item that fits nowhere is deleted but its ID stays used).
     /// </summary>
-    internal BattleItem NewItem(string itemType) => new(NextItemId++, itemType);
+    internal BattleItem NewItem(string itemType) => new(TakeItemId(), itemType);
+
+    /// <summary>getCurrentItemId's post-increment: the next item ID, taken.</summary>
+    internal int TakeItemId() => NextItemId++;
 
     /// <summary>Adds a created item to the battle's items (SavedBattleGame::getItems push_back).</summary>
     internal void AddItem(BattleItem item)
@@ -320,7 +325,7 @@ internal sealed partial class BattleState
             if (Map.UnitAt(tile) is { } standing && !ids.Contains(standing))
                 throw new InvalidOperationException($"Tile {tile} names battle unit {standing}, which is not in the battle.");
         ValidateNodes();
-        ValidateItems(ids);
+        ValidateItems(ids, restored: !placement);
     }
 
     // Node links: an ID in the node list, or -1 (unused) to -5 (west), the reference's values while unconnected.
@@ -339,12 +344,19 @@ internal sealed partial class BattleState
         }
     }
 
-    private void ValidateItems(HashSet<int> units)
+    // A restored battle's item may be held by nothing (SavedBattleGame::load): the items of a unit the load left out, a
+    // ground item saved without a position, or ammo no weapon names.
+    private void ValidateItems(HashSet<int> units, bool restored)
     {
         var holders = new Dictionary<int, int>();
         foreach (var item in _items)
         {
             if (!holders.TryAdd(item.Id, 0)) throw new InvalidOperationException($"Battle item {item.Id} is listed twice.");
+            // A corpse names its unit, and a previous owner is a unit of the battle (findUnitById).
+            if (item.CorpseUnitId is { } corpse && !units.Contains(corpse))
+                throw new InvalidOperationException($"Battle item {item.Id} is the corpse of missing unit {corpse}.");
+            if (item.PreviousOwnerUnitId is { } previous && !units.Contains(previous))
+                throw new InvalidOperationException($"Battle item {item.Id} was carried by missing unit {previous}.");
             if (item.Tile is { } tile)
             {
                 if (!Contains(tile)) throw new InvalidOperationException($"Battle item {item.Id} is outside the map.");
@@ -366,11 +378,16 @@ internal sealed partial class BattleState
                     throw new InvalidOperationException($"Battle item {weapon.Id} is loaded with {ammo}, which is no loaded ammo of the battle.");
                 holders[ammo] = count + 1;
             }
-        foreach (var item in _guaranteedRecovered)
-            if (holders.ContainsKey(item.Id))
-                throw new InvalidOperationException($"Battle item {item.Id} is both on the map and in guaranteed recovery.");
+        var recovered = new HashSet<int>();
+        foreach (var (list, kind) in new[] { (_guaranteedRecovered, "guaranteed"), (_conditionalRecovered, "conditional") })
+            foreach (var item in list)
+            {
+                if (holders.ContainsKey(item.Id))
+                    throw new InvalidOperationException($"Battle item {item.Id} is both on the map and in {kind} recovery.");
+                if (!recovered.Add(item.Id)) throw new InvalidOperationException($"Battle item {item.Id} is listed twice for recovery.");
+            }
         foreach (var (item, count) in holders)
-            if (count != 1) throw new InvalidOperationException($"Battle item {item} has {count} holders.");
+            if (count > 1 || count == 0 && !restored) throw new InvalidOperationException($"Battle item {item} has {count} holders.");
     }
 }
 

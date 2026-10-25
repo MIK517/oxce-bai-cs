@@ -12,7 +12,7 @@ Phase 7 branch 2 (`claude/battle-save`), from `main` at `3c91029a` (PR #78, bran
 | S1 save module and battle root | Done (2026-10-25) |
 | S2 map | Done (2026-10-25) |
 | S3 units | Done (2026-10-25) |
-| S4 items | Not started |
+| S4 items | Done (2026-10-25) |
 | S5 campaign integration | Not started |
 | S6 acceptance and branch audit | Not started |
 
@@ -221,30 +221,114 @@ tests restore with the campaign and compare with the loaded form (`BattleSaveUni
 and compares the rewrite with its source with the duplicated keys and the dropped AI modules normalized; the corpus has
 a mind-controlled alien with an AI node, player and dead units with one, and a panicking soldier.
 
+## S4 — Items (2026-10-25)
+
+Reference: `SavedBattleGame::load` (the item passes and the units' second pass, lines 306-397), `save` (the item keys),
+`createItemForUnitSpecialBuiltin`, `initItem`; `BattleItem::BattleItem`, `load`, `save`, `setFuseTimer`, `setOwner`,
+`setPreviousOwner`, `moveToOwner`, `setAmmoForSlot`, `needsAmmoForSlot`, `isSpecialWeapon`; `BattleUnit::setSpecialWeapon`
+(with `updateFromSave`), `addLoadedSpecialWeapon`, `isIgnored`; `RuleItem::load` (`inventoryMoveCost`,
+`fuseTriggerEvents`), `RuleItemFuseTrigger`; `Mod::getInventoryGround`; `YamlNodeWriter::write` of a vector (no key when
+empty, the callback choosing the elements), `YamlNodeReader::operator[](size_t)`; `BattlescapeGenerator` (`setFuseTimer`
+in `loadMAP`, the layouts and the pre-primed grenades, `sendItemsToLimbo`).
+
+- `BattleSnapshot` gains `Items`, `ItemsSpecial`, `RecoverConditional` and `RecoverGuaranteed` (`BattleItemSnapshot`:
+  every key `BattleItem::load` reads and `save` writes and those the load's passes read, with the rule values `save`'s
+  conditions read: the rule's move cost, an inventory grid, rechargeable ammo, a medikit). A key the load takes from the
+  constructor when absent is nullable; `Capture` fills it.
+- `OxceBattleSave.Read` reads the four lists in the load's order. `type` and `id` are required (`readVal` without a
+  default), the type first, so an item whose rule is gone is left out with a skip warning before its ID is read; an
+  unknown `inventoryslot` is the ground (`STR_GROUND`; a corrupted save when the mods lack it) with a skip warning;
+  `NULL` is none; only a ground item's `position` is read, x -1 being none; `inventoryMoveCost` counts only as a mapping
+  holding `basePercent`; `ammoItemSlots`' first four entries are read, else `ammoItem`; `fuseEnabed` (sic); item tags
+  as the root's (owner `BattleItem`, unknown skipped, `RuleList` refused). Each key follows `tryRead` (a present
+  unreadable value fails naming it).
+- `OxceBattleSave.Write` writes `items` and `itemsSpecial` after `units` (both whenever the battle has items, each a
+  possibly empty sequence, as the reference's callback skips elements), `recoverGuaranteed` and `recoverConditional`
+  after `currentAmbienceDelay` (only when not empty), each item over its source node by ID in `save`'s order and
+  conditions: the units only when set, `inventoryMoveCost` only when it differs from the rule's, `inventoryX` and
+  `inventoryY` only in an inventory grid, `position` only on a tile, `ammoqty` when non-zero or rechargeable, `ammoItem`
+  and `ammoItemSlots` up to the last filled slot (-1 between), a medikit's quantities always, `fuseTimer` unless -1,
+  the flags only when set.
+- `BattleState` gains `ConstructItem` (the BattleItem constructor, shared with the generator: the rule's move cost and
+  clip size, a medikit's quantities, the self-filled ammo slots), `Rules` (the battle's rules, for the capture's rule
+  values) and `ConditionalRecoveredItems`; `BattleItem` gains the previous owner, corpse unit, inventory move cost, fuse
+  enabled flag, `droppedOnAlienTurn` and script values. `BattleItem.SetFuseTimer` is `setFuseTimer` (the rule's
+  `fuseTriggerEvents`: a primed fuse is enabled with the default behavior and neither trigger); the generator's map
+  items, layout fuses and pre-primed grenades now go through it. `BattleState.MoveToOwner` is `moveToOwner` (an owner
+  change makes the old owner, none included, the previous one), which the generator's `UnitEquipment.MoveToOwner` now
+  calls. `RuntimeBattleItem` gained `InventoryMoveCostPercent` and `FuseTrigger` (the compiled cache's compiler revision
+  is now 76).
+- `BattleState.Restore` runs `RestoreItems` after the units. The first pass makes each item by its constructor and
+  `BattleItem::load`, resolves `owner`, `previousOwner` and `unit` among the loaded units (`findUnitById`: none for a
+  skipped unit), makes an owned item in no section a special built-in item of its owner (the first free of four slots; a
+  fifth stays owned in none) and puts a ground item with a position on its tile; `NextItemId` is the highest ID (0 to
+  start with) plus one. The units' second pass gives every unit that is neither dead nor ignored what
+  `setSpecialWeapon(save, true)` gives (`UnitEquipment.RestoreSpecialWeapons`): with loaded special items, the armor's
+  self-destruct item it lacks, in the first slot (the reference's index starts at 0; the item there stays owned, out of
+  the slots); without any, the new unit's set. The generator's psi weapon check now reads the original faction, as the
+  reference does. The second item pass loads `ammoItemSlots` (an ID naming no item is ignored), else `ammoItem` into
+  slot 0 (an ID naming no item is a corrupted save), through `setAmmoForSlot` (only a weapon with ammo, in a slot it
+  does not fill itself; the ammo leaves its tile, owner and section). Each list is then sorted by ID. A repeated ID, a
+  ground position outside the map, an ID of `INT_MAX` and a special built-in firearm without a clip size (the reference
+  throws) are corrupted saves.
+- `Validate` checks a corpse's unit and a previous owner among the battle's units and both recovery lists against the
+  battle's items and each other (checks the restore already guarantees, so they guard generated battles); a restored
+  battle may hold an item held by nothing (a skipped unit's items, a ground item without a position, ammo nowhere),
+  while a generated battle still needs exactly one holder per item. An owned item that also lies on a tile, one ammo
+  item in two weapons and a weapon of the battle loaded with recovery-list ammo fail it (ADR 0039).
+- `Capture`'s void test counts the ground items of both recovery lists too (`Tile::addItem` on load puts them in the
+  tile's inventory), so their tiles are saved.
+- ADR 0039 gains S4's entries: the corrupted-save cases, the skip warnings and the inventory order, the block style.
+- The conformance reader checks the items: each list a sequence of mappings with a string `type` and an integer `id`,
+  each ID once, the keys' value types, `inventoryMoveCost`'s `basePercent`, up to four `ammoItemSlots`, a ground
+  position inside the map, and an `ammoItem` read without `ammoItemSlots` naming an item.
+
+Tests: `BattleSaveItemTests` (generated items of four deployments written, conforming, restored and rewritten stable,
+with the item counter and the units' special items; a loaded gun's clip, a rammer's special item in `itemsSpecial`, the
+armory's fuses through `setFuseTimer`, the weapon pile in guaranteed recovery and the keys' order; every key round
+tripping in `save`'s order; the constructor's values for what the save leaves out and `save`'s conditions; unknown,
+`NULL`, ground, grid and hand slots with positions read or not, and one outside the map; owners, previous owners and
+corpse units of skipped and missing units; four loaded special items and a fifth, an owned item in `items` moved to
+`itemsSpecial`, the self-destruct item into the first slot, a new unit's set on load, dead and ignored units; ammo
+slots over `ammoItem`, an unknown ammo slot ID, a self-filled slot, an item that takes no ammo, the older `ammoItem`
+and one naming no item; an OXC `fuseTimer` with the default, proximity, throw and no-default triggers and `fuseEnabed`;
+the recovery lists, the sort, the counter, negative IDs and a repeated ID; recovery-list items on the ground (their
+tile saved) and owned (a special item, no inventory); an item whose rule is gone and a legacy `ammoItem` to it; 24
+unreadable items naming their key; item tags; unknown item keys kept; `Validate`'s refusals (a clip with two holders, an
+owned item on a tile, recovery-list ammo), an ID of `INT_MAX`, a special firearm without a clip size; the units'
+second pass giving a mind-controlled psionic its psi weapon (not an originally neutral one) and a soldier saved without
+special items the soldier rule's). The item rules give the soldiers (`RECRUIT`) a RAM. The root and map tests compare the
+reread snapshot without its units and items (`BattleSaveItemTests.WithoutEntities`). `PrivateBattleSaveTests` now
+restores and rewrites every corpus battle's items (semantic equality with the source, a byte-stable second rewrite).
+
 ## Next
 
-S4 — items ([plan](phase-7-plan.md#branch-2--battle-saves)). Notes:
+S5 — campaign integration ([plan](phase-7-plan.md#branch-2--battle-saves)). Notes:
 
-- Keys: `items`, `itemsSpecial`, `recoverConditional`, `recoverGuaranteed` (`SavedBattleGame::load` lines 306-397 and
-  `save`), with `BattleItem::load` and `save`. The units' second pass also calls `setSpecialWeapon` for a unit that is
-  not ignored or dead (line 359) after the items load; S4 decides whether the restored special weapons come from
-  `itemsSpecial` alone. `owner`, `previousOwner` and `unit` resolve through the loaded units (`findUnitById`: a skipped
-  unit's items keep no owner). `NextItemId` becomes the highest ID plus one.
-- `Capture`'s void test already counts items on a tile's ground; once items restore, the corpus rewrite covers tiles
-  holding only items. `Write` puts `items` after `units` (overlay keeps the source's position).
-- The units' restore is in `BattleStateUnits.cs`; `RestoreUnits` runs before `Validate(placement: false)` inside the
-  corrupted-save `try`. Items need the units restored first.
-- Open from S3, for S5: a restored soldier wears the campaign soldier's own armor, as the reference's soldier does after
-  `deployXCOM` changed it; until `StartBattle` sets the soldier's battle armor and `transformedArmor`/`replacedArmor`,
-  a soldier saved in other armor is refused (`BattleState.SoldierBattleArmorRestriction`), which S5 retires.
+- `battleGame` restores into `CampaignBattles` through `OxceBattleSave.Read` and `BattleState.Restore(snapshot, content,
+  terrain, ufoInBattlescape, BattleRestoreCampaign.From(campaign))`, and is written with
+  `OxceBattleSave.Write(battle.Capture(), source)`. The "Active tactical battle is preserved" restriction
+  (`OxceSaveAdapter.ReadRestrictions`) retires, and `battle.save-unsupported` (`CampaignBattles.BattleSaveUnsupported`)
+  narrows to the named restriction on saving before the battle's first turn (branch 3 owns it).
+- Retire `BattleState.SoldierBattleArmorRestriction`: `StartBattle` sets the soldiers' battle armor and
+  `transformedArmor`/`replacedArmor` as `deployXCOM` does, and the restore takes the campaign soldier's armor.
+- `StartBattle` sets the `inBattlescape` flags (`Craft`, `Ufo`, `MissionSite`, `Base`, `AlienBase`); the header's
+  `mission`, `target`, `craftOrBase` and `turn` are written while a battle exists; the UFO in battle gives `Restore`'s
+  `ufoInBattlescape`.
+- `ReturnedToBase` and `TakenFromBase` are not saved; `StartBattle` applies them (the plan's table).
+- Open from S4: a fifth loaded special item of one unit is not reported (the restore has no diagnostics sink), and an
+  owned item of a recovery list keeps its owner without joining the unit's inventory (ADR 0039). The item tests' rules
+  (`BattleSaveItemTests.ItemRules`) make the generated aliens rammers with a special built-in item.
 - Gotchas carried over: write test files with LF (Python on Windows writes CRLF in text mode; use `newline='\n'` or
   the Edit tool); insert C# string literals with `\n` through the Edit tool or a script file written with the Write
   tool, not a Bash heredoc (a heredoc's Python sees `\\n` differently than expected, and some quote mixes fail to
-  parse); the test runner is Microsoft Testing Platform (`dotnet test --project <proj> --filter-class <full name>` or
-  `--filter-method`). The battle test helpers `BattleStartTests.Requested`, `Started` and `Battle`,
-  `BattleSaveRootTests.Generated`, `SharedContent`, `Parse`, `Emit`, `Normalized` and `Terrain`,
-  `BattleSaveUnitTests.Loaded` and `AssertLoadedRewriteIsStable`, and `BaseDefenseMapTests.Requested`, `Layout` and
-  `MapOf` are internal for reuse. Rules added to the battle test rules must go into their existing lists (a second
-  top-level `armors:` is ignored: the first key wins); see `BattleSaveUnitTests.UnitRules`. A YAML integer of the port
-  wraps like ryml's (`fire: 300` reads 44), so a wrong-type test needs a word or a sign; a YAML boolean accepts an
-  integer (ryml's fallback). Restoring a generated battle needs `BattleRestoreCampaign.From(campaign)` for its soldiers.
+  parse; a long heredoc with backticks can fail to parse at all); the test runner is Microsoft Testing Platform
+  (`dotnet test --project <proj> --filter-class <full name>` or `--filter-method`). The battle test helpers
+  `BattleStartTests.Requested`, `Started` and `Battle`, `BattleSaveRootTests.Generated`, `SharedContent`, `Parse`,
+  `Emit`, `Normalized` and `Terrain`, `BattleSaveUnitTests.Loaded` and `AssertLoadedRewriteIsStable`,
+  `BattleSaveItemTests.WithoutEntities`, and `BaseDefenseMapTests.Requested`, `Layout` and `MapOf` are internal for
+  reuse. Rules added to the battle test rules must go into their existing lists (a second top-level `armors:` is
+  ignored: the first key wins); see `BattleSaveUnitTests.UnitRules` and `BattleSaveItemTests.ItemRules`. A YAML integer
+  of the port wraps like ryml's (`fire: 300` reads 44), so a wrong-type test needs a word or a sign; a YAML boolean
+  accepts an integer (ryml's fallback). Restoring a generated battle needs `BattleRestoreCampaign.From(campaign)` for
+  its soldiers.

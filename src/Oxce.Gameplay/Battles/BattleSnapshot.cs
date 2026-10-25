@@ -9,8 +9,7 @@ namespace Oxce.Gameplay.Battles;
 /// are the <c>SavedBattleGame</c> constructor's, which a key the load does not find keeps.
 /// </summary>
 /// <remarks>
-/// S1 holds the battle root, S2 the map and S3 the units. The items (S4) follow; until then their keys stay in the
-/// source document, which the save module overlays.
+/// S1 holds the battle root, S2 the map, S3 the units and S4 the items.
 /// </remarks>
 public sealed record BattleSnapshot(int Width, int Length, int Height, string MissionType)
 {
@@ -128,6 +127,16 @@ public sealed record BattleSnapshot(int Width, int Length, int Height, string Mi
 
     /// <summary><c>units</c>, in the battle's order (S3); a unit whose rule or armor is gone is left out on read.</summary>
     public IReadOnlyList<BattleUnitSnapshot> Units { get; init; } = [];
+
+    /// <summary>
+    /// <c>items</c> and <c>itemsSpecial</c> (the battle's items; save puts an item owned in no inventory section, a special
+    /// built-in item, in the second), <c>recoverConditional</c> and <c>recoverGuaranteed</c> (S4), each in the save's order;
+    /// an item whose rule is gone is left out on read.
+    /// </summary>
+    public IReadOnlyList<BattleItemSnapshot> Items { get; init; } = [];
+    public IReadOnlyList<BattleItemSnapshot> ItemsSpecial { get; init; } = [];
+    public IReadOnlyList<BattleItemSnapshot> RecoverConditional { get; init; } = [];
+    public IReadOnlyList<BattleItemSnapshot> RecoverGuaranteed { get; init; } = [];
 
     /// <summary>The mission type whose battles keep a module map (SavedBattleGame::load and save).</summary>
     public const string BaseDefenseMission = "STR_BASE_DEFENSE";

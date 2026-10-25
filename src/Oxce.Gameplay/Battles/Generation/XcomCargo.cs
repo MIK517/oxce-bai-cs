@@ -106,7 +106,7 @@ internal sealed class XcomCargo
                     item.Slot = entry.Slot;
                     item.SlotX = entry.SlotX;
                     item.SlotY = entry.SlotY;
-                    if (_options.IncludePrimeStateInSavedLayout && rule.FuseType != NoFuse) item.FuseTimer = entry.FuseTimer;
+                    if (_options.IncludePrimeStateInSavedLayout && rule.FuseType != NoFuse) item.SetFuseTimer(entry.FuseTimer, rule);
                     return true;
                 }
             }
@@ -234,7 +234,7 @@ internal sealed class XcomCargo
                 if (type is not (Grenade or ProximityGrenade)) continue;
                 if (_options.PreprimeGrenades < 2 && _equipment.ItemRule(item.ItemType).Damage.ResistType != Smoke) continue;
                 if (_options.PreprimeGrenades < 3 && type == ProximityGrenade) continue;
-                item.FuseTimer = 0;
+                item.SetFuseTimer(0, _equipment.BattleItemRule(item.ItemType));
             }
         }
     }

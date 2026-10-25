@@ -68,8 +68,8 @@ public sealed class BattleSaveRootTests
         BattleSaveConformance.Check(written);
         var text = Emit(written);
         var reread = OxceBattleSave.Read(Parse(text), SharedContent.Value);
-        // The units read as saved and take the constructor's values on restore (BattleSaveUnitTests).
-        Assert.Equivalent(snapshot with { Units = [] }, reread with { Units = [] }, strict: true);
+        // The units and items read as saved and take the constructors' values on restore (BattleSaveUnitTests, BattleSaveItemTests).
+        Assert.Equivalent(BattleSaveItemTests.WithoutEntities(snapshot), BattleSaveItemTests.WithoutEntities(reread), strict: true);
         var restored = BattleState.Restore(reread, SharedContent.Value, Terrain(), campaign: BattleRestoreCampaign.From(campaign));
         Assert.Equivalent(BattleSaveUnitTests.Loaded(snapshot), restored.Capture(), strict: true);
         // The derived state: the deployment, from the mission type's deployment or the UFO in battle.
@@ -185,13 +185,13 @@ public sealed class BattleSaveRootTests
     [Fact]
     public void UnknownRootKeysSurviveALoadedRewrite()
     {
-        var source = Parse("width: 1\nportFuture: {a: [1, 2]}\n" + Minimal + "turn: 3\nitems: [{id: 1}]\n");
+        var source = Parse("width: 1\nportFuture: {a: [1, 2]}\n" + Minimal + "turn: 3\nlaterFuture: [{id: 1}]\n");
         var written = OxceBattleSave.Write(OxceBattleSave.Read(source, SharedContent.Value) with { Turn = 4 }, source);
         Assert.Equal(Normalized(Parse("portFuture: {a: [1, 2]}\n")), Normalized(Keep(written, Parse("portFuture: {a: [1, 2]}\n"))));
-        // Keys of later slices stay as loaded; the root keys take the battle's values, in the source's order.
-        Assert.Equal(Normalized(Parse("items: [{id: 1}]\n")), Normalized(Keep(written, Parse("items: [{id: 1}]\n"))));
+        // Unknown keys stay as loaded; the root keys take the battle's values, in the source's order.
+        Assert.Equal(Normalized(Parse("laterFuture: [{id: 1}]\n")), Normalized(Keep(written, Parse("laterFuture: [{id: 1}]\n"))));
         Assert.Equal("4", ((YamlScalarNode)Value(written, "turn")).Value);
-        Assert.Equal(["width", "portFuture", "selectedUnit", "turn", "items"], written.Entries.Take(5).Select(static entry => entry.ScalarKey));
+        Assert.Equal(["width", "portFuture", "selectedUnit", "turn", "laterFuture"], written.Entries.Take(5).Select(static entry => entry.ScalarKey));
     }
 
     [Fact]

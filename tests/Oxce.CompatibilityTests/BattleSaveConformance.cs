@@ -8,8 +8,8 @@ namespace Oxce.CompatibilityTests;
 /// The conformance reader (Phase 7 plan, branch 2 decisions): applies the reading rules of the reference's
 /// <c>SavedBattleGame::load</c> (<c>src/Savegame/SavedBattleGame.cpp</c> at 4df3a5e) to a written <c>battleGame</c>, so a
 /// battle the port writes is one the reference loads. It stands in for a reference engine binary and checks the
-/// reference's rules, not the port's reader. S1 covers the battle root, S2 the map and S3 the units; S4 adds the items, and
-/// S5 the campaign's turn rule.
+/// reference's rules, not the port's reader. S1 covers the battle root, S2 the map, S3 the units and S4 the items; S5 adds
+/// the campaign's turn rule.
 /// </summary>
 internal static class BattleSaveConformance
 {
@@ -72,6 +72,64 @@ internal static class BattleSaveConformance
         if (battle.TryGet("tags", out var tags)) Assert.True(IsIntegerMap(tags!), "tags must map tag names to integers.");
         CheckMap(battle);
         CheckUnits(battle);
+        CheckItems(battle);
+    }
+
+    // BattleItem::load's keys (src/Savegame/BattleItem.cpp lines 106-130) and those load's passes read (SavedBattleGame.cpp
+    // lines 318-383): tryRead and readVal into int, bool and std::string.
+    private static readonly string[] ItemIntegerKeys =
+        ["owner", "previousOwner", "unit", "inventoryX", "inventoryY", "ammoqty", "painKiller", "heal", "stimulant", "fuseTimer", "ammoItem"];
+
+    private static readonly string[] ItemBooleanKeys = ["fuseEnabed", "droppedOnAlienTurn", "XCOMProperty"];
+
+    /// <summary>
+    /// The items (load lines 306-397): each list a sequence of mappings with a string type and an integer id (readVal
+    /// without a default), the keys' value types, a ground position inside the map (getTile's null is dereferenced), and an
+    /// older ammoItem read without ammoItemSlots naming an item (itemIndex.at throws). The port writes each ID once.
+    /// </summary>
+    private static void CheckItems(YamlMappingNode battle)
+    {
+        var all = new List<YamlMappingNode>();
+        foreach (var key in new[] { "items", "recoverConditional", "recoverGuaranteed", "itemsSpecial" })
+        {
+            if (!battle.TryGet(key, out var list)) continue;
+            Assert.True(list is YamlSequenceNode, $"{key} must be a sequence.");
+            foreach (var node in ((YamlSequenceNode)list!).Items)
+            {
+                Assert.True(node is YamlMappingNode, $"Each of {key} must be a mapping.");
+                all.Add((YamlMappingNode)node);
+            }
+        }
+        var ids = new HashSet<int>();
+        foreach (var item in all)
+        {
+            var keys = item.Entries.Select(static entry => entry.ScalarKey).ToArray();
+            Assert.Equal(keys.Length, keys.Distinct(StringComparer.Ordinal).Count());
+            Assert.True(item.TryGet("type", out var type) && type is YamlScalarNode, "An item's type must be a string.");
+            Assert.True(item.TryGet("id", out var id) && IsInteger(id!), "An item's id must be an integer.");
+            Assert.True(ids.Add(int.Parse(((YamlScalarNode)id!).Value, CultureInfo.InvariantCulture)), "An item ID is written once.");
+            foreach (var key in ItemIntegerKeys)
+                if (item.TryGet(key, out var value)) Assert.True(IsInteger(value!), $"Item {key} must be an integer.");
+            foreach (var key in ItemBooleanKeys)
+                if (item.TryGet(key, out var value)) Assert.True(IsBoolean(value!), $"Item {key} must be a boolean.");
+            if (item.TryGet("inventoryslot", out var slot)) Assert.True(slot is YamlScalarNode, "An item's inventoryslot must be a string.");
+            if (item.TryGet("inventoryMoveCost", out var cost))
+                Assert.True(cost is YamlMappingNode costs && costs.TryGet("basePercent", out var percent) && IsInteger(percent!),
+                    "inventoryMoveCost must hold an integer basePercent.");
+            if (item.TryGet("ammoItemSlots", out var slots))
+                Assert.True(slots is YamlSequenceNode slotList && slotList.Items.Count <= 4 && slotList.Items.All(IsInteger), "ammoItemSlots must be up to four integers.");
+            if (item.TryGet("tags", out var tags)) Assert.True(IsIntegerMap(tags!), "An item's tags must map tag names to integers.");
+            if (item.TryGet("position", out var position))
+            {
+                Assert.True(position is YamlSequenceNode { Items.Count: 3 } coordinates && coordinates.Items.All(IsShort), "An item's position must be three Sint16.");
+                var values = ((YamlSequenceNode)position!).Items.Select(static node => int.Parse(((YamlScalarNode)node).Value, CultureInfo.InvariantCulture)).ToArray();
+                Assert.True(values[0] == -1 || values[0] >= 0 && values[0] < Int(battle, "width") && values[1] >= 0 && values[1] < Int(battle, "length") &&
+                    values[2] >= 0 && values[2] < Int(battle, "height"), "A ground item's position must be inside the map.");
+            }
+        }
+        foreach (var item in all)
+            if (!item.TryGet("ammoItemSlots", out _) && item.TryGet("ammoItem", out var ammo))
+                Assert.True(ids.Contains(int.Parse(((YamlScalarNode)ammo!).Value, CultureInfo.InvariantCulture)), "An ammoItem without ammoItemSlots must name an item.");
     }
 
     // BattleUnit::load's integer keys (tryRead and tryReadAs<int>, src/Savegame/BattleUnit.cpp lines 635-752).

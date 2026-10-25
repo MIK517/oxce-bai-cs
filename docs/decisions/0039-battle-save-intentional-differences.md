@@ -124,6 +124,27 @@ and loses the others. The port writes as the reference does, so its reloads lose
 and the kills are flow style in the reference; the port's writer writes block style, which reads the same. A key a
 loaded unit lacks (`visible` after the load sets it) is added at the end of that unit's node.
 
+**Items the restored battle cannot hold (S4).** The load keeps the last of repeated item IDs in its index (both items
+stay in their lists, and the second pass links the later one twice), dereferences `getTile`'s null for a ground item
+outside the map, and overflows the item counter after an ID of `INT_MAX`. The port fails the load as a corrupted save
+for a repeated ID (within a list or across `items`, `itemsSpecial` and the recovery lists), a ground position outside
+the map and an ID of `INT_MAX`, and the restored battle's `Validate` fails one ammo item loaded into two weapons and a
+weapon of the battle loaded with an item of a recovery list, and an owned item that also lies on a tile (an owner, a
+ground section and a position: the reference puts it both in the owner's inventory and on the tile). A restored item may be held by nothing (the items of a unit
+the load left out, a ground item saved without a position, unloaded ammo nowhere), as in the reference.
+
+**The items' skip warnings and inventory order (S4).** The reference logs an unknown item type and drops it, sends an
+item in an unknown inventory section to the ground silently, and logs a fifth special built-in item of one unit
+(`addLoadedSpecialWeapon`), which stays owned in no slot. The port drops and moves the same items, with an
+`OXCE-BATTLE-SAVE-SKIPPED` warning for the first two; the restore reports nothing for the fifth special item. A loaded
+item joins its owner's inventory in the load's list order in the reference (`items`, `recoverConditional`,
+`recoverGuaranteed`, `itemsSpecial`); the port's inventory is the battle's items the unit owns in a section, in ID
+order, which is the same for every save the reference writes (its lists are in ID order) but differs for a hand-made
+unsorted list, and an owned item of a recovery list keeps its owner without joining the unit's inventory.
+
+**Items in block style (S4).** `position` and `ammoItemSlots` are flow style in the reference; the port writes block
+style, which reads the same.
+
 ## Consequences
 
 - A generated battle's root is written as the reference's generator leaves it; only the ambience delay's value differs,
@@ -132,4 +153,6 @@ loaded unit lacks (`visible` after the load sets it) is added at the end of that
   reference's flow style reads the same).
 - A generated battle's units are written as the reference's constructors leave them (with the starting condition's
   `bannedInNextStage`), except for the diagonal armor sides, a soldier's aggression and the seedless draws' values.
-- Later slices (S4, S5) add their entries here: `fuseEnabed` and the items.
+- A generated battle's items are written as the reference's constructor and generator leave them (`setFuseTimer` for
+  the map's and layouts' fuses, `moveToOwner`'s previous owner), including `fuseEnabed` (sic) as the reference spells it.
+- Later slices (S5) add their entries here.

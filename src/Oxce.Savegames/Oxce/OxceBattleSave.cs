@@ -17,9 +17,8 @@ namespace Oxce.Savegames.Oxce;
 /// <remarks>
 /// Phase 7 branch 2 S1 reads and writes the battle root and S2 the map (<c>mapdatasets</c>, the binary tiles with their
 /// serialization key or the old text <c>tiles</c>, <c>nodes</c>, <c>moduleMap</c>, the flattened names and reinforcement
-/// blocks; <c>Tile::load</c>, <c>loadBinary</c> and <c>saveBinary</c>, <c>Node::load</c> and <c>save</c>). The units and
-/// items keys (<c>units</c>, <c>items</c>, <c>itemsSpecial</c>, <c>recoverGuaranteed</c>, <c>recoverConditional</c>) stay
-/// as the source document has them until S3 and S4 read them.
+/// blocks; <c>Tile::load</c>, <c>loadBinary</c> and <c>saveBinary</c>, <c>Node::load</c> and <c>save</c>), S3 the units
+/// and S4 the items (<c>items</c>, <c>itemsSpecial</c>, <c>recoverGuaranteed</c>, <c>recoverConditional</c>).
 /// </remarks>
 public static partial class OxceBattleSave
 {
@@ -119,6 +118,10 @@ public static partial class OxceBattleSave
                     ? Array.AsReadOnly(Value(modules!, "moduleMap", ReadModuleMap))
                     : BattleSnapshot.UncountedModuleMap(snapshot.Width, snapshot.Length),
             Units = Units(battle, content, diagnostics),
+            Items = ReadItems(battle, "items", content, diagnostics),
+            RecoverConditional = ReadItems(battle, "recoverConditional", content, diagnostics),
+            RecoverGuaranteed = ReadItems(battle, "recoverGuaranteed", content, diagnostics),
+            ItemsSpecial = ReadItems(battle, "itemsSpecial", content, diagnostics),
         };
     }
 
@@ -132,6 +135,10 @@ public static partial class OxceBattleSave
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         var vip = snapshot.VipSurvivalPercentage > 0;
+        // writer.write("items", _items, ...) and ("itemsSpecial", _items, ...): both keys whenever the battle has items, each
+        // holding its share (possibly none); the recovery lists only when not empty.
+        var anyItems = snapshot.Items.Count + snapshot.ItemsSpecial.Count != 0;
+        var itemSources = ItemSources(source);
         var objectives = snapshot.ObjectivesNeeded != 0;
         return Overlay(source,
         [
@@ -198,6 +205,8 @@ public static partial class OxceBattleSave
                 ? Grid(snapshot.ModuleMap, static module => Sequence([Integer(module.Total), Integer(module.Remaining)])) : null),
             // writer.write("units", _units, ...): no key without units.
             Pair("units", WriteUnits(snapshot.Units, source)),
+            Pair("items", anyItems ? WriteItems(snapshot.Items, itemSources) : null),
+            Pair("itemsSpecial", anyItems ? WriteItems(snapshot.ItemsSpecial, itemSources) : null),
             Pair("tuReserved", Integer(snapshot.TimeUnitsReserved)),
             Pair("kneelReserved", Boolean(snapshot.KneelReserved)),
             Pair("depth", Integer(snapshot.Depth)),
@@ -207,6 +216,8 @@ public static partial class OxceBattleSave
             Pair("minAmbienceRandomDelay", Integer(snapshot.MinimumAmbienceRandomDelay)),
             Pair("maxAmbienceRandomDelay", Integer(snapshot.MaximumAmbienceRandomDelay)),
             Pair("currentAmbienceDelay", Integer(snapshot.CurrentAmbienceDelay)),
+            Pair("recoverGuaranteed", snapshot.RecoverGuaranteed.Count != 0 ? WriteItems(snapshot.RecoverGuaranteed, itemSources) : null),
+            Pair("recoverConditional", snapshot.RecoverConditional.Count != 0 ? WriteItems(snapshot.RecoverConditional, itemSources) : null),
             Pair("music", Scalar(snapshot.Music)),
             // ItemContainer::save: sorted by type, an empty container as an empty map.
             Pair("baseItems", IntMapping(snapshot.BaseItems)),
