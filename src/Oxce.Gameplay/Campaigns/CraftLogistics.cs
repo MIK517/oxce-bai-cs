@@ -48,6 +48,8 @@ public sealed record CraftLogisticsState(int Fuel, int Damage, string Status,
         new ReadOnlyDictionary<int, CraftDeploymentPoint>(new Dictionary<int, CraftDeploymentPoint>());
     /// <summary>Craft::_customVehicleDeployment, in save order.</summary>
     public IReadOnlyList<CraftVehicleDeployment> CustomVehicleDeployment { get; init; } = [];
+    /// <summary>Craft::_inBattlescape: the craft's crew fights the campaign's battle (BattlescapeGenerator::setCraft).</summary>
+    public bool InBattlescape { get; init; }
     /// <summary>Craft::_skinIndex: 0 for the plain sprite and battle map, else the skin's number.</summary>
     public int SkinIndex { get; init; }
     /// <summary>Craft::hasCustomDeployment.</summary>

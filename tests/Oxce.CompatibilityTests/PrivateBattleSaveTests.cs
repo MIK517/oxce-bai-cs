@@ -46,7 +46,8 @@ public sealed class PrivateBattleSaveTests
     private static void Verify(string path, RuntimeContent content, BattleTerrainLoader terrain, OxceSaveLoadOptions options)
     {
         // The campaign's soldiers, which the soldier units are made from (SavedGame::getSoldier).
-        var campaign = BattleRestoreCampaign.From(OxceSaveAdapter.LoadFile(path, content, new SplitMix64RandomSource(1), options).Campaign);
+        var loaded = OxceSaveAdapter.LoadFile(path, content, new SplitMix64RandomSource(1), options);
+        var campaign = BattleRestoreCampaign.From(loaded.Campaign);
         var name = Path.GetFileName(path);
         var documents = YamlCompatibilityReader.Parse(File.ReadAllText(path), name, ReadOptions);
         var body = (YamlMappingNode)documents.Documents[1].Root;
@@ -64,6 +65,17 @@ public sealed class PrivateBattleSaveTests
         // Every corpus battle is past its first turn and has a deployment the readers find.
         Assert.True(battle.Turn >= 1, name);
         Assert.NotEqual("", battle.DeploymentId);
+        // S5: the campaign's load restores the same battle (its deployment from the UFO in the battlescape), which the
+        // campaign may save (past its first turn), and its rewrite holds the battle as the module writes it.
+        var held = BattleStartTests.Battle(loaded.Campaign);
+        Assert.Equal(battle.DeploymentId, held.DeploymentId);
+        Assert.Null(loaded.Campaign.QuerySaveRefusal());
+        var captured = loaded.Campaign.Capture();
+        Assert.Equal(Emit(OxceBattleSave.Write(battle.Capture(), source)), Emit(OxceBattleSave.Write(captured.Battle!, source)));
+        var rewritten = YamlCompatibilityReader.Parse(OxceSaveAdapter.EmitLoadedCampaign(captured, loaded.Source), name, ReadOptions);
+        Assert.Equal(battle.Turn, ((YamlMappingNode)rewritten.Documents[0].Root).ReadInt32("turn", 0));
+        Assert.True(((YamlMappingNode)rewritten.Documents[1].Root).TryGet("battleGame", out var campaignBattle));
+        BattleSaveConformance.Check((YamlMappingNode)campaignBattle!);
         var written = OxceBattleSave.Write(battle.Capture(), source);
         BattleSaveConformance.Check(written);
         Assert.Equal(Normalized(WithoutUnitQuirks(source)), Normalized(written));
@@ -119,8 +131,13 @@ public sealed class PrivateBattleSaveTests
             var loaded = InstallationContentLoader.Load(request, new() { Cache = new() { DirectoryPath = cacheDirectory.FullName } },
                 cancellationToken: TestContext.Current.CancellationToken);
             Assert.True(loaded.IsSuccess, loaded.DescribeFailure());
-            var options = new OxceSaveLoadOptions(request.MasterId, request.ActiveMods.ToHashSet(StringComparer.Ordinal), ReadOptions);
-            return (loaded.Content!, new VirtualBattleTerrainFiles(loaded.VirtualFiles!), options);
+            var files = new VirtualBattleTerrainFiles(loaded.VirtualFiles!);
+            // The campaign's load restores its battle too (S5), which needs the terrain files.
+            var options = new OxceSaveLoadOptions(request.MasterId, request.ActiveMods.ToHashSet(StringComparer.Ordinal), ReadOptions)
+            {
+                BattleTerrainFiles = files,
+            };
+            return (loaded.Content!, files, options);
         }
         finally { cacheDirectory.Delete(recursive: true); }
     }

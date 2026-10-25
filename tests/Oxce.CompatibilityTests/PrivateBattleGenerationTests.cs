@@ -61,10 +61,10 @@ public sealed class PrivateBattleGenerationTests
             // The ten soldiers on board, each of them on the map; the player sees its own side only.
             Assert.Equal(request!.Soldiers.Order(), battle.Units.Where(static unit => unit.SoldierId is not null).Select(static unit => unit.SoldierId!.Value).Order());
             Assert.Equal(10, campaign.GetQuery<IBattleQuery>()!.QueryBattle(BattleViewer.LocalPlayer)!.Units.Count);
-            // The campaign holds for the battle, and saving waits for battle saves (Phase 7 branch 2).
+            // The campaign holds for the battle, and saving waits for the first turn (Phase 7 branch 3).
             Assert.Null(campaign.GetQuery<ICampaignLandingQuery>()!.QueryDeploymentRequest());
             Assert.Equal(CampaignBattles.BattleInProgress.Text, Blocked(campaign.Execute(new AdvanceCampaignTime(1))));
-            Assert.Equal(CampaignBattles.BattleSaveUnsupported.Text, campaign.QuerySaveRefusal());
+            Assert.Equal(CampaignBattles.BattleSaveBeforeFirstTurn.Text, campaign.QuerySaveRefusal());
         });
     }
 

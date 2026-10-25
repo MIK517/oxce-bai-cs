@@ -212,7 +212,7 @@ public static partial class OxceSaveAdapter
             ReadScriptValues(body, content, "GeoscapeGame"))
         {
             World = world,
-            Restrictions = ReadRestrictions(body),
+            Battle = ReadBattle(body, content, options.Diagnostics),
             DeadSoldiers = ReadDeadSoldiers(body, content),
             // SavedGame::load accepts repeated topics; the port keeps one entry per topic.
             CompletedResearch = Array.AsReadOnly(Sequence(body, "discovered").Select(YamlValueReader.ReadString)
@@ -236,7 +236,7 @@ public static partial class OxceSaveAdapter
                 ? ReadOptions(RequireMap(optionsNode!, "oxcePortOptions"))
                 : ReadReferenceOptions(body),
         };
-        var campaign = CampaignState.Restore(snapshot, content, random);
+        var campaign = CampaignState.Restore(snapshot, content, random, options.BattleTerrainFiles);
         return new LoadedOxceCampaign(campaign,
             new OxceSaveDocument(header, body, Array.AsReadOnly(modLabels), new OxceGlobeView(
                 body.ReadDouble("globeLon", 0), body.ReadDouble("globeLat", 0), body.ReadInt32("globeZoom", 0))));
@@ -282,14 +282,15 @@ public static partial class OxceSaveAdapter
         }));
     }
 
-    private static ReadOnlyCollection<CampaignRestriction> ReadRestrictions(YamlMappingNode body)
-    {
-        var result = new List<CampaignRestriction>();
-        if (body.TryGet("battleGame", out var battle) && battle is not YamlScalarNode)
-            result.Add(new("Active tactical battle is preserved; tactical continuation is unavailable.", null, true, true));
-        // Live world entities are owned by the world capability, which decides when they block time.
-        return Array.AsReadOnly(result.ToArray());
-    }
+    /// <summary>
+    /// SavedGame::load's <c>battleGame</c> (Phase 7 branch 2 S5), read by <see cref="OxceBattleSave.Read"/>; none when absent.
+    /// The reference loads any present node (even a null one), whose missing <c>selectedUnit</c> then fails the load, so a
+    /// node that is no mapping is a corrupted save.
+    /// </summary>
+    private static Gameplay.Battles.BattleSnapshot? ReadBattle(YamlMappingNode body, RuntimeContent content, IDiagnosticSink? diagnostics) =>
+        !body.TryGet("battleGame", out var battle) ? null
+        : battle is YamlMappingNode map ? OxceBattleSave.Read(map, content, diagnostics)
+        : throw new InvalidDataException("Battle save 'battleGame' is not a mapping.");
 
     private static bool HasContents(YamlMappingNode map, string key) => map.TryGet(key, out var node) && node switch
     {
@@ -374,6 +375,7 @@ public static partial class OxceSaveAdapter
                     ReadTransfer(transfer, entityIndex.TransferIds[transfer], defaultSoldier, markers, content)).ToArray()),
                 FakeUnderwater = map.ReadBoolean("fakeUnderwater", false),
                 RetaliationTarget = map.ReadBoolean("retaliationTarget", false),
+                InBattlescape = map.ReadBoolean("inBattlescape", false),
                 RetaliationMissionId = map.TryGet("retaliationMissionUniqueId", out _)
                     ? map.ReadInt32("retaliationMissionUniqueId", 0) : null,
                 Research = research,
@@ -454,6 +456,12 @@ public static partial class OxceSaveAdapter
             Pair("engine", Scalar(options.Engine)),
             Pair("build", Scalar(options.Build)),
             Pair("time", Time(snapshot.Time)),
+            // SavedGame::save writes the battle's mission type, target, craft or base line and turn while a battle exists.
+            Pair("mission", snapshot.Battle is { } battle ? Scalar(battle.MissionType) : null),
+            Pair("target", snapshot.Battle is { } target ? Scalar(target.TargetName) : null),
+            Pair("craftOrBase", snapshot.Battle is { } craftOrBase
+                ? new YamlScalarNode(GeneratedSpan, craftOrBase.CraftOrBaseName, YamlScalarStyle.DoubleQuoted) : null),
+            Pair("turn", snapshot.Battle is { } turn ? Integer(turn.Turn) : null),
             Pair("mods", Sequence(labels.Select(Scalar))),
             Pair("ironman", snapshot.Identity.Ironman ? Boolean(true) : null),
             Pair("oxcePortCampaignId", Scalar(snapshot.Identity.Id.ToString())),
@@ -487,6 +495,9 @@ public static partial class OxceSaveAdapter
         YamlMappingNode? originalStrategy = null;
         if (source?.Body is { } sourceBody && sourceBody.TryGet("alienStrategy", out var strategyNode))
             originalStrategy = strategyNode as YamlMappingNode;
+        YamlMappingNode? originalBattle = null;
+        if (source?.Body is { } battleBody && battleBody.TryGet("battleGame", out var battleNode))
+            originalBattle = battleNode as YamlMappingNode;
         EnsureUnique(snapshot.Bases.SelectMany(b => b.Soldiers.Select(s => s.Id).Concat(
             b.Transfers.Where(t => !t.Delivered && t.Soldier is not null).Select(t => t.Soldier!.Id))), "soldier ID");
         EnsureUnique(snapshot.Bases.SelectMany(b => b.Crafts.Select(EntityIdentity).Concat(
@@ -557,6 +568,8 @@ public static partial class OxceSaveAdapter
                 ? null : ULong(snapshot.World.AlienBaseBirthSequence)),
             // Legacy terror sites were imported as mission sites, so the legacy node is not rewritten.
             Pair("terrorSites", null),
+            // SavedGame::save writes the battle after the options' snapshot and before the script values.
+            Pair("battleGame", snapshot.Battle is { } battle ? OxceBattleSave.Write(battle, originalBattle) : null),
             Pair("tags", ScriptValues(snapshot.ScriptValues)),
             Pair("deadSoldiers", BuildDeadSoldiers(snapshot.DeadSoldiers, source?.Body)),
             Pair("discovered", snapshot.CompletedResearch.Count == 0 ? null : Sequence(snapshot.CompletedResearch.Select(Scalar))),
@@ -626,6 +639,7 @@ public static partial class OxceSaveAdapter
             Pair("crafts", Sequence(crafts)),
             Pair("items", IntMapping(value.Items)),
             Pair("scientists", Integer(value.Scientists)), Pair("engineers", Integer(value.Engineers)),
+            Pair("inBattlescape", value.InBattlescape ? Boolean(true) : null),
             Pair("transfers", value.Transfers.Count == 0 ? null : Sequence(value.Transfers.Select(t => BuildTransfer(t, entityIndex)))),
             Pair("research", value.Research.Count == 0 ? null : Sequence(value.Research.Select(project => Overlay(
                 oldResearch.GetValueOrDefault(project.RuleId),
@@ -717,6 +731,7 @@ public static partial class OxceSaveAdapter
             Pair("dest", TargetReference(state.Destination)),
             Pair("takeoff", state.Takeoff == 0 ? null : Integer(state.Takeoff)),
             Pair("mission", state.MissionComplete ? Boolean(true) : null),
+            Pair("inBattlescape", state.InBattlescape ? Boolean(true) : null),
             Pair("interceptionOrder", state.InterceptionOrder == 0 ? null : Integer(state.InterceptionOrder)),
             Pair("pilots", state.Pilots.Count == 0 ? null : Sequence(state.Pilots.Select(Integer))),
             Pair("lonAuto", Real(state.AutoPatrolLongitude)), Pair("latAuto", Real(state.AutoPatrolLatitude)),
@@ -1001,6 +1016,13 @@ public static partial class OxceSaveAdapter
         YamlMappingNode map, string craftPreservationKey, WorldMarkerIndex markers)
     {
         if (!map.TryGet("status", out _) && !map.TryGet("weapons", out _) && !map.TryGet("items", out _)) return null;
+        var state = ReadCraftLogisticsState(map, craftPreservationKey, markers);
+        // Craft::load: a craft in the battlescape stands still (setSpeed(0)).
+        return state.InBattlescape ? state with { Speed = 0, SpeedLongitude = 0, SpeedLatitude = 0, SpeedRadian = 0 } : state;
+    }
+
+    private static CraftLogisticsState ReadCraftLogisticsState(YamlMappingNode map, string craftPreservationKey, WorldMarkerIndex markers)
+    {
         return new(map.ReadInt32("fuel", 0), map.ReadInt32("damage", 0), map.ReadString("status", "STR_READY"),
             Array.AsReadOnly(Maps(map, "weapons").Select(w => w.ReadString("type", "0") == "0" ? null :
                 new CraftWeaponSnapshot(RequiredString(w, "type"), w.ReadInt32("ammo", 0), w.ReadBoolean("rearming", false), w.ReadBoolean("disabled", false))).ToArray()),
@@ -1022,6 +1044,7 @@ public static partial class OxceSaveAdapter
             Destination = ReadTargetReference(map, markers, map.ReadDouble("lon", 0), map.ReadDouble("lat", 0)),
             Takeoff = map.ReadInt32("takeoff", 0),
             MissionComplete = map.ReadBoolean("mission", false),
+            InBattlescape = map.ReadBoolean("inBattlescape", false),
             InterceptionOrder = map.ReadInt32("interceptionOrder", 0),
             Pilots = IntHistory(map, "pilots", []),
             AutoPatrolLongitude = map.ReadDouble("lonAuto", 0),

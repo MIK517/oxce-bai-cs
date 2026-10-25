@@ -582,12 +582,17 @@ public sealed class BattleSaveUnitTests
     }
 
     [Fact]
-    public void ASoldierSavedInOtherArmorThanTheCampaignsSoldierIsRefusedUntilS5()
+    public void ASoldierSavedInOtherArmorThanTheCampaignsSoldierTakesTheSoldiersArmor()
     {
+        // new BattleUnit(mod, getSoldier(id), ...): the soldier's armor (which StartBattle set to the battle armor);
+        // genUnitArmor is not read, and the rewrite writes the soldier's armor.
         var (id, campaign) = SoldierCampaign(static personal => personal);
         var armor = campaign.Soldiers(id)!.Personal.Armor;
-        Assert.Equal(BattleState.SoldierBattleArmorRestriction(id, "SUIT", armor), Failure(() => BattleState.Restore(
-            Read($"units:\n  - {{id: {id}, genUnitArmor: SUIT, faction: 0, position: [1, 1, 0]}}\n"), Content, Terrain(), campaign: campaign)));
+        Assert.NotEqual("SUIT", armor);
+        var battle = BattleState.Restore(Read($"units:\n  - {{id: {id}, genUnitArmor: SUIT, faction: 0, position: [1, 1, 0]}}\n"), Content,
+            Terrain(), campaign: campaign);
+        Assert.Equal(armor, Unit(battle, id).ArmorId);
+        Assert.Equal(armor, battle.Capture().Units.Single(unit => unit.Id == id).ArmorId);
     }
 
     [Fact]

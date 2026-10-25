@@ -13,7 +13,7 @@ Phase 7 branch 2 (`claude/battle-save`), from `main` at `3c91029a` (PR #78, bran
 | S2 map | Done (2026-10-25) |
 | S3 units | Done (2026-10-25) |
 | S4 items | Done (2026-10-25) |
-| S5 campaign integration | Not started |
+| S5 campaign integration | Done (2026-10-25) |
 | S6 acceptance and branch audit | Not started |
 
 ## S0 — Planning (2026-10-25)
@@ -301,24 +301,89 @@ special items the soldier rule's). The item rules give the soldiers (`RECRUIT`) 
 reread snapshot without its units and items (`BattleSaveItemTests.WithoutEntities`). `PrivateBattleSaveTests` now
 restores and rewrites every corpus battle's items (semantic equality with the source, a byte-stable second rewrite).
 
+## S5 — Campaign integration (2026-10-25)
+
+Reference: `SavedGame::load` and `save` (`battleGame`; the header's `mission`, `target`, `craftOrBase` and `turn`),
+`YamlNodeReader::operator bool`; `BattlescapeGenerator::setCraft`, `setUfo`, `setBase`, `setMissionSite`,
+`setAlienBase` and `deployXCOM` (the armor pass: `RuleEnviroEffects::getArmorTransformation`,
+`RuleStartingCondition::getArmorReplacement`, `setTransformedArmor`, `setReplacedArmor`); `ConfirmLandingState::btnYesClick`,
+`ConfirmCydoniaState::btnYesClick`, `GeoscapeState::handleBaseDefense` (which setters each entry point calls); `Craft::load`
+and `save`, `Ufo::load`, `Base::load` and `save`, `MissionSite` and `AlienBase` (`inBattlescape`); `DebriefingState` (the UFO
+in the battlescape, the armor the debriefing restores).
+
+- `CampaignSnapshot.Battle` is the campaign's battle (`BattleSnapshot`, or null). `CampaignBattles` captures it, restores it
+  (after the world, with `BattleRestoreCampaign.From(campaign)` and the rule of the first UFO in the battlescape for the
+  derived deployment) and keeps one terrain loader per attached file set. `CampaignState.Restore` takes the terrain files
+  (`battleTerrainFiles`, attached as `BattleTerrainFiles`); a snapshot with a battle and no terrain files fails
+  (`CampaignBattles.RestoreNeedsTerrainFiles`). Shadow copies pass the files on.
+- `OxceSaveAdapter` reads `battleGame` with `OxceBattleSave.Read` (diagnostics to the load options') and writes it with
+  `OxceBattleSave.Write` over the loaded node, after the options and before the script values as `SavedGame::save` does,
+  and removes it without a battle. A present node that is no mapping (a null node, a scalar, a sequence) fails the load:
+  the reference loads any present node, whose missing `selectedUnit` then fails. The header carries `mission`, `target`,
+  `craftOrBase` (double-quoted) and `turn` after the time while a battle exists; a rewrite without one removes them.
+  `OxceSaveLoadOptions.BattleTerrainFiles` carries the terrain files; the SDL host passes its own.
+- Retired: "Active tactical battle is preserved; tactical continuation is unavailable." (`OxceSaveAdapter.ReadRestrictions`,
+  removed with it), branch 1's `battle.save-unsupported` and S3's `BattleState.SoldierBattleArmorRestriction`. The save gate
+  now refuses only a battle before its first turn with the named restriction `battle.save-before-first-turn`
+  (`CampaignBattles.BattleSaveBeforeFirstTurn`, owner Phase 7 branch 3: the briefing and `startFirstTurn`). Since
+  `StartBattle` leaves turn 0, every battle the port starts is refused until then; a loaded battle (turn 1 or later) saves.
+- `StartBattle` sets the strategic side once the battle is generated (a failed or refused start changes nothing): the craft's
+  `inBattlescape` (`CraftLogisticsState.InBattlescape`) and its landing target's (the world's UFO, mission site or alien base,
+  `ICampaignDeploymentHandOver.EnterBattlescape`), or for a base defense the base's (`BaseSnapshot.InBattlescape`); the final
+  mission sets only the craft's. Setting the flag stops the craft and the UFO as `setInBattlescape(true)` does
+  (`setSpeed(0)`: speed, radian speed and speed vector 0). The flags are written only when set; a craft in the
+  battlescape also loads standing still (`Craft::load`'s `setSpeed(0)`, as the UFO's already did).
+- deployXCOM's armor pass reaches the campaign: the generator records each soldier whose armor the environment transformed or
+  the starting condition replaced (`BattleState.SoldierArmors`, generation only), even into the same armor, and `StartBattle`
+  gives the geoscape soldier the battle armor with its own as `transformedArmor` or `replacedArmor`. The restore makes a
+  soldier unit in the soldier's armor and no longer compares it with the saved `genUnitArmor`, which the reference does not
+  read.
+- `ReturnedToBase` and `TakenFromBase` were already applied by `StartBattle` (branch 1) and are not saved (the plan's
+  table).
+- ADR 0039: S5 adds no difference in behaviour; the S3 entry no longer names the retired armor restriction, and the
+  key order of a loaded rewrite whose source lacks the battle keys (appended, not after `time` and `options`) is recorded.
+  "Battle save 'battleGame' is not a mapping." is an input error in the refusal inventory.
+- Audit fixes: the start now stops the craft and the UFO (above); tests for a transformation into the same armor, a
+  replacement dropped for a bigger armor and a generation failure after the armor pass.
+
+Tests: `BattleCampaignSaveTests` (a turn-0 battle refused; a battle at turn 1 written with the header's battle lines in
+order, `craftOrBase` quoted, a conforming `battleGame`, reloaded holding the campaign, savable, with the saved state and the
+derived deployment, and a stable loaded rewrite; a battle save without terrain files; the craft, UFO and base flags set
+with a moving craft and UFO stopped, written, reloaded and a saved craft's speed stopped, and no flag written when unset;
+the soldiers' transformed and replaced battle armor written, reloaded and restored; a transformation into the same armor
+remembered; a replacement into a bigger armor dropped; a generation failure after the armor pass changing nothing; an unknown `battleGame` key kept; the
+header's battle lines dropped without a battle, and a `battleGame` that is no mapping; a shadow copy restoring the battle).
+`BattleEntryPointTests` (the mission site's, alien base's and craft's flags, and only the craft's for the final mission),
+`BaseDefenseDeploymentTests` (the base's flag, no craft's or UFO's), `BattleStartTests` (the soldier's battle armor with
+`transformedArmor` or `replacedArmor`; the first-turn restriction), `BattleSaveUnitTests` (a soldier saved in other armor takes
+the soldier's). The private corpus tests now load the battle saves with the installation's terrain files:
+`PrivateBattleSaveTests` (the campaign's battle equals the module's restore, saves, and its rewrite conforms with the turn in
+the header), `PrivateCampaignSaveTests`, `PrivateStrategicLogisticsTests` and `PrivateStrategicWorldTests` (the battle saves
+now hold for their battle, `battle.in-progress`, instead of the retired preservation stop) and `PrivateBattleGenerationTests`.
+
 ## Next
 
-S5 — campaign integration ([plan](phase-7-plan.md#branch-2--battle-saves)). Notes:
+S6 — acceptance and branch audit ([plan](phase-7-plan.md#branch-2--battle-saves)). Notes:
 
-- `battleGame` restores into `CampaignBattles` through `OxceBattleSave.Read` and `BattleState.Restore(snapshot, content,
-  terrain, ufoInBattlescape, BattleRestoreCampaign.From(campaign))`, and is written with
-  `OxceBattleSave.Write(battle.Capture(), source)`. The "Active tactical battle is preserved" restriction
-  (`OxceSaveAdapter.ReadRestrictions`) retires, and `battle.save-unsupported` (`CampaignBattles.BattleSaveUnsupported`)
-  narrows to the named restriction on saving before the battle's first turn (branch 3 owns it).
-- Retire `BattleState.SoldierBattleArmorRestriction`: `StartBattle` sets the soldiers' battle armor and
-  `transformedArmor`/`replacedArmor` as `deployXCOM` does, and the restore takes the campaign soldier's armor.
-- `StartBattle` sets the `inBattlescape` flags (`Craft`, `Ufo`, `MissionSite`, `Base`, `AlienBase`); the header's
-  `mission`, `target`, `craftOrBase` and `turn` are written while a battle exists; the UFO in battle gives `Restore`'s
-  `ufoInBattlescape`.
-- `ReturnedToBase` and `TakenFromBase` are not saved; `StartBattle` applies them (the plan's table).
+- Acceptance per the plan: the private active-battle saves load, validate and rewrite with semantic equality and a
+  byte-stable second rewrite (`PrivateBattleSaveTests`, now also through the campaign's load and save); branch 1's
+  acceptance battles (`PrivateBattleGenerationTests`), written by the save module, reload with the same saved and derived
+  state and the same viewer overviews (not yet checked: compare `Overview(viewer)` before and after a module round trip at
+  turn 1); every written battle passes the conformance reader; malformed battle saves fail with an actionable error.
+- The conformance reader's "for saves the campaign writes, turn 1 or later" rule is asserted by the tests that write through
+  the campaign (`BattleCampaignSaveTests`, `PrivateBattleSaveTests`); S6 may move it into `BattleSaveConformance` with a
+  header parameter.
+- Branch audit: `git diff main...HEAD` per `AGENTS.md`. Named refusals left on the branch: `battle.save-before-first-turn`
+  (Phase 7 branch 3), `OxceBattleSave.UnsupportedTagType` (branch 8); both name their owner. The inherited "Crashed UFO
+  battlescape transitions require tactical simulation" stays branch 7's.
 - Open from S4: a fifth loaded special item of one unit is not reported (the restore has no diagnostics sink), and an
-  owned item of a recovery list keeps its owner without joining the unit's inventory (ADR 0039). The item tests' rules
-  (`BattleSaveItemTests.ItemRules`) make the generated aliens rammers with a special built-in item.
+  owned item of a recovery list keeps its owner without joining the unit's inventory (ADR 0039).
+- Open from S5: the SDL host passes its terrain files to the load and saves through `CaptureForSave` and the adapter,
+  but that path (`CampaignSdlCommand.Save` and `Load`) has no test of its own; S6 adds one or records why the adapter
+  tests cover it. The host shows the geoscape for a battle save (the battlescape screens and `LoadGameState`'s jump into
+  the battle are branch 3's). Named refusals inherited from branch 1 (such as the crashed UFO's power-source explosion,
+  branch 5) keep their owners. `docs/battle-generation-status.md` still names
+  `battle.save-unsupported` in its history; it is branch 1's record and is left as written.
 - Gotchas carried over: write test files with LF (Python on Windows writes CRLF in text mode; use `newline='\n'` or
   the Edit tool); insert C# string literals with `\n` through the Edit tool or a script file written with the Write
   tool, not a Bash heredoc (a heredoc's Python sees `\\n` differently than expected, and some quote mixes fail to
@@ -331,4 +396,7 @@ S5 — campaign integration ([plan](phase-7-plan.md#branch-2--battle-saves)). No
   ignored: the first key wins); see `BattleSaveUnitTests.UnitRules` and `BattleSaveItemTests.ItemRules`. A YAML integer
   of the port wraps like ryml's (`fire: 300` reads 44), so a wrong-type test needs a word or a sign; a YAML boolean
   accepts an integer (ryml's fallback). Restoring a generated battle needs `BattleRestoreCampaign.From(campaign)` for
-  its soldiers.
+  its soldiers. A campaign snapshot with a battle restores only with terrain files (`CampaignState.Restore`'s fourth
+  argument, or `OxceSaveLoadOptions.BattleTerrainFiles`); a test that needs a savable battle sets the captured
+  snapshot's `Battle.Turn` to 1 (`BattleCampaignSaveTests.AtFirstTurn`). In a C# `with` expression, `snapshot` on the
+  right still names the old value: chain two assignments rather than `snapshot.WithCraft(...) with { Bases = [snapshot...] }`.

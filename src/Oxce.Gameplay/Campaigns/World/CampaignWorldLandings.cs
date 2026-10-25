@@ -140,6 +140,60 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery, Battles.ICa
 
     void Battles.ICampaignDeploymentHandOver.ConsumeDeploymentRequest() => _deploymentRequest = null;
 
+    /// <summary>
+    /// BattlescapeGenerator::setUfo, setMissionSite and setAlienBase: the landing's target is in the battlescape. A base
+    /// (a base defense or the final mission's launch base) is not a world target here; the battle sets the base's own flag.
+    /// </summary>
+    void Battles.ICampaignDeploymentHandOver.EnterBattlescape(WorldTargetReference target)
+    {
+        switch (target.Kind)
+        {
+            case WorldTargetKind.Ufo:
+                for (var index = 0; index < _ufos.Count; index++)
+                    if (target.UniqueId > 0 ? _ufos[index].UniqueId == target.UniqueId : _ufos[index].Id == target.Id)
+                    {
+                        // Ufo::setInBattlescape(true) stops the UFO (setSpeed(0): no speed, no speed vector).
+                        _ufos[index] = _ufos[index] with
+                        {
+                            InBattlescape = true,
+                            Speed = 0,
+                            SpeedRadian = 0,
+                            SpeedLongitude = 0,
+                            SpeedLatitude = 0,
+                        };
+                        return;
+                    }
+                break;
+            case WorldTargetKind.MissionSite:
+                for (var index = 0; index < _sites.Count; index++)
+                    if (_sites[index].Id == target.Id && MarkerName(_sites[index].DeploymentId) == target.TypeId)
+                    {
+                        _sites[index] = _sites[index] with { InBattlescape = true };
+                        return;
+                    }
+                break;
+            case WorldTargetKind.AlienBase:
+                for (var index = 0; index < _alienBases.Count; index++)
+                    if (FollowsAlienBase(target, _alienBases[index]))
+                    {
+                        _alienBases[index] = _alienBases[index] with { InBattlescape = true };
+                        return;
+                    }
+                break;
+        }
+    }
+
+    /// <summary>The rule of the first UFO in the battlescape (DebriefingState's loop over the UFOs), or "".</summary>
+    string Battles.ICampaignDeploymentHandOver.UfoInBattlescape
+    {
+        get
+        {
+            foreach (var ufo in _ufos)
+                if (ufo.InBattlescape) return ufo.RuleId;
+            return "";
+        }
+    }
+
     public IReadOnlyList<CampaignLandingConfirmation> QueryLandingConfirmations() => campaign.Read(() =>
         (IReadOnlyList<CampaignLandingConfirmation>)[.. _landings.SkipWhile(IsStaleLanding)]);
 

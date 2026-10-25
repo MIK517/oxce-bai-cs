@@ -109,9 +109,7 @@ seeded from a constant, so a save without those keys restores the same values ev
 
 **Units the restored battle cannot hold (S3).** The reference dereferences a null soldier for a soldier ID the campaign
 lacks, and `setTile` lets a second unit overwrite a tile's unit and puts a large unit partly outside the map. The port
-fails the load as a corrupted save for a missing soldier or one in unknown armor, a soldier unit saved in armor other
-than the campaign soldier's (a named restriction until S5 gives the campaign's soldiers their battle armor, as
-`deployXCOM` does; the reference takes the soldier's armor), two units on one tile, a repeated
+fails the load as a corrupted save for a missing soldier or one in unknown armor, two units on one tile, a repeated
 unit ID, a footprint outside the map, and a faction or original faction outside 0-2 (the reference indexes its
 per-faction arrays with it). A standing unit outside the map stands on no tile, as `getTile` returns null. The restored
 battle skips the generator's placement check: units stand where the save puts them.
@@ -155,4 +153,8 @@ style, which reads the same.
   `bannedInNextStage`), except for the diagonal armor sides, a soldier's aggression and the seedless draws' values.
 - A generated battle's items are written as the reference's constructor and generator leave them (`setFuseTimer` for
   the map's and layouts' fuses, `moveToOwner`'s previous owner), including `fuseEnabed` (sic) as the reference spells it.
-- Later slices (S5) add their entries here.
+- The campaign's battle (S5) adds no difference in behaviour: `battleGame`, the header's battle lines, the
+  `inBattlescape` flags (with `setSpeed(0)`) and the soldiers' battle armor follow `SavedGame`, the generator's setters
+  and `deployXCOM`. Only the key order differs on a loaded rewrite whose source lacks them: the header's `mission`,
+  `target`, `craftOrBase` and `turn` and the body's `battleGame` are appended after the source's keys, where the
+  reference writes them after `time` and after `options`. Readers look keys up by name, so the order is not read.

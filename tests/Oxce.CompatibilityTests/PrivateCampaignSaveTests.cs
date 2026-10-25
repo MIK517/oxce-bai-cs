@@ -1,6 +1,7 @@
 using Oxce.Core.Diagnostics;
 using Oxce.Core.Random;
 using Oxce.Formats.Yaml;
+using Oxce.Gameplay.Battles.Terrain;
 using Oxce.Mods.Discovery;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
@@ -38,9 +39,11 @@ public sealed class PrivateCampaignSaveTests
         int expectedBattleGames,
         int expectedDebugLogs)
     {
-        var content = BuildContent(installation, masterId, activeMods);
+        var (content, terrain) = BuildContent(installation, masterId, activeMods);
+        // A save holding a battle restores its map from the installation's terrain files (Phase 7 branch 2 S5).
         var options = new OxceSaveLoadOptions(masterId, activeMods.ToHashSet(StringComparer.Ordinal),
-            new YamlReadOptions { MaxBytes = 32 * 1024 * 1024, MaxNodes = 2_000_000 });
+            new YamlReadOptions { MaxBytes = 32 * 1024 * 1024, MaxNodes = 2_000_000 })
+        { BattleTerrainFiles = terrain };
         var familyRoot = Path.Combine(saves, family.Replace('/', Path.DirectorySeparatorChar));
         var files = Directory.EnumerateFiles(familyRoot, "*.*", SearchOption.AllDirectories)
             .Where(static path => path.EndsWith(".sav", StringComparison.OrdinalIgnoreCase) ||
@@ -77,7 +80,7 @@ public sealed class PrivateCampaignSaveTests
         Assert.Equal(expectedDebugLogs, debugLogs);
     }
 
-    private static RuntimeContent BuildContent(string installation, string masterId, string[] activeMods)
+    private static (RuntimeContent Content, IBattleTerrainFiles Terrain) BuildContent(string installation, string masterId, string[] activeMods)
     {
         var diagnostics = new DiagnosticCollector(100_000);
         var discoveryOptions = new ModDiscoveryOptions { ExternalResourceRoots = [installation] };
@@ -96,6 +99,6 @@ public sealed class PrivateCampaignSaveTests
         var errors = snapshot.Diagnostics.Where(static item => item.Severity >= DiagnosticSeverity.Error).ToArray();
         Assert.True(snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked),
             string.Join(Environment.NewLine, errors.Take(25).Select(static item => $"{item.Code}: {item.Message}")));
-        return snapshot.Content;
+        return (snapshot.Content, new VirtualBattleTerrainFiles(plan.VirtualFiles));
     }
 }

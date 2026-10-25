@@ -526,9 +526,9 @@ public sealed class BattleStartTests
         Assert.Equal(CampaignBattles.BattleInProgress.Text, Refusal(campaign, new RecallCraft(request.BaseId, "SHIP", 1)));
         Assert.Equal(CampaignBattles.BattleInProgress.Text, Refusal(campaign, new StartBattle()));
         Assert.Equivalent(before, campaign.Capture(), strict: true);
-        Assert.Equal(CampaignBattles.BattleSaveUnsupported.Text, campaign.QuerySaveRefusal());
+        Assert.Equal(CampaignBattles.BattleSaveBeforeFirstTurn.Text, campaign.QuerySaveRefusal());
         Assert.Null(campaign.CaptureForSave(out var refusal));
-        Assert.Equal(CampaignBattles.BattleSaveUnsupported.Text, refusal);
+        Assert.Equal(CampaignBattles.BattleSaveBeforeFirstTurn.Text, refusal);
     }
 
     [Fact]
@@ -1021,13 +1021,15 @@ public sealed class BattleStartTests
     public void TheEnvironmentOrTheStartingConditionChangesTheSoldiersBattleArmor(string deployment)
     {
         // RuleEnviroEffects::getArmorTransformation, or RuleStartingCondition::getArmorReplacement for a forbidden armor:
-        // the battle unit wears the suit (a flyer); the geoscape soldier keeps its own armor.
+        // the battle unit wears the suit (a flyer). deployXCOM gives the geoscape soldier the suit too, remembering its own
+        // armor as transformedArmor (the environment) or replacedArmor (the starting condition).
         var (campaign, request) = Requested(Rules, deployment);
         Started(campaign);
         var soldier = Assert.Single(Battle(campaign).Units, static unit => unit.Faction == BattleFaction.Player);
         Assert.Equal(("SUIT", "ARMOR", 1), (soldier.ArmorId, soldier.OriginalArmorId, soldier.MovementType));
         var personal = campaign.Capture().Bases[0].Soldiers.Single(state => state.Id == Assert.Single(request.Soldiers)).Personal!;
-        Assert.Equal("ARMOR", personal.Armor);
+        Assert.Equal(deployment == "UFO_SUITED" ? ("SUIT", "ARMOR", "") : ("SUIT", "", "ARMOR"),
+            (personal.Armor, personal.TransformedArmor, personal.ReplacedArmor));
     }
 
     [Theory]

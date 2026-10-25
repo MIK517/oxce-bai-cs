@@ -181,15 +181,6 @@ internal sealed partial class BattleState
         StartingConditionId.Length != 0 && rules.StartingConditions.TryGet(StartingConditionId, out var handle) &&
         rules.StartingConditions[handle].Value.ForbiddenArmorsInNextStage.Contains(armorId, StringComparer.Ordinal);
 
-    /// <summary>
-    /// The named restriction for a soldier unit whose saved armor is not the campaign soldier's. The reference's load takes
-    /// the soldier's armor, which its generator changed to the battle armor; the port's campaign keeps the soldier's own
-    /// armor until Phase 7 branch 2 S5 gives the soldier the battle armor, so such a battle is not restored.
-    /// </summary>
-    internal static string SoldierBattleArmorRestriction(int id, string savedArmor, string soldierArmor) =>
-        $"Battle save soldier unit {id} wears '{savedArmor}' but the campaign's soldier wears '{soldierArmor}'; the soldiers' battle " +
-        "armor reaches the campaign with Phase 7 branch 2 S5.";
-
     private static RuntimeBattleArmor BattleArmor(RuntimeRuleCatalog rules, string armorId) =>
         rules.Battle.Equipment.Armors.TryGetValue(armorId, out var armor) ? armor
             : throw new Generation.MapGenerationException($"Armor {armorId} does not exist.");
@@ -410,11 +401,10 @@ internal sealed partial class BattleState
         var soldier = campaign?.Soldiers(saved.Id)
             ?? throw new InvalidDataException($"Battle save unit {saved.Id} is soldier {saved.Id}, which the campaign does not have.");
         var personal = soldier.Personal;
-        // new BattleUnit(mod, savedGame->getSoldier(id), _depth, nullptr): the soldier's own armor; genUnitArmor is not read.
+        // new BattleUnit(mod, savedGame->getSoldier(id), _depth, nullptr): the soldier's armor, which StartBattle set to the
+        // battle armor (deployXCOM); genUnitArmor is not read, so a unit saved in other armor takes the soldier's.
         if (!rules.Armors.TryGet(personal.Armor, out var handle) || !rules.Battle.Equipment.Armors.ContainsKey(personal.Armor))
             throw new InvalidDataException($"Battle save unit {saved.Id}: soldier {saved.Id} wears unknown armor '{personal.Armor}'.");
-        if (saved.ArmorId.Length != 0 && saved.ArmorId != personal.Armor)
-            throw new InvalidDataException(SoldierBattleArmorRestriction(saved.Id, saved.ArmorId, personal.Armor));
         var original = personal.TransformedArmor.Length != 0 ? personal.TransformedArmor : personal.ReplacedArmor;
         var unit = SoldierUnit(rules, saved.Id, soldier, personal.Armor, rules.Armors[handle].Value, original, startingCondition: false);
         unit.Controller = saved.Controller;

@@ -178,6 +178,11 @@ public sealed class BaseDefenseDeploymentTests
         Start(campaign);
         var battle = Battle(campaign);
         var units = battle.Units.Where(static unit => unit.Faction == BattleFaction.Player).ToArray();
+        // setBase: the base is in the battlescape; no craft and no UFO is (GeoscapeState::handleBaseDefense calls no setUfo).
+        var started = campaign.Capture();
+        Assert.True(started.Bases[0].InBattlescape);
+        Assert.All(started.Bases[0].Crafts, static craft => Assert.False(craft.Logistics?.InBattlescape ?? false));
+        Assert.DoesNotContain(started.World.Ufos, static ufo => ufo.InBattlescape);
 
         // The ship's vehicle with its own ammo (not the carrier's), then the stored one loaded full, then the defenders:
         // the 2x2 soldier before the fit wounded one; the ship's unfit crew and the carrier's crew stay out.

@@ -1,5 +1,7 @@
 using System.Text.Json;
 using Oxce.Core.Random;
+using Oxce.Gameplay.Battles;
+using Oxce.Gameplay.Battles.Terrain;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Bootstrap;
@@ -44,9 +46,9 @@ public sealed class PrivateStrategicWorldTests
                 // A cache too large to publish leaves the previous family's file, which is then rejected.
                 Assert.True(cached.CacheStatus == CompiledContentCacheStatus.Hit,
                     $"{master}/{addon}: {cached.CacheStatus} {cached.CacheRejectionReason}");
-                var first = Exercise(fresh.Content!, request, family);
+                var first = Exercise(fresh.Content!, new(fresh.VirtualFiles!), request, family);
                 Assert.Equal(count, first.Length);
-                Assert.Equivalent(first, Exercise(cached.Content!, request, family), strict: true);
+                Assert.Equivalent(first, Exercise(cached.Content!, new(cached.VirtualFiles!), request, family), strict: true);
                 results.AddRange(first);
             }
             // Retain the measured classifications even when an expectation fails, for review.
@@ -56,13 +58,14 @@ public sealed class PrivateStrategicWorldTests
             Assert.Equal(19, results.Count);
             Assert.Equal(11, results.Count(result => result.Outcome == "executable"));
             Assert.Equal(0, results.Count(result => result.Outcome == "blocked"));
-            Assert.Equal(8, results.Count(result => result.Outcome == "preservation-only"));
+            Assert.Equal(8, results.Count(result => result.Outcome == "battle"));
             foreach (var result in results)
             {
                 var expected = (result.Family, result.Name) switch
                 {
+                    // A battle save restores its battle (Phase 7 branch 2 S5), which holds the campaign.
                     (_, var name) when name.StartsWith("battlescape/", StringComparison.Ordinal) =>
-                        (0, "Active tactical battle is preserved; tactical continuation is unavailable."),
+                        (0, CampaignBattles.BattleInProgress.Text),
                     _ => (360, (string?)null),
                 };
                 Assert.Equal(expected, (result.Ticks, result.Reason));
@@ -269,7 +272,7 @@ public sealed class PrivateStrategicWorldTests
     }
 
     private const string ReportStop = "The monthly report is open.";
-    private const string TacticalStop = "Active tactical battle is preserved; tactical continuation is unavailable.";
+    private static readonly string TacticalStop = CampaignBattles.BattleInProgress.Text;
     private const string EventStop = "A strategic event window is open.";
     private const string LimitStop = "limit";
 
@@ -377,7 +380,10 @@ public sealed class PrivateStrategicWorldTests
                     cancellationToken: TestContext.Current.CancellationToken);
                 Assert.True(loaded.IsSuccess, loaded.DescribeFailure());
                 var options = new OxceSaveLoadOptions(request.MasterId, request.ActiveMods.ToHashSet(StringComparer.Ordinal),
-                    new Oxce.Formats.Yaml.YamlReadOptions { MaxBytes = 32 * 1024 * 1024, MaxNodes = 2_000_000 });
+                    new Oxce.Formats.Yaml.YamlReadOptions { MaxBytes = 32 * 1024 * 1024, MaxNodes = 2_000_000 })
+                {
+                    BattleTerrainFiles = new VirtualBattleTerrainFiles(loaded.VirtualFiles!),
+                };
                 var directory = TestFixtures.RepositoryPath("fixtures", "private", "saves", family);
                 foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)
                     .Where(path => Path.GetExtension(path) is ".sav" or ".asav").Order(StringComparer.Ordinal))
@@ -457,12 +463,14 @@ public sealed class PrivateStrategicWorldTests
         finally { cacheDirectory.Delete(recursive: true); }
     }
 
-    private static ContinuationResult[] Exercise(RuntimeContent content, InstallationLoadRequest request, string family)
+    private static ContinuationResult[] Exercise(RuntimeContent content, VirtualBattleTerrainFiles terrain, InstallationLoadRequest request,
+        string family)
     {
         var directory = TestFixtures.RepositoryPath("fixtures", "private", "saves", family);
         Assert.True(Directory.Exists(directory));
         var options = new OxceSaveLoadOptions(request.MasterId, request.ActiveMods.ToHashSet(StringComparer.Ordinal),
-            new Oxce.Formats.Yaml.YamlReadOptions { MaxBytes = 32 * 1024 * 1024, MaxNodes = 2_000_000 });
+            new Oxce.Formats.Yaml.YamlReadOptions { MaxBytes = 32 * 1024 * 1024, MaxNodes = 2_000_000 })
+        { BattleTerrainFiles = terrain };
         List<ContinuationResult> results = [];
         foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)
             .Where(path => Path.GetExtension(path).Equals(".sav", StringComparison.OrdinalIgnoreCase) ||
@@ -523,10 +531,9 @@ public sealed class PrivateStrategicWorldTests
             var rewritten = OxceSaveAdapter.EmitLoadedCampaign(after, loaded.Source);
             var restored = OxceSaveAdapter.Load(rewritten, file, content, new SplitMix64RandomSource(17), options);
             Assert.Equivalent(after, restored.Campaign.Capture(), strict: true);
-            // Repeated loaded rewrites must retain opaque world/tactical sidecars too.
+            // Repeated loaded rewrites must retain opaque world sidecars and the battle's unknown keys too.
             Assert.Equal(rewritten, OxceSaveAdapter.EmitLoadedCampaign(restored.Campaign.Capture(), restored.Source));
-            var outcome = reason is null ? "executable" : reason ==
-                "Active tactical battle is preserved; tactical continuation is unavailable." ? "preservation-only" : "blocked";
+            var outcome = reason is null ? "executable" : reason == CampaignBattles.BattleInProgress.Text ? "battle" : "blocked";
             results.Add(new(family, Path.GetRelativePath(directory, file).Replace('\\', '/'), outcome, ticks, reason));
         }
         return results.ToArray();

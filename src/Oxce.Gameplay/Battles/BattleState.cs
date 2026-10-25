@@ -158,6 +158,18 @@ internal sealed partial class BattleState
     internal void ReturnToBase(string itemType, int quantity) =>
         _returnedToBase[itemType] = checked(_returnedToBase.GetValueOrDefault(itemType) + quantity);
 
+    private readonly Dictionary<int, BattleSoldierArmor> _soldierArmors = [];
+
+    /// <summary>
+    /// deployXCOM's armor pass: the soldiers whose armor the environment transformed or the starting condition replaced, by
+    /// soldier ID, with the armor they wear in the battle. Generation only (not saved): the campaign gives each soldier that
+    /// armor, remembering the original as <c>transformedArmor</c> or <c>replacedArmor</c>, when the battle starts.
+    /// </summary>
+    internal IReadOnlyDictionary<int, BattleSoldierArmor> SoldierArmors => _soldierArmors;
+
+    internal void ChangeSoldierArmor(int soldierId, string armor, bool transformed) =>
+        _soldierArmors[soldierId] = new(armor, transformed);
+
     private readonly Dictionary<string, int> _takenFromBase = new(StringComparer.Ordinal);
 
     /// <summary>
@@ -474,3 +486,6 @@ internal sealed partial class BattleUnit
         _spottedBy = spotted ? _spottedBy | 1 << (int)faction : _spottedBy & ~(1 << (int)faction);
     }
 }
+
+/// <summary>A soldier's battle armor (deployXCOM): transformed by the environment, else replaced by the starting condition.</summary>
+internal readonly record struct BattleSoldierArmor(string Armor, bool Transformed);

@@ -125,9 +125,8 @@ internal static class CampaignSdlCommand
         {
             var saveDiagnostics = new DiagnosticCollector();
             var restored = OxceSaveAdapter.LoadFile(savePath!, content, new SplitMix64RandomSource(0),
-                new(masterId, activeMods.ToHashSet(StringComparer.Ordinal), Diagnostics: saveDiagnostics));
+                new(masterId, activeMods.ToHashSet(StringComparer.Ordinal), Diagnostics: saveDiagnostics) { BattleTerrainFiles = battleFiles });
             PrintWarnings(saveDiagnostics);
-            restored.Campaign.BattleTerrainFiles = battleFiles;
             // Attach before swapping so a failure leaves the running campaign and its session intact.
             var attached = extensions.AttachCampaign(restored.Campaign, restored.Campaign);
             extensionSession.Dispose();

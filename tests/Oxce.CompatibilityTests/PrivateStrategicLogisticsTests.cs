@@ -13,7 +13,8 @@ public sealed class PrivateStrategicLogisticsTests
     // Real mods run with the production forecast work bounds (branch 6 S3).
     public PrivateStrategicLogisticsTests() => Oxce.Gameplay.Campaigns.World.CampaignWorld.ProductionWorkBounds = true;
 
-    private const string TacticalBattleBlocked = "Active tactical battle is preserved; tactical continuation is unavailable.";
+    // A save holding a battle restores it (Phase 7 branch 2 S5); the campaign then holds for the battle.
+    private static readonly string TacticalBattleBlocked = Oxce.Gameplay.Battles.CampaignBattles.BattleInProgress.Text;
 
     [Fact]
     public void OwnedContentHasEquivalentFreshAndCachedLogistics()
@@ -43,8 +44,8 @@ public sealed class PrivateStrategicLogisticsTests
                 var second = Exercise(cached.Content!, request);
                 Assert.Equivalent(first, second, strict: true);
                 var family = master switch { "xcom1" => "vanilla-ufo", "xcom2" => "vanilla-tftd", _ => "modded/rosigma" };
-                var imported = ExerciseImported(fresh.Content!, request, TestFixtures.RepositoryPath("fixtures", "private", "saves", family));
-                var cachedImported = ExerciseImported(cached.Content!, request, TestFixtures.RepositoryPath("fixtures", "private", "saves", family));
+                var imported = ExerciseImported(fresh.Content!, new(fresh.VirtualFiles!), request, TestFixtures.RepositoryPath("fixtures", "private", "saves", family));
+                var cachedImported = ExerciseImported(cached.Content!, new(cached.VirtualFiles!), request, TestFixtures.RepositoryPath("fixtures", "private", "saves", family));
                 Assert.Equivalent(imported, cachedImported, strict: true);
                 var (expectedSave, expectedItem) = master switch
                 {
@@ -112,12 +113,14 @@ public sealed class PrivateStrategicLogisticsTests
         };
     }
 
-    private static ImportedResult[] ExerciseImported(RuntimeContent content, InstallationLoadRequest request, string directory)
+    private static ImportedResult[] ExerciseImported(RuntimeContent content, Oxce.Gameplay.Battles.Terrain.VirtualBattleTerrainFiles terrain,
+        InstallationLoadRequest request, string directory)
     {
         Assert.True(Directory.Exists(directory));
         var results = new List<ImportedResult>();
         var options = new OxceSaveLoadOptions(request.MasterId, request.ActiveMods.ToHashSet(StringComparer.Ordinal),
-            new Oxce.Formats.Yaml.YamlReadOptions { MaxBytes = 32 * 1024 * 1024, MaxNodes = 2_000_000 });
+            new Oxce.Formats.Yaml.YamlReadOptions { MaxBytes = 32 * 1024 * 1024, MaxNodes = 2_000_000 })
+        { BattleTerrainFiles = terrain };
         foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)
             .Where(f => Path.GetExtension(f).Equals(".sav", StringComparison.OrdinalIgnoreCase) ||
                 Path.GetExtension(f).Equals(".asav", StringComparison.OrdinalIgnoreCase)).Order(StringComparer.Ordinal))

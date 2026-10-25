@@ -297,9 +297,11 @@ internal sealed class XcomDeployment
         var personal = soldier.Personal ?? throw new MapGenerationException($"Soldier {soldier.Id} has no personal state.");
         var own = Armor(personal.Armor) ?? throw new MapGenerationException($"Soldier {soldier.Id} wears unknown armor {personal.Armor}.");
         var soldierType = _rules.Soldiers.GetExternalId(soldier.Rule);
-        var (armorId, armor) = BattleArmor(soldierType, personal.Armor, own);
+        var (armorId, armor, transformed) = BattleArmor(soldierType, personal.Armor, own);
+        // Recorded whenever a transformation or replacement applies, even into the same armor (the reference remembers it).
+        if (transformed is { } kind) _battle.ChangeSoldierArmor(soldier.Id, armorId, kind);
         return _battle.SoldierUnit(_rules, soldier.Id, new BattleSoldier(soldierType, personal), armorId, armor,
-            armorId == personal.Armor ? "" : personal.Armor);
+            transformed is null ? "" : personal.Armor);
     }
 
     private RuntimeArmorRule? Armor(string id) => id.Length != 0 && _rules.Armors.TryGet(id, out var handle) ? _rules.Armors[handle].Value : null;
@@ -307,26 +309,27 @@ internal sealed class XcomDeployment
     /// <summary>
     /// deployXCOM's armor pass: the environment's transformation of the soldier's armor when it is no larger, else the
     /// starting condition's replacement (RuleStartingCondition::getArmorReplacement, a weighted pick for a disallowed
-    /// armor) when it is no larger. The reference changes the geoscape soldier's armor for the battle and restores it in
-    /// the debriefing; the port gives the battle unit the armor and leaves the soldier as it was.
+    /// armor) when it is no larger; <c>Transformed</c> is null when neither applies. The reference changes the geoscape
+    /// soldier's armor for the battle (and the debriefing restores it); the battle records the change
+    /// (<see cref="BattleState.SoldierArmors"/>), which the campaign applies to the soldier when the battle starts.
     /// </summary>
-    private (string Id, RuntimeArmorRule Armor) BattleArmor(string soldierType, string armorId, RuntimeArmorRule armor)
+    private (string Id, RuntimeArmorRule Armor, bool? Transformed) BattleArmor(string soldierType, string armorId, RuntimeArmorRule armor)
     {
         if (_armorTransformations is not null && _armorTransformations.TryGetValue(armorId, out var transformedId))
         {
             var transformed = Armor(transformedId) ?? throw new MapGenerationException($"Armor transformation target {transformedId} does not exist.");
-            if (armor.Size >= transformed.Size) return (transformedId, transformed);
+            if (armor.Size >= transformed.Size) return (transformedId, transformed, true);
         }
-        if (_startingCondition is not { } condition) return (armorId, armor);
+        if (_startingCondition is not { } condition) return (armorId, armor, null);
         var allowed = condition.ForbiddenArmors.Count != 0 ? !condition.ForbiddenArmors.Contains(armorId)
             : condition.AllowedArmors.Count == 0 || condition.AllowedArmors.Contains(armorId);
-        if (allowed || !condition.DefaultArmor.TryGetValue(soldierType, out var weights)) return (armorId, armor);
+        if (allowed || !condition.DefaultArmor.TryGetValue(soldierType, out var weights)) return (armorId, armor, null);
         var pick = WorldAlienMissionGeneration.Choose(
             weights.Where(static pair => pair.Value > 0).ToDictionary(static pair => pair.Key, static pair => (ulong)pair.Value, StringComparer.Ordinal), _random);
-        if (pick is "" or "noChange") return (armorId, armor);
+        if (pick is "" or "noChange") return (armorId, armor, null);
         var replaced = Armor(pick) ?? throw new MapGenerationException($"Default armor {pick} does not exist.");
         // A soldier cannot switch into a bigger armor.
-        return replaced.Size > armor.Size ? (armorId, armor) : (pick, replaced);
+        return replaced.Size > armor.Size ? (armorId, armor, null) : (pick, replaced, false);
     }
 
     /// <summary>
