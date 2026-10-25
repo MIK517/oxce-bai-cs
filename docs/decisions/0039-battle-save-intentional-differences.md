@@ -44,9 +44,51 @@ it; `AbortMissionState` takes the mission type's only. They differ for an alien 
 `BattleState.DeploymentId` follows `DebriefingState` (the outcome, and the generator's choice); the branches that port
 the next stage and the abort read the mission type as their own reader does.
 
+**The old text tiles' `discovered` (S2).** `Tile::load` maps the three values of a text tile's `discovered` with
+`i == 2 ? 0 : i - 1`: the first goes to `_objectsCache[-1]` (undefined), the second and the third both to the floor.
+The port still requires three readable booleans, as `readVal<bool>` does, ignores the first, and gives the floor the
+third (the last write). The walls keep what they had; no refusal.
+
+**The binary tile key's other sizes (S2).** `unserializeInt` reads sizes 1 (Uint8), 2 (Sint16) and 4 (Uint32 cast to
+int); for any other size the release build logs a warning, returns 0 and skips that many bytes, and the debug build
+reaches `CrossPlatform::unreachable`. The port follows the release build and reports one `OXCE-BATTLE-SAVE-SKIPPED`
+warning per key. A key missing from the save is 0 (the key is zeroed before it is read), except `tileBoolFieldsSize`,
+which defaults to 1; a `lastExploredBy` size of 0 leaves the field unread, as `loadBinary` checks. The writer's
+`serializeInt` truncates a value wider than its field (an `assert` in debug builds); the port truncates too.
+
+**Tile reads the reference makes outside its memory (S2).** The load reads `totalTiles` records of
+`tileTotalBytesPer` bytes from the decoded `binTiles` without checking its length, indexes `_tiles` with an index it
+only `assert`s, wraps its pointer when a record is shorter than its index, and dereferences the null `getTile` of a
+text tile outside the map; a missing `binTiles` is read with `readValBase64` on an invalid node, and a
+`mapdatasets` name without its MCD file makes `MapDataSet::loadData` dereference the null stream of
+`FileMap::getIStream` (whether or not a tile uses the set). Each of these fails the load naming the key (the port's
+save error), as does a `totalTiles` whose byte count overflows. A buffer longer than `totalTiles` records is accepted (the reference stops at
+`totalTiles`), and fields that run past a record into the next one read those bytes, as the reference does.
+
+**The module map of a base defense saved without one (S2).** The load's fallback, `calculateModuleMap`, runs before
+`loadMapResources` has pointed any tile part at its object, so `getMapData(O_OBJECT)` is null everywhere and every
+whole block keeps (-1, -1): no module counts, and no facility can be lost. The port does the same; it is the
+reference's behaviour, not an undefined one. A present `moduleMap` that is no grid (a scalar) is an empty map, as
+`tryRead` into a vector reads no children, and the fallback does not run.
+
+**Block grids keep their saved shape (S2).** `reinforcementsBlocks`, `flattenedMapTerrainNames` and
+`flattenedMapBlockNames` are read as saved, without a check against the map's blocks; a later reader indexing past a
+row is the reference's undefined indexing, which the branches that port those readers (the reinforcements) must refuse.
+A base defense's `moduleMap` is kept in its saved shape too (`tryRead`, no check); its readers index it per block of a
+tile or facility (`TileEngine` when a module is destroyed, `AIModule` choosing targets, `DebriefingState` counting lost
+facilities), so branches 5 (destruction), 6 (the AI) and 7 (the debriefing) must refuse a block the saved grid lacks.
+
+**A restored map is validated (S2).** The reference loads any node list. The port runs `BattleState.Validate` on a
+restored battle: a node outside the map, a node whose ID is not its index (dummies aside), or a link to no live node
+is a corrupted save. Saves the reference writes from its generator keep these, as the corpus does.
+
+**Fire and smoke animation offsets (S2).** `Tile::load` and `loadBinary` draw an animation offset from
+`RNG::seedless` for a tile with fire or smoke. It is presentation only and not part of the port's battle state.
+
 ## Consequences
 
 - A generated battle's root is written as the reference's generator leaves it; only the ambience delay's value differs,
   as any seedless draw does between two runs of the reference.
-- Later slices (S2 to S5) add their entries here: the old text tiles' `discovered`, the duplicate unit keys, the
-  armor sides and `fuseEnabed`.
+- A generated battle's map is written as the reference writes it, except that nodes are written in block style (the
+  reference's flow style reads the same).
+- Later slices (S3 to S5) add their entries here: the duplicate unit keys, the armor sides and `fuseEnabed`.

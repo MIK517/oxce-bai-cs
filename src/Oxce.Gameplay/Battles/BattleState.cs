@@ -146,7 +146,7 @@ internal sealed partial class BattleState
     public IReadOnlyList<BattlePosition> StorageSpace { get; init; } = [];
 
     /// <summary>SavedBattleGame::getModuleMap: per 10x10 block, a base defense's module tiles (empty for other battles).</summary>
-    public Generation.BattleBaseModule[,] BaseModules { get; init; } = new Generation.BattleBaseModule[0, 0];
+    public Generation.BattleBaseModule[][] BaseModules { get; init; } = [];
 
     /// <summary>SavedBattleGame::_turn: 0 until the first turn starts after the briefing.</summary>
     public int Turn { get; private set; }

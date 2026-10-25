@@ -171,8 +171,9 @@ header's `mission`, `target`, `craftOrBase` and `turn`), `LoadGameState` (a batt
   - Where the reference asserts, throws or indexes out of range, the load fails with a save error naming the key: a
     tile index outside the map (`assert`), a tile set ID past `mapdatasets` or an object past its data set
     (`loadMapResources`), a soldier ID with no soldier, a legacy `ammoItem` ID that names no item (`itemIndex.at`).
-  - Where the reference goes on silently with a broken value, the port fails when the value would be used: an unknown
-    `mapdatasets` name (`Mod::getMapDataSet` creates an empty set, which then has no objects); an unknown
+  - A `mapdatasets` name without its MCD file fails the load: `Mod::getMapDataSet` creates the set for any name, and
+    `MapDataSet::loadData` then dereferences the null stream `FileMap::getIStream` gives for the missing file, whether
+    or not a tile uses the set (S2; a name no terrain declares loads from its file). An unknown
     `startingConditionType` or `enviroEffectsType` becomes none, as in the reference.
   - A restored battle runs `BattleState.Validate`, extended in S3 and S4 to the reference's mid-battle state: units
     that are out (dead, unconscious) stand on no tile (`resetUnitTiles`), corpses are items naming their `unit`, and

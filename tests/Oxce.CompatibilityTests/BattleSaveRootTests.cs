@@ -2,6 +2,7 @@ using Oxce.Core.Diagnostics;
 using Oxce.Core.Random;
 using Oxce.Formats.Yaml;
 using Oxce.Gameplay.Battles;
+using Oxce.Gameplay.Battles.Terrain;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.Savegames.Oxce;
 using Xunit;
@@ -23,22 +24,25 @@ public sealed class BattleSaveRootTests
             BattleGame: {BATTLE_TAG: int, OTHER_TAG: int, LIST_TAG: RuleList}
         """;
 
-    private static readonly Lazy<RuntimeContent> SharedContent = new(() => Generated().Campaign.Content);
+    internal static readonly Lazy<RuntimeContent> SharedContent = new(() => Generated().Campaign.Content);
 
-    private static (Oxce.Gameplay.Campaigns.CampaignState Campaign, BattleState Battle) Generated(string? rules = null)
+    internal static (Oxce.Gameplay.Campaigns.CampaignState Campaign, BattleState Battle) Generated(string? rules = null)
     {
         var (campaign, _) = BattleStartTests.Requested(rules ?? Rules);
         BattleStartTests.Started(campaign);
         return (campaign, BattleStartTests.Battle(campaign));
     }
 
-    private static YamlMappingNode Parse(string yaml) =>
+    /// <summary>The test terrain's files (BattleStartTests), through a fresh loader.</summary>
+    internal static BattleTerrainLoader Terrain() => new(SharedContent.Value.RuntimeRules.Battle, BattleStartTests.TerrainFiles());
+
+    internal static YamlMappingNode Parse(string yaml) =>
         (YamlMappingNode)YamlCompatibilityReader.Parse(yaml, "battle.yaml").Documents[0].Root;
 
-    private static string Emit(YamlMappingNode node) => YamlCompatibilityWriter.Emit(new YamlDocumentSet("battle.yaml",
+    internal static string Emit(YamlMappingNode node) => YamlCompatibilityWriter.Emit(new YamlDocumentSet("battle.yaml",
         [new YamlDocument(node, node.Span)]));
 
-    private static string Normalized(YamlMappingNode node) =>
+    internal static string Normalized(YamlMappingNode node) =>
         YamlSemanticNormalizer.NormalizeToJson(new YamlDocumentSet("battle.yaml", [new YamlDocument(node, node.Span)]));
 
     /// <summary>A minimal root: the one key the reference requires.</summary>
@@ -65,10 +69,10 @@ public sealed class BattleSaveRootTests
         var text = Emit(written);
         var reread = OxceBattleSave.Read(Parse(text), SharedContent.Value);
         Assert.Equivalent(snapshot, reread, strict: true);
-        var restored = BattleState.Restore(reread, SharedContent.Value);
+        var restored = BattleState.Restore(reread, SharedContent.Value, Terrain());
         Assert.Equivalent(snapshot, restored.Capture(), strict: true);
         // The derived state: the deployment, from the mission type's deployment or the UFO in battle.
-        Assert.Equal(battle.DeploymentId, BattleState.Restore(reread, SharedContent.Value, "UFO_SCOUT").DeploymentId);
+        Assert.Equal(battle.DeploymentId, BattleState.Restore(reread, SharedContent.Value, Terrain(), "UFO_SCOUT").DeploymentId);
         // A second write of the reloaded battle is byte-stable.
         Assert.Equal(text, Emit(OxceBattleSave.Write(restored.Capture(), Parse(text))));
     }
@@ -106,7 +110,7 @@ public sealed class BattleSaveRootTests
     public void TheAmbienceDelayIsAtLeastOneSecondAndTakesTheMinimumOfAReversedRange(int minimum, int maximum, int expected)
     {
         var battle = BattleState.Restore(OxceBattleSave.Read(Parse(Minimal + "width: 1\nlength: 1\nheight: 1\n"), SharedContent.Value),
-            SharedContent.Value);
+            SharedContent.Value, Terrain());
         battle.SetAmbience(new Oxce.Mods.Rulesets.Runtime.RuntimeTerrain("T", [], [], "", [], 0, 0, "", [])
         {
             MinimumAmbienceDelay = minimum,
@@ -162,7 +166,7 @@ public sealed class BattleSaveRootTests
         Assert.Equal(expected.Length == 0 ? 1 : 0, diagnostics.Snapshot().Count(static item => item.Code == OxceBattleSave.SkippedCode));
         var written = OxceBattleSave.Write(snapshot, source);
         Assert.Equal(expected.Length != 0, written.TryGet(key, out _));
-        var battle = BattleState.Restore(snapshot, SharedContent.Value);
+        var battle = BattleState.Restore(snapshot, SharedContent.Value, Terrain());
         // The enviro effects give the armor transformations of the units the battle creates later.
         if (key == "enviroEffectsType")
             Assert.Equal(expected.Length == 0 ? null : "SUIT", battle.ArmorTransformations?.GetValueOrDefault("ARMOR"));
@@ -179,13 +183,13 @@ public sealed class BattleSaveRootTests
     [Fact]
     public void UnknownRootKeysSurviveALoadedRewrite()
     {
-        var source = Parse("width: 1\nportFuture: {a: [1, 2]}\n" + Minimal + "turn: 3\nmapdatasets: [BLANKS]\n");
+        var source = Parse("width: 1\nportFuture: {a: [1, 2]}\n" + Minimal + "turn: 3\nunits: [{id: 1}]\n");
         var written = OxceBattleSave.Write(OxceBattleSave.Read(source, SharedContent.Value) with { Turn = 4 }, source);
         Assert.Equal(Normalized(Parse("portFuture: {a: [1, 2]}\n")), Normalized(Keep(written, Parse("portFuture: {a: [1, 2]}\n"))));
         // Keys of later slices stay as loaded; the root keys take the battle's values, in the source's order.
-        Assert.Equal(Normalized(Parse("mapdatasets: [BLANKS]\n")), Normalized(Keep(written, Parse("mapdatasets: [BLANKS]\n"))));
+        Assert.Equal(Normalized(Parse("units: [{id: 1}]\n")), Normalized(Keep(written, Parse("units: [{id: 1}]\n"))));
         Assert.Equal("4", ((YamlScalarNode)Value(written, "turn")).Value);
-        Assert.Equal(["width", "portFuture", "selectedUnit", "turn", "mapdatasets"], written.Entries.Take(5).Select(static entry => entry.ScalarKey));
+        Assert.Equal(["width", "portFuture", "selectedUnit", "turn", "units"], written.Entries.Take(5).Select(static entry => entry.ScalarKey));
     }
 
     [Fact]
@@ -245,7 +249,7 @@ public sealed class BattleSaveRootTests
         Assert.Equal(["CLIP", "GUN"], ((YamlMappingNode)Value(OxceBattleSave.Write(snapshot, source), "baseItems")).Entries.Select(static entry => entry.ScalarKey));
         // A base items node that is not a mapping is no items.
         Assert.Empty(OxceBattleSave.Read(Parse(Minimal + "baseItems: [GUN]\n"), SharedContent.Value).BaseItems);
-        Assert.Equal(snapshot.BaseItems, BattleState.Restore(snapshot with { Width = 1, Length = 1, Height = 1 }, SharedContent.Value).BaseStorageItems);
+        Assert.Equal(snapshot.BaseItems, BattleState.Restore(snapshot with { Width = 1, Length = 1, Height = 1 }, SharedContent.Value, Terrain()).BaseStorageItems);
     }
 
     [Fact]
@@ -258,7 +262,7 @@ public sealed class BattleSaveRootTests
         Assert.Equal([("OTHER_TAG", 0), ("BATTLE_TAG", 5)], snapshot.ScriptValues.Select(static value => (value.TagName, value.Value)));
         Assert.Single(diagnostics.Snapshot(), static item => item.Code == OxceBattleSave.SkippedCode);
         // saveBase: only non-zero values, in tag order.
-        var battle = BattleState.Restore(snapshot, SharedContent.Value);
+        var battle = BattleState.Restore(snapshot, SharedContent.Value, Terrain());
         Assert.Equal([("BATTLE_TAG", 5)], battle.Capture().ScriptValues.Select(static value => (value.TagName, value.Value)));
         var tags = (YamlMappingNode)Value(OxceBattleSave.Write(battle.Capture(), source), "tags");
         Assert.Equal(["BATTLE_TAG"], tags.Entries.Select(static entry => entry.ScalarKey));
@@ -277,7 +281,7 @@ public sealed class BattleSaveRootTests
     public void TheDeploymentIsDerivedAsTheReferencesReadersDeriveIt(string missionType, string customMission, string ufo, string expected)
     {
         var snapshot = new BattleSnapshot(1, 1, 1, missionType) { AlienCustomMission = customMission };
-        Assert.Equal(expected, BattleState.Restore(snapshot, SharedContent.Value, ufo).DeploymentId);
+        Assert.Equal(expected, BattleState.Restore(snapshot, SharedContent.Value, Terrain(), ufo).DeploymentId);
     }
 
     [Theory]
@@ -285,14 +289,14 @@ public sealed class BattleSaveRootTests
     [InlineData(1, 1, BattleState.MaximumMapHeight + 1)]
     public void AMapSizeOutsideTheSupportedRangeIsACorruptedSave(int width, int length, int height)
     {
-        var failure = Assert.Throws<InvalidDataException>(() => BattleState.Restore(new BattleSnapshot(width, length, height, ""), SharedContent.Value));
+        var failure = Assert.Throws<InvalidDataException>(() => BattleState.Restore(new BattleSnapshot(width, length, height, ""), SharedContent.Value, Terrain()));
         Assert.Contains("'width'", failure.Message, StringComparison.Ordinal);
     }
 
     [Fact]
     public void ARestoredBattleHasAnEmptyMapOfTheSavedSizeAndTheFirstItemId()
     {
-        var battle = BattleState.Restore(new BattleSnapshot(3, 2, 1, "M") { Turn = 2, SelectedUnitId = 5 }, SharedContent.Value);
+        var battle = BattleState.Restore(new BattleSnapshot(3, 2, 1, "M") { Turn = 2, SelectedUnitId = 5 }, SharedContent.Value, Terrain());
         Assert.Equal((3, 2, 1, 6, 2, 5, 1), (battle.Width, battle.Length, battle.Height, battle.Map.TileCount, battle.Turn, battle.SelectedUnitId,
             battle.NextItemId));
         Assert.Empty(battle.Units);
@@ -347,14 +351,14 @@ public sealed class BattleSaveRootTests
             "EnviroEffectsId" => snapshot with { EnviroEffectsId = "ENV_GONE" },
             _ => snapshot with { ScriptValues = [new("GONE_TAG", "int", 1)] },
         };
-        Assert.Contains(message, Assert.Throws<InvalidDataException>(() => BattleState.Restore(snapshot, SharedContent.Value)).Message,
+        Assert.Contains(message, Assert.Throws<InvalidDataException>(() => BattleState.Restore(snapshot, SharedContent.Value, Terrain())).Message,
             StringComparison.Ordinal);
     }
 
     [Fact]
     public void AnAmbienceDelayWhoseTenthsOverflowTakesTheClampedMinimum()
     {
-        var battle = BattleState.Restore(new BattleSnapshot(1, 1, 1, "M"), SharedContent.Value);
+        var battle = BattleState.Restore(new BattleSnapshot(1, 1, 1, "M"), SharedContent.Value, Terrain());
         battle.SetAmbience(new Oxce.Mods.Rulesets.Runtime.RuntimeTerrain("T", [], [], "", [], 0, 0, "", [])
         {
             MinimumAmbienceDelay = int.MaxValue / 5,

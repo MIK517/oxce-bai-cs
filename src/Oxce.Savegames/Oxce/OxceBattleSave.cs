@@ -15,10 +15,11 @@ namespace Oxce.Savegames.Oxce;
 /// <c>ScriptValuesBase::loadBase</c> and <c>saveBase</c> (<c>tags</c>) at OXCE commit 4df3a5e.
 /// </summary>
 /// <remarks>
-/// Phase 7 branch 2 S1 reads and writes the battle root. The map, units and items keys (<c>mapdatasets</c>, the tile
-/// keys, <c>nodes</c>, <c>moduleMap</c>, the flattened names and reinforcement blocks, <c>units</c>, <c>items</c>,
-/// <c>itemsSpecial</c>, <c>recoverGuaranteed</c>, <c>recoverConditional</c>) stay as the source document has them
-/// until S2 to S4 read them.
+/// Phase 7 branch 2 S1 reads and writes the battle root and S2 the map (<c>mapdatasets</c>, the binary tiles with their
+/// serialization key or the old text <c>tiles</c>, <c>nodes</c>, <c>moduleMap</c>, the flattened names and reinforcement
+/// blocks; <c>Tile::load</c>, <c>loadBinary</c> and <c>saveBinary</c>, <c>Node::load</c> and <c>save</c>). The units and
+/// items keys (<c>units</c>, <c>items</c>, <c>itemsSpecial</c>, <c>recoverGuaranteed</c>, <c>recoverConditional</c>) stay
+/// as the source document has them until S3 and S4 read them.
 /// </remarks>
 public static class OxceBattleSave
 {
@@ -102,6 +103,21 @@ public static class OxceBattleSave
             ToggleNightVision = Bool(battle, "toggleNightVision", false),
             ToggleBrightness = Int(battle, "toggleBrightness", 0),
             ScriptValues = Tags(battle, content, diagnostics),
+            ReinforcementsBlocks = Grid(battle, "reinforcementsBlocks", YamlValueReader.ReadInt32),
+            FlattenedMapTerrainNames = Grid(battle, "flattenedMapTerrainNames", YamlValueReader.ReadString),
+            FlattenedMapBlockNames = Grid(battle, "flattenedMapBlockNames", YamlValueReader.ReadString),
+            MapDataSets = Array.AsReadOnly(Children(battle, "mapdatasets").Select(node => Value(node, "mapdatasets", YamlValueReader.ReadString))
+                .ToArray()),
+            // !reader["tileTotalBytesPer"]: the old text tiles; otherwise the binary tiles with their serialization key.
+            Tiles = battle.TryGet("tileTotalBytesPer", out var totalBytes)
+                ? BinaryTiles(battle, totalBytes!, snapshot.Width, snapshot.Length, snapshot.Height, diagnostics)
+                : TextTiles(battle, snapshot.Width, snapshot.Length, snapshot.Height),
+            Nodes = Array.AsReadOnly(Children(battle, "nodes").Select(ReadNode).ToArray()),
+            // A base defense reads its module map (tryRead), or counts it without objects (calculateModuleMap).
+            ModuleMap = snapshot.MissionType != BattleSnapshot.BaseDefenseMission ? []
+                : battle.TryGet("moduleMap", out var modules)
+                    ? Array.AsReadOnly(Value(modules!, "moduleMap", ReadModuleMap))
+                    : BattleSnapshot.UncountedModuleMap(snapshot.Width, snapshot.Length),
         };
     }
 
@@ -150,6 +166,9 @@ public static class OxceBattleSave
             Pair("reinforcementsRace", Scalar(snapshot.ReinforcementsRace)),
             Pair("reinforcementsItemLevel", Integer(snapshot.ReinforcementsItemLevel)),
             Pair("reinforcementsMemory", IntMapping(snapshot.ReinforcementsMemory)),
+            Pair("reinforcementsBlocks", Grid(snapshot.ReinforcementsBlocks, Integer)),
+            Pair("flattenedMapTerrainNames", Grid(snapshot.FlattenedMapTerrainNames, Scalar)),
+            Pair("flattenedMapBlockNames", Grid(snapshot.FlattenedMapBlockNames, Scalar)),
             Pair("globalshade", Integer(snapshot.GlobalShade)),
             Pair("turn", Integer(snapshot.Turn)),
             Pair("bughuntMinTurn", Integer(snapshot.BughuntMinTurn)),
@@ -157,6 +176,25 @@ public static class OxceBattleSave
             Pair("bughuntMode", Boolean(snapshot.BughuntMode)),
             Pair("selectedUnit", Integer(snapshot.SelectedUnitId)),
             Pair("undoUnit", Integer(snapshot.UndoUnitId)),
+            Pair("mapdatasets", Sequence(snapshot.MapDataSets.Select(static name => (YamlNode)Scalar(name)))),
+            // The field sizes of Tile::serializationKey, each a one-character string (static_cast<char>, quoted and escaped).
+            Pair("tileIndexSize", Size(TileKey.Index)),
+            Pair("tileTotalBytesPer", Integer(TileKey.TotalBytes)),
+            Pair("tileFireSize", Size(TileKey.Fire)),
+            Pair("tileSmokeSize", Size(TileKey.Smoke)),
+            Pair("tileIDSize", Size(TileKey.MapDataId)),
+            Pair("tileSetIDSize", Size(TileKey.MapDataSetId)),
+            Pair("tileBoolFieldsSize", Size(TileKey.BoolFields)),
+            Pair("lastExploredByPlayer", Size(TileKey.LastExploredByPlayer)),
+            Pair("lastExploredByNeutral", Size(TileKey.LastExploredByNeutral)),
+            Pair("lastExploredByHostile", Size(TileKey.LastExploredByHostile)),
+            Pair("totalTiles", Integer(snapshot.Tiles.Count)),
+            Pair("binTiles", Scalar(Convert.ToBase64String(BinaryTiles(snapshot.Tiles)))),
+            // The old text tiles are read, never written (the reference's text writer is compiled out).
+            Pair("tiles", null),
+            Pair("nodes", Sequence(snapshot.Nodes.Select(static node => (YamlNode)WriteNode(node)))),
+            Pair("moduleMap", snapshot.MissionType == BattleSnapshot.BaseDefenseMission
+                ? Grid(snapshot.ModuleMap, static module => Sequence([Integer(module.Total), Integer(module.Remaining)])) : null),
             Pair("tuReserved", Integer(snapshot.TimeUnitsReserved)),
             Pair("kneelReserved", Boolean(snapshot.KneelReserved)),
             Pair("depth", Integer(snapshot.Depth)),
@@ -280,4 +318,257 @@ public static class OxceBattleSave
 
     private static void Skipped(IDiagnosticSink? diagnostics, YamlNode node, string message) =>
         diagnostics?.Report(new DiagnosticEvent(SkippedCode, DiagnosticSeverity.Warning, message, node.Span));
+
+    /// <summary>YamlNodeReader::children: a sequence's items or a mapping's values; nothing for a scalar or a missing key.</summary>
+    private static IReadOnlyList<YamlNode> Children(YamlNode? node) => node switch
+    {
+        YamlSequenceNode sequence => sequence.Items,
+        YamlMappingNode mapping => [.. mapping.Entries.Select(static entry => entry.Value)],
+        _ => [],
+    };
+
+    private static IReadOnlyList<YamlNode> Children(YamlMappingNode map, string key) => map.TryGet(key, out var node) ? Children(node) : [];
+
+    /// <summary>
+    /// tryRead into std::vector&lt;std::vector&lt;T&gt;&gt;: a vector takes a node's children (none for a scalar), and an element
+    /// the type cannot hold fails.
+    /// </summary>
+    private static ReadOnlyCollection<IReadOnlyList<T>> Grid<T>(YamlMappingNode map, string key, Func<YamlNode, T> read) =>
+        Array.AsReadOnly(Children(map, key).Select(row => (IReadOnlyList<T>)Array.AsReadOnly(Children(row)
+            .Select(item => Value(item, key, read)).ToArray())).ToArray());
+
+    private static YamlSequenceNode Grid<T>(IReadOnlyList<IReadOnlyList<T>> grid, Func<T, YamlNode> write) =>
+        Sequence(grid.Select(row => (YamlNode)Sequence(row.Select(write))));
+
+    /// <summary>moduleMap: a grid of std::pair&lt;int, int&gt;, each a sequence of exactly two integers (first in all, second left).</summary>
+    private static IReadOnlyList<BattleModuleSnapshot>[] ReadModuleMap(YamlNode node) =>
+        [.. Children(node).Select(static row => (IReadOnlyList<BattleModuleSnapshot>)Array.AsReadOnly(Children(row).Select(static pair =>
+        {
+            var (total, remaining) = YamlValueReader.ReadPair(pair, YamlValueReader.ReadInt32, YamlValueReader.ReadInt32);
+            return new BattleModuleSnapshot(total, remaining);
+        }).ToArray()))];
+
+    /// <summary>read(Position): three Sint16 children, each required.</summary>
+    private static BattlePosition Position(YamlNode node, string key)
+    {
+        var children = Children(node);
+        if (children.Count < 3) throw new InvalidDataException($"Battle save '{key}' must hold three coordinates.");
+        return new BattlePosition(Value(children[0], key, YamlValueReader.ReadInt16), Value(children[1], key, YamlValueReader.ReadInt16),
+            Value(children[2], key, YamlValueReader.ReadInt16));
+    }
+
+    /// <summary>Node::load: each key read when present (tryRead), the Node() constructor's values otherwise.</summary>
+    private static BattleNodeSnapshot ReadNode(YamlNode node)
+    {
+        if (node is not YamlMappingNode map) return new BattleNodeSnapshot(0, default, 0, 0, 0, 0, 0, false, [], false);
+        return new BattleNodeSnapshot(Int(map, "id", 0),
+            map.TryGet("position", out var position) ? Position(position!, "position") : default,
+            Int(map, "type", 0), Int(map, "rank", 0), Int(map, "flags", 0), Int(map, "reserved", 0), Int(map, "priority", 0),
+            Bool(map, "allocated", false),
+            Array.AsReadOnly(Children(map, "links").Select(static link => Value(link, "links", YamlValueReader.ReadInt32)).ToArray()),
+            Bool(map, "dummy", false));
+    }
+
+    /// <summary>Node::save: <c>allocated</c> and <c>dummy</c> only when set.</summary>
+    private static YamlMappingNode WriteNode(BattleNodeSnapshot node) => Overlay(null,
+    [
+        Pair("id", Integer(node.Id)),
+        Pair("position", Sequence([Integer(node.Position.X), Integer(node.Position.Y), Integer(node.Position.Z)])),
+        Pair("type", Integer(node.Type)),
+        Pair("rank", Integer(node.Rank)),
+        Pair("flags", Integer(node.Flags)),
+        Pair("reserved", Integer(node.Reserved)),
+        Pair("priority", Integer(node.Priority)),
+        Pair("allocated", node.Allocated ? Boolean(true) : null),
+        Pair("links", Sequence(node.Links.Select(static link => (YamlNode)Integer(link)))),
+        Pair("dummy", node.Dummy ? Boolean(true) : null),
+    ]);
+
+    /// <summary>Tile::serializationKey, the field sizes in bytes the port writes (the reference's current key).</summary>
+    private static class TileKey
+    {
+        public const int Index = 4;
+        public const int MapDataSetId = 2;
+        public const int MapDataId = 2;
+        public const int Smoke = 1;
+        public const int Fire = 1;
+        public const int BoolFields = 1;
+        public const int LastExploredByHostile = 2;
+        public const int LastExploredByNeutral = 2;
+        public const int LastExploredByPlayer = 2;
+        public const int TotalBytes = Index + MapDataId * 4 + MapDataSetId * 4 + Smoke + Fire + BoolFields + LastExploredByHostile +
+            LastExploredByNeutral + LastExploredByPlayer;
+    }
+
+    private static YamlScalarNode Size(int size) => new(GeneratedSpan, ((char)size).ToString(), YamlScalarStyle.DoubleQuoted);
+
+    /// <summary>readVal&lt;char&gt;(default): a one-character value is its character code; anything else fails.</summary>
+    private static int ReadSize(YamlMappingNode battle, string key, int fallback)
+    {
+        if (!battle.TryGet(key, out var node)) return fallback;
+        return node is YamlScalarNode { Value: { Length: 1 } value } && value[0] <= byte.MaxValue ? value[0]
+            : throw new InvalidDataException($"Battle save '{key}' cannot be read: a tile field size is one character.");
+    }
+
+    /// <summary>
+    /// SavedBattleGame::load's binary tiles: the serialization key (each size missing is 0, except <c>tileBoolFieldsSize</c>,
+    /// which older saves did not write, 1), then <c>totalTiles</c> records of <c>tileTotalBytesPer</c> bytes, each an index
+    /// and the fields Tile::loadBinary reads. A size other than 1, 2 or 4 reads as 0 and skips its bytes (unserializeInt's
+    /// release path, which logs a warning; the port warns once per key); a <c>lastExploredBy</c> size of 0 leaves the
+    /// field alone. A read past the decoded buffer, a record shorter than its index or an index outside the map fails.
+    /// </summary>
+    private static ReadOnlyCollection<BattleTileSnapshot> BinaryTiles(YamlMappingNode battle, YamlNode totalBytesNode, int width, int length,
+        int height, IDiagnosticSink? diagnostics)
+    {
+        var totalBytes = Value(totalBytesNode, "tileTotalBytesPer", YamlValueReader.ReadUInt32);
+        var totalTiles = battle.TryGet("totalTiles", out var count) ? Value(count!, "totalTiles", YamlValueReader.ReadUInt64)
+            : throw new InvalidDataException("Battle save 'totalTiles' is missing.");
+        var index = ReadSize(battle, "tileIndexSize", 0);
+        var fire = ReadSize(battle, "tileFireSize", 0);
+        var smoke = ReadSize(battle, "tileSmokeSize", 0);
+        var id = ReadSize(battle, "tileIDSize", 0);
+        var set = ReadSize(battle, "tileSetIDSize", 0);
+        var flags = ReadSize(battle, "tileBoolFieldsSize", 1);
+        var player = ReadSize(battle, "lastExploredByPlayer", 0);
+        var hostile = ReadSize(battle, "lastExploredByHostile", 0);
+        var neutral = ReadSize(battle, "lastExploredByNeutral", 0);
+        foreach (var (key, size, optional) in new[]
+        {
+            ("tileIndexSize", index, false), ("tileFireSize", fire, false), ("tileSmokeSize", smoke, false), ("tileIDSize", id, false),
+            ("tileSetIDSize", set, false), ("tileBoolFieldsSize", flags, false), ("lastExploredByPlayer", player, true),
+            ("lastExploredByHostile", hostile, true), ("lastExploredByNeutral", neutral, true),
+        })
+            if (size is not (1 or 2 or 4) && !(optional && size == 0))
+                Skipped(diagnostics, battle.TryGet(key, out var sizeNode) ? sizeNode! : battle,
+                    $"Battle save '{key}' gives tile fields of {size} bytes, which read as 0 (the reference logs a warning).");
+        if (!battle.TryGet("binTiles", out var data)) throw new InvalidDataException("Battle save 'binTiles' is missing.");
+        var buffer = data is YamlScalarNode { Value.Length: 0 } ? [] : Value(data!, "binTiles", static node => YamlValueReader.ReadBase64(node));
+        ulong end;
+        try
+        {
+            end = checked(totalTiles * totalBytes);
+        }
+        catch (OverflowException)
+        {
+            throw new InvalidDataException($"Battle save 'totalTiles' {totalTiles} of {totalBytes} bytes overflows the tile buffer.");
+        }
+        var tileCount = (long)width * length * height;
+        var tiles = new SortedDictionary<int, BattleTileSnapshot>();
+        for (ulong start = 0; start < end; start += totalBytes)
+        {
+            if (start > (ulong)buffer.Length || totalBytes < (uint)index)
+                throw new InvalidDataException(
+                    $"Battle save 'binTiles' holds {buffer.Length} bytes, short of {totalTiles} tiles of {totalBytes} bytes with a {index}-byte index.");
+            var cursor = (long)start;
+            var tileIndex = Field(buffer, ref cursor, index);
+            // assert(index >= 0 && index < _mapsize_x * _mapsize_z * _mapsize_y)
+            if (tileIndex < 0 || tileIndex >= tileCount)
+                throw new InvalidDataException($"Battle save 'binTiles' names tile {tileIndex}, outside the {width}x{length}x{height} map.");
+            var tile = tiles.TryGetValue(tileIndex, out var existing) ? existing : new BattleTileSnapshot(tileIndex);
+            for (var part = 0; part < 4; part++) tile = tile.WithPart(part, Field(buffer, ref cursor, id), tile.Part(part).Set);
+            for (var part = 0; part < 4; part++) tile = tile.WithPart(part, tile.Part(part).Id, Field(buffer, ref cursor, set));
+            // _smoke, _fire and the bool fields are Uint8.
+            tile = tile with { Smoke = (byte)Field(buffer, ref cursor, smoke), Fire = (byte)Field(buffer, ref cursor, fire) };
+            var bits = (byte)Field(buffer, ref cursor, flags);
+            tile = tile with
+            {
+                WestWallDiscovered = (bits & 1) != 0,
+                NorthWallDiscovered = (bits & 2) != 0,
+                FloorDiscovered = (bits & 4) != 0,
+                WestDoorOpen = (bits & 8) != 0,
+                NorthDoorOpen = (bits & 0x10) != 0,
+            };
+            if (hostile != 0) tile = tile with { LastExploredByHostile = Field(buffer, ref cursor, hostile) };
+            if (neutral != 0) tile = tile with { LastExploredByNeutral = Field(buffer, ref cursor, neutral) };
+            if (player != 0) tile = tile with { LastExploredByPlayer = Field(buffer, ref cursor, player) };
+            tiles[tileIndex] = tile;
+        }
+        return Array.AsReadOnly(tiles.Values.ToArray());
+    }
+
+    /// <summary>unserializeInt: a Uint8, a Sint16 or a Uint32 cast to int, little-endian; any other size is 0 and skips its bytes.</summary>
+    private static int Field(byte[] buffer, ref long cursor, int size)
+    {
+        if (size is (1 or 2 or 4) && cursor + size > buffer.Length)
+            throw new InvalidDataException($"Battle save 'binTiles' ends inside a tile at byte {cursor}.");
+        var at = (int)cursor;
+        cursor += size;
+        return size switch
+        {
+            1 => buffer[at],
+            2 => System.Buffers.Binary.BinaryPrimitives.ReadInt16LittleEndian(buffer.AsSpan(at)),
+            4 => unchecked((int)System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(buffer.AsSpan(at))),
+            _ => 0,
+        };
+    }
+
+    /// <summary>SavedBattleGame::save's binary tiles with the port's key (Tile::saveBinary after each index).</summary>
+    private static byte[] BinaryTiles(IReadOnlyList<BattleTileSnapshot> tiles)
+    {
+        var buffer = new byte[checked(tiles.Count * TileKey.TotalBytes)];
+        var span = buffer.AsSpan();
+        foreach (var tile in tiles)
+        {
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(span, unchecked((uint)tile.Index));
+            var at = TileKey.Index;
+            for (var part = 0; part < 4; part++, at += 2)
+                System.Buffers.Binary.BinaryPrimitives.WriteInt16LittleEndian(span[at..], unchecked((short)tile.Part(part).Id));
+            for (var part = 0; part < 4; part++, at += 2)
+                System.Buffers.Binary.BinaryPrimitives.WriteInt16LittleEndian(span[at..], unchecked((short)tile.Part(part).Set));
+            span[at++] = unchecked((byte)tile.Smoke);
+            span[at++] = unchecked((byte)tile.Fire);
+            span[at++] = (byte)((tile.WestWallDiscovered ? 1 : 0) | (tile.NorthWallDiscovered ? 2 : 0) | (tile.FloorDiscovered ? 4 : 0) |
+                (tile.WestDoorOpen ? 8 : 0) | (tile.NorthDoorOpen ? 0x10 : 0));
+            System.Buffers.Binary.BinaryPrimitives.WriteInt16LittleEndian(span[at..], unchecked((short)tile.LastExploredByHostile));
+            System.Buffers.Binary.BinaryPrimitives.WriteInt16LittleEndian(span[(at + 2)..], unchecked((short)tile.LastExploredByNeutral));
+            System.Buffers.Binary.BinaryPrimitives.WriteInt16LittleEndian(span[(at + 4)..], unchecked((short)tile.LastExploredByPlayer));
+            span = span[TileKey.TotalBytes..];
+        }
+        return buffer;
+    }
+
+    /// <summary>
+    /// SavedBattleGame::load's old text tiles and Tile::load: each tile at its required position (inside the map, or
+    /// getTile gives null), its keys read over what the tile already has. <c>discovered</c> needs three booleans: the
+    /// first went to an undefined part in the reference and is ignored, the second and third both to the floor, the third
+    /// last (ADR 0039). <c>openDoorWest</c> and <c>openDoorNorth</c> set the wall's door frame whatever their value.
+    /// </summary>
+    private static ReadOnlyCollection<BattleTileSnapshot> TextTiles(YamlMappingNode battle, int width, int length, int height)
+    {
+        var tiles = new SortedDictionary<int, BattleTileSnapshot>();
+        foreach (var node in Children(battle, "tiles"))
+        {
+            var map = node as YamlMappingNode;
+            if (map is null || !map.TryGet("position", out var positionNode))
+                throw new InvalidDataException("Battle save 'tiles' has a tile without a 'position'.");
+            var position = Position(positionNode!, "position");
+            if ((uint)position.X >= (uint)width || (uint)position.Y >= (uint)length || (uint)position.Z >= (uint)height)
+                throw new InvalidDataException($"Battle save 'tiles' has a tile at {position}, outside the {width}x{length}x{height} map.");
+            var index = position.X + position.Y * width + position.Z * width * length;
+            var tile = tiles.TryGetValue(index, out var existing) ? existing : new BattleTileSnapshot(index);
+            var ids = map.TryGet("mapDataID", out var idNode) ? Children(idNode) : [];
+            var sets = map.TryGet("mapDataSetID", out var setNode) ? Children(setNode) : [];
+            for (var part = 0; part < 4; part++)
+            {
+                var (id, set) = tile.Part(part);
+                if (part < ids.Count) id = Value(ids[part], "mapDataID", YamlValueReader.ReadInt32);
+                if (part < sets.Count) set = Value(sets[part], "mapDataSetID", YamlValueReader.ReadInt32);
+                tile = tile.WithPart(part, id, set);
+            }
+            if (map.TryGet("fire", out var fire)) tile = tile with { Fire = Value(fire!, "fire", YamlValueReader.ReadUInt8) };
+            if (map.TryGet("smoke", out var smoke)) tile = tile with { Smoke = Value(smoke!, "smoke", YamlValueReader.ReadUInt8) };
+            if (map.TryGet("discovered", out var discoveredNode))
+            {
+                var discovered = Children(discoveredNode);
+                if (discovered.Count < 3) throw new InvalidDataException("Battle save tile 'discovered' must hold three booleans.");
+                _ = Value(discovered[0], "discovered", YamlValueReader.ReadBoolean);
+                _ = Value(discovered[1], "discovered", YamlValueReader.ReadBoolean);
+                tile = tile with { FloorDiscovered = Value(discovered[2], "discovered", YamlValueReader.ReadBoolean) };
+            }
+            if (map.TryGet("openDoorWest", out _)) tile = tile with { WestDoorOpen = true };
+            if (map.TryGet("openDoorNorth", out _)) tile = tile with { NorthDoorOpen = true };
+            tiles[index] = tile;
+        }
+        return Array.AsReadOnly(tiles.Values.ToArray());
+    }
 }

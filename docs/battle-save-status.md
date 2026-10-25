@@ -10,7 +10,7 @@ Phase 7 branch 2 (`claude/battle-save`), from `main` at `3c91029a` (PR #78, bran
 |---|---|
 | S0 planning | Done (2026-10-25) |
 | S1 save module and battle root | Done (2026-10-25) |
-| S2 map | Not started |
+| S2 map | Done (2026-10-25) |
 | S3 units | Not started |
 | S4 items | Not started |
 | S5 campaign integration | Not started |
@@ -96,31 +96,80 @@ delays). `PrivateBattleSaveTests` (all eight corpus battles: the root reads with
 derived deployment, rewrites over its source with semantic equality, passes the conformance reader, and rewrites
 byte-stable a second time).
 
+
+## S2 — Map (2026-10-25)
+
+Reference: `SavedBattleGame::load` (lines 168-170, 180-244), `save` (the map keys), `loadMapResources`, `initMap`,
+`calculateModuleMap`; `Tile::load`, `loadBinary`, `save`, `saveBinary`, `serializationKey`, `setMapData`, `isVoid`,
+`getTUCost`, `isUfoDoorOpen`; `unserializeInt` and `serializeInt` (`SerializationHelper.cpp`); `Node::load`, `save`
+and `Node()`; `Mod::getMapDataSet`, `MapDataSet::loadData` and `getObject`; `Position` and `std::pair` reading
+(`Position.cpp`, `Yaml.h`), `from_chars(csubstr, char*)` (rapidyaml's `charconv.hpp`); `BattlescapeGenerator::loadRMP`
+(dummy nodes), `TileEngine` and `DebriefingState` (the module map's pair order).
+
+- `BattleSnapshot` gains the map: `MapDataSets`, `Tiles` (`BattleTileSnapshot`: each part's map data and set IDs, smoke,
+  fire, the floor's and walls' discovered flags, the walls' door frames, the three `lastExploredBy` turns), `Nodes`
+  (`BattleNodeSnapshot`, with `allocated` and `dummy`; no segment), the three block grids as saved, and `ModuleMap`
+  (`BattleModuleSnapshot(Total, Remaining)`, the pair's first and second).
+- `OxceBattleSave.Read` reads `tileTotalBytesPer`'s presence as the binary form: the key's sizes are one-character
+  values (`readVal<char>`, so `"\x04"` is 4 and `4` would be 52), a missing size is 0 except `tileBoolFieldsSize` (1);
+  sizes 1, 2 and 4 read as Uint8, Sint16 and Uint32-as-int, any other reads 0 and skips its bytes with a skip warning
+  (the release build), a `lastExploredBy` size of 0 is not read; a repeated index takes the later record. Without it,
+  the old text `tiles` are read over each other by position, with `discovered`'s quirk and the door keys' presence.
+  A base defense reads `moduleMap`, or counts it without objects (all (-1, -1)); other missions neither read nor write
+  it. Malformed input fails naming the key (ADR 0039 lists each case).
+- `OxceBattleSave.Write` writes the reference's current key (29-byte records), the non-void tiles in index order,
+  `totalTiles`, `binTiles`, the nodes (block style; `allocated` and `dummy` only when set) and, for a base defense, the
+  module map, in `save`'s order; it removes a loaded source's text `tiles`.
+- `BattleState.Restore` now takes a `BattleTerrainLoader`: every data set loads with its MCD patches (`loadData`), a
+  part with an ID or set of -1 is empty, a set past `mapdatasets`, an object past its set, a set without its MCD file
+  (the reference dereferences a null stream, whether or not a tile uses the set; the plan's "fails when used" is
+  corrected) or a tile outside the map is a corrupted save, and the restored battle runs `Validate` (a violation is a corrupted save).
+  `Capture` writes a tile unless it is void (no part, no smoke, no item on its ground).
+- `BattleMap` holds the saved tile state (smoke, fire, wall door frames, the explored turns), restores discovered flags
+  without `setDiscovered`'s spreading, keeps the block grids jagged as saved, and costs an open UFO door 0 time units
+  (`getTUCost`). `BattleNode` keeps `Allocated` and a restore path for saved nodes, dummies included.
+  `BattleState.BaseModules` is jagged (`BattleBaseModule.EmptyGrid`).
+- ADR 0039 gains S2's entries: the text tiles' `discovered`, the key's other sizes, the reads outside the reference's
+  memory (also a missing `binTiles` and a data set without its MCD file), the module map fallback, the block grids'
+  and the module map's saved shape (with the branches whose readers must refuse a missing block), the restored map's
+  validation, the animation offsets.
+- The conformance reader checks the map keys: the grids, `mapdatasets`, the one-character sizes of 1, 2 or 4 bytes, a
+  record that holds every field, `binTiles` of exactly `totalTiles` records, each index inside the map, the nodes'
+  types and the module map's pairs; it runs on every written battle.
+
+Tests: `BattleSaveMapTests` (a generated map written, conforming, reread, restored part by part and rewritten
+byte-stable; the key and the write order; every binary field; a repeated record; no `tileBoolFieldsSize`; other sizes
+and missing explored sizes; an unsupported size and a missing index size; eleven malformed binary cases; text tiles
+with `discovered`, open doors, short ID lists and a repeated position, rewritten as binary; twelve malformed text
+tiles; text tiles without the explored turns; a node that is no mapping; mappings where sequences are expected; an open
+UFO door's cost and the frames written; sets and objects past their range, an empty half of a part, a
+tile outside the map, smoke past 255; an unknown and an unnamed data set; MCD patches on restore; void tiles; nodes'
+fields, defaults and written keys; nodes that break the map; malformed map keys; block grids' saved shape; a base
+defense's module map with a lost module, and without one; the module map outside a base defense, as a scalar and with a
+bad pair). `BaseDefenseMapTests` reads the jagged module map. `PrivateBattleSaveTests` now restores every corpus map
+with the installation's terrain files and compares the whole map with its source.
+
 ## Next
 
-S2 — map ([plan](phase-7-plan.md#branch-2--battle-saves)). Notes:
+S3 — units ([plan](phase-7-plan.md#branch-2--battle-saves)). Notes:
 
-- Keys: `mapdatasets`, the tile key (`tileIndexSize` to `lastExploredByHostile`, `totalTiles`, `binTiles`) or the old
-  text `tiles`, `nodes`, `moduleMap` (base defense only, with the `calculateModuleMap` fallback,
-  `BattleMapGenerator.cs` has the port of it), `flattenedMapTerrainNames`, `flattenedMapBlockNames`,
-  `reinforcementsBlocks`. Add them to `BattleSnapshot`, `OxceBattleSave.Read`/`Write` (in the reference's write order:
-  `reinforcementsBlocks` and the flattened names go before `globalshade`, the map keys after `undoUnit`) and
-  `BattleState.Restore`, which today builds an empty `BattleMap` of the saved size.
-- The tile key sizes are one-character strings read as `char` (`tileIndexSize: "\x04"`); the port's YAML reader
-  already decodes `\x04` to U+0004 and the writer emits it back (see `TheCraftLineKeepsItsControlCharacter`).
-  Write them with `YamlScalarStyle.DoubleQuoted`, as `strCraftOrBase`.
-- `loadMapResources` goes through `BattleTerrainLoader` (MCD patches); a restored battle then needs the terrain files
-  (`campaign.BattleTerrainFiles`), so the module-level restore takes the loader. Lighting and field of view stay
-  branch 4's.
-- Extend `BattleSaveConformance` with the tile buffer rules (its size against `totalTiles` times `tileTotalBytesPer`,
-  the index field) and run it on every written battle; `PrivateBattleSaveTests` already compares the whole
-  `battleGame` node, so it shows each newly typed key.
-- Add S2's quirk (old text tiles' `discovered`) to ADR 0039.
-- S3 must resolve `selectedUnit` and `undoUnit` against the loaded units (`Restore` keeps the raw IDs today; the
-  reference selects the first player unit that is not out even when the saved ID is -1, `SavedBattleGame.cpp:286-292`)
-  and report the status sanity check.
+- Keys: `units` (the soldier and generated-unit paths of `SavedBattleGame::load`, line 266 on, and `BattleUnit::load`
+  and `save`), with `selectedUnit` and `undoUnit` resolved against the loaded units (`Restore` keeps the raw IDs today;
+  the reference selects the first player unit that is not out even when the saved ID is -1, `SavedBattleGame.cpp`
+  line 288) and the status sanity check. Add them to `BattleSnapshot`, `OxceBattleSave.Read`/`Write` (`units`
+  goes after `moduleMap`, before `items`) and `BattleState.Restore`/`Capture`.
+- `Restore` runs `Validate` and turns its failures into corrupted-save errors; extend `Validate` for out units (no
+  tile, `resetUnitTiles`) and keep the generated-battle checks. `resetUnitTiles` runs in `loadMapResources` after the
+  tiles are pointed at their objects (`RestoreMap` is where the map is complete).
+- `Capture`'s void test counts items on a tile's ground; S4 restores items, so until then a corpus tile holding only
+  items would drop out of the rewrite (none of the eight does).
+- A soldier unit needs the campaign's soldier (`savedGame->getSoldier(id)`); the module-level `Restore` has no campaign,
+  so S3 decides how the soldiers reach it (a lookup parameter, as the loader is) and S5 wires the campaign.
 - Gotchas carried over: write test files with LF (Python on Windows writes CRLF in text mode; use `newline='\n'` or
-  the Edit tool); insert C# string literals with `\n` through the Edit tool, not a Bash heredoc; the test runner is
+  the Edit tool); insert C# string literals with `\n` through the Edit tool, not a Bash heredoc (heredocs whose text
+  holds certain quote mixes also fail to parse in this shell; write a script file instead); the test runner is
   Microsoft Testing Platform (`dotnet test --project <proj> --filter-class <full name>` or `--filter-method`). The
-  battle test helpers `BattleStartTests.Requested`, `Started` and `Battle` are internal for reuse. A YAML boolean
-  accepts an integer (ryml's fallback), so a wrong-type test needs a word.
+  battle test helpers `BattleStartTests.Requested`, `Started` and `Battle`, `BattleSaveRootTests.Generated`,
+  `SharedContent`, `Parse`, `Emit`, `Normalized` and `Terrain`, and `BaseDefenseMapTests.Requested`, `Layout` and
+  `MapOf` are internal for reuse. A YAML integer of the port wraps like ryml's (`fire: 300` reads 44), so a wrong-type
+  test needs a word or a sign; a YAML boolean accepts an integer (ryml's fallback).

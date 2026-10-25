@@ -32,7 +32,7 @@ internal sealed class BattleMapGenerator
     private readonly RuntimeTerrain _baseTerrain;
     private readonly List<BattlePosition> _storageSpace = [];
     private BattlePosition? _baseInventoryTile;
-    private BattleBaseModule[,] _baseModules = new BattleBaseModule[0, 0];
+    private BattleBaseModule[][] _baseModules = [];
     private readonly BattleMap _map;
     private readonly Dictionary<RuntimeTerrain, int> _loadedTerrains = new(ReferenceEqualityComparer.Instance);
     private RuntimeMapBlock?[,] _blocks = new RuntimeMapBlock?[0, 0];
@@ -389,21 +389,19 @@ internal sealed class BattleMapGenerator
     /// </summary>
     private void CalculateModuleMap()
     {
-        _baseModules = new BattleBaseModule[_map.Width / 10, _map.Length / 10];
-        for (var x = 0; x < _baseModules.GetLength(0); x++)
-            for (var y = 0; y < _baseModules.GetLength(1); y++) _baseModules[x, y] = new(-1, -1);
+        _baseModules = BattleBaseModule.EmptyGrid(_map.Width, _map.Length);
         for (var x = 0; x != _map.Width; x++)
             for (var y = 0; y != _map.Length; y++)
                 for (var z = 0; z != _map.Height; z++)
                 {
                     if (_map.MapData(_map.TileIndex(new BattlePosition(x, y, z)), BattleTilePart.ObjectPart) is not { IsBaseModule: true }) continue;
                     // The reference indexes past its module grid there (undefined behaviour).
-                    if (x / 10 >= _baseModules.GetLength(0) || y / 10 >= _baseModules.GetLength(1))
+                    if (x / 10 >= _baseModules.Length || y / 10 >= _baseModules[x / 10].Length)
                         throw new MapGenerationException(
                             $"Base module tile {x}, {y}, {z} lies past the last whole block of the {_map.Width}x{_map.Length} base defense map.");
-                    var count = _baseModules[x / 10, y / 10].Remaining;
+                    var count = _baseModules[x / 10][y / 10].Total;
                     count += count > 0 ? 1 : 2;
-                    _baseModules[x / 10, y / 10] = new(count, count);
+                    _baseModules[x / 10][y / 10] = new(count, count);
                 }
     }
 
@@ -1517,7 +1515,20 @@ internal sealed record BattleBaseLayout(IReadOnlyList<BattleBaseFacility> Facili
 internal sealed record BattleBaseFacility(string Id, RuntimeFacilityRule Rule, int X, int Y, bool Built);
 
 /// <summary>SavedBattleGame::getModuleMap for one block: the base module tiles left and in all (-1 for a block without any).</summary>
-internal readonly record struct BattleBaseModule(int Remaining, int Total);
+internal readonly record struct BattleBaseModule(int Remaining, int Total)
+{
+    /// <summary>calculateModuleMap's grid before it counts: (-1, -1) for each whole 10x10 block, x outer and y inner.</summary>
+    public static BattleBaseModule[][] EmptyGrid(int width, int length)
+    {
+        var grid = new BattleBaseModule[width / 10][];
+        for (var x = 0; x < grid.Length; x++)
+        {
+            grid[x] = new BattleBaseModule[length / 10];
+            Array.Fill(grid[x], new BattleBaseModule(-1, -1));
+        }
+        return grid;
+    }
+}
 
 /// <summary>
 /// The generated map and what the unit deployment needs from the generation: whether and where the craft landed (block
@@ -1539,7 +1550,7 @@ internal sealed record BattleMapResult(BattleMap Map, bool CraftDeployed, int Cr
     public BattlePosition? BaseInventoryTile { get; init; }
 
     /// <summary>SavedBattleGame::calculateModuleMap's result for a base defense (empty otherwise).</summary>
-    public BattleBaseModule[,] BaseModules { get; init; } = new BattleBaseModule[0, 0];
+    public BattleBaseModule[][] BaseModules { get; init; } = [];
 }
 
 /// <summary>

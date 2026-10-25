@@ -18,10 +18,14 @@ internal sealed class BattleMap
     private int[] _ids = [];
     private int[] _sets = [];
     private byte[] _discovered = [];
+    private byte[] _smoke = [];
+    private byte[] _fire = [];
+    private byte[] _doorFrames = [];
+    private int[] _lastExplored = [];
     private int[] _units = [];
-    private string[,] _terrainNames = new string[0, 0];
-    private string[,] _blockNames = new string[0, 0];
-    private int[,] _reinforcements = new int[0, 0];
+    private string[][] _terrainNames = [];
+    private string[][] _blockNames = [];
+    private int[][] _reinforcements = [];
     private readonly List<BattleNode> _nodes = [];
 
     public BattleMap(int width, int length, int height, IEnumerable<BattleMapDataSet>? dataSets = null)
@@ -67,11 +71,15 @@ internal sealed class BattleMap
         Array.Fill(_ids, -1);
         Array.Fill(_sets, -1);
         _discovered = new byte[tiles];
+        _smoke = new byte[tiles];
+        _fire = new byte[tiles];
+        _doorFrames = new byte[tiles];
+        _lastExplored = new int[tiles * FactionCount];
         _units = new int[tiles];
         Array.Fill(_units, NoUnit);
-        _terrainNames = Fill(width / 10, length / 10, "");
-        _blockNames = Fill(width / 10, length / 10, "");
-        _reinforcements = new int[width / 10, length / 10];
+        _terrainNames = Grid(width / 10, length / 10, "");
+        _blockNames = Grid(width / 10, length / 10, "");
+        _reinforcements = Grid(width / 10, length / 10, 0);
     }
 
     public int AddDataSet(BattleMapDataSet dataSet)
@@ -134,10 +142,11 @@ internal sealed class BattleMap
     };
 
     /// <summary>
-    /// Tile::getTUCost: 0 for an empty part, an open UFO door (none is open on a new map) or a big wall of type 4 or more
-    /// in the object part; otherwise the part's cost.
+    /// Tile::getTUCost: 0 for an empty part, an open UFO door or a big wall of type 4 or more in the object part; otherwise
+    /// the part's cost.
     /// </summary>
     public int TimeUnitCost(int tile, BattleTilePart part, int movementType) => MapData(tile, part) is not { } data ? 0
+        : data.IsUfoDoor && HasDoorFrame(tile, part) ? 0
         : part == BattleTilePart.ObjectPart && data.BigWall >= 4 ? 0
         : MovementCost(data, movementType);
 
@@ -175,27 +184,97 @@ internal sealed class BattleMap
         }
     }
 
+    /// <summary>Discovered flags as the save holds them (Tile::loadBinary): each part set alone, without setDiscovered's walls.</summary>
+    public void RestoreDiscovered(int tile, BattleTilePart part, bool discovered) => _discovered[tile] = discovered
+        ? (byte)(_discovered[tile] | 1 << (int)part)
+        : (byte)(_discovered[tile] & ~(1 << (int)part));
+
+    /// <summary>Tile::getSmoke and getFire (Uint8).</summary>
+    public int Smoke(int tile) => _smoke[tile];
+    public int Fire(int tile) => _fire[tile];
+
+    public void SetSmoke(int tile, int smoke) => _smoke[tile] = checked((byte)smoke);
+    public void SetFire(int tile, int fire) => _fire[tile] = checked((byte)fire);
+
+    /// <summary>
+    /// Whether a wall's door frame is set (Tile's <c>currentFrame</c> of the part at 7, as loadBinary and the text load set
+    /// it): a UFO door with the frame is open (Tile::isUfoDoorOpen); on other walls the frame has no effect here.
+    /// </summary>
+    public bool HasDoorFrame(int tile, BattleTilePart part) =>
+        part is BattleTilePart.WestWall or BattleTilePart.NorthWall && (_doorFrames[tile] & 1 << (int)part) != 0;
+
+    public void SetDoorFrame(int tile, BattleTilePart part, bool open)
+    {
+        if (part is not (BattleTilePart.WestWall or BattleTilePart.NorthWall))
+            throw new ArgumentOutOfRangeException(nameof(part), "Only walls keep a door frame in the save.");
+        _doorFrames[tile] = open ? (byte)(_doorFrames[tile] | 1 << (int)part) : (byte)(_doorFrames[tile] & ~(1 << (int)part));
+    }
+
+    /// <summary>Tile::isUfoDoorOpen: the part is a UFO door and its frame is set.</summary>
+    public bool IsUfoDoorOpen(int tile, BattleTilePart part) => HasDoorFrame(tile, part) && MapData(tile, part) is { IsUfoDoor: true };
+
+    private const int FactionCount = 3;
+
+    /// <summary>Tile::getLastExplored: the turn the faction last explored the tile, 0 for never.</summary>
+    public int LastExplored(int tile, BattleFaction faction) => _lastExplored[tile * FactionCount + FactionIndex(faction)];
+
+    public void SetLastExplored(int tile, BattleFaction faction, int turn) => _lastExplored[tile * FactionCount + FactionIndex(faction)] = turn;
+
+    private static int FactionIndex(BattleFaction faction) => Enum.IsDefined(faction) ? (int)faction
+        : throw new ArgumentOutOfRangeException(nameof(faction));
+
+    /// <summary>
+    /// Tile::isVoid without the items: no part has map data and there is no smoke (fire, discovered flags and the
+    /// explored turns do not count). The battle adds the items on the tile.
+    /// </summary>
+    public bool HasNoPartsOrSmoke(int tile)
+    {
+        for (var part = 0; part < PartCount; part++)
+            if (_ids[tile * PartCount + part] >= 0) return false;
+        return _smoke[tile] == 0;
+    }
+
     /// <summary>SavedBattleGame::getFlattenedMapTerrainNames, per 10x10 block.</summary>
-    public string TerrainName(int blockX, int blockY) => _terrainNames[blockX, blockY];
+    public string TerrainName(int blockX, int blockY) => _terrainNames[blockX][blockY];
 
     /// <summary>SavedBattleGame::getFlattenedMapBlockNames, per 10x10 block.</summary>
-    public string BlockName(int blockX, int blockY) => _blockNames[blockX, blockY];
+    public string BlockName(int blockX, int blockY) => _blockNames[blockX][blockY];
 
     /// <summary>SavedBattleGame::getReinforcementsBlocks, per 10x10 block.</summary>
-    public int ReinforcementBlock(int blockX, int blockY) => _reinforcements[blockX, blockY];
+    public int ReinforcementBlock(int blockX, int blockY) => _reinforcements[blockX][blockY];
 
     public void SetBlockInfo(int blockX, int blockY, string terrain, string block, int reinforcements)
     {
-        _terrainNames[blockX, blockY] = terrain;
-        _blockNames[blockX, blockY] = block;
-        _reinforcements[blockX, blockY] = reinforcements;
+        _terrainNames[blockX][blockY] = terrain;
+        _blockNames[blockX][blockY] = block;
+        _reinforcements[blockX][blockY] = reinforcements;
     }
 
-    private static string[,] Fill(int width, int length, string value)
+    /// <summary>The three block grids whole, x outer and y inner (the save's form).</summary>
+    public IReadOnlyList<IReadOnlyList<string>> TerrainNames => _terrainNames;
+    public IReadOnlyList<IReadOnlyList<string>> BlockNames => _blockNames;
+    public IReadOnlyList<IReadOnlyList<int>> ReinforcementBlocks => _reinforcements;
+
+    /// <summary>
+    /// The block grids as a save holds them (SavedBattleGame::load's tryRead): their shape is the save's, which the load
+    /// does not check against the map; a reader past a row's end is the reference's undefined indexing.
+    /// </summary>
+    public void RestoreBlockGrids(IReadOnlyList<IReadOnlyList<string>> terrainNames, IReadOnlyList<IReadOnlyList<string>> blockNames,
+        IReadOnlyList<IReadOnlyList<int>> reinforcements)
     {
-        var result = new string[width, length];
+        _terrainNames = [.. terrainNames.Select(static row => row.ToArray())];
+        _blockNames = [.. blockNames.Select(static row => row.ToArray())];
+        _reinforcements = [.. reinforcements.Select(static row => row.ToArray())];
+    }
+
+    private static T[][] Grid<T>(int width, int length, T value)
+    {
+        var result = new T[width][];
         for (var x = 0; x < width; x++)
-            for (var y = 0; y < length; y++) result[x, y] = value;
+        {
+            result[x] = new T[length];
+            Array.Fill(result[x], value);
+        }
         return result;
     }
 }
