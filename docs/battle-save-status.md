@@ -14,7 +14,7 @@ Phase 7 branch 2 (`claude/battle-save`), from `main` at `3c91029a` (PR #78, bran
 | S3 units | Done (2026-10-25) |
 | S4 items | Done (2026-10-25) |
 | S5 campaign integration | Done (2026-10-25) |
-| S6 acceptance and branch audit | Acceptance done (2026-10-30); the S0–S5 audit fixes are done; the branch audit is next |
+| S6 acceptance and branch audit | Done (2026-10-30) |
 
 ## S0 — Planning (2026-10-25)
 
@@ -76,9 +76,12 @@ Reference: `SavedBattleGame::load` (the root keys), `save`, the constructor's de
   inline terrain) carries the ambience with `loadOffsetNode`'s rule: an index at or above BATTLE.CAT's shared sounds
   is offset into the declaring mod's range (`ResolvedResourceCatalog.SharedSoundCounts`, new, cached; the compiled
   cache's compiler revision is now 74). An `ambienceRandom` list drops its no-sound (-1) entries, a single value
-  keeps it; `ambientVolume` is now read as a double (`RuleTerrain::_ambientVolume`).
+  keeps it; the reference drops such an entry only when the validation level is lowered (`checkForSoftError`; at the
+  default it throws), an intentional difference recorded in ADR 0039. `ambientVolume` is now read as a double
+  (`RuleTerrain::_ambientVolume`).
 - ADR 0039 records the battle save's intentional differences; S1's are the seedless stream, a reversed or overflowing
-  delay range, the sound index's unchecked mod size limit, the skip warnings and the deployment's reader.
+  delay range, the sound index's unchecked mod size limit, the random ambience's dropped no-sound entries (added by
+  the final branch audit), the skip warnings and the deployment's reader.
 - The conformance reader starts in the tests (`BattleSaveConformance`): the root's reading rules, each citing its line
   of `SavedBattleGame.cpp`.
 
@@ -435,20 +438,52 @@ An independent audit of S6 found one Medium item (the reload comparisons ignored
 written text) and four Low ones (`CheckSave` on the public loaded rewrites, the slot-position helper's name and wording,
 the host replay's load options, stale class summaries), all fixed.
 
+## Branch audit (2026-10-30)
+
+An independent final audit of the whole branch (`git diff main...HEAD`, per `AGENTS.md`) found two Medium and three Low
+items; all are fixed or recorded.
+
+- The random ambience's no-sound entries (Medium): `Mod::loadSoundOffset` passes an `ambienceRandom` entry of -1 to
+  `checkForSoftError`, which throws at the default `oxceModValidationLevel` (`LOG_WARNING`) and drops the entry only at
+  a lowered level (the user's option only; a mod cannot lower it). The port has no validation-level option and already
+  drops such entries silently in its item, craft, armor, soldier and unit sound lists (the other `loadSoundOffset`
+  sites); the terrain loader follows that convention for lists, now
+  recorded in [ADR 0039](decisions/0039-battle-save-intentional-differences.md), and S1's bullet says so.
+  `ResourceDescriptorResolverTests` keeps pinning the drop, citing the ADR.
+- `SharedSoundCounts` through the compiled cache (Medium): `InstallationContentLoaderTests.SharedSoundCountsAndOffsetTerrainAmbienceSurviveCompiledCache`
+  loads an add-on's terrain against a two-sound `SAMPLE2.CAT`, fresh and from the cache, and compares the counts and the
+  terrain's offset ambience (a shared index kept, the others offset by 1000). Restoring the catalog without the counts
+  fails it.
+- The saves matrix (Low): the "Campaign body document" row no longer calls tactical nodes persistence-owned
+  (`battleGame` is owned), and the "Unknown/forward-compatible fields" row lists the TFTD battle saves too.
+- `OxceSaveAdapter.RequireMap` is private again (Low); nothing outside the adapter uses it.
+- An owned item in a recovery list (Low, recorded): ADR 0039's S4 entry now names its owner, branch 3 (the inventory).
+  The reference's generator sends only unowned items to the recovery lists, so only hand-made saves reach it.
+
+A second audit of these fixes found one Medium item (the implementation plan's next step still named branch 2; it now
+names branch 3) and four Low ones (only the user can lower the validation level; the convention holds for lists and
+covers soldier sounds; the ADR entry's wrap; "awaits merge" in the plans, as branch 1 had), all fixed. It also noted
+that the Phase 3 sound loaders drop a single value of -1, which the reference keeps; that is recorded in ADR 0039 and
+"## Next" with its owner, and the Phase 3 code is unchanged.
+
 ## Next
 
-Branch audit (`git diff main...HEAD` per `AGENTS.md`). Notes:
+Branch 2 is complete; the maintainer pushes and merges it. Notes for branch 3 (`claude/battle-session-ui`):
 
-- Named refusals left on the branch: `battle.save-before-first-turn` (Phase 7 branch 3), `OxceBattleSave.UnsupportedTagType`
-  (branch 8); both name their owner. The inherited "Crashed UFO battlescape transitions require tactical simulation" stays
-  branch 7's, and branch 1's other named refusals (such as the crashed UFO's power-source explosion, branch 5) keep theirs.
-- Open from S4 (recorded in ADR 0039): a fifth loaded special item of one unit is not reported (the restore has no
-  diagnostics sink), and an owned item of a recovery list keeps its owner without joining the unit's inventory.
-- The host shows the geoscape for a battle save (the battlescape screens and `LoadGameState`'s jump into the battle are
-  branch 3's). `docs/battle-generation-status.md` still names `battle.save-unsupported` in its history; it is branch 1's
-  record and is left as written.
-- After the audit: set S6's row to done, and mark branch 2 complete in `docs/phase-7-plan.md` (line 6) and
-  `docs/implementation-plan.md` ("Branch 2 (battle saves) is in progress").
+- Named refusals branch 3 owns: `battle.save-before-first-turn` (`CampaignBattles`; the briefing and `startFirstTurn`
+  retire it), and, from ADR 0039 (S4), an owned item of a recovery list, which keeps its owner without joining the
+  unit's inventory (join it or refuse it when the inventory lands). Also open from S4: a fifth loaded special item of
+  one unit is not reported (the restore has no diagnostics sink).
+- An older difference, recorded in ADR 0039 (the random ambience entry): the Phase 3 item, craft, armor, soldier and
+  unit sound loaders drop a single value of -1, which the reference keeps (`meleeSound: -1` is silence there, the
+  default sound in the port). The branch that first plays item, armor, soldier or unit sounds owns it.
+- Refusals left to later branches: `OxceBattleSave.UnsupportedTagType` (branch 8); the inherited "Crashed UFO
+  battlescape transitions require tactical simulation" (branch 7); branch 1's other named refusals keep their owners
+  (the crashed UFO's power-source explosion, branch 5). ADR 0039 names the readers branches 5–7 must guard (the saved
+  block grids, `moduleMap`).
+- The host still shows the geoscape for a battle save: the battlescape screens and `LoadGameState`'s jump into the
+  battle are branch 3's. `docs/battle-generation-status.md` still names `battle.save-unsupported` in its history; it is
+  branch 1's record and is left as written.
 - Gotchas carried over: write test files with LF (Python on Windows writes CRLF in text mode; use `newline='\n'` or
   the Edit tool); insert C# string literals with `\n` through the Edit tool or a script file written with the Write
   tool, not a Bash heredoc (a heredoc's Python sees `\\n` differently than expected, and some quote mixes fail to
@@ -465,3 +500,5 @@ Branch audit (`git diff main...HEAD` per `AGENTS.md`). Notes:
   argument, or `OxceSaveLoadOptions.BattleTerrainFiles`); a test that needs a savable battle sets the captured
   snapshot's `Battle.Turn` to 1 (`BattleCampaignSaveTests.AtFirstTurn`). In a C# `with` expression, `snapshot` on the
   right still names the old value: chain two assignments rather than `snapshot.WithCraft(...) with { Bases = [snapshot...] }`.
+  A test that needs BATTLE.CAT's shared sounds in an installation writes a small `SOUND/SAMPLE2.CAT` into the master
+  (`SharedSoundCountsAndOffsetTerrainAmbienceSurviveCompiledCache`).

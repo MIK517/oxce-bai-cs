@@ -43,7 +43,8 @@ internal sealed class TerrainRuleLoader : IdOnlyTypedRuleFamilyLoader<TerrainBui
         {
             builder.RandomAmbience = TerrainDeploymentYaml.Values(random!,
                 value => PresentationYaml.ReadIndexReference(value, reader.Source.ModId), "ambienceRandom");
-            // Mod::loadSoundOffset drops a list entry that is no sound (-1, a soft error); a single value stays.
+            // Mod::loadSoundOffset's soft error for a list entry of no sound (-1): the reference throws at the default
+            // validation level and drops it at a lowered one; the port drops it (ADR 0039). A single value stays.
             if (random is YamlSequenceNode) builder.RandomAmbience.RemoveAll(static sound => sound.Index == -1);
         }
         if (reader.TryGet("ambienceRandomDelay", out var delay))

@@ -29,6 +29,22 @@ minimum's tenths, clamped to the `int` range, then the reference's floor of 10.
 shared sounds is offset into the mod's range) but does not repeat the size check at link time, as it does not for the
 other offset sounds and sprites; such an index stays a number no sound set holds.
 
+**A no-sound entry in a terrain's random ambience (S1).** `Mod::loadSoundOffset` passes a list entry of -1 to
+`checkForSoftError` ("incorrect value in sound list", level `LOG_WARNING`), which throws a rule error at the default
+`oxceModValidationLevel` (`LOG_WARNING`) and drops the entry, with a logged warning, only when the user lowers that
+level (a mod cannot: `Mod::loadAll` removes the option from a mod's recommended and fixed user options). The port has
+no validation-level option and enforces none of the reference's soft errors; an `ambienceRandom` list drops its -1
+entries silently, as the port's item, craft, armor, soldier and unit sound lists (the other `loadSoundOffset` sites)
+already do for lists. So the port loads such content as the reference does at a lowered level and accepts mods the
+reference rejects by default. A single value of -1 is kept, as in the reference.
+
+Those other sites (`ItemRuleLoader.ApplyResources`, `EquipmentYaml.IndexList`, `PersonnelTacticalYaml.IndexList`,
+Phase 3) also drop a single value of -1, which the reference keeps as `[-1]` (`loadSoundOffset`'s scalar branch). That
+is a difference, not part of this convention, and not yet observable: for example `RuleItem::getMeleeSound` plays
+nothing for `meleeSound: -1`, where the port's empty list would give the default 39, and a mod's `-1` that clears an
+inherited sound would be lost. The branch that first plays item, armor, soldier or unit sounds owns it: keep the
+scalar -1 or record the difference.
+
 **The warnings for what the reference drops (S1).** An unknown `startingConditionType` or `enviroEffectsType` is none
 (the reference says nothing), and an unknown `baseItems` item or root tag is left out (the reference logs an error).
 The port reports each to the load's diagnostics (`OXCE-BATTLE-SAVE-SKIPPED`), an addition. Unlike the strategic tags,
@@ -138,7 +154,9 @@ item in an unknown inventory section to the ground silently, and logs a fifth sp
 item joins its owner's inventory in the load's list order in the reference (`items`, `recoverConditional`,
 `recoverGuaranteed`, `itemsSpecial`); the port's inventory is the battle's items the unit owns in a section, in ID
 order, which is the same for every save the reference writes (its lists are in ID order) but differs for a hand-made
-unsorted list, and an owned item of a recovery list keeps its owner without joining the unit's inventory.
+unsorted list, and an owned item of a recovery list keeps its owner without joining the unit's inventory. The
+reference's generator sends only unowned items to the recovery lists (`BattlescapeGenerator`), so only a hand-made save
+reaches this; branch 3 (the inventory) owns joining such an item to its owner's inventory or refusing it.
 
 **Items in block style (S4).** `position` and `ammoItemSlots` are flow style in the reference; the port writes block
 style, which reads the same.

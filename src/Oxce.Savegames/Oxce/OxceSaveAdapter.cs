@@ -1310,7 +1310,7 @@ public static partial class OxceSaveAdapter
         ? RequireMap(node!, key)
         : throw new InvalidDataException($"Missing required mapping '{key}'.");
 
-    internal static YamlMappingNode RequireMap(YamlNode node, string name) => node as YamlMappingNode ??
+    private static YamlMappingNode RequireMap(YamlNode node, string name) => node as YamlMappingNode ??
         throw new InvalidDataException($"OXCE save '{name}' must be a mapping.");
 
     private static string RequiredString(YamlMappingNode owner, string key) => owner.TryGet(key, out var node)

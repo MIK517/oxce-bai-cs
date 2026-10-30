@@ -74,7 +74,8 @@ public sealed class ResourceDescriptorResolverTests
     {
         // RuleTerrain::load: loadSoundOffset into BATTLE.CAT (loadOffsetNode). An index at or above the shared sounds is
         // offset into the add-on's range, declared in extraSounds (5) or not (3); a shared one and the -1 of no sound
-        // stay. A list drops its no-sound entries; a single value keeps it.
+        // stay. A list drops its no-sound entries (the reference's soft error at a lowered validation level, ADR 0039); a
+        // single value keeps it.
         using var fixture = ResourceModFixture.Create(
             "",
             """

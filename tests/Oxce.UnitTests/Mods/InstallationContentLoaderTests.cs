@@ -112,6 +112,39 @@ public sealed class InstallationContentLoaderTests
     }
 
     [Fact]
+    public void SharedSoundCountsAndOffsetTerrainAmbienceSurviveCompiledCache()
+    {
+        // RuntimeBattleRules offsets a terrain's ambience past BATTLE.CAT's shared sounds (here two, from SAMPLE2.CAT)
+        // into the declaring add-on's range; a cached installation must restore the count it offsets against.
+        using var installation = new TemporaryInstallation();
+        var cat = Path.Combine(installation.Root, "standard", "runtime-master", "SOUND", "SAMPLE2.CAT");
+        Directory.CreateDirectory(Path.GetDirectoryName(cat)!);
+        File.WriteAllBytes(cat, [16, 0, 0, 0, 1, 0, 0, 0, 17, 0, 0, 0, 1, 0, 0, 0, 0xAA, 0xBB]);
+        File.AppendAllText(Path.Combine(installation.Root, "standard", "runtime-addon", "Ruleset", "patch.rul"), """
+
+            terrains:
+              - name: AMBIENT
+                ambience: 3
+                ambienceRandom: [1, 2]
+            """);
+        var request = installation.Request(addOnId: "runtime-addon");
+        var first = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
+        var cached = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
+        Assert.True(first.IsSuccess, first.DescribeFailure());
+        Assert.True(cached.IsSuccess, cached.DescribeFailure());
+        Assert.Equal(CompiledContentCacheStatus.Hit, cached.CacheStatus);
+
+        Assert.Equal(2, first.Content!.Resources.SharedSoundCounts["BATTLE.CAT"]);
+        Assert.Equal(first.Content.Resources.SharedSoundCounts, cached.Content!.Resources.SharedSoundCounts);
+        foreach (var result in new[] { first, cached })
+        {
+            var terrain = result.Content!.RuntimeRules.Battle.Terrains["AMBIENT"];
+            Assert.Equal(1003, terrain.Ambience);
+            Assert.Equal([1, 1002], terrain.RandomAmbience);
+        }
+    }
+
+    [Fact]
     public void NamePoolsSurviveCacheAndContentChangesInvalidateIt()
     {
         using var installation = new TemporaryInstallation("strategic-logistics");
