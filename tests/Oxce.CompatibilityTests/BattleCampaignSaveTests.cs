@@ -13,7 +13,8 @@ namespace Oxce.CompatibilityTests;
 /// and <c>turn</c> (<c>src/Savegame/SavedGame.cpp</c> at 4df3a5e); <c>StartBattle</c> sets what
 /// <c>BattlescapeGenerator</c>'s setters and <c>deployXCOM</c> set on the campaign (the <c>inBattlescape</c> flags of
 /// <c>Craft</c>, <c>Ufo</c>, <c>MissionSite</c>, <c>AlienBase</c> and <c>Base</c>, the soldiers' battle armor with
-/// <c>transformedArmor</c> or <c>replacedArmor</c>); a battle before its first turn is not saved.
+/// <c>transformedArmor</c> or <c>replacedArmor</c>); a battle before its first turn is not saved. S6: every written battle
+/// save passes the conformance reader with its header, and malformed battles fail the campaign's load naming the problem.
 /// </summary>
 public sealed class BattleCampaignSaveTests
 {
@@ -69,11 +70,8 @@ public sealed class BattleCampaignSaveTests
         Assert.Equal(("STR_UFO_GROUND_ASSAULT", "", "1"), (header.ReadString("mission", "?"), header.ReadString("target", "?"),
             header.ReadString("turn", "?")));
         Assert.Equal(YamlScalarStyle.DoubleQuoted, Assert.IsType<YamlScalarNode>(header.Entries.Single(static entry => entry.ScalarKey == "craftOrBase").Value).Style);
-        // The body's battleGame is the battle save module's and passes the conformance reader.
-        var body = Document(text, 1);
-        Assert.True(body.TryGet("battleGame", out var battleNode));
-        BattleSaveConformance.Check((YamlMappingNode)battleNode!);
-        Assert.True(header.ReadInt32("turn", 0) >= 1);
+        // The body's battleGame is the battle save module's and, with the header, passes the conformance reader.
+        BattleSaveConformance.CheckSave(text);
 
         var loaded = Load(text, campaign);
         var restored = loaded.Campaign;
@@ -88,6 +86,7 @@ public sealed class BattleCampaignSaveTests
         Assert.Equal("UFO_SCOUT", LoadedBattle(restored).DeploymentId);
         // A loaded rewrite is stable from the second write on.
         var first = OxceSaveAdapter.EmitLoadedCampaign(restored.Capture(), loaded.Source);
+        BattleSaveConformance.CheckSave(first);
         var again = Load(first, campaign);
         Assert.Equal(first, OxceSaveAdapter.EmitLoadedCampaign(again.Campaign.Capture(), again.Source));
     }
@@ -163,6 +162,7 @@ public sealed class BattleCampaignSaveTests
         var (campaign, battle) = Started(deployment);
         var soldierId = Assert.Single(battle.Units, static unit => unit.Faction == BattleFaction.Player).SoldierId!.Value;
         var text = OxceSaveAdapter.EmitNewCampaign(AtFirstTurn(campaign));
+        BattleSaveConformance.CheckSave(text);
         var node = Mappings(Mappings(Document(text, 1), "bases")[0], "soldiers").Single(soldier => soldier.ReadInt32("id", 0) == soldierId);
         Assert.Equal(("SUIT", transformed ? "ARMOR" : "", transformed ? "" : "ARMOR"),
             (node.ReadString("armor", ""), node.ReadString("transformedArmor", ""), node.ReadString("replacedArmor", "")));
@@ -233,7 +233,9 @@ public sealed class BattleCampaignSaveTests
         var marked = text.Replace("\nbattleGame:\n", "\nbattleGame:\n  oxceUnknownBattleKey: 7\n", StringComparison.Ordinal);
         Assert.NotEqual(text, marked);
         var loaded = Load(marked, campaign);
-        var rewritten = Document(OxceSaveAdapter.EmitLoadedCampaign(loaded.Campaign.Capture(), loaded.Source), 1);
+        var rewrittenText = OxceSaveAdapter.EmitLoadedCampaign(loaded.Campaign.Capture(), loaded.Source);
+        BattleSaveConformance.CheckSave(rewrittenText);
+        var rewritten = Document(rewrittenText, 1);
         Assert.True(rewritten.TryGet("battleGame", out var battle));
         Assert.Equal(7, ((YamlMappingNode)battle!).ReadInt32("oxceUnknownBattleKey", 0));
     }
@@ -259,6 +261,60 @@ public sealed class BattleCampaignSaveTests
             Assert.Equal("Battle save 'battleGame' is not a mapping.", Assert.Throws<InvalidDataException>(() =>
                 Load(text.TrimEnd('\n') + "\nbattleGame: " + value + "\n", campaign)).Message);
     }
+
+    /// <summary>
+    /// S6 acceptance: a malformed battle fails the campaign's load with an error naming what is wrong, where the reference
+    /// throws reading the key (<c>readVal</c>, <c>tryRead</c>), asserts or dereferences a missing file or soldier
+    /// (<c>SavedBattleGame::load</c>, <c>loadMapResources</c>; ADR 0039).
+    /// </summary>
+    [Fact]
+    public void MalformedBattleSavesFailTheCampaignsLoadNamingTheProblem()
+    {
+        var (campaign, _) = Started();
+        var text = OxceSaveAdapter.EmitNewCampaign(AtFirstTurn(campaign));
+        Assert.NotNull(Load(text, campaign).Campaign.Capture().Battle);
+        foreach (var (change, expected) in new (Func<YamlMappingNode, YamlMappingNode>, string)[]
+        {
+            (static battle => Without(battle, "selectedUnit"), "Battle save 'selectedUnit' is missing or not an integer."),
+            (static battle => With(battle, "width", "wide"), "Battle save 'width' cannot be read: Could not deserialize YAML value to Int32. (battle.sav at line "),
+            (static battle => With(battle, "totalTiles", "999999"), "Battle save 'binTiles' ends inside a tile at byte "),
+            (static battle => With(battle, "mapdatasets", "[NO_SUCH_DATA_SET]"),
+                "Battle save 'mapdatasets' names map data set 'NO_SUCH_DATA_SET', which cannot be loaded: Terrain file TERRAIN/NO_SUCH_DATA_SET.MCD is missing."),
+            (static battle => WithFirstUnit(battle, static unit => With(unit, "faction", "7")), "Battle save unit 'faction' 7 is no faction (0 player, 1 hostile, 2 neutral)."),
+            (static battle => WithFirstUnit(battle, static unit => With(unit, "id", "424242")),
+                "Battle save unit 424242 is soldier 424242, which the campaign does not have."),
+            (static battle => WithFirstUnit(battle, static unit => With(unit, "tu", "many")),
+                "Battle save 'tu' cannot be read: Could not deserialize YAML value to Int32. (battle.sav at line "),
+        })
+        {
+            var broken = WithBattle(text, change);
+            var message = Assert.Throws<InvalidDataException>(() => Load(broken, campaign)).Message;
+            Assert.StartsWith(expected, message, StringComparison.Ordinal);
+        }
+    }
+
+    private static string WithBattle(string text, Func<YamlMappingNode, YamlMappingNode> change)
+    {
+        var documents = YamlCompatibilityReader.Parse(text, "battle.sav").Documents;
+        var body = (YamlMappingNode)documents[1].Root;
+        var changed = Replace(body, "battleGame", change((YamlMappingNode)body.Entries.Single(static entry => entry.ScalarKey == "battleGame").Value));
+        return YamlCompatibilityWriter.Emit(new YamlDocumentSet("battle.sav", [documents[0], new YamlDocument(changed, changed.Span)]));
+    }
+
+    private static YamlMappingNode WithFirstUnit(YamlMappingNode battle, Func<YamlMappingNode, YamlMappingNode> change)
+    {
+        var units = (YamlSequenceNode)battle.Entries.Single(static entry => entry.ScalarKey == "units").Value;
+        return Replace(battle, "units", new YamlSequenceNode(units.Span, [change((YamlMappingNode)units.Items[0]), .. units.Items.Skip(1)]));
+    }
+
+    private static YamlMappingNode With(YamlMappingNode map, string key, string value) =>
+        Replace(map, key, YamlCompatibilityReader.Parse(value, "value.yaml").Documents[0].Root);
+
+    private static YamlMappingNode Without(YamlMappingNode map, string key) =>
+        new(map.Span, map.Entries.Where(entry => entry.ScalarKey != key), map.Tag, map.Anchor);
+
+    private static YamlMappingNode Replace(YamlMappingNode map, string key, YamlNode value) =>
+        new(map.Span, map.Entries.Select(entry => entry.ScalarKey == key ? entry with { Value = value } : entry), map.Tag, map.Anchor);
 
     [Fact]
     public void AShadowCopyRestoresTheBattle()

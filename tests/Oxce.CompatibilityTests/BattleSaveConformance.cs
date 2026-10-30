@@ -8,8 +8,8 @@ namespace Oxce.CompatibilityTests;
 /// The conformance reader (Phase 7 plan, branch 2 decisions): applies the reading rules of the reference's
 /// <c>SavedBattleGame::load</c> (<c>src/Savegame/SavedBattleGame.cpp</c> at 4df3a5e) to a written <c>battleGame</c>, so a
 /// battle the port writes is one the reference loads. It stands in for a reference engine binary and checks the
-/// reference's rules, not the port's reader. S1 covers the battle root, S2 the map, S3 the units and S4 the items; S5 adds
-/// the campaign's turn rule.
+/// reference's rules, not the port's reader. S1 covers the battle root, S2 the map, S3 the units and S4 the items; S6 adds
+/// the header a campaign's battle save carries (<see cref="CheckSave"/>).
 /// </summary>
 internal static class BattleSaveConformance
 {
@@ -41,6 +41,35 @@ internal static class BattleSaveConformance
         "missionType", "strTarget", "strCraftOrBase", "alienCustomDeploy", "alienCustomMission", "lastUsedMapScript",
         "reinforcementsDeployment", "reinforcementsRace", "music", "startingConditionType", "enviroEffectsType",
     ];
+
+    /// <summary>
+    /// Fails the test when a save the campaign writes (<paramref name="text"/>, the header and body documents) breaks a
+    /// reading rule of the reference for a battle save, and returns its <c>battleGame</c>. <c>SavedGame::save</c> (lines
+    /// 767-772) writes the header's <c>mission</c>, <c>target</c>, <c>craftOrBase</c> and <c>turn</c> from the battle;
+    /// <c>SavedGame::getSaveInfo</c> (lines 353-356) reads <c>turn</c> and then <c>mission</c> with
+    /// <c>readVal</c>, which throws without a value. <c>SavedGame::load</c> (line 694) loads <c>battleGame</c> when present,
+    /// and <c>LoadGameState</c> goes straight to the battlescape, so a saved battle is past its first turn
+    /// (<c>startFirstTurn</c> sets turn 1; the plan's "No save before the first turn").
+    /// </summary>
+    public static YamlMappingNode CheckSave(string text, string name = "battle.sav")
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        var documents = YamlCompatibilityReader.Parse(text, name, new YamlReadOptions { MaxBytes = 32 * 1024 * 1024, MaxNodes = 2_000_000 }).Documents;
+        Assert.Equal(2, documents.Count);
+        var header = Assert.IsType<YamlMappingNode>(documents[0].Root);
+        var body = Assert.IsType<YamlMappingNode>(documents[1].Root);
+        Assert.True(body.TryGet("battleGame", out var node) && node is YamlMappingNode, "A battle save holds a battleGame mapping.");
+        var battle = (YamlMappingNode)node!;
+        Check(battle);
+        Assert.True(header.TryGet("turn", out var turn) && IsInteger(turn!), "The header's turn must be an integer.");
+        Assert.True(Int(header, "turn") >= 1, "A battle is saved from its first turn on.");
+        Assert.Equal(Int(battle, "turn"), Int(header, "turn"));
+        foreach (var key in new[] { "mission", "target", "craftOrBase" })
+            Assert.True(header.TryGet(key, out var value) && value is YamlScalarNode, $"The header's {key} must be a string.");
+        Assert.Equal((battle.ReadString("missionType", ""), battle.ReadString("strTarget", ""), battle.ReadString("strCraftOrBase", "")),
+            (header.ReadString("mission", ""), header.ReadString("target", ""), header.ReadString("craftOrBase", "")));
+        return battle;
+    }
 
     /// <summary>Fails the test when <paramref name="battle"/> breaks a reading rule of the reference.</summary>
     public static void Check(YamlMappingNode battle)

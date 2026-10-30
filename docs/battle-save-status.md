@@ -14,7 +14,7 @@ Phase 7 branch 2 (`claude/battle-save`), from `main` at `3c91029a` (PR #78, bran
 | S3 units | Done (2026-10-25) |
 | S4 items | Done (2026-10-25) |
 | S5 campaign integration | Done (2026-10-25) |
-| S6 acceptance and branch audit | Not started; the S0–S5 audit fixes are done (2026-10-30) |
+| S6 acceptance and branch audit | Acceptance done (2026-10-30); the S0–S5 audit fixes are done; the branch audit is next |
 
 ## S0 — Planning (2026-10-25)
 
@@ -394,31 +394,61 @@ the empty battle conforms and reads back), `BattleSaveUnitTests.TheAiModuleWrite
 A second audit of these fixes found three Low items (the dummy reread, the removed node keys, the duplicate ID's class),
 fixed above.
 
+## S6 — Acceptance (2026-10-30)
+
+Reference: `SavedGame::save` (the header's battle lines, lines 767-772), `getSaveInfo` (lines 353-356: `turn`, then
+`mission` with `readVal`), `load` (line 694); `BattleItem::save` (`inventoryX` and `inventoryY` only in an `INV_SLOT`
+slot, lines 153-160); the readers the S1–S5 conformance rules cite.
+
+- The plan's acceptance holds:
+  - The private active-battle saves load, validate and rewrite with semantic equality and a byte-stable second rewrite,
+    through the module and through the campaign's load and save (`PrivateBattleSaveTests`, S1–S5).
+  - Branch 1's nine acceptance battles (the Rosigma terror landing, five staged landings, three base defenses) are
+    written by the battle save module through the campaign's loaded rewrite at turn 1, pass the conformance reader and
+    reload with the same saved state (as the load sets it), the same derived deployment and the same overview for every
+    viewer, with `Revision` 0 on both sides (`PrivateBattleGenerationTests.AssertReloads`; the snapshots are compared
+    for equivalence and, since equivalence ignores collection order, as the module's written text). The comparison
+    found one piece of state the reference does not save: the inventory position (`SlotX`, `SlotY`) of an item outside
+    a grid slot, such as a hand item's layout position, which `BattleItem::save` writes only in a grid slot; the plan's
+    "State the reference does not save" table now lists it.
+  - Every written battle passes the conformance reader; malformed battle saves fail with an actionable error, now also
+    through the campaign's load (`BattleCampaignSaveTests.MalformedBattleSavesFailTheCampaignsLoadNamingTheProblem`).
+  - Saving a battle after its first turn works; the S5 retirements stand.
+- The conformance reader's campaign rule moved into `BattleSaveConformance.CheckSave(text)`: a save's header carries an
+  integer `turn` of 1 or more equal to the battle's, and `mission`, `target` and `craftOrBase` equal to the battle's
+  `missionType`, `strTarget` and `strCraftOrBase`; the body holds a conforming `battleGame` mapping.
+  `BattleCampaignSaveTests` and `PrivateBattleSaveTests` use it instead of their own turn checks.
+- The SDL host's save and load (`CampaignSdlCommand.Save` and `Load`): `Oxce.App` has no test project, so
+  `PrivateBattleSaveTests` replays the host's calls on every corpus battle (`CaptureForSave`,
+  `RewriteLoadedCampaignAtomic` over the loaded source with a globe view, `LoadFile` with the host's options: the
+  default YAML limits, a diagnostics sink and the terrain files): the written save conforms and reloads the same battle,
+  compared as a snapshot and as written text. The host's `WriteNewCampaignAtomic` branch is not replayed: a new
+  campaign reaches no savable battle before branch 3.
+
+Tests: `PrivateBattleGenerationTests` (each acceptance battle's reload, above), `PrivateBattleSaveTests` (the header
+through `CheckSave`; the host's save and load), `BattleCampaignSaveTests` (`CheckSave` on every written battle save
+past its first turn, loaded rewrites included; seven malformed battles through the
+campaign's load: a missing `selectedUnit`, an unreadable `width` and unit `tu`, a `totalTiles` past `binTiles`, a data
+set without its MCD file, a unit faction outside 0-2, a soldier unit the campaign lacks).
+
+An independent audit of S6 found one Medium item (the reload comparisons ignored collection order; now also compared as
+written text) and four Low ones (`CheckSave` on the public loaded rewrites, the slot-position helper's name and wording,
+the host replay's load options, stale class summaries), all fixed.
+
 ## Next
 
-S6 — acceptance and branch audit ([plan](phase-7-plan.md#branch-2--battle-saves)). Notes:
+Branch audit (`git diff main...HEAD` per `AGENTS.md`). Notes:
 
-- Acceptance per the plan: the private active-battle saves load, validate and rewrite with semantic equality and a
-  byte-stable second rewrite (`PrivateBattleSaveTests`, now also through the campaign's load and save); branch 1's
-  acceptance battles (`PrivateBattleGenerationTests`), written by the save module, reload with the same saved and derived
-  state and the same viewer overviews (not yet checked: compare `Overview(viewer)` before and after a module round trip at
-  turn 1, with `Revision` set to 0 on both sides since a restore counts its own changes; no seedless draw is compared,
-  per the plan's "State the reference does not save" table); every written battle passes the conformance reader;
-  malformed battle saves fail with an actionable error.
-- The conformance reader's "for saves the campaign writes, turn 1 or later" rule is asserted by the tests that write through
-  the campaign (`BattleCampaignSaveTests`, `PrivateBattleSaveTests`); S6 may move it into `BattleSaveConformance` with a
-  header parameter.
-- Branch audit: `git diff main...HEAD` per `AGENTS.md`. Named refusals left on the branch: `battle.save-before-first-turn`
-  (Phase 7 branch 3), `OxceBattleSave.UnsupportedTagType` (branch 8); both name their owner. The inherited "Crashed UFO
-  battlescape transitions require tactical simulation" stays branch 7's.
-- Open from S4: a fifth loaded special item of one unit is not reported (the restore has no diagnostics sink), and an
-  owned item of a recovery list keeps its owner without joining the unit's inventory (ADR 0039).
-- Open from S5: the SDL host passes its terrain files to the load and saves through `CaptureForSave` and the adapter,
-  but that path (`CampaignSdlCommand.Save` and `Load`) has no test of its own; S6 adds one or records why the adapter
-  tests cover it. The host shows the geoscape for a battle save (the battlescape screens and `LoadGameState`'s jump into
-  the battle are branch 3's). Named refusals inherited from branch 1 (such as the crashed UFO's power-source explosion,
-  branch 5) keep their owners. `docs/battle-generation-status.md` still names
-  `battle.save-unsupported` in its history; it is branch 1's record and is left as written.
+- Named refusals left on the branch: `battle.save-before-first-turn` (Phase 7 branch 3), `OxceBattleSave.UnsupportedTagType`
+  (branch 8); both name their owner. The inherited "Crashed UFO battlescape transitions require tactical simulation" stays
+  branch 7's, and branch 1's other named refusals (such as the crashed UFO's power-source explosion, branch 5) keep theirs.
+- Open from S4 (recorded in ADR 0039): a fifth loaded special item of one unit is not reported (the restore has no
+  diagnostics sink), and an owned item of a recovery list keeps its owner without joining the unit's inventory.
+- The host shows the geoscape for a battle save (the battlescape screens and `LoadGameState`'s jump into the battle are
+  branch 3's). `docs/battle-generation-status.md` still names `battle.save-unsupported` in its history; it is branch 1's
+  record and is left as written.
+- After the audit: set S6's row to done, and mark branch 2 complete in `docs/phase-7-plan.md` (line 6) and
+  `docs/implementation-plan.md` ("Branch 2 (battle saves) is in progress").
 - Gotchas carried over: write test files with LF (Python on Windows writes CRLF in text mode; use `newline='\n'` or
   the Edit tool); insert C# string literals with `\n` through the Edit tool or a script file written with the Write
   tool, not a Bash heredoc (a heredoc's Python sees `\\n` differently than expected, and some quote mixes fail to

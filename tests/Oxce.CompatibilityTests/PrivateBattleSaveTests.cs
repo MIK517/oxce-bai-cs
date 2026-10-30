@@ -15,7 +15,9 @@ namespace Oxce.CompatibilityTests;
 /// Phase 7 branch 2 acceptance on the private active-battle saves (vanilla UFO, TFTD and Rosigma <c>battlescape/</c>):
 /// each <c>battleGame</c> loads into <see cref="BattleState"/> and rewrites over its source with semantic equality, a
 /// second rewrite is byte-stable, and every written battle passes the conformance reader. S1 covers the battle root, S2
-/// the map (its data sets loaded with the installation's terrain files), S3 the units and S4 the items.
+/// the map (its data sets loaded with the installation's terrain files), S3 the units and S4 the items; S5 loads and
+/// rewrites each save through the campaign; S6 checks the written save with its header
+/// (<see cref="BattleSaveConformance.CheckSave"/>) and replays the SDL host's save and load.
 /// </summary>
 public sealed class PrivateBattleSaveTests
 {
@@ -72,10 +74,30 @@ public sealed class PrivateBattleSaveTests
         Assert.Null(loaded.Campaign.QuerySaveRefusal());
         var captured = loaded.Campaign.Capture();
         Assert.Equal(Emit(OxceBattleSave.Write(battle.Capture(), source)), Emit(OxceBattleSave.Write(captured.Battle!, source)));
-        var rewritten = YamlCompatibilityReader.Parse(OxceSaveAdapter.EmitLoadedCampaign(captured, loaded.Source), name, ReadOptions);
-        Assert.Equal(battle.Turn, ((YamlMappingNode)rewritten.Documents[0].Root).ReadInt32("turn", 0));
-        Assert.True(((YamlMappingNode)rewritten.Documents[1].Root).TryGet("battleGame", out var campaignBattle));
-        BattleSaveConformance.Check((YamlMappingNode)campaignBattle!);
+        var rewritten = OxceSaveAdapter.EmitLoadedCampaign(captured, loaded.Source);
+        Assert.Equal(battle.Turn, BattleSaveConformance.CheckSave(rewritten, name).ReadInt32("turn", 0));
+        // The SDL host's save and load (CampaignSdlCommand.Save and Load; Oxce.App has no test project): CaptureForSave,
+        // the atomic rewrite over the loaded source with the globe view, and LoadFile with the terrain files; the battle
+        // comes back as saved.
+        var hostFile = Path.Combine(Directory.CreateTempSubdirectory("oxce-private-battle-host-").FullName, name);
+        try
+        {
+            var forSave = loaded.Campaign.CaptureForSave(out var refusal);
+            Assert.True(forSave is not null, refusal);
+            OxceSaveAdapter.RewriteLoadedCampaignAtomic(hostFile, forSave!, loaded.Source,
+                new OxceSaveWriteOptions { GlobeView = new(0.5, -0.25, 2) });
+            BattleSaveConformance.CheckSave(File.ReadAllText(hostFile), name);
+            // The host's load options: the default YAML limits and a diagnostics sink.
+            var hostDiagnostics = new DiagnosticCollector();
+            var hosted = OxceSaveAdapter.LoadFile(hostFile, content, new SplitMix64RandomSource(0),
+                new OxceSaveLoadOptions(options.MasterId, options.ActiveMods, Diagnostics: hostDiagnostics) { BattleTerrainFiles = options.BattleTerrainFiles });
+            Assert.All(hostDiagnostics.Snapshot(), static item => Assert.Equal(OxceBattleSave.UnitStatusCode, item.Code));
+            var hostedBattle = hosted.Campaign.Capture().Battle!;
+            Assert.Equivalent(captured.Battle, hostedBattle, strict: true);
+            // Equivalence ignores collection order; the module's writes compare it.
+            Assert.Equal(Emit(OxceBattleSave.Write(captured.Battle!)), Emit(OxceBattleSave.Write(hostedBattle)));
+        }
+        finally { Directory.Delete(Path.GetDirectoryName(hostFile)!, recursive: true); }
         var written = OxceBattleSave.Write(battle.Capture(), source);
         BattleSaveConformance.Check(written);
         Assert.Equal(Normalized(WithoutUnitQuirks(source)), Normalized(written));

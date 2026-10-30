@@ -136,6 +136,7 @@ header's `mission`, `target`, `craftOrBase` and `turn`), `LoadGameState` (a batt
   | controllers, hostile and neutral spotting | not kept | `oxcePortBattle` (ADR 0038, D6) |
   | `BattleOverview.Revision` | no equivalent; the port's change counter for viewers | not saved; a restore counts its own `AddUnit` and `AddItem` calls (the special weapons included), so the value differs from the generated battle's; reload comparisons of overviews set it to 0 |
   | the seedless stream (`BattleState.Seedless`) | `RNG::seedless` is process state, never saved | not saved; a restored battle starts it from a fixed seed, so seedless draws after a reload (ambience delays, a new unit's rank and look) differ from a run without one, as in the reference between two runs; reload comparisons cover no seedless draw |
+  | an item's `SlotX` and `SlotY` outside a grid slot | `BattleItem::save` writes `inventoryX` and `inventoryY` only in an `INV_SLOT` slot ("for hands and ground it can be `0` for both"); a load leaves the constructor's 0 | the same; a generated hand item keeps its layout position until a reload, and reload comparisons set it to 0 (S6) |
 
   A later branch that needs dropped state derives it or adds it to `oxcePortBattle` with an ADR line.
 - **No save before the first turn.** The reference can save only after the briefing (`strTarget`, `strCraftOrBase`)

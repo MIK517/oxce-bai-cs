@@ -1761,7 +1761,7 @@ Prefer these over local copies (see AGENTS.md, *Test conventions*).
 ### [tests/Oxce.CompatibilityTests/BattleSaveConformance.cs](../tests/Oxce.CompatibilityTests/BattleSaveConformance.cs)
 
 - `BattleSaveConformance` (class) - The conformance reader (Phase 7 plan, branch 2 decisions): applies the reading rules of the reference's `SavedBattleGame::load` (`src/Sav...
-- members: `Check`
+- members: `CheckSave`, `Check`
 
 ### [tests/Oxce.CompatibilityTests/BattleTestTerrain.cs](../tests/Oxce.CompatibilityTests/BattleTestTerrain.cs)
 
