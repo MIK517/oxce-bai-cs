@@ -275,6 +275,23 @@ public sealed class BattleSaveUnitTests
     }
 
     [Fact]
+    public void TheAiModuleWritesTheIdsOfItsNodes()
+    {
+        // AIModule::load reads fromNode and toNode as indexes; AIModule::save writes the nodes' getID(). A dummy node's
+        // saved ID is not its index (Node() sets 0).
+        var battle = Restore("nodes:\n  - {id: 0, position: [1, 1, 0]}\n  - {id: 0, position: [1, 1, 0], dummy: true}\n  - {id: 2, position: [1, 1, 0]}\n" +
+            "units:\n  - " + Alien + ", AI: {fromNode: 1, toNode: 2}}\n");
+        Assert.Equal((1, 2), (Unit(battle, 1000000).Ai!.FromNode, Unit(battle, 1000000).Ai!.ToNode));
+        var written = (YamlMappingNode)Value(WrittenUnit(battle), "AI");
+        Assert.Equal(("0", "2"), (Text(written, "fromNode"), Text(written, "toNode")));
+        // As in the reference, the reread resolves the dummy's ID 0 to node 0, a real node; from there the rewrite is stable.
+        var reread = BattleState.Restore(OxceBattleSave.Read(OxceBattleSave.Write(battle.Capture()), Content), Content, Terrain(), campaign: Campaign);
+        Assert.Equal((0, 2), (Unit(reread, 1000000).Ai!.FromNode, Unit(reread, 1000000).Ai!.ToNode));
+        var rewritten = (YamlMappingNode)Value(WrittenUnit(reread), "AI");
+        Assert.Equal(("0", "2"), (Text(rewritten, "fromNode"), Text(rewritten, "toNode")));
+    }
+
+    [Fact]
     public void AnAiTargetFactionIsWrittenOnlyForAHostileUnitTurnedNeutral()
     {
         var battle = Restore("units:\n  - " + Alien.Replace("faction: 1", "faction: 2, originalFaction: 1") + ", AI: {targetFaction: 1}}\n  - " +

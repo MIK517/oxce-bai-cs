@@ -22,7 +22,7 @@ Phase 7 owns:
   morale, reactions, melee, psi, special abilities, environmental conditions, turns, AI;
 - mission outcome, abort, recovery and debriefing, and their campaign effects (mission statistics, diary battle
   entries, battle research and cutscenes, commendations, final-mission victory);
-- active-battle saves (the `battleGame` node, preserved opaquely today) and every tactical script hook and binding;
+- active-battle saves (the `battleGame` node, typed state since branch 2) and every tactical script hook and binding;
 - the named restrictions Phase 6 handed over ([below](#inherited-refusals));
 - the session layer and screen stack that the battlescape UI needs
   ([ADR 0037](decisions/0037-host-authoritative-session.md), audit step 4).
@@ -129,11 +129,13 @@ header's `mission`, `target`, `craftOrBase` and `turn`), `LoadGameState` (a batt
   | `DeploymentId` | not saved; `BriefingState`, `BattlescapeState`, `AbortMissionState` and `DebriefingState` derive the deployment from `missionType`, `alienCustomDeploy` or `alienCustomMission`, and the UFO in battle | derived on load the same way |
   | `NextItemId` | rebuilt as the highest item ID plus one (`load`) | derived on load; the generator's gaps (IDs of discarded items) are not kept |
   | `TerrainId` | not saved; only the generator reads the terrain, the battle keeps `flattenedMapTerrainNames` | dropped |
-  | `BattleNode.Segment` | `segment` is commented out in `Node::load` and `save`; only the generator reads it | dropped, 0 after a reload |
+  | `BattleNode.Segment` | `segment` is commented out in `Node::load` and `save`; only the generator reads it | dropped, 0 after a reload (a loaded `segment` key survives on its node like any key no reader reads) |
   | `BattleUnit.StartNodeId` | `AIModule::setStartNode` sets the AI module's `_fromNode`, which `AIModule::save` writes as `fromNode` | saved as the AI's `fromNode` (S3) |
   | `StorageSpace`, `CraftInventoryTile` | not saved; read by the generator and `startFirstTurn` only | dropped; no save is written before the first turn (below) |
   | `ReturnedToBase`, `TakenFromBase` | applied to the base by the generator | dropped once `StartBattle` applies them |
   | controllers, hostile and neutral spotting | not kept | `oxcePortBattle` (ADR 0038, D6) |
+  | `BattleOverview.Revision` | no equivalent; the port's change counter for viewers | not saved; a restore counts its own `AddUnit` and `AddItem` calls (the special weapons included), so the value differs from the generated battle's; reload comparisons of overviews set it to 0 |
+  | the seedless stream (`BattleState.Seedless`) | `RNG::seedless` is process state, never saved | not saved; a restored battle starts it from a fixed seed, so seedless draws after a reload (ambience delays, a new unit's rank and look) differ from a run without one, as in the reference between two runs; reload comparisons cover no seedless draw |
 
   A later branch that needs dropped state derives it or adds it to `oxcePortBattle` with an ADR line.
 - **No save before the first turn.** The reference can save only after the briefing (`strTarget`, `strCraftOrBase`)

@@ -14,7 +14,7 @@ Phase 7 branch 2 (`claude/battle-save`), from `main` at `3c91029a` (PR #78, bran
 | S3 units | Done (2026-10-25) |
 | S4 items | Done (2026-10-25) |
 | S5 campaign integration | Done (2026-10-25) |
-| S6 acceptance and branch audit | Not started |
+| S6 acceptance and branch audit | Not started; the S0–S5 audit fixes are done (2026-10-30) |
 
 ## S0 — Planning (2026-10-25)
 
@@ -361,6 +361,39 @@ the soldier's). The private corpus tests now load the battle saves with the inst
 the header), `PrivateCampaignSaveTests`, `PrivateStrategicLogisticsTests` and `PrivateStrategicWorldTests` (the battle saves
 now hold for their battle, `battle.in-progress`, instead of the retired preservation stop) and `PrivateBattleGenerationTests`.
 
+## Branch audit fixes (2026-10-30)
+
+An independent audit of S0–S5 (`git diff main...HEAD`) found two Medium and five Low items; all are fixed.
+
+- Nodes keep unknown keys (Medium): `OxceBattleSave.WriteNodes` writes each node over the source node of its index (nodes
+  have no unique ID; dummies share 0), as the plan and the saves matrix said. A loaded `segment` key, which no reader
+  reads, now survives on its node like any such key; `BattleNode.Segment` stays 0 after a reload. A battle the port
+  created carries none.
+- Port state the plan did not classify (Medium): the plan's "State the reference does not save" table now lists
+  `BattleOverview.Revision` (not saved; a restore counts its own `AddUnit` and `AddItem` calls, so reload comparisons of
+  overviews set it to 0) and the seedless stream (not saved, like `RNG::seedless`; a restore starts it from a fixed seed,
+  and reload comparisons cover no seedless draw).
+- The AI module's `fromNode` and `toNode` are written as the nodes' IDs (`AIModule::save`'s `getID()`), not their
+  indexes; they differ only for a dummy node (`BattleState.NodeId`). As in the reference, an AI at a dummy then rereads as
+  at node 0, a real node (the generator never points an AI at a dummy: spawn and patrol selection skip them); the
+  rewrite is stable from there.
+- `mapdatasets` and `nodes` are left out when empty, as the reference's callback writer (`Yaml.h`) does; a missing key
+  reads as empty.
+- Refusal inventory: the four restore-only item checks of `BattleStateItems` (the duplicate ID reworded to "Battle item
+  ID {item.Id} is saved twice." so that it no longer shares `Validate`'s text), all wrapped as "Battle save is corrupted: …",
+  are input errors and "Battle unit {Id} has no AI module." is an invariant (`OVERRIDES` in
+  `tools/generate-refusal-inventory.py`).
+- `BattleState.NewItem` is removed (it skipped `ConstructItem`); its one test uses `ConstructItem` and `TakeItemId`.
+- Stale lines: the plan's scope no longer calls `battleGame` opaque, and the gameplay matrix's "Tactical map generation"
+  row records branch 1.
+
+Tests: `BattleSaveMapTests.NodesKeepTheirSavedFields` (a `segment` and an unknown key kept on their nodes, a saved
+`allocated: false` and `dummy: false` removed, none on a
+battle the port created), `TheMapIsWrittenWithTheReferencesKeyInItsOrder` (no `mapdatasets` or `nodes` without any, and
+the empty battle conforms and reads back), `BattleSaveUnitTests.TheAiModuleWritesTheIdsOfItsNodes` (a dummy's ID written, reread as node 0, rewritten the same).
+A second audit of these fixes found three Low items (the dummy reread, the removed node keys, the duplicate ID's class),
+fixed above.
+
 ## Next
 
 S6 — acceptance and branch audit ([plan](phase-7-plan.md#branch-2--battle-saves)). Notes:
@@ -369,7 +402,9 @@ S6 — acceptance and branch audit ([plan](phase-7-plan.md#branch-2--battle-save
   byte-stable second rewrite (`PrivateBattleSaveTests`, now also through the campaign's load and save); branch 1's
   acceptance battles (`PrivateBattleGenerationTests`), written by the save module, reload with the same saved and derived
   state and the same viewer overviews (not yet checked: compare `Overview(viewer)` before and after a module round trip at
-  turn 1); every written battle passes the conformance reader; malformed battle saves fail with an actionable error.
+  turn 1, with `Revision` set to 0 on both sides since a restore counts its own changes; no seedless draw is compared,
+  per the plan's "State the reference does not save" table); every written battle passes the conformance reader;
+  malformed battle saves fail with an actionable error.
 - The conformance reader's "for saves the campaign writes, turn 1 or later" rule is asserted by the tests that write through
   the campaign (`BattleCampaignSaveTests`, `PrivateBattleSaveTests`); S6 may move it into `BattleSaveConformance` with a
   header parameter.

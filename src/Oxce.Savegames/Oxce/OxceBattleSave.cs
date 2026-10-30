@@ -184,7 +184,8 @@ public static partial class OxceBattleSave
             Pair("bughuntMode", Boolean(snapshot.BughuntMode)),
             Pair("selectedUnit", Integer(snapshot.SelectedUnitId)),
             Pair("undoUnit", Integer(snapshot.UndoUnitId)),
-            Pair("mapdatasets", Sequence(snapshot.MapDataSets.Select(static name => (YamlNode)Scalar(name)))),
+            // writer.write(key, vector, callback) writes no key for an empty vector (Yaml.h), as for the nodes below.
+            Pair("mapdatasets", snapshot.MapDataSets.Count != 0 ? Sequence(snapshot.MapDataSets.Select(static name => (YamlNode)Scalar(name))) : null),
             // The field sizes of Tile::serializationKey, each a one-character string (static_cast<char>, quoted and escaped).
             Pair("tileIndexSize", Size(TileKey.Index)),
             Pair("tileTotalBytesPer", Integer(TileKey.TotalBytes)),
@@ -200,7 +201,7 @@ public static partial class OxceBattleSave
             Pair("binTiles", Scalar(Convert.ToBase64String(BinaryTiles(snapshot.Tiles)))),
             // The old text tiles are read, never written (the reference's text writer is compiled out).
             Pair("tiles", null),
-            Pair("nodes", Sequence(snapshot.Nodes.Select(static node => (YamlNode)WriteNode(node)))),
+            Pair("nodes", snapshot.Nodes.Count != 0 ? WriteNodes(snapshot.Nodes, source) : null),
             Pair("moduleMap", snapshot.MissionType == BattleSnapshot.BaseDefenseMission
                 ? Grid(snapshot.ModuleMap, static module => Sequence([Integer(module.Total), Integer(module.Remaining)])) : null),
             // writer.write("units", _units, ...): no key without units.
@@ -388,8 +389,18 @@ public static partial class OxceBattleSave
             Bool(map, "dummy", false));
     }
 
+    /// <summary>
+    /// The nodes, each over the source node of its index (a node has no unique ID: dummies share 0), so keys no reader
+    /// reads survive a loaded rewrite. A source node that is no mapping gives none.
+    /// </summary>
+    private static YamlSequenceNode WriteNodes(IReadOnlyList<BattleNodeSnapshot> nodes, YamlMappingNode? source)
+    {
+        IReadOnlyList<YamlNode> sources = source is null ? [] : Children(source, "nodes");
+        return Sequence(nodes.Select((node, index) => (YamlNode)WriteNode(node, index < sources.Count ? sources[index] as YamlMappingNode : null)));
+    }
+
     /// <summary>Node::save: <c>allocated</c> and <c>dummy</c> only when set.</summary>
-    private static YamlMappingNode WriteNode(BattleNodeSnapshot node) => Overlay(null,
+    private static YamlMappingNode WriteNode(BattleNodeSnapshot node, YamlMappingNode? source) => Overlay(source,
     [
         Pair("id", Integer(node.Id)),
         Pair("position", Sequence([Integer(node.Position.X), Integer(node.Position.Y), Integer(node.Position.Z)])),

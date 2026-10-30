@@ -223,12 +223,9 @@ internal sealed partial class BattleState
     public int NextItemId { get; private set; }
 
     /// <summary>
-    /// <c>new BattleItem(rule, getCurrentItemId())</c>: an item with the next ID, which is taken whether or not the item
-    /// is kept (an item that fits nowhere is deleted but its ID stays used).
+    /// getCurrentItemId's post-increment: the next item ID, taken whether or not the item is kept (an item that fits
+    /// nowhere is deleted but its ID stays used).
     /// </summary>
-    internal BattleItem NewItem(string itemType) => new(TakeItemId(), itemType);
-
-    /// <summary>getCurrentItemId's post-increment: the next item ID, taken.</summary>
     internal int TakeItemId() => NextItemId++;
 
     /// <summary>Adds a created item to the battle's items (SavedBattleGame::getItems push_back).</summary>

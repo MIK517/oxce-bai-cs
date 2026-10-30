@@ -369,7 +369,7 @@ public sealed class BattleSaveItemTests
         Assert.DoesNotContain("itemsSpecial", Keys(Written(empty)));
         Assert.Equal(1, Restore("items:\n  - {id: -5, type: CLIP}\n").NextItemId);
         // A repeated ID, in one list or across them, is a corrupted save.
-        Assert.Contains("Battle item 2 is listed twice", Failure(() => Restore("items:\n  - {id: 2, type: CLIP}\nrecoverGuaranteed:\n  - {id: 2, type: CLIP}\n")),
+        Assert.Contains("Battle item ID 2 is saved twice", Failure(() => Restore("items:\n  - {id: 2, type: CLIP}\nrecoverGuaranteed:\n  - {id: 2, type: CLIP}\n")),
             StringComparison.Ordinal);
     }
 

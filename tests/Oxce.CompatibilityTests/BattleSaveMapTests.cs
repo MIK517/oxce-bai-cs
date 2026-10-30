@@ -126,7 +126,11 @@ public sealed class BattleSaveMapTests
     [Fact]
     public void TheMapIsWrittenWithTheReferencesKeyInItsOrder()
     {
-        var written = OxceBattleSave.Write(new BattleSnapshot(1, 1, 1, "M"));
+        var written = OxceBattleSave.Write(new BattleSnapshot(1, 1, 1, "M")
+        {
+            MapDataSets = ["TESTSET"],
+            Nodes = [new BattleNodeSnapshot(0, default, 0, 0, 0, 0, 0, false, Array.AsReadOnly(Array.Empty<int>()), false)],
+        });
         var text = Emit(written);
         // Tile::serializationKey: 4-byte index, 2-byte IDs and set IDs, 1-byte smoke, fire and bool fields, 2-byte explored turns.
         foreach (var (key, size) in new[] { ("tileIndexSize", 4), ("tileFireSize", 1), ("tileSmokeSize", 1), ("tileIDSize", 2), ("tileSetIDSize", 2),
@@ -146,6 +150,13 @@ public sealed class BattleSaveMapTests
         BattleSaveConformance.Check(written);
         // An empty buffer reads back as no tiles.
         Assert.Empty(OxceBattleSave.Read(Parse(text), SharedContent.Value).Tiles);
+        // writer.write(key, vector, callback) writes no key for an empty vector (Yaml.h); a missing key reads as empty.
+        var empty = OxceBattleSave.Write(new BattleSnapshot(1, 1, 1, "M"));
+        Assert.DoesNotContain(empty.Entries, static entry => entry.ScalarKey is "mapdatasets" or "nodes");
+        BattleSaveConformance.Check(empty);
+        var reread = OxceBattleSave.Read(empty, SharedContent.Value);
+        Assert.Empty(reread.MapDataSets);
+        Assert.Empty(reread.Nodes);
     }
 
     [Fact]
@@ -424,7 +435,7 @@ public sealed class BattleSaveMapTests
         };
         var battle = Restore(snapshot);
         // Tile::isVoid: no part, no smoke and no item on the ground; fire, discovered flags and explored turns do not count.
-        battle.AddItemOnTile(battle.NewItem("GUN"), new BattlePosition(4, 0, 0));
+        battle.AddItemOnTile(BattleState.ConstructItem(SharedContent.Value.RuntimeRules, battle.TakeItemId(), "GUN"), new BattlePosition(4, 0, 0));
         Assert.Equal([0, 2, 4], battle.Capture().Tiles.Select(static tile => tile.Index));
     }
 
@@ -435,7 +446,7 @@ public sealed class BattleSaveMapTests
             nodes:
               - {id: 0, position: [1, 0, 0], segment: 7, type: 2, rank: 3, flags: 4, reserved: 5, priority: 6, allocated: true, links: [2, -2, -1]}
               - {id: 0, position: [0, 0, 0], type: 0, rank: 0, flags: 0, reserved: 0, priority: 0, links: [], dummy: true}
-              - {id: 2, position: [1, 1, 0]}
+              - {id: 2, position: [1, 1, 0], futureKey: x, allocated: false, dummy: false}
             """;
         var source = Parse(Root() + nodes + "\n");
         var snapshot = OxceBattleSave.Read(source, SharedContent.Value);
@@ -450,12 +461,20 @@ public sealed class BattleSaveMapTests
         var node = battle.Map.Nodes[0];
         Assert.Equal((0, new BattlePosition(1, 0, 0), 0, true), (node.Id, node.Position, node.Segment, node.Allocated));
         Assert.True(battle.Map.Nodes[1].IsDummy);
-        // Node::save: allocated and dummy only when set; the segment is neither read nor written.
+        // Node::save: allocated and dummy only when set. The segment is not read (BattleNode.Segment is 0), so like any key
+        // no reader reads it survives on its node, matched by index; the new keys follow the source's, and a saved
+        // allocated: false or dummy: false is removed.
         var written = (YamlSequenceNode)OxceBattleSave.Write(battle.Capture(), source).Entries.Single(static entry => entry.ScalarKey == "nodes").Value;
         var maps = written.Items.Cast<YamlMappingNode>().ToArray();
-        Assert.Equal(["id", "position", "type", "rank", "flags", "reserved", "priority", "allocated", "links"], maps[0].Entries.Select(static entry => entry.ScalarKey));
+        Assert.Equal(["id", "position", "segment", "type", "rank", "flags", "reserved", "priority", "allocated", "links"],
+            maps[0].Entries.Select(static entry => entry.ScalarKey));
+        Assert.Equal("7", Assert.IsType<YamlScalarNode>(maps[0].Entries[2].Value).Value);
         Assert.Equal("dummy", maps[1].Entries[^1].ScalarKey);
-        Assert.Equal(["id", "position", "type", "rank", "flags", "reserved", "priority", "links"], maps[2].Entries.Select(static entry => entry.ScalarKey));
+        Assert.Equal(["id", "position", "futureKey", "type", "rank", "flags", "reserved", "priority", "links"],
+            maps[2].Entries.Select(static entry => entry.ScalarKey));
+        // A battle the port created carries none.
+        var fresh = (YamlSequenceNode)OxceBattleSave.Write(battle.Capture()).Entries.Single(static entry => entry.ScalarKey == "nodes").Value;
+        Assert.DoesNotContain(fresh.Items.Cast<YamlMappingNode>().SelectMany(static map => map.Entries), static entry => entry.ScalarKey is "segment" or "futureKey");
     }
 
     [Fact]

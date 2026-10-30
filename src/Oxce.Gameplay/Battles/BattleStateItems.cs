@@ -180,7 +180,7 @@ internal sealed partial class BattleState
                     if (!Contains(position)) throw new InvalidOperationException($"Battle item {item.Id} lies at {position}, outside the map.");
                     item.Tile = position;
                 }
-                if (!index.TryAdd(item.Id, item)) throw new InvalidOperationException($"Battle item {item.Id} is listed twice.");
+                if (!index.TryAdd(item.Id, item)) throw new InvalidOperationException($"Battle item ID {item.Id} is saved twice.");
                 highest = Math.Max(highest, item.Id);
                 target.Add(item);
             }

@@ -255,8 +255,10 @@ internal sealed partial class BattleState
             Part(value.Melee, percent.Melee, multiplier), Part(value.Mana, percent.Mana, multiplier));
     }
 
+    private int NodeId(int index) => index >= 0 && index < Map.Nodes.Count ? Map.Nodes[index].Id : -1;
+
     /// <summary>BattleUnit::save's values for one unit; a soldier's type is <c>SOLDIER</c>.</summary>
-    private static BattleUnitSnapshot CaptureUnit(BattleUnit unit) => new(unit.Id,
+    private BattleUnitSnapshot CaptureUnit(BattleUnit unit) => new(unit.Id,
         unit.SoldierId is null ? unit.UnitType : BattleUnitSnapshot.SoldierType, unit.ArmorId, unit.Faction)
     {
         OriginalFaction = unit.OriginalFaction,
@@ -330,7 +332,9 @@ internal sealed partial class BattleState
         AllowAutoCombat = unit.AllowAutoCombat,
         Aggression = unit.Aggression,
         HasPanickedLastTurn = unit.HasPanickedLastTurn,
-        Ai = unit.Ai is { } ai ? new BattleAiSnapshot(ai.FromNode, ai.ToNode, ai.Mode, Array.AsReadOnly(ai.WasHitBy.ToArray()), ai.WeaponPickedUp)
+        // AIModule::save writes the nodes' getID(), which AIModule::load reads back as an index (they differ only for a
+        // dummy node, whose Node() ID is 0, so an AI at a dummy rereads as at node 0, as in the reference).
+        Ai = unit.Ai is { } ai ? new BattleAiSnapshot(NodeId(ai.FromNode), NodeId(ai.ToNode), ai.Mode, Array.AsReadOnly(ai.WasHitBy.ToArray()), ai.WeaponPickedUp)
         {
             TargetFaction = ai.TargetFaction,
         } : null,
