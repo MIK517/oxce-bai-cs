@@ -39,11 +39,10 @@ already do for lists. So the port loads such content as the reference does at a 
 reference rejects by default. A single value of -1 is kept, as in the reference.
 
 Those other sites (`ItemRuleLoader.ApplyResources`, `EquipmentYaml.IndexList`, `PersonnelTacticalYaml.IndexList`,
-Phase 3) also drop a single value of -1, which the reference keeps as `[-1]` (`loadSoundOffset`'s scalar branch). That
-is a difference, not part of this convention, and not yet observable: for example `RuleItem::getMeleeSound` plays
-nothing for `meleeSound: -1`, where the port's empty list would give the default 39, and a mod's `-1` that clears an
-inherited sound would be lost. The branch that first plays item, armor, soldier or unit sounds owns it: keep the
-scalar -1 or record the difference.
+Phase 3) also dropped a single value of -1 until branch 2 closed; they now keep it as `[-1]`, as `loadSoundOffset`'s
+scalar branch does (`RuleItem::getMeleeSound` plays nothing for `meleeSound: -1`, where an empty list gives the default
+39), and so does armor's `customArmorPreviewIndex` (`loadSpriteOffset`, the same rule). Craft `skinSprites`, which
+`RuleCraft::load` reads through `getOffset` and not `loadSpriteOffset`, now keeps its -1 entries as the reference does.
 
 **The warnings for what the reference drops (S1).** An unknown `startingConditionType` or `enviroEffectsType` is none
 (the reference says nothing), and an unknown `baseItems` item or root tag is left out (the reference logs an error).

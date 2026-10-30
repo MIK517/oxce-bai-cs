@@ -13,6 +13,42 @@ namespace Oxce.UnitTests.Mods;
 
 public sealed class PersonnelTacticalRuleCatalogTests
 {
+    [Fact]
+    public void KeepsASingleNoSoundOrPreviewAndDropsNoSoundListEntries()
+    {
+        // Mod::loadSoundOffset and loadSpriteOffset (vector): a scalar -1 stays as the one entry (Mod::NO_SOUND,
+        // Mod::NO_SURFACE); a list entry of -1 is the soft error's dropped entry.
+        const string yaml = """
+            armors:
+              - type: ARMOR
+                deathMale: -1
+                deathFemale: [-1, 5]
+                customArmorPreviewIndex: -1
+            soldiers:
+              - type: SOLDIER
+                panicMale: -1
+                panicFemale: [2, -1]
+            units:
+              - type: UNIT
+                deathSound: -1
+                panicSound: [-1]
+            """;
+        using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
+
+        var content = PersonnelTacticalRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root), new DiagnosticCollector());
+
+        var armor = Assert.Single(content.Armors.Rules).Value;
+        Assert.Equal([-1], armor.ResourceIndexLists["deathMale"].Select(value => value.Index));
+        Assert.Equal([5], armor.ResourceIndexLists["deathFemale"].Select(value => value.Index));
+        Assert.Equal([-1], armor.ResourceIndexLists["customArmorPreviewIndex"].Select(value => value.Index));
+        var soldier = Assert.Single(content.Soldiers.Rules).Value;
+        Assert.Equal([-1], soldier.Sounds["panicMale"].Select(value => value.Index));
+        Assert.Equal([2], soldier.Sounds["panicFemale"].Select(value => value.Index));
+        var unit = Assert.Single(content.Units.Rules).Value;
+        Assert.Equal([-1], unit.Sounds["deathSound"].Select(value => value.Index));
+        Assert.Empty(unit.Sounds["panicSound"]);
+    }
+
     [Theory]
     [InlineData("liveAlien", "STR_NULL")]
     [InlineData("liveAlien", "MISSING_ITEM")]

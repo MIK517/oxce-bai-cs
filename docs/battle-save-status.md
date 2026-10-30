@@ -464,7 +464,19 @@ A second audit of these fixes found one Medium item (the implementation plan's n
 names branch 3) and four Low ones (only the user can lower the validation level; the convention holds for lists and
 covers soldier sounds; the ADR entry's wrap; "awaits merge" in the plans, as branch 1 had), all fixed. It also noted
 that the Phase 3 sound loaders drop a single value of -1, which the reference keeps; that is recorded in ADR 0039 and
-"## Next" with its owner, and the Phase 3 code is unchanged.
+"## Next" with its owner, and the Phase 3 code was left unchanged (fixed in the next section).
+
+## The no-sound value in rule sound lists (2026-10-30)
+
+Fixed after the branch audit, at the maintainer's request, instead of leaving it to a later branch. The Phase 3 item,
+craft, armor, soldier and unit loaders dropped a single value of -1 from a sound list; `Mod::loadSoundOffset` keeps it
+as `[Mod::NO_SOUND]` and drops -1 only from a list (the soft error at a lowered validation level). They now keep it, and
+so does armor's `customArmorPreviewIndex` (`loadSpriteOffset`, the same rule). The shared helper also dropped -1 from
+craft `skinSprites`, which the reference reads through `getOffset` and keeps whole; that list now keeps every entry.
+The compiled content cache revision is 77, since the cached rules change. ADR 0039's entry is updated. Tests:
+`ItemRuleCatalogTests.KeepsASingleNoSoundAndDropsNoSoundListEntries`,
+`EquipmentProductionRuleCatalogTests.KeepsASingleNoSoundAndEverySkinSprite` and
+`PersonnelTacticalRuleCatalogTests.KeepsASingleNoSoundOrPreviewAndDropsNoSoundListEntries`.
 
 ## Next
 
@@ -474,9 +486,9 @@ Branch 2 is complete; the maintainer pushes and merges it. Notes for branch 3 (`
   retire it), and, from ADR 0039 (S4), an owned item of a recovery list, which keeps its owner without joining the
   unit's inventory (join it or refuse it when the inventory lands). Also open from S4: a fifth loaded special item of
   one unit is not reported (the restore has no diagnostics sink).
-- An older difference, recorded in ADR 0039 (the random ambience entry): the Phase 3 item, craft, armor, soldier and
-  unit sound loaders drop a single value of -1, which the reference keeps (`meleeSound: -1` is silence there, the
-  default sound in the port). The branch that first plays item, armor, soldier or unit sounds owns it.
+- The item, craft, armor, soldier and unit sound lists keep a single -1 (no sound), so a branch that plays them must
+  treat a -1 entry as silence (`RuleItem::getMeleeSound` and its siblings), not as an index, and an empty list as the
+  default sound.
 - Refusals left to later branches: `OxceBattleSave.UnsupportedTagType` (branch 8); the inherited "Crashed UFO
   battlescape transitions require tactical simulation" (branch 7); branch 1's other named refusals keep their owners
   (the crashed UFO's power-source explosion, branch 5). ADR 0039 names the readers branches 5–7 must guard (the saved

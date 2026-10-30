@@ -63,13 +63,14 @@ internal static class PersonnelTacticalYaml
         return YamlValueReader.ReadSequence(node, YamlValueReader.ReadInt32).ToList();
     }
 
-    public static List<RuleIndexReference> IndexList(YamlNode node, string modId)
-    {
-        var values = node is YamlSequenceNode sequence
-            ? sequence.Items.Select(value => PresentationYaml.ReadIndexReference(value, modId))
-            : [PresentationYaml.ReadIndexReference(node, modId)];
-        return values.Where(value => value.Index != -1).ToList();
-    }
+    /// <summary>
+    /// Mod::loadSoundOffset and loadSpriteOffset (vector): a list drops its -1 entries (the soft error at a lowered
+    /// validation level), while a single value of -1 stays as the one entry (Mod::NO_SOUND, Mod::NO_SURFACE).
+    /// </summary>
+    public static List<RuleIndexReference> IndexList(YamlNode node, string modId) => node is YamlSequenceNode sequence
+        ? sequence.Items.Select(value => PresentationYaml.ReadIndexReference(value, modId))
+            .Where(value => value.Index != -1).ToList()
+        : [PresentationYaml.ReadIndexReference(node, modId)];
 
     public static void ApplyCost(RulePropertyReader reader, ItemUseValuesBuilder<int?> cost)
     {
