@@ -483,4 +483,19 @@ public sealed class BattleInventoryTests
         Started(campaign);
         Assert.Equal("battle.inventory-unavailable", Refusal(campaign, new UseInventoryFeature(1, Gun, InventoryFeature.Throw)));
     }
+
+    [Fact]
+    public void AModsExtendedInventorySlotSortingMakesTheLastFallbackFollowTheListOrder()
+    {
+        // The belt is full; the back pack and the left hand are free. Alphabetical order reaches the back pack first, list order the left hand.
+        var (plain, _, first) = Open();
+        Moved(plain, new MoveInventoryItem(first.Id, Grenade, "STR_GROUND", 0, 0));
+        Assert.Equal("STR_BACK_PACK", Moved(plain, new AutoPlaceInventoryItem(first.Id, Grenade, Smart: false)).ToSlot);
+
+        var rules = CostRules + "\nextendedInventorySlotSorting: true\n";
+        var (campaign, battle, soldier) = Open(rules);
+        Assert.True(battle.Rules!.Campaign.ExtendedInventorySlotSorting);
+        Moved(campaign, new MoveInventoryItem(soldier.Id, Grenade, "STR_GROUND", 0, 0));
+        Assert.Equal("STR_LEFT_HAND", Moved(campaign, new AutoPlaceInventoryItem(soldier.Id, Grenade, Smart: false)).ToSlot);
+    }
 }
