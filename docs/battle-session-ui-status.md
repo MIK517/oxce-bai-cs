@@ -15,7 +15,8 @@ Phase 7 branch 3 (`claude/battle-session-ui`), from `main` after PR #79 (branch 
 | S3 briefing and the first turn | Done, audit pending (2026-10-31) |
 | S4 inventory | Done, audit pending (2026-10-31) |
 | S5 battlescape queries and view model | Done, audit pending (2026-10-31) |
-| S6 battlescape screens | Not started |
+| S6 battlescape screens | Done, audit pending (2026-10-31) |
+| S6b geoscape and logistics migration onto `ScreenNavigator` | Not started (S2's undelivered scope, moved here from S6) |
 | S7 acceptance and branch audit | Not started |
 
 ## S0 — Planning (2026-10-31)
@@ -278,9 +279,46 @@ Gaps with an owner:
 - `updateSoldierInfo`'s list of stunned allies with negative health regeneration, the `VISIBLE_MAX` cap and the burning option (`oxceShowBurningAsWounded`) are the screen's over `QueryUnitInfo`. Fire is reported on every discovered floor (the reference draws it with smoke).
 - The camera's pixel offset, scrolling, the cursor and `Map` drawing are the screens' (S6); the view model keeps only the map-side state.
 
+## S6 — Battlescape screens (2026-10-31)
+
+Reference: `BriefingState`, `InventoryState`, `BattlescapeState` (soldier, level, center and inventory buttons, `updateSoldierInfo`), `Game::_states`
+(the stack, `State::init` after a pop).
+
+- **`ScreenNavigator`**: a pop (and an exit request) now tells the screen it reveals (`IRevealedScreen.Revealed`, the reference's `init`/`resetAll`); a `Replace` does not.
+- **`BattleUiContext`** (`Oxce.Engine/Battlescape`): command target, the queries for one viewer, font, language, the stack and this client's `BattleViewModel`;
+  `Open()` pushes the screen of the battle's phase (briefing, pre-battle inventory, or the battlescape directly for a loaded battle). The host loop still sets
+  `Controllers = new BattleUnitControllers(battleQuery)` where it creates the session.
+- **Screens** (all `IIndexedLoopClient`, 640x400, keyboard and pointer, no decisions): `BattleBriefingScreen` (sends `BeginBriefing`, Enter is `ConfirmBriefing`, then replaces itself with
+  the inventory), `BattleInventoryScreen` (pre-battle or in battle: item and section cursors, Enter drops at the first cell `CheckInventoryMove` accepts, `G` is the Ctrl click, Tab walks soldiers
+  through `NextInventoryUnit`, feature keys send `UseInventoryFeature`; closing before the first turn sends `StartFirstTurn` and replaces itself with the battlescape),
+  `BattlescapeClient` (flat plan of the level the viewer may see with units, items, smoke, fire; unit bars and hands; Tab/next, `K` skip, `Shift-K` by distance, `R` reselect, `C` center, PgUp/PgDn or `[`/`]` level,
+  arrows scroll the camera center, `I` inventory over the map, click selects a unit). A refusal of the rules shows its code on the screen. Screens re-read the queries on `Tick` (`Poll`), so another client's command shows.
+- **Later buttons** refuse by owner (`BattlescapeClient.LaterButtons`, shown as `code (owner)`, no command sent): kneel and walking (branch 4), fire and reserve TU (5), end turn (6), abort (7), minimap (8 or Phase 8).
+  They are client messages, not rule refusals; the rules refuse the same actions when the commands arrive in their branches.
+- **Missing sprite**: a terrain object without a sprite (`BattleUiContext.Sprites`, none supplied yet) is a placeholder and one `BattleUiContext.Diagnostics` entry per data set and index.
+
+Tests: `BattleScreensTests` (the briefing-to-battlescape flow on one stack; a loaded battle opens directly, no battle opens nothing; the briefing refusal stays; inventory drop, Ctrl click, feature refusals, soldier walk;
+selection, skip, undo, level, panel; a click selects a unit and a tile click is refused by walking's owner; later buttons; the inventory over the map and the reveal; a change made elsewhere on tick), `ScreenNavigatorRevealTests`.
+
+Names and opening: `BattleUiContext.Open(targetName, craftOrBaseName)` passes the briefing's already localized lines to `BeginBriefing` (the rules keep the first ones sent, so a client that has them
+must pass them on the first open; empty is what a client without them gets). The battlescape, when it opens, selects the first selectable unit if none is selected and centers the camera on it (`BattlescapeState::init`, `NextTurnState::close`'s `btnCenterClick`);
+closing the pre-battle inventory replaces it straight with the battlescape. The briefing closes with Enter or Esc and shows the operation-name line when the briefing says so.
+
+Not done (owner in brackets):
+
+- **Geoscape/logistics migration**: S6b (see the plan).
+- **`NextTurnState` itself**: the end-of-battle check and the turn-1 autosave of `NextTurnState::close` (S7, with the save acceptance); the centering is done.
+- Real map drawing: isometric terrain sprites, pixel scrolling, the cursor, fog shade [Phase 8 presentation]; the plan view is a placeholder. The briefing's cutscene, music and background are listed, not played.
+- Inventory drag and drop, paperdoll and item sprites; the keyboard drop picks the first accepted cell.
+- The SDL application does not open these screens yet (the host loop that creates the session and calls `BattleUiContext.Open`) [S7].
+- Buttons refused by owner as client messages (`BattlescapeClient.LaterButtons` plus the `*Code` constants): kneel, walk, unit up and down, fire, both hand items, psi, special, skills, launch, reserve TU and kneel, zero TUs, end turn, abort, stats, options, minimap, Esc deselect, Ctrl-B, the digit keys (visible units), right and middle mouse buttons. The rules refuse the same actions in their branches.
+- Default keys differ from the reference's (it centers with Home, which also works; Ctrl-C toggles all layers as there; skip and undo use `K` and `R`, the level keys `[` `]`).
+- Navigator: two pops in a row reveal the middle screen once before it goes (harmless today). A map wider than 224 or longer than 200 tiles overflows the plan view.
+- Untested: the arrow scroll keys.
+
 ## Next
 
-S6 — Battlescape screens (see the plan's slice table). From S5: the screens read `BattleViewModel` (`Oxce.Engine/Battlescape`) and `IBattleViewQuery`; the host loop that creates a session sets `Controllers = new BattleUnitControllers(battleQuery)`, and a screen's soldier buttons are `Next`, `Skip`, `ReselectSkipped`, the level buttons `LevelUp` and `LevelDown`, the center button `CenterOnSelection`. Buttons of later branches refuse by their owner's name. From S4:
+S6b — geoscape popups, naming, selecting and placing modes, logistics client and shared widgets onto `ScreenNavigator`, with the client cover from `Covers` (the plan's S6b row); then S7 — acceptance and branch audit (it also takes the `NextTurnState` turn-1 autosave and end-of-battle check, and wiring `BattleUiContext.Open` into the SDL host loop). From S6: the screens are in `Oxce.Engine/Battlescape`; `BattleUiContext.Open()` is the entry. From S5: the screens read `BattleViewModel` (`Oxce.Engine/Battlescape`) and `IBattleViewQuery`; the host loop that creates a session sets `Controllers = new BattleUnitControllers(battleQuery)`, and a screen's soldier buttons are `Next`, `Skip`, `ReselectSkipped`, the level buttons `LevelUp` and `LevelDown`, the center button `CenterOnSelection`. Buttons of later branches refuse by their owner's name. From S4:
 
 - The inventory is a command set on stable IDs (`MoveInventoryItem`, `AutoPlaceInventoryItem`, both `IUnitCommand`) with
   `IBattleInventoryQuery`; the host loop that creates a

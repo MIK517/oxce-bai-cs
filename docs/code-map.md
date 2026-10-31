@@ -14,7 +14,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Benchmarks](#oxcebenchmarks) | 19 | Engine, Formats, Mods, Rendering, Resources, Savegames |
 | [Oxce.App](#oxceapp) | 3 | Engine, Extensions, Formats, Mods, Platform.Sdl, Rendering, Savegames |
 | [Oxce.Core](#oxcecore) | 8 | - |
-| [Oxce.Engine](#oxceengine) | 31 | Core, Gameplay, Rendering, Resources |
+| [Oxce.Engine](#oxceengine) | 36 | Core, Gameplay, Rendering, Resources |
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
@@ -25,9 +25,9 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 8 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 335 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 336 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
-| [Oxce.UnitTests](#oxceunittests) | 111 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
+| [Oxce.UnitTests](#oxceunittests) | 112 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
 | [Oxce.FixtureTool](#oxcefixturetool) | 1 | FixtureSupport, Formats, Mods, Savegames |
 | [Oxce.ResourceBrowser](#oxceresourcebrowser) | 2 | Formats, Mods, Platform.Sdl, Rendering, Resources |
@@ -106,7 +106,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Engine
 
-`src/Oxce.Engine` - 31 files.
+`src/Oxce.Engine` - 36 files.
 
 ### `Oxce.Engine`
 
@@ -117,6 +117,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `IIndexedLoopClient` (interface) [IIndexedLoopClient.cs](../src/Oxce.Engine/IIndexedLoopClient.cs) - Platform-neutral indexed-frame client driven by a window host.
 - `PresentationRevisionGate` (class) [PresentationRevisionGate.cs](../src/Oxce.Engine/PresentationRevisionGate.cs) - Tracks the last frame revision accepted by a presenter so unchanged simulation ticks do not repeat conversion and upload work.
 - `ScreenNavigator` (class) [ScreenNavigator.cs](../src/Oxce.Engine/ScreenNavigator.cs) - The reference's state stack (`Game::_states`): screens are pushed above one another, only the top one thinks and receives input, and a sc...
+- `IRevealedScreen` (interface) [ScreenNavigator.cs](../src/Oxce.Engine/ScreenNavigator.cs) - A screen that wants to know when the screen above it was popped (the reference's `State::init` and `resetAll`).
 - `ScriptedInput` (record struct) [ScriptedLoopClient.cs](../src/Oxce.Engine/ScriptedLoopClient.cs) - An input to replay once the scripted run reaches its time.
 - `ScriptedLoopClient` (class) [ScriptedLoopClient.cs](../src/Oxce.Engine/ScriptedLoopClient.cs) - Drives another client with timed inputs and ends the run after a duration, for unattended smoke runs of a real window host.
 
@@ -134,8 +135,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ### `Oxce.Engine.Battlescape`
 
+- `BattleBriefingScreen` (class) [BattleBriefingScreen.cs](../src/Oxce.Engine/Battlescape/BattleBriefingScreen.cs) - `BriefingState`: the mission's title, description and the target and craft lines.
 - `BattleCamera` (class) [BattleCamera.cs](../src/Oxce.Engine/Battlescape/BattleCamera.cs) - The battlescape camera's map-side state (`Camera`: `up`, `down`, `setViewLevel`, `centerOnPosition`, `toggleShowAllLayers`): the tile at...
+- `BattleInventoryScreen` (class) [BattleInventoryScreen.cs](../src/Oxce.Engine/Battlescape/BattleInventoryScreen.cs) - `InventoryState`: one unit's sections, carried items and the items on its tile, from `IBattleInventoryQuery`.
+- `BattleScreenBase` (class) [BattleScreenBase.cs](../src/Oxce.Engine/Battlescape/BattleScreenBase.cs) - Frame, palette, revision and message handling the battle screens share.
+- `BattleUiContext` (class) [BattleUiContext.cs](../src/Oxce.Engine/Battlescape/BattleUiContext.cs) - What the battle screens share (Phase 7 branch 3 S6): the command target, the queries for one viewer, the font, the language and the stack...
+- `BattleUiContext.Color` (class) [BattleUiContext.cs](../src/Oxce.Engine/Battlescape/BattleUiContext.cs) - Palette indices of the placeholder drawing.
 - `BattleViewModel` (class) [BattleViewModel.cs](../src/Oxce.Engine/Battlescape/BattleViewModel.cs) - A battlescape client's view of the battle (Phase 7 branch 3 S5): what the battle's queries answer for its viewer, its own selection and i...
+- `BattlescapeClient` (class) [BattlescapeClient.cs](../src/Oxce.Engine/Battlescape/BattlescapeClient.cs) - The battlescape screen (`BattlescapeState`) on the indexed loop: the level the camera shows as a flat plan of the tiles the viewer may se...
 
 ### `Oxce.Engine.Diagnostics`
 
@@ -1306,7 +1313,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 335 files.
+`tests/Oxce.CompatibilityTests` - 336 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1316,7 +1323,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>330 test classes</summary>
+<details><summary>331 test classes</summary>
 
 - `BaseDefenseDeploymentTests` ([BaseDefenseDeploymentTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseDeploymentTests.cs))
 - `BaseDefenseMapTests` ([BaseDefenseMapTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseMapTests.cs))
@@ -1328,6 +1335,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BattleSaveMapTests` ([BattleSaveMapTests.cs](../tests/Oxce.CompatibilityTests/BattleSaveMapTests.cs))
 - `BattleSaveRootTests` ([BattleSaveRootTests.cs](../tests/Oxce.CompatibilityTests/BattleSaveRootTests.cs))
 - `BattleSaveUnitTests` ([BattleSaveUnitTests.cs](../tests/Oxce.CompatibilityTests/BattleSaveUnitTests.cs))
+- `BattleScreensTests` ([BattleScreensTests.cs](../tests/Oxce.CompatibilityTests/BattleScreensTests.cs))
 - `BattleStartTests` ([BattleStartTests.cs](../tests/Oxce.CompatibilityTests/BattleStartTests.cs))
 - `BattleTerrainLoaderTests` ([BattleTerrainLoaderTests.cs](../tests/Oxce.CompatibilityTests/BattleTerrainLoaderTests.cs))
 - `BattleViewTests` ([BattleViewTests.cs](../tests/Oxce.CompatibilityTests/BattleViewTests.cs))
@@ -1662,13 +1670,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.UnitTests
 
-`tests/Oxce.UnitTests` - 111 files.
+`tests/Oxce.UnitTests` - 112 files.
 
 ### `Oxce.UnitTests`
 
 - `AllocationMeasurement` (class) [AllocationMeasurement.cs](../tests/Oxce.UnitTests/AllocationMeasurement.cs)
 
-<details><summary>110 test classes</summary>
+<details><summary>111 test classes</summary>
 
 - `ProjectDependencyTests` ([ProjectDependencyTests.cs](../tests/Oxce.UnitTests/Architecture/ProjectDependencyTests.cs))
 - `DiagnosticTests` ([DiagnosticTests.cs](../tests/Oxce.UnitTests/Core/DiagnosticTests.cs))
@@ -1772,6 +1780,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `IndexedSurfaceTests` ([IndexedSurfaceTests.cs](../tests/Oxce.UnitTests/Rendering/IndexedSurfaceTests.cs))
 - `ResourceRuntimeTests` ([ResourceRuntimeTests.cs](../tests/Oxce.UnitTests/Resources/ResourceRuntimeTests.cs))
 - `OxceSaveAdapterTests` ([OxceSaveAdapterTests.cs](../tests/Oxce.UnitTests/Savegames/OxceSaveAdapterTests.cs))
+- `ScreenNavigatorRevealTests` ([ScreenNavigatorRevealTests.cs](../tests/Oxce.UnitTests/ScreenNavigatorRevealTests.cs))
 - `ScriptApiAndHostTests` ([ScriptApiAndHostTests.cs](../tests/Oxce.UnitTests/Scripting/ScriptApiAndHostTests.cs))
 - `ScriptCompilerAndVmTests` ([ScriptCompilerAndVmTests.cs](../tests/Oxce.UnitTests/Scripting/ScriptCompilerAndVmTests.cs))
 - `ScriptEventsAndValuesTests` ([ScriptEventsAndValuesTests.cs](../tests/Oxce.UnitTests/Scripting/ScriptEventsAndValuesTests.cs))

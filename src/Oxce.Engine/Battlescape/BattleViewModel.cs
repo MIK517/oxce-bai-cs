@@ -92,6 +92,7 @@ public sealed class BattleViewModel
     public bool ReselectSkipped(bool keepCamera = false)
     {
         Refresh();
+        Message = "";
         return Selection?.UndoUnitId is { } undo && Send(new ReselectSkippedUnit(undo), !keepCamera);
     }
 
@@ -130,6 +131,7 @@ public sealed class BattleViewModel
     /// <summary>Camera centered on the selected unit (<c>btnCenterClick</c>); false without a selection or off the map.</summary>
     public bool CenterOnSelection()
     {
+        Message = "";
         if (Overview is not { Side: BattleFaction.Player } || _selected is not { } id || Overview.Units.FirstOrDefault(unit => unit.Id == id)?.Position is not { } position) return false;
         Camera.CenterOn(position);
         Refresh();
@@ -143,6 +145,8 @@ public sealed class BattleViewModel
 
     private bool ChangeLevel(Func<BattleCamera, bool> change)
     {
+        // A level button the camera or the turn does not allow is a silent no-op, as in the reference.
+        Message = "";
         if (Overview is not { Side: BattleFaction.Player } || !change(Camera)) return false;
         Refresh();
         return true;

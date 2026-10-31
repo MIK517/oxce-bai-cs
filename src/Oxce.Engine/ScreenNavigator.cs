@@ -54,8 +54,18 @@ public sealed class ScreenNavigator
         _retiredRevisions = checked(_retiredRevisions + 1);
     }
 
-    /// <summary>Removes the top screen. Returns false when the stack is empty.</summary>
+    /// <summary>
+    /// Removes the top screen and tells the screen it reveals (<see cref="IRevealedScreen"/>, the reference's <c>State::init</c> after a pop).
+    /// Returns false when the stack is empty.
+    /// </summary>
     public bool Pop()
+    {
+        if (!Remove()) return false;
+        if (_screens.Count != 0 && _screens[^1].Screen is IRevealedScreen revealed) revealed.Revealed();
+        return true;
+    }
+
+    private bool Remove()
     {
         if (_screens.Count == 0) return false;
         var entry = _screens[^1];
@@ -69,7 +79,8 @@ public sealed class ScreenNavigator
     public void Replace(IIndexedLoopClient screen, bool opaque = true, Action? closed = null)
     {
         ArgumentNullException.ThrowIfNull(screen);
-        Pop();
+        // The screen below is not revealed: the new screen takes the place at once.
+        Remove();
         Push(screen, opaque, closed);
     }
 
@@ -98,4 +109,10 @@ public sealed class ScreenNavigator
         // The screen may have pushed another one above itself; only a screen still on top is popped.
         if (screen.ExitRequested && _screens.Count != 0 && ReferenceEquals(_screens[^1].Screen, screen)) Pop();
     }
+}
+
+/// <summary>A screen that wants to know when the screen above it was popped (the reference's <c>State::init</c> and <c>resetAll</c>).</summary>
+public interface IRevealedScreen
+{
+    void Revealed();
 }
