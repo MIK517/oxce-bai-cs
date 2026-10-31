@@ -255,8 +255,9 @@ battlescape), `Game` (the state stack), `GeoscapeState` (the pause policy the ho
   runs `checkBugHuntMode` (the saved `bughuntMode` can change) and `determineReinforcements` (allowed for the player
   side at turn 0; it draws from the game RNG before `randomizeItemLocations`, so S3 orders the draws as the reference
   does), and on close tallies units, finishes the battle when no soldiers live (branch 7), centers the camera and
-  autosaves on turn 1. Reinforcements are ported in S3 for the block-grid-safe case; the undefined block-grid
-  indexing ADR 0039 names is refused as `battle.reinforcements-unsupported`, owned by branch 6 (turn processing).
+  autosaves on turn 1. A start in which a reinforcement wave could deploy (it passes its difficulty range and its trigger at turn 0) is refused as
+  `battle.reinforcements-unsupported`, owned by branch 6 (turn processing), which ports the deployment of waves; S3 decided this instead of porting
+  `determineReinforcements`, which needs the unit placement of branch 6.
   `startFirstTurn` is ported whole: `randomizeItemLocations`
   on the selected unit's tile (storage space, reference RNG order), `resetUnitTiles`, reselecting the unit that
   stands on the inventory tile after the reset (the reference comment says closest to the ramp), `prepareNewTurn(false)` for every live X-COM unit, turn 1, `newTurnUpdateScripts`. `NewTurnUnit` and

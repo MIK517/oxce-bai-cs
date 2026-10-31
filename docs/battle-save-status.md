@@ -483,9 +483,9 @@ The compiled content cache revision is 77, since the cached rules change. ADR 00
 Branch 2 is complete; the maintainer pushes and merges it. Notes for branch 3 (`claude/battle-session-ui`):
 
 - Named refusals branch 3 owns: `battle.save-before-first-turn` (`CampaignBattles`; the briefing and `startFirstTurn`
-  retire it), and, from ADR 0039 (S4), an owned item of a recovery list, which keeps its owner without joining the
-  unit's inventory (join it or refuse it when the inventory lands). Also open from S4: a fifth loaded special item of
-  one unit is not reported (the restore has no diagnostics sink).
+  retire it; done in branch 3 S3), and, from ADR 0039 (S4), an owned item of a recovery list, which keeps its owner
+  without joining the unit's inventory (join it or refuse it when the inventory lands). Also open from S4: a fifth
+  loaded special item of one unit was not reported (branch 3 S3 reports it in the restored battle's `RestoreNotes`).
 - The item, craft, armor, soldier and unit sound lists keep a single -1 (no sound), so a branch that plays them must
   treat a -1 entry as silence (`RuleItem::getMeleeSound` and its siblings), not as an index, and an empty list as the
   default sound.

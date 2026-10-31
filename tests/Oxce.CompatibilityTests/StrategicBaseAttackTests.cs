@@ -603,4 +603,31 @@ public sealed class StrategicBaseAttackTests
         Assert.Equal("The campaign is lost", Assert.Single(client.Popups).Title);
         Assert.Equal(2, campaign.Capture().Ending);
     }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TheBriefingOfABaseDefenseEndsTheRetaliationTargetAndMarksAMultiUfoMissionInProgress(bool multiUfo)
+    {
+        // BriefingState's constructor (Phase 7 branch 3): the base with a retaliation mission is no target any more; a multi-UFO
+        // retaliation remembers that more UFOs may be coming.
+        var (content, campaign, baseId) = Create(defended: true, ufoRules: multiUfo ? "alienMissions:\n  - type: MISSION_RETALIATION\n    multiUfoRetaliation: true\n" : "");
+        var snapshot = campaign.Capture();
+        snapshot = snapshot with { Bases = [snapshot.Bases[0] with { RetaliationTarget = true, RetaliationMissionId = 4 }, .. snapshot.Bases.Skip(1)] };
+        campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(11));
+        campaign.Handlers.Operation<Oxce.Gameplay.Battles.ICampaignDeploymentHandOver>().BriefBaseDefense(baseId);
+        var after = campaign.Capture();
+        Assert.False(after.Bases[0].RetaliationTarget);
+        Assert.Equal(multiUfo, Assert.Single(after.World.Missions).MultiUfoRetaliationInProgress);
+
+        // A base without a retaliation mission keeps its flag, and an unknown base is ignored.
+        var (otherContent, other, otherId) = Create(defended: true);
+        var marked = other.Capture();
+        marked = marked with { Bases = [marked.Bases[0] with { RetaliationTarget = true, RetaliationMissionId = 99 }, .. marked.Bases.Skip(1)], World = marked.World with { Missions = [], Ufos = [] } };
+        other = CampaignState.Restore(marked, otherContent, new SplitMix64RandomSource(11));
+        var handOver = other.Handlers.Operation<Oxce.Gameplay.Battles.ICampaignDeploymentHandOver>();
+        handOver.BriefBaseDefense(otherId);
+        handOver.BriefBaseDefense(otherId + 1000);
+        Assert.True(other.Capture().Bases[0].RetaliationTarget);
+    }
 }

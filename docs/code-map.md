@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 224 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 225 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 100 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 8 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 332 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 333 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 111 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -336,7 +336,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 224 files.
+`src/Oxce.Gameplay` - 225 files.
 
 ### `Oxce.Gameplay`
 
@@ -351,6 +351,16 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BattlePosition` (record struct) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - A tile position: x along the width, y along the length, z the level (0 is the ground level).
 - `StartBattle` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - Starts the battle the pending deployment request asks for (`ConfirmLandingState::btnYesClick`, `BaseDefenseState` and `ConfirmCydoniaStat...
 - `BattleStarted` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The battle a deployment request asked for has started.
+- `BattlePhase` (enum) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - Where a battle stands before and in play: the briefing (`BriefingState`), the pre-battle inventory (`InventoryState(false)`) and then the...
+- `IBattleCommand` (interface) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - A command of the running battle: it is not held back by the battle itself, as the campaign's commands are.
+- `BeginBriefing` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - `BriefingState`'s constructor: the mission target and the craft or base line (the already localized `strTarget` and `strCraftOrBase` line...
+- `ConfirmBriefing` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - `BriefingState::btnOkClick` with `NextTurnState`'s turn-0 work: spawns the units and items of primed spawn items, tallies the units and c...
+- `StartFirstTurn` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - `SavedBattleGame::startFirstTurn`, run when the pre-battle inventory closes: the first turn of the X-COM side.
+- `BriefingOpened` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The briefing named the mission target and the craft or base.
+- `BriefingConfirmed` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The briefing was confirmed; primed spawn items created units and items.
+- `BattleFirstTurnStarted` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The first turn began (turn 1, the X-COM side).
+- `BattleBriefing` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - What the briefing screen shows (`BriefingState`): title and description keys, music, background and cutscene, the palette and text offset...
+- `IBattleBriefingQuery` (interface) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The briefing of the current battle, or null while there is none or it is in progress.
 - `BattleUnitView` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - A unit as a viewer sees it.
 - `BattleOverview` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The battle as a viewer sees it; `Revision` changes with every committed battle change.
 - `IBattleQuery` (interface) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The current battle, if any, as a viewer sees it (ADR 0038: every battle query takes a viewer).
@@ -1051,6 +1061,8 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RuntimeAlienRaceRule` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - The strategic projection of an alien race: retaliation aggression and the retaliation mission timeline in rule order (AlienRace::retaliat...
 - `RuntimeAlienDeploymentRule` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - The runtime projection of an alien deployment: site and alien-base bookkeeping, and in `Battle` the battlescape properties the battle gen...
 - `RuntimeDeploymentBattle` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - AlienDeployment battlescape properties read by `BattlescapeGenerator::run`: the map size (`getDimensions`), `turnLimit`, `chronoTrigger`...
+- `RuntimeBriefing` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - BriefingData: the briefing's palette, text offset, title and description keys ("" for the mission type's own), music, background, cutscen...
+- `RuntimeReinforcementWave` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - The pre-requisites of a ReinforcementsData wave that NextTurnState::determineReinforcements checks before it deploys: difficulty range, t...
 - `RuntimeDeploymentData` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - DeploymentData: an alien rank (or a custom unit type), quantities by difficulty (low, medium, high), random extras (`dQty`, `extraQty`),...
 - `RuntimeAlienRaceEvolution` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - Reference: `AlienDeployment::getAlienRaceEvolution` tuples.
 
@@ -1263,7 +1275,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 332 files.
+`tests/Oxce.CompatibilityTests` - 333 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1273,12 +1285,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>327 test classes</summary>
+<details><summary>328 test classes</summary>
 
 - `BaseDefenseDeploymentTests` ([BaseDefenseDeploymentTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseDeploymentTests.cs))
 - `BaseDefenseMapTests` ([BaseDefenseMapTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseMapTests.cs))
 - `BattleCampaignSaveTests` ([BattleCampaignSaveTests.cs](../tests/Oxce.CompatibilityTests/BattleCampaignSaveTests.cs))
 - `BattleEntryPointTests` ([BattleEntryPointTests.cs](../tests/Oxce.CompatibilityTests/BattleEntryPointTests.cs))
+- `BattleFirstTurnTests` ([BattleFirstTurnTests.cs](../tests/Oxce.CompatibilityTests/BattleFirstTurnTests.cs))
 - `BattleSaveItemTests` ([BattleSaveItemTests.cs](../tests/Oxce.CompatibilityTests/BattleSaveItemTests.cs))
 - `BattleSaveMapTests` ([BattleSaveMapTests.cs](../tests/Oxce.CompatibilityTests/BattleSaveMapTests.cs))
 - `BattleSaveRootTests` ([BattleSaveRootTests.cs](../tests/Oxce.CompatibilityTests/BattleSaveRootTests.cs))

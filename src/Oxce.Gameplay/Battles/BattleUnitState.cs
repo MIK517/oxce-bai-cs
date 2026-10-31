@@ -106,6 +106,12 @@ internal sealed partial class BattleUnit
     public bool BannedInNextStage { get; set; }
     public List<int> MeleeAttackedBy { get; } = [];
     public bool AllowAutoCombat { get; set; } = true;
+
+    /// <summary>
+    /// basicEnergyRegeneration, the default energy recovery's term: a soldier's initial time units over three, else the unit
+    /// rule's <c>energyRecovery</c>.
+    /// </summary>
+    public int EnergyRegeneration { get; set; }
     public int Aggression { get; set; }
     public bool HasPanickedLastTurn { get; set; }
 

@@ -119,13 +119,13 @@ internal sealed partial class BattleState
     };
 
     /// <summary>SavedBattleGame::getStorageSpace: a base defense's storage tiles, where the base's stores go.</summary>
-    public IReadOnlyList<BattlePosition> StorageSpace { get; init; } = [];
+    public IReadOnlyList<BattlePosition> StorageSpace { get; internal set; } = [];
 
     /// <summary>SavedBattleGame::getModuleMap: per 10x10 block, a base defense's module tiles (empty for other battles).</summary>
     public Generation.BattleBaseModule[][] BaseModules { get; init; } = [];
 
     /// <summary>SavedBattleGame::_turn: 0 until the first turn starts after the briefing.</summary>
-    public int Turn { get; private set; }
+    public int Turn { get; internal set; }
 
     /// <summary>SavedBattleGame::_side: the faction whose turn it is.</summary>
     public BattleFaction Side { get; private set; } = BattleFaction.Player;
@@ -298,7 +298,11 @@ internal sealed partial class BattleState
         foreach (var unit in _units)
             if (Sees(viewer.Faction, unit)) units.Add(new BattleUnitView(unit.Id, unit.Faction, unit.Position));
         return new BattleOverview(MissionType, DeploymentId, Width, Length, Height, Turn, Side, TurnLimit, Revision,
-            units.AsReadOnly());
+            units.AsReadOnly())
+        {
+            Phase = Phase,
+            RestoreNotes = RestoreNotes,
+        };
     }
 
     /// <summary>

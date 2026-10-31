@@ -46,10 +46,76 @@ public readonly record struct BattlePosition(int X, int Y, int Z);
 /// <c>BaseDefenseState</c> and <c>ConfirmCydoniaState</c> running <c>BattlescapeGenerator</c>). The request is
 /// consumed only when the battle is generated.
 /// </summary>
-public sealed record StartBattle : ICampaignCommand;
+public sealed record StartBattle(bool Preview = false) : ICampaignCommand;
 
 /// <summary>The battle a deployment request asked for has started.</summary>
 public sealed record BattleStarted(string MissionType, string DeploymentId) : ICampaignEvent;
+
+/// <summary>
+/// Where a battle stands before and in play: the briefing (<c>BriefingState</c>), the pre-battle inventory
+/// (<c>InventoryState(false)</c>) and then the turns. A restored battle that is past its first turn is in progress.
+/// </summary>
+public enum BattlePhase
+{
+    Briefing,
+    Inventory,
+    InProgress,
+}
+
+/// <summary>A command of the running battle: it is not held back by the battle itself, as the campaign's commands are.</summary>
+public interface IBattleCommand : ICampaignCommand;
+
+/// <summary>
+/// <c>BriefingState</c>'s constructor: the mission target and the craft or base line (the already localized
+/// <c>strTarget</c> and <c>strCraftOrBase</c> lines, which the client composes with its language). The target is the
+/// craft's destination name, or empty when it has none; a mod's random operation name replaces it.
+/// </summary>
+public sealed record BeginBriefing(string TargetName, string CraftOrBaseName) : IBattleCommand;
+
+/// <summary>
+/// <c>BriefingState::btnOkClick</c> with <c>NextTurnState</c>'s turn-0 work: spawns the units and items of primed spawn
+/// items, tallies the units and checks bug hunt mode; the pre-battle inventory follows.
+/// </summary>
+public sealed record ConfirmBriefing : IBattleCommand;
+
+/// <summary>
+/// <c>SavedBattleGame::startFirstTurn</c>, run when the pre-battle inventory closes: the first turn of the X-COM side.
+/// </summary>
+public sealed record StartFirstTurn : IBattleCommand;
+
+/// <summary>The briefing named the mission target and the craft or base.</summary>
+public sealed record BriefingOpened(string TargetName, string CraftOrBaseName) : ICampaignEvent;
+
+/// <summary>The briefing was confirmed; primed spawn items created units and items.</summary>
+public sealed record BriefingConfirmed(int SpawnedUnits, int SpawnedItems) : ICampaignEvent;
+
+/// <summary>The first turn began (turn 1, the X-COM side).</summary>
+public sealed record BattleFirstTurnStarted(int SelectedUnitId) : ICampaignEvent;
+
+/// <summary>
+/// What the briefing screen shows (<c>BriefingState</c>): title and description keys, music, background and cutscene, the
+/// palette and text offset, whether the target and the craft lines show, and the lines the briefing set.
+/// </summary>
+public sealed record BattleBriefing(
+    string Title,
+    string Description,
+    string Music,
+    string Background,
+    string Cutscene,
+    int Palette,
+    int TextOffset,
+    bool ShowTarget,
+    bool ShowCraft,
+    bool OperationName,
+    string TargetName,
+    string CraftOrBaseName,
+    BattlePhase Phase);
+
+/// <summary>The briefing of the current battle, or null while there is none or it is in progress.</summary>
+public interface IBattleBriefingQuery
+{
+    BattleBriefing? QueryBriefing();
+}
 
 /// <summary>A unit as a viewer sees it.</summary>
 public sealed record BattleUnitView(int Id, BattleFaction Faction, BattlePosition? Position);
@@ -65,7 +131,13 @@ public sealed record BattleOverview(
     BattleFaction Side,
     int TurnLimit,
     long Revision,
-    IReadOnlyList<BattleUnitView> Units);
+    IReadOnlyList<BattleUnitView> Units)
+{
+    public BattlePhase Phase { get; init; }
+
+    /// <summary>What the restore noticed and kept going (a fifth special built-in item the load leaves in no slot).</summary>
+    public IReadOnlyList<string> RestoreNotes { get; init; } = [];
+}
 
 /// <summary>The current battle, if any, as a viewer sees it (ADR 0038: every battle query takes a viewer).</summary>
 public interface IBattleQuery

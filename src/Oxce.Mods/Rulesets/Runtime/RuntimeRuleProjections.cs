@@ -567,6 +567,14 @@ public sealed record RuntimeCampaignSettings(
     public string AlienFuelName { get; init; } = "";
     public int AlienFuelQuantity { get; init; }
     public int BughuntMinTurn { get; init; } = 999;
+    public int BughuntMaxEnemies { get; init; } = 2;
+    public int BughuntRank { get; init; }
+    public int BughuntLowMorale { get; init; } = 40;
+    public int BughuntTimeUnitsLeft { get; init; } = 60;
+
+    /// <summary>Mod::getOperationNamesFirst and getOperationNamesLast: the briefing's random operation name.</summary>
+    public IReadOnlyList<string> OperationNamesFirst { get; init; } = [];
+    public IReadOnlyList<string> OperationNamesLast { get; init; } = [];
 
     /// <summary>Mod::getAlienItemLevels.</summary>
     public IReadOnlyList<IReadOnlyList<int>> AlienItemLevels { get; init; } = [];

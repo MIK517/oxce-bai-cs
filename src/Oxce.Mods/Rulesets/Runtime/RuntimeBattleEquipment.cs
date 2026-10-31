@@ -85,6 +85,11 @@ public sealed class RuntimeBattleEquipment
                 IgnoreInBaseDefense = values.Boolean("ignoreInBaseDefense"),
                 IgnoreInCraftEquip = values.Boolean("ignoreInCraftEquip"),
                 InventoryMoveCostPercent = values.GetInteger("inventoryMoveCostPercent"),
+                SpawnUnit = values.NullableName("spawnUnit") ?? "",
+                SpawnItem = values.NullableName("spawnItem") ?? "",
+                SpawnUnitFaction = values.GetInteger("spawnUnitFaction"),
+                SpawnUnitChance = values.GetInteger("spawnUnitChance") == -1 ? values.GetInteger("specialChance") : values.GetInteger("spawnUnitChance"),
+                SpawnItemChance = values.GetInteger("spawnItemChance") == -1 ? values.GetInteger("specialChance") : values.GetInteger("spawnItemChance"),
                 FuseTrigger = new RuntimeFuseTrigger(rule.Value.FuseTriggers.DefaultBehavior, rule.Value.FuseTriggers.ThrowTrigger,
                     rule.Value.FuseTriggers.ProximityTrigger),
             };
@@ -118,6 +123,7 @@ public sealed class RuntimeBattleEquipment
             SpawnUnit = rule.Value.Strings["spawnUnit"],
             IsVip = rule.Value.Booleans["vip"],
             PickUpWeaponsMoreActively = rule.Value.Integers["pickUpWeaponsMoreActively"],
+            EnergyRecovery = rule.Value.Integers["energyRecovery"],
         },
             StringComparer.Ordinal);
         var soldierWeapons = personnel.Soldiers.Rules.Where(static rule => rule.Value.Strings["specialWeapon"].Length != 0)
@@ -191,6 +197,13 @@ public sealed record RuntimeBattleItem(
 
     /// <summary>RuleItem::getFuseTriggerEvent's fields BattleItem::setFuseTimer reads.</summary>
     public RuntimeFuseTrigger FuseTrigger { get; init; } = RuntimeFuseTrigger.Default;
+
+    /// <summary>RuleItem::getSpawnUnit and getSpawnItem ("" for none), getSpawnUnitFaction (-1 for the owner's) and the chances (getSpawnUnitChance, getSpawnItemChance: <c>specialChance</c> unless set).</summary>
+    public string SpawnUnit { get; init; } = "";
+    public string SpawnItem { get; init; } = "";
+    public int SpawnUnitFaction { get; init; } = -1;
+    public int SpawnUnitChance { get; init; } = 100;
+    public int SpawnItemChance { get; init; } = 100;
 }
 
 /// <summary>RuleItemFuseTrigger's <c>defaultBehavior</c>, <c>throwTrigger</c> and <c>proximityTrigger</c>.</summary>
@@ -248,4 +261,7 @@ public sealed record RuntimeBattleUnitRule(
     public string SpawnUnit { get; init; } = "";
     public bool IsVip { get; init; }
     public int PickUpWeaponsMoreActively { get; init; } = -1;
+
+    /// <summary>Unit's <c>energyRecovery</c> (basicEnergyRegeneration for a unit that is no soldier).</summary>
+    public int EnergyRecovery { get; init; }
 }

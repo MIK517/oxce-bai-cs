@@ -203,7 +203,7 @@ internal sealed class AlienDeploymentRuleLoader : IdOnlyTypedRuleFamilyLoader<Al
         if (reader.TryGet("duration", out var duration)) builder.Duration = TerrainDeploymentYaml.FixedPair(duration!, builder.Duration, "duration");
         ReadNodes(reader, "data", value => builder.Data = value);
         ReadNodes(reader, "reinforcements", value => builder.Reinforcements = value);
-        ReadNode(reader, "briefing", value => builder.Briefing = value);
+        ReadNode(reader, "briefing", value => builder.Briefing = MergeBriefing(builder.Briefing, value));
         ReadNode(reader, "successEvents", value => builder.SuccessEvents = value);
         ReadNode(reader, "despawnEvents", value => builder.DespawnEvents = value);
         ReadNode(reader, "failureEvents", value => builder.FailureEvents = value);
@@ -250,6 +250,19 @@ internal sealed class AlienDeploymentRuleLoader : IdOnlyTypedRuleFamilyLoader<Al
             else entries[id] = entry;
         }
         return new YamlMappingNode(mapping.Span, entries.Values);
+    }
+    // BriefingData's read merges key by key (tryRead), so a later mod's partial briefing keeps the earlier keys.
+    private static YamlNode MergeBriefing(YamlNode? current, YamlNode patch)
+    {
+        if (current is not YamlMappingNode previous || patch is not YamlMappingNode mapping) return patch;
+        var entries = new List<YamlMappingEntry>(previous.Entries);
+        foreach (var entry in mapping.Entries)
+        {
+            var index = entries.FindIndex(old => old.ScalarKey == entry.ScalarKey);
+            if (index >= 0 && entry.ScalarKey is not null) entries[index] = entry;
+            else entries.Add(entry);
+        }
+        return new YamlMappingNode(mapping.Span, entries);
     }
     private static ulong ReadEvolutionMonth(YamlNode node) => node is YamlSequenceNode sequence && sequence.Items.Count > 0
         ? YamlValueReader.ReadUInt64(sequence.Items[0]) : 0;

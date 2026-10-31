@@ -1,6 +1,7 @@
 using Oxce.Gameplay.Battles.Terrain;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
+using Oxce.Mods.Rulesets.Runtime;
 
 namespace Oxce.Gameplay.Battles;
 
@@ -15,6 +16,12 @@ internal interface ICampaignDeploymentHandOver
     /// <summary>Marks the request's world target (a UFO, mission site or alien base) as in the battlescape.</summary>
     void EnterBattlescape(WorldTargetReference target);
 
+    /// <summary>
+    /// BriefingState's constructor for a base defense: the base is no longer a retaliation target, and a multi-UFO retaliation
+    /// mission is marked as in progress.
+    /// </summary>
+    void BriefBaseDefense(int baseId);
+
     /// <summary>The rule of the campaign's UFO in the battlescape, or "".</summary>
     string UfoInBattlescape { get; }
 }
@@ -23,18 +30,10 @@ internal interface ICampaignDeploymentHandOver
 /// The campaign's battle (<c>SavedGame::_battleGame</c>): at most one, generated from the pending deployment
 /// request. While it exists the campaign refuses every strategic command and time.
 /// </summary>
-internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapability, IBattleQuery
+internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapability, IBattleQuery, IBattleBriefingQuery
 {
     internal static readonly CampaignReason BattleInProgress = new("battle.in-progress",
         "A battle is in progress; the campaign continues after its debriefing.");
-
-    /// <summary>
-    /// The named restriction on saving a battle before its first turn (Phase 7 branch 2 S5). The reference saves only
-    /// after the briefing and <c>startFirstTurn</c>, and loads a save straight into the battlescape, so a turn-0 save would
-    /// stay before its first turn there; Phase 7 branch 3 retires it with the briefing and the first turn.
-    /// </summary>
-    internal static readonly CampaignReason BattleSaveBeforeFirstTurn = new("battle.save-before-first-turn",
-        "Saving a battle before its first turn requires the briefing and the first turn (Phase 7 branch 3).");
 
     /// <summary>A save holding a battle restores the battle's map, which loads the installation's terrain files.</summary>
     internal const string RestoreNeedsTerrainFiles =
@@ -56,11 +55,14 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
     public void Register(CampaignCapabilityRegistry registry)
     {
         registry.Query<IBattleQuery>(this);
-        registry.Command<StartBattle>(_ => Start());
+        registry.Query<IBattleBriefingQuery>(this);
+        registry.Command<StartBattle>(command => Start(command));
+        registry.Command<BeginBriefing>(BeginBriefing);
+        registry.Command<ConfirmBriefing>(_ => ConfirmBriefing());
+        registry.Command<StartFirstTurn>(_ => StartFirstTurn());
         // The geoscape is frozen during a battle: time stops in the preflight, every other command here.
         registry.Preflight(CampaignPreflightOrder.Battle, "battle", (_, _) => _battle is not null ? BattleInProgress.Text : null);
-        registry.CommandGate(command => _battle is not null && command is not AdvanceCampaignTime ? Blocked(BattleInProgress) : null);
-        registry.SaveGate(() => _battle is { Turn: < 1 } ? BattleSaveBeforeFirstTurn.Text : null);
+        registry.CommandGate(command => _battle is not null && command is not (AdvanceCampaignTime or IBattleCommand) ? Blocked(BattleInProgress) : null);
         registry.Capture(snapshot => _battle is null ? snapshot : snapshot with { Battle = _battle.Capture() });
         registry.Restore(Restore);
     }
@@ -76,6 +78,18 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         var files = campaign.BattleTerrainFiles ?? throw new InvalidDataException(RestoreNeedsTerrainFiles);
         var ufo = campaign.Handlers.Operation<ICampaignDeploymentHandOver>().UfoInBattlescape;
         _battle = BattleState.Restore(saved, campaign.Content, Loader(files), ufo, BattleRestoreCampaign.From(campaign));
+        // A battle before its first turn is briefed again: the briefing's craft or base is the one the campaign flags in the battlescape.
+        if (_battle.Turn < 1)
+            foreach (var owner in campaign.BaseStates)
+            {
+                if (owner.Crafts.Any(static craft => craft.Logistics is { InBattlescape: true }))
+                {
+                    _battle.BriefingFromCraft = true;
+                    _battle.BriefingBaseId = owner.Id;
+                    break;
+                }
+                if (owner.InBattlescape) _battle.BriefingBaseId = owner.Id;
+            }
     }
 
     private BattleTerrainLoader Loader(IBattleTerrainFiles files)
@@ -92,8 +106,10 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
 
     public BattleOverview? QueryBattle(BattleViewer viewer) => campaign.Read(() => _battle?.Overview(viewer));
 
-    private CampaignCommandResult Start()
+    private CampaignCommandResult Start(StartBattle command)
     {
+        // The craft deployment preview skips the briefing's inventory and the new-turn scripts (isPreview); it is a battle mode of its own.
+        if (command.Preview) return Blocked(BattleFlowReasons.PreviewUnsupported);
         var handOver = campaign.Handlers.Operation<ICampaignDeploymentHandOver>();
         if (handOver.PendingDeploymentRequest is not { } request)
             return Blocked(WorldCommandReasons.For(WorldCommandReasons.NoDeploymentRequest));
@@ -113,6 +129,8 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
             return Blocked(new CampaignReason(GenerationFailedCode, failure.Message));
         }
         battle.Validate();
+        battle.BriefingFromCraft = request.CraftTypeId.Length != 0;
+        battle.BriefingBaseId = request.BaseId;
         // deployXCOM sends disabled vehicles and items back to the base's storage; a base defense takes its stored
         // vehicles and the stores its defenders equip out of it.
         var owner = campaign.BaseById(request.BaseId)!;
@@ -177,6 +195,115 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
             else owner.Items.Remove(handle);
         }
     }
+
+    /// <summary>
+    /// BriefingState's constructor (the names the saved game keeps) and its page: the target and the craft or base lines the
+    /// client composed with its language, a random operation name when the mod has them, and a base defense's retaliation flag.
+    /// </summary>
+    private CampaignCommandResult BeginBriefing(BeginBriefing command)
+    {
+        if (_battle is not { Phase: BattlePhase.Briefing } battle) return Blocked(BattleFlowReasons.NotInBriefing);
+        if (battle.BriefingOpened) return Blocked(BattleFlowReasons.BriefingAlreadyOpen);
+        battle.NameMission(campaign.Content.RuntimeRules, command.TargetName ?? "", command.CraftOrBaseName ?? "");
+        if (!battle.BriefingFromCraft && battle.MissionType == BaseDefenseMissionType && battle.BriefingBaseId >= 0)
+            campaign.Handlers.Operation<ICampaignDeploymentHandOver>().BriefBaseDefense(battle.BriefingBaseId);
+        return new CampaignCommandResult([new BriefingOpened(battle.TargetName, battle.CraftOrBaseName)]);
+    }
+
+    private const string BaseDefenseMissionType = BattleSnapshot.BaseDefenseMission;
+
+    /// <summary>
+    /// BriefingState::btnOkClick and NextTurnState's turn-0 work. Everything that can refuse is checked first, so a refusal
+    /// changes nothing: no live aliens (the aliens' crash screen), a wave that could deploy at the start (branch 6), a spawn
+    /// near a tile without a floor (branch 4), a script or a revive the first turn cannot do yet. Then primed spawn items
+    /// spawn, and bug hunt mode is checked.
+    /// </summary>
+    private CampaignCommandResult ConfirmBriefing()
+    {
+        if (_battle is not { Phase: BattlePhase.Briefing } battle) return Blocked(BattleFlowReasons.NotInBriefing);
+        var content = campaign.Content;
+        var rules = content.RuntimeRules;
+        // The reference spawns first and tallies after; the aliens a spawn adds would only add to the count, and a battle
+        // whose live aliens all come from a spawn is refused here instead of after the spawn.
+        // The battlescape's constructor runs checkForCasualties before the spawn; it is turn processing's.
+        if (battle.HasUncheckedCasualty()) return Blocked(BattleFlowReasons.CasualtiesUnsupported);
+        if (battle.Tally().LiveAliens == 0) return Blocked(BattleFlowReasons.NoLiveAliens);
+        if (ReinforcementsRefusal(battle, rules) is { } reinforcements) return Blocked(reinforcements);
+        if (battle.SpawnNeedsGravity(rules)) return Blocked(BattleFlowReasons.SpawnNeedsGravity);
+        if (battle.SpawnLacksItemLevels(rules)) return Blocked(BattleFlowReasons.SpawnContentInvalid);
+        if (battle.FirstTurnRefusal(content, BattleRestoreCampaign.From(campaign)) is { } later) return Blocked(later);
+        var (units, items) = battle.SpawnFromPrimedItems(content, (int)campaign.Difficulty, campaign.Random);
+        battle.CheckBugHuntMode(rules);
+        battle.EnterInventory();
+        return new CampaignCommandResult([new BriefingConfirmed(units, items)]);
+    }
+
+    /// <summary>
+    /// NextTurnState::determineReinforcements' pre-requisites at turn 0 (the player side's turn before the first): a wave of the
+    /// battle's reinforcements deployment that passes its difficulty range and its trigger (the objectives, the turns or the
+    /// turn range) could deploy, which turn processing does (branch 6); whether its odds then hold is left out, so that no
+    /// draw is spent on a refusal.
+    /// </summary>
+    private CampaignReason? ReinforcementsRefusal(BattleState battle, RuntimeRuleCatalog rules)
+    {
+        if (battle.ReinforcementsDeployment.Length == 0 || !rules.AlienDeployments.TryGet(battle.ReinforcementsDeployment, out var handle)) return null;
+        var difficulty = (int)campaign.Difficulty;
+        foreach (var wave in rules.AlienDeployments[handle].Value.Battle.Reinforcements)
+        {
+            if (difficulty < wave.MinimumDifficulty || difficulty > wave.MaximumDifficulty) continue;
+            if (wave.ObjectiveDestroyed)
+            {
+                if (battle.ObjectiveCount <= 0 || battle.ObjectivesDestroyed != battle.ObjectiveCount) continue;
+            }
+            else if (wave.Turns.Count != 0)
+            {
+                if (!wave.Turns.Contains(battle.Turn)) continue;
+            }
+            else if (battle.Turn < wave.MinimumTurn || wave.MaximumTurn != -1 && battle.Turn > wave.MaximumTurn)
+            {
+                continue;
+            }
+            return BattleFlowReasons.ReinforcementsUnsupported;
+        }
+        return null;
+    }
+
+    /// <summary>SavedBattleGame::startFirstTurn when the pre-battle inventory closes.</summary>
+    private CampaignCommandResult StartFirstTurn()
+    {
+        if (_battle is not { Phase: BattlePhase.Inventory } battle) return Blocked(BattleFlowReasons.NotBeforeFirstTurn);
+        var content = campaign.Content;
+        if (battle.Tally().LiveSoldiers == 0) return Blocked(BattleFlowReasons.NoLiveSoldiers);
+        if (battle.FirstTurnRefusal(content, BattleRestoreCampaign.From(campaign)) is { } refusal) return Blocked(refusal);
+        battle.StartFirstTurn(content, campaign.Random);
+        return new CampaignCommandResult([new BattleFirstTurnStarted(battle.SelectedUnitId ?? -1)]);
+    }
+
+    /// <summary>BriefingState's page: which deployment's briefing data shows, and the lines the briefing set.</summary>
+    public BattleBriefing? QueryBriefing() => campaign.Read(() =>
+    {
+        if (_battle is not { Phase: not BattlePhase.InProgress } battle) return null;
+        var rules = campaign.Content.RuntimeRules;
+        var deployments = rules.AlienDeployments;
+        RuntimeAlienDeploymentRule? Find(string id) => id.Length != 0 && deployments.TryGet(id, out var handle) ? deployments[handle].Value : null;
+        var mission = battle.MissionType;
+        var deployment = Find(mission);
+        if (mission == BaseDefenseMissionType)
+        {
+            if (Find(battle.AlienCustomDeploy) is { } custom && custom.Battle.Briefing.Description.Length != 0) deployment = custom;
+        }
+        else if (deployment is null && battle.BriefingFromCraft)
+        {
+            // The craft's destination is the UFO that is in the battlescape; a fake underwater UFO uses the custom mission's deployment.
+            var ufo = campaign.Handlers.Operation<ICampaignDeploymentHandOver>().UfoInBattlescape;
+            if (ufo.Length != 0) deployment = Find(battle.AlienCustomMission.Length != 0 ? battle.AlienCustomMission : ufo);
+        }
+        var data = deployment?.Battle.Briefing ?? RuntimeBriefing.Default;
+        return new BattleBriefing(data.Title.Length != 0 ? data.Title : mission, data.Description.Length != 0 ? data.Description : mission + "_BRIEFING",
+            data.Music, data.Background, data.Cutscene, data.Palette, data.TextOffset, data.ShowTarget, data.ShowCraft,
+            rules.Campaign.OperationNamesFirst.Count != 0, battle.TargetName, battle.CraftOrBaseName, battle.Phase);
+    });
+
 
     private static CampaignCommandResult Blocked(CampaignReason reason) =>
         new([CampaignActionBlocked.From(reason)]);

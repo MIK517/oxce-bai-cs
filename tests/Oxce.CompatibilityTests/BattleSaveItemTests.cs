@@ -272,6 +272,11 @@ public sealed class BattleSaveItemTests
         Assert.Equal([1, 2, 3, 4], alien.SpecialWeaponIds);
         Assert.True(Item(battle, 5).IsSpecialWeapon);
         Assert.Equal(5, ((YamlSequenceNode)Value(Written(battle), "itemsSpecial")).Items.Count);
+        // The restore reports it (the reference logs it): the overview of the restored battle carries the note.
+        var note = Assert.Single(battle.RestoreNotes);
+        Assert.Contains("item 5", note, StringComparison.Ordinal);
+        Assert.Equal([note], battle.Overview(BattleViewer.LocalPlayer).RestoreNotes);
+        Assert.Empty(Restore(Units + "items: []\nitemsSpecial:\n" + string.Concat(Enumerable.Range(1, 4).Select(static id => $"  - {{id: {id}, type: CLIP, owner: 1000000}}\n"))).RestoreNotes);
         // An owned item in no section listed under items is a special built-in item, written to itemsSpecial.
         var moved = Restore(Units + "items:\n  - {id: 1, type: CLIP, owner: 1000000}\n");
         Assert.Equal([1], moved.Units.Single(static unit => unit.Id == 1000000).SpecialWeaponIds);

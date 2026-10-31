@@ -396,6 +396,12 @@ public static class RuntimeRuleLinker
             AlienFuelName = content.CampaignStart.Settings.AlienFuelName,
             AlienFuelQuantity = content.CampaignStart.Settings.AlienFuelQuantity,
             BughuntMinTurn = content.CampaignStart.Settings.BughuntMinTurn,
+            BughuntMaxEnemies = content.CampaignStart.Settings.BughuntMaxEnemies,
+            BughuntRank = content.CampaignStart.Settings.BughuntRank,
+            BughuntLowMorale = content.CampaignStart.Settings.BughuntLowMorale,
+            BughuntTimeUnitsLeft = content.CampaignStart.Settings.BughuntTimeUnitsLeft,
+            OperationNamesFirst = content.CampaignStart.Settings.OperationNamesFirst,
+            OperationNamesLast = content.CampaignStart.Settings.OperationNamesLast,
             AlienItemLevels = Array.AsReadOnly(content.CampaignStart.Settings.AlienItemLevels
                 .Select(static levels => (IReadOnlyList<int>)Array.AsReadOnly(levels.ToArray())).ToArray()),
             StatAdjustments = Array.AsReadOnly(content.CampaignStart.Settings.StatAdjustments.Select(static adjustment =>
@@ -837,6 +843,8 @@ public static class RuntimeRuleLinker
                         static pair => pair.Key, static pair => pair.Value, StringComparer.Ordinal)),
                     Data = RuntimeDeploymentData.ReadAll(source.DeploymentData, out var dataInvalid),
                     DataInvalid = dataInvalid,
+                    Briefing = RuntimeBriefing.Read(source.Briefing),
+                    Reinforcements = RuntimeReinforcementWave.ReadAll(source.Reinforcements),
                 },
             };
         }

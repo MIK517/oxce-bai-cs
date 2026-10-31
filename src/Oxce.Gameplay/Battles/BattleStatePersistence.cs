@@ -261,6 +261,9 @@ internal sealed partial class BattleState
         battle.ReinforcementsItemLevel = snapshot.ReinforcementsItemLevel;
         foreach (var (wave, count) in snapshot.ReinforcementsMemory) battle._reinforcementsMemory[wave] = count;
         battle.Turn = snapshot.Turn;
+        // LoadGameState opens a battle past its first turn in the battlescape, with no briefing; a save from before the first turn (which
+        // the reference cannot make) goes through the briefing again (ADR 0039).
+        battle.Phase = snapshot.Turn >= 1 ? BattlePhase.InProgress : BattlePhase.Briefing;
         battle.BughuntMinTurn = snapshot.BughuntMinTurn;
         battle.BughuntMode = snapshot.BughuntMode;
         battle.AnimFrame = snapshot.AnimFrame;

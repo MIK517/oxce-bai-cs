@@ -526,9 +526,10 @@ public sealed class BattleStartTests
         Assert.Equal(CampaignBattles.BattleInProgress.Text, Refusal(campaign, new RecallCraft(request.BaseId, "SHIP", 1)));
         Assert.Equal(CampaignBattles.BattleInProgress.Text, Refusal(campaign, new StartBattle()));
         Assert.Equivalent(before, campaign.Capture(), strict: true);
-        Assert.Equal(CampaignBattles.BattleSaveBeforeFirstTurn.Text, campaign.QuerySaveRefusal());
-        Assert.Null(campaign.CaptureForSave(out var refusal));
-        Assert.Equal(CampaignBattles.BattleSaveBeforeFirstTurn.Text, refusal);
+        // Saving is open from the start: a battle before its first turn is saved as it is and briefed again on loading.
+        Assert.Null(campaign.QuerySaveRefusal());
+        Assert.NotNull(campaign.CaptureForSave(out var refusal));
+        Assert.Null(refusal);
     }
 
     [Fact]

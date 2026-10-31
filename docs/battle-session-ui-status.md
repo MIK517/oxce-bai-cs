@@ -12,7 +12,7 @@ Phase 7 branch 3 (`claude/battle-session-ui`), from `main` after PR #79 (branch 
 | S0 planning | Done (2026-10-31) |
 | S1 session layer | Done, audit pending (2026-10-31) |
 | S2 host clock, pause policy and screen stack | Done, audit pending (2026-10-31) |
-| S3 briefing and the first turn | Not started |
+| S3 briefing and the first turn | Done, audit pending (2026-10-31) |
 | S4 inventory | Not started |
 | S5 battlescape queries and view model | Not started |
 | S6 battlescape screens | Not started |
@@ -99,9 +99,79 @@ Tests: `SessionClockTests` (the old controller tests, cover pause and release, h
 battle refusal halt), `ScreenNavigatorTests`, `GeoscapeClientTests` (a hosted client shares the host clock; another
 player's cover pauses it), `CampaignSessionTests` (extension commands broadcast; the host controls no unit).
 
+## S3 — Briefing and the first turn (2026-10-31)
+
+Reference: `BriefingState` (constructor, `btnOkClick`), `NextTurnState` (turn-0 work), `BattlescapeGame::spawnFromPrimedItems`,
+`spawnNewUnit`, `spawnNewItem`, `tallyUnits`, `SavedBattleGame::startFirstTurn`, `randomizeItemLocations`, `resetUnitTiles`,
+`newTurnUpdateScripts`, `BattleUnit::prepareNewTurn(false)`, `prepareTimeUnits`, `prepareEnergy`, `TileEngine::isPositionValidForUnit`.
+
+- **Phases and commands.** A battle is in a `BattlePhase`: `Briefing` (generated; also a restored battle below turn 1),
+  `Inventory` (after the briefing) and `InProgress` (turn 1 on; also every restored battle past its first turn, which opens
+  with no briefing). `IBattleCommand`s are not held back by the battle (`CampaignBattles`' command gate): `BeginBriefing`,
+  `ConfirmBriefing` and `StartFirstTurn`; `StartBattle(Preview: true)` is refused (`battle.preview-unsupported`).
+  `IBattleBriefingQuery.QueryBriefing` answers `BriefingState`'s page.
+- **Briefing.** `BeginBriefing(TargetName, CraftOrBaseName)` is the constructor: the client composes the destination's name and
+  the `STR_CRAFT_` or `STR_BASE_UC_` line with its language (ADR 0039); a mod's `operationNamesFirst` and `operationNamesLast` replace the target with a
+  name from the battle's seedless stream; a base defense calls `BriefBaseDefense` (the base is no retaliation target, a multi-UFO
+  mission is in progress). The page's deployment follows the constructor (the mission's, a base defense's custom one with a
+  description, else the landing UFO's); title and description default to the mission type and `_BRIEFING`. New rule values:
+  `RuntimeBriefing`, the deployment's `Reinforcements` waves, the bug hunt settings, the operation names, a unit's
+  `energyRecovery` and an item's `spawnUnit`, `spawnItem`, their chances and `spawnUnitFaction`.
+- **Confirming.** `ConfirmBriefing` is `btnOkClick` with `NextTurnState`'s turn-0 work. Checked before anything changes: no live
+  aliens (`battle.no-live-aliens`, refused instead of the crash screen of branch 7; the reference tallies after the spawn, the
+  port before), a reinforcement wave that could deploy (`battle.reinforcements-unsupported`: difficulty range and trigger pass;
+  odds and runs are not drawn), a primed spawn item within two tiles of a tile without a floor
+  (`battle.spawn-gravity-unsupported`: `applyGravity` is branch 4's), a spawn without alien item levels
+  (`battle.generation-failed`), and what `startFirstTurn` would refuse. Then `spawnFromPrimedItems`: for each grenade primed
+  with fuse 0 (enabled, on a tile, not X-COM's, spawning a unit or an item) `spawnNewUnit` (chance, owner's or the rule's
+  faction, `createTempUnit`, `isPositionValidForUnit` with its surrounding tiles, direction, a tank's weapon and clip, the item
+  level, `initUnit`), `spawnNewItem` and `removeItem` (whatever the chances). Then `checkBugHuntMode`.
+- **First turn.** `StartFirstTurn` (the pre-battle inventory's close; S4 calls it) refuses with no live soldiers
+  (`battle.no-live-soldiers`, the battle's end is branch 7's), then ports `startFirstTurn`: the selected unit's tile leaves the
+  storage space and its ground items go to random storage tiles (seeded; a base defense), `resetUnitTiles`, the unit on that
+  tile is selected, `prepareNewTurn(false)` for every live X-COM unit (flags reset, stun counter, a mind-controlled unit returns
+  to its side and recovers nothing, else time units and energy recover with the default recovery, cut by encumbrance and
+  fatal wounds, and kneeling ends), turn 1. Refused beforehand and named: a bound `newTurnUnit` or `newTurnItem` script
+  (`battle.new-turn-script-unsupported`, only for rules the battle uses, and a global event), a scripted time or energy
+  recovery of a live X-COM unit's armor or soldier bonuses (`battle.turn-recovery-script-unsupported`), an unconscious
+  small unit over the out threshold or an infected unit (`battle.turn-one-revive-unsupported`).
+- **Open question from S0, decided.** `prepareNewTurn(false)` needs only the time unit and energy recovery of its first stage
+  (no fire, morale or health), so the first-turn subset is complete; the scripted forms are refused.
+- **Saving.** `battle.save-before-first-turn` is retired (`CampaignBattles.SaveGate` is gone): a battle saves at any time, and a
+  save from before the first turn reloads into the briefing (ADR 0039). The fifth special built-in item of a unit is reported in
+  `BattleState.RestoreNotes` and `BattleOverview.RestoreNotes`.
+
+Tests: `BattleFirstTurnTests` (briefing names, operation names, briefing data, phase order, the preview, primed spawn
+items and their chances, which grenades spawn, the refusals before any change, reinforcement waves, bug hunt, the first turn's
+preparation, encumbrance and leg wounds, out and controlled units, reselection, seeded item randomization, no soldiers, script
+refusals, revive refusals, a reload past and before the first turn, the rule values), `StrategicBaseAttackTests` (`BriefBaseDefense` only; the `BeginBriefing` path to it has no test), `BattleSaveItemTests` (the restore note); the old save-gate tests now save from the start and play
+the briefing and the first turn to reach turn 1.
+
+Gaps with an owner:
+
+- `tallyUnits` ignores surrender mode and captured units (a surrendering alien still counts) and the exit areas (branch 7).
+- `checkForCasualties` of the battlescape's constructor is refused (`battle.casualties-unsupported`, branch 6) when a unit is past the out threshold but not out.
+- A save from before the first turn: the briefing's craft or base is derived from the campaign's `inBattlescape` flags on restore (not saved).
+- `applyGravity`, `calculateFOV` and the glow of a spawned item are branch 4's; `initItem`/`initUnit` script hooks are branch 8's.
+- The briefing's `Seedless` stream is the battle's; the hidden-movement background pick of `NextTurnState` is presentation.
+- `BriefingData` merges key by key across mods as in the reference (`MergeBriefing`); no gap.
+- The autosave on turn 1 and the camera centering of `NextTurnState::close` are S6's (the screens) and the host's.
+- `saveEquipmentLayout` on closing the inventory is S4's.
+
 ## Next
 
-S3 — Briefing and the first turn (see the plan's slice table).
+S4 — Pre-battle and in-battle inventory (see the plan's slice table). From S3:
+
+- `StartFirstTurn` is the command the pre-battle inventory's close sends; S4's close also runs `saveEquipmentLayout` (a campaign
+  effect of starting the first turn) and must keep the phase order (`Inventory` before it). Inventory moves before the first turn
+  belong to the `Inventory` phase; a move in `InProgress` costs time units.
+- The briefing's names are set by the client's `BeginBriefing`; the SDL client does not send it yet (S6 builds the briefing screen).
+- Items spawned by `spawnNewItem` and units by `spawnNewUnit` go through `UnitEquipment`; `BattleState.RemoveItem` is the
+  battle's `removeItem` for the first time (S4's moves and drops can reuse it).
+- `RandomizeItemLocations` walks `_items` order, the reference the tile's inventory order; they diverge once S4 drops items on the ground (keep a per-tile order then).
+- `PrimedSpawnItems`, `SpawnNeedsGravity` and `FirstTurnRefusal` are the checks to keep when branch 4 adds gravity and branch 8 script
+  bindings: retire `battle.spawn-gravity-unsupported`, `battle.new-turn-script-unsupported`, `battle.turn-recovery-script-unsupported`
+  where their owner lands.
 
 - Gaps with owner S6 (moved there in the plan's slice table): the plan's shared widgets and the `ScreenNavigator.Covers` query
   the session should read are not done (the cover comes from the client's `TimeCanRun`); `ScreenNavigator` has no hook for the screen
@@ -123,13 +193,15 @@ S3 — Briefing and the first turn (see the plan's slice table).
   literals with `\n` through the Edit tool; the test runner is Microsoft Testing Platform
   (`dotnet test --project <proj> --filter-class <full name>`); battle test helpers (`BattleStartTests.Requested`,
   `Started`, `Battle`, `BattleSaveRootTests.Generated`, `BattleSaveUnitTests.Loaded`) are internal for reuse; a
-  campaign snapshot with a battle restores only with terrain files; a test that needs a savable battle sets the
-  captured snapshot's `Battle.Turn` to 1 until S3 retires the first-turn restriction.
-- Named refusals this branch owns: `battle.save-before-first-turn` (S3 retires it); it introduces
-  `battle.preview-unsupported`, `battle.inventory-ammo-unsupported`, `battle.inventory-throw-unsupported`,
-  `battle.inventory-prime-unsupported`, `battle.inventory-layout-screens-unsupported`, and hands on
-  `battle.new-turn-script-unsupported` (branch 8), `battle.turn-one-revive-unsupported` and
-  `battle.reinforcements-unsupported` (branch 6), `battle.no-live-aliens` (branch 7). The buttons of later branches
+  campaign snapshot with a battle restores only with terrain files; a test that needs a battle past its first turn plays
+  `BeginBriefing`, `ConfirmBriefing` and `StartFirstTurn` (`BattleCampaignSaveTests.AtFirstTurn`); raw string literals in test rules
+  have their indentation stripped (list entries start at two spaces).
+- Named refusals this branch owns, done in S3: `battle.preview-unsupported` (Phase 8, with the craft screens), `battle.casualties-unsupported` (branch 6), `battle.no-live-aliens`, `battle.no-live-soldiers`,
+  `battle.spawn-gravity-unsupported` (branch 4), `battle.turn-recovery-script-unsupported` (branch 8) and the ones it hands on below;
+  `battle.save-before-first-turn` is retired. S4 introduces `battle.inventory-ammo-unsupported`, `battle.inventory-throw-unsupported`,
+  `battle.inventory-prime-unsupported`, `battle.inventory-layout-screens-unsupported`; S3 hands on
+  `battle.spawn-gravity-unsupported` (branch 4), `battle.turn-recovery-script-unsupported` and `battle.new-turn-script-unsupported` (branch 8), `battle.turn-one-revive-unsupported` and
+  `battle.reinforcements-unsupported` (branch 6), and `battle.no-live-aliens` and `battle.no-live-soldiers` (branch 7). The buttons of later branches
   refuse by their owner's name (S6); the minimap and extended-battlescape links go to branch 8 or Phase 8. Kept by later owners:
   `OxceBattleSave.UnsupportedTagType` (branch 8), the inherited "Crashed UFO battlescape transitions require tactical
   simulation" (branch 7), the crashed UFO's power-source explosion (branch 5).

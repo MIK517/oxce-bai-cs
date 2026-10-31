@@ -160,6 +160,19 @@ reaches this; branch 3 (the inventory) owns joining such an item to its owner's 
 **Items in block style (S4).** `position` and `ammoItemSlots` are flow style in the reference; the port writes block
 style, which reads the same.
 
+**The briefing and the first turn (Phase 7 branch 3 S3).** The reference saves only from the first turn on, since
+nothing before it reaches the save screen, and a save never holds a battle at turn 0. The port retires
+`battle.save-before-first-turn`: a battle saves at any time, and a save from before the first turn loads as the reference
+cannot show it (the C++ engine would open such a save in the battlescape without `startFirstTurn`), in the briefing again, with the craft or base taken from the campaign's `inBattlescape` flags (`Phase` follows the saved turn: below 1 is the briefing, otherwise the battle is in
+progress). The briefing names the mission once per load, `spawnFromPrimedItems` finds no primed item left, and the turn-0
+reinforcement check runs again, so nothing is doubled. `startFirstTurn` dereferences `getSelectedUnit()` and its tile; a
+battle with no X-COM soldier on the map is refused (`battle.no-live-soldiers`) before it, and a selected unit that is off
+the map skips the inventory-tile steps (`randomizeItemLocations` and the reselection). The reference's `NextTurnState`
+draws `executionOdds` of a reinforcement wave from the game stream; the port refuses a start in which a wave could
+deploy (`battle.reinforcements-unsupported`) without drawing, so the stream is not spent on a refusal. The briefing's
+lines (`strTarget`, `strCraftOrBase`) are composed by the client with its language, as the geoscape's names are, and set by
+`BeginBriefing`; the operation name is drawn from the battle's own seedless stream.
+
 ## Consequences
 
 - A generated battle's root is written as the reference's generator leaves it; only the ambience delay's value differs,
