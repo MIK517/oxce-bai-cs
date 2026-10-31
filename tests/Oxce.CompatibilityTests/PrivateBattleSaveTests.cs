@@ -1,5 +1,6 @@
 using Oxce.Core.Diagnostics;
 using Oxce.Core.Random;
+using Oxce.Engine.Battlescape;
 using Oxce.Formats.Yaml;
 using Oxce.Gameplay.Battles;
 using Oxce.Gameplay.Battles.Terrain;
@@ -70,6 +71,16 @@ public sealed class PrivateBattleSaveTests
         // S5: the campaign's load restores the same battle (its deployment from the UFO in the battlescape), which the
         // campaign may save (past its first turn), and its rewrite holds the battle as the module writes it.
         var held = BattleStartTests.Battle(loaded.Campaign);
+        // Phase 7 branch 3 S7: the loaded battle opens directly in the battlescape, which draws and ticks for the local player,
+        // and no viewer of another side sees a unit its side did not spot.
+        var context = PrivateBattleGenerationTests.Context(loaded.Campaign, BattleViewer.LocalPlayer);
+        Assert.True(context.Open());
+        Assert.Equal(1, context.Screens.Count);
+        var screen = Assert.IsType<BattlescapeClient>(context.Screens.Top);
+        context.Screens.Tick(TimeSpan.FromMilliseconds(16));
+        Assert.True(screen.Frame.Width > 0 && screen.Frame.Height > 0);
+        Assert.Contains(screen.Frame.Pixels.ToArray(), static pixel => pixel == BattleUiContext.Color.Floor);
+        PrivateBattleGenerationTests.AssertOtherSidesSeeOnlyTheirOwn(loaded.Campaign, held);
         Assert.Equal(battle.DeploymentId, held.DeploymentId);
         Assert.Null(loaded.Campaign.QuerySaveRefusal());
         var captured = loaded.Campaign.Capture();

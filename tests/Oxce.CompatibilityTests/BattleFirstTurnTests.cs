@@ -264,11 +264,11 @@ public sealed class BattleFirstTurnTests
     }
 
     [Fact]
-    public void ASpawnNearATileWithoutAFloorAndABattleWithoutAliensAreRefusedBeforeAnyChange()
+    public void ASpawnOnATileWithoutAFloorAndABattleWithoutAliensAreRefusedBeforeAnyChange()
     {
         var (campaign, battle) = Begun(SpawnRules(), "UFO_ARMORY");
         var tile = battle.Items.First(static item => item.ItemType == "GRENADE" && item.Tile is not null).Tile!.Value;
-        var index = battle.Map.TileIndex(tile with { X = tile.X + 1 });
+        var index = battle.Map.TileIndex(tile);
         var (floorId, floorSet) = battle.Map.Part(index, BattleTilePart.Floor);
         battle.Map.SetPart(index, BattleTilePart.Floor, -1, -1);
         var before = (campaign.Capture(), campaign.Random.State);
@@ -281,6 +281,40 @@ public sealed class BattleFirstTurnTests
         Assert.Equal("battle.no-live-aliens", Refusal(campaign, new ConfirmBriefing()));
         Assert.Equal(before.Item2, campaign.Random.State);
         Assert.Equal(2, battle.Items.Count(static item => item.ItemType == "GRENADE" && item.Tile is not null));
+    }
+
+    [Fact]
+    public void ASpawnBesideATileWithoutAFloorIsNotRefusedWhereGravityActsOnNothing()
+    {
+        // applyGravity acts on the tile the unit takes, not on its surroundings: the neighbours of a floored spawn may be open air.
+        var (campaign, battle) = Begun(SpawnRules(), "UFO_ARMORY");
+        var grenades = battle.Items.Where(static item => item.ItemType == "GRENADE" && item.Tile is not null).ToArray();
+        var rules = campaign.Content.RuntimeRules;
+        // One spawner only, so that no other spawn could take the neighbour's place.
+        grenades[1].XcomProperty = true;
+        Assert.False(battle.SpawnNeedsGravity(rules));
+        var tile = grenades[0].Tile!.Value;
+        var neighbour = tile with { X = tile.X + 2 };
+        battle.Map.SetPart(battle.Map.TileIndex(neighbour), BattleTilePart.Floor, -1, -1);
+        Assert.False(battle.SpawnNeedsGravity(rules));
+        // Two spawners close together each take their own tile, so the floorless tile two away still counts for nothing.
+        grenades[1].XcomProperty = false;
+        grenades[1].Tile = tile with { X = tile.X + 1 };
+        Assert.False(battle.SpawnNeedsGravity(rules));
+        // Two on one tile: the second takes the first free position, the one to the north, which has no floor.
+        grenades[1].Tile = tile;
+        var north = tile with { Y = tile.Y - 1 };
+        Assert.False(battle.SpawnNeedsGravity(rules));
+        battle.Map.SetPart(battle.Map.TileIndex(north), BattleTilePart.Floor, -1, -1);
+        Assert.True(battle.SpawnNeedsGravity(rules));
+        grenades[1].XcomProperty = true;
+        // The unit's own tile above level 0 without a floor drops its items, and the same tile with a floor does not.
+        var upper = tile with { Z = 1 };
+        if (battle.Map.Contains(upper))
+        {
+            grenades[0].Tile = upper;
+            Assert.True(battle.SpawnNeedsGravity(rules) == battle.Map.HasNoFloor(upper));
+        }
     }
 
     [Fact]

@@ -18,7 +18,7 @@ Phase 7 branch 3 (`claude/battle-session-ui`), from `main` after PR #79 (branch 
 | S6 battlescape screens | Done, audit pending (2026-10-31) |
 | S6b host loop: battle screens from the SDL host, turn-1 autosave | Done, audit pending (2026-10-31) |
 | S6c geoscape popups, modes and client cover onto `ScreenNavigator` | Done, audit pending (2026-10-31); the logistics client's internal views are not split |
-| S7 acceptance and branch audit | Not started |
+| S7 acceptance | Done, audit pending (2026-10-31); the branch audit follows |
 
 ## S0 — Planning (2026-10-31)
 
@@ -123,7 +123,7 @@ Reference: `BriefingState` (constructor, `btnOkClick`), `NextTurnState` (turn-0 
   aliens (`battle.no-live-aliens`, refused instead of the crash screen of branch 7; the reference tallies after the spawn, the
   port before), a reinforcement wave that could deploy (`battle.reinforcements-unsupported`: difficulty range and trigger pass;
   odds and runs are not drawn), a primed spawn item within two tiles of a tile without a floor
-  (`battle.spawn-gravity-unsupported`: `applyGravity` is branch 4's), a spawn without alien item levels
+  (`battle.spawn-gravity-unsupported`: `applyGravity` is branch 4's; narrowed in S7 to a unit that would fall or an item that would drop), a spawn without alien item levels
   (`battle.generation-failed`), and what `startFirstTurn` would refuse. Then `spawnFromPrimedItems`: for each grenade primed
   with fuse 0 (enabled, on a tile, not X-COM's, spawning a unit or an item) `spawnNewUnit` (chance, owner's or the rule's
   faction, `createTempUnit`, `isPositionValidForUnit` with its surrounding tiles, direction, a tank's weapon and clip, the item
@@ -379,11 +379,32 @@ Not done:
 - The logistics client's internal views and its load-confirmation prompt (`_loadConfirmation`) are not separate screens. This is a deliberate plan change: they are
   one screen with a view enum and no reference rule depends on their being stack entries. Owner: Phase 8 presentation, with translucent compositing on separate surfaces.
 
+## S7 — Acceptance (2026-10-31)
+
+Acceptance on branch 1's battles and the private active-battle saves, through the screens on one `ScreenNavigator` and the session's commands
+(`PrivateBattleGenerationTests.AssertPlays`, `PrivateBattleSaveTests`); no rule code changed.
+
+- **Branch 1's nine battles** (the Rosigma terror landing, five staged landings, three base defenses). Every battle shows its briefing for the local player. The six vanilla ones then play through: Enter confirms the briefing, Esc closes the
+  pre-battle inventory (`StartFirstTurn`), the battlescape is on top at turn 1 and draws the level, ticks, has a selected X-COM unit and answers the soldier button; the battle is saved (`CheckSave` passes), reloads at turn 1
+  `InProgress`, opens in the battlescape on a one-screen stack and has the same viewer unit lists for every faction.
+- **The three Rosigma battles are refused at the briefing**, by name: `battle.new-turn-script-unsupported` (the mod binds `newTurnUnit`/`newTurnItem` scripts; branch 8's). They stay in their briefing, the screen shows the code, and they
+  save (turn 0 in the header, ADR 0039, so the body's reading rules and the header's mission, target and craft or base are checked, not `CheckSave`'s turn rule) and reload into the briefing. The tests pin the refused set and the code, so
+  branch 8 retiring the refusal moves them to the play-through path. The first acceptance scenario (the Rosigma terror landing) reaches the battlescape only after branch 8.
+- **Gravity refusal narrowed (audit finding).** `battle.spawn-gravity-unsupported` first refused these battles because it looked at every tile within two of a primed spawner. `SpawnNeedsGravity` now follows `applyGravity`: it refuses only when
+  a unit spawned from a primed item would take a position where it falls (no floor under all its tiles) or where the tile above level 0 has no floor (its items drop), or a spawned item's tile above level 0 has no floor. Positions follow
+  `ValidForUnit` around the item with the spawns before it in order; a spawn that may not happen (chance under 100) leaves every position it could have taken open, and all of them are checked. The Rosigma turret and radar spawners stand
+  on floors, so gravity does nothing for them. Tests: `BattleFirstTurnTests` (the unit's own tile without a floor refused; a floorless neighbour allowed; two close spawners count the neighbour; an upper level follows the tile's floor).
+- **Another faction's client** sees, on every level, a unit only if it is its side's or its side spotted it; the same for the overview's unit list (every battle, and every corpus battle).
+- **The private active-battle saves** (eight, vanilla UFO, TFTD and Rosigma `battlescape/`) open directly in the battlescape for the local player: one screen on the stack, drawn and ticked, and the same
+  viewer rule holds.
+
+Not done: the walk through the briefing for the Rosigma battles (branch 8's scripts); no SDL-level test (needs private data and a window).
+
 ## Next
 
-S7 — acceptance on branch 1's battles and the private active-battle saves, then the branch audit (`git diff main...HEAD`). S6c (geoscape popups, modes and the client cover on the stack) is done: see its section;
-the geoscape's own stack has a root screen and mode screens. The plan's S7 row has no further porting. The logistics client's internal views and a compositing of translucent screens on separate surfaces remain
-as listed under S6c "Not done". Earlier parts: S6b (battle screens, turn-1 save), the screens in `Oxce.Engine/Battlescape` (`BattleUiContext.Open()` is the entry), `BattleViewModel` and `IBattleViewQuery` (S5); the host loop that creates a session sets `Controllers = new BattleUnitControllers(battleQuery)`; a screen's soldier buttons are `Next`, `Skip`, `ReselectSkipped`, the level buttons `LevelUp` and `LevelDown`, the center button `CenterOnSelection`. Buttons of later branches refuse by their owner's name. From S4:
+The branch audit only: `git diff main...HEAD` (per `AGENTS.md`); S7's acceptance is done (see its section). Findings to look for in particular: the three Rosigma battles refused at the briefing by
+`battle.new-turn-script-unsupported` for the three Rosigma battles (branch 8 retires it and then `PrivateBattleGenerationTests` moves them to the play-through path), the logistics client's internal views not split (S6c), and translucent compositing
+on separate surfaces (Phase 8). Earlier parts: S6b (battle screens, turn-1 save), the screens in `Oxce.Engine/Battlescape` (`BattleUiContext.Open()` is the entry), `BattleViewModel` and `IBattleViewQuery` (S5); the host loop that creates a session sets `Controllers = new BattleUnitControllers(battleQuery)`; a screen's soldier buttons are `Next`, `Skip`, `ReselectSkipped`, the level buttons `LevelUp` and `LevelDown`, the center button `CenterOnSelection`. Buttons of later branches refuse by their owner's name. From S4:
 
 - The inventory is a command set on stable IDs (`MoveInventoryItem`, `AutoPlaceInventoryItem`, both `IUnitCommand`) with
   `IBattleInventoryQuery`; the host loop that creates a

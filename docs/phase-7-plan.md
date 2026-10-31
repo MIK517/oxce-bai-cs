@@ -265,7 +265,7 @@ battlescape), `Game` (the state stack), `GeoscapeState` (the pause policy the ho
   `reviveUnconsciousUnits` and `convertInfected` are branch 6's and are guarded by a validated precondition (none can
   apply to a generated battle at turn 1). Refusal names: `battle.new-turn-script-unsupported` (branch 8),
   `battle.turn-one-revive-unsupported` (branch 6), `battle.no-live-aliens` (the `AliensCrashState` exit, branch 7),
-  `battle.preview-unsupported` and `battle.reinforcements-unsupported` (above). Completing this retires `battle.save-before-first-turn`, the restriction branch 2 handed over.
+  `battle.preview-unsupported` and `battle.reinforcements-unsupported` (above), `battle.spawn-gravity-unsupported` (branch 4: a primed spawn item whose unit would fall, or whose tile above level 0 has no floor). Completing this retires `battle.save-before-first-turn`, the restriction branch 2 handed over.
 - **The pre-battle inventory is the reference's `InventoryState(false, ...)`.** Items move between slots under the
   `RuleInventory` slot rules at no TU cost before the first turn and at the reference's cost during battle; moves are
   commands on stable unit and item IDs with total validation. Closing the pre-battle inventory also runs `saveEquipmentLayout`, which
@@ -309,7 +309,7 @@ battlescape), `Game` (the state stack), `GeoscapeState` (the pause policy the ho
 | S7 | Acceptance on branch 1's battles and the private active-battle saves; branch audit | none beyond acceptance |
 
 Acceptance: each generated acceptance battle of branch 1 passes the briefing, the pre-battle inventory and
-`startFirstTurn`, is shown in the battlescape through the indexed loop for a chosen player, can be saved (the
+`startFirstTurn` (the three Rosigma battles, whose mod binds `newTurnUnit`/`newTurnItem` scripts, are instead refused at the briefing by `battle.new-turn-script-unsupported`, branch 8's, and still save and reload into the briefing), is shown in the battlescape through the indexed loop for a chosen player, can be saved (the
 first-turn restriction retired) and reloaded into the battlescape, and the private active-battle saves open directly.
 A client of another faction sees only its own spotted state. The geoscape behaves as before through the session and the
 host clock, with the existing geoscape tests unchanged.
