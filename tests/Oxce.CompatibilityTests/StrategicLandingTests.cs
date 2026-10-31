@@ -1,3 +1,4 @@
+using Oxce.Gameplay.Sessions;
 using Oxce.Core.Random;
 using Oxce.Engine;
 using Oxce.Engine.Geoscape;
@@ -236,7 +237,7 @@ public sealed class StrategicLandingTests
         var (content, campaign) = Create();
         var client = Client(content, campaign);
         var before = Ship(campaign);
-        client.Tick(GeoscapeTimeController.GeoClock);
+        client.Tick(SessionClock.GeoClock);
         var popup = Assert.Single(client.Popups);
         Assert.Equal(["STR_YES", "STR_NO"], popup.Actions.Select(static action => action.Label));
         // ConfirmLandingState::togglePatrolButton: held Ctrl turns No into Patrol, and Esc presses it.
@@ -346,7 +347,7 @@ public sealed class StrategicLandingTests
     {
         var (content, campaign) = Create();
         var client = Client(content, campaign);
-        client.Tick(GeoscapeTimeController.GeoClock);
+        client.Tick(SessionClock.GeoClock);
         Press(client, 13);
         var popup = Assert.Single(client.Popups);
         Assert.Equal("Tactical combat is not available yet", popup.Title);

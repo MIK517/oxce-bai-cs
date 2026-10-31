@@ -11,13 +11,25 @@ public readonly record struct PlayerId(int Value)
     /// <summary>The one player of a single-player session.</summary>
     public static PlayerId Local => new(0);
 
-    public override string ToString() => $"player {Value}";
+    /// <summary>The host itself: the clock's time advances and extension commands.</summary>
+    public static PlayerId Host => new(-1);
+
+    public override string ToString() => Value == -1 ? "the host" : $"player {Value}";
 }
 
 /// <summary>A command target that also learns who sent the command.</summary>
 public interface IActorCommandTarget : ICampaignCommandTarget
 {
     CampaignCommandResult Execute(PlayerId actor, ICampaignCommand command);
+}
+
+/// <summary>
+/// A layer under the session that originates commands of its own (extensions). The session hands it a route so
+/// those commands are executed and broadcast through the session instead of bypassing it.
+/// </summary>
+public interface IHostRoutedCommands
+{
+    ICampaignCommandTarget? HostRoute { get; set; }
 }
 
 /// <summary>

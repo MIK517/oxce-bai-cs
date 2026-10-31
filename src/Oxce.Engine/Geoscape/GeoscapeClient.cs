@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text;
 using Oxce.Engine.Input;
 using Oxce.Gameplay.Campaigns;
+using Oxce.Gameplay.Sessions;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Runtime;
 using Oxce.Rendering;
@@ -57,7 +58,9 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     private readonly GeoscapeClientSetup _setup;
     private readonly IndexedSurface _frame = new(Width, Height);
     private readonly GlobeRenderer _renderer;
-    private readonly GeoscapeTimeController _time;
+    private SessionClock _time;
+    private readonly Func<TimeSpan> _stopwatch;
+    private readonly ScreenNavigator _screens = new();
     private readonly List<PopupEntry> _popups = [];
     /// <summary>A save the campaign requested (ironman or autosave), made once no window is open.</summary>
     private CampaignSaveKind? _pendingSave;
@@ -67,7 +70,6 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     private bool _worldReady;
     private GlobeScene _scene = GlobeScene.Empty;
     private GlobeTargets _targets = GlobeTargets.Empty;
-    private IIndexedLoopClient? _bases;
     private GlobeTarget? _selected;
     private GlobeRenderOptions _options;
     private string _status = "";
@@ -91,8 +93,9 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
         _options = setup.Options;
         View = new GlobeView(GlobeWidth, Height, PixelScale);
         _renderer = new GlobeRenderer(View, setup.Assets, setup.Rules.Campaign.Globe, setup.Font);
-        var stopwatch = setup.Stopwatch ?? CreateStopwatch();
-        _time = new GeoscapeTimeController(stopwatch);
+        // A session behind a host takes the host's clock; a bare campaign gets a clock of its own for this one client.
+        _stopwatch = setup.Stopwatch ?? CreateStopwatch();
+        _time = _session.Clock ?? new SessionClock(_session.Commands, _stopwatch);
         _world = _session.World.QueryWorld();
         _overview = _session.Queries.QueryOverview();
         ApplyView(_session.GlobeView);
@@ -116,17 +119,17 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
         _globeDirty = true;
     }
 
-    public IndexedSurface Frame => _bases?.Frame ?? _frame;
-    public IndexedPalette Palette => _bases?.Palette ?? _setup.Assets.Palette;
-    public long PresentationRevision => _bases is null ? _revision : checked(_revision + _bases.PresentationRevision);
+    public IndexedSurface Frame => _screens.Top?.Frame ?? _frame;
+    public IndexedPalette Palette => _screens.Top?.Palette ?? _setup.Assets.Palette;
+    public long PresentationRevision => checked(_revision + _screens.PresentationRevision);
     public bool ExitRequested { get; private set; }
 
     public GlobeView View { get; }
-    public GeoscapeTimeController Time => _time;
+    public SessionClock Time => _time;
     public CampaignWorldOverview World => _world;
     public GlobeTarget? Selected => _selected;
     public IReadOnlyList<GeoscapePopup> Popups => _popups.Select(static entry => entry.Popup).ToArray();
-    public bool BasesOpen => _bases is not null;
+    public bool BasesOpen => _screens.Count != 0;
     public string Status => _status;
     public GlobeRenderOptions Options => _options;
 
@@ -134,16 +137,17 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     /// Time may run: no popup, destination choice, open interception window or screen above the globe, and
     /// the world has been entered.
     /// </summary>
-    public bool TimeCanRun => _popups.Count == 0 && _bases is null && _selecting is null && _placing is null &&
+    public bool TimeCanRun => _popups.Count == 0 && _screens.Count == 0 && _selecting is null && _placing is null &&
         _naming is null && _worldReady && !InterceptionWindowsOpen;
 
     public void Tick(TimeSpan fixedInterval)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(fixedInterval, TimeSpan.Zero);
-        if (_bases is not null)
+        if (_screens.Count != 0)
         {
-            _bases.Tick(fixedInterval);
-            if (_bases.ExitRequested) CloseBases();
+            // Screens above the geoscape cover it for the host clock even though this client stops ticking it.
+            _time.SetCovered(_session.Player, true);
+            _screens.Tick(fixedInterval);
             return;
         }
         var redraw = TickHover(fixedInterval);
@@ -170,12 +174,14 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
             _pendingSave = null;
             if (_setup.SaveRequested is { } requested) Guard(() => requested(save));
         }
+        // The client reports its cover; the host clock decides what that pauses.
+        _time.SetCovered(_session.Player, !TimeCanRun);
         if (TimeCanRun)
         {
-            GeoscapeTimeStep step;
+            SessionClockStep step;
             try
             {
-                step = _time.Tick(fixedInterval, _session.Commands);
+                step = _time.Tick(fixedInterval);
             }
             catch (Exception error) when (error is InvalidOperationException or InvalidDataException or OverflowException)
             {
@@ -216,12 +222,7 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
             _control = control;
             if (relabel) Redraw();
         }
-        if (_bases is not null)
-        {
-            _bases.HandleInput(input);
-            if (_bases.ExitRequested) CloseBases();
-            return;
-        }
+        if (_screens.HandleInput(input)) return;
         if (_naming is not null)
         {
             HandleNamingInput(input);
@@ -538,21 +539,20 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
         _rotateLongitude = _rotateLatitude = 0;
         _dragging = false;
         // Time belongs to the geoscape: the base screens may not advance it behind its popups.
-        _bases = _setup.OpenBases?.Invoke(_session) ?? new CampaignLogisticsClient(_session, _setup.Font, _setup.Localize,
+        var bases = _setup.OpenBases?.Invoke(_session) ?? new CampaignLogisticsClient(_session, _setup.Font, _setup.Localize,
             _setup.Save, _setup.Load is null ? null : () =>
             {
                 var session = _setup.Load();
                 Replace(session);
                 return session;
             }, advanceTime: false, baseId: baseId, buildNewBase: () => _buildNewBase = true);
+        _screens.Push(bases, closed: AfterBasesClosed);
+        _time.SetCovered(_session.Player, true);
         _revision++;
     }
 
-    private void CloseBases()
+    private void AfterBasesClosed()
     {
-        if (_bases is null) return;
-        _revision = checked(_revision + _bases.PresentationRevision + 1);
-        _bases = null;
         // Placing the first base in the base screens enters the world, as GeoscapeState::init does.
         EnterWorld();
         Refresh();
@@ -573,7 +573,9 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     private void Replace(CampaignUiSession session)
     {
         if (session.World is null) throw new InvalidOperationException("The loaded session has no world query.");
+        _time.SetCovered(_session.Player, false);
         _session = session;
+        _time = session.Clock ?? new SessionClock(session.Commands, _stopwatch);
         // Nothing owed by the old campaign's clock may run on the loaded one, nor a save it requested.
         _time.Interrupt();
         _pendingSave = null;

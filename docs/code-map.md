@@ -18,7 +18,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 223 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 224 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 100 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
@@ -27,7 +27,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
 | [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 332 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
-| [Oxce.UnitTests](#oxceunittests) | 110 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
+| [Oxce.UnitTests](#oxceunittests) | 111 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
 | [Oxce.FixtureTool](#oxcefixturetool) | 1 | FixtureSupport, Formats, Mods, Savegames |
 | [Oxce.ResourceBrowser](#oxceresourcebrowser) | 2 | Formats, Mods, Platform.Sdl, Rendering, Resources |
@@ -116,6 +116,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `IGameHost` (interface) [IGameHost.cs](../src/Oxce.Engine/IGameHost.cs) - Owns the application loop without exposing a specific windowing backend.
 - `IIndexedLoopClient` (interface) [IIndexedLoopClient.cs](../src/Oxce.Engine/IIndexedLoopClient.cs) - Platform-neutral indexed-frame client driven by a window host.
 - `PresentationRevisionGate` (class) [PresentationRevisionGate.cs](../src/Oxce.Engine/PresentationRevisionGate.cs) - Tracks the last frame revision accepted by a presenter so unchanged simulation ticks do not repeat conversion and upload work.
+- `ScreenNavigator` (class) [ScreenNavigator.cs](../src/Oxce.Engine/ScreenNavigator.cs) - The reference's state stack (`Game::_states`): screens are pushed above one another, only the top one thinks and receives input, and a sc...
 - `ScriptedInput` (record struct) [ScriptedLoopClient.cs](../src/Oxce.Engine/ScriptedLoopClient.cs) - An input to replay once the scripted run reaches its time.
 - `ScriptedLoopClient` (class) [ScriptedLoopClient.cs](../src/Oxce.Engine/ScriptedLoopClient.cs) - Drives another client with timed inputs and ends the run after a duration, for unattended smoke runs of a real window host.
 
@@ -158,8 +159,6 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `GeoscapeLostUfo` (record) [GeoscapeScreens.cs](../src/Oxce.Engine/Geoscape/GeoscapeScreens.cs) - GeoscapeCraftState's lost-target variant: the UFO's last known position and marker id.
 - `GeoscapeDestination` (record) [GeoscapeScreens.cs](../src/Oxce.Engine/Geoscape/GeoscapeScreens.cs) - Where a wing is sent: a globe target or a new waypoint.
 - `GeoscapeScreens` (class) [GeoscapeScreens.cs](../src/Oxce.Engine/Geoscape/GeoscapeScreens.cs) - The geoscape's craft and target screens as popups: GeoscapeCraftState, InterceptState, ConfirmDestinationState and TargetInfoState.
-- `GeoscapeTimeStep` (record struct) [GeoscapeTimeController.cs](../src/Oxce.Engine/Geoscape/GeoscapeTimeController.cs) - The outcome of one host tick of the geoscape clock.
-- `GeoscapeTimeController` (class) [GeoscapeTimeController.cs](../src/Oxce.Engine/Geoscape/GeoscapeTimeController.cs) - GeoscapeState::timeAdvance driven by the host clock.
 - `GlobeRenderer` (class) [GlobeRenderer.cs](../src/Oxce.Engine/Geoscape/GlobeRenderer.cs) - Draws the globe into an indexed surface as Globe::draw and Globe::blit compose it: ocean and textured land; radar circles and flight path...
 - `GlobeMarker` (record struct) [GlobeScene.cs](../src/Oxce.Engine/Geoscape/GlobeScene.cs) - A marker frame at a globe position.
 - `GlobeCircle` (record struct) [GlobeScene.cs](../src/Oxce.Engine/Geoscape/GlobeScene.cs) - A radar circle: centre, range in radians, segment count and the drawn-segment stride.
@@ -337,7 +336,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 223 files.
+`src/Oxce.Gameplay` - 224 files.
 
 ### `Oxce.Gameplay`
 
@@ -674,8 +673,11 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 - `CampaignSession` (class) [CampaignSession.cs](../src/Oxce.Gameplay/Sessions/CampaignSession.cs) - The host's session layer (ADR 0037): players attach to it, every command carries its sender, unit commands are authorized before the simu...
 - `SessionHandle` (class) [CampaignSession.cs](../src/Oxce.Gameplay/Sessions/CampaignSession.cs) - One player's view of the session: commands are sent as that player and queries are read for that player.
+- `SessionClockStep` (record struct) [SessionClock.cs](../src/Oxce.Gameplay/Sessions/SessionClock.cs) - The outcome of one host tick of the geoscape clock.
+- `SessionClock` (class) [SessionClock.cs](../src/Oxce.Gameplay/Sessions/SessionClock.cs) - GeoscapeState::timeAdvance driven by the host clock.
 - `PlayerId` (record struct) [SessionContracts.cs](../src/Oxce.Gameplay/Sessions/SessionContracts.cs) - A player of the host's session (ADR 0037).
 - `IActorCommandTarget` (interface) [SessionContracts.cs](../src/Oxce.Gameplay/Sessions/SessionContracts.cs) - A command target that also learns who sent the command.
+- `IHostRoutedCommands` (interface) [SessionContracts.cs](../src/Oxce.Gameplay/Sessions/SessionContracts.cs) - A layer under the session that originates commands of its own (extensions).
 - `IUnitCommand` (interface) [SessionContracts.cs](../src/Oxce.Gameplay/Sessions/SessionContracts.cs) - A command that addresses one battle unit by its stable ID.
 - `IUnitControllers` (interface) [SessionContracts.cs](../src/Oxce.Gameplay/Sessions/SessionContracts.cs) - Which player controls a unit.
 - `ISessionClient` (interface) [SessionContracts.cs](../src/Oxce.Gameplay/Sessions/SessionContracts.cs) - Receives every event the session commits, whoever caused it (ADR 0037 rule 3).
@@ -1614,13 +1616,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.UnitTests
 
-`tests/Oxce.UnitTests` - 110 files.
+`tests/Oxce.UnitTests` - 111 files.
 
 ### `Oxce.UnitTests`
 
 - `AllocationMeasurement` (class) [AllocationMeasurement.cs](../tests/Oxce.UnitTests/AllocationMeasurement.cs)
 
-<details><summary>109 test classes</summary>
+<details><summary>110 test classes</summary>
 
 - `ProjectDependencyTests` ([ProjectDependencyTests.cs](../tests/Oxce.UnitTests/Architecture/ProjectDependencyTests.cs))
 - `DiagnosticTests` ([DiagnosticTests.cs](../tests/Oxce.UnitTests/Core/DiagnosticTests.cs))
@@ -1631,12 +1633,12 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `GeoscapeClientTests` ([GeoscapeClientTests.cs](../tests/Oxce.UnitTests/Engine/GeoscapeClientTests.cs))
 - `GeoscapeNotificationsTests` ([GeoscapeNotificationsTests.cs](../tests/Oxce.UnitTests/Engine/GeoscapeNotificationsTests.cs))
 - `GeoscapeScreensTests` ([GeoscapeScreensTests.cs](../tests/Oxce.UnitTests/Engine/GeoscapeScreensTests.cs))
-- `GeoscapeTimeControllerTests` ([GeoscapeTimeControllerTests.cs](../tests/Oxce.UnitTests/Engine/GeoscapeTimeControllerTests.cs))
 - `GlobeRendererTests` ([GlobeRendererTests.cs](../tests/Oxce.UnitTests/Engine/GlobeRendererTests.cs))
 - `GlobeViewTests` ([GlobeViewTests.cs](../tests/Oxce.UnitTests/Engine/GlobeViewTests.cs))
 - `InputAudioTests` ([InputAudioTests.cs](../tests/Oxce.UnitTests/Engine/InputAudioTests.cs))
 - `ManagedAudioMixerTests` ([ManagedAudioMixerTests.cs](../tests/Oxce.UnitTests/Engine/ManagedAudioMixerTests.cs))
 - `PresentationRevisionGateTests` ([PresentationRevisionGateTests.cs](../tests/Oxce.UnitTests/Engine/PresentationRevisionGateTests.cs))
+- `ScreenNavigatorTests` ([ScreenNavigatorTests.cs](../tests/Oxce.UnitTests/Engine/ScreenNavigatorTests.cs))
 - `ScriptedLoopClientTests` ([ScriptedLoopClientTests.cs](../tests/Oxce.UnitTests/Engine/ScriptedLoopClientTests.cs))
 - `ManagedExtensionHostTests` ([ManagedExtensionHostTests.cs](../tests/Oxce.UnitTests/Extensions/ManagedExtensionHostTests.cs))
 - `CanonicalJsonTests` ([CanonicalJsonTests.cs](../tests/Oxce.UnitTests/Fixtures/CanonicalJsonTests.cs))
@@ -1679,6 +1681,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `ResearchCounterProjectionTests` ([ResearchCounterProjectionTests.cs](../tests/Oxce.UnitTests/Gameplay/ResearchCounterProjectionTests.cs))
 - `ResearchItemLifecycleTests` ([ResearchItemLifecycleTests.cs](../tests/Oxce.UnitTests/Gameplay/ResearchItemLifecycleTests.cs))
 - `ResearchScoreCapacityTests` ([ResearchScoreCapacityTests.cs](../tests/Oxce.UnitTests/Gameplay/ResearchScoreCapacityTests.cs))
+- `SessionClockTests` ([SessionClockTests.cs](../tests/Oxce.UnitTests/Gameplay/SessionClockTests.cs))
 - `SoldierGenerationTests` ([SoldierGenerationTests.cs](../tests/Oxce.UnitTests/Gameplay/SoldierGenerationTests.cs))
 - `SoldierPilotingTests` ([SoldierPilotingTests.cs](../tests/Oxce.UnitTests/Gameplay/SoldierPilotingTests.cs))
 - `WorldAlienBaseHuntingTests` ([WorldAlienBaseHuntingTests.cs](../tests/Oxce.UnitTests/Gameplay/WorldAlienBaseHuntingTests.cs))

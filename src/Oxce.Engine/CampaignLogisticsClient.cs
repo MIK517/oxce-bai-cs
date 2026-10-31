@@ -3,6 +3,7 @@ using Oxce.Core.Graphics;
 using Oxce.Engine.Input;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
+using Oxce.Gameplay.Sessions;
 using Oxce.Rendering;
 
 namespace Oxce.Engine;
@@ -28,6 +29,10 @@ public sealed record CampaignUiSession(ICampaignQuery Queries, ICampaignCommandT
     public ICampaignInterceptionQuery? Interceptions { get; init; } = Queries as ICampaignInterceptionQuery;
     /// <summary>Where the geoscape globe looked when the campaign was saved (SavedGame globe fields).</summary>
     public Geoscape.GlobeViewState? GlobeView { get; init; }
+    /// <summary>The player this client acts as; it reports its geoscape cover to the host clock under this identity.</summary>
+    public PlayerId Player { get; init; } = PlayerId.Local;
+    /// <summary>The host's clock when the commands go through a session; a bare campaign has none.</summary>
+    public SessionClock? Clock { get; init; }
 
     /// <summary>Reads every typed query from the campaign while commands use <paramref name="commands"/>.</summary>
     public static CampaignUiSession ForCampaign(CampaignState campaign, ICampaignQuery queries,
@@ -36,6 +41,8 @@ public sealed record CampaignUiSession(ICampaignQuery Queries, ICampaignCommandT
         ArgumentNullException.ThrowIfNull(campaign);
         return new(queries, commands)
         {
+            Player = (commands as SessionHandle)?.Player ?? PlayerId.Local,
+            Clock = (commands as SessionHandle)?.Clock,
             Readiness = campaign,
             ResearchProduction = campaign,
             World = campaign.GetQuery<ICampaignWorldQuery>(),

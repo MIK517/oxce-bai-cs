@@ -1,3 +1,4 @@
+using Oxce.Gameplay.Sessions;
 using Oxce.Engine;
 using Oxce.Engine.Geoscape;
 using Oxce.Engine.Input;
@@ -14,7 +15,7 @@ namespace Oxce.UnitTests.Engine;
 
 public sealed class GeoscapeClientTests
 {
-    private static readonly TimeSpan Step = GeoscapeTimeController.GeoClock;
+    private static readonly TimeSpan Step = SessionClock.GeoClock;
 
     [Fact]
     public void TimeWaitsForTheFirstBaseThenRunsAtTheSelectedSpeed()
@@ -68,6 +69,68 @@ public sealed class GeoscapeClientTests
         var after = campaign.QueryOverview().Time;
         Assert.Equal((before.Minute + 1) % 60, after.Minute);
         Assert.Equal(before.Second, after.Second);
+    }
+
+    private sealed class Heard(List<SessionEvents> sink) : ISessionClient
+    {
+        public void OnEvents(SessionEvents batch) => sink.Add(batch);
+    }
+
+    [Fact]
+    public void AHostedClientSharesTheHostClockAndAnotherPlayersCoverPausesIt()
+    {
+        var content = CampaignLogisticsTests.LoadFixture();
+        var campaign = Placed(content);
+        var host = new CampaignSession(campaign, campaign, static () => TimeSpan.Zero);
+        var heard = new List<SessionEvents>();
+        using var observer = host.Attach(new PlayerId(2), new Heard(heard));
+        using var local = host.Attach(PlayerId.Local);
+        var texture = new IndexedSurface(32, 32);
+        texture.Clear(0x41);
+        var assets = new GeoscapeAssets(IndexedPalette.CreateGrayscale(),
+            new Dictionary<int, IndexedSurface> { [0] = texture, [1] = texture, [2] = texture },
+            new Dictionary<int, IndexedSurface>(), RuntimeGlobeColors.Default);
+        var client = new GeoscapeClient(new GeoscapeClientSetup(CampaignUiSession.ForCampaign(campaign, local, local),
+            content.RuntimeRules, assets, IndexedInterfaceFont.Create(), static text => text));
+
+        Assert.Same(host.Clock, client.Time);
+        var before = campaign.QueryOverview().Time;
+        client.Tick(Step);
+        Assert.NotEqual(before, campaign.QueryOverview().Time);
+        Assert.All(heard, batch => Assert.Equal(PlayerId.Host, batch.Actor));
+        Assert.NotEmpty(heard);
+
+        host.Clock.SetCovered(new PlayerId(2), true);
+        var paused = campaign.QueryOverview().Time;
+        for (var step = 0; step < 3; step++) client.Tick(Step);
+        Assert.Equal(paused, campaign.QueryOverview().Time);
+        host.Clock.SetCovered(new PlayerId(2), false);
+        client.Tick(Step);
+        Assert.NotEqual(paused, campaign.QueryOverview().Time);
+    }
+
+    [Fact]
+    public void AHostedClientReportsItsCoverToTheHostClock()
+    {
+        var content = CampaignLogisticsTests.LoadFixture();
+        var campaign = TestFixtures.CreateLogisticsCampaign(content, "Cover");
+        var host = new CampaignSession(campaign, campaign, static () => TimeSpan.Zero);
+        using var local = host.Attach(PlayerId.Local);
+        var texture = new IndexedSurface(32, 32);
+        texture.Clear(0x41);
+        var assets = new GeoscapeAssets(IndexedPalette.CreateGrayscale(),
+            new Dictionary<int, IndexedSurface> { [0] = texture, [1] = texture, [2] = texture },
+            new Dictionary<int, IndexedSurface>(), RuntimeGlobeColors.Default);
+        var client = new GeoscapeClient(new GeoscapeClientSetup(CampaignUiSession.ForCampaign(campaign, local, local),
+            content.RuntimeRules, assets, IndexedInterfaceFont.Create(), static text => text));
+        // Starting base placement: the world is not entered, so the geoscape is covered.
+        client.Tick(Step);
+        Assert.True(host.Clock.Covered);
+        // Esc is ignored, 'b' opens the base screens: they cover it too, though the client stops ticking the clock.
+        Key(client, 27);
+        Key(client, 'b');
+        client.Tick(Step);
+        Assert.True(host.Clock.Covered);
     }
 
     [Fact]

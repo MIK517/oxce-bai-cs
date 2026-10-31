@@ -1,3 +1,4 @@
+using Oxce.Gameplay.Sessions;
 using Oxce.Core.Random;
 using Oxce.Engine;
 using Oxce.Engine.Geoscape;
@@ -447,7 +448,7 @@ public sealed class StrategicInterceptionTests
         Click(165, 36 + 5 * 16 + 6 + 5);
         Assert.True(client.Interceptions[0].Minimized);
         Assert.True(client.TimeCanRun);
-        client.Tick(GeoscapeTimeController.GeoClock);
+        client.Tick(SessionClock.GeoClock);
         Assert.NotEqual(time, campaign.Capture().Time);
 
         // The minimized icon restores the window, which stops the clock again.
@@ -482,7 +483,7 @@ public sealed class StrategicInterceptionTests
         }
 
         // The first tick brings the ship to its UFO and opens the window.
-        client.Tick(GeoscapeTimeController.GeoClock);
+        client.Tick(SessionClock.GeoClock);
         Assert.Null(Settle());
         var window = Assert.Single(client.Interceptions);
         Assert.Equal(("SHIP", 9), (window.CraftTypeId, window.UfoUniqueId));
@@ -502,7 +503,7 @@ public sealed class StrategicInterceptionTests
         for (var frame = 0; frame < 1_000 && landing is null; frame++)
         {
             landing = Settle();
-            if (landing is null) client.Tick(GeoscapeTimeController.GeoClock);
+            if (landing is null) client.Tick(SessionClock.GeoClock);
         }
         Assert.Equal(["STR_YES", "STR_NO"], landing!.Actions.Select(static action => action.Label));
         client.HandleInput(GameInputEvent.Key(GameInputEventKind.KeyPressed, 0, 0, 0, 13, InputKeyModifiers.None));
@@ -527,13 +528,13 @@ public sealed class StrategicInterceptionTests
         var (content, campaign, _) = Create(shipRules: "    maxAltitude: 1\n");
         var client = StrategicWorldGeoscapeScenarioTests.Client(content, CampaignUiSession.ForCampaign(campaign, campaign, campaign),
             save: static () => { }, load: static () => throw new InvalidOperationException("No save to load."));
-        client.Tick(GeoscapeTimeController.GeoClock);
+        client.Tick(SessionClock.GeoClock);
         Assert.Equal("STR_UNABLE_TO_ENGAGE_DEPTH", Assert.Single(client.Popups).Title);
         client.Choose(0);
         Assert.True(Assert.Single(client.Interceptions).Minimized);
         Assert.True(client.TimeCanRun);
         var time = campaign.Capture().Time;
-        client.Tick(GeoscapeTimeController.GeoClock);
+        client.Tick(SessionClock.GeoClock);
         Assert.NotEqual(time, campaign.Capture().Time);
     }
 

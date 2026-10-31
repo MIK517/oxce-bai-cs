@@ -1,3 +1,4 @@
+using Oxce.Gameplay.Sessions;
 using Oxce.Core.Random;
 using Oxce.Engine;
 using Oxce.Engine.Geoscape;
@@ -562,7 +563,7 @@ public sealed class StrategicBaseAttackTests
         var (content, campaign, baseId) = Create(defended: true);
         var client = StrategicWorldGeoscapeScenarioTests.Client(content, CampaignUiSession.ForCampaign(campaign, campaign, campaign),
             save: static () => { }, load: static () => throw new InvalidOperationException("No save to load."));
-        client.Tick(GeoscapeTimeController.GeoClock);
+        client.Tick(SessionClock.GeoClock);
         var defense = Assert.Single(client.Popups);
         Assert.Equal(["STR_START_FIRING", "STR_SKIP_FIRING"], defense.Actions.Select(static action => action.Label));
         Assert.False(client.TimeCanRun);
@@ -583,7 +584,7 @@ public sealed class StrategicBaseAttackTests
     {
         var (content, campaign, _) = Create(defended: true);
         var client = Client(content, campaign);
-        client.Tick(GeoscapeTimeController.GeoClock);
+        client.Tick(SessionClock.GeoClock);
         client.Choose(1);
         Assert.Equal("Tactical combat is not available yet", Assert.Single(client.Popups).Title);
         Assert.Equal("STR_BASE_DEFENSE", Assert.Single(client.Popups).Lines[0]);
@@ -594,11 +595,11 @@ public sealed class StrategicBaseAttackTests
     {
         var (content, campaign, _) = Create(defended: false, defenders: false);
         var client = Client(content, campaign);
-        client.Tick(GeoscapeTimeController.GeoClock);
+        client.Tick(SessionClock.GeoClock);
         Assert.Equal("STR_THE_ALIENS_HAVE_DESTROYED_THE_UNDEFENDED_BASE", Assert.Single(client.Popups).Title);
         client.Choose(0);
         // The next five-second tick finds no base: END_LOSE.
-        client.Tick(GeoscapeTimeController.GeoClock);
+        client.Tick(SessionClock.GeoClock);
         Assert.Equal("The campaign is lost", Assert.Single(client.Popups).Title);
         Assert.Equal(2, campaign.Capture().Ending);
     }

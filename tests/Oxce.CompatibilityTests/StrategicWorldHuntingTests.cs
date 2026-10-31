@@ -1,3 +1,4 @@
+using Oxce.Gameplay.Sessions;
 using System.Text.Json;
 using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns.World;
@@ -4960,7 +4961,7 @@ public sealed partial class StrategicWorldHuntingTests
             new SplitMix64RandomSource(81));
         var client = StrategicWorldGeoscapeScenarioTests.Client(content, CampaignUiSession.ForCampaign(campaign, campaign, campaign),
             save: static () => { }, load: static () => throw new InvalidOperationException("No save to load."));
-        client.Tick(GeoscapeTimeController.GeoClock);
+        client.Tick(SessionClock.GeoClock);
         while (client.Popups.Count != 0)
             client.Choose(client.Popups[0].Actions.ToList().FindIndex(static action => action.CancelKey || action.OkKey));
         var window = Assert.Single(client.Interceptions);

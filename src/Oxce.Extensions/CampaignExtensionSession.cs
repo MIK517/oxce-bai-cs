@@ -6,6 +6,7 @@ namespace Oxce.Extensions;
 public sealed class CampaignExtensionSession :
     ICampaignQuery,
     Oxce.Gameplay.Sessions.IActorCommandTarget,
+    Oxce.Gameplay.Sessions.IHostRoutedCommands,
     IExtensionCampaignQueries,
     IExtensionCampaignCommands,
     IDisposable
@@ -61,6 +62,12 @@ public sealed class CampaignExtensionSession :
         return _queries.QueryStores(baseId);
     }
 
+    /// <summary>
+    /// Where commands an extension sends go when a host session sits above this one, so every attached client hears
+    /// them. Without it they run directly as the local player.
+    /// </summary>
+    public ICampaignCommandTarget? HostRoute { get; set; }
+
     public CampaignCommandResult Execute(ICampaignCommand command) =>
         Execute(Oxce.Gameplay.Sessions.PlayerId.Local, command);
 
@@ -84,13 +91,14 @@ public sealed class CampaignExtensionSession :
     ExtensionCampaignCommandResult IExtensionCampaignCommands.Execute(ExtensionCampaignCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
-        var result = Execute(command switch
+        var campaignCommand = command switch
         {
-            ExtensionAdvanceCampaignTime advance => new AdvanceCampaignTime(advance.FiveSecondTicks),
+            ExtensionAdvanceCampaignTime advance => (ICampaignCommand)new AdvanceCampaignTime(advance.FiveSecondTicks),
             ExtensionPlaceStartingBase place => new PlaceStartingBase(
                 place.BaseIndex, place.Name, place.Longitude, place.Latitude),
             _ => throw new ArgumentOutOfRangeException(nameof(command), command.GetType().FullName, null),
-        });
+        };
+        var result = HostRoute is { } route ? route.Execute(campaignCommand) : Execute(campaignCommand);
         return new ExtensionCampaignCommandResult(
             result.Events.Select(TryMap).OfType<ExtensionCampaignEvent>().ToArray());
     }

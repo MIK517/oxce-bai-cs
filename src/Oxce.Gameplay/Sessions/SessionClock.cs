@@ -1,11 +1,11 @@
 using Oxce.Gameplay.Campaigns;
 
-namespace Oxce.Engine.Geoscape;
+namespace Oxce.Gameplay.Sessions;
 
 /// <summary>The outcome of one host tick of the geoscape clock.</summary>
-public readonly record struct GeoscapeTimeStep(int Ticks, IReadOnlyList<ICampaignEvent> Events, string? BlockedReason)
+public readonly record struct SessionClockStep(int Ticks, IReadOnlyList<ICampaignEvent> Events, string? BlockedReason)
 {
-    public static GeoscapeTimeStep None { get; } = new(0, [], null);
+    public static SessionClockStep None { get; } = new(0, [], null);
 }
 
 /// <summary>
@@ -14,26 +14,44 @@ public readonly record struct GeoscapeTimeStep(int Ticks, IReadOnlyList<ICampaig
 /// <see cref="AdvanceCampaignTime"/> chunks carrying the selected speed, spread over host frames
 /// when a frame's budget runs out. A tick that raises notifications pauses, as a popup does in the
 /// reference: the rest of that step is dropped and the clock waits for the next step. A refused
-/// tick halts the clock until the player selects a speed again.
+/// tick (a battle exists, for one) halts the clock until the player selects a speed again.
+/// The clock is host state (ADR 0037 rule 5): clients only report that they cover the geoscape
+/// (<see cref="SetCovered"/>), request a speed and interrupt a step; the clock does not run while any attached
+/// client reports a cover, so a popup, a destination choice or a screen above the geoscape pauses everyone.
 /// </summary>
-public sealed class GeoscapeTimeController
+public sealed class SessionClock
 {
     /// <summary>Options::geoClockSpeed default.</summary>
     public static readonly TimeSpan GeoClock = TimeSpan.FromMilliseconds(80);
     private static readonly int[] TicksPerStep = [1, 12, 12 * 5, 12 * 5 * 6, 12 * 5 * 6 * 2, 12 * 5 * 6 * 2 * 24];
+    private readonly ICampaignCommandTarget _commands;
     private readonly Func<TimeSpan> _stopwatch;
     private readonly TimeSpan _frameBudget;
     private TimeSpan _accumulated;
     private int _owed;
     private int _chunk = 720;
+    private readonly HashSet<PlayerId> _covering = [];
 
+    /// <param name="commands">Where the clock's time advances go; the session passes its own broadcasting path.</param>
     /// <param name="stopwatch">Monotonic elapsed time used to keep each host frame within <paramref name="frameBudget"/>.</param>
-    public GeoscapeTimeController(Func<TimeSpan> stopwatch, TimeSpan? frameBudget = null)
+    public SessionClock(ICampaignCommandTarget commands, Func<TimeSpan> stopwatch, TimeSpan? frameBudget = null)
     {
+        ArgumentNullException.ThrowIfNull(commands);
         ArgumentNullException.ThrowIfNull(stopwatch);
+        _commands = commands;
         _stopwatch = stopwatch;
         _frameBudget = frameBudget ?? TimeSpan.FromMilliseconds(12);
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(_frameBudget, TimeSpan.Zero);
+    }
+
+    /// <summary>True while any client reports a cover (a popup, a screen above the geoscape, the world not yet entered).</summary>
+    public bool Covered => _covering.Count != 0;
+
+    /// <summary>A client reports whether it covers the geoscape; only the host clock decides what that pauses.</summary>
+    public void SetCovered(PlayerId player, bool covered)
+    {
+        if (covered) _covering.Add(player);
+        else _covering.Remove(player);
     }
 
     public CampaignTimeSpeed Speed { get; private set; } = CampaignTimeSpeed.FiveSeconds;
@@ -81,16 +99,15 @@ public sealed class GeoscapeTimeController
         _accumulated = TimeSpan.Zero;
     }
 
-    public GeoscapeTimeStep Tick(TimeSpan elapsed, ICampaignCommandTarget commands)
+    public SessionClockStep Tick(TimeSpan elapsed)
     {
-        ArgumentNullException.ThrowIfNull(commands);
         ArgumentOutOfRangeException.ThrowIfLessThan(elapsed, TimeSpan.Zero);
-        if (!Running) return GeoscapeTimeStep.None;
+        if (!Running || Covered) return SessionClockStep.None;
         if (_owed == 0)
         {
             // A slow host does not bank more than one extra step.
             _accumulated = TimeSpan.FromTicks(Math.Min((_accumulated + elapsed).Ticks, GeoClock.Ticks * 2));
-            if (_accumulated < GeoClock) return GeoscapeTimeStep.None;
+            if (_accumulated < GeoClock) return SessionClockStep.None;
             _accumulated -= GeoClock;
             _owed = StepTicks(Speed);
         }
@@ -100,7 +117,7 @@ public sealed class GeoscapeTimeController
         {
             var requested = Math.Min(_owed, _chunk);
             var chunkStart = _stopwatch();
-            var result = commands.Execute(new AdvanceCampaignTime(requested) { SelectedSpeed = Speed });
+            var result = _commands.Execute(new AdvanceCampaignTime(requested) { SelectedSpeed = Speed });
             var advanced = result.Events.OfType<CampaignTimeAdvanced>().FirstOrDefault();
             var completed = advanced?.Summary.TickCount ?? 0;
             done += completed;

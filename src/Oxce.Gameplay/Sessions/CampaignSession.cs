@@ -5,7 +5,8 @@ namespace Oxce.Gameplay.Sessions;
 /// <summary>
 /// The host's session layer (ADR 0037): players attach to it, every command carries its sender, unit commands are
 /// authorized before the simulation runs, and committed events reach every attached client. Single-player is one
-/// session with one local player. The host clock and the screen stack are not part of this type.
+/// session with one local player. The host clock (<see cref="Clock"/>) belongs to the session: its time advances run as
+/// <see cref="PlayerId.Host"/> and are broadcast like any other command. The screen stack is a client concern.
 /// </summary>
 public sealed class CampaignSession
 {
@@ -16,10 +17,46 @@ public sealed class CampaignSession
     private IUnitControllers? _controllers;
     private bool _dispatching;
 
-    public CampaignSession(IActorCommandTarget commands, ICampaignQuery queries)
+    /// <param name="stopwatch">Monotonic time for the clock's frame budget; the system stopwatch by default.</param>
+    public CampaignSession(IActorCommandTarget commands, ICampaignQuery queries, Func<TimeSpan>? stopwatch = null)
     {
         _commands = commands ?? throw new ArgumentNullException(nameof(commands));
         Queries = queries ?? throw new ArgumentNullException(nameof(queries));
+        Clock = new SessionClock(new HostTarget(this), stopwatch ?? CreateStopwatch());
+        // Commands a layer under the session originates (extensions) come back through it to be broadcast.
+        if (commands is IHostRoutedCommands routed) routed.HostRoute = new HostTarget(this);
+    }
+
+    /// <summary>The host clock: speed, pause policy and the time advances it sends.</summary>
+    public SessionClock Clock { get; }
+
+    /// <summary>
+    /// Runs a command the host itself originates (the clock, extensions) as <see cref="PlayerId.Host"/> and broadcasts
+    /// its events. Unit commands are refused: the host controls no unit.
+    /// </summary>
+    public CampaignCommandResult ExecuteAsHost(ICampaignCommand command)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        lock (_gate)
+        {
+            if (_dispatching)
+                throw new InvalidOperationException("Commands cannot be submitted from a session event callback.");
+            if (command is IUnitCommand unit) return Refuse(SessionReasons.NotControlled(PlayerId.Host, unit.UnitId));
+            var result = _commands.Execute(PlayerId.Host, command);
+            Broadcast(new SessionEvents(PlayerId.Host, command, result.Events));
+            return result;
+        }
+    }
+
+    private static Func<TimeSpan> CreateStopwatch()
+    {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        return () => stopwatch.Elapsed;
+    }
+
+    private sealed class HostTarget(CampaignSession session) : ICampaignCommandTarget
+    {
+        public CampaignCommandResult Execute(ICampaignCommand command) => session.ExecuteAsHost(command);
     }
 
     internal ICampaignQuery Queries { get; }
@@ -82,7 +119,12 @@ public sealed class CampaignSession
 
     internal void Detach(Attachment attachment)
     {
-        lock (_gate) _attachments.Remove(attachment);
+        lock (_gate)
+        {
+            _attachments.Remove(attachment);
+            // A player that left no longer covers anything; its cover must not pause the others for good.
+            Clock.SetCovered(attachment.Player, false);
+        }
     }
 
     private static CampaignCommandResult Refuse(CampaignReason reason) => new([CampaignActionBlocked.From(reason)]);
@@ -110,6 +152,7 @@ public sealed class CampaignSession
                 {
                     // A broken observer must not undo a committed command or starve the other clients.
                     _attachments.Remove(attachment);
+                    Clock.SetCovered(attachment.Player, false);
                     _faults.Add($"{attachment.Player} detached: {exception.GetType().Name}: {exception.Message}");
                 }
             }
@@ -142,6 +185,9 @@ public sealed class SessionHandle : ICampaignCommandTarget, ICampaignQuery, IDis
     public PlayerId Player => _attachment.Player;
 
     public bool IsAttached => _session.IsAttached(_attachment);
+
+    /// <summary>The session's host clock; clients inform it and never keep their own.</summary>
+    public SessionClock Clock => _session.Clock;
 
     public CampaignCommandResult Execute(ICampaignCommand command) => _session.Execute(_attachment, command);
 

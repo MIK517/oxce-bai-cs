@@ -301,6 +301,68 @@ public sealed class CampaignSessionTests
         finally { empty.Delete(recursive: true); }
     }
 
+    [Fact]
+    public void ExtensionCommandsGoThroughTheSessionAndEveryClientHearsThem()
+    {
+        var empty = Directory.CreateTempSubdirectory("oxce-no-extensions-");
+        try
+        {
+            using var host = ManagedExtensionHost.LoadFromDirectory(
+                empty.FullName, new DiagnosticCollector(), cancellationToken: TestContext.Current.CancellationToken);
+            var target = new RecordingTarget();
+            using var extensions = host.AttachCampaign(new NoQueries(), target, TestContext.Current.CancellationToken);
+            var session = new CampaignSession(extensions, new NoQueries());
+            var recorder = new Recorder();
+            using var player = session.Attach(First, recorder);
+
+            ((Oxce.Extensions.Abstractions.IExtensionCampaignCommands)extensions)
+                .Execute(new Oxce.Extensions.Abstractions.ExtensionAdvanceCampaignTime(3));
+
+            var batch = Assert.Single(recorder.Batches);
+            Assert.Equal(PlayerId.Host, batch.Actor);
+            Assert.Equal(3, Assert.IsType<AdvanceCampaignTime>(batch.Command).FiveSecondTicks);
+            Assert.Equal(PlayerId.Host, Assert.Single(target.Executed).Actor);
+        }
+        finally { empty.Delete(recursive: true); }
+    }
+
+    [Fact]
+    public void AHostCommandFromAClientCallbackIsRefusedAsReentrant()
+    {
+        var session = new CampaignSession(new RecordingTarget(), new NoQueries());
+        var recorder = new Recorder();
+        using var player = session.Attach(First, recorder);
+        InvalidOperationException? caught = null;
+        recorder.Callback = _ =>
+        {
+            try { session.ExecuteAsHost(new AdvanceCampaignTime(1)); }
+            catch (InvalidOperationException error) { caught = error; }
+        };
+        player.Execute(new AdvanceCampaignTime(1));
+        Assert.NotNull(caught);
+    }
+
+    [Fact]
+    public void ADetachedPlayersCoverNoLongerPausesTheClock()
+    {
+        var session = new CampaignSession(new RecordingTarget(), new NoQueries());
+        var player = session.Attach(First);
+        session.Clock.SetCovered(First, true);
+        Assert.True(session.Clock.Covered);
+        player.Dispose();
+        Assert.False(session.Clock.Covered);
+    }
+
+    [Fact]
+    public void TheHostControlsNoUnit()
+    {
+        var target = new RecordingTarget();
+        var session = new CampaignSession(target, new NoQueries()) { Controllers = new Controllers((10, First)) };
+        var refused = Blocked(session.ExecuteAsHost(new TestUnitCommand(10)));
+        Assert.Equal(SessionReasons.UnitNotControlled, refused.Code);
+        Assert.Empty(target.Executed);
+    }
+
     private sealed class PlainTarget : ICampaignCommandTarget
     {
         public int Count { get; private set; }

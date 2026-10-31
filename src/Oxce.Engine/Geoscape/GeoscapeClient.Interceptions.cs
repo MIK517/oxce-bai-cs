@@ -30,7 +30,7 @@ public sealed partial class GeoscapeClient
 
     // SelectDestinationState, BuildNewBaseState, base naming and the base screens cover the geoscape: its
     // think, and with it the dogfight timer and windows, wait beneath them.
-    private bool GeoscapeCovered => PopupShown || _bases is not null || _naming is not null || _selecting is not null ||
+    private bool GeoscapeCovered => PopupShown || _screens.Count != 0 || _naming is not null || _selecting is not null ||
         _placing is not null;
 
     private void RefreshInterceptions() =>

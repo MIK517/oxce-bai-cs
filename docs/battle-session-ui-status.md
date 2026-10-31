@@ -11,7 +11,7 @@ Phase 7 branch 3 (`claude/battle-session-ui`), from `main` after PR #79 (branch 
 |---|---|
 | S0 planning | Done (2026-10-31) |
 | S1 session layer | Done, audit pending (2026-10-31) |
-| S2 host clock, pause policy and screen stack | Not started |
+| S2 host clock, pause policy and screen stack | Done, audit pending (2026-10-31) |
 | S3 briefing and the first turn | Not started |
 | S4 inventory | Not started |
 | S5 battlescape queries and view model | Not started |
@@ -74,20 +74,48 @@ nothing, broken client, no re-entrancy, a real campaign's time advance, a quote 
 advance, a quote belonging to its actor, a stale quote refused with no change, a consumed quote). The existing
 geoscape, logistics and quote tests pass unchanged.
 
+## S2 — Host clock, pause policy and screen stack (2026-10-31)
+
+- **Host clock.** `GeoscapeTimeController` moved to `Oxce.Gameplay/Sessions/SessionClock` with the same step arithmetic
+  (80 ms steps, speed table, frame-budget chunks, notification interrupt, halt on a refused tick). `CampaignSession`
+  owns one (`CampaignSession.Clock`, `SessionHandle.Clock`); its time advances run through `ExecuteAsHost` as
+  `PlayerId.Host`, so every attached `ISessionClient` hears them. The battle stop is the campaign's `battle`
+  preflight: the refused advance halts the clock until a speed is selected. The clock test uses a refusing target with a made-up reason; the real `battle.in-progress` path is tested only through direct campaign calls (`BattleStartTests`), not through the clock.
+- **Pause policy.** Clients report a cover (`SessionClock.SetCovered(player, covered)`; `GeoscapeClient` reports
+  `!TimeCanRun` each tick, which is the old popup, screen, destination, placing, naming and world-not-entered rule).
+  The clock does not run, and banks no time, while any player reports one. Speed requests and the popup interrupt
+  stay client calls on the clock. A bare campaign (`CampaignUiSession` without a `Clock`) gets a private clock for its
+  one client, so the existing geoscape tests ran unchanged except for the type name.
+- **Extension commands.** `CampaignExtensionSession` implements `IHostRoutedCommands`; `CampaignSession`'s constructor
+  gives it a route, so `IExtensionCampaignCommands.Execute` runs through the session as `PlayerId.Host` and is
+  broadcast (the S1 gap). Without a session above it, it behaves as before.
+- **Screen navigator.** `Oxce.Engine/ScreenNavigator` (named so, not "stack": CA1711): push, pop, replace, input and
+  ticks to the top screen only, pop on `ExitRequested` with a close callback, `Covers(screen)`, an opaque flag and
+  `Visible`. Screens are `IIndexedLoopClient`s. The geoscape's base screens (`OpenBases`) now live on it and
+  `GeoscapeCovered` / `BasesOpen` read it.
+
+Tests: `SessionClockTests` (the old controller tests, cover pause and release, host-actor broadcast to two clients,
+battle refusal halt), `ScreenNavigatorTests`, `GeoscapeClientTests` (a hosted client shares the host clock; another
+player's cover pauses it), `CampaignSessionTests` (extension commands broadcast; the host controls no unit).
+
 ## Next
 
-S2 — Host clock, pause policy and screen stack (see the plan's slice table).
+S3 — Briefing and the first turn (see the plan's slice table).
 
-- S1 left the clock where it is: `GeoscapeTimeController.Tick(elapsed, commands)` still decides pause and speed and now
-  sends `AdvanceCampaignTime` through the local player's `SessionHandle`. Move the clock, the speed request and the
-  covered and popup pause policy (`GeoscapeClient.GeoscapeCovered`, ADR 0034 D3) into a host-side session clock that
-  clients inform; `CampaignSession` is the natural owner. No advance while a battle exists (the `battle` preflight).
-- Time advances by a clock are session commands: broadcast them through `CampaignSession.Execute` so every client sees them.
+- Gaps with owner S6: the logistics client in standalone mode (`advanceTime: true`) still sends its own
+  `AdvanceCampaignTime` through its player, ignoring the host clock; the plan's shared widgets and the `ScreenNavigator.Covers` query
+  the session should read are not done (the cover comes from the client's `TimeCanRun`); `ScreenNavigator` has no hook for the screen
+  a pop reveals (the reference's `init`/`resetAll`) and keeps routing input after a stack change.
+- Extension time advances (`PlayerId.Host`) deliberately ignore covers and the clock's halt: they are explicit host commands. Untested by design.
+- A detached player's cover is cleared on detach. `SessionClock` is not thread-safe (the host loop is one thread). A second session over one extension session takes over the route.
+- Not migrated in S2, owner S6: the geoscape's popup list (`_popups` with groups, the
+  naming, selecting and placing modes) is still client code inside `GeoscapeClient`; only the base screens use
+  `ScreenNavigator`. The logistics client was not changed. The navigator composites nothing: `Visible` lists the
+  screens to draw and the loop draws the top frame, so translucent compositing is for the first screen that needs it.
+- The host loop is still the single-player client: `GeoscapeClient.Tick` calls `SessionClock.Tick`. A battlescape
+  client must not tick the clock; a future host loop will.
 - `IUnitControllers` has no implementation yet; S5 or the first real unit commands (S4) supply the battle's
   (controller slot to player) map and mark their commands `IUnitCommand`.
-- Gap, owner S2: commands an extension sends (`IExtensionCampaignCommands.Execute`) run as `PlayerId.Local` and reach
-  the campaign through the extension session, which sits under `CampaignSession`, so no `ISessionClient` hears them. S2 puts
-  the clock on the session; route extension commands through it then.
 - Untested (unreachable or needs a removed base): the `ArgumentException` path of `QuoteStillHolds`; the
   `PlaceStartingBase` quote clear (an unplaced base cannot be quoted).
 - Same gotchas as before (below).
