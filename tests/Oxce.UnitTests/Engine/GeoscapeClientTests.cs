@@ -177,6 +177,44 @@ public sealed class GeoscapeClientTests
     }
 
     [Fact]
+    public void PopupsAndModesAreScreensOnTheStackAndTheClockCoverFollowsThem()
+    {
+        var content = CampaignLogisticsTests.LoadFixture();
+        var campaign = Placed(content);
+        var host = new CampaignSession(campaign, campaign, static () => TimeSpan.Zero);
+        using var local = host.Attach(PlayerId.Local);
+        var client = Hosted(campaign, content, host, local, () => CampaignUiSession.ForCampaign(campaign, local, local));
+        client.Tick(Step);
+        Assert.Equal(0, client.Screens.Count);
+        Assert.False(client.Screens.Covers(client.Screens.Root!));
+        Assert.True(client.TimeCanRun);
+
+        // A popup is a translucent screen above the globe; closing it removes the screen.
+        Key(client, 0x40000042);
+        Assert.Equal(1, client.Screens.Count);
+        Assert.True(client.Screens.Covers(client.Screens.Root!));
+        Assert.False(client.TimeCanRun);
+        Assert.Equal(client.Screens.Top, client.Screens.Visible[^1]);
+        Key(client, 27);
+        Assert.Equal(0, client.Screens.Count);
+        Assert.True(client.TimeCanRun);
+
+        // The base screens sit above the globe too, and a site choice waits for them to close.
+        Key(client, 'b');
+        Assert.True(client.BasesOpen);
+        Assert.Equal(1, client.Screens.Count);
+        Assert.True(client.Screens.Covers(client.Screens.Root!));
+        // A site choice that starts while the base screens are up waits for them: it is not pushed above them.
+        client.BeginBasePlacement();
+        Assert.NotNull(client.PlacingBase);
+        Assert.Equal(1, client.Screens.Count);
+        Key(client, 27);
+        Assert.False(client.BasesOpen);
+        Assert.Equal(1, client.Screens.Count);
+        Assert.False(client.PlacingBase);
+    }
+
+    [Fact]
     public void BasePlacementAndNamingCoverTheHostClock()
     {
         var content = CampaignLogisticsTests.LoadFixture();
@@ -187,6 +225,7 @@ public sealed class GeoscapeClientTests
         client.Tick(Step);
         Assert.True(client.PlacingBase);
         Assert.True(host.Clock.Covered);
+        Assert.Equal(1, client.Screens.Count);
 
         var site = campaign.QueryBaseSites(true).First(site => site.Longitude != 0 || site.Latitude != 0);
         client.View.Center(site.Longitude, site.Latitude);
@@ -194,6 +233,7 @@ public sealed class GeoscapeClientTests
         Assert.NotNull(client.BaseName);
         client.Tick(Step);
         Assert.True(host.Clock.Covered);
+        Assert.Equal(2, client.Screens.Count);
         client.HandleInput(GameInputEvent.TextEntry(0, 0, "Alpha"));
         Key(client, 13);
         client.Tick(Step);

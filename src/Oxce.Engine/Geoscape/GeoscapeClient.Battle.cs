@@ -44,7 +44,8 @@ public sealed partial class GeoscapeClient
         _battlePhase = overview.Phase;
         if (previous == BattlePhase.Inventory && overview.Phase == BattlePhase.InProgress && _setup.SaveRequested is { } requested)
             Guard(() => requested(CampaignSaveKind.BattleTurnOne));
-        if (_battleShown || _screens.Count != 0) return;
+        SyncScreens();
+        if (_battleShown || ForeignScreens != 0) return;
         OpenBattle();
     }
 

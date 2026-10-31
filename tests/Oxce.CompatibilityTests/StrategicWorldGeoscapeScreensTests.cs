@@ -33,11 +33,16 @@ public sealed class StrategicWorldGeoscapeScreensTests
         Assert.Empty(client.Popups);
         Assert.Equal([Ship, Interceptor], client.SelectingWing);
         Assert.False(client.TimeCanRun);
+        // The destination choice is a screen above the globe that covers it.
+        Assert.Equal(1, client.Screens.Count);
+        Assert.True(client.Screens.Covers(client.Screens.Root!));
 
         // An empty spot on the globe becomes a waypoint; the wing would follow its leader by default.
         client.View.Center(1.5, -0.3);
         Click(client, 256, 200);
         var confirm = Assert.Single(client.Popups);
+        // The confirmation popup stacks above the destination choice.
+        Assert.Equal(2, client.Screens.Count);
         Assert.StartsWith("[x] ", confirm.Actions[1].Label, StringComparison.Ordinal);
         client.Choose(1);
         Assert.StartsWith("[ ] ", Assert.Single(client.Popups).Actions[1].Label, StringComparison.Ordinal);
@@ -46,6 +51,7 @@ public sealed class StrategicWorldGeoscapeScreensTests
         Assert.Empty(client.Popups);
         Assert.Null(client.SelectingWing);
         Assert.True(client.TimeCanRun);
+        Assert.Equal(0, client.Screens.Count);
         var waypoint = Assert.Single(campaign.Capture().World.Waypoints);
         Assert.Equal(1.5, waypoint.Longitude, 6);
         Assert.Equal(-0.3, waypoint.Latitude, 6);

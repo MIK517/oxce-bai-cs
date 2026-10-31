@@ -144,4 +144,65 @@ public sealed class ScreenNavigatorTests
         navigator.Pop();
         Assert.True(navigator.PresentationRevision > pushed);
     }
+
+    [Fact]
+    public void ARootReceivesInputAndTicksWhileTheStackIsEmptyAndIsCoveredByAnyScreen()
+    {
+        var log = new List<string>();
+        var root = new Screen("root", log);
+        var navigator = new ScreenNavigator(root);
+        Assert.Same(root, navigator.Root);
+        Assert.True(navigator.HandleInput(Input()));
+        Assert.True(navigator.Tick(TimeSpan.Zero));
+        Assert.Equal(["root:input", "root:tick"], log);
+        Assert.Equal(0, navigator.Count);
+        Assert.Null(navigator.Top);
+        Assert.False(navigator.Covers(root));
+
+        var top = new Screen("top", log);
+        navigator.Push(top, opaque: false);
+        Assert.True(navigator.Covers(root));
+        log.Clear();
+        navigator.HandleInput(Input());
+        Assert.Equal(["top:input"], log);
+        Assert.False(navigator.Pop() && navigator.Pop());
+        Assert.False(navigator.Covers(root));
+    }
+
+    [Fact]
+    public void ARemovedScreenLeavesFromAnyPositionAndTheTopOnesRemovalRevealsTheNext()
+    {
+        var log = new List<string>();
+        var navigator = new ScreenNavigator();
+        var closed = new List<string>();
+        var bottom = new Revealing("bottom", log);
+        var middle = new Screen("middle", log);
+        var top = new Screen("top", log);
+        navigator.Push(bottom);
+        navigator.Push(middle, closed: () => closed.Add("middle"));
+        navigator.Push(top);
+        var revision = navigator.PresentationRevision;
+        Assert.True(navigator.Remove(middle));
+        Assert.True(navigator.PresentationRevision > revision);
+        Assert.Equal(["middle"], closed);
+        Assert.Equal(0, bottom.Reveals);
+        Assert.Same(top, navigator.Top);
+        Assert.False(navigator.Remove(middle));
+        Assert.True(navigator.Remove(top));
+        Assert.Equal(1, bottom.Reveals);
+        Assert.Same(bottom, navigator.Top);
+    }
+
+    private sealed class Revealing(string name, List<string> log) : IIndexedLoopClient, IRevealedScreen
+    {
+        private readonly Screen _inner = new(name, log);
+        public int Reveals { get; private set; }
+        public IndexedSurface Frame => _inner.Frame;
+        public IndexedPalette Palette => _inner.Palette;
+        public long PresentationRevision => 0;
+        public bool ExitRequested => false;
+        public void HandleInput(in GameInputEvent input) => _inner.HandleInput(input);
+        public void Tick(TimeSpan fixedInterval) => _inner.Tick(fixedInterval);
+        public void Revealed() => Reveals++;
+    }
 }

@@ -28,10 +28,9 @@ public sealed partial class GeoscapeClient
 
     private bool InterceptionWindowsOpen => _interceptions.Any(static window => !window.Minimized);
 
-    // SelectDestinationState, BuildNewBaseState, base naming and the base screens cover the geoscape: its
+    // SelectDestinationState, BuildNewBaseState, base naming, popups and the base screens cover the geoscape: its
     // think, and with it the dogfight timer and windows, wait beneath them.
-    private bool GeoscapeCovered => PopupShown || _screens.Count != 0 || _naming is not null || _selecting is not null ||
-        _placing is not null;
+    private bool GeoscapeCovered => Covered;
 
     private void RefreshInterceptions() =>
         _interceptions = [.. (_session.Interceptions?.QueryInterceptions() ?? []).OrderBy(static window => window.Number)];

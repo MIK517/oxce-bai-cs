@@ -17,7 +17,7 @@ Phase 7 branch 3 (`claude/battle-session-ui`), from `main` after PR #79 (branch 
 | S5 battlescape queries and view model | Done, audit pending (2026-10-31) |
 | S6 battlescape screens | Done, audit pending (2026-10-31) |
 | S6b host loop: battle screens from the SDL host, turn-1 autosave | Done, audit pending (2026-10-31) |
-| S6c geoscape and logistics migration onto `ScreenNavigator` | Not started (S2's undelivered scope; next) |
+| S6c geoscape popups, modes and client cover onto `ScreenNavigator` | Done, audit pending (2026-10-31); the logistics client's internal views are not split |
 | S7 acceptance and branch audit | Not started |
 
 ## S0 — Planning (2026-10-31)
@@ -346,16 +346,44 @@ save tests reload a turn-1 save, and the host test opens a running battle; no si
 
 Not done:
 
-- **Owner S6c**: the geoscape popup list, naming, selecting and placing modes and the logistics client are not moved onto a shared `ScreenNavigator` with
+- **Done in S6c** (see its section; text kept as written for S6b): the geoscape popup list, naming, selecting and placing modes and the logistics client are not moved onto a shared `ScreenNavigator` with
   `Covers`**: they are still client state inside `GeoscapeClient` (which reports `TimeCanRun` as the cover); only the base and
   battle screens use the navigator. Moving them needs the navigator to composite translucent screens and the popup `Group`
   logic to become screens; it was not attempted in this part.
 - The SDL application cannot leave the battlescape (abort is branch 7), so there is no way back to the globe during a battle.
 - The reload of the turn-1 autosave is covered by branch 2's save tests; this part has no end-to-end SDL test (needs private data).
 
+## S6c — Geoscape popups, modes and the client cover on the stack (2026-10-31)
+
+Reference: `Game::_states` (the state stack), `GeoscapeState::popup` and `_popups` (queued windows pushed when the geoscape is on top), `SelectDestinationState`,
+`BuildNewBaseState`, `BaseNameState`.
+
+- **`ScreenNavigator` root**: `new ScreenNavigator(root)` takes a root screen that is not an entry (it never counts or pops). It receives input and ticks while the stack is
+  empty, and `Covers(root)` is true while anything sits above it. `Remove(screen)` takes a screen off from any position (the revealed screen is told when the top went).
+- **`GeoscapeClient`** creates its stack with a `GeoscapeGlobeScreen` root (the globe, sidebar, timers: `TickGlobe`, `HandleGlobeInput`). The shown popup, the name box, the destination choice and the
+  base site choice are `GeoscapeModeScreen`s (`GeoscapeMode.Popup/Naming/Selecting/Placing`), translucent, pushed and removed by `SyncScreens` (run at the end of every tick, input, `Choose` and `Redraw`). A mode that opens while a base or battle screen is up waits for it to close (the reference shows queued popups only with the geoscape on top).
+- **Cover**: `TimeCanRun` and the dogfight timer's `GeoscapeCovered` come from `ScreenNavigator.Covers(root)` (plus a mode that is open but not yet pushed), not from the client's own flags. A popup or name box ticks nothing but the cover (the reference thinks only its top state); the destination and site choices keep the globe thinking. `BasesOpen` and the battle opening count only the
+  screens that are not the geoscape's own modes (`ForeignScreens`).
+- **Shared widgets**: `PopupWidgets` (`Oxce.Engine/Geoscape`): word wrap, the framed window, buttons and hit test. The geoscape's popup and name box draw through it.
+- Popup content and ordering stay the client's `_popups` list (the queue the reference keeps in `GeoscapeState::_popups`, with pushed windows inserted in front); the popup screen is the window
+  that list's first entry shows. `Popups`, `Choose`, `PlacingBase`, `BaseName`, `SelectingWing` and `Screens.Count` of the base and battle screens behave as before; existing geoscape tests pass unchanged (one gained additive stack asserts); `Screens.Count` now includes the geoscape's mode screens, while `BasesOpen` and the battle opening count only base and battle screens.
+- **Logistics client**: it was already a screen on the shared stack (`OpenBases`); this part does not split its internal views (readiness, management, personnel, research, production, orders)
+  into stack screens. They are one screen with a view enum, as in S2.
+
+Tests: `ScreenNavigatorTests` (root routing and cover, `Remove`), `GeoscapeClientTests` (popups, base screens and the placement and naming modes on the stack and the cover that follows them); the
+existing geoscape, landing, interception, base placement and battle host suites run unchanged.
+
+Not done:
+
+- The popup, name box and mode screens draw into the client's frame (one shared surface), so the navigator's `Visible` compositing is not yet exercised by a second surface.
+- The logistics client's internal views and its load-confirmation prompt (`_loadConfirmation`) are not separate screens. This is a deliberate plan change: they are
+  one screen with a view enum and no reference rule depends on their being stack entries. Owner: Phase 8 presentation, with translucent compositing on separate surfaces.
+
 ## Next
 
-S6c — geoscape popups, naming, selecting and placing modes, logistics client and shared widgets onto `ScreenNavigator`, with the client cover from `Covers` (the plan's S6c row); then S7 — acceptance and branch audit (acceptance only). S6b (battle screens, turn-1 save) is done. From S6: the screens are in `Oxce.Engine/Battlescape`; `BattleUiContext.Open()` is the entry. From S5: the screens read `BattleViewModel` (`Oxce.Engine/Battlescape`) and `IBattleViewQuery`; the host loop that creates a session sets `Controllers = new BattleUnitControllers(battleQuery)`, and a screen's soldier buttons are `Next`, `Skip`, `ReselectSkipped`, the level buttons `LevelUp` and `LevelDown`, the center button `CenterOnSelection`. Buttons of later branches refuse by their owner's name. From S4:
+S7 — acceptance on branch 1's battles and the private active-battle saves, then the branch audit (`git diff main...HEAD`). S6c (geoscape popups, modes and the client cover on the stack) is done: see its section;
+the geoscape's own stack has a root screen and mode screens. The plan's S7 row has no further porting. The logistics client's internal views and a compositing of translucent screens on separate surfaces remain
+as listed under S6c "Not done". Earlier parts: S6b (battle screens, turn-1 save), the screens in `Oxce.Engine/Battlescape` (`BattleUiContext.Open()` is the entry), `BattleViewModel` and `IBattleViewQuery` (S5); the host loop that creates a session sets `Controllers = new BattleUnitControllers(battleQuery)`; a screen's soldier buttons are `Next`, `Skip`, `ReselectSkipped`, the level buttons `LevelUp` and `LevelDown`, the center button `CenterOnSelection`. Buttons of later branches refuse by their owner's name. From S4:
 
 - The inventory is a command set on stable IDs (`MoveInventoryItem`, `AutoPlaceInventoryItem`, both `IUnitCommand`) with
   `IBattleInventoryQuery`; the host loop that creates a
@@ -374,12 +402,12 @@ S6c — geoscape popups, naming, selecting and placing modes, logistics client a
   bindings: retire `battle.spawn-gravity-unsupported`, `battle.new-turn-script-unsupported`, `battle.turn-recovery-script-unsupported`
   where their owner lands.
 
-- Gaps with owner S6 (moved there in the plan's slice table): the plan's shared widgets and the `ScreenNavigator.Covers` query
+- Gaps with owner S6 (delivered in S6c: the cover from `Covers`, the widgets, popups and modes on the stack; the hook for a pop was S6) (moved there in the plan's slice table): the plan's shared widgets and the `ScreenNavigator.Covers` query
   the session should read are not done (the cover comes from the client's `TimeCanRun`); `ScreenNavigator` has no hook for the screen
   a pop reveals (the reference's `init`/`resetAll`) and keeps routing input after a stack change.
 - Extension time advances (`PlayerId.Host`) deliberately ignore covers and the clock's halt: they are explicit host commands (pinned by `ExtensionCommandsGoThroughTheSessionAndEveryClientHearsThem`). The simulation's preflights still apply.
 - A detached player's cover is cleared on detach. `SessionClock` is not thread-safe (the host loop is one thread). A second session over one extension session takes over the route.
-- Not migrated in S2, owner S6: the geoscape's popup list (`_popups` with groups, the
+- Not migrated in S2, delivered in S6c except the logistics client's internal views: the geoscape's popup list (`_popups` with groups, the
   naming, selecting and placing modes) is still client code inside `GeoscapeClient`; only the base screens use
   `ScreenNavigator`. The logistics client was not changed. The navigator composites nothing: `Visible` lists the
   screens to draw and the loop draws the top frame, so translucent compositing is for the first screen that needs it.
