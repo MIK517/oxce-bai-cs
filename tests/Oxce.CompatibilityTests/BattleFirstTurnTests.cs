@@ -47,10 +47,10 @@ public sealed class BattleFirstTurnTests
     private static BattleUnit Soldier(BattleState battle) => battle.Units.First(static unit => unit.SoldierId is not null);
 
     /// <summary>The ARMORY block's grenades primed to explode at the start, spawning an alien and a clip.</summary>
-    private static string SpawnRules(int chance = 100, string fuse = "0", int faction = 1) => Rules
+    private static string SpawnRules(int chance = 100, string fuse = "0", int faction = 1, string unit = "ALIEN") => Rules
         .Replace("fuseTimers: {GRENADE: [3, 3]}", $"fuseTimers: {{GRENADE: [{fuse}, {fuse}]}}", StringComparison.Ordinal)
         .Replace("- type: GRENADE\n    battleType: 4\n    weight: 1",
-            $"- type: GRENADE\n    battleType: 4\n    weight: 1\n    spawnUnit: ALIEN\n    spawnUnitFaction: {faction}\n    spawnUnitChance: {chance}\n    spawnItem: CLIP\n    spawnItemChance: {chance}",
+            $"- type: GRENADE\n    battleType: 4\n    weight: 1\n    spawnUnit: {unit}\n    spawnUnitFaction: {faction}\n    spawnUnitChance: {chance}\n    spawnItem: CLIP\n    spawnItemChance: {chance}",
             StringComparison.Ordinal);
 
     [Fact]
@@ -737,5 +737,111 @@ public sealed class BattleFirstTurnTests
         special.IsSpecialWeapon = true;
         battle.RemoveItem(special);
         Assert.Contains(battle.Items, item => item.Id == special.Id);
+    }
+
+    private static string WithBriefing(string rules) => rules.Replace("  - type: UFO_ALIENS\n    width",
+        "  - type: UFO_ALIENS\n    briefing: {title: STR_FAKE, desc: STR_FAKE_DESC}\n    width", StringComparison.Ordinal);
+
+    private static CampaignState Reloaded(CampaignState campaign, Func<BattleSnapshot, BattleSnapshot> adjust)
+    {
+        var snapshot = campaign.Capture();
+        return CampaignState.Restore(snapshot with { Battle = adjust(snapshot.Battle!) }, campaign.Content, new SplitMix64RandomSource(3), TerrainFiles());
+    }
+
+    [Fact]
+    public void ABaseDefensesBriefingUsesTheCustomDeploymentWithADescriptionAndAFakeUfoItsCustomMission()
+    {
+        var rules = WithBriefing(Rules);
+        Assert.NotEqual(Rules, rules);
+        var (campaign, _) = Begun(rules);
+        var defense = Reloaded(campaign, static battle => battle with { MissionType = "STR_BASE_DEFENSE", AlienCustomDeploy = "UFO_ALIENS" });
+        var briefing = defense.GetQuery<IBattleBriefingQuery>()!.QueryBriefing()!;
+        Assert.Equal(("STR_FAKE", "STR_FAKE_DESC"), (briefing.Title, briefing.Description));
+        // A custom deployment without a description does not replace the mission's own.
+        var plain = Reloaded(campaign, static battle => battle with { MissionType = "STR_BASE_DEFENSE", AlienCustomDeploy = "UFO_SCOUT" });
+        Assert.Equal(("STR_BASE_DEFENSE", "STR_BASE_DEFENSE_BRIEFING"), (plain.GetQuery<IBattleBriefingQuery>()!.QueryBriefing()!.Title,
+            plain.GetQuery<IBattleBriefingQuery>()!.QueryBriefing()!.Description));
+        // A mission without a deployment briefs by the landing UFO's, or by the custom mission of a fake underwater UFO.
+        var ufo = Reloaded(campaign, static battle => battle with { MissionType = "STR_NO_DEPLOYMENT" });
+        Assert.Equal("STR_NO_DEPLOYMENT", ufo.GetQuery<IBattleBriefingQuery>()!.QueryBriefing()!.Title);
+        var fake = Reloaded(campaign, static battle => battle with { MissionType = "STR_NO_DEPLOYMENT", AlienCustomMission = "UFO_ALIENS" });
+        Assert.Equal(("STR_FAKE", "STR_FAKE_DESC"), (fake.GetQuery<IBattleBriefingQuery>()!.QueryBriefing()!.Title,
+            fake.GetQuery<IBattleBriefingQuery>()!.QueryBriefing()!.Description));
+    }
+
+    [Fact]
+    public void TheBriefingCommandEndsABaseDefensesRetaliationTarget()
+    {
+        var (campaign, _) = Requested(Rules, adjust: static snapshot => snapshot with
+        {
+            Bases = [snapshot.Bases[0] with { RetaliationTarget = true, RetaliationMissionId = 40 }, .. snapshot.Bases.Skip(1)],
+            World = snapshot.World with { Missions = [.. snapshot.World.Missions, new AlienMissionSnapshot(40, "MISSION_RETALIATION", "REGION", "RACE_A", 1, 0, 1500, 1, -1)] },
+        });
+        Started(campaign);
+        Assert.True(campaign.Capture().Bases[0].RetaliationTarget);
+        // A craft's briefing leaves the base alone; a base defense's ends the target.
+        var craft = Reloaded(campaign, static battle => battle);
+        Event<BriefingOpened>(craft, new BeginBriefing("a", "b"));
+        Assert.True(craft.Capture().Bases[0].RetaliationTarget);
+        var defense = Reloaded(campaign, static battle => battle with { MissionType = "STR_BASE_DEFENSE" });
+        Battle(defense).BriefingFromCraft = false;
+        Event<BriefingOpened>(defense, new BeginBriefing("a", "b"));
+        Assert.False(defense.Capture().Bases[0].RetaliationTarget);
+    }
+
+    [Fact]
+    public void ATankSpawnedByAGrenadeIsArmedWithItsWeaponAndClip()
+    {
+        var (campaign, battle) = Begun(SpawnRules(unit: "VEHICLE"), "UFO_ARMORY");
+        var next = battle.Units[^1].Id + 1;
+        var clipSize = new UnitEquipment(battle, campaign.Content.RuntimeRules, battle.Seedless).VehicleClipSize("VEHICLE");
+        Event<BriefingConfirmed>(campaign, new ConfirmBriefing());
+        var tank = battle.Units.First(unit => unit.Id >= next);
+        Assert.Equal(("VEHICLE", 2), (tank.UnitType, tank.TurretType));
+        var weapon = Assert.Single(battle.InventoryOf(tank), static item => item.ItemType == "VEHICLE");
+        // The clip is loaded into the weapon.
+        var ammo = battle.Items.Single(item => item.Id == weapon.AmmoSlots[0]);
+        Assert.Equal(("VEHICLE_AMMO", clipSize), (ammo.ItemType, ammo.AmmoQuantity));
+    }
+
+    [Fact]
+    public void ASpawnWithNoValidPositionCreatesNoUnitAndDrawsNoDirection()
+    {
+        var (campaign, battle) = Begun(SpawnRules(), "UFO_ARMORY");
+        foreach (var grenade in battle.Items.Where(static item => item.ItemType == "GRENADE" && item.Tile is not null).ToArray())
+            for (var x = -2; x <= 2; x++)
+                for (var y = -2; y <= 2; y++)
+                {
+                    var near = grenade.Tile!.Value with { X = grenade.Tile!.Value.X + x, Y = grenade.Tile!.Value.Y + y };
+                    if (battle.Contains(near)) battle.Map.SetUnitAt(battle.Map.TileIndex(near), 9999);
+                }
+        var units = battle.Units.Count;
+        var expected = new SplitMix64RandomSource(campaign.Random.State);
+        for (var draw = 0; draw < 4; draw++) expected.NextInclusive(0, 99);
+        Assert.Equal(new BriefingConfirmed(0, 2), Event<BriefingConfirmed>(campaign, new ConfirmBriefing()));
+        Assert.Equal(units, battle.Units.Count);
+        Assert.Equal(expected.State, campaign.Random.State);
+    }
+
+    [Fact]
+    public void SoldierBonusAndGlobalEventRecoveryAndNewTurnScriptsRefuseTheConfirmation()
+    {
+        // A soldier bonus the soldier has, with a scripted time recovery.
+        var rules = Rules + "\nsoldierBonuses:\n  - name: BONUS_TEST\n    recovery: {time: {tu: 0.5}}\n";
+        var (campaign, battle) = Requested(rules, adjust: static snapshot => snapshot with
+        {
+            Bases = [snapshot.Bases[0] with { Soldiers = [.. snapshot.Bases[0].Soldiers.Select(static soldier => soldier with
+            {
+                Personal = soldier.Personal! with { TransformationBonuses = new Dictionary<string, int> { ["BONUS_TEST"] = 1 } },
+            })] }, .. snapshot.Bases.Skip(1)],
+        });
+        Started(campaign);
+        Assert.Equal("battle.turn-recovery-script-unsupported", Refusal(campaign, new ConfirmBriefing()));
+        Assert.Equal(BattlePhase.Briefing, Battle(campaign).Phase);
+        Assert.NotNull(battle);
+        // A global event script for the new-turn units.
+        var events = Rules + "\nextended:\n  scripts:\n    newTurnUnit:\n      - new: global-turn\n        offset: 1\n        code: |\n          return;\n";
+        var (global, _) = Begun(events);
+        Assert.Equal("battle.new-turn-script-unsupported", Refusal(global, new ConfirmBriefing()));
     }
 }
