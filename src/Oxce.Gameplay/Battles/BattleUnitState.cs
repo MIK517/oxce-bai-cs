@@ -155,3 +155,20 @@ internal sealed class BattleAiState
     public bool WeaponPickedUp { get; set; }
     public int TargetFaction { get; set; }
 }
+
+internal sealed partial class BattleUnit
+{
+    /// <summary>
+    /// BattleUnit::updateEnemyKnowledge(index, clue: true, door: false): every faction's last spotted tile (and the blind shot one)
+    /// is the tile, and the turns since seen restart (<c>updateTurnsSinceSeenByClue</c>, default true).
+    /// </summary>
+    internal void UpdateEnemyKnowledge(int tileIndex)
+    {
+        for (var faction = 0; faction < TileLastSpottedBy.Length; faction++)
+        {
+            TileLastSpottedBy[faction] = tileIndex;
+            TileLastSpottedForBlindShotBy[faction] = tileIndex;
+            TurnsSinceSpotted[faction] = 0;
+        }
+    }
+}

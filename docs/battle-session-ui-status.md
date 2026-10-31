@@ -13,7 +13,7 @@ Phase 7 branch 3 (`claude/battle-session-ui`), from `main` after PR #79 (branch 
 | S1 session layer | Done, audit pending (2026-10-31) |
 | S2 host clock, pause policy and screen stack | Done, audit pending (2026-10-31) |
 | S3 briefing and the first turn | Done, audit pending (2026-10-31) |
-| S4 inventory | Not started |
+| S4 inventory | Done, audit pending (2026-10-31) |
 | S5 battlescape queries and view model | Not started |
 | S6 battlescape screens | Not started |
 | S7 acceptance and branch audit | Not started |
@@ -158,17 +158,107 @@ Gaps with an owner:
 - The autosave on turn 1 and the camera centering of `NextTurnState::close` are S6's (the screens) and the host's.
 - `saveEquipmentLayout` on closing the inventory is S4's.
 
+## S4 — Inventory (2026-10-31)
+
+Reference: `Inventory::mouseClick` (pick up, drop, Ctrl click), `fitItem`, `overlapItems`, `canBeStacked`, `RuleInventory::fitItemInSlot`,
+`RuleItem::canBePlacedIntoInventorySection`, `BattleItem::getMoveToCost`, `occupiesSlot`, `TileEngine::itemMoveInventory`,
+`BattleUnit::getItem`, `InventoryState::btnOkClick` and `saveEquipmentLayout`, `EquipmentLayoutItem`.
+
+- **Commands and query.** `MoveInventoryItem(UnitId, ItemId, Slot, SlotX, SlotY)` and `AutoPlaceInventoryItem(UnitId, ItemId, Smart)` are
+  `IBattleCommand`s and `IUnitCommand`s (so a hosted session authorizes them); `UseInventoryFeature` refuses what is deferred. A move
+  raises `InventoryItemMoved` (with the time units spent). `IBattleInventoryQuery.QueryInventory(viewer, unitId)` answers the screen
+  (sections with their cells, carried items with size, fuse and loaded ammo, the items on the unit's tile, the unit's time units and
+  whether moves are charged); only the unit's own faction gets an answer. `CheckInventoryMove` returns the refusal code a move would
+  get, from the same planning code, so a screen can grey out a drop without changing anything.
+- **When it opens.** After the briefing (`Inventory` phase: free moves) and in `InProgress` on X-COM's side (moves charge the section
+  cost); the unit must be a live player-faction unit on the map whose armor has an inventory (`battle.inventory-unavailable`,
+  `battle.inventory-unit-unavailable`). The enemy-side refusal has no test (the side cannot be set before branch 6).
+- **A move** (`PlanMove`, then `ApplyMove`): the item must be carried by the unit in a section or lie on its tile
+  (`inventory-item-unknown`) and not be fixed (`inventory-item-fixed`); the section must exist (`inventory-slot-unknown`) and take the
+  item (`inventory-section-unsupported`, `supportedInventorySections`, the ground always); a grid or hand position must not be taken
+  by another item (a hand holds one item; `occupiesSlot`) and every cell must be a slot (`fitItemInSlot`); an occupied position
+  holding a weapon that takes ammo is the reference's "put item in weapon" (`inventory-ammo-unsupported`), any other occupied or
+  non-fitting position is `inventory-no-room`. In the battle the cost is `getMoveToCost` (none within a section, a drop from a hand
+  as the table says, else the item's percentage, at least 1) and must not exceed the unit's time units
+  (`inventory-not-enough-time-units`); a missing table entry is `inventory-cost-unknown` (the reference reads past its table; read
+  only where charged, as the reference's `!_tu ||` does). `itemMoveInventory`: to the ground the item leaves its owner (the old owner
+  becomes the previous owner) and lies on the unit's tile, an unconscious unit it is lands on the tile; from the ground it joins the unit
+  (`droppedOnAlienTurn` cleared) and an unconscious unit it is leaves the map. Dropping an enabled grenade is refused
+  (`inventory-danger-zone-unsupported`, branch 6: the reference sets a danger zone for the AI; the port refuses every enabled grenade,
+  whatever its damage type, since it does not read the resist type).
+- **Ctrl click** (`PlanAutoPlace`): a carried item drops to the ground; a ground item goes to the first section that takes it.
+  Smart (`oxceSmartCtrlEquip`, the client's option, passed as `Smart`): of all sections (alphabetical, as the reference's map) that
+  take it, the one with the lowest cost to a hand, +10 when the other hand holds a two-handed item, skipping one that the other
+  hand's both-hands item blocks, ties to the later. Otherwise the item's `defaultInventorySlot`, the first category with an
+  inventory order, the vanilla section for its battle type (firearm right hand; mind probe, psi-amp, melee, corpse left hand; tall
+  items back pack; else belt), then all sections alphabetically. A smart click with no section "moves" the item to the ground it lies
+  on, at no cost (the reference shows no warning). The refusal is the last warning the reference would show.
+  `extendedInventorySlotSorting` (the last fallback then follows the list order) and `extendedItemReloadCost` (used with ammo loading, later) are read
+  by the mod loader into the runtime campaign rules. A smart click on a mod whose hand costs are missing is `inventory-cost-unknown`
+  (the reference reads past its table).
+- **Ground positions.** The ground holds any number of items and `arrangeGround` (the screen's layout of ground items, stack levels,
+  scrolling) is the client's: a ground drop stores position (0, 0) and ignores the one asked for. `canBeStacked` is therefore a
+  display rule, not ported. Ground positions are not saved (branch 2).
+- **Order.** `BattleItem.ArrivalOrder` keeps `Tile::getInventory` and `BattleUnit::getInventory` order (0 until an item moves, then the
+  battle's counter); `ItemsOnTile` and `OrderedInventoryOf` read it. `RandomizeItemLocations` now walks the tile in that order and
+  appends the relocated items (S3's note).
+- **Closing.** `StartFirstTurn` first runs `saveEquipmentLayout` (unless `oxceAlternateCraftEquipmentManagement`, as `btnOkClick`
+  with no base): each soldier's unit gives the campaign soldier an `EquipmentLayout` of its inventory in arrival order; fixed
+  items only for the ammo in their first slot, other items only when the mod lets them on a craft (`ignoreInCraftEquip`, which supplies
+  and corpses have by default); the layout stores the loaded ammo types per slot and the fuse timer.
+  `BattleFirstTurnStarted.LayoutsSaved` counts the soldiers written; a refused start saves nothing.
+- **Recovery-list decision (ADR 0039).** A restored battle whose recovery list holds an item owned by a unit in an inventory section
+  is refused by `Validate`; a special built-in item (owned, in no section) stays as it was loaded.
+- **Controllers.** `BattleOverview` units now carry `ControllerSlot`; `BattleUnitControllers` (in `Sessions`) is the
+  `IUnitControllers` for a session: a human slot maps to a player (slot n to `PlayerId(n)` unless the host maps it otherwise), AI and
+  unknown units to nobody. Nobody installs it yet: the host loop that creates the session does (S6).
+
+Deferred by name (always refused by `UseInventoryFeature`; a drop onto a weapon that takes ammo is `inventory-ammo-unsupported`):
+`inventory-ammo-unsupported` (load, unload, quick swap), `inventory-throw-unsupported` (the reference inventory has no throw; the
+name is the plan's, kept for a throw from the inventory screen), `inventory-prime-unsupported` (prime, unprime),
+`inventory-layout-screens-unsupported` (save and load named layouts).
+
+Tests: `BattleInventoryTests` (free pre-battle moves; battle costs, the percentage and the free stay-free rule; each refusal and the
+unchanged state; the closed inventory and the query check; time units and the unknown cost; the section list; ground order, pick up
+and drop; unconscious unit items; the enabled grenade; fixed items; Ctrl click vanilla, default section and smart; the screen query;
+each feature refusal; the saved layout, with the alternate management option and a refused start; the controllers map);
+`BattleSaveItemTests` (the owned recovery item refusal), `BattleFirstTurnTests` (`LayoutsSaved`).
+
+Gaps with an owner:
+
+- A drop to the ground runs `updateEnemyKnowledge(tile, clue)` on the unit on the tile (every faction's last spotted tile and the turns
+  since seen); the danger zone of a dropped enabled grenade is branch 6's (refused until then).
+- Closing the inventory in the reference also applies gravity on the selected unit's tile, recalculates item lighting and the field of
+  view (`InventoryState`'s destructor): branch 4's (gravity, lighting, FOV); the port's close does none of it.
+- `Tile::addItem` puts an item that carries a unit at the front by swapping with the first item; `AddToTile` does the same (and
+  renumbers the tile's arrival order). A soldier without `Personal` state gets no saved layout (the convention of the armor change).
+- Deferred by name, also through `UseInventoryFeature`: `inventory-clear-unsupported` (clear inventory), `-autoequip-unsupported`,
+  `-template-unsupported` (global and personal templates, which write the soldier's personal layout) and `-rename-unsupported`
+  (soldier rename from the screen); the number-key global layouts are `-layout-screens-unsupported`.
+- The battlescape button's conditions (`BattlescapeState::btnInventoryClick`: a selected unit, not busy) are S5's selection and S6's
+  screens; the command only needs the side to be X-COM's.
+- Armor changes from the inventory screen (`btnArmorClick`, the base equipment) and the base-equipment inventory (`_base`) are Phase 8's
+  base screens.
+- The pre-battle inventory's unit order (previous and next soldier) is the client's over `QueryBattle`.
+
 ## Next
 
-S4 — Pre-battle and in-battle inventory (see the plan's slice table). From S3:
+S5 — Battlescape queries and view model (see the plan's slice table). From S4:
 
-- `StartFirstTurn` is the command the pre-battle inventory's close sends; S4's close also runs `saveEquipmentLayout` (a campaign
-  effect of starting the first turn) and must keep the phase order (`Inventory` before it). Inventory moves before the first turn
-  belong to the `Inventory` phase; a move in `InProgress` costs time units.
-- The briefing's names are set by the client's `BeginBriefing`; the SDL client does not send it yet (S6 builds the briefing screen).
-- Items spawned by `spawnNewItem` and units by `spawnNewUnit` go through `UnitEquipment`; `BattleState.RemoveItem` is the
-  battle's `removeItem` for the first time (S4's moves and drops can reuse it).
-- `RandomizeItemLocations` walks `_items` order, the reference the tile's inventory order; they diverge once S4 drops items on the ground (keep a per-tile order then).
+- The inventory is a command set on stable IDs (`MoveInventoryItem`, `AutoPlaceInventoryItem`, both `IUnitCommand`) with
+  `IBattleInventoryQuery`; S5's selection (`SelectUnit`, `SkipUnit`) should be `IUnitCommand`s too, and the host loop that creates a
+  `CampaignSession` must set `Controllers = new BattleUnitControllers(battleQuery)` (S6 wires it; `BattleUnitView.ControllerSlot` is the data).
+- The pre-battle inventory's close is still `StartFirstTurn` (it saves the equipment layout first). The screens' previous and next
+  soldier are queries over `QueryBattle` plus `SelectUnit`; the inventory takes any live X-COM unit by ID.
+- Ground items are per tile in `ArrivalOrder` (`ItemsOnTile`); any new code that puts an item on a tile or in an inventory should take
+  `NextArrival()` (`AddItemOnTile` and the inventory moves do).
+- The inventory's `Smart` flag is the client's `oxceSmartCtrlEquip` option (default true in the reference); the client keeps its options.
+- Not ported, named: `battle.inventory-ammo-unsupported`, `-throw-unsupported`, `-prime-unsupported`, `-layout-screens-unsupported`,
+  `-clear-unsupported`, `-autoequip-unsupported`, `-template-unsupported`, `-rename-unsupported`  (each refused by `UseInventoryFeature`; a drop onto a weapon that takes ammo is also the ammo one) and
+  `battle.inventory-danger-zone-unsupported` (branch 6). The screens (S6) show the buttons and send `UseInventoryFeature`, so the
+  refusals come from the rules.
+- From S3, still open: the briefing's names are set by the client's `BeginBriefing`; the SDL client does not send it yet (S6 builds the
+  briefing screen).
 - `PrimedSpawnItems`, `SpawnNeedsGravity` and `FirstTurnRefusal` are the checks to keep when branch 4 adds gravity and branch 8 script
   bindings: retire `battle.spawn-gravity-unsupported`, `battle.new-turn-script-unsupported`, `battle.turn-recovery-script-unsupported`
   where their owner lands.
@@ -184,8 +274,7 @@ S4 — Pre-battle and in-battle inventory (see the plan's slice table). From S3:
   screens to draw and the loop draws the top frame, so translucent compositing is for the first screen that needs it.
 - The host loop is still the single-player client: `GeoscapeClient.Tick` calls `SessionClock.Tick`. A battlescape
   client must not tick the clock; a future host loop will.
-- `IUnitControllers` has no implementation yet; S5 or the first real unit commands (S4) supply the battle's
-  (controller slot to player) map and mark their commands `IUnitCommand`.
+- `BattleUnitControllers` is the `IUnitControllers` (S4); the host loop installs it (S6).
 - Untested (unreachable or needs a removed base): the `ArgumentException` path of `QuoteStillHolds`; the
   `PlaceStartingBase` quote clear (an unplaced base cannot be quoted).
 - Same gotchas as before (below).
@@ -198,8 +287,7 @@ S4 — Pre-battle and in-battle inventory (see the plan's slice table). From S3:
   have their indentation stripped (list entries start at two spaces).
 - Named refusals this branch owns, done in S3: `battle.preview-unsupported` (Phase 8, with the craft screens), `battle.casualties-unsupported` (branch 6), `battle.no-live-aliens`, `battle.no-live-soldiers`,
   `battle.spawn-gravity-unsupported` (branch 4), `battle.turn-recovery-script-unsupported` (branch 8) and the ones it hands on below;
-  `battle.save-before-first-turn` is retired. S4 introduces `battle.inventory-ammo-unsupported`, `battle.inventory-throw-unsupported`,
-  `battle.inventory-prime-unsupported`, `battle.inventory-layout-screens-unsupported`; S3 hands on
+  `battle.save-before-first-turn` is retired. S4 introduced the `battle.inventory-*-unsupported` refusals above (ammo, throw, prime, layout screens, clear, autoequip, template, rename, danger zone); S3 hands on
   `battle.spawn-gravity-unsupported` (branch 4), `battle.turn-recovery-script-unsupported` and `battle.new-turn-script-unsupported` (branch 8), `battle.turn-one-revive-unsupported` and
   `battle.reinforcements-unsupported` (branch 6), and `battle.no-live-aliens` and `battle.no-live-soldiers` (branch 7). The buttons of later branches
   refuse by their owner's name (S6); the minimap and extended-battlescape links go to branch 8 or Phase 8. Kept by later owners:

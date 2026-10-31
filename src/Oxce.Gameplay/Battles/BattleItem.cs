@@ -12,6 +12,12 @@ internal sealed class BattleItem(int id, string itemType)
     public int Id { get; } = id;
     public string ItemType { get; } = itemType;
 
+    /// <summary>
+    /// The order the item arrived on its tile or in its owner's inventory (Tile::getInventory and BattleUnit::getInventory push to the
+    /// back): 0 until an inventory move or a relocation, then the battle's arrival counter. Ties keep creation order.
+    /// </summary>
+    public long ArrivalOrder { get; set; }
+
     /// <summary>The tile the item lies on, or null while it is carried or nowhere.</summary>
     public BattlePosition? Tile { get; set; }
 

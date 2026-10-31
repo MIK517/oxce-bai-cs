@@ -391,6 +391,8 @@ public static class RuntimeRuleLinker
             DefeatFunds = content.CampaignStart.Settings.DefeatFunds,
             ExtendedHwpLoadOrder = content.CampaignStart.Settings.ExtendedHwpLoadOrder,
             ExtendedForceSpawn = content.CampaignStart.Settings.ExtendedForceSpawn,
+            ExtendedInventorySlotSorting = content.CampaignStart.Settings.ExtendedInventorySlotSorting,
+            ExtendedItemReloadCost = content.CampaignStart.Settings.ExtendedItemReloadCost,
             ShareAmmoCategories = content.CampaignStart.Settings.ShareAmmoCategories,
             BaseDefenseMapFromLocation = content.CampaignStart.Settings.BaseDefenseMapFromLocation,
             AlienFuelName = content.CampaignStart.Settings.AlienFuelName,

@@ -360,8 +360,10 @@ internal sealed partial class BattleState
     {
         StorageSpace = [.. StorageSpace.Where(position => position != tile)];
         if (StorageSpace.Count == 0) return;
-        foreach (var item in _items.Where(item => item.Tile == tile && item.Slot == GroundSlot).ToArray())
-            item.Tile = StorageSpace[random.NextInclusive(0, StorageSpace.Count - 1)];
+        foreach (var item in ItemsOnTile(tile).ToArray())
+        {
+            AddToTile(item, StorageSpace[random.NextInclusive(0, StorageSpace.Count - 1)]);
+        }
     }
 
     /// <summary>SavedBattleGame::resetUnitTiles: a unit that is not out stands on its tiles; X-COM's units are visible.</summary>

@@ -90,7 +90,11 @@ public sealed record BriefingOpened(string TargetName, string CraftOrBaseName) :
 public sealed record BriefingConfirmed(int SpawnedUnits, int SpawnedItems) : ICampaignEvent;
 
 /// <summary>The first turn began (turn 1, the X-COM side).</summary>
-public sealed record BattleFirstTurnStarted(int SelectedUnitId) : ICampaignEvent;
+public sealed record BattleFirstTurnStarted(int SelectedUnitId) : ICampaignEvent
+{
+    /// <summary>The soldiers whose equipment layout the closing inventory saved (<c>InventoryState::saveEquipmentLayout</c>).</summary>
+    public int LayoutsSaved { get; init; }
+}
 
 /// <summary>
 /// What the briefing screen shows (<c>BriefingState</c>): title and description keys, music, background and cutscene, the
@@ -118,7 +122,11 @@ public interface IBattleBriefingQuery
 }
 
 /// <summary>A unit as a viewer sees it.</summary>
-public sealed record BattleUnitView(int Id, BattleFaction Faction, BattlePosition? Position);
+public sealed record BattleUnitView(int Id, BattleFaction Faction, BattlePosition? Position)
+{
+    /// <summary>The player slot that controls the unit (ADR 0038), or -1 for the AI.</summary>
+    public int ControllerSlot { get; init; } = -1;
+}
 
 /// <summary>The battle as a viewer sees it; <see cref="Revision"/> changes with every committed battle change.</summary>
 public sealed record BattleOverview(

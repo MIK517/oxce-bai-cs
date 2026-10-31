@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 225 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 228 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 100 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 8 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 333 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 334 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 111 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -336,7 +336,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 225 files.
+`src/Oxce.Gameplay` - 228 files.
 
 ### `Oxce.Gameplay`
 
@@ -364,6 +364,16 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BattleUnitView` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - A unit as a viewer sees it.
 - `BattleOverview` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The battle as a viewer sees it; `Revision` changes with every committed battle change.
 - `IBattleQuery` (interface) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The current battle, if any, as a viewer sees it (ADR 0038: every battle query takes a viewer).
+- `MoveInventoryItem` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - `Inventory::mouseClick`'s drop: a unit's item goes to a position of an inventory section (a hand, a grid slot, or the ground of the unit'...
+- `AutoPlaceInventoryItem` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - `Inventory::mouseClick`'s Ctrl click: a ground item goes to the best section that holds it (the cheapest to reach a hand when `Smart`, th...
+- `InventoryFeature` (enum) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - What an inventory screen can ask for that is not ported yet; each is refused by its own name.
+- `UseInventoryFeature` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - A request for a feature of the inventory screen that arrives later; it is always refused by the feature's name.
+- `InventoryItemMoved` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - An item moved between sections, or to or from the ground.
+- `BattleInventoryItemView` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - An item as the inventory screen draws it: its section and position, size and what it holds.
+- `BattleInventoryCell` (record struct) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - A grid cell of a section.
+- `BattleInventorySlotView` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - An inventory section: `Type` is 0 for a grid, 1 for a hand and 2 for the ground.
+- `BattleInventoryView` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - A unit's inventory screen: sections, carried items and the items on its tile.
+- `IBattleInventoryQuery` (interface) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - What the inventory screen reads (ADR 0038: a viewer sees only its own faction's inventory).
 - `BattleItemSnapshot` (record) [BattleItemSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleItemSnapshot.cs) - One saved item (`SavedBattleGame::load`'s item passes and `BattleItem::load` and `save`, Phase 7 branch 2 S4).
 - `BattleSnapshot` (record) [BattleSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleSnapshot.cs) - The persistence boundary of `BattleState` (Phase 7 branch 2): what `SavedBattleGame::load` reads and `save` writes, as values.
 - `BattleTileSnapshot` (record struct) [BattleSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleSnapshot.cs) - One saved tile (Tile::loadBinary and saveBinary, or the old Tile::load): each part's map data ID and data set ID (-1 for none), smoke, fi...
@@ -681,6 +691,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ### `Oxce.Gameplay.Sessions`
 
+- `BattleUnitControllers` (class) [BattleUnitControllers.cs](../src/Oxce.Gameplay/Sessions/BattleUnitControllers.cs) - The battle's unit ownership for the session (ADR 0037 rule 2): a unit controlled by a human slot belongs to the player the host maps the...
 - `CampaignSession` (class) [CampaignSession.cs](../src/Oxce.Gameplay/Sessions/CampaignSession.cs) - The host's session layer (ADR 0037): players attach to it, every command carries its sender, unit commands are authorized before the simu...
 - `SessionHandle` (class) [CampaignSession.cs](../src/Oxce.Gameplay/Sessions/CampaignSession.cs) - One player's view of the session: commands are sent as that player and queries are read for that player.
 - `SessionClockStep` (record struct) [SessionClock.cs](../src/Oxce.Gameplay/Sessions/SessionClock.cs) - The outcome of one host tick of the geoscape clock.
@@ -1275,7 +1286,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 333 files.
+`tests/Oxce.CompatibilityTests` - 334 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1285,13 +1296,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>328 test classes</summary>
+<details><summary>329 test classes</summary>
 
 - `BaseDefenseDeploymentTests` ([BaseDefenseDeploymentTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseDeploymentTests.cs))
 - `BaseDefenseMapTests` ([BaseDefenseMapTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseMapTests.cs))
 - `BattleCampaignSaveTests` ([BattleCampaignSaveTests.cs](../tests/Oxce.CompatibilityTests/BattleCampaignSaveTests.cs))
 - `BattleEntryPointTests` ([BattleEntryPointTests.cs](../tests/Oxce.CompatibilityTests/BattleEntryPointTests.cs))
 - `BattleFirstTurnTests` ([BattleFirstTurnTests.cs](../tests/Oxce.CompatibilityTests/BattleFirstTurnTests.cs))
+- `BattleInventoryTests` ([BattleInventoryTests.cs](../tests/Oxce.CompatibilityTests/BattleInventoryTests.cs))
 - `BattleSaveItemTests` ([BattleSaveItemTests.cs](../tests/Oxce.CompatibilityTests/BattleSaveItemTests.cs))
 - `BattleSaveMapTests` ([BattleSaveMapTests.cs](../tests/Oxce.CompatibilityTests/BattleSaveMapTests.cs))
 - `BattleSaveRootTests` ([BattleSaveRootTests.cs](../tests/Oxce.CompatibilityTests/BattleSaveRootTests.cs))

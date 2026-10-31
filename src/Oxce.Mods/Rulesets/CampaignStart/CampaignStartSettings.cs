@@ -65,6 +65,8 @@ public sealed class CampaignStartSettings
         DifficultyDemigod = builder.DifficultyDemigod;
         ExtendedHwpLoadOrder = builder.ExtendedHwpLoadOrder;
         ExtendedForceSpawn = builder.ExtendedForceSpawn;
+        ExtendedInventorySlotSorting = builder.ExtendedInventorySlotSorting;
+        ExtendedItemReloadCost = builder.ExtendedItemReloadCost;
         ShareAmmoCategories = builder.ShareAmmoCategories;
         BaseDefenseMapFromLocation = builder.BaseDefenseMapFromLocation;
         AlienFuelName = builder.AlienFuelName;
@@ -235,6 +237,8 @@ public sealed class CampaignStartSettings
 
     /// <summary>Mod::EXTENDED_FORCE_SPAWN (<c>extendedForceSpawn</c>): aliens without a spawn node are placed near a friend.</summary>
     public bool ExtendedForceSpawn { get; init; }
+    public bool ExtendedInventorySlotSorting { get; init; }
+    public bool ExtendedItemReloadCost { get; init; }
 
     /// <summary>Mod::getShareAmmoCategories (<c>shareAmmoCategories</c>).</summary>
     public bool ShareAmmoCategories { get; init; }
@@ -343,6 +347,8 @@ internal sealed class CampaignStartSettingsBuilder
     public bool DifficultyDemigod { get; set; }
     public bool ExtendedHwpLoadOrder { get; set; }
     public bool ExtendedForceSpawn { get; set; }
+    public bool ExtendedInventorySlotSorting { get; set; }
+    public bool ExtendedItemReloadCost { get; set; }
     public bool ShareAmmoCategories { get; set; }
     public int BaseDefenseMapFromLocation { get; set; }
     public string AlienFuelName { get; set; } = "";

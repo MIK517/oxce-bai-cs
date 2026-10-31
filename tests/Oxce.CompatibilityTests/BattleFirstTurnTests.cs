@@ -171,7 +171,7 @@ public sealed class BattleFirstTurnTests
         Assert.Equal("battle.not-in-briefing", Refusal(campaign, new BeginBriefing("a", "b")));
         Assert.Equal(0, battle.Turn);
 
-        Assert.Equal(new BattleFirstTurnStarted(battle.SelectedUnitId!.Value), Event<BattleFirstTurnStarted>(campaign, new StartFirstTurn()));
+        Assert.Equal(new BattleFirstTurnStarted(battle.SelectedUnitId!.Value) { LayoutsSaved = 1 }, Event<BattleFirstTurnStarted>(campaign, new StartFirstTurn()));
         Assert.Equal((1, BattlePhase.InProgress), (battle.Turn, battle.Phase));
         // Played through: no briefing any more, and the first turn is not started twice.
         Assert.Null(campaign.GetQuery<IBattleBriefingQuery>()!.QueryBriefing());

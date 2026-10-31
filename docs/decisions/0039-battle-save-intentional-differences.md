@@ -153,9 +153,9 @@ item in an unknown inventory section to the ground silently, and logs a fifth sp
 item joins its owner's inventory in the load's list order in the reference (`items`, `recoverConditional`,
 `recoverGuaranteed`, `itemsSpecial`); the port's inventory is the battle's items the unit owns in a section, in ID
 order, which is the same for every save the reference writes (its lists are in ID order) but differs for a hand-made
-unsorted list, and an owned item of a recovery list keeps its owner without joining the unit's inventory. The
+unsorted list. The
 reference's generator sends only unowned items to the recovery lists (`BattlescapeGenerator`), so only a hand-made save
-reaches this; branch 3 (the inventory) owns joining such an item to its owner's inventory or refusing it.
+reaches this; branch 3 (S4) refuses such a save: `BattleState.Validate` fails an item that is owned, in an inventory section and listed for recovery (a special built-in item, owned in no section, stays).
 
 **Items in block style (S4).** `position` and `ammoItemSlots` are flow style in the reference; the port writes block
 style, which reads the same.

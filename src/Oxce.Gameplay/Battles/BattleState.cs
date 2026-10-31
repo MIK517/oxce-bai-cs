@@ -241,8 +241,9 @@ internal sealed partial class BattleState
     internal BattleItem AddItemOnTile(BattleItem item, BattlePosition? tile)
     {
         ArgumentNullException.ThrowIfNull(item);
-        item.Tile = tile;
         item.Slot = tile is null ? "" : GroundSlot;
+        if (tile is { } position) AddToTile(item, position);
+        else item.Tile = null;
         AddItem(item);
         return item;
     }
@@ -296,7 +297,10 @@ internal sealed partial class BattleState
         if (!Enum.IsDefined(viewer.Faction)) throw new ArgumentOutOfRangeException(nameof(viewer));
         var units = new List<BattleUnitView>();
         foreach (var unit in _units)
-            if (Sees(viewer.Faction, unit)) units.Add(new BattleUnitView(unit.Id, unit.Faction, unit.Position));
+            if (Sees(viewer.Faction, unit)) units.Add(new BattleUnitView(unit.Id, unit.Faction, unit.Position)
+            {
+                ControllerSlot = unit.Controller.Kind == BattleControllerKind.Player ? unit.Controller.PlayerSlot : -1,
+            });
         return new BattleOverview(MissionType, DeploymentId, Width, Length, Height, Turn, Side, TurnLimit, Revision,
             units.AsReadOnly())
         {
@@ -398,6 +402,9 @@ internal sealed partial class BattleState
                 if (holders.ContainsKey(item.Id))
                     throw new InvalidOperationException($"Battle item {item.Id} is both on the map and in {kind} recovery.");
                 if (!recovered.Add(item.Id)) throw new InvalidOperationException($"Battle item {item.Id} is listed twice for recovery.");
+                // ADR 0039 (branch 3, S4): an owned recovery-list item in an inventory section would join the unit's inventory in the reference; refused (a special built-in item stays owned in no section).
+                if (item.OwnerUnitId is { } holder && !item.IsSpecialWeapon)
+                    throw new InvalidOperationException($"Battle item {item.Id} is owned by unit {holder} but listed for {kind} recovery.");
             }
         foreach (var (item, count) in holders)
             if (count > 1 || count == 0 && !restored) throw new InvalidOperationException($"Battle item {item} has {count} holders.");

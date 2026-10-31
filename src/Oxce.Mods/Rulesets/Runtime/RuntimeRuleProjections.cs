@@ -556,6 +556,8 @@ public sealed record RuntimeCampaignSettings(
 
     /// <summary>Mod::EXTENDED_FORCE_SPAWN.</summary>
     public bool ExtendedForceSpawn { get; init; }
+    public bool ExtendedInventorySlotSorting { get; init; }
+    public bool ExtendedItemReloadCost { get; init; }
 
     /// <summary>Mod::getShareAmmoCategories: a firearm also has the categories of the craft's primary ammo.</summary>
     public bool ShareAmmoCategories { get; init; }

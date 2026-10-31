@@ -273,7 +273,7 @@ battlescape), `Game` (the state stack), `GeoscapeState` (the pause policy the ho
   base); S4 ports it as a campaign effect of starting the first turn. Ammo loading, throwing and priming
   (`battle.inventory-ammo-unsupported`, `battle.inventory-throw-unsupported`, `battle.inventory-prime-unsupported`)
   and the inventory layout save and load screens (`InventorySaveState`, `InventoryLoadState`:
-  `battle.inventory-layout-screens-unsupported`) are deferred where the first playable battle does not need them. The open ADR 0039 note (an owned recovery-list item that keeps its owner without joining
+  `battle.inventory-layout-screens-unsupported`, and S4 adds clear, autoequip, template and rename: `battle.inventory-clear-unsupported`, `-autoequip-unsupported`, `-template-unsupported`, `-rename-unsupported`) are deferred where the first playable battle does not need them. The open ADR 0039 note (an owned recovery-list item that keeps its owner without joining
   the inventory) is resolved here: it joins the inventory or is refused.
 - **Battlescape view.** The map is drawn from `QueryBattle(viewer)` only: tiles the viewer's faction discovered, units
   it spotted, never hidden state. Camera, level up and down, selection (next, previous, the selected unit) and the

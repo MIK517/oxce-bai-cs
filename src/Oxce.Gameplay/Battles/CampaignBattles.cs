@@ -30,7 +30,7 @@ internal interface ICampaignDeploymentHandOver
 /// The campaign's battle (<c>SavedGame::_battleGame</c>): at most one, generated from the pending deployment
 /// request. While it exists the campaign refuses every strategic command and time.
 /// </summary>
-internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapability, IBattleQuery, IBattleBriefingQuery
+internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapability, IBattleQuery, IBattleBriefingQuery, IBattleInventoryQuery
 {
     internal static readonly CampaignReason BattleInProgress = new("battle.in-progress",
         "A battle is in progress; the campaign continues after its debriefing.");
@@ -56,10 +56,15 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
     {
         registry.Query<IBattleQuery>(this);
         registry.Query<IBattleBriefingQuery>(this);
+        registry.Query<IBattleInventoryQuery>(this);
         registry.Command<StartBattle>(command => Start(command));
         registry.Command<BeginBriefing>(BeginBriefing);
         registry.Command<ConfirmBriefing>(_ => ConfirmBriefing());
         registry.Command<StartFirstTurn>(_ => StartFirstTurn());
+        registry.Command<MoveInventoryItem>(MoveInventory);
+        registry.Command<AutoPlaceInventoryItem>(AutoPlaceInventory);
+        registry.Command<UseInventoryFeature>(command =>
+            Blocked(_battle is null or { Phase: BattlePhase.Briefing } ? BattleInventoryReasons.Unavailable : BattleInventoryReasons.For(command.Feature)));
         // The geoscape is frozen during a battle: time stops in the preflight, every other command here.
         registry.Preflight(CampaignPreflightOrder.Battle, "battle", (_, _) => _battle is not null ? BattleInProgress.Text : null);
         registry.CommandGate(command => _battle is not null && command is not (AdvanceCampaignTime or IBattleCommand) ? Blocked(BattleInProgress) : null);
@@ -275,8 +280,10 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         var content = campaign.Content;
         if (battle.Tally().LiveSoldiers == 0) return Blocked(BattleFlowReasons.NoLiveSoldiers);
         if (battle.FirstTurnRefusal(content, BattleRestoreCampaign.From(campaign)) is { } refusal) return Blocked(refusal);
+        // btnOkClick saves the layout first, unless the alternate craft equipment management keeps it with the base screens.
+        var saved = campaign.Options.AlternateCraftEquipmentManagement ? 0 : SaveEquipmentLayout(battle, content.RuntimeRules);
         battle.StartFirstTurn(content, campaign.Random);
-        return new CampaignCommandResult([new BattleFirstTurnStarted(battle.SelectedUnitId ?? -1)]);
+        return new CampaignCommandResult([new BattleFirstTurnStarted(battle.SelectedUnitId ?? -1) { LayoutsSaved = saved }]);
     }
 
     /// <summary>BriefingState's page: which deployment's briefing data shows, and the lines the briefing set.</summary>
@@ -304,6 +311,61 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
             rules.Campaign.OperationNamesFirst.Count != 0, battle.TargetName, battle.CraftOrBaseName, battle.Phase);
     });
 
+
+    /// <summary>The pick-up and drop of <c>Inventory::mouseClick</c>; a refusal changes nothing.</summary>
+    private CampaignCommandResult MoveInventory(MoveInventoryItem command)
+    {
+        if (_battle is not { } battle) return Blocked(BattleInventoryReasons.Unavailable);
+        if (battle.PlanMove(campaign.Content.RuntimeRules, command.UnitId, command.ItemId, command.Slot ?? "", command.SlotX, command.SlotY, out var move) is { } refusal)
+            return Blocked(refusal);
+        return Moved(battle, move!);
+    }
+
+    private CampaignCommandResult AutoPlaceInventory(AutoPlaceInventoryItem command)
+    {
+        if (_battle is not { } battle) return Blocked(BattleInventoryReasons.Unavailable);
+        if (battle.PlanAutoPlace(campaign.Content.RuntimeRules, command.UnitId, command.ItemId, command.Smart, out var move) is { } refusal)
+            return Blocked(refusal);
+        // Smart choice with no section that takes a ground item: the reference "moves" it to the ground it lies on, at no cost.
+        if (move is null)
+            return new CampaignCommandResult([new InventoryItemMoved(command.UnitId, command.ItemId, BattleState.GroundSlot, BattleState.GroundSlot, 0, 0, 0)]);
+        return Moved(battle, move);
+    }
+
+    private static CampaignCommandResult Moved(BattleState battle, InventoryMove move)
+    {
+        battle.ApplyMove(move);
+        return new CampaignCommandResult([new InventoryItemMoved(move.Unit.Id, move.Item.Id, move.From.Id, move.To.Id, move.X, move.Y, move.Cost)]);
+    }
+
+    /// <summary>
+    /// InventoryState::saveEquipmentLayout: every soldier of the battle gets the layout of its unit's inventory, in the campaign.
+    /// Returns the number of soldiers whose layout was written.
+    /// </summary>
+    private int SaveEquipmentLayout(BattleState battle, RuntimeRuleCatalog rules)
+    {
+        var layouts = battle.SaveEquipmentLayout(rules);
+        var written = 0;
+        foreach (var owner in campaign.BaseStates)
+            for (var index = 0; index < owner.Soldiers.Count; index++)
+            {
+                var soldier = owner.Soldiers[index];
+                if (!layouts.TryGetValue(soldier.Id, out var layout) || soldier.Personal is not { } personal) continue;
+                owner.Soldiers[index] = soldier with { Personal = personal with { EquipmentLayout = layout } };
+                written++;
+            }
+        return written;
+    }
+
+    public BattleInventoryView? QueryInventory(BattleViewer viewer, int unitId) =>
+        campaign.Read(() => _battle?.InventoryView(campaign.Content.RuntimeRules, viewer, unitId));
+
+    public string? CheckInventoryMove(BattleViewer viewer, int unitId, int itemId, string slot, int slotX, int slotY) => campaign.Read(() =>
+    {
+        if (_battle is not { } battle) return BattleInventoryReasons.Unavailable.Code;
+        if (viewer.Faction != BattleFaction.Player) return BattleInventoryReasons.UnitUnavailable.Code;
+        return battle.PlanMove(campaign.Content.RuntimeRules, unitId, itemId, slot ?? "", slotX, slotY, out _)?.Code;
+    });
 
     private static CampaignCommandResult Blocked(CampaignReason reason) =>
         new([CampaignActionBlocked.From(reason)]);

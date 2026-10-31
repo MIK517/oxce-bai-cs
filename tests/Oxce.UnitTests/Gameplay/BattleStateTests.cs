@@ -28,7 +28,7 @@ public sealed class BattleStateTests
         Assert.Equal(revision + 1, battle.Revision);
         battle.SetSpotted(alien, BattleFaction.Player, true);
         Assert.Equal(revision + 1, battle.Revision);
-        Assert.Equal([new BattleUnitView(7, BattleFaction.Player, new(1, 2, 0)),
+        Assert.Equal([new BattleUnitView(7, BattleFaction.Player, new(1, 2, 0)) { ControllerSlot = 0 },
             new BattleUnitView(BattleState.MaximumSoldierId, BattleFaction.Hostile, new(30, 30, 1))],
             battle.Overview(BattleViewer.LocalPlayer).Units);
         // Spotting is per faction: the neutral side has seen nobody.

@@ -450,6 +450,9 @@ public sealed class BattleSaveItemTests
         // An owned item that also lies on a tile (the reference puts it in both places; ADR 0039).
         Assert.Contains("has 2 holders", Failure(() => Restore(Units +
             "items:\n  - {id: 1, type: CLIP, owner: 1000000, inventoryslot: STR_GROUND, position: [0, 0, 0]}\n")), StringComparison.Ordinal);
+        // An owned item of a recovery list in an inventory section would join its owner's inventory (branch 3, S4: refused).
+        Assert.Contains("listed for conditional recovery", Failure(() => Restore(Units +
+            "recoverConditional:\n  - {id: 4, type: CLIP, owner: 1000000, inventoryslot: STR_BELT}\n")), StringComparison.Ordinal);
         // A weapon of the battle loaded with an item of a recovery list.
         Assert.Contains("which is no loaded ammo of the battle", Failure(() => Restore("items:\n  - {id: 1, type: GUN, ammoItemSlots: [2]}\n" +
             "recoverGuaranteed:\n  - {id: 2, type: CLIP}\n")), StringComparison.Ordinal);
@@ -466,16 +469,15 @@ public sealed class BattleSaveItemTests
     {
         var battle = Restore(Units + "items:\n  - {id: 1, type: CLIP}\n" +
             "recoverGuaranteed:\n  - {id: 2, type: CLIP, inventoryslot: STR_GROUND, position: [3, 3, 1]}\n" +
-            "recoverConditional:\n  - {id: 3, type: CLIP, owner: 1000000}\n  - {id: 4, type: CLIP, owner: 1000000, inventoryslot: STR_BELT}\n");
+            "recoverConditional:\n  - {id: 3, type: CLIP, owner: 1000000}\n");
         // getTile(pos)->addItem: the tile holds the item, so it is not void and is saved.
         Assert.Equal((BattlePosition?)new BattlePosition(3, 3, 1), Item(battle, 2).Tile);
         Assert.Contains(battle.Capture().Tiles, static tile => tile.Index == 3 + 3 * 4 + 1 * 16);
-        // An owned item of a recovery list keeps its owner; in no section it is the owner's special item (ADR 0039: it
-        // does not join the inventory, which is the battle's items).
+        // An owned item of a recovery list keeps its owner; in no section it is the owner's special item (ADR 0039:
+        // a special item is no inventory item; one in a section is refused, above).
         var alien = battle.Units.Single(static unit => unit.Id == 1000000);
         Assert.Equal((1000000, true), (Item(battle, 3).OwnerUnitId!.Value, Item(battle, 3).IsSpecialWeapon));
         Assert.Equal([3], alien.SpecialWeaponIds);
-        Assert.Equal(1000000, Item(battle, 4).OwnerUnitId);
         Assert.Empty(battle.InventoryOf(alien));
     }
 
