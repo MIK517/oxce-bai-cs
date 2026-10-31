@@ -443,7 +443,7 @@ public sealed class BattleStartTests
         ["ROUTES/TALL.RMP"] = [],
     };
 
-    private static (CampaignState Campaign, CampaignDeploymentRequest Request) Requested(string? rules, string ufo = "UFO_SCOUT",
+    internal static (CampaignState Campaign, CampaignDeploymentRequest Request) Requested(string? rules, string ufo = "UFO_SCOUT",
         IReadOnlyList<CraftVehicleSnapshot>? vehicles = null, IReadOnlyDictionary<string, int>? items = null,
         IReadOnlyList<SoldierLayoutItem>? layout = null, Func<CampaignSnapshot, CampaignSnapshot>? adjust = null)
     {
@@ -466,7 +466,7 @@ public sealed class BattleStartTests
     }
 
     /// <summary>Starts the battle, reporting the refusal reason when there is one.</summary>
-    private static BattleStarted Started(CampaignState campaign)
+    internal static BattleStarted Started(CampaignState campaign)
     {
         var events = campaign.Execute(new StartBattle()).Events;
         Assert.Equal("", events.OfType<CampaignActionBlocked>().SingleOrDefault()?.Reason.ToString() ?? "");
@@ -476,7 +476,7 @@ public sealed class BattleStartTests
     private static string Refusal(CampaignState campaign, ICampaignCommand command) =>
         Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(command).Events)).Reason;
 
-    private static BattleState Battle(CampaignState campaign) =>
+    internal static BattleState Battle(CampaignState campaign) =>
         campaign.GetQuery<IBattleQuery>() is CampaignBattles battles ? battles.Battle! : throw new InvalidOperationException();
 
     [Fact]
@@ -526,9 +526,9 @@ public sealed class BattleStartTests
         Assert.Equal(CampaignBattles.BattleInProgress.Text, Refusal(campaign, new RecallCraft(request.BaseId, "SHIP", 1)));
         Assert.Equal(CampaignBattles.BattleInProgress.Text, Refusal(campaign, new StartBattle()));
         Assert.Equivalent(before, campaign.Capture(), strict: true);
-        Assert.Equal(CampaignBattles.BattleSaveUnsupported.Text, campaign.QuerySaveRefusal());
+        Assert.Equal(CampaignBattles.BattleSaveBeforeFirstTurn.Text, campaign.QuerySaveRefusal());
         Assert.Null(campaign.CaptureForSave(out var refusal));
-        Assert.Equal(CampaignBattles.BattleSaveUnsupported.Text, refusal);
+        Assert.Equal(CampaignBattles.BattleSaveBeforeFirstTurn.Text, refusal);
     }
 
     [Fact]
@@ -1021,13 +1021,15 @@ public sealed class BattleStartTests
     public void TheEnvironmentOrTheStartingConditionChangesTheSoldiersBattleArmor(string deployment)
     {
         // RuleEnviroEffects::getArmorTransformation, or RuleStartingCondition::getArmorReplacement for a forbidden armor:
-        // the battle unit wears the suit (a flyer); the geoscape soldier keeps its own armor.
+        // the battle unit wears the suit (a flyer). deployXCOM gives the geoscape soldier the suit too, remembering its own
+        // armor as transformedArmor (the environment) or replacedArmor (the starting condition).
         var (campaign, request) = Requested(Rules, deployment);
         Started(campaign);
         var soldier = Assert.Single(Battle(campaign).Units, static unit => unit.Faction == BattleFaction.Player);
         Assert.Equal(("SUIT", "ARMOR", 1), (soldier.ArmorId, soldier.OriginalArmorId, soldier.MovementType));
         var personal = campaign.Capture().Bases[0].Soldiers.Single(state => state.Id == Assert.Single(request.Soldiers)).Personal!;
-        Assert.Equal("ARMOR", personal.Armor);
+        Assert.Equal(deployment == "UFO_SUITED" ? ("SUIT", "ARMOR", "") : ("SUIT", "", "ARMOR"),
+            (personal.Armor, personal.TransformedArmor, personal.ReplacedArmor));
     }
 
     [Theory]

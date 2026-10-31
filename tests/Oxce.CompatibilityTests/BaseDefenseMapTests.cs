@@ -214,7 +214,7 @@ public sealed class BaseDefenseMapTests
         Facility("XB_ROOM", 3, 2, buildTime: 5),
     ];
 
-    private static BattleState MapOf(CampaignState campaign, CampaignDeploymentRequest request) =>
+    internal static BattleState MapOf(CampaignState campaign, CampaignDeploymentRequest request) =>
         BattleGenerator.GenerateMap(campaign, request, new BattleTerrainLoader(campaign.Content.RuntimeRules.Battle, TerrainFiles())).State;
 
     internal static string Refusal(CampaignState campaign) =>
@@ -260,9 +260,9 @@ public sealed class BaseDefenseMapTests
         Assert.Equal(new BattlePosition(5, 5, 0), battle.CraftInventoryTile);
 
         // The module map: two base module tiles in the tower's block count 2, the other blocks have none.
-        Assert.Equal(new BattleBaseModule(2, 2), battle.BaseModules[3, 0]);
-        Assert.Equal(new BattleBaseModule(-1, -1), battle.BaseModules[0, 0]);
-        Assert.Equal((4, 3), (battle.BaseModules.GetLength(0), battle.BaseModules.GetLength(1)));
+        Assert.Equal(new BattleBaseModule(2, 2), battle.BaseModules[3][0]);
+        Assert.Equal(new BattleBaseModule(-1, -1), battle.BaseModules[0][0]);
+        Assert.Equal((4, 3), (battle.BaseModules.Length, battle.BaseModules[0].Length));
     }
 
     [Fact]

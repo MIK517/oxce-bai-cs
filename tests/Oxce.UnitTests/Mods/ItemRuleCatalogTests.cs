@@ -11,6 +11,26 @@ namespace Oxce.UnitTests.Mods;
 public sealed class ItemRuleCatalogTests
 {
     [Fact]
+    public void KeepsASingleNoSoundAndDropsNoSoundListEntries()
+    {
+        // Mod::loadSoundOffset: a scalar -1 stays as Mod::NO_SOUND (RuleItem::getMeleeSound then plays nothing, where an
+        // empty list falls back to the default); a list entry of -1 is the soft error's dropped entry.
+        const string yaml = """
+            items:
+              - type: WEAPON
+                meleeSound: -1
+                hitSound: [-1, 4]
+            """;
+        using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
+
+        var weapon = Assert.Single(ItemRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root)).Items.Rules).Value;
+
+        Assert.Equal([-1], weapon.ResourceIndexLists["meleeSound"].Select(value => value.Index));
+        Assert.Equal([4], weapon.ResourceIndexLists["hitSound"].Select(value => value.Index));
+        Assert.Empty(weapon.ResourceIndexLists["fireSound"]);
+    }
+
+    [Fact]
     public void LoadsItemDefaultsInheritanceActionsAndEditableCollections()
     {
         const string yaml = """

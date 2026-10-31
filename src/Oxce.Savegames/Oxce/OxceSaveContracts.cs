@@ -10,6 +10,12 @@ public sealed record OxceSaveLoadOptions(
     YamlReadOptions? Yaml = null,
     IDiagnosticSink? Diagnostics = null)
 {
+    /// <summary>
+    /// The installation's terrain files, which a save holding a battle (<c>battleGame</c>) needs to restore the battle's
+    /// map; they become the loaded campaign's <see cref="CampaignState.BattleTerrainFiles"/>.
+    /// </summary>
+    public Gameplay.Battles.Terrain.IBattleTerrainFiles? BattleTerrainFiles { get; init; }
+
     public void Validate()
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(MasterId);

@@ -98,29 +98,8 @@ internal sealed class UnitEquipment
     public RuntimeBattleItem BattleItemRule(string itemType) => _equipment.Items.TryGetValue(itemType, out var rule)
         ? rule : throw new MapGenerationException($"Item {itemType} does not exist.");
 
-    /// <summary>The BattleItem constructor: clip ammo, medikit quantities, and the ammo slots a weapon fills itself.</summary>
-    private BattleItem NewItem(string itemType)
-    {
-        var rule = ItemRule(itemType);
-        var battleRule = BattleItemRule(itemType);
-        var item = _battle.NewItem(itemType);
-        item.AmmoQuantity = rule.ClipSize;
-        if (rule.BattleType == Medikit)
-        {
-            item.HealQuantity = battleRule.HealQuantity;
-            item.PainKillerQuantity = battleRule.PainKillerQuantity;
-            item.StimulantQuantity = battleRule.StimulantQuantity;
-        }
-        else if (rule.BattleType is Firearm or Melee)
-        {
-            for (var slot = 0; slot < BattleItem.AmmoSlotCount; slot++)
-            {
-                if (slot >= rule.CompatibleAmmo.Count || rule.CompatibleAmmo[slot].Count == 0) item.AmmoSlots[slot] = item.Id;
-                else item.IsWeaponWithAmmo = true;
-            }
-        }
-        return item;
-    }
+    /// <summary>The BattleItem constructor with the battle's next item ID (<see cref="BattleState.ConstructItem"/>).</summary>
+    private BattleItem NewItem(string itemType) => BattleState.ConstructItem(_rules, _battle.TakeItemId(), itemType);
 
     /// <summary>
     /// BattleUnit::setSpecialWeapon for a new unit: the unit's melee weapon, the armor's special weapon, a hostile unit's
@@ -129,28 +108,52 @@ internal sealed class UnitEquipment
     private void SetSpecialWeapon(BattleUnit unit, RuntimeBattleUnitRule? unitRule, string soldierType)
     {
         var armor = Armor(unit.ArmorId);
+        var next = 0;
         // Mod::getItem without the required flag: an unknown unit melee or psi weapon is no special weapon.
-        if (unitRule is not null && _rules.Items.TryGet(unitRule.MeleeWeapon, out _)) Add(unitRule.MeleeWeapon);
-        Add(armor.SpecialWeapon);
-        if (unitRule is not null && unit.Faction == BattleFaction.Hostile && _rules.Items.TryGet(unitRule.PsiWeapon, out _)) Add(unitRule.PsiWeapon);
-        if (soldierType.Length != 0 && _equipment.SoldierSpecialWeapons.TryGetValue(soldierType, out var soldierWeapon)) Add(soldierWeapon);
-        Add(armor.SelfDestructItem);
+        if (unitRule is not null && _rules.Items.TryGet(unitRule.MeleeWeapon, out _)) AddSpecialWeapon(unit, unitRule.MeleeWeapon, ref next);
+        AddSpecialWeapon(unit, armor.SpecialWeapon, ref next);
+        if (unitRule is not null && unit.OriginalFaction == BattleFaction.Hostile && _rules.Items.TryGet(unitRule.PsiWeapon, out _))
+            AddSpecialWeapon(unit, unitRule.PsiWeapon, ref next);
+        if (soldierType.Length != 0 && _equipment.SoldierSpecialWeapons.TryGetValue(soldierType, out var soldierWeapon))
+            AddSpecialWeapon(unit, soldierWeapon, ref next);
+        AddSpecialWeapon(unit, armor.SelfDestructItem, ref next);
+    }
 
-        void Add(string itemType)
+    /// <summary>
+    /// SavedBattleGame::load's units' second pass, BattleUnit::setSpecialWeapon with updateFromSave: a unit the save gave
+    /// special built-in items gets only the armor's self-destruct item it lacks (for older saves), which takes the first
+    /// slot (the reference's index starts at 0; the item there stays owned, out of the unit's slots); a unit without any
+    /// gets them as a new unit does (older saves kept none).
+    /// </summary>
+    public void RestoreSpecialWeapons(BattleUnit unit, RuntimeBattleUnitRule? unitRule, string soldierType)
+    {
+        if (unit.SpecialWeaponIds.Count == 0)
         {
-            if (itemType.Length == 0 || unit.SpecialWeaponIds.Count >= SpecialWeaponMaximum) return;
-            var rule = ItemRule(itemType);
-            if (unit.Stats.PsiSkill <= 0 && BattleItemRule(itemType).PsiRequired) return;
-            if (rule.BattleType is Firearm or Melee && rule.ClipSize == 0)
-                throw new MapGenerationException($"Weapon {itemType} is used as a special built-in weapon on unit {unit.UnitType} but doesn't have it's own ammo - give it a clipSize!");
-            if (unit.SpecialWeaponIds.Exists(id => Find(id).ItemType == itemType)) return;
-            // SavedBattleGame::createItemForUnitSpecialBuiltin: owned, in no inventory section.
-            var item = NewItem(itemType);
-            item.OwnerUnitId = unit.Id;
-            item.IsSpecialWeapon = true;
-            _battle.AddItem(item);
-            unit.SpecialWeaponIds.Add(item.Id);
+            SetSpecialWeapon(unit, unitRule, soldierType);
+            return;
         }
+        var first = 0;
+        AddSpecialWeapon(unit, Armor(unit.ArmorId).SelfDestructItem, ref first);
+    }
+
+    // setSpecialWeapon's addItem: the item goes into slot `next` (SPEC_WEAPON_MAX slots), unless the unit lacks the psi
+    // skill it needs or already has one of its type.
+    private void AddSpecialWeapon(BattleUnit unit, string itemType, ref int next)
+    {
+        if (itemType.Length == 0 || next >= SpecialWeaponMaximum) return;
+        var rule = ItemRule(itemType);
+        if (unit.Stats.PsiSkill <= 0 && BattleItemRule(itemType).PsiRequired) return;
+        if (rule.BattleType is Firearm or Melee && rule.ClipSize == 0)
+            throw new MapGenerationException($"Weapon {itemType} is used as a special built-in weapon on unit {unit.UnitType} but doesn't have it's own ammo - give it a clipSize!");
+        if (unit.SpecialWeaponIds.Exists(id => _battle.FindItem(id)?.ItemType == itemType)) return;
+        // SavedBattleGame::createItemForUnitSpecialBuiltin: owned, in no inventory section.
+        var item = NewItem(itemType);
+        item.OwnerUnitId = unit.Id;
+        item.IsSpecialWeapon = true;
+        _battle.AddItem(item);
+        if (next < unit.SpecialWeaponIds.Count) unit.SpecialWeaponIds[next] = item.Id;
+        else unit.SpecialWeaponIds.Add(item.Id);
+        next++;
     }
 
     /// <summary>SavedBattleGame::addFixedItems: the listed items as fixed weapons, ammunition after the rest.</summary>
@@ -395,11 +398,7 @@ internal sealed class UnitEquipment
     }
 
     /// <summary>BattleItem::moveToOwner: the item leaves its tile and goes to the unit (or to no owner).</summary>
-    public static void MoveToOwner(BattleItem item, BattleUnit? unit)
-    {
-        item.Tile = null;
-        item.OwnerUnitId = unit?.Id;
-    }
+    public static void MoveToOwner(BattleItem item, BattleUnit? unit) => BattleState.MoveToOwner(item, unit?.Id);
 
     /// <summary>BattleUnit::hasInventory.</summary>
     public bool HasInventory(BattleUnit unit) => Armor(unit.ArmorId).HasInventory;

@@ -1,3 +1,6 @@
+using Oxce.Mods.Rulesets.Runtime;
+using Oxce.Scripting.Globals;
+
 namespace Oxce.Gameplay.Battles;
 
 /// <summary>
@@ -14,6 +17,36 @@ internal sealed class BattleItem(int id, string itemType)
 
     /// <summary>The unit carrying the item, or null.</summary>
     public int? OwnerUnitId { get; set; }
+
+    /// <summary>BattleItem::getPreviousOwner: the unit that carried it before (setOwner keeps the last owner), or null.</summary>
+    public int? PreviousOwnerUnitId { get; set; }
+
+    /// <summary>BattleItem::getUnit: the unit a corpse item is (dead or unconscious), or null.</summary>
+    public int? CorpseUnitId { get; set; }
+
+    /// <summary>BattleItem's <c>_inventoryMoveCostPercent</c>: starts at the rule's.</summary>
+    public int InventoryMoveCostPercent { get; set; } = 100;
+
+    /// <summary>BattleItem::isFuseEnabled: the primed fuse has been triggered (setFuseTimer derives it).</summary>
+    public bool FuseEnabled { get; set; }
+
+    /// <summary>BattleItem::getTurnFlag (<c>droppedOnAlienTurn</c>).</summary>
+    public bool DroppedOnAlienTurn { get; set; }
+
+    /// <summary>The item's script values (owner <c>BattleItem</c>); null for an item created without content.</summary>
+    internal ScriptValueState? ScriptValues { get; set; }
+
+    /// <summary>
+    /// BattleItem::setFuseTimer: the timer, and the fuse enabled for a primed timer (0 or more) when the rule's fuse trigger
+    /// keeps the default behavior and neither a throw nor a proximity trigger sets it off.
+    /// </summary>
+    internal void SetFuseTimer(int turns, RuntimeBattleItem rule)
+    {
+        ArgumentNullException.ThrowIfNull(rule);
+        FuseTimer = turns;
+        var trigger = rule.FuseTrigger;
+        FuseEnabled = turns >= 0 && !trigger.ThrowTrigger && !trigger.ProximityTrigger && trigger.DefaultBehavior;
+    }
 
     /// <summary>The inventory slot rule (STR_GROUND on a tile) and the position in it.</summary>
     public string Slot { get; set; } = "";

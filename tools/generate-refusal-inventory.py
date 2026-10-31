@@ -43,6 +43,13 @@ OVERRIDES = {
     'Crashed UFO cannot expire while a mission site references it.': 'restriction',
     'A new campaign requires at least one geographic country.': 'input',
     'Unsupported stock kind.': 'invariant',
+    # Restore-only checks of a loaded battle save, wrapped as "Battle save is corrupted: ..." (Phase 7 branch 2 audit).
+    'Battle item ID {highest} leaves no ID for the next item.': 'input',
+    'Battle item ID {item.Id} is saved twice.': 'input',
+    "Battle item {entry.Id} 'ammoItem' names item {legacy}, which the battle does not have.": 'input',
+    'Battle item {item.Id} lies at {position}, outside the map.': 'input',
+    # The AI's start node is set only on units the generator gives an AI module.
+    'Battle unit {Id} has no AI module.': 'invariant',
 }
 
 
@@ -69,6 +76,9 @@ def classify(text):
     if text in OVERRIDES:
         return OVERRIDES[text]
     lowered = text.lower()
+    # Corrupted battle saves (Phase 7 branch 2) are input validation, not a battle boundary.
+    if lowered.startswith('battle save '):
+        return 'input'
     for key, _, pattern in CLASSES:
         if re.search(pattern, lowered):
             return key

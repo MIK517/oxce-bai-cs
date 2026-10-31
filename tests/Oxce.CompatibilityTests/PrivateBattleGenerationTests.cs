@@ -21,10 +21,15 @@ namespace Oxce.CompatibilityTests;
 /// first acceptance scenario; the vanilla UFO and TFTD landings are staged by a headless player that sends a manned
 /// craft to the first landed or crashed UFO or mission site it sees, and the base defenses by a retaliation UFO staged
 /// to reach the save's first base. Malformed terrain files refuse the battle with the file's path and leave the request pending.
+/// Phase 7 branch 2 S6: each acceptance battle, written by the battle save module, reloads with the same saved and derived
+/// state and the same viewer overviews.
 /// </summary>
 public sealed class PrivateBattleGenerationTests
 {
     private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
+
+    // The loaded save each campaign came from, which a loaded rewrite writes over.
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<CampaignState, OxceSaveDocument> Sources = [];
 
     // Real mods run with the production forecast work bounds (branch 6 S3).
     public PrivateBattleGenerationTests() => CampaignWorld.ProductionWorkBounds = true;
@@ -61,10 +66,11 @@ public sealed class PrivateBattleGenerationTests
             // The ten soldiers on board, each of them on the map; the player sees its own side only.
             Assert.Equal(request!.Soldiers.Order(), battle.Units.Where(static unit => unit.SoldierId is not null).Select(static unit => unit.SoldierId!.Value).Order());
             Assert.Equal(10, campaign.GetQuery<IBattleQuery>()!.QueryBattle(BattleViewer.LocalPlayer)!.Units.Count);
-            // The campaign holds for the battle, and saving waits for battle saves (Phase 7 branch 2).
+            // The campaign holds for the battle, and saving waits for the first turn (Phase 7 branch 3).
             Assert.Null(campaign.GetQuery<ICampaignLandingQuery>()!.QueryDeploymentRequest());
             Assert.Equal(CampaignBattles.BattleInProgress.Text, Blocked(campaign.Execute(new AdvanceCampaignTime(1))));
-            Assert.Equal(CampaignBattles.BattleSaveUnsupported.Text, campaign.QuerySaveRefusal());
+            Assert.Equal(CampaignBattles.BattleSaveBeforeFirstTurn.Text, campaign.QuerySaveRefusal());
+            AssertReloads(loaded, campaign, battle);
         });
     }
 
@@ -213,9 +219,65 @@ public sealed class PrivateBattleGenerationTests
     private static CampaignState LoadSave(LoadedFamily loaded, string family, string save)
     {
         var file = TestFixtures.RepositoryPath("fixtures", "private", "saves", family, "early", save);
-        var campaign = OxceSaveAdapter.LoadFile(file, loaded.Content, new SplitMix64RandomSource(17), loaded.Options).Campaign;
+        var load = OxceSaveAdapter.LoadFile(file, loaded.Content, new SplitMix64RandomSource(17), loaded.Options);
+        var campaign = load.Campaign;
         campaign.BattleTerrainFiles = loaded.Files;
+        Sources.Add(campaign, load.Source);
         return campaign;
+    }
+
+    /// <summary>
+    /// Phase 7 branch 2 S6 acceptance: the generated battle, at the first turn <c>startFirstTurn</c> would give it (the
+    /// campaign saves no battle before it), written by the battle save module through the campaign's loaded rewrite,
+    /// passes the conformance reader and reloads with the same saved state (as the load sets it: resetUnitTiles'
+    /// visibility), the same derived deployment and the same overview for every viewer. <see cref="BattleOverview.Revision"/>
+    /// is the port's change counter, which a restore counts from its own changes (the plan's "State the reference does not
+    /// save"), so both sides set it to 0. Equivalence ignores the order of collections, so the module's writes of both
+    /// snapshots are compared as text too (the order of units, items, nodes and every per-side or per-index list).
+    /// </summary>
+    private static void AssertReloads(LoadedFamily loaded, CampaignState campaign, BattleState battle)
+    {
+        var snapshot = campaign.Capture();
+        snapshot = snapshot with { Battle = snapshot.Battle! with { Turn = 1 } };
+        var text = OxceSaveAdapter.EmitLoadedCampaign(snapshot, Sources.TryGetValue(campaign, out var source) ? source
+            : throw new InvalidOperationException("The campaign was not loaded by LoadSave."));
+        BattleSaveConformance.CheckSave(text);
+        var reloaded = OxceSaveAdapter.Load(text, "battle.sav", loaded.Content, new SplitMix64RandomSource(17),
+            loaded.Options with { BattleTerrainFiles = loaded.Files }).Campaign;
+        var expected = WithoutUnsavedSlotPositions(BattleSaveUnitTests.Loaded(snapshot.Battle!));
+        var actual = reloaded.Capture().Battle!;
+        Assert.Equivalent(expected, actual, strict: true);
+        Assert.Equal(BattleSaveRootTests.Emit(OxceBattleSave.Write(expected)), BattleSaveRootTests.Emit(OxceBattleSave.Write(actual)));
+        var restored = BattleStartTests.Battle(reloaded);
+        Assert.Equal(battle.DeploymentId, restored.DeploymentId);
+        foreach (var faction in Enum.GetValues<BattleFaction>())
+        {
+            var viewer = new BattleViewer(faction);
+            var before = battle.Overview(viewer);
+            var after = restored.Overview(viewer);
+            Assert.Equivalent(before with { Turn = 1, Revision = 0 }, after with { Revision = 0 }, strict: true);
+            Assert.Equal(before.Units, after.Units);
+        }
+        Assert.Null(reloaded.QuerySaveRefusal());
+    }
+
+    /// <summary>
+    /// A snapshot without the inventory positions the reference does not save: <c>BattleItem::save</c> writes
+    /// <c>inventoryX</c> and <c>inventoryY</c> only in a grid slot ("for hands and ground it can be `0` for both"), so a
+    /// load leaves the constructor's 0 for every item outside a grid slot (in a hand, on the ground, in no section), where
+    /// the generator's layout gave a hand item its layout position.
+    /// </summary>
+    private static BattleSnapshot WithoutUnsavedSlotPositions(BattleSnapshot snapshot)
+    {
+        static IReadOnlyList<BattleItemSnapshot> Items(IReadOnlyList<BattleItemSnapshot> items) =>
+            [.. items.Select(static item => item.SlotIsGrid ? item : item with { SlotX = 0, SlotY = 0 })];
+        return snapshot with
+        {
+            Items = Items(snapshot.Items),
+            ItemsSpecial = Items(snapshot.ItemsSpecial),
+            RecoverConditional = Items(snapshot.RecoverConditional),
+            RecoverGuaranteed = Items(snapshot.RecoverGuaranteed),
+        };
     }
 
     /// <summary>
@@ -233,7 +295,9 @@ public sealed class PrivateBattleGenerationTests
                 foreach (var save in expected.Keys.Where(key => key.Family == family).Select(static key => key.Save))
                 {
                     var (campaign, request) = stage(loaded, family, save);
-                    measured[(family, save)] = Shape(request, Start(campaign));
+                    var battle = Start(campaign);
+                    measured[(family, save)] = Shape(request, battle);
+                    AssertReloads(loaded, campaign, battle);
                 }
             });
         var path = TestFixtures.RepositoryPath("artifacts", record);
@@ -313,6 +377,7 @@ public sealed class PrivateBattleGenerationTests
             },
         }, loaded.Content, new SplitMix64RandomSource(17));
         staged.BattleTerrainFiles = loaded.Files;
+        if (Sources.TryGetValue(campaign, out var source)) Sources.AddOrUpdate(staged, source);
         var events = staged.Execute(new AdvanceCampaignTime(1)).Events;
         if (events.OfType<CampaignActionBlocked>().SingleOrDefault()?.Reason == WorldCommandReasons.BaseDefenseOpen)
             events = staged.Execute(new ResolveBaseDefense(owner.Id, Fire: false)).Events;

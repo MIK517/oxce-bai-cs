@@ -83,8 +83,8 @@ internal sealed class CraftRuleLoader : TypedRuleFamilyLoader<CraftBuilder, Craf
         if (reader.TryGet("sprite", out var sprite))
             builder.Sprite = PresentationYaml.ReadIndexReference(sprite!, reader.Source.ModId);
         if (reader.TryGet("skinSprites", out var skins))
-            builder.SkinSprites = skins is YamlSequenceNode
-                ? EquipmentYaml.IndexList(skins, reader.Source.ModId)
+            builder.SkinSprites = skins is YamlSequenceNode sequence
+                ? sequence.Items.Select(value => PresentationYaml.ReadIndexReference(value, reader.Source.ModId)).ToList()
                 : [];
         EquipmentYaml.ApplyStats(builder.Stats, reader);
         if (reader.TryGet("marker", out var marker))
@@ -278,13 +278,14 @@ internal static class EquipmentYaml
         return YamlValueReader.ReadSequence(node, YamlValueReader.ReadString).ToList();
     }
 
-    public static List<RuleIndexReference> IndexList(YamlNode node, string modId)
-    {
-        var values = node is YamlSequenceNode sequence
-            ? sequence.Items.Select(value => PresentationYaml.ReadIndexReference(value, modId))
-            : [PresentationYaml.ReadIndexReference(node, modId)];
-        return values.Where(value => value.Index != -1).ToList();
-    }
+    /// <summary>
+    /// Mod::loadSoundOffset and loadSpriteOffset (vector): a list drops its -1 entries (the soft error at a lowered
+    /// validation level), while a single value of -1 stays as the one entry (Mod::NO_SOUND, Mod::NO_SURFACE).
+    /// </summary>
+    public static List<RuleIndexReference> IndexList(YamlNode node, string modId) => node is YamlSequenceNode sequence
+        ? sequence.Items.Select(value => PresentationYaml.ReadIndexReference(value, modId))
+            .Where(value => value.Index != -1).ToList()
+        : [PresentationYaml.ReadIndexReference(node, modId)];
 
     public static void ApplyStats(CraftStatsBuilder stats, RulePropertyReader reader)
     {

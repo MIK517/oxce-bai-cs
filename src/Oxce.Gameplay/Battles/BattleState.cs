@@ -7,7 +7,7 @@ namespace Oxce.Gameplay.Battles;
 /// mutable classes; it is captured only at the persistence boundary. One battle belongs to one campaign, which
 /// serializes access to it.
 /// </summary>
-internal sealed class BattleState
+internal sealed partial class BattleState
 {
     /// <summary>BattleUnit::MAX_SOLDIER_ID: geoscape soldiers keep their IDs; other units are numbered from here.</summary>
     internal const int MaximumSoldierId = 1_000_000;
@@ -108,30 +108,6 @@ internal sealed class BattleState
     }
 
     /// <summary>
-    /// SavedBattleGame::createTempUnit (the BattleUnit(Unit*) constructor): the unit rule's and the armor's statistics,
-    /// adjusted (a hostile unit's difficulty), with full time units, energy, health and mana.
-    /// </summary>
-    internal BattleUnit TempUnit(int id, BattleFaction faction, BattleController controller, string type, RuntimeBattleUnitRule rule,
-        RuntimeArmorRule armor, Func<BattleUnitStats, BattleUnitStats>? adjust = null, bool summoned = false)
-    {
-        var stats = (BattleUnitStats.From(rule.Stats) + BattleUnitStats.From(armor.Stats)).ObeyFixedMinimum();
-        if (adjust is not null) stats = adjust(stats);
-        return new BattleUnit(id, faction, controller)
-        {
-            UnitType = type,
-            ArmorId = armor.Type,
-            ArmorSize = armor.Size,
-            MovementType = MovementType(armor),
-            Stats = stats,
-            TimeUnits = stats.TimeUnits,
-            Energy = stats.Stamina,
-            Health = stats.Health,
-            Mana = stats.Mana,
-            SummonedPlayerUnit = summoned,
-        };
-    }
-
-    /// <summary>
     /// Armor::getMovementTypeByDepth, which every BattleUnit constructor applies: a floating armor (3) flies underwater
     /// and walks on land, a sinking one (4) the reverse; walk, fly and slide stay.
     /// </summary>
@@ -146,7 +122,7 @@ internal sealed class BattleState
     public IReadOnlyList<BattlePosition> StorageSpace { get; init; } = [];
 
     /// <summary>SavedBattleGame::getModuleMap: per 10x10 block, a base defense's module tiles (empty for other battles).</summary>
-    public Generation.BattleBaseModule[,] BaseModules { get; init; } = new Generation.BattleBaseModule[0, 0];
+    public Generation.BattleBaseModule[][] BaseModules { get; init; } = [];
 
     /// <summary>SavedBattleGame::_turn: 0 until the first turn starts after the briefing.</summary>
     public int Turn { get; private set; }
@@ -182,6 +158,18 @@ internal sealed class BattleState
     internal void ReturnToBase(string itemType, int quantity) =>
         _returnedToBase[itemType] = checked(_returnedToBase.GetValueOrDefault(itemType) + quantity);
 
+    private readonly Dictionary<int, BattleSoldierArmor> _soldierArmors = [];
+
+    /// <summary>
+    /// deployXCOM's armor pass: the soldiers whose armor the environment transformed or the starting condition replaced, by
+    /// soldier ID, with the armor they wear in the battle. Generation only (not saved): the campaign gives each soldier that
+    /// armor, remembering the original as <c>transformedArmor</c> or <c>replacedArmor</c>, when the battle starts.
+    /// </summary>
+    internal IReadOnlyDictionary<int, BattleSoldierArmor> SoldierArmors => _soldierArmors;
+
+    internal void ChangeSoldierArmor(int soldierId, string armor, bool transformed) =>
+        _soldierArmors[soldierId] = new(armor, transformed);
+
     private readonly Dictionary<string, int> _takenFromBase = new(StringComparer.Ordinal);
 
     /// <summary>
@@ -210,7 +198,9 @@ internal sealed class BattleState
         foreach (var item in items)
         {
             item.Tile = null;
+            // setFuseTimer(-1): unprimed, the fuse off.
             item.FuseTimer = -1;
+            item.FuseEnabled = false;
         }
         _items.RemoveAll(items.Contains);
         _guaranteedRecovered.AddRange(items);
@@ -233,10 +223,10 @@ internal sealed class BattleState
     public int NextItemId { get; private set; }
 
     /// <summary>
-    /// <c>new BattleItem(rule, getCurrentItemId())</c>: an item with the next ID, which is taken whether or not the item
-    /// is kept (an item that fits nowhere is deleted but its ID stays used).
+    /// getCurrentItemId's post-increment: the next item ID, taken whether or not the item is kept (an item that fits
+    /// nowhere is deleted but its ID stays used).
     /// </summary>
-    internal BattleItem NewItem(string itemType) => new(NextItemId++, itemType);
+    internal int TakeItemId() => NextItemId++;
 
     /// <summary>Adds a created item to the battle's items (SavedBattleGame::getItems push_back).</summary>
     internal void AddItem(BattleItem item)
@@ -313,29 +303,38 @@ internal sealed class BattleState
 
     /// <summary>
     /// Checks the invariants every generated battle keeps (Phase 7 branch 1 acceptance; branch 2 adds restored ones): every unit on the map
-    /// stands where <c>setUnitPosition</c> would put it, on tiles that name it; every route node lies inside the map and
+    /// stands where <c>setUnitPosition</c> would put it, on tiles that name it, and no unit that is out stands on the map; every route node lies inside the map and
     /// links only to live nodes or the reference's special values; every item has exactly one holder (a tile, a unit, or
     /// the one weapon it is loaded in). A failure is a generator defect, not invalid content.
     /// </summary>
-    public void Validate()
+    public void Validate() => Validate(placement: true);
+
+    /// <summary>
+    /// <see cref="Validate()"/> without the placement check when <paramref name="placement"/> is false: a restored battle's
+    /// units stand where the save puts them (resetUnitTiles), which the battle's events may have made a tile
+    /// setUnitPosition would refuse.
+    /// </summary>
+    internal void Validate(bool placement)
     {
         var ids = new HashSet<int>();
         foreach (var unit in _units)
         {
             if (!ids.Add(unit.Id)) throw new InvalidOperationException($"Battle unit {unit.Id} is listed twice.");
             if (unit.Position is not { } position) continue;
+            // resetUnitTiles: a unit that is out (dead, unconscious or ignored) stands on no tile.
+            if (unit.IsOut) throw new InvalidOperationException($"Battle unit {unit.Id} is out but stands on the map.");
             if (!Contains(position)) throw new InvalidOperationException($"Battle unit {unit.Id} is outside the map.");
             foreach (var covered in BattleMap.Footprint(position, unit.ArmorSize))
                 if (!Contains(covered) || Map.UnitAt(Map.TileIndex(covered)) != unit.Id)
                     throw new InvalidOperationException($"Battle unit {unit.Id} is not on its tile {covered}.");
-            if (Generation.BattlePlacement.TryPosition(Map, unit, position) != position)
+            if (placement && Generation.BattlePlacement.TryPosition(Map, unit, position) != position)
                 throw new InvalidOperationException($"Battle unit {unit.Id} cannot stand at {position}.");
         }
         for (var tile = 0; tile < Map.TileCount; tile++)
             if (Map.UnitAt(tile) is { } standing && !ids.Contains(standing))
                 throw new InvalidOperationException($"Tile {tile} names battle unit {standing}, which is not in the battle.");
         ValidateNodes();
-        ValidateItems(ids);
+        ValidateItems(ids, restored: !placement);
     }
 
     // Node links: an ID in the node list, or -1 (unused) to -5 (west), the reference's values while unconnected.
@@ -354,12 +353,19 @@ internal sealed class BattleState
         }
     }
 
-    private void ValidateItems(HashSet<int> units)
+    // A restored battle's item may be held by nothing (SavedBattleGame::load): the items of a unit the load left out, a
+    // ground item saved without a position, or ammo no weapon names.
+    private void ValidateItems(HashSet<int> units, bool restored)
     {
         var holders = new Dictionary<int, int>();
         foreach (var item in _items)
         {
             if (!holders.TryAdd(item.Id, 0)) throw new InvalidOperationException($"Battle item {item.Id} is listed twice.");
+            // A corpse names its unit, and a previous owner is a unit of the battle (findUnitById).
+            if (item.CorpseUnitId is { } corpse && !units.Contains(corpse))
+                throw new InvalidOperationException($"Battle item {item.Id} is the corpse of missing unit {corpse}.");
+            if (item.PreviousOwnerUnitId is { } previous && !units.Contains(previous))
+                throw new InvalidOperationException($"Battle item {item.Id} was carried by missing unit {previous}.");
             if (item.Tile is { } tile)
             {
                 if (!Contains(tile)) throw new InvalidOperationException($"Battle item {item.Id} is outside the map.");
@@ -381,16 +387,21 @@ internal sealed class BattleState
                     throw new InvalidOperationException($"Battle item {weapon.Id} is loaded with {ammo}, which is no loaded ammo of the battle.");
                 holders[ammo] = count + 1;
             }
-        foreach (var item in _guaranteedRecovered)
-            if (holders.ContainsKey(item.Id))
-                throw new InvalidOperationException($"Battle item {item.Id} is both on the map and in guaranteed recovery.");
+        var recovered = new HashSet<int>();
+        foreach (var (list, kind) in new[] { (_guaranteedRecovered, "guaranteed"), (_conditionalRecovered, "conditional") })
+            foreach (var item in list)
+            {
+                if (holders.ContainsKey(item.Id))
+                    throw new InvalidOperationException($"Battle item {item.Id} is both on the map and in {kind} recovery.");
+                if (!recovered.Add(item.Id)) throw new InvalidOperationException($"Battle item {item.Id} is listed twice for recovery.");
+            }
         foreach (var (item, count) in holders)
-            if (count != 1) throw new InvalidOperationException($"Battle item {item} has {count} holders.");
+            if (count > 1 || count == 0 && !restored) throw new InvalidOperationException($"Battle item {item} has {count} holders.");
     }
 }
 
 /// <summary>A unit in a battle (BattleUnit): identity, side and controller so far.</summary>
-internal sealed class BattleUnit
+internal sealed partial class BattleUnit
 {
     // One bit per faction that has spotted this unit (ADR 0038: visibility is per faction).
     private int _spottedBy;
@@ -400,13 +411,22 @@ internal sealed class BattleUnit
         if (!Enum.IsDefined(faction)) throw new ArgumentOutOfRangeException(nameof(faction));
         if (!Enum.IsDefined(controller.Kind)) throw new ArgumentOutOfRangeException(nameof(controller));
         Id = id;
-        Faction = faction;
+        _faction = faction;
+        OriginalFaction = faction;
         Controller = controller;
     }
 
     public int Id { get; }
-    public BattleFaction Faction { get; }
-    public BattleController Controller { get; }
+    /// <summary>BattleUnit::getFaction: the side the unit fights for now (mind control changes it).</summary>
+    public BattleFaction Faction
+    {
+        get => _faction;
+        set => _faction = Enum.IsDefined(value) ? value : throw new ArgumentOutOfRangeException(nameof(value));
+    }
+
+    public BattleController Controller { get; set; }
+
+    private BattleFaction _faction;
 
     /// <summary>BattleUnit::getType: the soldier type or the unit rule.</summary>
     public string UnitType { get; init; } = "";
@@ -420,7 +440,7 @@ internal sealed class BattleUnit
     /// <summary>The geoscape soldier's own armor when the battle armor differs (transformed or replaced), else "".</summary>
     public string OriginalArmorId { get; init; } = "";
     public int ArmorSize { get; init; } = 1;
-    public int MovementType { get; init; }
+    public int MovementType { get; set; }
 
     /// <summary>BattleUnit::getDirection (0-7).</summary>
     public int Direction { get; set; }
@@ -429,7 +449,7 @@ internal sealed class BattleUnit
     public BattlePosition? Position { get; set; }
 
     /// <summary>BattleUnit::getBaseStats: the soldier's statistics with all bonuses, or the unit rule's plus its armor's.</summary>
-    public BattleUnitStats Stats { get; init; }
+    public BattleUnitStats Stats { get; set; }
 
     /// <summary>BattleUnit::getTimeUnits, getEnergy, getHealth, getMana, getMorale, getStunlevel.</summary>
     public int TimeUnits { get; set; }
@@ -445,11 +465,8 @@ internal sealed class BattleUnit
     /// <summary>BattleUnit::getRankInt (aliens: the deployment rank).</summary>
     public int Rank { get; set; }
 
-    /// <summary>AIModule::setStartNode: the node an alien spawned on, or null.</summary>
-    public int? StartNodeId { get; set; }
-
     /// <summary>BattleUnit::isSummonedPlayerUnit: a player unit that does not count for the battle's outcome.</summary>
-    public bool SummonedPlayerUnit { get; init; }
+    public bool SummonedPlayerUnit { get; set; }
 
     /// <summary>BattleUnit::getTurretType: the turret sprite of a vehicle's weapon, -1 without one.</summary>
     public int TurretType { get; set; } = -1;
@@ -466,3 +483,6 @@ internal sealed class BattleUnit
         _spottedBy = spotted ? _spottedBy | 1 << (int)faction : _spottedBy & ~(1 << (int)faction);
     }
 }
+
+/// <summary>A soldier's battle armor (deployXCOM): transformed by the environment, else replaced by the starting condition.</summary>
+internal readonly record struct BattleSoldierArmor(string Armor, bool Transformed);

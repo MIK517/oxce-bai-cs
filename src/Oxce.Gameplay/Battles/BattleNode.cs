@@ -26,6 +26,11 @@ internal sealed class BattleNode
     /// <summary>Node(): a culled node.</summary>
     public static BattleNode Dummy() => new() { IsDummy = true };
 
+    /// <summary>Node::load: a saved node, a dummy included (it keeps whatever the save gives it); the segment is not saved.</summary>
+    public static BattleNode Restore(int id, BattlePosition position, int type, int rank, int flags, int reserved, int priority,
+        bool allocated, IEnumerable<int> links, bool dummy) =>
+        new(id, position, 0, type, rank, flags, reserved, priority, links) { Allocated = allocated, IsDummy = dummy };
+
     public int Id { get; }
     public BattlePosition Position { get; }
     public int Segment { get; }
@@ -36,4 +41,7 @@ internal sealed class BattleNode
     public int Priority { get; }
     public List<int> Links { get; }
     public bool IsDummy { get; private init; }
+
+    /// <summary>Node::isAllocated: an AI unit has claimed the node as its target.</summary>
+    public bool Allocated { get; set; }
 }

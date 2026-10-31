@@ -244,6 +244,8 @@ public sealed record BaseSnapshot(
     public bool FakeUnderwater { get; init; }
     public bool RetaliationTarget { get; init; }
     public int? RetaliationMissionId { get; init; }
+    /// <summary>Base::_inBattlescape: the base is defended in the campaign's battle (BattlescapeGenerator::setBase).</summary>
+    public bool InBattlescape { get; init; }
     public IReadOnlyList<TransferSnapshot> Transfers { get; init; } = [];
     public IReadOnlyList<ResearchProjectSnapshot> Research { get; init; } = [];
     public IReadOnlyList<ProductionSnapshot> Productions { get; init; } = [];
@@ -286,6 +288,8 @@ public sealed record CampaignSnapshot(
     public IReadOnlyList<MissionStatisticSnapshot> MissionStatistics { get; init; } = [];
     public CampaignOptions Options { get; init; } = new();
     public WorldSnapshot World { get; init; } = WorldSnapshot.Empty;
+    /// <summary>SavedGame::_battleGame: the campaign's battle (<c>battleGame</c>), or null (Phase 7 branch 2 S5).</summary>
+    public Battles.BattleSnapshot? Battle { get; init; }
 
     public static readonly IReadOnlyDictionary<string, IReadOnlyList<IReadOnlyList<int>>> EmptyCraftDeployments =
         new ReadOnlyDictionary<string, IReadOnlyList<IReadOnlyList<int>>>(new Dictionary<string, IReadOnlyList<IReadOnlyList<int>>>());

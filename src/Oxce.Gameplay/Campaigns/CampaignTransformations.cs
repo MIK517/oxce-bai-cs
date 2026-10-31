@@ -251,6 +251,15 @@ public sealed partial class CampaignState
     internal static Dictionary<string, short> StatsWithBonuses(SoldierPersonalState soldier, RuntimeRuleCatalog rules)
     {
         var stats = new Dictionary<string, short>(soldier.CurrentStats, StringComparer.Ordinal);
+        foreach (var bonus in SoldierBonuses(soldier, rules))
+            foreach (var pair in rules.SoldierBonuses[bonus].Value.Stats)
+                stats[pair.Key] = unchecked((short)(stats.GetValueOrDefault(pair.Key) + pair.Value));
+        return stats;
+    }
+
+    /// <summary>Soldier::getBonuses: the transformation bonuses and each commendation's bonus at its decoration level, once each.</summary>
+    internal static HashSet<RuleHandle<SoldierBonusRuleFamily>> SoldierBonuses(SoldierPersonalState soldier, RuntimeRuleCatalog rules)
+    {
         var bonuses = new HashSet<RuleHandle<SoldierBonusRuleFamily>>();
         foreach (var id in soldier.TransformationBonuses.Keys)
             if (rules.SoldierBonuses.TryGet(id, out var handle)) bonuses.Add(handle);
@@ -261,10 +270,7 @@ public sealed partial class CampaignState
                 if (types.Count != 0 && rules.SoldierBonuses.TryGet(types[Math.Clamp(commendation.DecorationLevel, 0, types.Count - 1)], out var bonus))
                     bonuses.Add(bonus);
             }
-        foreach (var bonus in bonuses)
-            foreach (var pair in rules.SoldierBonuses[bonus].Value.Stats)
-                stats[pair.Key] = unchecked((short)(stats.GetValueOrDefault(pair.Key) + pair.Value));
-        return stats;
+        return bonuses;
     }
 
     private SoldierPersonalState ApplyTransformationStats(SoldierPersonalState destination, SoldierPersonalState source,

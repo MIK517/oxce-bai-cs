@@ -229,7 +229,7 @@ internal sealed class XcomDeployment
         var race = _rules.AlienRaces.Rules[0];
         var name = AlienRaces.Member(race.Id, race.Value, 0, _random);
         var (unitRule, armor) = _battle.UnitRule(_rules, name);
-        var unit = _battle.TempUnit(_unitSequence++, BattleFaction.Player, BattleController.Human(0), name, unitRule, armor, summoned: true);
+        var unit = _battle.TempUnit(_rules, _unitSequence++, BattleFaction.Player, BattleController.Human(0), name, unitRule, armor, summoned: true);
         var firstTile = new BattlePosition(0, 0, 0);
         unit.Position = _placement.TryPosition(unit, firstTile);
         _battle.AddUnit(unit);
@@ -297,33 +297,11 @@ internal sealed class XcomDeployment
         var personal = soldier.Personal ?? throw new MapGenerationException($"Soldier {soldier.Id} has no personal state.");
         var own = Armor(personal.Armor) ?? throw new MapGenerationException($"Soldier {soldier.Id} wears unknown armor {personal.Armor}.");
         var soldierType = _rules.Soldiers.GetExternalId(soldier.Rule);
-        var (armorId, armor) = BattleArmor(soldierType, personal.Armor, own);
-        // Soldier::prepareStatsWithBonuses: current statistics, soldier bonuses and the battle armor's statistics.
-        var stats = (BattleUnitStats.From(CampaignState.StatsWithBonuses(personal, _rules)) + BattleUnitStats.From(armor.Stats))
-            .ObeyFixedMinimum();
-        var health = Math.Max(1, stats.Health - personal.HealthMissing);
-        var morale = 100;
-        // Wounded soldiers (defending the base) start with lowered morale.
-        if (SoldierReadiness.IsWounded(personal, _rules.Campaign.ManaWoundThreshold, _rules.Campaign.HealthWoundThreshold))
-        {
-            morale = 75;
-            health = Math.Max(1, health - (int)Math.Ceiling(personal.Recovery));
-        }
-        return new BattleUnit(soldier.Id, BattleFaction.Player, BattleController.Human(0))
-        {
-            UnitType = soldierType,
-            SoldierId = soldier.Id,
-            ArmorId = armorId,
-            OriginalArmorId = armorId == personal.Armor ? "" : personal.Armor,
-            ArmorSize = armor.Size,
-            MovementType = _battle.MovementType(armor),
-            Stats = stats,
-            TimeUnits = stats.TimeUnits,
-            Energy = stats.Stamina,
-            Health = health,
-            Mana = Math.Max(0, stats.Mana - personal.ManaMissing),
-            Morale = morale,
-        };
+        var (armorId, armor, transformed) = BattleArmor(soldierType, personal.Armor, own);
+        // Recorded whenever a transformation or replacement applies, even into the same armor (the reference remembers it).
+        if (transformed is { } kind) _battle.ChangeSoldierArmor(soldier.Id, armorId, kind);
+        return _battle.SoldierUnit(_rules, soldier.Id, new BattleSoldier(soldierType, personal), armorId, armor,
+            transformed is null ? "" : personal.Armor);
     }
 
     private RuntimeArmorRule? Armor(string id) => id.Length != 0 && _rules.Armors.TryGet(id, out var handle) ? _rules.Armors[handle].Value : null;
@@ -331,26 +309,27 @@ internal sealed class XcomDeployment
     /// <summary>
     /// deployXCOM's armor pass: the environment's transformation of the soldier's armor when it is no larger, else the
     /// starting condition's replacement (RuleStartingCondition::getArmorReplacement, a weighted pick for a disallowed
-    /// armor) when it is no larger. The reference changes the geoscape soldier's armor for the battle and restores it in
-    /// the debriefing; the port gives the battle unit the armor and leaves the soldier as it was.
+    /// armor) when it is no larger; <c>Transformed</c> is null when neither applies. The reference changes the geoscape
+    /// soldier's armor for the battle (and the debriefing restores it); the battle records the change
+    /// (<see cref="BattleState.SoldierArmors"/>), which the campaign applies to the soldier when the battle starts.
     /// </summary>
-    private (string Id, RuntimeArmorRule Armor) BattleArmor(string soldierType, string armorId, RuntimeArmorRule armor)
+    private (string Id, RuntimeArmorRule Armor, bool? Transformed) BattleArmor(string soldierType, string armorId, RuntimeArmorRule armor)
     {
         if (_armorTransformations is not null && _armorTransformations.TryGetValue(armorId, out var transformedId))
         {
             var transformed = Armor(transformedId) ?? throw new MapGenerationException($"Armor transformation target {transformedId} does not exist.");
-            if (armor.Size >= transformed.Size) return (transformedId, transformed);
+            if (armor.Size >= transformed.Size) return (transformedId, transformed, true);
         }
-        if (_startingCondition is not { } condition) return (armorId, armor);
+        if (_startingCondition is not { } condition) return (armorId, armor, null);
         var allowed = condition.ForbiddenArmors.Count != 0 ? !condition.ForbiddenArmors.Contains(armorId)
             : condition.AllowedArmors.Count == 0 || condition.AllowedArmors.Contains(armorId);
-        if (allowed || !condition.DefaultArmor.TryGetValue(soldierType, out var weights)) return (armorId, armor);
+        if (allowed || !condition.DefaultArmor.TryGetValue(soldierType, out var weights)) return (armorId, armor, null);
         var pick = WorldAlienMissionGeneration.Choose(
             weights.Where(static pair => pair.Value > 0).ToDictionary(static pair => pair.Key, static pair => (ulong)pair.Value, StringComparer.Ordinal), _random);
-        if (pick is "" or "noChange") return (armorId, armor);
+        if (pick is "" or "noChange") return (armorId, armor, null);
         var replaced = Armor(pick) ?? throw new MapGenerationException($"Default armor {pick} does not exist.");
         // A soldier cannot switch into a bigger armor.
-        return replaced.Size > armor.Size ? (armorId, armor) : (pick, replaced);
+        return replaced.Size > armor.Size ? (armorId, armor, null) : (pick, replaced, false);
     }
 
     /// <summary>
@@ -360,7 +339,7 @@ internal sealed class XcomDeployment
     /// </summary>
     private void AddVehicle(Vehicle vehicle)
     {
-        var unit = _battle.TempUnit(_unitSequence++, BattleFaction.Player, BattleController.Human(0), vehicle.Id, vehicle.Unit, vehicle.Armor);
+        var unit = _battle.TempUnit(_rules, _unitSequence++, BattleFaction.Player, BattleController.Human(0), vehicle.Id, vehicle.Unit, vehicle.Armor);
         if (!AddUnit(unit, vehicle.Unit, "")) return;
         _equipment.CreateItemForUnit(vehicle.Id, unit, fixedWeapon: true);
         if (_equipment.VehicleClipAmmo(vehicle.Id) is { } clip)

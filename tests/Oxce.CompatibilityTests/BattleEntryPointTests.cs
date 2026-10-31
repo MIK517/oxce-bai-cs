@@ -150,7 +150,14 @@ public sealed class BattleEntryPointTests
         Assert.Equal(2, Count(battle, BattleFaction.Hostile));
         Assert.Equal(("STR_TERROR_MISSION", "RACE_B"), (battle.ReinforcementsDeployment, battle.ReinforcementsRace));
         Assert.Equal(1, Count(battle, BattleFaction.Player));
+        // setCraft and setMissionSite: the craft and the site are in the battlescape, the base is not.
+        var snapshot = campaign.Capture();
+        Assert.Equal((true, true, false), (Assert.Single(snapshot.World.MissionSites).InBattlescape, ShipInBattlescape(snapshot),
+            snapshot.Bases[0].InBattlescape));
     }
+
+    private static bool ShipInBattlescape(CampaignSnapshot snapshot) =>
+        snapshot.Bases[0].Crafts.Single(static craft => craft.RuleId == "SHIP").Logistics!.InBattlescape;
 
     [Fact]
     public void AnAlienBasesBattleIsTheRacesCustomMissionWithoutAMissionTexture()
@@ -168,6 +175,10 @@ public sealed class BattleEntryPointTests
         // The race's base custom deployment brings the aliens; the base's race fights.
         Assert.Equal(2, Count(battle, BattleFaction.Hostile));
         Assert.Equal(("BASE_ALIENS", "RACE_A"), (battle.ReinforcementsDeployment, battle.ReinforcementsRace));
+        // setCraft and setAlienBase.
+        var snapshot = campaign.Capture();
+        Assert.Equal((true, true, false), (Assert.Single(snapshot.World.AlienBases).InBattlescape, ShipInBattlescape(snapshot),
+            snapshot.Bases[0].InBattlescape));
     }
 
     [Fact]
@@ -228,5 +239,9 @@ public sealed class BattleEntryPointTests
             .Single(cell => battle.Map.TerrainName(cell.X, cell.Y) == "SHIP");
         var first = new BattlePosition(craft.X * 10, craft.Y * 10, 0);
         Assert.Equal((first, first), (soldier.Position, battle.CraftInventoryTile));
+        // ConfirmCydoniaState sets only the craft (setCraft); the launch base is no world target in the battlescape.
+        var captured = campaign.Capture();
+        Assert.Equal((true, false), (ShipInBattlescape(captured), captured.Bases[0].InBattlescape));
+        Assert.DoesNotContain(captured.World.Ufos, static ufo => ufo.InBattlescape);
     }
 }

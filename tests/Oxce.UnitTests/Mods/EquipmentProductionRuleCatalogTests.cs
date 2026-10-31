@@ -12,6 +12,27 @@ namespace Oxce.UnitTests.Mods;
 
 public sealed class EquipmentProductionRuleCatalogTests
 {
+    [Fact]
+    public void KeepsASingleNoSoundAndEverySkinSprite()
+    {
+        // Mod::loadSoundOffset keeps a scalar -1 (Mod::NO_SOUND) and drops a list's -1 entries; RuleCraft::load reads
+        // skinSprites through getOffset, which keeps -1 entries.
+        const string yaml = """
+            crafts:
+              - type: CRAFT
+                selectSound: [3, -1]
+                takeoffSound: -1
+                skinSprites: [-1, 7]
+            """;
+        using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
+
+        var craft = Assert.Single(EquipmentProductionRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root)).Crafts.Rules).Value;
+
+        Assert.Equal([3], craft.SelectSounds.Select(value => value.Index));
+        Assert.Equal([-1], craft.TakeoffSounds.Select(value => value.Index));
+        Assert.Equal([-1, 7], craft.SkinSprites.Select(value => value.Index));
+    }
+
     [Theory]
     [InlineData("UNKNOWN", -1, 0)]
     [InlineData("STR_SMALL", -2, 3)]

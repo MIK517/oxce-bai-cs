@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using Oxce.Mods.Resources;
+using Oxce.Mods.Rulesets.Presentation;
 using Oxce.Mods.Rulesets.TerrainDeployment;
 
 namespace Oxce.Mods.Rulesets.Runtime;
@@ -49,11 +51,13 @@ public sealed class RuntimeBattleRules
     /// <summary>The rules the battle reads when it equips units.</summary>
     public RuntimeBattleEquipment Equipment { get; private init; } = RuntimeBattleEquipment.Empty;
 
-    internal static RuntimeBattleRules Link(TerrainDeploymentRuleCatalog content, RuntimeBattleEquipment? equipment = null)
+    internal static RuntimeBattleRules Link(TerrainDeploymentRuleCatalog content, ResolvedResourceCatalog resources,
+        RuntimeBattleEquipment? equipment = null)
     {
         ArgumentNullException.ThrowIfNull(content);
+        ArgumentNullException.ThrowIfNull(resources);
         var terrains = new Dictionary<string, RuntimeTerrain>(StringComparer.Ordinal);
-        foreach (var rule in content.Terrains.Rules) terrains.Add(rule.Id, Terrain(rule.Id, rule.Value));
+        foreach (var rule in content.Terrains.Rules) terrains.Add(rule.Id, Terrain(rule.Id, rule.Value, resources));
         var patches = new Dictionary<string, RuntimeMcdPatch>(StringComparer.Ordinal);
         foreach (var (id, patch) in content.McdPatches) patches.Add(id, new RuntimeMcdPatch(List(patch.Entries.Select(static entry =>
             new RuntimeMcdPatchEntry(entry.Index, Map(entry.Integers), Map(entry.Booleans), entry.Lofts is null ? null : List(entry.Lofts))))));
@@ -77,9 +81,10 @@ public sealed class RuntimeBattleRules
         rule.EnvironmentalConditions.TryGetValue(faction, out var condition) ? condition.GlobalChance : 100;
 
     /// <summary>A craft's or UFO's own terrain, projected like the terrains section's.</summary>
-    internal static RuntimeTerrain? Inline(InlineTerrainRule? rule) => rule is null ? null : Terrain(rule.Name, rule.Rule);
+    internal static RuntimeTerrain? Inline(InlineTerrainRule? rule, ResolvedResourceCatalog resources) =>
+        rule is null ? null : Terrain(rule.Name, rule.Rule, resources);
 
-    private static RuntimeTerrain Terrain(string id, TerrainRule rule) => new(id, List(rule.MapDataSets),
+    private static RuntimeTerrain Terrain(string id, TerrainRule rule, ResolvedResourceCatalog resources) => new(id, List(rule.MapDataSets),
         List(rule.MapBlocks.Select(static block => new RuntimeMapBlock(block.Name, block.Width, block.Length, block.Height,
             List(block.Groups), List(block.RevealedFloors), List(block.CraftInventoryTile))
         {
@@ -90,7 +95,20 @@ public sealed class RuntimeBattleRules
         rule.EnviroEffects, List(rule.CivilianTypes), rule.MinimumDepth, rule.MaximumDepth, rule.MapScript, List(rule.MapScripts))
     {
         Music = List(rule.Music),
+        Ambience = Sound(rule.Ambience, resources),
+        AmbientVolume = rule.AmbientVolume,
+        RandomAmbience = List(rule.RandomAmbience.Select(reference => Sound(reference, resources))),
+        MinimumAmbienceDelay = rule.MinimumAmbienceDelay,
+        MaximumAmbienceDelay = rule.MaximumAmbienceDelay,
     };
+
+    /// <summary>
+    /// Mod::loadSoundOffset into BATTLE.CAT (loadOffsetNode): an index at or above the set's shared sounds is offset into
+    /// the declaring mod's range, whether or not the mod supplies that sound; a shared index and -1 (Mod::NO_SOUND) stay.
+    /// </summary>
+    private static int Sound(RuleIndexReference reference, ResolvedResourceCatalog resources) =>
+        reference.Index >= resources.SharedSoundCounts.GetValueOrDefault("BATTLE.CAT")
+            ? checked(reference.Index + resources.ModOffsets.GetValueOrDefault(reference.ModId)) : reference.Index;
 
     private static ReadOnlyCollection<T> List<T>(IEnumerable<T> source) => Array.AsReadOnly(source.ToArray());
 
@@ -98,7 +116,7 @@ public sealed class RuntimeBattleRules
         new(source.ToDictionary(static pair => pair.Key, static pair => pair.Value, StringComparer.Ordinal));
 }
 
-/// <summary>RuleTerrain as the battle generator reads it (sprites and ambience stay with presentation).</summary>
+/// <summary>RuleTerrain as the battle generator reads it (sprites stay with presentation).</summary>
 public sealed record RuntimeTerrain(
     string Id,
     IReadOnlyList<string> MapDataSets,
@@ -112,6 +130,16 @@ public sealed record RuntimeTerrain(
 {
     /// <summary>RuleTerrain <c>music</c>: the battle picks one when its deployment has none (BattlescapeGenerator::setMusic).</summary>
     public IReadOnlyList<string> Music { get; init; } = [];
+
+    /// <summary>
+    /// RuleTerrain <c>ambience</c> (a BATTLE.CAT sound, -1 for none), <c>ambientVolume</c>, <c>ambienceRandom</c> and
+    /// <c>ambienceRandomDelay</c>, which generateMap copies to the battle.
+    /// </summary>
+    public int Ambience { get; init; } = -1;
+    public double AmbientVolume { get; init; } = 0.5;
+    public IReadOnlyList<int> RandomAmbience { get; init; } = [];
+    public int MinimumAmbienceDelay { get; init; } = 20;
+    public int MaximumAmbienceDelay { get; init; } = 60;
 }
 
 /// <summary>The environmental conditions' global chances per faction (EnvironmentalCondition::globalChance).</summary>

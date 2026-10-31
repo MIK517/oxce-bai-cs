@@ -172,6 +172,22 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     // Concrete lists keep per-tick world loops on struct enumerators.
     internal List<BaseState> BaseStates => _bases;
 
+    /// <summary>
+    /// SavedGame::getSoldier for a battle unit: the soldier of that ID at a base, else among the dead, as its type and
+    /// personal state; null when no soldier has the ID or it has no personal state.
+    /// </summary>
+    internal Battles.BattleSoldier? BattleSoldier(int id)
+    {
+        foreach (var owner in _bases)
+            foreach (var soldier in owner.Soldiers)
+                if (soldier.Id == id)
+                    return soldier.Personal is { } personal ? new(_content.RuntimeRules.Soldiers.GetExternalId(soldier.Rule), personal) : null;
+        foreach (var dead in _deadSoldiers)
+            if (dead.Soldier.Id == id)
+                return dead.Soldier.Personal is { } personal ? new(dead.Soldier.RuleId, personal) : null;
+        return null;
+    }
+
     /// <summary>The base with the ID, or null.</summary>
     internal BaseState? BaseById(int id) => _bases.Find(candidate => candidate.Id == id);
 
@@ -288,10 +304,15 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             Time));
     }
 
+    /// <summary>
+    /// Restores a captured campaign. <paramref name="battleTerrainFiles"/> are the installation's terrain files (attached
+    /// as <see cref="BattleTerrainFiles"/>); a snapshot with a battle needs them, since the battle's map loads its data sets.
+    /// </summary>
     public static CampaignState Restore(
         CampaignSnapshot snapshot,
         RuntimeContent content,
-        IStatefulRandomSource random)
+        IStatefulRandomSource random,
+        Battles.Terrain.IBattleTerrainFiles? battleTerrainFiles = null)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(snapshot.Options);
@@ -358,6 +379,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
                 bases,
                 RestoreScriptValues(content, "GeoscapeGame", snapshot.ScriptValues))
             {
+                _battleTerrainFiles = battleTerrainFiles,
                 _restrictions = CampaignSnapshot.ReadOnly(snapshot.Restrictions),
                 _debugMode = snapshot.DebugMode,
                 Warned = snapshot.Warned,
@@ -538,7 +560,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         TestCapabilities.Value = _testCapabilities;
         try
         {
-            var shadow = Restore(Capture(), _content, _random);
+            var shadow = Restore(Capture(), _content, _random, _battleTerrainFiles);
             _handlers.CopyTransientTo(shadow._handlers);
             return shadow;
         }
@@ -659,6 +681,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         FakeUnderwater = state.FakeUnderwater,
         RetaliationTarget = state.RetaliationTarget,
         RetaliationMissionId = state.RetaliationMissionId,
+        InBattlescape = state.InBattlescape,
         Research = CampaignSnapshot.ReadOnly(state.Research.Select(project => new ResearchProjectSnapshot(
             _content.RuntimeRules.Research.GetExternalId(project.Rule), project.Assigned, project.Spent, project.Cost))),
         Productions = CampaignSnapshot.ReadOnly(state.Productions.Select(production => new ProductionSnapshot(
@@ -721,6 +744,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         result.FakeUnderwater = source.FakeUnderwater;
         result.RetaliationTarget = source.RetaliationTarget;
         result.RetaliationMissionId = source.RetaliationMissionId;
+        result.InBattlescape = source.InBattlescape;
         foreach (var transfer in source.Transfers)
         {
             ValidateTransfer(transfer, rules);
@@ -963,6 +987,8 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         public bool FakeUnderwater { get; set; }
         public bool RetaliationTarget { get; set; }
         public int? RetaliationMissionId { get; set; }
+        /// <summary>Base::_inBattlescape.</summary>
+        public bool InBattlescape { get; set; }
     }
 
     internal sealed record ResearchProjectState(

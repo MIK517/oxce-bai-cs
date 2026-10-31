@@ -33,6 +33,8 @@ public sealed class CampaignStartSettings
         AllowCountriesToCancelAlienPact = builder.AllowCountriesToCancelAlienPact;
         BuildInfiltrationBaseCloseToTheCountry = builder.BuildInfiltrationBaseCloseToTheCountry;
         InfiltrateRandomCountryInTheRegion = builder.InfiltrateRandomCountryInTheRegion;
+        AiPickUpWeaponsMoreActively = builder.AiPickUpWeaponsMoreActively;
+        AiPickUpWeaponsMoreActivelyCivilians = builder.AiPickUpWeaponsMoreActivelyCivilians;
         StartingBases = new ReadOnlyDictionary<StartingBaseVariant, YamlMappingNode>(
             new Dictionary<StartingBaseVariant, YamlMappingNode>(builder.StartingBases));
         StartingTime = new CampaignStartTime(
@@ -120,8 +122,11 @@ public sealed class CampaignStartSettings
         IReadOnlyDictionary<string, string>? fixedUserOptions = null, int escortRange = 20,
         double performanceBonusFactor = 0, bool allowCountriesToCancelAlienPact = false, bool hunterKillerFastRetarget = true, bool allowAlienBasesOnWrongTextures = true,
         bool buildInfiltrationBaseCloseToTheCountry = false, bool infiltrateRandomCountryInTheRegion = false, int maximumViewDistance = 20, int maximumDarknessToSeeUnits = 9,
-        int drawEnemyRadarCircles = 1, CampaignInterceptionSettings? interception = null, CampaignMonthlySettings? monthly = null)
+        int drawEnemyRadarCircles = 1, CampaignInterceptionSettings? interception = null, CampaignMonthlySettings? monthly = null,
+        bool aiPickUpWeaponsMoreActively = false, bool aiPickUpWeaponsMoreActivelyCivilians = false)
     {
+        AiPickUpWeaponsMoreActively = aiPickUpWeaponsMoreActively;
+        AiPickUpWeaponsMoreActivelyCivilians = aiPickUpWeaponsMoreActivelyCivilians;
         DrawEnemyRadarCircles = drawEnemyRadarCircles;
         Interception = interception ?? CampaignInterceptionSettings.Default;
         Monthly = monthly ?? CampaignMonthlySettings.Default;
@@ -190,6 +195,10 @@ public sealed class CampaignStartSettings
     public bool AllowCountriesToCancelAlienPact { get; }
     public bool BuildInfiltrationBaseCloseToTheCountry { get; }
     public bool InfiltrateRandomCountryInTheRegion { get; }
+
+    /// <summary>Mod::getAIPickUpWeaponsMoreActively and getAIPickUpWeaponsMoreActivelyCiv (the <c>ai</c> section).</summary>
+    public bool AiPickUpWeaponsMoreActively { get; }
+    public bool AiPickUpWeaponsMoreActivelyCivilians { get; }
     public CampaignStartTime StartingTime { get; }
     public int StartingDifficulty { get; }
     public int CostHireEngineer { get; }
@@ -287,6 +296,8 @@ internal sealed class CampaignStartSettingsBuilder
     public bool AllowCountriesToCancelAlienPact { get; set; }
     public bool BuildInfiltrationBaseCloseToTheCountry { get; set; }
     public bool InfiltrateRandomCountryInTheRegion { get; set; }
+    public bool AiPickUpWeaponsMoreActively { get; set; }
+    public bool AiPickUpWeaponsMoreActivelyCivilians { get; set; }
     public int[] BuyPriceCoefficients { get; } = [100, 100, 100, 100, 100];
     public int[] SellPriceCoefficients { get; } = [100, 100, 100, 100, 100];
     public Dictionary<StartingBaseVariant, YamlMappingNode> StartingBases { get; } = [];

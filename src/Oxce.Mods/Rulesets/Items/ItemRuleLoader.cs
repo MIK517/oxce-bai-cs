@@ -299,10 +299,11 @@ internal sealed class ItemRuleLoader : TypedRuleFamilyLoader<ItemRuleBuilder, It
         foreach (var key in builder.ResourceIndexLists.Keys.ToArray())
         {
             if (!reader.TryGet(key, out var node)) continue;
-            var values = node is YamlSequenceNode sequence
+            // Mod::loadSoundOffset: a list drops its -1 entries; a single -1 stays (Mod::NO_SOUND, no sound played).
+            builder.ResourceIndexLists[key] = node is YamlSequenceNode sequence
                 ? sequence.Items.Select(value => PresentationYaml.ReadIndexReference(value, reader.Source.ModId))
+                    .Where(value => value.Index != -1).ToList()
                 : [PresentationYaml.ReadIndexReference(node!, reader.Source.ModId)];
-            builder.ResourceIndexLists[key] = values.Where(value => value.Index != -1).ToList();
         }
     }
 

@@ -218,6 +218,9 @@ public sealed record RuntimeStartingCondition(IReadOnlyList<string> AllowedCraft
     public IReadOnlyList<string> AllowedArmors { get; init; } = [];
     public IReadOnlyList<string> ForbiddenArmors { get; init; } = [];
 
+    /// <summary><c>forbiddenArmorsInNextStage</c>: the armors whose units the next stage bans (BattleUnit::prepareBannedFlag).</summary>
+    public IReadOnlyList<string> ForbiddenArmorsInNextStage { get; init; } = [];
+
     /// <summary><c>defaultArmor</c>: by soldier type, the weighted armors a disallowed armor is replaced with ("noChange" keeps it).</summary>
     public IReadOnlyDictionary<string, IReadOnlyDictionary<string, int>> DefaultArmor { get; init; } =
         new ReadOnlyDictionary<string, IReadOnlyDictionary<string, int>>(new Dictionary<string, IReadOnlyDictionary<string, int>>(StringComparer.Ordinal));

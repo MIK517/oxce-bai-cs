@@ -248,7 +248,7 @@ public static class RuntimeRuleLinker
                 ArmorGroupLimits = rule.Value.ArmorGroupLimits,
                 PilotMinimumStats = rule.Value.PilotMinimumStats,
                 RequiredPilotBonuses = rule.Value.RequiredPilotBonuses,
-                BattlescapeTerrain = RuntimeBattleRules.Inline(rule.Value.BattlescapeTerrain),
+                BattlescapeTerrain = RuntimeBattleRules.Inline(rule.Value.BattlescapeTerrain, resources),
                 MapVisible = rule.Value.Booleans["mapVisible"],
                 MaximumSkinIndex = rule.Value.Integers["maxSkinIndex"],
                 Groups = Array.AsReadOnly(rule.Value.Groups.ToArray()),
@@ -383,6 +383,8 @@ public static class RuntimeRuleLinker
             AllowCountriesToCancelAlienPact = content.CampaignStart.Settings.AllowCountriesToCancelAlienPact,
             BuildInfiltrationBaseCloseToTheCountry = content.CampaignStart.Settings.BuildInfiltrationBaseCloseToTheCountry,
             InfiltrateRandomCountryInTheRegion = content.CampaignStart.Settings.InfiltrateRandomCountryInTheRegion,
+            AiPickUpWeaponsMoreActively = content.CampaignStart.Settings.AiPickUpWeaponsMoreActively,
+            AiPickUpWeaponsMoreActivelyCivilians = content.CampaignStart.Settings.AiPickUpWeaponsMoreActivelyCivilians,
             Interception = content.CampaignStart.Settings.Interception,
             Monthly = content.CampaignStart.Settings.Monthly,
             DefeatScore = content.CampaignStart.Settings.DefeatScore,
@@ -457,7 +459,12 @@ public static class RuntimeRuleLinker
                     Costs = rule.Value.Costs.ToFrozenDictionary(StringComparer.Ordinal),
                 }),
             BuildFamily<SoldierBonusRuleFamily, SoldierBonusRule, RuntimeSoldierBonusRule>(generation,
-                content.PersonnelTactical.Bonuses, rule => new(rule.Value.ListOrder, rule.Value.Stats.Values)),
+                content.PersonnelTactical.Bonuses, rule => new(rule.Value.ListOrder, rule.Value.Stats.Values)
+                {
+                    Sides = Array.AsReadOnly([rule.Value.Integers["frontArmor"],
+                        unchecked(rule.Value.Integers["sideArmor"] + rule.Value.Integers["leftArmorDiff"]), rule.Value.Integers["sideArmor"],
+                        rule.Value.Integers["rearArmor"], rule.Value.Integers["underArmor"]]),
+                }),
             BuildFamily<SoldierTransformationRuleFamily, SoldierTransformationRule, RuntimeSoldierTransformationRule>(generation,
                 content.PersonnelTactical.Transformations, rule => new(rule.Value.Strings, rule.Value.Integers,
                     rule.Value.Booleans, rule.Value.Requirements, rule.Value.RequiredBaseFunctions,
@@ -543,6 +550,7 @@ public static class RuntimeRuleLinker
                         new Dictionary<string, string>(rule.Value.CraftTransformations, StringComparer.Ordinal)),
                     AllowedArmors = Array.AsReadOnly(rule.Value.NameCollections["allowedArmors"].ToArray()),
                     ForbiddenArmors = Array.AsReadOnly(rule.Value.NameCollections["forbiddenArmors"].ToArray()),
+                    ForbiddenArmorsInNextStage = Array.AsReadOnly(rule.Value.NameCollections["forbiddenArmorsInNextStage"].ToArray()),
                     DefaultArmor = new System.Collections.ObjectModel.ReadOnlyDictionary<string, IReadOnlyDictionary<string, int>>(
                         rule.Value.DefaultArmor.ToDictionary(static pair => pair.Key, static pair => (IReadOnlyDictionary<string, int>)
                             new System.Collections.ObjectModel.ReadOnlyDictionary<string, int>(
@@ -569,7 +577,7 @@ public static class RuntimeRuleLinker
             scriptBuild.Family,
             settings)
         {
-            Battle = RuntimeBattleRules.Link(content.TerrainDeployment, RuntimeBattleEquipment.Link(content, categoryReplacements)),
+            Battle = RuntimeBattleRules.Link(content.TerrainDeployment, resources, RuntimeBattleEquipment.Link(content, categoryReplacements)),
         };
         cancellationToken.ThrowIfCancellationRequested();
         return new RuntimeRuleLinkResult(catalog, compatibility, Array.AsReadOnly(issues.ToArray()));
@@ -670,7 +678,7 @@ public static class RuntimeRuleLinker
                     "STR_LARGE" => 3,
                     _ => 4,
                 },
-                BattlescapeTerrain = RuntimeBattleRules.Inline(source.BattlescapeTerrain),
+                BattlescapeTerrain = RuntimeBattleRules.Inline(source.BattlescapeTerrain, resources),
             };
         }
 

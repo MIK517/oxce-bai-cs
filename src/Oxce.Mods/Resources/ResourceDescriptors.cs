@@ -101,11 +101,14 @@ public sealed class ResolvedResourceCatalog
         ContentGenerationId generation,
         IEnumerable<ResolvedResourceDescriptor> descriptors,
         IEnumerable<ResolvedResourceIndex>? indexes = null,
-        IReadOnlyDictionary<string, int>? modOffsets = null)
+        IReadOnlyDictionary<string, int>? modOffsets = null,
+        IReadOnlyDictionary<string, int>? sharedSoundCounts = null)
     {
         Generation = generation;
         ModOffsets = new ReadOnlyDictionary<string, int>(
             new Dictionary<string, int>(modOffsets ?? new Dictionary<string, int>(), StringComparer.Ordinal));
+        SharedSoundCounts = new ReadOnlyDictionary<string, int>(
+            new Dictionary<string, int>(sharedSoundCounts ?? new Dictionary<string, int>(), StringComparer.Ordinal));
         _descriptors = descriptors.ToArray();
         if (_descriptors.Select(static descriptor => descriptor.Id).Distinct(StringComparer.Ordinal).Count() !=
             _descriptors.Length)
@@ -148,6 +151,12 @@ public sealed class ResolvedResourceCatalog
 
     /// <summary>Each mod's sprite and sound offset (ModData::offset): reserved space times 1000, in load order.</summary>
     public IReadOnlyDictionary<string, int> ModOffsets { get; }
+
+    /// <summary>
+    /// SoundSet::getMaxSharedSounds per sound set: the sounds every mod shares; a mod's sound index at or above it is
+    /// offset into the mod's range (Mod::loadOffsetNode).
+    /// </summary>
+    public IReadOnlyDictionary<string, int> SharedSoundCounts { get; }
 
     public bool TryGet(string id, out ResourceHandle handle) => _handlesById.TryGetValue(id, out handle);
 

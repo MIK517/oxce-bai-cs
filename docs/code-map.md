@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 214 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 221 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 100 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
-| [Oxce.Savegames](#oxcesavegames) | 5 | Core, Formats, Gameplay, Mods |
+| [Oxce.Savegames](#oxcesavegames) | 8 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 325 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 332 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 109 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -337,7 +337,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 214 files.
+`src/Oxce.Gameplay` - 221 files.
 
 ### `Oxce.Gameplay`
 
@@ -355,6 +355,19 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BattleUnitView` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - A unit as a viewer sees it.
 - `BattleOverview` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The battle as a viewer sees it; `Revision` changes with every committed battle change.
 - `IBattleQuery` (interface) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The current battle, if any, as a viewer sees it (ADR 0038: every battle query takes a viewer).
+- `BattleItemSnapshot` (record) [BattleItemSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleItemSnapshot.cs) - One saved item (`SavedBattleGame::load`'s item passes and `BattleItem::load` and `save`, Phase 7 branch 2 S4).
+- `BattleSnapshot` (record) [BattleSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleSnapshot.cs) - The persistence boundary of `BattleState` (Phase 7 branch 2): what `SavedBattleGame::load` reads and `save` writes, as values.
+- `BattleTileSnapshot` (record struct) [BattleSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleSnapshot.cs) - One saved tile (Tile::loadBinary and saveBinary, or the old Tile::load): each part's map data ID and data set ID (-1 for none), smoke, fi...
+- `BattleNodeSnapshot` (record) [BattleSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleSnapshot.cs) - One saved route node (Node::load and save): `segment` is neither read nor written.
+- `BattleModuleSnapshot` (record struct) [BattleSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleSnapshot.cs) - One block of a base defense's module map: the base module tiles in all (the pair's first) and left (its second).
+- `BattleUnitStatus` (enum) [BattleUnitSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleUnitSnapshot.cs) - UnitStatus: the reference's values (`src/Mod/Unit.h`).
+- `BattleUnitSnapshot` (record) [BattleUnitSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleUnitSnapshot.cs) - One saved unit (`SavedBattleGame::load`'s unit pass and `BattleUnit::load` and `save`, Phase 7 branch 2 S3).
+- `BattleRecolor` (record struct) [BattleUnitSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleUnitSnapshot.cs) - One `recolor` entry (Uint8 pair): a color group shifted left by 4, and the color replacing it.
+- `BattleMoveCosts` (record) [BattleUnitSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleUnitSnapshot.cs) - ArmorMoveCost's four kinds (`basePercent`, `baseFlyPercent`, `baseClimbPercent`, `baseNormalPercent`).
+- `BattleAiSnapshot` (record) [BattleUnitSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleUnitSnapshot.cs) - AIModule::save: the node the unit came from and goes to (-1 for none), the AI mode, the units that hit it, whether it picked up a weapon,...
+- `BattleUnitStatisticsSnapshot` (record) [BattleUnitSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleUnitSnapshot.cs) - BattleUnitStatistics (`tempUnitStatistics`): what the debriefing credits the unit with.
+- `BattleUnitKillSnapshot` (record) [BattleUnitSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleUnitSnapshot.cs) - BattleUnitKills: a kill or stun the unit made.
+- `BattleUnitStats` (record struct) [BattleUnitStats.cs](../src/Oxce.Gameplay/Battles/BattleUnitStats.cs) - UnitStats: twelve 16-bit statistics in the reference's field order.
 
 ### `Oxce.Gameplay.Battles.Terrain`
 
@@ -925,10 +938,12 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RuntimeBattleInventory` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - RuleInventory as the battle reads it.
 - `RuntimeInventorySlot` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs)
 - `RuntimeBattleItem` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - RuleItem's equipment fields: fixed weapon, default inventory slot and position, inventory size, supported sections, turret type, psi and...
+- `RuntimeFuseTrigger` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - RuleItemFuseTrigger's `defaultBehavior`, `throwTrigger` and `proximityTrigger`.
 - `RuntimeBattleArmor` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - Armor's equipment fields: built-in weapons, special and self-destruct items, two main weapons, inventory, weight.
+- `RuntimeArmorMoveCosts` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - ArmorMoveCost of each base kind: (time percent, energy percent).
 - `RuntimeBattleUnitRule` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - Unit's battle fields: statistics, built-in weapon sets (plain and weighted), melee and psi weapons, living weapon, race.
 - `RuntimeBattleRules` (class) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - The rule families only the battlescape reads (Phase 7, ADR 0038), linked as one group by `Link`, apart from the strategic families.
-- `RuntimeTerrain` (record) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - RuleTerrain as the battle generator reads it (sprites and ambience stay with presentation).
+- `RuntimeTerrain` (record) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - RuleTerrain as the battle generator reads it (sprites stay with presentation).
 - `RuntimeEnviroChances` (record struct) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - The environmental conditions' global chances per faction (EnvironmentalCondition::globalChance).
 - `RuntimeMapBlock` (record) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - MapBlock: size (the MAP header's height replaces `Height` when loaded), groups and revealed floors.
 - `RuntimeMcdPatch` (record) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - MCDPatch: entries in rule order.
@@ -1089,7 +1104,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Savegames
 
-`src/Oxce.Savegames` - 5 files.
+`src/Oxce.Savegames` - 8 files.
 
 ### `Oxce.Savegames`
 
@@ -1097,6 +1112,9 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ### `Oxce.Savegames.Oxce`
 
+- `OxceBattleSave` (class) [OxceBattleSave.Items.cs](../src/Oxce.Savegames/Oxce/OxceBattleSave.Items.cs) - The battle's items (Phase 7 branch 2 S4): `SavedBattleGame::load`'s first item pass over `items`, `recoverConditional`, `recoverGuarantee...
+- `OxceBattleSave` (class) [OxceBattleSave.Units.cs](../src/Oxce.Savegames/Oxce/OxceBattleSave.Units.cs) - The battle's units (Phase 7 branch 2 S3): `SavedBattleGame::load`'s first unit pass (the faction, original faction, ID and, for a unit th...
+- `OxceBattleSave` (class) [OxceBattleSave.cs](../src/Oxce.Savegames/Oxce/OxceBattleSave.cs) - The battle save module (ADR 0038, D6): reads the save's `battleGame` node into a `BattleSnapshot` and writes a snapshot back, overlaying...
 - `OxceSaveAdapter` (class) [OxceResearchDiarySave.cs](../src/Oxce.Savegames/Oxce/OxceResearchDiarySave.cs)
 - `OxceSaveAdapter` (class) [OxceSaveAdapter.cs](../src/Oxce.Savegames/Oxce/OxceSaveAdapter.cs) - Reads and writes the strategic subset of the two-document OXCE save stream.
 - `OxceSaveLoadOptions` (record) [OxceSaveContracts.cs](../src/Oxce.Savegames/Oxce/OxceSaveContracts.cs)
@@ -1231,20 +1249,26 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 325 files.
+`tests/Oxce.CompatibilityTests` - 332 files.
 
 ### `Oxce.CompatibilityTests`
 
+- `BattleSaveConformance` (internal class) [BattleSaveConformance.cs](../tests/Oxce.CompatibilityTests/BattleSaveConformance.cs) - The conformance reader (Phase 7 plan, branch 2 decisions): applies the reading rules of the reference's `SavedBattleGame::load` (`src/Sav...
 - `BattleTestTerrain` (internal class) [BattleTestTerrain.cs](../tests/Oxce.CompatibilityTests/BattleTestTerrain.cs) - Synthetic terrain files for battle tests: MCD records, MAP blocks and an in-memory file port.
 - `ContentStateDump` (internal class) [ContentStateDump.cs](../tests/Oxce.CompatibilityTests/ContentStateDump.cs) - Deterministic dump of every instance field reachable from an object graph.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>321 test classes</summary>
+<details><summary>327 test classes</summary>
 
 - `BaseDefenseDeploymentTests` ([BaseDefenseDeploymentTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseDeploymentTests.cs))
 - `BaseDefenseMapTests` ([BaseDefenseMapTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseMapTests.cs))
+- `BattleCampaignSaveTests` ([BattleCampaignSaveTests.cs](../tests/Oxce.CompatibilityTests/BattleCampaignSaveTests.cs))
 - `BattleEntryPointTests` ([BattleEntryPointTests.cs](../tests/Oxce.CompatibilityTests/BattleEntryPointTests.cs))
+- `BattleSaveItemTests` ([BattleSaveItemTests.cs](../tests/Oxce.CompatibilityTests/BattleSaveItemTests.cs))
+- `BattleSaveMapTests` ([BattleSaveMapTests.cs](../tests/Oxce.CompatibilityTests/BattleSaveMapTests.cs))
+- `BattleSaveRootTests` ([BattleSaveRootTests.cs](../tests/Oxce.CompatibilityTests/BattleSaveRootTests.cs))
+- `BattleSaveUnitTests` ([BattleSaveUnitTests.cs](../tests/Oxce.CompatibilityTests/BattleSaveUnitTests.cs))
 - `BattleStartTests` ([BattleStartTests.cs](../tests/Oxce.CompatibilityTests/BattleStartTests.cs))
 - `BattleTerrainLoaderTests` ([BattleTerrainLoaderTests.cs](../tests/Oxce.CompatibilityTests/BattleTerrainLoaderTests.cs))
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
@@ -1276,6 +1300,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `Phase3ContentCorpusTests` ([Phase3ContentCorpusTests.cs](../tests/Oxce.CompatibilityTests/Phase3ContentCorpusTests.cs))
 - `PresentationRulesFixtureTests` ([PresentationRulesFixtureTests.cs](../tests/Oxce.CompatibilityTests/PresentationRulesFixtureTests.cs))
 - `PrivateBattleGenerationTests` ([PrivateBattleGenerationTests.cs](../tests/Oxce.CompatibilityTests/PrivateBattleGenerationTests.cs))
+- `PrivateBattleSaveTests` ([PrivateBattleSaveTests.cs](../tests/Oxce.CompatibilityTests/PrivateBattleSaveTests.cs))
 - `PrivateCampaignSaveTests` ([PrivateCampaignSaveTests.cs](../tests/Oxce.CompatibilityTests/PrivateCampaignSaveTests.cs))
 - `PrivateCatCorpusTests` ([PrivateCatCorpusTests.cs](../tests/Oxce.CompatibilityTests/PrivateCatCorpusTests.cs))
 - `PrivateCatSoundCorpusTests` ([PrivateCatSoundCorpusTests.cs](../tests/Oxce.CompatibilityTests/PrivateCatSoundCorpusTests.cs))
@@ -1732,6 +1757,11 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 Shared sources compiled into several projects, and non-test types that tests reuse.
 Prefer these over local copies (see AGENTS.md, *Test conventions*).
+
+### [tests/Oxce.CompatibilityTests/BattleSaveConformance.cs](../tests/Oxce.CompatibilityTests/BattleSaveConformance.cs)
+
+- `BattleSaveConformance` (class) - The conformance reader (Phase 7 plan, branch 2 decisions): applies the reading rules of the reference's `SavedBattleGame::load` (`src/Sav...
+- members: `CheckSave`, `Check`
 
 ### [tests/Oxce.CompatibilityTests/BattleTestTerrain.cs](../tests/Oxce.CompatibilityTests/BattleTestTerrain.cs)
 
