@@ -256,12 +256,9 @@ public static class GeoscapeNotifications
                 return new(ended.Ending == 2 ? "The campaign is lost" : "The campaign is won",
                     ended.Cutscene is { } endingVideo ? ["Cutscene: " + endingVideo] : [], [Ok()]);
             case DeploymentRequested deployment:
-                // Port screen (S8): Phase 7 runs the battle; until then the request waits in the save.
-                return new("Tactical combat is not available yet",
-                [
-                    tr(deployment.Request.MissionType),
-                    "The battle request is saved with the campaign. Time stays stopped until tactical combat can run it.",
-                ], [Ok()]);
+                // The host starts the battle on the request (CampaignBattles' StartBattle); a refusal shows in its own window.
+                return new("Start the battle", [tr(deployment.Request.MissionType)],
+                    [new(tr("STR_OK"), OkKey: true) { Command = new Oxce.Gameplay.Battles.StartBattle() }]);
             case CampaignActionBlocked blocked:
                 return new("Time cannot advance", [blocked.Reason], [Ok()]);
             default:

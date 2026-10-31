@@ -25,6 +25,14 @@ public sealed record CampaignUiSession(ICampaignQuery Queries, ICampaignCommandT
     public ICampaignBaseDefenseQuery? BaseDefense { get; init; } = Queries as ICampaignBaseDefenseQuery;
     /// <summary>The countries' funding (FundingState).</summary>
     public ICampaignFundingQuery? Funding { get; init; } = Queries as ICampaignFundingQuery;
+    /// <summary>The battle queries of the battle screens; all four must be present for the geoscape to open a battle.</summary>
+    public Oxce.Gameplay.Battles.IBattleQuery? Battle { get; init; }
+    /// <summary>The battle's view query (selection, levels, visible tiles).</summary>
+    public Oxce.Gameplay.Battles.IBattleViewQuery? BattleView { get; init; }
+    /// <summary>The battle's inventory query.</summary>
+    public Oxce.Gameplay.Battles.IBattleInventoryQuery? BattleInventory { get; init; }
+    /// <summary>The battle's briefing query.</summary>
+    public Oxce.Gameplay.Battles.IBattleBriefingQuery? BattleBriefing { get; init; }
     /// <summary>The open interception windows.</summary>
     public ICampaignInterceptionQuery? Interceptions { get; init; } = Queries as ICampaignInterceptionQuery;
     /// <summary>Where the geoscape globe looked when the campaign was saved (SavedGame globe fields).</summary>
@@ -50,6 +58,10 @@ public sealed record CampaignUiSession(ICampaignQuery Queries, ICampaignCommandT
             BaseDefense = campaign.GetQuery<ICampaignBaseDefenseQuery>(),
             Interceptions = campaign.GetQuery<ICampaignInterceptionQuery>(),
             Funding = campaign.GetQuery<ICampaignFundingQuery>(),
+            Battle = campaign.GetQuery<Oxce.Gameplay.Battles.IBattleQuery>(),
+            BattleView = campaign.GetQuery<Oxce.Gameplay.Battles.IBattleViewQuery>(),
+            BattleInventory = campaign.GetQuery<Oxce.Gameplay.Battles.IBattleInventoryQuery>(),
+            BattleBriefing = campaign.GetQuery<Oxce.Gameplay.Battles.IBattleBriefingQuery>(),
         };
     }
 }

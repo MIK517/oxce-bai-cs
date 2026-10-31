@@ -14,7 +14,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Benchmarks](#oxcebenchmarks) | 19 | Engine, Formats, Mods, Rendering, Resources, Savegames |
 | [Oxce.App](#oxceapp) | 3 | Engine, Extensions, Formats, Mods, Platform.Sdl, Rendering, Savegames |
 | [Oxce.Core](#oxcecore) | 8 | - |
-| [Oxce.Engine](#oxceengine) | 36 | Core, Gameplay, Rendering, Resources |
+| [Oxce.Engine](#oxceengine) | 38 | Core, Gameplay, Rendering, Resources |
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
@@ -25,7 +25,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 8 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 336 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 337 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 112 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -106,7 +106,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Engine
 
-`src/Oxce.Engine` - 36 files.
+`src/Oxce.Engine` - 38 files.
 
 ### `Oxce.Engine`
 
@@ -150,8 +150,10 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ### `Oxce.Engine.Geoscape`
 
+- `BattleSavePolicy` (class) [BattleSavePolicy.cs](../src/Oxce.Engine/Geoscape/BattleSavePolicy.cs) - Where a save the campaign or the battle asked for goes (`SaveGameState`, `BattlescapeState::init`'s turn-1 block).
 - `GeoscapeAssets` (class) [GeoscapeAssets.cs](../src/Oxce.Engine/Geoscape/GeoscapeAssets.cs) - Indexed resources the globe draws with.
 - `GeoscapeClient` (class) [GeoscapeClient.Bases.cs](../src/Oxce.Engine/Geoscape/GeoscapeClient.Bases.cs) - Base placement on the globe: BuildNewBaseState (radar preview under the pointer), ConfirmNewBaseState (cost and area), BaseNameState and...
+- `GeoscapeClient` (class) [GeoscapeClient.Battle.cs](../src/Oxce.Engine/Geoscape/GeoscapeClient.Battle.cs) - The host loop's battle hand-over (Phase 7 branch 3 S6b): when the session has a battle, the screens of its phase (`BattleUiContext.Open`)...
 - `GeoscapeClient` (class) [GeoscapeClient.Interceptions.cs](../src/Oxce.Engine/Geoscape/GeoscapeClient.Interceptions.cs) - The interception windows (DogfightState) over the globe and the dogfight timer of `GeoscapeState::think` (D3): while any window is open t...
 - `GeoscapeClient` (class) [GeoscapeClient.Screens.cs](../src/Oxce.Engine/Geoscape/GeoscapeClient.Screens.cs) - The craft and target screens: GeoscapeCraftState, InterceptState, SelectDestinationState, MultipleTargetsState, ConfirmDestinationState a...
 - `GeoscapeClientSetup` (record) [GeoscapeClient.cs](../src/Oxce.Engine/Geoscape/GeoscapeClient.cs) - What a geoscape client needs; persistence and the clock are supplied by the host.
@@ -501,7 +503,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CommendationAward` (record) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs) - One commendation a soldier was given or raised this month, at its new level.
 - `SoldiersCommended` (record) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs) - CommendationState: the soldiers medalled for this month's service, with what each was given.
 - `PsiTrainingReminder` (record) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs) - PsiTrainingState: a base has a psi lab and soldiers train only at the month boundary.
-- `CampaignSaveKind` (enum) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs)
+- `CampaignSaveKind` (enum) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs) - Autosave and Ironman come from the monthly report; BattleTurnOne is BattlescapeState's save when the first turn starts (the host maps it...
 - `CampaignSaveRequested` (record) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs) - SaveGameState after the monthly report: an ironman save, or an autosave when the option is on.
 - `ICampaignMonthlyReportQuery` (interface) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs)
 - `CampaignState` (class) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs)
@@ -1313,7 +1315,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 336 files.
+`tests/Oxce.CompatibilityTests` - 337 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1323,7 +1325,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>331 test classes</summary>
+<details><summary>332 test classes</summary>
 
 - `BaseDefenseDeploymentTests` ([BaseDefenseDeploymentTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseDeploymentTests.cs))
 - `BaseDefenseMapTests` ([BaseDefenseMapTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseMapTests.cs))
@@ -1350,6 +1352,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `EquipmentProductionRulesFixtureTests` ([EquipmentProductionRulesFixtureTests.cs](../tests/Oxce.CompatibilityTests/EquipmentProductionRulesFixtureTests.cs))
 - `FixturePipelineTests` ([FixturePipelineTests.cs](../tests/Oxce.CompatibilityTests/FixturePipelineTests.cs))
 - `FlcFixtureTests` ([FlcFixtureTests.cs](../tests/Oxce.CompatibilityTests/FlcFixtureTests.cs))
+- `GeoscapeBattleHostTests` ([GeoscapeBattleHostTests.cs](../tests/Oxce.CompatibilityTests/GeoscapeBattleHostTests.cs))
 - `GlobeSceneTests` ([GlobeSceneTests.cs](../tests/Oxce.CompatibilityTests/GlobeSceneTests.cs))
 - `GmCatFixtureTests` ([GmCatFixtureTests.cs](../tests/Oxce.CompatibilityTests/GmCatFixtureTests.cs))
 - `IndexedBmpFixtureTests` ([IndexedBmpFixtureTests.cs](../tests/Oxce.CompatibilityTests/IndexedBmpFixtureTests.cs))

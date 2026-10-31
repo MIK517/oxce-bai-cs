@@ -143,6 +143,7 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     public void Tick(TimeSpan fixedInterval)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(fixedInterval, TimeSpan.Zero);
+        PollBattle();
         if (_screens.Count != 0)
         {
             // Screens above the geoscape cover it for the host clock even though this client stops ticking it.
@@ -579,6 +580,7 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
         // Nothing owed by the old campaign's clock may run on the loaded one, nor a save it requested.
         _time.Interrupt();
         _pendingSave = null;
+        ForgetBattle();
         _dogfightElapsed = TimeSpan.Zero;
         _popups.Clear();
         _selected = null;

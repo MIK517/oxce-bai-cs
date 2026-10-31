@@ -16,7 +16,8 @@ Phase 7 branch 3 (`claude/battle-session-ui`), from `main` after PR #79 (branch 
 | S4 inventory | Done, audit pending (2026-10-31) |
 | S5 battlescape queries and view model | Done, audit pending (2026-10-31) |
 | S6 battlescape screens | Done, audit pending (2026-10-31) |
-| S6b geoscape and logistics migration onto `ScreenNavigator` | Not started (S2's undelivered scope, moved here from S6) |
+| S6b host loop: battle screens from the SDL host, turn-1 autosave | Done, audit pending (2026-10-31) |
+| S6c geoscape and logistics migration onto `ScreenNavigator` | Not started (S2's undelivered scope; next) |
 | S7 acceptance and branch audit | Not started |
 
 ## S0 — Planning (2026-10-31)
@@ -306,7 +307,7 @@ closing the pre-battle inventory replaces it straight with the battlescape. The 
 
 Not done (owner in brackets):
 
-- **Geoscape/logistics migration**: S6b (see the plan).
+- **Geoscape/logistics migration**: S6c (see the plan).
 - **`NextTurnState` itself**: the centering is done. The end-of-battle check on closing the pre-battle inventory is refused by name by the rules (`battle.no-live-soldiers`, `battle.no-live-aliens` at the briefing; `finishBattle` is branch 7's) and the screen shows the code (tested). The turn-1 autosave is S6b's (host loop work, plan row).
 - Real map drawing: isometric terrain sprites, pixel scrolling, the cursor, fog shade [Phase 8 presentation]; the plan view is a placeholder. The briefing's cutscene, music and background are listed, not played.
 - Inventory drag and drop, paperdoll and item sprites; the keyboard drop picks the first accepted cell.
@@ -316,9 +317,45 @@ Not done (owner in brackets):
 - Navigator: two pops in a row reveal the middle screen once before it goes (harmless today). A map wider than 224 or longer than 200 tiles overflows the plan view.
 - Untested: the arrow scroll keys.
 
+## S6b — Host loop: battle screens and the turn-1 save (2026-10-31)
+
+Reference: `BattlescapeState::init` (the `_autosave` block: ironman save, else `Options::autosave` writes `_autobattle_.asav`),
+`NextTurnState::close` (sets the autosave on turn 1), `ConfirmLandingState::btnYesClick`, `ConfirmCydoniaState` and `GeoscapeState` (base defense), which push `BriefingState` directly.
+
+- **Opening**: `GeoscapeClient.PollBattle` (new partial `GeoscapeClient.Battle.cs`, run at the start of every tick) opens
+  `BattleUiContext.Open()` on the shared `ScreenNavigator` once per battle, when the stack is free. The screens cover the clock
+  (`SetCovered`). `CampaignUiSession` gained the four battle queries (`Battle`, `BattleView`, `BattleInventory`, `BattleBriefing`,
+  filled by `ForCampaign`); without all four the geoscape hosts no battle. The SDL host sets `Controllers = new BattleUnitControllers(...)`
+  where it attaches the session.
+- **Starting** (a deviation): the reference pushes `BriefingState` straight from the landing confirmation; the port has the request wait in the
+  campaign, so the `DeploymentRequested` popup (was "Tactical combat is not available yet") is now "Start the battle", an extra OK click with no cancel,
+  and its OK button executes `StartBattle`. A refusal (no terrain files, a feature branch 1 refuses) shows in the usual window and then the popup
+  is offered again, because the request keeps holding the clock.
+- **Briefing lines**: before `StartBattle` consumes the request, the client composes the target (the landing's destination name) and the craft-or-base
+  line (the craft that landed, else the base) and passes them to `BattleUiContext.Open`.
+- **Save mapping**: `BattleSavePolicy.PathFor` (Engine) decides the file for each `CampaignSaveKind`; the SDL host only calls it. The three scenario tests that read its title now expect the new one.
+- **Turn-1 save**: when the polled phase moves from the pre-battle inventory to the running battle the client calls
+  `SaveRequested(CampaignSaveKind.BattleTurnOne)` (new enum value). The SDL host maps it: ironman campaign saves to the campaign path,
+  otherwise `Options.Autosave` writes `_autobattle_.asav` beside it. A battle loaded already running makes no save.
+  The reference's multi-slot names (`autosaveSlots`, `autosaveFrequency`) and the later-turn autosaves (`_currentTurn % autosaveFrequency`, branch 6's end turn) are not done.
+
+Tests: `GeoscapeBattleHostTests` (the briefing opens above the geoscape and the clock stays still; briefing to battlescape requests the
+turn-1 save once; a running battle opens the battlescape without a save; OK on the popup starts the battle and the briefing carries a craft-or-base line;
+a refused start shows the reason and offers the request again; `BattleSavePolicy` for every kind). The turn-1 save reload is covered in two halves: branch 2's
+save tests reload a turn-1 save, and the host test opens a running battle; no single test saves through the host and reloads.
+
+Not done:
+
+- **Owner S6c**: the geoscape popup list, naming, selecting and placing modes and the logistics client are not moved onto a shared `ScreenNavigator` with
+  `Covers`**: they are still client state inside `GeoscapeClient` (which reports `TimeCanRun` as the cover); only the base and
+  battle screens use the navigator. Moving them needs the navigator to composite translucent screens and the popup `Group`
+  logic to become screens; it was not attempted in this part.
+- The SDL application cannot leave the battlescape (abort is branch 7), so there is no way back to the globe during a battle.
+- The reload of the turn-1 autosave is covered by branch 2's save tests; this part has no end-to-end SDL test (needs private data).
+
 ## Next
 
-S6b — geoscape popups, naming, selecting and placing modes, logistics client and shared widgets onto `ScreenNavigator`, with the client cover from `Covers` (the plan's S6b row, which also takes the turn-1 autosave and wiring `BattleUiContext.Open` into the SDL host loop); then S7 — acceptance and branch audit (acceptance only). From S6: the screens are in `Oxce.Engine/Battlescape`; `BattleUiContext.Open()` is the entry. From S5: the screens read `BattleViewModel` (`Oxce.Engine/Battlescape`) and `IBattleViewQuery`; the host loop that creates a session sets `Controllers = new BattleUnitControllers(battleQuery)`, and a screen's soldier buttons are `Next`, `Skip`, `ReselectSkipped`, the level buttons `LevelUp` and `LevelDown`, the center button `CenterOnSelection`. Buttons of later branches refuse by their owner's name. From S4:
+S6c — geoscape popups, naming, selecting and placing modes, logistics client and shared widgets onto `ScreenNavigator`, with the client cover from `Covers` (the plan's S6c row); then S7 — acceptance and branch audit (acceptance only). S6b (battle screens, turn-1 save) is done. From S6: the screens are in `Oxce.Engine/Battlescape`; `BattleUiContext.Open()` is the entry. From S5: the screens read `BattleViewModel` (`Oxce.Engine/Battlescape`) and `IBattleViewQuery`; the host loop that creates a session sets `Controllers = new BattleUnitControllers(battleQuery)`, and a screen's soldier buttons are `Next`, `Skip`, `ReselectSkipped`, the level buttons `LevelUp` and `LevelDown`, the center button `CenterOnSelection`. Buttons of later branches refuse by their owner's name. From S4:
 
 - The inventory is a command set on stable IDs (`MoveInventoryItem`, `AutoPlaceInventoryItem`, both `IUnitCommand`) with
   `IBattleInventoryQuery`; the host loop that creates a

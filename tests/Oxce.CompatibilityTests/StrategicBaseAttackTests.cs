@@ -586,7 +586,7 @@ public sealed class StrategicBaseAttackTests
         var client = Client(content, campaign);
         client.Tick(SessionClock.GeoClock);
         client.Choose(1);
-        Assert.Equal("Tactical combat is not available yet", Assert.Single(client.Popups).Title);
+        Assert.Equal("Start the battle", Assert.Single(client.Popups).Title);
         Assert.Equal("STR_BASE_DEFENSE", Assert.Single(client.Popups).Lines[0]);
     }
 

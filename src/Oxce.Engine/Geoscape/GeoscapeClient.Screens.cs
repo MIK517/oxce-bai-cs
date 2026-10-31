@@ -242,6 +242,7 @@ public sealed partial class GeoscapeClient
     private void Execute(ICampaignCommand command, int group)
     {
         CampaignCommandResult result;
+        if (command is Oxce.Gameplay.Battles.StartBattle) CaptureBriefingNames();
         try
         {
             result = _session.Commands.Execute(command);
@@ -259,8 +260,12 @@ public sealed partial class GeoscapeClient
         CloseGroup(group);
         PruneLandingPopups();
         if (blocked is not null)
+        {
             Push(new GeoscapePopup(RefusalText(blocked, command, world), [],
                 [new(_setup.Localize("STR_OK"), OkKey: true, CancelKey: true)]));
+            // A refused start leaves the request holding the clock: offer it again once the refusal is read.
+            if (command is Oxce.Gameplay.Battles.StartBattle) ReopenPendingWindows();
+        }
         else Notify(result.Events, pushed: true);
     }
 

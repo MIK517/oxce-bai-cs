@@ -6,6 +6,7 @@ using Oxce.Engine;
 using Oxce.Engine.Geoscape;
 using Oxce.Engine.Input;
 using Oxce.Extensions;
+using Oxce.Gameplay.Battles;
 using Oxce.Gameplay.Battles.Terrain;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Sessions;
@@ -71,8 +72,7 @@ internal static class CampaignSdlCommand
             Save = savePath is null ? null : () => Save(savePath),
             // MonthlyReportState's SaveGameState: the ironman save replaces the campaign's save; the autosave writes
             // _autogeo_.asav beside it.
-            SaveRequested = savePath is null ? null : kind => Save(kind == CampaignSaveKind.Ironman ? savePath
-                : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(savePath))!, "_autogeo_.asav")),
+            SaveRequested = savePath is null ? null : kind => SaveRequested(kind, savePath),
             Load = savePath is null ? null : Load,
         });
         Console.WriteLine("Geoscape: 1-6 speed, arrows rotate, +/- zoom, wheel zoom, right click centre, middle drag scroll,");
@@ -104,6 +104,12 @@ internal static class CampaignSdlCommand
         PrintWarnings(extensionDiagnostics);
         return result;
 
+        // BattlescapeState::init on turn 1: the ironman save, else the battle autosave when the option is on.
+        void SaveRequested(CampaignSaveKind kind, string path)
+        {
+            if (BattleSavePolicy.PathFor(kind, campaign.Identity.Ironman, campaign.Options.Autosave, path) is { } target) Save(target);
+        }
+
         void Save(string path)
         {
             // D2: a pending acknowledgement with gameplay effects cannot be saved; the geoscape shows why.
@@ -129,6 +135,8 @@ internal static class CampaignSdlCommand
             hostSession?.Dispose();
             var host = new CampaignSession(extensionSession, extensionSession);
             var local = host.Attach(PlayerId.Local);
+            // Every battle unit is the local player's to command until a second player attaches.
+            host.Controllers = new BattleUnitControllers(campaign.GetQuery<IBattleQuery>()!);
             hostSession = local;
             return CampaignUiSession.ForCampaign(campaign, local, local);
         }

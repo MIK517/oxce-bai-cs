@@ -55,7 +55,8 @@ public sealed record SoldiersCommended(IReadOnlyList<CommendationAward> Awards) 
 /// <summary>PsiTrainingState: a base has a psi lab and soldiers train only at the month boundary.</summary>
 public sealed record PsiTrainingReminder(IReadOnlyList<int> BaseIds) : ICampaignEvent;
 
-public enum CampaignSaveKind { Autosave, Ironman }
+/// <summary>Autosave and Ironman come from the monthly report; BattleTurnOne is BattlescapeState's save when the first turn starts (the host maps it to the ironman save or the battle autosave).</summary>
+public enum CampaignSaveKind { Autosave, Ironman, BattleTurnOne }
 
 /// <summary>SaveGameState after the monthly report: an ironman save, or an autosave when the option is on.</summary>
 public sealed record CampaignSaveRequested(CampaignSaveKind Kind) : ICampaignEvent;

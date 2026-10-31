@@ -507,7 +507,7 @@ public sealed class StrategicInterceptionTests
         }
         Assert.Equal(["STR_YES", "STR_NO"], landing!.Actions.Select(static action => action.Label));
         client.HandleInput(GameInputEvent.Key(GameInputEventKind.KeyPressed, 0, 0, 0, 13, InputKeyModifiers.None));
-        Assert.Equal("Tactical combat is not available yet", Assert.Single(client.Popups).Title);
+        Assert.Equal("Start the battle", Assert.Single(client.Popups).Title);
         var request = campaign.GetQuery<ICampaignLandingQuery>()!.QueryDeploymentRequest()!;
         Assert.Equal(("STR_UFO_CRASH_RECOVERY", WorldTargetKind.Ufo, 9), (request.MissionType, request.Target.Kind, request.Target.UniqueId));
 
@@ -517,7 +517,7 @@ public sealed class StrategicInterceptionTests
         Assert.Equivalent(request, reloaded.GetQuery<ICampaignLandingQuery>()!.QueryDeploymentRequest(), strict: true);
         var again = StrategicWorldGeoscapeScenarioTests.Client(content, CampaignUiSession.ForCampaign(reloaded, reloaded, reloaded),
             save: static () => { }, load: static () => throw new InvalidOperationException("No save to load."));
-        Assert.Equal("Tactical combat is not available yet", Assert.Single(again.Popups).Title);
+        Assert.Equal("Start the battle", Assert.Single(again.Popups).Title);
     }
 
     [Fact]
