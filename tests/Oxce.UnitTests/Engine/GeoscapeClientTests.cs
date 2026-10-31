@@ -133,6 +133,74 @@ public sealed class GeoscapeClientTests
         Assert.True(host.Clock.Covered);
     }
 
+    private static GeoscapeClient Hosted(CampaignState campaign, RuntimeContent content, CampaignSession host,
+        SessionHandle local, Func<CampaignUiSession>? load = null)
+    {
+        var texture = new IndexedSurface(32, 32);
+        texture.Clear(0x41);
+        var assets = new GeoscapeAssets(IndexedPalette.CreateGrayscale(),
+            new Dictionary<int, IndexedSurface> { [0] = texture, [1] = texture, [2] = texture },
+            new Dictionary<int, IndexedSurface>(), RuntimeGlobeColors.Default);
+        return new GeoscapeClient(new GeoscapeClientSetup(CampaignUiSession.ForCampaign(campaign, local, local),
+            content.RuntimeRules, assets, IndexedInterfaceFont.Create(), static text => text)
+        {
+            Load = load,
+        });
+    }
+
+    [Fact]
+    public void APopupCoversTheHostClockUntilItIsClosedAndALoadReleasesTheCover()
+    {
+        var content = CampaignLogisticsTests.LoadFixture();
+        var campaign = Placed(content);
+        var host = new CampaignSession(campaign, campaign, static () => TimeSpan.Zero);
+        using var local = host.Attach(PlayerId.Local);
+        var client = Hosted(campaign, content, host, local, () => CampaignUiSession.ForCampaign(campaign, local, local));
+        client.Tick(Step);
+        Assert.False(host.Clock.Covered);
+
+        Key(client, 0x40000042);
+        Assert.Single(client.Popups);
+        client.Tick(Step);
+        Assert.True(host.Clock.Covered);
+        Key(client, 27);
+        client.Tick(Step);
+        Assert.False(host.Clock.Covered);
+
+        // A load replaces the session: the cover the old popup held is released at once.
+        Key(client, 0x40000042);
+        client.Tick(Step);
+        Assert.True(host.Clock.Covered);
+        Key(client, 13);
+        Assert.Equal("Campaign loaded.", client.Status);
+        Assert.False(host.Clock.Covered);
+    }
+
+    [Fact]
+    public void BasePlacementAndNamingCoverTheHostClock()
+    {
+        var content = CampaignLogisticsTests.LoadFixture();
+        var campaign = TestFixtures.CreateLogisticsCampaign(content, "Geoscape");
+        var host = new CampaignSession(campaign, campaign, static () => TimeSpan.Zero);
+        using var local = host.Attach(PlayerId.Local);
+        var client = Hosted(campaign, content, host, local);
+        client.Tick(Step);
+        Assert.True(client.PlacingBase);
+        Assert.True(host.Clock.Covered);
+
+        var site = campaign.QueryBaseSites(true).First(site => site.Longitude != 0 || site.Latitude != 0);
+        client.View.Center(site.Longitude, site.Latitude);
+        Click(client, 256, 200, 1);
+        Assert.NotNull(client.BaseName);
+        client.Tick(Step);
+        Assert.True(host.Clock.Covered);
+        client.HandleInput(GameInputEvent.TextEntry(0, 0, "Alpha"));
+        Key(client, 13);
+        client.Tick(Step);
+        Assert.Null(client.PlacingBase);
+        Assert.False(host.Clock.Covered);
+    }
+
     [Fact]
     public void PopupsQueueStopTimeAndApplyTheirButtons()
     {

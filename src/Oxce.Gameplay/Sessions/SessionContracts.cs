@@ -64,12 +64,20 @@ public sealed record SessionEvents(PlayerId Actor, ICampaignCommand Command, IRe
 public static class SessionReasons
 {
     public const string PlayerNotAttached = "session.player-not-attached";
+    public const string ClockCovered = "session.clock-covered";
+    public const string ClockHalted = "session.clock-halted";
     public const string UnitNotControlled = "session.unit-not-controlled";
     public const string UnitUnknown = "session.unit-unknown";
     public const string UnitCommandsUnavailable = "session.unit-commands-unavailable";
 
     public static CampaignReason NotAttached(PlayerId player) =>
         new(PlayerNotAttached, $"{player} is not attached to the session.");
+
+    public static CampaignReason Covered() =>
+        new(ClockCovered, "A screen above the geoscape has paused time.");
+
+    public static CampaignReason Halted(string? reason) =>
+        new(ClockHalted, reason ?? "Time is halted until a speed is selected.");
 
     public static CampaignReason NotControlled(PlayerId player, int unitId) =>
         new(UnitNotControlled, $"{player} does not control unit {unitId}.");

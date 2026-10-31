@@ -322,6 +322,13 @@ public sealed class CampaignSessionTests
             Assert.Equal(PlayerId.Host, batch.Actor);
             Assert.Equal(3, Assert.IsType<AdvanceCampaignTime>(batch.Command).FiveSecondTicks);
             Assert.Equal(PlayerId.Host, Assert.Single(target.Executed).Actor);
+
+            // Extension advances are host commands: a cover or a halt of the clock does not stop them.
+            session.Clock.SetCovered(First, true);
+            session.Clock.Halt("halted");
+            ((Oxce.Extensions.Abstractions.IExtensionCampaignCommands)extensions)
+                .Execute(new Oxce.Extensions.Abstractions.ExtensionAdvanceCampaignTime(1));
+            Assert.Equal(2, target.Executed.Count);
         }
         finally { empty.Delete(recursive: true); }
     }

@@ -99,6 +99,19 @@ public sealed class SessionClock
         _accumulated = TimeSpan.Zero;
     }
 
+    /// <summary>
+    /// A manual advance (a client's "advance time" key) under the same host policy as the clock: refused while a
+    /// client covers the geoscape or the clock is halted, and a refused advance halts the clock.
+    /// </summary>
+    public CampaignCommandResult Advance(int ticks)
+    {
+        if (Covered) return new([CampaignActionBlocked.From(SessionReasons.Covered())]);
+        if (!Running) return new([CampaignActionBlocked.From(SessionReasons.Halted(HaltReason))]);
+        var result = _commands.Execute(new AdvanceCampaignTime(ticks));
+        if (result.Events.OfType<CampaignActionBlocked>().FirstOrDefault() is { } blocked) Halt(blocked.Reason);
+        return result;
+    }
+
     public SessionClockStep Tick(TimeSpan elapsed)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(elapsed, TimeSpan.Zero);

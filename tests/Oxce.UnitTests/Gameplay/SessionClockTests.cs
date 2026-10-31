@@ -144,6 +144,25 @@ public sealed class SessionClockTests
         Assert.Equal(requests, target.Actors.Count);
     }
 
+    [Fact]
+    public void AManualAdvanceFollowsTheHostPolicy()
+    {
+        var commands = new ScriptedCommands();
+        var clock = new SessionClock(commands, () => TimeSpan.Zero);
+        clock.SetCovered(PlayerId.Local, true);
+        Assert.Equal(SessionReasons.ClockCovered, Assert.IsType<CampaignActionBlocked>(Assert.Single(clock.Advance(12).Events)).Code);
+        Assert.Empty(commands.Requests);
+        clock.SetCovered(PlayerId.Local, false);
+        Assert.IsType<CampaignTimeAdvanced>(Assert.Single(clock.Advance(12).Events));
+        commands.Blocked = "battle";
+        Assert.Contains(clock.Advance(12).Events, e => e is CampaignActionBlocked);
+        Assert.False(clock.Running);
+        commands.Blocked = null;
+        Assert.Equal(SessionReasons.ClockHalted, Assert.IsType<CampaignActionBlocked>(Assert.Single(clock.Advance(12).Events)).Code);
+        clock.Select(CampaignTimeSpeed.FiveSeconds);
+        Assert.IsType<CampaignTimeAdvanced>(Assert.Single(clock.Advance(12).Events));
+    }
+
     private sealed class Listener(List<SessionEvents> sink) : ISessionClient
     {
         public void OnEvents(SessionEvents batch) => sink.Add(batch);

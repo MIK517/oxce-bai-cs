@@ -213,7 +213,11 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
             else if (key == ' ')
             {
                 _screen = null;
-                Feedback(_session.Commands.Execute(new AdvanceCampaignTime((input.Modifiers & InputKeyModifiers.Shift) != 0 ? 720 : 12)));
+                var ticks = (input.Modifiers & InputKeyModifiers.Shift) != 0 ? 720 : 12;
+                // On a hosted session the host clock's pause policy and halt apply to a manual advance too.
+                Feedback(_session.Clock is { } clock
+                    ? clock.Advance(ticks)
+                    : _session.Commands.Execute(new AdvanceCampaignTime(ticks)));
             }
             else if (key is (uint)'i' or (uint)'b' or (uint)'t' || key == 's' && _view != CampaignView.Management)
             {

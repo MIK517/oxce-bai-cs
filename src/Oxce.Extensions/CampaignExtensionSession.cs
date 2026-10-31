@@ -64,7 +64,8 @@ public sealed class CampaignExtensionSession :
 
     /// <summary>
     /// Where commands an extension sends go when a host session sits above this one, so every attached client hears
-    /// them. Without it they run directly as the local player.
+    /// them. Without it they run directly as the local player. These are explicit host commands: unlike the clock
+    /// (<c>SessionClock</c>) they ignore client covers and the clock's halt; the simulation's own preflights still apply.
     /// </summary>
     public ICampaignCommandTarget? HostRoute { get; set; }
 

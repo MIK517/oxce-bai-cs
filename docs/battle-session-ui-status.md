@@ -89,6 +89,7 @@ geoscape, logistics and quote tests pass unchanged.
 - **Extension commands.** `CampaignExtensionSession` implements `IHostRoutedCommands`; `CampaignSession`'s constructor
   gives it a route, so `IExtensionCampaignCommands.Execute` runs through the session as `PlayerId.Host` and is
   broadcast (the S1 gap). Without a session above it, it behaves as before.
+- **Manual advances.** `SessionClock.Advance(ticks)` applies the same policy (refused with `session.clock-covered` or `session.clock-halted`; a refusal halts). The logistics client uses it on a hosted session; a bare campaign keeps the direct command.
 - **Screen navigator.** `Oxce.Engine/ScreenNavigator` (named so, not "stack": CA1711): push, pop, replace, input and
   ticks to the top screen only, pop on `ExitRequested` with a close callback, `Covers(screen)`, an opaque flag and
   `Visible`. Screens are `IIndexedLoopClient`s. The geoscape's base screens (`OpenBases`) now live on it and
@@ -102,11 +103,10 @@ player's cover pauses it), `CampaignSessionTests` (extension commands broadcast;
 
 S3 — Briefing and the first turn (see the plan's slice table).
 
-- Gaps with owner S6: the logistics client in standalone mode (`advanceTime: true`) still sends its own
-  `AdvanceCampaignTime` through its player, ignoring the host clock; the plan's shared widgets and the `ScreenNavigator.Covers` query
+- Gaps with owner S6 (moved there in the plan's slice table): the plan's shared widgets and the `ScreenNavigator.Covers` query
   the session should read are not done (the cover comes from the client's `TimeCanRun`); `ScreenNavigator` has no hook for the screen
   a pop reveals (the reference's `init`/`resetAll`) and keeps routing input after a stack change.
-- Extension time advances (`PlayerId.Host`) deliberately ignore covers and the clock's halt: they are explicit host commands. Untested by design.
+- Extension time advances (`PlayerId.Host`) deliberately ignore covers and the clock's halt: they are explicit host commands (pinned by `ExtensionCommandsGoThroughTheSessionAndEveryClientHearsThem`). The simulation's preflights still apply.
 - A detached player's cover is cleared on detach. `SessionClock` is not thread-safe (the host loop is one thread). A second session over one extension session takes over the route.
 - Not migrated in S2, owner S6: the geoscape's popup list (`_popups` with groups, the
   naming, selecting and placing modes) is still client code inside `GeoscapeClient`; only the base screens use
