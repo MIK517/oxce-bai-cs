@@ -10,7 +10,7 @@ Phase 7 branch 3 (`claude/battle-session-ui`), from `main` after PR #79 (branch 
 | Slice | State |
 |---|---|
 | S0 planning | Done (2026-10-31) |
-| S1 session layer | Not started |
+| S1 session layer | Done, audit pending (2026-10-31) |
 | S2 host clock, pause policy and screen stack | Not started |
 | S3 briefing and the first turn | Not started |
 | S4 inventory | Not started |
@@ -41,17 +41,56 @@ pre-battle inventory), the audit's session-layer and screen-stack items (M2–M4
   turn-0 work (reinforcements, bug hunt), `saveEquipmentLayout` and the saved selection fields now have owners in the
   plan; refusals are named; the fifth-special-item note is assigned to S3.
 
+## S1 — Session layer (2026-10-31)
+
+Host side, in `Oxce.Gameplay/Sessions` (no new project: the battle's unit ownership lives in `Oxce.Gameplay` and
+`Oxce.Engine` already references it).
+
+- **Players and handles.** `PlayerId` (data; `PlayerId.Local` is the single-player one). `CampaignSession` is built over an
+  `IActorCommandTarget` and an `ICampaignQuery`; `Attach(player, client?)` gives a `SessionHandle`, which is that
+  player's `ICampaignCommandTarget` and `ICampaignQuery`. A detached handle refuses commands
+  (`session.player-not-attached`).
+- **Authorization at the boundary.** A command that is an `IUnitCommand` (addresses `UnitId`) is checked against
+  `CampaignSession.Controllers` (`IUnitControllers`, to be supplied by the battle) before the simulation runs. Refusals are
+  classified `CampaignActionBlocked`s: `session.unit-not-controlled`, `session.unit-unknown`,
+  `session.unit-commands-unavailable` (no battle supplies controllers). The simulation is not called and nothing changes.
+- **Broadcast.** After a command commits, every attached client's `ISessionClient.OnEvents(SessionEvents)` gets the
+  actor, the command and the events, in commit order, the sender included (it can ignore its own). A result that holds only refusals
+  (from the session or the simulation) goes to the sender alone; a callback cannot submit commands; a callback that throws is detached and recorded in `Faults`
+  without undoing the command or starving the other clients.
+- **Per-actor quotes.** `CampaignState.Execute(PlayerId, command)` (also on `CampaignExtensionSession`, which passes the
+  actor on, and as the local player for extensions) keeps one open logistics quote per actor. A time advance, another
+  actor's quote or any other actor's command no longer clears it. Submit revalidates: it rebuilds the quote from its
+  request (the same request, re-priced now; ADR 0037 rule 6 and audit M3) and refuses with the existing "expired"
+  text, changing nothing, when the rows differ. Still cleared for everyone: initial entry into the campaign world and
+  placing the starting base (campaign phase changes, existing tests); an actor's own submit consumes its quote.
+- **Clients go through it.** The SDL campaign command (`CampaignSdlCommand`, run and smoke) builds the geoscape and
+  logistics clients on the local player's handle; the geoscape and logistics clients are unchanged (they already use
+  `CampaignUiSession.Commands` and `Queries`).
+
+Tests: `CampaignSessionTests` (unauthorized test-only unit command refused with the target untouched, unknown unit, no
+controllers, detached and duplicate players, two clients receive an event with its sender, refused commands broadcast
+nothing, broken client, no re-entrancy, a real campaign's time advance, a quote surviving another actor's quote and a time
+advance, a quote belonging to its actor, a stale quote refused with no change, a consumed quote). The existing
+geoscape, logistics and quote tests pass unchanged.
+
 ## Next
 
-S1 — Session layer (see the plan's slice table). Its authorization test uses a test-only unit command; the first real unit commands are S4's.
+S2 — Host clock, pause policy and screen stack (see the plan's slice table).
 
-- Read `docs/decisions/0037-host-authoritative-session.md` rules 1–10, the audit's Part 3 (M2, M3) and step 4, and the
-  existing ports: `ICampaignCommandTarget`, `ICampaignQuery`, `CampaignUiSession` (`Oxce.Gameplay/Campaigns`; `CampaignUiSession` is in `Oxce.Engine/CampaignLogisticsClient.cs`),
-  `GeoscapeClient`, `CampaignLogisticsClient`, `CampaignExtensionSession`.
-- Scope: player identity on commands and queries; authorization at the session boundary with a classified refusal;
-  event broadcast to every attached client; per-actor quotes (the logistics quote becomes keyed by actor and ID). The
-  host clock and the screen stack are S2, not S1.
-- Keep single-player behavior identical: one local player, every existing geoscape and logistics test unchanged.
+- S1 left the clock where it is: `GeoscapeTimeController.Tick(elapsed, commands)` still decides pause and speed and now
+  sends `AdvanceCampaignTime` through the local player's `SessionHandle`. Move the clock, the speed request and the
+  covered and popup pause policy (`GeoscapeClient.GeoscapeCovered`, ADR 0034 D3) into a host-side session clock that
+  clients inform; `CampaignSession` is the natural owner. No advance while a battle exists (the `battle` preflight).
+- Time advances by a clock are session commands: broadcast them through `CampaignSession.Execute` so every client sees them.
+- `IUnitControllers` has no implementation yet; S5 or the first real unit commands (S4) supply the battle's
+  (controller slot to player) map and mark their commands `IUnitCommand`.
+- Gap, owner S2: commands an extension sends (`IExtensionCampaignCommands.Execute`) run as `PlayerId.Local` and reach
+  the campaign through the extension session, which sits under `CampaignSession`, so no `ISessionClient` hears them. S2 puts
+  the clock on the session; route extension commands through it then.
+- Untested (unreachable or needs a removed base): the `ArgumentException` path of `QuoteStillHolds`; the
+  `PlaceStartingBase` quote clear (an unplaced base cannot be quoted).
+- Same gotchas as before (below).
 - Gotchas carried from branch 2 (see `docs/battle-save-status.md` "## Next"): write test files with LF; add C# string
   literals with `\n` through the Edit tool; the test runner is Microsoft Testing Platform
   (`dotnet test --project <proj> --filter-class <full name>`); battle test helpers (`BattleStartTests.Requested`,

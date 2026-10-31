@@ -18,7 +18,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 221 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 223 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 100 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
@@ -27,7 +27,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
 | [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 332 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
-| [Oxce.UnitTests](#oxceunittests) | 109 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
+| [Oxce.UnitTests](#oxceunittests) | 110 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
 | [Oxce.FixtureTool](#oxcefixturetool) | 1 | FixtureSupport, Formats, Mods, Savegames |
 | [Oxce.ResourceBrowser](#oxceresourcebrowser) | 2 | Formats, Mods, Platform.Sdl, Rendering, Resources |
@@ -337,7 +337,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 221 files.
+`src/Oxce.Gameplay` - 223 files.
 
 ### `Oxce.Gameplay`
 
@@ -669,6 +669,18 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `WorldTrajectory` (class) [WorldTrajectory.cs](../src/Oxce.Gameplay/Campaigns/World/WorldTrajectory.cs) - Trajectory and wave timing arithmetic.
 - `WorldUfoShields` (class) [WorldUfoShields.cs](../src/Oxce.Gameplay/Campaigns/World/WorldUfoShields.cs) - GeoscapeState::time5Seconds flying-UFO block and Ufo::setShield at 4df3a5e.
 - `WorldWeightedOptions` (class) [WorldWeightedOptions.cs](../src/Oxce.Gameplay/Campaigns/World/WorldWeightedOptions.cs) - An ordered weighted option set.
+
+### `Oxce.Gameplay.Sessions`
+
+- `CampaignSession` (class) [CampaignSession.cs](../src/Oxce.Gameplay/Sessions/CampaignSession.cs) - The host's session layer (ADR 0037): players attach to it, every command carries its sender, unit commands are authorized before the simu...
+- `SessionHandle` (class) [CampaignSession.cs](../src/Oxce.Gameplay/Sessions/CampaignSession.cs) - One player's view of the session: commands are sent as that player and queries are read for that player.
+- `PlayerId` (record struct) [SessionContracts.cs](../src/Oxce.Gameplay/Sessions/SessionContracts.cs) - A player of the host's session (ADR 0037).
+- `IActorCommandTarget` (interface) [SessionContracts.cs](../src/Oxce.Gameplay/Sessions/SessionContracts.cs) - A command target that also learns who sent the command.
+- `IUnitCommand` (interface) [SessionContracts.cs](../src/Oxce.Gameplay/Sessions/SessionContracts.cs) - A command that addresses one battle unit by its stable ID.
+- `IUnitControllers` (interface) [SessionContracts.cs](../src/Oxce.Gameplay/Sessions/SessionContracts.cs) - Which player controls a unit.
+- `ISessionClient` (interface) [SessionContracts.cs](../src/Oxce.Gameplay/Sessions/SessionContracts.cs) - Receives every event the session commits, whoever caused it (ADR 0037 rule 3).
+- `SessionEvents` (record) [SessionContracts.cs](../src/Oxce.Gameplay/Sessions/SessionContracts.cs) - The events of one committed command and the player who sent it.
+- `SessionReasons` (class) [SessionContracts.cs](../src/Oxce.Gameplay/Sessions/SessionContracts.cs) - Classified refusals the session itself produces.
 
 ## Oxce.Mods
 
@@ -1602,13 +1614,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.UnitTests
 
-`tests/Oxce.UnitTests` - 109 files.
+`tests/Oxce.UnitTests` - 110 files.
 
 ### `Oxce.UnitTests`
 
 - `AllocationMeasurement` (class) [AllocationMeasurement.cs](../tests/Oxce.UnitTests/AllocationMeasurement.cs)
 
-<details><summary>108 test classes</summary>
+<details><summary>109 test classes</summary>
 
 - `ProjectDependencyTests` ([ProjectDependencyTests.cs](../tests/Oxce.UnitTests/Architecture/ProjectDependencyTests.cs))
 - `DiagnosticTests` ([DiagnosticTests.cs](../tests/Oxce.UnitTests/Core/DiagnosticTests.cs))
@@ -1656,6 +1668,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CampaignCapabilityRegistryTests` ([CampaignCapabilityRegistryTests.cs](../tests/Oxce.UnitTests/Gameplay/CampaignCapabilityRegistryTests.cs))
 - `CampaignFoundationTests` ([CampaignFoundationTests.cs](../tests/Oxce.UnitTests/Gameplay/CampaignFoundationTests.cs))
 - `CampaignLogisticsTests` ([CampaignLogisticsTests.cs](../tests/Oxce.UnitTests/Gameplay/CampaignLogisticsTests.cs))
+- `CampaignSessionTests` ([CampaignSessionTests.cs](../tests/Oxce.UnitTests/Gameplay/CampaignSessionTests.cs))
 - `CampaignTimeDispatcherTests` ([CampaignTimeDispatcherTests.cs](../tests/Oxce.UnitTests/Gameplay/CampaignTimeDispatcherTests.cs))
 - `CampaignTimeSpeedTests` ([CampaignTimeSpeedTests.cs](../tests/Oxce.UnitTests/Gameplay/CampaignTimeSpeedTests.cs))
 - `CraftLogisticsTests` ([CraftLogisticsTests.cs](../tests/Oxce.UnitTests/Gameplay/CraftLogisticsTests.cs))
@@ -1825,6 +1838,7 @@ Prefer these over local copies (see AGENTS.md, *Test conventions*).
 - `TypedRuleReplayFixtureTests.ProbeRule` (private record) [TypedRuleReplayFixtureTests.cs](../tests/Oxce.CompatibilityTests/TypedRuleReplayFixtureTests.cs)
 - `VirtualFileCatalogFixtureTests.FixtureRow` (private record) [VirtualFileCatalogFixtureTests.cs](../tests/Oxce.CompatibilityTests/VirtualFileCatalogFixtureTests.cs)
 - `ScriptedLoopClientTests.Recorder` (private class) [ScriptedLoopClientTests.cs](../tests/Oxce.UnitTests/Engine/ScriptedLoopClientTests.cs)
+- `CampaignSessionTests.Recorder` (private class) [CampaignSessionTests.cs](../tests/Oxce.UnitTests/Gameplay/CampaignSessionTests.cs)
 - `ContentSnapshotTests.TemporaryArchiveMod` (private class) [ContentSnapshotTests.cs](../tests/Oxce.UnitTests/Mods/ContentSnapshotTests.cs)
 - `InstallationContentLoaderTests.ProgressCollector` (private class) [InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs)
 - `InstallationContentLoaderTests.CancellingProgress` (private class) [InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs)

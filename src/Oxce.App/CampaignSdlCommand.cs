@@ -8,6 +8,7 @@ using Oxce.Engine.Input;
 using Oxce.Extensions;
 using Oxce.Gameplay.Battles.Terrain;
 using Oxce.Gameplay.Campaigns;
+using Oxce.Gameplay.Sessions;
 using Oxce.Mods.Bootstrap;
 using Oxce.Mods.Loading;
 using Oxce.Platform.Sdl;
@@ -52,9 +53,10 @@ internal static class CampaignSdlCommand
         OxceSaveDocument? source = null;
         var savePath = destination == "-" ? null : Path.GetFullPath(destination);
         CampaignUiSession session;
+        SessionHandle? hostSession = null;
         try
         {
-            session = loadAtStart ? Load() : CampaignUiSession.ForCampaign(campaign, extensionSession, extensionSession);
+            session = loadAtStart ? Load() : Attach();
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException)
         {
@@ -121,6 +123,16 @@ internal static class CampaignSdlCommand
                 Console.Error.WriteLine($"{diagnostic.Code}: {diagnostic.Message}");
         }
 
+        // The local player's handle: every command and query of the clients goes through the host session.
+        CampaignUiSession Attach()
+        {
+            hostSession?.Dispose();
+            var host = new CampaignSession(extensionSession, extensionSession);
+            var local = host.Attach(PlayerId.Local);
+            hostSession = local;
+            return CampaignUiSession.ForCampaign(campaign, local, local);
+        }
+
         CampaignUiSession Load()
         {
             var saveDiagnostics = new DiagnosticCollector();
@@ -134,7 +146,7 @@ internal static class CampaignSdlCommand
             campaign = restored.Campaign;
             source = restored.Source;
             var view = source.GlobeView;
-            return CampaignUiSession.ForCampaign(campaign, extensionSession, extensionSession) with
+            return Attach() with
             {
                 GlobeView = new GlobeViewState(view.Longitude, view.Latitude, view.Zoom),
             };
@@ -166,7 +178,8 @@ internal static class CampaignSdlCommand
                 .OfType<CampaignActionBlocked>().FirstOrDefault() is { } refused)
             throw new InvalidDataException("The starting base could not be placed: " + refused.Reason);
         var start = campaign.QueryOverview().Time;
-        var client = new GeoscapeClient(new GeoscapeClientSetup(CampaignUiSession.ForCampaign(campaign, campaign, campaign),
+        using var smokeLocal = new CampaignSession(campaign, campaign).Attach(PlayerId.Local);
+        var client = new GeoscapeClient(new GeoscapeClientSetup(CampaignUiSession.ForCampaign(campaign, smokeLocal, smokeLocal),
             content.RuntimeRules, geoscapeAssets, assets.Font, assets.Localize));
         static ScriptedInput Key(double seconds, uint key) => new(TimeSpan.FromSeconds(seconds),
             GameInputEvent.Key(GameInputEventKind.KeyPressed, 0, 0, 0, key, InputKeyModifiers.None));

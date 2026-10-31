@@ -5,7 +5,7 @@ namespace Oxce.Extensions;
 
 public sealed class CampaignExtensionSession :
     ICampaignQuery,
-    ICampaignCommandTarget,
+    Oxce.Gameplay.Sessions.IActorCommandTarget,
     IExtensionCampaignQueries,
     IExtensionCampaignCommands,
     IDisposable
@@ -61,7 +61,11 @@ public sealed class CampaignExtensionSession :
         return _queries.QueryStores(baseId);
     }
 
-    public CampaignCommandResult Execute(ICampaignCommand command)
+    public CampaignCommandResult Execute(ICampaignCommand command) =>
+        Execute(Oxce.Gameplay.Sessions.PlayerId.Local, command);
+
+    /// <summary>Runs the command for <paramref name="actor"/> when the wrapped target takes an actor, else as the local player.</summary>
+    public CampaignCommandResult Execute(Oxce.Gameplay.Sessions.PlayerId actor, ICampaignCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
         lock (_gate)
@@ -69,7 +73,9 @@ public sealed class CampaignExtensionSession :
             ThrowIfDisposed();
             if (_dispatching)
                 throw new InvalidOperationException("Campaign commands cannot be submitted from an extension event callback.");
-            var result = _commands.Execute(command);
+            var result = _commands is Oxce.Gameplay.Sessions.IActorCommandTarget byActor
+                ? byActor.Execute(actor, command)
+                : _commands.Execute(command);
             Dispatch(result.Events.Select(TryMap).OfType<ExtensionCampaignEvent>().ToArray());
             return result;
         }
