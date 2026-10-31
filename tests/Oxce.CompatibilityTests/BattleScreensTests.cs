@@ -342,6 +342,19 @@ public sealed class BattleScreensTests
         Assert.Equal(all.Length - 1, context.Diagnostics.Count);
     }
 
+    [Fact]
+    public void ClosingThePreBattleInventoryWithNoLiveSoldiersShowsTheEndOfBattleRefusal()
+    {
+        var (_, battle, context) = Open(BattlePhase.Inventory);
+        context.Open();
+        var screen = Assert.IsType<BattleInventoryScreen>(context.Screens.Top);
+        foreach (var unit in battle.Units.Where(static unit => unit.Faction == BattleFaction.Player)) unit.Status = BattleUnitStatus.Dead;
+        Press(context.Screens, Escape);
+        // NextTurnState::close would finish the battle (branch 7); the rules refuse it by name and the inventory stays.
+        Assert.Equal("battle.no-live-soldiers", screen.Message);
+        Assert.Same(screen, context.Screens.Top);
+    }
+
     private sealed class NoBattle : IBattleQuery
     {
         public BattleOverview? QueryBattle(BattleViewer viewer) => null;

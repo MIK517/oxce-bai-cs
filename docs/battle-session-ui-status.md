@@ -307,10 +307,10 @@ closing the pre-battle inventory replaces it straight with the battlescape. The 
 Not done (owner in brackets):
 
 - **Geoscape/logistics migration**: S6b (see the plan).
-- **`NextTurnState` itself**: the end-of-battle check and the turn-1 autosave of `NextTurnState::close` (S7, with the save acceptance); the centering is done.
+- **`NextTurnState` itself**: the centering is done. The end-of-battle check on closing the pre-battle inventory is refused by name by the rules (`battle.no-live-soldiers`, `battle.no-live-aliens` at the briefing; `finishBattle` is branch 7's) and the screen shows the code (tested). The turn-1 autosave is S6b's (host loop work, plan row).
 - Real map drawing: isometric terrain sprites, pixel scrolling, the cursor, fog shade [Phase 8 presentation]; the plan view is a placeholder. The briefing's cutscene, music and background are listed, not played.
 - Inventory drag and drop, paperdoll and item sprites; the keyboard drop picks the first accepted cell.
-- The SDL application does not open these screens yet (the host loop that creates the session and calls `BattleUiContext.Open`) [S7].
+- The SDL application does not open these screens yet (the host loop that creates the session and calls `BattleUiContext.Open`) [S6b].
 - Buttons refused by owner as client messages (`BattlescapeClient.LaterButtons` plus the `*Code` constants): kneel, walk, unit up and down, fire, both hand items, psi, special, skills, launch, reserve TU and kneel, zero TUs, end turn, abort, stats, options, minimap, Esc deselect, Ctrl-B, the digit keys (visible units), right and middle mouse buttons. The rules refuse the same actions in their branches.
 - Default keys differ from the reference's (it centers with Home, which also works; Ctrl-C toggles all layers as there; skip and undo use `K` and `R`, the level keys `[` `]`).
 - Navigator: two pops in a row reveal the middle screen once before it goes (harmless today). A map wider than 224 or longer than 200 tiles overflows the plan view.
@@ -318,7 +318,7 @@ Not done (owner in brackets):
 
 ## Next
 
-S6b — geoscape popups, naming, selecting and placing modes, logistics client and shared widgets onto `ScreenNavigator`, with the client cover from `Covers` (the plan's S6b row); then S7 — acceptance and branch audit (it also takes the `NextTurnState` turn-1 autosave and end-of-battle check, and wiring `BattleUiContext.Open` into the SDL host loop). From S6: the screens are in `Oxce.Engine/Battlescape`; `BattleUiContext.Open()` is the entry. From S5: the screens read `BattleViewModel` (`Oxce.Engine/Battlescape`) and `IBattleViewQuery`; the host loop that creates a session sets `Controllers = new BattleUnitControllers(battleQuery)`, and a screen's soldier buttons are `Next`, `Skip`, `ReselectSkipped`, the level buttons `LevelUp` and `LevelDown`, the center button `CenterOnSelection`. Buttons of later branches refuse by their owner's name. From S4:
+S6b — geoscape popups, naming, selecting and placing modes, logistics client and shared widgets onto `ScreenNavigator`, with the client cover from `Covers` (the plan's S6b row, which also takes the turn-1 autosave and wiring `BattleUiContext.Open` into the SDL host loop); then S7 — acceptance and branch audit (acceptance only). From S6: the screens are in `Oxce.Engine/Battlescape`; `BattleUiContext.Open()` is the entry. From S5: the screens read `BattleViewModel` (`Oxce.Engine/Battlescape`) and `IBattleViewQuery`; the host loop that creates a session sets `Controllers = new BattleUnitControllers(battleQuery)`, and a screen's soldier buttons are `Next`, `Skip`, `ReselectSkipped`, the level buttons `LevelUp` and `LevelDown`, the center button `CenterOnSelection`. Buttons of later branches refuse by their owner's name. From S4:
 
 - The inventory is a command set on stable IDs (`MoveInventoryItem`, `AutoPlaceInventoryItem`, both `IUnitCommand`) with
   `IBattleInventoryQuery`; the host loop that creates a
