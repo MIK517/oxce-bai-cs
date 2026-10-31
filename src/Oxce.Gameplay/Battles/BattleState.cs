@@ -128,7 +128,7 @@ internal sealed partial class BattleState
     public int Turn { get; internal set; }
 
     /// <summary>SavedBattleGame::_side: the faction whose turn it is.</summary>
-    public BattleFaction Side { get; private set; } = BattleFaction.Player;
+    public BattleFaction Side { get; internal set; } = BattleFaction.Player;
 
     /// <summary>Changes with every committed battle change, so clients know to refresh.</summary>
     public long Revision { get; private set; }

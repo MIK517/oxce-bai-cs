@@ -173,6 +173,19 @@ deploy (`battle.reinforcements-unsupported`) without drawing, so the stream is n
 lines (`strTarget`, `strCraftOrBase`) are composed by the client with its language, as the geoscape's names are, and set by
 `BeginBriefing`; the operation name is drawn from the battle's own seedless stream.
 
+Selection (branch 3, S5). In the reference `SavedBattleGame::_selectedUnit` and `_undoUnit` are the one player's selection,
+and `BattleUnit::_dontReselect` is a unit flag. The port keeps one selection per player as client state and writes the
+saved fields only for the side-owning slot: the lowest human slot among the units that fight for the side on turn. A
+`SelectUnit`, `SelectNextUnit` or `SkipUnit` from a unit another slot controls changes no saved selection or undo unit (the event
+says `Saved: false`); the skipped unit's `dontReselect` flag, a unit field, is set whoever sends it, and
+`ReselectSkippedUnit` works on the saved undo unit only. One consequence of the reference's loop stays: walking back to the only
+selectable unit keeps it, or leaves no selection when it is flagged. `selectNextPlayerUnitByDistance` sorts with `std::sort`,
+which leaves the order of equal distances open; the port takes the earlier unit in the list. A client with no selection starts
+from the first unit the selection query lists (the last one going back), since the commands address a unit; skipping from no
+selection therefore does not clear the undo unit as `btnNextStopLClick` does. Before the first turn only the inventory walk
+(`InventoryOnly`) selects, as in `InventoryState`; confirming the briefing runs `InventoryState::init`'s move off a unit without an
+inventory.
+
 ## Consequences
 
 - A generated battle's root is written as the reference's generator leaves it; only the ambience delay's value differs,

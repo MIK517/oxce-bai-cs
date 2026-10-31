@@ -14,7 +14,7 @@ Phase 7 branch 3 (`claude/battle-session-ui`), from `main` after PR #79 (branch 
 | S2 host clock, pause policy and screen stack | Done, audit pending (2026-10-31) |
 | S3 briefing and the first turn | Done, audit pending (2026-10-31) |
 | S4 inventory | Done, audit pending (2026-10-31) |
-| S5 battlescape queries and view model | Not started |
+| S5 battlescape queries and view model | Done, audit pending (2026-10-31) |
 | S6 battlescape screens | Not started |
 | S7 acceptance and branch audit | Not started |
 
@@ -241,15 +241,51 @@ Gaps with an owner:
   base screens.
 - The pre-battle inventory's unit order (previous and next soldier) is the client's over `QueryBattle`.
 
+## S5 — Battlescape queries and view model (2026-10-31)
+
+Reference: `SavedBattleGame::selectPlayerUnit`, `selectNextPlayerUnitByDistance`, `selectUnit`, `BattleUnit::isSelectable`,
+`BattlescapeState` (`btnNextSoldierClick`, `btnPrevSoldierClick`, `btnNextStopLClick`, `-MClick`, `-RClick`, `btnMapUpClick`,
+`btnMapDownClick`, `btnCenterClick`, `btnInventoryClick`, `updateSoldierInfo`, `allowButtons`), `BattlescapeGame::primaryAction`'s unit
+selection, `Camera` (`up`, `down`, `setViewLevel`, `centerOnPosition`, `toggleShowAllLayers`), `Map::drawTerrain` (what a tile shows), `InventoryState`'s
+previous and next soldier.
+
+- **Commands** (`IBattleCommand` and `IUnitCommand`, on the unit the client has selected): `SelectUnit` (a click: a live unit of the side on turn
+  that stands on the map), `SelectNextUnit(Backwards, InventoryOnly)` (the soldier buttons; `InventoryOnly` is the inventory screen's walk: reselect
+  flag ignored, an armor with an inventory required), `SkipUnit(ByDistance)` and `ReselectSkippedUnit`. Open after the briefing (before the first turn only the inventory walk, as `InventoryState` has it; confirming the briefing runs `InventoryState::init`'s move off a unit without an inventory, and when only vehicles are left the selection stays and the client sends `StartFirstTurn`) and on X-COM's turn (`allowButtons`; nothing is ever busy, the actions resolve fully). Refusals:
+  `battle.selection-unavailable`, `battle.selection-unit-unknown`, `battle.selection-nothing-to-undo`. Events `UnitSelected` and `UnitSkipped` carry `Saved`.
+  The loop of `selectPlayerUnit` is ported whole, including its wrap-around and "back at the start" cases; by distance ties go to the list order.
+- **Saved fields.** Only the side-owning slot writes `selectedUnit` and `undoUnit` (ADR 0039, intentional difference); every selection is also the client's own.
+- **Queries** (`IBattleViewQuery`, all take the viewer): `QuerySelection` (selected and undo unit when they are the viewer's side's, the selectable units in list
+  order, the writing slot), `QueryLevel(viewer, level)` (null outside the map; the discovered parts of each tile with their data set and object index, smoke, fire and
+  ground items only where the floor is discovered, the unit standing there when the viewer sees it; a tile with nothing is not listed; X-COM's viewer uses the discovered flags,
+  another side the tiles it explored, `lastExplored > 0`), `QueryUnitInfo` (`updateSoldierInfo`: bars with maxima, hands, spotted hostile units, wounded and burning units of the side; only the viewer's own live units) and
+  `QueryLegalActions` (the actions the rules accept now: next, previous, skip, skip by distance, take back, open inventory and the inventory walk, with the other units the viewer may click; before the first turn only the inventory walk).
+  No action of a later branch is listed.
+- **View model** (`Oxce.Engine/Battlescape`): `BattleCamera` (view level `up`/`down`/`setViewLevel`, `centerOnPosition` cut to one tile outside the map, show all layers) and
+  `BattleViewModel` (reads the queries when the battle revision or the view level changes, keeps this client's selection, sends the commands, centers the camera on a newly
+  selected unit unless asked not to, level buttons only on X-COM's turn). It decides nothing.
+
+Tests: `BattleViewTests` (selection refused before the briefing and on the enemy's turn; click selection and its refusals; the unit-list walk with wrap-around, out and flagged units, the
+inventory walk; skip, undo and the lone-unit case; by distance and ties; the writing slot and session authorization; a viewer sees only discovered parts, spotted units;
+another side's explored tiles and items; ground items on discovered floors; the init skip; the fallback to the saved selection and a battle that is gone; unit info; legal actions; camera bounds; the view model end to end).
+
+Gaps with an owner:
+
+- The reference's `visibleUnits` of a unit (field of view) and the tiles the selected unit sees now (`calculateFOV`, `isTileVisible`, the fog of war shade) are branch 4's; the view lists
+  spotted hostile units and discovered tiles only.
+- `clearUnitSelection` when a unit dies and `_lastSelectedUnit`, `handlePanickingUnit`'s selection and the reselection at the end of a turn (`getNextUnitToSelect`) are branch 6's.
+- With no selection a client starts from `SelectUnit` on the first listed unit; a command on a selected unit is what the session can authorize.
+- `updateSoldierInfo`'s list of stunned allies with negative health regeneration, the `VISIBLE_MAX` cap and the burning option (`oxceShowBurningAsWounded`) are the screen's over `QueryUnitInfo`. Fire is reported on every discovered floor (the reference draws it with smoke).
+- The camera's pixel offset, scrolling, the cursor and `Map` drawing are the screens' (S6); the view model keeps only the map-side state.
+
 ## Next
 
-S5 — Battlescape queries and view model (see the plan's slice table). From S4:
+S6 — Battlescape screens (see the plan's slice table). From S5: the screens read `BattleViewModel` (`Oxce.Engine/Battlescape`) and `IBattleViewQuery`; the host loop that creates a session sets `Controllers = new BattleUnitControllers(battleQuery)`, and a screen's soldier buttons are `Next`, `Skip`, `ReselectSkipped`, the level buttons `LevelUp` and `LevelDown`, the center button `CenterOnSelection`. Buttons of later branches refuse by their owner's name. From S4:
 
 - The inventory is a command set on stable IDs (`MoveInventoryItem`, `AutoPlaceInventoryItem`, both `IUnitCommand`) with
-  `IBattleInventoryQuery`; S5's selection (`SelectUnit`, `SkipUnit`) should be `IUnitCommand`s too, and the host loop that creates a
+  `IBattleInventoryQuery`; the host loop that creates a
   `CampaignSession` must set `Controllers = new BattleUnitControllers(battleQuery)` (S6 wires it; `BattleUnitView.ControllerSlot` is the data).
-- The pre-battle inventory's close is still `StartFirstTurn` (it saves the equipment layout first). The screens' previous and next
-  soldier are queries over `QueryBattle` plus `SelectUnit`; the inventory takes any live X-COM unit by ID.
+- The pre-battle inventory's close is still `StartFirstTurn` (it saves the equipment layout first). The inventory screen's previous and next soldier are `SelectNextUnit(InventoryOnly)` (`BattleViewModel.NextInventoryUnit`); the inventory takes any live X-COM unit by ID.
 - Ground items are per tile in `ArrivalOrder` (`ItemsOnTile`); any new code that puts an item on a tile or in an inventory should take
   `NextArrival()` (`AddItemOnTile` and the inventory moves do).
 - The inventory's `Smart` flag is the client's `oxceSmartCtrlEquip` option (default true in the reference); the client keeps its options.

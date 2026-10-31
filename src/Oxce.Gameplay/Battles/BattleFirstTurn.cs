@@ -169,9 +169,13 @@ internal sealed partial class BattleState
     }
 
     /// <summary>The briefing is confirmed: the pre-battle inventory follows.</summary>
-    internal void EnterInventory()
+    internal void EnterInventory(RuntimeRuleCatalog rules)
     {
         Phase = BattlePhase.Inventory;
+        // InventoryState::init: a selected unit without an inventory gives way to the next unit that has one. When none has (only vehicles),
+        // the reference closes the inventory at once; the selection then stays and the client sends StartFirstTurn.
+        if (SelectedUnitId is { } id && UnitById(id) is { } selected && !HasInventory(rules, selected))
+            SelectedUnitId = SelectPlayerUnit(rules, selected, 1, checkReselect: false, setReselect: false, checkInventory: true)?.Id;
         Revision++;
     }
 

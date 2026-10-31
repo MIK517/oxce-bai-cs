@@ -546,7 +546,7 @@ public sealed class BattleFirstTurnTests
             Assert.Equal(BattlePhase.Briefing, battle.Phase);
             Assert.Equivalent(before.Item1, campaign.Capture(), strict: true);
             // The first turn checks the same, should a script bind after the confirmation.
-            battle.EnterInventory();
+            battle.EnterInventory(campaign.Content.RuntimeRules);
             Assert.Equal("battle.new-turn-script-unsupported", Refusal(campaign, new StartFirstTurn()));
             Assert.Equal(0, battle.Turn);
         }

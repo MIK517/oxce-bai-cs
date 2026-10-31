@@ -30,7 +30,7 @@ internal interface ICampaignDeploymentHandOver
 /// The campaign's battle (<c>SavedGame::_battleGame</c>): at most one, generated from the pending deployment
 /// request. While it exists the campaign refuses every strategic command and time.
 /// </summary>
-internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapability, IBattleQuery, IBattleBriefingQuery, IBattleInventoryQuery
+internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapability, IBattleQuery, IBattleBriefingQuery, IBattleInventoryQuery, IBattleViewQuery
 {
     internal static readonly CampaignReason BattleInProgress = new("battle.in-progress",
         "A battle is in progress; the campaign continues after its debriefing.");
@@ -57,12 +57,17 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         registry.Query<IBattleQuery>(this);
         registry.Query<IBattleBriefingQuery>(this);
         registry.Query<IBattleInventoryQuery>(this);
+        registry.Query<IBattleViewQuery>(this);
         registry.Command<StartBattle>(command => Start(command));
         registry.Command<BeginBriefing>(BeginBriefing);
         registry.Command<ConfirmBriefing>(_ => ConfirmBriefing());
         registry.Command<StartFirstTurn>(_ => StartFirstTurn());
         registry.Command<MoveInventoryItem>(MoveInventory);
         registry.Command<AutoPlaceInventoryItem>(AutoPlaceInventory);
+        registry.Command<SelectUnit>(SelectUnit);
+        registry.Command<SelectNextUnit>(SelectNextUnit);
+        registry.Command<SkipUnit>(SkipUnit);
+        registry.Command<ReselectSkippedUnit>(ReselectSkippedUnit);
         registry.Command<UseInventoryFeature>(command =>
             Blocked(_battle is null or { Phase: BattlePhase.Briefing } ? BattleInventoryReasons.Unavailable : BattleInventoryReasons.For(command.Feature)));
         // The geoscape is frozen during a battle: time stops in the preflight, every other command here.
@@ -239,7 +244,7 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         if (battle.FirstTurnRefusal(content, BattleRestoreCampaign.From(campaign)) is { } later) return Blocked(later);
         var (units, items) = battle.SpawnFromPrimedItems(content, (int)campaign.Difficulty, campaign.Random);
         battle.CheckBugHuntMode(rules);
-        battle.EnterInventory();
+        battle.EnterInventory(rules);
         return new CampaignCommandResult([new BriefingConfirmed(units, items)]);
     }
 
@@ -356,6 +361,48 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
             }
         return written;
     }
+
+    private CampaignCommandResult SelectUnit(SelectUnit command)
+    {
+        if (_battle is not { } battle) return Blocked(BattleSelectionReasons.Unavailable);
+        if (battle.Select(command.UnitId, out var saved) is { } refusal) return Blocked(refusal);
+        return new CampaignCommandResult([new UnitSelected(command.UnitId, saved)]);
+    }
+
+    private CampaignCommandResult SelectNextUnit(SelectNextUnit command)
+    {
+        if (_battle is not { } battle) return Blocked(BattleSelectionReasons.Unavailable);
+        if (battle.SelectAdjacent(campaign.Content.RuntimeRules, command.UnitId, command.Backwards, command.InventoryOnly, out var result, out var saved) is { } refusal)
+            return Blocked(refusal);
+        // Nothing to select leaves the selection empty, as in the reference; the event names the unit, or -1.
+        return new CampaignCommandResult([new UnitSelected(result?.Id ?? -1, saved)]);
+    }
+
+    private CampaignCommandResult SkipUnit(SkipUnit command)
+    {
+        if (_battle is not { } battle) return Blocked(BattleSelectionReasons.Unavailable);
+        if (battle.Skip(campaign.Content.RuntimeRules, command.UnitId, command.ByDistance, out var result, out var saved) is { } refusal)
+            return Blocked(refusal);
+        return new CampaignCommandResult([new UnitSkipped(command.UnitId, result?.Id ?? -1, saved)]);
+    }
+
+    private CampaignCommandResult ReselectSkippedUnit(ReselectSkippedUnit command)
+    {
+        if (_battle is not { } battle) return Blocked(BattleSelectionReasons.Unavailable);
+        if (battle.ReselectSkipped(campaign.Content.RuntimeRules, command.UnitId) is { } refusal) return Blocked(refusal);
+        return new CampaignCommandResult([new UnitSelected(command.UnitId, true)]);
+    }
+
+    public BattleSelectionView? QuerySelection(BattleViewer viewer) =>
+        campaign.Read(() => _battle?.SelectionView(campaign.Content.RuntimeRules, viewer));
+
+    public BattleLevelView? QueryLevel(BattleViewer viewer, int level) => campaign.Read(() => _battle?.LevelView(viewer, level));
+
+    public BattleUnitInfo? QueryUnitInfo(BattleViewer viewer, int unitId) =>
+        campaign.Read(() => _battle?.UnitInfo(campaign.Content.RuntimeRules, viewer, unitId));
+
+    public BattleLegalActions? QueryLegalActions(BattleViewer viewer, int unitId) =>
+        campaign.Read(() => _battle?.LegalActions(campaign.Content.RuntimeRules, viewer, unitId));
 
     public BattleInventoryView? QueryInventory(BattleViewer viewer, int unitId) =>
         campaign.Read(() => _battle?.InventoryView(campaign.Content.RuntimeRules, viewer, unitId));
