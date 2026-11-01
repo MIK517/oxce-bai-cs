@@ -4,8 +4,9 @@ Plan date: 2026-10-18. Baseline: `main` at `2b0c81fb` (audit cleanup, PR #77). R
 `../oxce-bai` (`4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`).
 Status: branch 1 (`claude/battle-generation`) is complete and merged (PR #78); its slices, audits and evidence are
 recorded in [battle generation status](battle-generation-status.md). Branch 2 (`claude/battle-save`) is complete and merged (PR #79):
-[battle save status](battle-save-status.md). Branch 3 (`claude/battle-session-ui`) is planned:
-[battle session and UI status](battle-session-ui-status.md).
+[battle save status](battle-save-status.md). Branch 3 (`claude/battle-session-ui`) is complete and merged (PR #80):
+[battle session and UI status](battle-session-ui-status.md). Branch 4 (`claude/battle-movement`) is planned:
+[battle movement status](battle-movement-status.md).
 
 ## Goal and scope
 
@@ -314,6 +315,181 @@ Acceptance: each generated acceptance battle of branch 1 passes the briefing, th
 first-turn restriction retired) and reloaded into the battlescape, and the private active-battle saves open directly.
 A client of another faction sees only its own spotted state. The geoscape behaves as before through the session and the
 host clock, with the existing geoscape tests unchanged.
+
+## Branch 4 — Battle movement
+
+Reference: `Pathfinding` (`calculate`, `getTUCost`, `isBlocked`, `isBlockedDirection`, `canFallDown`, `isOnStairs`,
+`validateUpDown`, `bresenhamPath`, `aStarPath`, `findReachable`, `findReachablePathFindingNodes`, `previewPath`,
+`getMovementType`), `PathfindingNode`, `PathfindingOpenSet`, `UnitWalkBState`, `UnitTurnBState`, `UnitFallBState`,
+`BattlescapeGame` (`kneel`, `checkReservedTU`, `checkForProximityGrenades`, `primaryAction` and `secondaryAction` for
+moves and turns), `BattleActionCost` (`updateTU`, `haveTU`), `BattleUnit` (`startWalking`, `keepWalking`, `lookAt`,
+`turn`, `abortTurn`, `kneel`, `getTurnCost`, the kneel costs, `getReactionScore`, `updateTileFloorState`,
+`haveNoFloorBelow`, `setTile`, `setPosition`, the visible-unit and visible-tile lists, `setTileLastSpotted`,
+`updateEnemyKnowledge`, `knockOut`), `TileEngine` (lighting: `calculateLighting`, `calculateSunShading`,
+`calculateTerrainBackground`, `calculateTerrainItems`, `calculateUnitLighting`, `addLight`, `togglePersonalLighting`;
+blockage: `blockage`, `horizontalBlockage`, `verticalBlockage`; sight: `calculateFOV` (both forms),
+`calculateTilesInFOV`, `calculateUnitsInFOV`, `setupEventVisibilitySector`, `recalculateFOV`, `calculateLineTile`,
+`visible`, `getSightOriginVoxel`, `getOriginVoxel`, `getVisibleDistanceMaxHelper`, `getTrajectoryDataHelper`,
+`canTargetUnit`, `calculateLineVoxel` and `voxelCheck` for sight; `getSpottingUnits` for its spotting; doors: `unitOpensDoor`, `checkAdjacentDoors`, `closeUfoDoors`; `applyGravity`, `hit` (its tile
+path), `hitTile`, `getDirectionTo`), `Tile` (`openDoor`, `closeUfoDoor`, `hasNoFloor`, `hasLadder`, `getTUCost`, the
+light layers, `ignite`, `addSmoke`, `setFire`, `setSmoke`, `damage`, `destroy`, `prepareNewTurn`, `setDiscovered`,
+`setVisible`), `SavedBattleGame` (`prepareNewTurn`'s fire and smoke part, `addFallingUnit`, `loadMapResources`'
+lighting and field of view), `InventoryState` (the gravity, lighting and field of view on closing), `Mod` (the battle
+constants: `maxViewDistance`, `maxDarknessToSeeUnits`, `lighting` `maxStatic`, `maxDynamic` and `enhanced`,
+`tooMuchSmokeThreshold`, `extendedMovementCostRounding`, `extendedRunningCost`), `Armor` (move costs, `turnCost`, `turnBeforeFirstStep`, the
+kneel and personal-light fields, `allowsMoving`, `allowsKneeling`).
+
+### Branch decisions
+
+- **Moves are commands; each resolves whole (D3).** Walking (with running, strafing and flying up and down), turning,
+  kneeling and opening a door are commands on stable unit IDs, authorized by the session as branch 3's are. One
+  command runs the reference's state machine to the end: every step, the turns before and between steps, doors opened
+  on the way, the light and field-of-view updates after each step, units spotted, stops, falls and the units that
+  fall with it. It returns ordered events (a step, a turn, a door, a fall, the units spotted, the stop and its reason)
+  that clients replay; animation decides nothing. Events carry IDs and positions only, and clients refresh what they
+  draw from viewer-scoped queries, so an event never shows a viewer more than its query does.
+- **Animation time collapses.** The reference's walk phases, the UFO door's opening frames (`Tile::animate`, frame 7
+  is open) and the state intervals are presentation. A UFO door a command opens is fully open when the command ends,
+  and a walk that waits for a door to open (`unitOpensDoor` returning 3) continues at once. Where this changes a rule
+  outcome, the difference goes into ADR 0040 (battle movement intentional differences), which the first slice that
+  needs it creates.
+- **The pathfinding is the reference's, on the port's tile arrays.** `getTUCost` with every movement type and action
+  move (`BAM_NORMAL`, `BAM_RUN`, `BAM_STRAFE`, `BAM_SNEAK`), the armor move costs and the
+  `extendedMovementCostRounding` modes; A* and the Bresenham shortcut with the reference's tie order, so the chosen
+  path is the reference's for a given map and unit. `calculate` skips the Bresenham shortcut for a brutal unit
+  (`BattleUnit::isBrutal`: hostile units by `brutalAI`, default on; neutral units by `brutalCivilians`, default off;
+  player units when AI-controlled; the unit rule's `isBrutal` and `isNotBrutal` override), so S2 projects the unit
+  rule's two flags and takes the options' defaults. `BAM_MISSILE` (guided missiles) is branch 5's and is not
+  reachable from a branch 4 command. The `sneak` flag (the `sneakyAI` option and brutal AI) is a parameter that
+  branch 6's AI sets; the player's moves pass it off. Paths and reachable tiles are queries (the legal-action display
+  and the path preview read them).
+- **What a player's walk can ask for.** With the `strafe` option off (its default), Ctrl and Alt do nothing in
+  `primaryAction`, so a player's walk is always `BAM_NORMAL`; running, strafing and sneaking are parameters of the
+  same rules that branch 6's AI uses (it runs). The `Walk` command carries the target, the move type (the player's
+  client sends `BAM_NORMAL`) and `ignoreSpottedEnemies`, which Shift sets with default options
+  (`ignoreSpottedEnemies = (run && extendedRunningCost) || shift`): such a walk does not stop on newly spotted units.
+  S8 tests the other move types at rule level. A turret unit turns its body; the turret alone turns only when
+  targeting or strafing (branch 5, and the `strafe` option).
+- **Action costs and reserved time units arrive here.** `checkReservedTU`, `Tile::openDoor` and the reaction check
+  read `BattleActionCost` for the reserved action and the main-hand weapon, so S1 ports the time and energy cost of an
+  action from the item rules (`updateTU`, `haveTU`) and `checkReservedTU` for the player's side (the hostile side's
+  percentage reserve is read by branch 6's AI). The reserve buttons (`battle.reserve-time-units-unsupported`,
+  `battle.reserve-kneel-unsupported`) stay branch 5's; a loaded save's `TUReserved` and `kneelReserved` are honoured.
+- **Visibility is per faction (D2).** The player's spotting is the reference's `visible` flag with its set and reset
+  points: `calculateUnitsInFOV` and `getSpottingUnits` set it for a unit a player unit sees, and a non-player mover's
+  finished step clears it before the step's field-of-view update sets it again. The hostile and neutral factions'
+  spotting flags (`SpottedByHostile`, `SpottedByNeutral`, saved by branch 2 in `oxcePortBattle`) follow the same
+  rule for their own units: set where a unit of that faction adds the unit to its visible-unit list, and cleared for
+  every faction other than the mover's own at the end of each step, before the update. The reference lists only
+  hostile and non-hostile pairs (`calculateUnitsInFOV`), so the neutral faction never spots player units and the
+  player's units never list neutrals (the player's `visible` flag still covers neutrals). The saved flags are
+  authoritative: a load keeps them and the recomputation only adds, as `loadMapResources`' `recalculateFOV` only sets
+  the player's `visible`. Tile discovery for the player is the reference's `discovered` flags; the
+  hostile and neutral factions' discovery is set by the same `calculateTilesInFOV` for their units and saved in
+  `oxcePortBattle` (an ADR 0039 line in S4), since no reference rule reads it but a viewer of that faction does. The
+  per-unit lists (visible units, units spotted this turn, visible tiles, line-of-fire tiles) are runtime state,
+  recomputed on load as `loadMapResources` does.
+- **Sight takes the voxel tests it needs from branch 5's list.** `visible` decides through `canTargetUnit` on the
+  voxel map (LOFTEMPS data, `voxelCheck`, the line from `getSightOriginVoxel`), with smoke and fire density along the
+  line and the darkness and camouflage limits, and `calculateLineVoxel` under them. `getSpottingUnits` also spots
+  through `canTargetUnit`, from the snap-shot origin (`getOriginVoxel` for `BA_SNAPSHOT`) and with `checkViewSector`
+  or the "got hit" memory (the AI's `wasHitBy`, a player unit's runtime hit state, `meleeAttackedBy` under
+  `extendedMeleeReactions` 2). S4 ports this sight subset with `getOriginVoxel`'s snap-shot form; branch 5 extends
+  the same code to firing (accuracy, exposure, the off-centre origins of `battleRealisticAccuracy`). Tile sight (`calculateTilesInFOV`) is the
+  tile-space Bresenham line `calculateLineTile` with the blockage cache.
+- **Lighting is runtime state.** The four light layers and the blockage cache are not saved; they are computed at
+  generation (`BattlescapeGenerator` after the map), on load (`loadMapResources`) and after every change the
+  reference recomputes them for. `togglePersonalLight` is saved battle state already; the option
+  `oxceTogglePersonalLightType` is at its default (per battle). A loaded battle's lighting and field of view equal
+  those of the never-saved battle, which the reload comparisons check.
+- **User options are at their defaults.** `strafe` off, `battleRealisticAccuracy` off, `oxceEnableOffCentreShooting`
+  off, `sneakyAI` off, `strictBlockedChecking` off, `oxceTogglePersonalLightType` 1, `forcedAbsoluteCosts` off (read by
+  `BattleActionCost::updateTU`, S1), `updateTurnsSinceSeenByClue` on (`updateEnemyKnowledge`, S6), `brutalAI` on and
+  `brutalCivilians` off (`isBrutal`, S2). A rule that reads another option
+  names it in its slice and takes the default; options become settings with Phase 8's options screen.
+- **Interruptions owned by later branches are refused before the first change (D4).** A walk, a kneel and a fall run
+  the reference's checks for reaction fire (`checkReactionFire`, branch 5), proximity grenades and death traps
+  (`checkForProximityGrenades`, branch 5) and the burn-floor abilities (`SPECAB_BURNFLOOR`, S9 of this branch); a
+  player's turn does not (only the AI's turn-then-kneel does, branch 6). A command whose planned steps could reach
+  one of them is refused with a named reason before any change, using only state conditions (no forecast):
+  - reaction fire: an opposing unit that passes the state filters of `getSpottingUnits` and `determineReactionType`
+    (not out, not over its out threshold, not the side, not a civilian unless the mover is a non-ignored hostile, a
+    reaction score above zero, not respawning, and a reaction weapon that `canUseWeapon` allows for `BA_HIT` or
+    `BA_SNAPSHOT` with ammo for that action and the time units for its cost, range and melee reach not checked)
+    within `maxViewDistance` of a planned position. A unit that fails these filters can never react, so the command
+    runs without one; `getSpottingUnits`' spotting side effects (`setVisible` for a player spotter,
+    `addToVisibleUnits`) still happen at every step, kneel and landing for every spotter, weapon or not, and are
+    ported with the commands (S5 first);
+  - proximity: a planned position from whose tiles, widened by one on each side, any item's `fuseProximityEvent`
+    could change something: a primed proximity grenade or grenade that would explode, a `proximityTrigger` item whose
+    fuse it would enable (the fuse type `BFT_NONE` included), a `proximityExplode` item it would remove, an item whose
+    glow it would change (a flare); or a death-trap floor (`STR_DEATH_TRAP_<n>`).
+
+  The refusals over-approximate (a walk the reference would complete may be refused), never under-approximate,
+  so every completed command is the reference's. Names: `battle.reaction-fire-unsupported` and
+  `battle.proximity-trigger-unsupported` (branch 5), `battle.burn-floor-unsupported` (S9 retires it). Because these
+  read units the player may not see, the refusal tells the player that an unseen unit is near; this named leak ends
+  with branch 5. AI reactivation (`checkForReactivation`, the AI's `wantToEndTurn`) is AI-module state that only branch
+  6's AI turn reads; it is not modelled until then and needs no refusal.
+- **Falls and casualties.** A unit that falls onto another that finds no escape knocks it out (`knockOut`, or
+  `convertUnit` for a unit with a `spawnUnit`), and `checkForCasualties` pushes `UnitDieBState` next, so the unit
+  becomes unconscious within the same action, before a walk that fell resumes its path. Both are branch 6's. A
+  command (a walk, and the first turn's spawn falls) whose planned fall lands on a unit is therefore refused before
+  its first change with `battle.casualties-unsupported` (branch 6) unless `UnitFallBState`'s escape rule, applied to
+  the state before the command with the mover's planned positions counted as occupied, finds that unit an escape
+  tile; a fall whose escape exists runs, the unit below moving out of the way. S9 applies the same rule to the falls
+  a burnt floor starts.
+- **Fire, smoke and terrain destruction.** The tile part of `hit` (`hitTile`, `Tile::damage`, `destroy`, the
+  objective count, the base defense module map, gravity, light and sight updates) is ported for the burn-floor
+  abilities and is the code branch 5's explosions call. Its unit part (a corpse in the floor's inventory, `hitUnit`)
+  and a destroyed part that starts a terrain explosion (`setExplosive`) are refused by branch 5's names. The fire and
+  smoke spread of `SavedBattleGame::prepareNewTurn` (spread, burn-out, destruction, gravity, `Tile::prepareNewTurn`'s
+  averaging) is a rule routine that branch 6's end of turn calls; its environmental damage (`applyEnvi`,
+  `calculateEnviDamage`) is branch 6's. `closeUfoDoors` is likewise a routine for branch 6's end of turn.
+- **When the battle computes light and sight.** As the reference: lighting after map generation; lighting and every
+  unit's field of view on load; at the first turn, on closing the pre-battle inventory (`InventoryState`'s destructor:
+  gravity on the selected unit's tile, item lighting, `recalculateFOV`) and in `updateSoldierInfo`; after each command
+  that the reference follows with an update. Branch 2 and 3 tests that compare a battle with its reload or its
+  generated form compare the recomputed state too.
+- **Retired and inherited refusals.** S7 retires `battle.spawn-gravity-unsupported` (the spawned unit falls,
+  `applyGravity`). Branch 3's notes disagree on `SpawnNeedsGravity` and `FallsAt` (once "the checks it replaces",
+  once "the checks to keep"): the refusal goes, and S7 reuses `FallsAt`'s predicate where the fall needs it and
+  removes what nothing calls. The battlescape buttons `battle.kneel-unsupported`,
+  `battle.walking-unsupported`, `battle.unit-up-unsupported`, `battle.unit-down-unsupported` and the inputs
+  `battle.visible-unit-center-unsupported`, `battle.secondary-action-unsupported` and
+  `battle.middle-button-unsupported` become commands or views in S10 (or are reassigned there with a reason).
+- **Scripts.** The armor's `visibilityUnit` script changes whether a unit is seen. Battle script bindings are branch
+  8's, so a battle whose rules bind it is refused at the briefing and for a loaded battle's commands with
+  `battle.visibility-script-unsupported` (branch 8), as branch 3 refuses the new-turn scripts. `selectMoveSoundUnit`
+  only picks a sound the client plays; the client's sound is presentation (Phase 8), and S8 confirms that the hook
+  changes no battle state.
+
+### Slices
+
+| Slice | Scope | Tests beyond the corpus |
+|---|---|---|
+| S0 | This plan and the [battle movement status](battle-movement-status.md) record | none |
+| S1 | Movement groundwork: the battle constants (`extendedRunningCost` included) and armor movement fields in the runtime rules; `BattleActionCost` (`updateTU`, `haveTU`) and `checkReservedTU` for the player's side; unit movement state and primitives (`lookAt`, `turn`, `abortTurn`, `startWalking` and `keepWalking`'s tile changes collapsed to whole steps, `setTile`, `updateTileFloorState`, `haveNoFloorBelow`, the turn and kneel costs, `getReactionScore`) | each reserve mode and its fallbacks (auto to snap to aimed to none, kneel reserve); flat and percent action costs; a big unit's tiles after a step; lookAt over each direction and the shortest turn; `forcedAbsoluteCosts` at its default |
+| S2 | Pathfinding: `getTUCost` (walls, floors, stairs and ladders, up and down, falling, big units, fire penalty, TFTD smoke cost, strafe), the floor and unit parts of `isBlocked` and `isBlockedDirection`, `canFallDown`, `isOnStairs`, `validateUpDown`, `bresenhamPath`, `aStarPath`, `calculate`'s destination adjustments, `findReachable` and `findReachablePathFindingNodes`; path, path cost and reachable-tile queries | synthetic maps: a wall, a door, a diagonal past a corner, stairs up and down, a ladder, a hole to fall through, a big unit, a flying unit going up, an unreachable tile, the TU limit, energy; the movement cost rounding modes; a brutal unit taking A*; the A* and Bresenham choices pinned |
+| S3 | Lighting: the light layers, sun shading, fire, item and unit light, `addLight` classic and enhanced, the blockage cache and `blockage`, `horizontalBlockage`, `verticalBlockage` (`DT_NONE`, `DT_SMOKE`, `DT_IN`), personal light and its toggle; lighting after generation and on load; the tile shade query | day and night shade, a roof's shade at dusk, a light source object, a flare on the ground and in a hand, a unit on fire, enhanced lighting blocked by a wall, smoke reducing light, the toggle |
+| S4 | Field of view and per-faction visibility: `calculateLineTile`, `calculateTilesInFOV` with the event sector, discovery (the walls east and south), the voxel sight subset (`voxelCheck`, `calculateLineVoxel`, `canTargetUnit` for sight, `getSightOriginVoxel`, `getOriginVoxel`'s snap-shot form, smoke and fire density, darkness, psi vision and camouflage limits), `visible`, `calculateUnitsInFOV` (the spotting fields: `tileLastSpotted`, turns since seen and spotted, the sniper fields, `visible`), `calculateFOV` by position and radius, `recalculateFOV`; when the battle runs them (load, the first turn, the inventory's close); per-faction spotting and discovery, the hostile and neutral discovery in `oxcePortBattle`; viewer queries for discovered tiles and the selected unit's visible units; the `visibilityUnit` refusal | a unit behind a wall unseen, through a window seen, in smoke and in darkness at each limit; psi vision through a wall; a hostile viewer's discovery saved and reloaded; a loaded battle's field of view equal to the never-saved one; each faction's view of the same unit |
+| S5 | Turning and kneeling: `TurnUnit` (`UnitTurnBState`: the cost per eighth, a turret unit's body, a stop when it spots a unit, the reserve check; no reaction check) and `Kneel` (`BattlescapeGame::kneel`, the armor's `allowsKneeling`, floating units, the reaction-fire refusal and `getSpottingUnits`' spotting), light and sight after each; events | each turn direction and its cost; a stop on spotting; a turn next to an armed opposing unit completes; kneel and stand up costs; a refused kneel (flying, armor, TU); a kneel refused for an armed reactor in range, completed with a weaponless one in range (which spots the kneeler) and with none in range |
+| S6 | Doors: `unitOpensDoor` (the right-click form through turning, the walking form for S8), `Tile::openDoor` (a swinging door to its alternative object, a UFO door opened at once), `checkAdjacentDoors`, the TU and energy cost and the reserve, `updateEnemyKnowledge`, light and sight through the doorway; `closeUfoDoors` as a routine for branch 6 (a big unit in the doorway keeps it open) | a swinging door, a UFO door row, a big unit refused a swinging door, a door blocked by a unit, not enough TUs (result 4) and the reserve (5); `closeUfoDoors` with a big unit in the door |
+| S7 | Gravity and falling: `applyGravity` (units and items, flying units), the fall routine of `UnitFallBState` (units falling together, units below moving out of the way, the escape rule and the `battle.casualties-unsupported` refusal when a planned fall finds no escape), the reaction and proximity refusals and `getSpottingUnits`' spotting after landing; the spawn falls and `battle.spawn-gravity-unsupported` retires; the inventory's close applies gravity | a unit falling two levels; a flying unit over a hole; items falling to the floor below; a unit landing on another that escapes, and a start refused when it could not; a primed spawn item's unit falls at the first turn |
+| S8 | Walking and flying: `Walk` (`UnitWalkBState` whole: the turns before and between steps and `turnBeforeFirstStep`, TU and energy per step, the reserve, doors on the way, units in the way, the ladder "jump", falls during a walk, stops on spotting and `ignoreSpottedEnemies`, `allowsMoving`, `getSpottingUnits`' spotting per step), the move types at rule level, unit up and down (`validateUpDown`), the interruption refusals; light and sight after each step; the selection kept; events | a straight walk, a diagonal, stairs, a ladder, through a door, a stop on spotting with its TU, a Shift walk past a spotted unit, a stop at a unit in the way, a fall onto a unit with and without an escape, a walk into a hole, flying up and down, running costs, a strafe step, not enough TU and energy, each refusal (each proximity case) |
+| S9 | Fire, smoke and terrain destruction: `Tile::ignite`, `addSmoke`, `setFire`, `setSmoke`, `damage`, `destroy` (death objects, objective count, the base defense module map), `hitTile`, the tile path of `hit` with its light, sight and gravity; the burn-floor abilities on walks and falls (`battle.burn-floor-unsupported` retires); the fire and smoke spread routine of `prepareNewTurn` for branch 6 | a burn-floor unit burning a hole and falling through; fire spreading past and stopped by a wall; fire burning out and destroying a flammable object; smoke spreading, rising from fire and averaging; an objective destroyed; a terrain explosion and a corpse hit refused by branch 5's names |
+| S10 | Battlescape client: walk by tile click with the path preview and its TU and energy markers, Shift for `ignoreSpottedEnemies`, kneel, unit up and down, turn by right-click, the visible-unit buttons, discovered tiles and shade on the plan view, events replayed; the later-button refusals of this branch replaced | scripted loop tests: walk, turn, kneel, open a door, fly up; a refused walk shows its reason; only the viewer's discovered tiles are drawn |
+| S11 | Acceptance on branch 1's battles and the private active-battle saves (below); pathfinding and field-of-view timings in the performance baselines | none beyond acceptance |
+| — | Branch audit (`git diff main...HEAD`) | — |
+
+Acceptance: in each acceptance battle of branch 1 that starts (the three Rosigma battles stay refused at the briefing
+by branch 8's `battle.new-turn-script-unsupported`), after the first turn a soldier leaves the craft along a computed
+path, turns, kneels and stands, and opens a door where the map has one; the soldier's field of view discovers tiles
+and spots units as the reference's rules say, the battle saves and reloads with equal lighting, field of view and
+spotting, and the battle still validates. Each private active-battle save loads with its lighting and field of view
+computed, and a player unit that is free to move walks (or the walk is refused by a named reason of a later branch).
+A viewer of another faction sees only that faction's discoveries and spotted units. Pathfinding and field-of-view
+costs on the largest acceptance map are recorded in the performance baselines.
 
 ## Inherited refusals
 
