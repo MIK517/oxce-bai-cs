@@ -67,6 +67,12 @@ public sealed class CampaignStartSettings
         ExtendedForceSpawn = builder.ExtendedForceSpawn;
         ExtendedInventorySlotSorting = builder.ExtendedInventorySlotSorting;
         ExtendedItemReloadCost = builder.ExtendedItemReloadCost;
+        ExtendedRunningCost = builder.ExtendedRunningCost;
+        ExtendedMovementCostRounding = builder.ExtendedMovementCostRounding;
+        TooMuchSmokeThreshold = builder.TooMuchSmokeThreshold;
+        MaximumStaticLightDistance = builder.MaximumStaticLightDistance;
+        MaximumDynamicLightDistance = builder.MaximumDynamicLightDistance;
+        EnhancedLighting = builder.EnhancedLighting;
         ShareAmmoCategories = builder.ShareAmmoCategories;
         BaseDefenseMapFromLocation = builder.BaseDefenseMapFromLocation;
         AlienFuelName = builder.AlienFuelName;
@@ -240,6 +246,20 @@ public sealed class CampaignStartSettings
     public bool ExtendedInventorySlotSorting { get; init; }
     public bool ExtendedItemReloadCost { get; init; }
 
+    /// <summary>Mod::EXTENDED_RUNNING_COST (<c>extendedRunningCost</c>): running costs per step as walking does and sets <c>ignoreSpottedEnemies</c>.</summary>
+    public bool ExtendedRunningCost { get; init; }
+
+    /// <summary>Mod::EXTENDED_MOVEMENT_COST_ROUNDING (<c>extendedMovementCostRounding</c>): 0 truncate, 1 round, 2 round up.</summary>
+    public int ExtendedMovementCostRounding { get; init; }
+
+    /// <summary>Mod::getTooMuchSmokeThreshold (<c>tooMuchSmokeThreshold</c>).</summary>
+    public int TooMuchSmokeThreshold { get; init; } = 10;
+
+    /// <summary>Mod::getMaxStaticLightDistance, getMaxDynamicLightDistance and getEnhancedLighting (<c>lighting</c>: maxStatic, maxDynamic, enhanced).</summary>
+    public int MaximumStaticLightDistance { get; init; } = 16;
+    public int MaximumDynamicLightDistance { get; init; } = 24;
+    public int EnhancedLighting { get; init; }
+
     /// <summary>Mod::getShareAmmoCategories (<c>shareAmmoCategories</c>).</summary>
     public bool ShareAmmoCategories { get; init; }
 
@@ -349,6 +369,12 @@ internal sealed class CampaignStartSettingsBuilder
     public bool ExtendedForceSpawn { get; set; }
     public bool ExtendedInventorySlotSorting { get; set; }
     public bool ExtendedItemReloadCost { get; set; }
+    public bool ExtendedRunningCost { get; set; }
+    public int ExtendedMovementCostRounding { get; set; }
+    public int TooMuchSmokeThreshold { get; set; } = 10;
+    public int MaximumStaticLightDistance { get; set; } = 16;
+    public int MaximumDynamicLightDistance { get; set; } = 24;
+    public int EnhancedLighting { get; set; }
     public bool ShareAmmoCategories { get; set; }
     public int BaseDefenseMapFromLocation { get; set; }
     public string AlienFuelName { get; set; } = "";

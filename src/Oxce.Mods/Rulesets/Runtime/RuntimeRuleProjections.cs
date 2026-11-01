@@ -558,6 +558,15 @@ public sealed record RuntimeCampaignSettings(
     public bool ExtendedForceSpawn { get; init; }
     public bool ExtendedInventorySlotSorting { get; init; }
     public bool ExtendedItemReloadCost { get; init; }
+    /// <summary>Mod::EXTENDED_RUNNING_COST and EXTENDED_MOVEMENT_COST_ROUNDING (0 truncate, 1 round, 2 round up).</summary>
+    public bool ExtendedRunningCost { get; init; }
+    public int ExtendedMovementCostRounding { get; init; }
+
+    /// <summary>Mod::getTooMuchSmokeThreshold, getMaxStaticLightDistance, getMaxDynamicLightDistance and getEnhancedLighting.</summary>
+    public int TooMuchSmokeThreshold { get; init; } = 10;
+    public int MaximumStaticLightDistance { get; init; } = 16;
+    public int MaximumDynamicLightDistance { get; init; } = 24;
+    public int EnhancedLighting { get; init; }
 
     /// <summary>Mod::getShareAmmoCategories: a firearm also has the categories of the craft's primary ammo.</summary>
     public bool ShareAmmoCategories { get; init; }

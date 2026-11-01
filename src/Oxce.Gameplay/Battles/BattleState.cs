@@ -277,6 +277,8 @@ internal sealed partial class BattleState
             foreach (var covered in BattleMap.Footprint(position, unit.ArmorSize)) Map.SetUnitAt(Map.TileIndex(covered), unit.Id);
         }
         _units.Add(unit);
+        // setTile ends with updateTileFloorState (a unit on no tile has floor).
+        UpdateTileFloorState(unit);
         Revision++;
     }
 

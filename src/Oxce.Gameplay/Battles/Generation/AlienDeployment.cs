@@ -129,7 +129,7 @@ internal sealed class AlienDeployment
         // where the reference's unit keeps its default position (0, 0, 0) without a tile.
         var craft = _battle.Units[0].Position ?? default;
         if (Distance2d(spawned, craft) <= 20 && RandomChance.Percent(_random, odds)) direction = DirectionTo(unit.Position!.Value, craft);
-        unit.Direction = direction != -1 ? direction : _random.NextInclusive(0, 7);
+        unit.SetDirection(direction != -1 ? direction : _random.NextInclusive(0, 7));
         _battle.AddUnit(unit);
         return unit;
     }

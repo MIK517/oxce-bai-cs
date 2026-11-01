@@ -115,6 +115,16 @@ internal static class CampaignStartSettingsComposer
         b.ExtendedForceSpawn = Read(root, "extendedForceSpawn", b.ExtendedForceSpawn);
         b.ExtendedInventorySlotSorting = Read(root, "extendedInventorySlotSorting", b.ExtendedInventorySlotSorting);
         b.ExtendedItemReloadCost = Read(root, "extendedItemReloadCost", b.ExtendedItemReloadCost);
+        b.ExtendedRunningCost = Read(root, "extendedRunningCost", b.ExtendedRunningCost);
+        b.ExtendedMovementCostRounding = Read(root, "extendedMovementCostRounding", b.ExtendedMovementCostRounding);
+        b.TooMuchSmokeThreshold = Read(root, "tooMuchSmokeThreshold", b.TooMuchSmokeThreshold);
+        if (root.TryGet("lighting", out var lighting))
+        {
+            var lightingSettings = lighting as YamlMappingNode ?? throw new InvalidDataException("Lighting settings require a mapping.");
+            b.MaximumStaticLightDistance = Read(lightingSettings, "maxStatic", b.MaximumStaticLightDistance);
+            b.MaximumDynamicLightDistance = Read(lightingSettings, "maxDynamic", b.MaximumDynamicLightDistance);
+            b.EnhancedLighting = Read(lightingSettings, "enhanced", b.EnhancedLighting);
+        }
         b.ShareAmmoCategories = Read(root, "shareAmmoCategories", b.ShareAmmoCategories);
         b.BaseDefenseMapFromLocation = Read(root, "baseDefenseMapFromLocation", b.BaseDefenseMapFromLocation);
         b.BughuntMinTurn = Read(root, "bughuntMinTurn", b.BughuntMinTurn);

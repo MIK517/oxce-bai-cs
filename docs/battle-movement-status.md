@@ -11,7 +11,7 @@ movement intentional differences) is created by the first slice that records one
 | Slice | State |
 |---|---|
 | S0 planning | Done (2026-11-01) |
-| S1 movement groundwork: constants, action costs, reserved TUs, unit primitives | Planned |
+| S1 movement groundwork: constants, action costs, reserved TUs, unit primitives | Done, awaiting audit (2026-11-01) |
 | S2 pathfinding | Planned |
 | S3 lighting | Planned |
 | S4 field of view and per-faction visibility | Planned |
@@ -79,43 +79,72 @@ battle options the rules read).
   (`NextArrival()`); selection changes reach clients through events; `HasUncheckedCasualty` gates commands until
   branch 6.
 
+## S1 — Movement groundwork (2026-11-01)
+
+Reference: `Mod.cpp` (`extendedRunningCost`, `extendedMovementCostRounding`, `tooMuchSmokeThreshold`, `lighting`), `Armor.cpp` (`moveCost`,
+`turnCost`, `turnBeforeFirstStep`, the `allows*` flags, the heights), `RuleItem.cpp` (`getCost*`, `getFlat*`, `getDefault`),
+`BattlescapeGame.cpp` (`BattleActionCost`, `checkReservedTU`), `BattleUnit.cpp` (`getActionTUs`, `applyPercentages`, `getMainHandWeapon`,
+`lookAt`, `turn`, `abortTurn`, `directionTo`, `startWalking`, `keepWalking`, `setTile`, `updateTileFloorState`, `getReactionScore`, the turn and
+kneel costs), `Tile.cpp` (`hasLadder`, `hasNoFloor`).
+
+- **Constants.** `RuntimeCampaignSettings` (and the content settings behind it) now read `lighting` (`MaximumStaticLightDistance` 16,
+  `MaximumDynamicLightDistance` 24, `EnhancedLighting` 0), `TooMuchSmokeThreshold` 10, `ExtendedRunningCost` false and
+  `ExtendedMovementCostRounding` 0. S2 reads `extendedMovementCostRounding`, S3 the lighting ones, S8/S10 `extendedRunningCost` (the walk command's `ignoreSpottedEnemies`, `BattlescapeGame.cpp:2056`), S9 the smoke threshold (`TileEngine::hitTile`).
+- **Armor.** `RuntimeBattleArmor` projects `StepCosts` (`RuntimeArmorStepCosts`: the twelve per-step time and energy percentages), `TurnCost`,
+  `TurnBeforeFirstStep`, `AllowsMoving`, the nullable `AllowsRunning`, `AllowsStrafing`, `AllowsSneaking` and `AllowsKneeling`
+  (`RuntimeBattleArmor.Allows(value, default)` is `useBoolNullable`), and `StandHeight`, `KneelHeight`, `FloatHeight` (-1 for the unit's own).
+  `RuntimeBattleUnitRule.Heights` and `RuntimeBattleEquipment.SoldierHeights` carry the unit rule's and the soldier rule's heights;
+  `BattleState.HeightsOf` is the constructor's choice (the armor's, else the soldier's or the unit rule's). The base `RuntimeArmorMoveCosts`
+  stay as they were (S2 combines them with the unit's saved copy).
+- **Action costs.** `RuntimeBattleItem.ActionCosts` (`RuntimeItemActionCosts`) holds every action's cost and flat flags with the reference's
+  `getDefault` chains applied: auto and snap fall back to aimed for each resource and then each flag to the use flags, mind control and panic to the
+  use cost, the use cost is zero for a psi amplifier without `psiAttackName`, the prime cost zero without `primeActionName`. All six resources
+  (time, energy, morale, health, stun, mana) are projected. `BattleActionCost` (`UpdateTimeUnits`, `ClearTimeUnits`, `Shortfall` and
+  `HaveTimeUnits`, which name the first missing resource as `BattleActionShortfall`) and `BattleUnit.ActionCost` / `SpendCost` port
+  `updateTU`, `haveTU`, `getActionTUs`, `applyPercentages` (a percentage is a share of the base statistic, at least 1, with `float` arithmetic as
+  the reference) and `spendCost`. `BattleOptions.ForcedAbsoluteCosts` is the option at its default (off). The skill form (`skillRules`) is branch 5's.
+- **Reserve.** `BattleState.CheckReservedTimeUnits` is `checkReservedTU` for the player's side with the saved `TimeUnitsReserved` and
+  `KneelReserved`: the auto, snap, aimed and none fallbacks, the kneel reserve (`BattleUnit.KneelDownCost`, 4, for a standing unit whose armor allows
+  kneeling; `getType() == "SOLDIER"` is `SoldierId is not null`), `justChecking`, and the refusal warning as `ReservedTimeUnitsWarning` (the text is
+  the client's). A unit of the side that is not acting, and any neutral unit, only needs its time units. The hostile side's percentage reserve is
+  branch 6's: it is not run and answers `HostileReserveUnsupported`. The reference's warning for a kneel reserve with no weapon reserve is the
+  "kneeling and firing" one (its `switch` only says "kneeling" for a type of kneel); ported as it is. `MainHandWeapon` is `getMainHandWeapon`
+  (`HaveAnyAmmo`, `CurrentWaypoints` and the special firearm included).
+- **Unit primitives.** `BattleUnit` has `ToDirection`, `ToDirectionTurret`, `FaceDirection`, `VerticalDirection`, `LastPosition`,
+  `HaveNoFloorBelow` and `IsBigUnit`, with `SetDirection`, `DirectionTo`, `LookAt` (a position, with the turret form, and a direction, with `force`),
+  `Turn` (one eighth, a half turn clockwise, the turret with the body when the unit has one), `AbortTurn`, `Kneel`, `TurnCost(rules)`,
+  `KneelUpCost` 8, `KneelDownCost` 4, `KneelChangeCost` and `ReactionScore` (double). `BattleState.UpdateTileFloorState`, `SetTile` (the footprint
+  hand-over, the floor state, the flying and landing status change) and `WalkStep` (`startWalking` and `keepWalking` collapsed to one whole step:
+  facing, kneeling cleared, flying for a unit with no floor or on a vertical step, the arrival, landing, the strafing face direction, and the motion
+  points of a step: 30 for a big unit, else 4 for a stand height above 16, else 3) are the tile changes of a walk. `BattleMap.HasLadder` is
+  `Tile::hasLadder`. The floor state is computed where the reference's `setTile` computes it: when a unit joins the battle (`AddUnit`, so
+  generation and load) and in the first turn's `ResetUnitTiles`.
+- **Placement.** Every generated, spawned and loaded unit now gets `SetDirection` (turret and "to" directions) as `setDirection` and `BattleUnit::load` do. The hostile-side reserve is the named refusal `battle.hostile-reserve-unsupported` (`ReservedTimeUnitsResult.Unsupported`).
+- **Reference quirks kept.** `DirectionTo` of a unit's own tile is south (`atan2(0, -0)` is a half turn). `Turn` sets an unconscious unit standing.
+  `SetTile` replaces whoever the new tiles name, as the reference does; the walk (S8) checks for units before it.
+- **No commands.** S1 adds rules and state only. Tests: `BattleMovementGroundworkTests` (21): the constants and armor fields at their
+  defaults and read, the action-cost chains, percent, flat and at-least-1 costs for every resource, `haveTU`'s order, each reserve mode and fallback,
+  the kneel reserve, another side, the hostile refusal, the main-hand pick, `directionTo` around the compass, every `lookAt` and turn pair, the turret,
+  the reaction score, the costs, a step with its motion points and strafing face, a hole and a ladder, a big unit's four tiles.
+
 ## Next
 
-S1 — movement groundwork (plan row S1). Notes for its worker:
+S2 — pathfinding (plan row S2). Notes for its worker:
 
-- **Constants.** `RuntimeRules.Campaign` already has `MaximumViewDistance` and `MaximumDarknessToSeeUnits`
-  (`CampaignStartSettingsComposer`). Not read yet: `lighting` (`maxStatic` 16, `maxDynamic` 24, `enhanced` 0),
-  `tooMuchSmokeThreshold` (10), `extendedMovementCostRounding` (0, a `Mod` static read at `Mod.cpp:2730`) and
-  `extendedRunningCost` (false, `Mod.cpp:2729`; S8's `ignoreSpottedEnemies` reads it). Put the
-  battle ones where S3 and S4 can read them from the battle's rules; keep the fresh/cache content comparison passing
-  (`StrategicReadinessTestContent.Load`).
-- **Armor.** The typed armor keys `turnCost`, `turnBeforeFirstStep`, `allowsKneeling`, `allowsMoving` and the personal
-  lights exist in `PersonnelTacticalRules.cs`; `RuntimeArmorMoveCosts` (`RuntimeBattleEquipment.cs`) holds only the
-  four base kinds. S2 needs the per-move multipliers (`Armor::getMoveCostWalk`, `Run`, `Strafe`, `Sneak`, `FlyWalk`,
-  `FlyRun`, `FlyStrafe`, `FlyUp`, `FlyDown`, `ClimbUp`, `ClimbDown`, `GravLift`); project them in S1 with the other
-  armor fields. `allowsKneeling`, `allowsRunning`, `allowsStrafing` and `allowsSneaking` are nullable booleans
-  (`useBoolNullable`: unset takes the caller's default; for kneeling, whether the unit is a soldier).
-- **Action costs.** `ItemRuleLoader.ApplyActions` already reads every `tu*` and `cost*` node, `flatRate` and the
-  per-cost flat flags into the typed item rules; what is missing is their runtime projection and
-  `BattleActionCost::updateTU` (see `RuleItem::load`). Port the time and energy parts that `checkReservedTU` and
-  `Tile::openDoor` read, with `forcedAbsoluteCosts` at its default (off, `BattleUnit.cpp:2407`); other resources of a
-  cost (morale, health, stun, mana) are read by branch 5's actions and may be projected now since they come with the
-  same nodes.
-- **Reserve.** `BattleState` keeps the saved `TimeUnitsReserved` (the reference's `TUReserved`, a
-  `BattleActionType`, 0 none) and `KneelReserved`.
-  `checkReservedTU` for the player side: the auto to snap to aimed to none fallbacks, the kneel reserve
-  (`getKneelDownCost`, 4, only when the armor allows kneeling and the unit is standing), `justChecking`. Its warning
-  messages are client text; the rule returns a classified result. The hostile branch (percentages, AI reserve mode)
-  is branch 6's: leave it out with a comment, since no hostile unit acts before branch 6.
-- **Unit primitives.** `BattleUnit` has `Direction`, `DirectionTurret`, `Kneeled`, `Floating`, `MoveCosts` and the
-  saved TU and energy. Add what S2 onward need as runtime state with whole-step semantics: `lookAt` (shortest turn,
-  `directionTo` and the turret), `turn` one eighth per call, `abortTurn`, a whole step (`startWalking` and
-  `keepWalking` reduced to moving the unit's tiles: `setTile` for every footprint tile through `BattleMap.SetUnitAt`,
-  `lastPos`, `Floating` from `haveNoFloorBelow`, kneeling cleared), `updateTileFloorState`, `getReactionScore`
-  (double), `getTurnCost`, the kneel costs (up 8, down 4). Units out of play or before the first turn: use
-  `BattleState.TileOf` (branch 3 gotcha).
-- **No commands yet.** S1 adds rules and state only; the first commands are S5's. Tests are unit tests on synthetic
-  battles (`BattleStartTests.Started` and the battle helpers listed below).
+- **What S1 left for it.** `RuntimeBattleArmor.StepCosts`, `TurnCost`, `AllowsMoving`, `AllowsRunning`, `AllowsStrafing`, `AllowsSneaking` and the
+  heights; `RuntimeCampaignSettings.ExtendedRunningCost` and `ExtendedMovementCostRounding`; `BattleUnit.MoveCosts` and `ArmorMoveCosts` (the base
+  four kinds, saved), `HaveNoFloorBelow`, `Floating`, `MovementType`, `KneelUpCost`, `IsBigUnit`; `BattleMap.HasNoFloor`, `HasLadder`,
+  `TerrainLevel`, `TimeUnitCost`; `BattleState.CheckReservedTimeUnits`. `Pathfinding::getTUCost` reads the unit's per-kind move cost multipliers
+  (`getMoveCostWalk` and the others, combined with the base costs: read `Pathfinding.cpp` and `BattleUnit.cpp` for where they meet) (the kneel-up cost at `Pathfinding.cpp:1266` and `1270` is in `refreshPath`, the path preview, not `getTUCost`).
+- **Unit rule flags.** Project the unit rule's `isBrutal` and `isNotBrutal` for `BattleUnit::isBrutal` (`BattleUnit.IsBrutal` and `IsNotBrutal` are the
+  saved load-only ones); `brutalAI` (hostile, default on) and `brutalCivilians` (off) are options at their defaults.
+- **Where options go.** `BattleOptions` (`BattleActions.cs`) holds the user options at their defaults as static properties; add `strictBlockedChecking`,
+  `brutalAI` and the others there as a slice reads them. Do not make them process-wide mutable switches.
+- **`BattlePathing`** has the wall checks; the floor and unit parts of `isBlocked` and `isBlockedDirection` are S2's. Units out of play or before
+  the first turn: use `BattleState.TileOf`. `BattleState.SetTile` and `WalkStep` throw for a unit that still has its `InventoryTile`.
+- **Test helpers.** `BattleMovementGroundworkTests.Open` (a suited soldier past its first turn; `terrain:` adds MCD records such as a hole
+  and a ladder through `BattleTestTerrain`) and its `WithGun` / `WithSuit` rule edits are private; make them internal or copy the steps. The soldier's
+  `SUIT` armor has movement type 1 (fly), so a test of walking rules should replace it (`movementType: 0`).
 - Gotchas carried from branch 3 (see `docs/battle-session-ui-status.md` "## Next"): write test files with LF; add C#
   string literals with `\n` through the Edit tool; the test runner is Microsoft Testing Platform
   (`dotnet test --project <proj> --filter-class <full name>`); battle test helpers (`BattleStartTests.Requested`,
@@ -124,7 +153,6 @@ S1 — movement groundwork (plan row S1). Notes for its worker:
   make it internal or follow its steps for a battle past its first turn; a campaign snapshot with a battle restores
   only with terrain files; raw string literals in test rules have their indentation stripped (list entries start at two
   spaces).
-- Later slices (for planning ahead): S2 builds on `BattlePathing` (the wall checks are there; its floor and unit
-  parts are missing) and projects the unit rule's `isBrutal` and `isNotBrutal` for `BattleUnit::isBrutal`. S4 can read voxel data through `LoftempsCodec` (`src/Oxce.Formats/Terrain`); the battle does
-  not load it yet. Branch 2 and 3 reload comparisons will see recomputed light and sight from S3 and S4 on; extend
-  them rather than masking the new state.
+- Later slices (for planning ahead): S4 can read voxel data through `LoftempsCodec` (`src/Oxce.Formats/Terrain`); the battle does
+  not load it yet. S3 reads the lighting constants and S9 the smoke threshold from `RuntimeCampaignSettings`. Branch 2 and 3 reload
+  comparisons will see recomputed light and sight from S3 and S4 on; extend them rather than masking the new state.

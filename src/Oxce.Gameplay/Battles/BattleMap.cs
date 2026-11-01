@@ -166,6 +166,11 @@ internal sealed class BattleMap
         return noFloor;
     }
 
+    /// <summary>Tile::hasLadder: a grav lift object on the tile's object part or either wall (Tile::setMapData's ladder flags).</summary>
+    public bool HasLadder(int tile) =>
+        MapData(tile, BattleTilePart.ObjectPart) is { IsGravLift: true } || MapData(tile, BattleTilePart.NorthWall) is { IsGravLift: true } ||
+        MapData(tile, BattleTilePart.WestWall) is { IsGravLift: true };
+
     /// <summary>Tile::getFloorSpecialTileType (TILE, 0, without a floor).</summary>
     public int FloorSpecialType(int tile) => MapData(tile, BattleTilePart.Floor)?.SpecialType ?? 0;
 

@@ -439,6 +439,8 @@ internal sealed partial class BattleState
         unit.SavedPosition = saved.Position;
         unit.Direction = saved.Direction;
         unit.DirectionTurret = saved.DirectionTurret;
+        unit.ToDirection = unit.Direction;
+        unit.ToDirectionTurret = unit.DirectionTurret;
         unit.TimeUnits = saved.TimeUnits ?? unit.TimeUnits;
         unit.Health = saved.Health ?? unit.Health;
         unit.Mana = saved.Mana ?? unit.Mana;

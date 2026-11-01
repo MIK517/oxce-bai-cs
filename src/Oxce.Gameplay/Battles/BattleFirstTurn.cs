@@ -290,7 +290,7 @@ internal sealed partial class BattleState
         }
         var itemLevel = equipment.DrawItemLevel();
         unit.Position = position;
-        unit.Direction = direction;
+        unit.SetDirection(direction);
         unit.TimeUnits = 0;
         unit.PreviousOwnerId = owner?.Id;
         AddUnit(unit);
@@ -433,7 +433,11 @@ internal sealed partial class BattleState
         {
             unit.InventoryTile = null;
             if (!unit.IsOut && unit.Position is { } position)
+            {
                 foreach (var covered in BattleMap.Footprint(position, unit.ArmorSize)) Map.SetUnitAt(Map.TileIndex(covered), unit.Id);
+                // setTile ends with updateTileFloorState.
+                UpdateTileFloorState(unit);
+            }
             if (unit.Faction == BattleFaction.Player) unit.SetSpottedBy(BattleFaction.Player, true);
         }
     }
