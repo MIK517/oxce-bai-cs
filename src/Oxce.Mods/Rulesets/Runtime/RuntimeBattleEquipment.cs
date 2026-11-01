@@ -115,6 +115,8 @@ public sealed class RuntimeBattleEquipment
             KneelHeight = rule.Value.Integers["kneelHeight"],
             FloatHeight = rule.Value.Integers["floatHeight"],
             TurnCost = rule.Value.Integers["turnCost"],
+            SpecialAbility = rule.Value.Integers["specab"],
+            AlwaysVisible = rule.Value.Booleans["alwaysVisible"],
             TurnBeforeFirstStep = rule.Value.Booleans["turnBeforeFirstStep"],
             AllowsMoving = rule.Value.NullableBooleans["allowsMoving"] ?? true,
             AllowsRunning = rule.Value.NullableBooleans["allowsRunning"],
@@ -143,6 +145,10 @@ public sealed class RuntimeBattleEquipment
             IsVip = rule.Value.Booleans["vip"],
             PickUpWeaponsMoreActively = rule.Value.Integers["pickUpWeaponsMoreActively"],
             EnergyRecovery = rule.Value.Integers["energyRecovery"],
+            SpecialAbility = rule.Value.Integers["specab"],
+            AvoidsFire = rule.Value.AvoidsFire,
+            IsBrutal = rule.Value.Booleans["isBrutal"],
+            IsNotBrutal = rule.Value.Booleans["isNotBrutal"],
             Heights = new RuntimeUnitHeights(rule.Value.Integers["standHeight"], rule.Value.Integers["kneelHeight"], rule.Value.Integers["floatHeight"]),
         },
             StringComparer.Ordinal);
@@ -347,6 +353,12 @@ public sealed record RuntimeBattleArmor(
     public int TurnCost { get; init; } = 1;
     public bool TurnBeforeFirstStep { get; init; }
 
+    /// <summary>Armor::isAlwaysVisible (<c>alwaysVisible</c>): units in it are visible to the player whether spotted or not.</summary>
+    public bool AlwaysVisible { get; init; }
+
+    /// <summary>Armor::getSpecialAbility (<c>specab</c>), which a soldier's unit takes as its own (SPECAB_BURNFLOOR is 2).</summary>
+    public int SpecialAbility { get; init; }
+
     /// <summary>Armor::allowsMoving (<c>allowsMoving</c>, default true).</summary>
     public bool AllowsMoving { get; init; } = true;
 
@@ -412,6 +424,19 @@ public sealed record RuntimeBattleUnitRule(
 
     /// <summary>Unit's <c>energyRecovery</c> (basicEnergyRegeneration for a unit that is no soldier).</summary>
     public int EnergyRecovery { get; init; }
+
+    /// <summary>Unit's <c>specab</c> (SPECAB_NONE 0, explode on death 1, burn floor 2, burn and explode 3).</summary>
+    public int SpecialAbility { get; init; }
+
+    /// <summary>Unit's nullable <c>avoidsFire</c> (<c>Unit::avoidsFire</c>: null takes <c>specab &lt; SPECAB_BURNFLOOR</c>).</summary>
+    public bool? AvoidsFire { get; init; }
+
+    /// <summary>Unit's <c>isBrutal</c> and <c>isNotBrutal</c>, which override the options' choice of brutal AI.</summary>
+    public bool IsBrutal { get; init; }
+    public bool IsNotBrutal { get; init; }
+
+    /// <summary>Unit::avoidsFire.</summary>
+    public bool AvoidsFireOrDefault => AvoidsFire ?? SpecialAbility < 2;
 }
 
 /// <summary>The voxel heights of a unit standing, kneeling and floating (the unit rule's or soldier's, unless the armor sets its own).</summary>

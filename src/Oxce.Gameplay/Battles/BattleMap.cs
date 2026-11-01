@@ -23,6 +23,7 @@ internal sealed class BattleMap
     private byte[] _doorFrames = [];
     private int[] _lastExplored = [];
     private int[] _units = [];
+    private short[] _visible = [];
     private string[][] _terrainNames = [];
     private string[][] _blockNames = [];
     private int[][] _reinforcements = [];
@@ -77,6 +78,7 @@ internal sealed class BattleMap
         _lastExplored = new int[tiles * FactionCount];
         _units = new int[tiles];
         Array.Fill(_units, NoUnit);
+        _visible = new short[tiles];
         _terrainNames = Grid(width / 10, length / 10, "");
         _blockNames = Grid(width / 10, length / 10, "");
         _reinforcements = Grid(width / 10, length / 10, 0);
@@ -158,13 +160,40 @@ internal sealed class BattleMap
     }
 
     /// <summary>Tile::hasNoFloor: no floor (or a no-floor floor), unless the tile below is raised to the full height.</summary>
-    public bool HasNoFloor(BattlePosition position)
+    public bool HasNoFloor(BattlePosition position) => HasNoFloor(TileIndex(position));
+
+    /// <summary><see cref="HasNoFloor(BattlePosition)"/> by tile index.</summary>
+    public bool HasNoFloor(int tile)
     {
-        var tile = TileIndex(position);
-        var noFloor = MapData(tile, BattleTilePart.Floor) is not { } floor || floor.HasNoFloor;
-        if (noFloor && position.Z > 0 && TerrainLevel(TileIndex(position with { Z = position.Z - 1 })) == -24) return false;
+        var noFloor = HasNoFloorOnly(tile);
+        if (noFloor && tile >= Width * Length && TerrainLevel(tile - Width * Length) == -24) return false;
         return noFloor;
     }
+
+    /// <summary>Tile::hasNoFloor(nullptr): the tile's own floor only, without the tile below.</summary>
+    public bool HasNoFloorOnly(int tile) => MapData(tile, BattleTilePart.Floor) is not { } floor || floor.HasNoFloor;
+
+    /// <summary>The tile index above a tile (SavedBattleGame::getAboveTile), or -1 on the top level.</summary>
+    public int TileAbove(int tile) => tile / (Width * Length) >= Height - 1 ? -1 : tile + Width * Length;
+
+    /// <summary>The tile index below a tile (SavedBattleGame::getBelowTile), or -1 on the ground level.</summary>
+    public int TileBelow(int tile) => tile < Width * Length ? -1 : tile - Width * Length;
+
+    /// <summary>Tile::hasGravLiftFloor.</summary>
+    public bool HasGravLiftFloor(int tile) => MapData(tile, BattleTilePart.Floor) is { IsGravLift: true };
+
+    /// <summary>Tile::hasLadderOnObject, hasLadderOnNorthWall and hasLadderOnWestWall: a grav lift in that part.</summary>
+    public bool HasLadderOn(int tile, BattleTilePart part) => MapData(tile, part) is { IsGravLift: true };
+
+    /// <summary>Tile::isDoor.</summary>
+    public bool IsDoor(int tile, BattleTilePart part) => MapData(tile, part) is { IsDoor: true };
+
+    /// <summary>Tile::getVisible: the tile's visibility counter (a <c>Sint16</c> the field of view adds to and takes from; runtime state).</summary>
+    public int Visibility(int tile) => _visible[tile];
+
+    public bool IsVisible(int tile) => _visible[tile] != 0;
+
+    public void SetVisibility(int tile, int visibility) => _visible[tile] = unchecked((short)visibility);
 
     /// <summary>Tile::hasLadder: a grav lift object on the tile's object part or either wall (Tile::setMapData's ladder flags).</summary>
     public bool HasLadder(int tile) =>

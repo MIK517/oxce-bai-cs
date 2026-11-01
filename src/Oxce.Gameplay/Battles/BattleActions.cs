@@ -36,6 +36,25 @@ internal static class BattleOptions
 {
     /// <summary><c>Options::forcedAbsoluteCosts</c>: converts every percentage action cost to its flat value (off).</summary>
     public static bool ForcedAbsoluteCosts => false;
+
+    /// <summary>The options pathfinding reads, at their defaults.</summary>
+    public static BattlePathingOptions Pathing { get; } = new();
+}
+
+/// <summary>
+/// The user options pathfinding reads (<c>Options::strictBlockedChecking</c>, <c>sneakyAI</c>, <c>brutalAI</c>, <c>brutalCivilians</c>,
+/// <c>autoCombat</c>, <c>autoCombatControlPerUnit</c>, <c>aiPerformanceOptimization</c>), at their defaults. A pathfinder takes them as a
+/// value, so a test chooses another set without a process-wide switch.
+/// </summary>
+internal sealed record BattlePathingOptions
+{
+    public bool StrictBlockedChecking { get; init; }
+    public bool SneakyAi { get; init; }
+    public bool BrutalAi { get; init; } = true;
+    public bool BrutalCivilians { get; init; }
+    public bool AutoCombat { get; init; }
+    public bool AutoCombatControlPerUnit { get; init; } = true;
+    public bool AiPerformanceOptimization { get; init; }
 }
 
 /// <summary>Why <see cref="BattleActionCost.Shortfall"/> refused: BattleActionCost::haveTU's messages.</summary>

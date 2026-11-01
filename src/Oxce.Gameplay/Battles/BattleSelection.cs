@@ -17,7 +17,7 @@ internal sealed partial class BattleState
         Phase == BattlePhase.Briefing || Side != BattleFaction.Player || Phase == BattlePhase.Inventory && !inventoryWalk
             ? BattleSelectionReasons.Unavailable : null;
 
-    private BattleUnit? UnitById(int id) => _units.Find(unit => unit.Id == id);
+    internal BattleUnit? UnitById(int id) => _units.Find(unit => unit.Id == id);
 
     /// <summary>BattleUnit::hasInventory: the unit's armor has an inventory.</summary>
     private static bool HasInventory(RuntimeRuleCatalog rules, BattleUnit unit) =>

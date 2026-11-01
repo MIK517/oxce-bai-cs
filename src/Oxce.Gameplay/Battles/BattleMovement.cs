@@ -29,6 +29,12 @@ internal sealed partial class BattleUnit
     /// <summary>BattleUnit::_haveNoFloorBelow (<see cref="BattleState.UpdateTileFloorState"/>).</summary>
     public bool HaveNoFloorBelow { get; set; }
 
+    /// <summary>
+    /// BattleUnit::getUnitsSpottedThisTurn: the IDs of the units this unit has seen this turn (runtime state the field of view fills;
+    /// not saved).
+    /// </summary>
+    public List<int> UnitsSpottedThisTurn { get; } = [];
+
     /// <summary>BattleUnit::isBigUnit.</summary>
     public bool IsBigUnit => ArmorSize > 1;
 
@@ -41,6 +47,40 @@ internal sealed partial class BattleUnit
 
     /// <summary>BattleUnit::getTurnCost: the armor's time units per eighth of a turn.</summary>
     public int TurnCost(RuntimeRuleCatalog rules) => BattleState.ArmorOf(rules, this).TurnCost;
+
+    /// <summary>
+    /// BattleUnit::isBrutal: hostile units by <c>brutalAI</c>, neutral ones by <c>brutalCivilians</c>, a player's unit when the AI controls
+    /// it (<c>isAIControlled</c>), then the unit rule's <c>isBrutal</c> and <c>isNotBrutal</c> (a soldier has no unit rule).
+    /// </summary>
+    public bool UsesBrutalAi(RuntimeRuleCatalog rules, BattlePathingOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(rules);
+        ArgumentNullException.ThrowIfNull(options);
+        var brutal = Faction switch
+        {
+            BattleFaction.Hostile => options.BrutalAi,
+            BattleFaction.Neutral => options.BrutalCivilians,
+            _ => options.AutoCombat && (!options.AutoCombatControlPerUnit || AllowAutoCombat),
+        };
+        if (SoldierId is null && rules.Battle.Equipment.Units.TryGetValue(UnitType, out var rule))
+        {
+            if (rule.IsBrutal) brutal = true;
+            if (rule.IsNotBrutal) brutal = false;
+        }
+        return brutal;
+    }
+
+    /// <summary>BattleUnit::getVisible: a player's unit and a unit in an <c>alwaysVisible</c> armor always are, others once the player spotted them.</summary>
+    public bool IsVisibleToPlayer(RuntimeRuleCatalog rules) =>
+        Faction == BattleFaction.Player || BattleState.ArmorOf(rules, this).AlwaysVisible || IsSpottedBy(BattleFaction.Player);
+
+    /// <summary>BattleUnit::avoidsFire: the unit rule's (a soldier's armor's special ability is below burning floors).</summary>
+    public bool AvoidsFire(RuntimeRuleCatalog rules)
+    {
+        ArgumentNullException.ThrowIfNull(rules);
+        if (SoldierId is null && rules.Battle.Equipment.Units.TryGetValue(UnitType, out var rule)) return rule.AvoidsFireOrDefault;
+        return BattleState.ArmorOf(rules, this).SpecialAbility < 2;
+    }
 
     /// <summary>BattleUnit::setDirection: the initial placement, no turning left.</summary>
     public void SetDirection(int direction)

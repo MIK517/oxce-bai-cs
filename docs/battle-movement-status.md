@@ -3,8 +3,8 @@
 Phase 7 branch 4 (`claude/battle-movement`), from `main` after PR #80 (branch 3 merged). Plan:
 [Phase 7 branch 4](phase-7-plan.md#branch-4--battle-movement); decisions:
 [ADR 0037](decisions/0037-host-authoritative-session.md), [ADR 0038](decisions/0038-battle-aggregate.md),
-[ADR 0039](decisions/0039-battle-save-intentional-differences.md) and the plan's branch decisions. ADR 0040 (battle
-movement intentional differences) is created by the first slice that records one.
+[ADR 0039](decisions/0039-battle-save-intentional-differences.md) and the plan's branch decisions. [ADR 0040](decisions/0040-battle-movement-intentional-differences.md)
+(battle movement intentional differences, created by S2).
 
 ## Progress
 
@@ -12,7 +12,7 @@ movement intentional differences) is created by the first slice that records one
 |---|---|
 | S0 planning | Done (2026-11-01) |
 | S1 movement groundwork: constants, action costs, reserved TUs, unit primitives | Done, awaiting audit (2026-11-01) |
-| S2 pathfinding | Planned |
+| S2 pathfinding | Done, awaiting audit (2026-11-01) |
 | S3 lighting | Planned |
 | S4 field of view and per-faction visibility | Planned |
 | S5 turning and kneeling | Planned |
@@ -127,32 +127,73 @@ kneel costs), `Tile.cpp` (`hasLadder`, `hasNoFloor`).
   the kneel reserve, another side, the hostile refusal, the main-hand pick, `directionTo` around the compass, every `lookAt` and turn pair, the turret,
   the reaction score, the costs, a step with its motion points and strafing face, a hole and a ladder, a big unit's four tiles.
 
+## S2 — Pathfinding (2026-11-01)
+
+Reference: `Pathfinding.cpp` (`calculate`, `aStarPath`, `getTUCost`, `getMovementType`, `isBlocked`, `isBlockedDirection`, `canFallDown`,
+`isOnStairs`, `validateUpDown`, `bresenhamPath`, `findReachable`, `findReachablePathFindingNodes`, `getStartDirection`, `dequeuePath`,
+`abortPath`), `PathfindingNode`, `PathfindingOpenSet`, `BattleUnit.cpp` (`isBrutal`, `avoidsFire`, `isAIControlled`,
+`getUnitsSpottedThisTurn`), `Unit.cpp` (`avoidsFire`, `isBrutal`, `isNotBrutal`), `Tile.cpp` (`getOverlappingUnit`, `hasNoFloor`, the ladder and
+grav lift flags), `Options.cpp` (the defaults of `strictBlockedChecking`, `sneakyAI`, `brutalAI`, `brutalCivilians`, `autoCombat`,
+`autoCombatControlPerUnit`, `aiPerformanceOptimization`).
+
+- **`BattlePathfinder`** (`BattlePathfinding.cs`, internal) is the port: one instance holds the nodes and the last path as the reference's
+  `Pathfinding` does, reads the battle and changes nothing. `GetTuCost` is `getTUCost` for a small or a 2x2 unit (the part masks for going up
+  and down stairs, falling, flying and climbing; the stairs, the hole, the ladder, the grav lift and the flying step; the wall average; the fire
+  penalty; the TFTD depth surcharge of 2; the strafe surcharge; the cap of 100; the X check of a big unit's four tiles; the door refusal for a
+  big unit; the unit and armor percentages and the three rounding modes of `extendedMovementCostRounding`). `Calculate` is `calculate` (the
+  destination adjustments: stairs, a terrain level of -24, a hole for a walking unit, the strafe move; the Bresenham shortcut except for a
+  brutal unit; then A*); `Path` is first step first (the reference keeps it reversed). `FindReachableNodes` and `FindReachable` are
+  `findReachablePathFindingNodes` and `findReachable` (entire map, an alternate start, just checking, the unit's full statistics, the move
+  type, the `aiPerformanceOptimization` cap). `IsBlockedDirection`, `IsOnStairs` and `ValidateUpDown` are public on it. The open set is a
+  binary heap with the standard library's sift order ([ADR 0040](decisions/0040-battle-movement-intentional-differences.md)), so the A* tie
+  order is the reference's.
+- **Not here.** `BAM_MISSILE` and every missile-target branch (branch 5; `BattleActionMove` has no missile value, and the missile-only parts of
+  `getTUCost`, `isBlocked` and `validateUpDown` are left out), `previewPath` and `refreshPath` (the client's path display, S10). A unit of armor
+  size over 2 throws: the reference's part arrays hold four tiles.
+- **Quirks kept.** The Bresenham shortcut ignores `maxTUCost` (only A* is held to it). After A*, `TotalTimeUnitCost` is the last cost A* tried
+  and not the path's. `isBlocked` on a floor says "not blocked" for the mover's own tile and for an out unit, even over an impassable floor.
+  `Calculate` keeps `StrafeMove` from the previous call when it returns early. A step onto a tile with no floor costs the default 4, plus the
+  floor's cost. A big unit's cost is the average of its four tiles by integer division. A stairs whose second part is wrong answers "not
+  stairs" at once, before the other orientation or TFTD's is looked at.
+- **Units in the way.** `isBlocked` uses `BattleUnit.IsVisibleToPlayer(rules)` (`getVisible`: a player-faction unit, a unit in an `alwaysVisible` armor, else the saved player spotting), a unit of the mover's side,
+  and `BattleUnit.UnitsSpottedThisTurn` (new, runtime and empty until S4 fills it) for a non-player mover. `Tile::getVisible` is
+  `BattleMap.Visibility`/`IsVisible` (new, a `Sint16` counter as the reference's, runtime, zero until S4 adds to it; only the sneaking search reads it). `IgnoreFriends` is `setIgnoreFriends`.
+- **Options.** `BattlePathingOptions` (`BattleOptions.Pathing`, the defaults) is passed to the pathfinder as a value, so a test chooses another
+  set. `BattlePathing.IsBlockedDirection` takes `strict` for `strictBlockedChecking`. `BattleUnit.UsesBrutalAi(rules, options)` is `isBrutal`
+  (the saved `IsBrutal` and `IsNotBrutal` stay the load-only fields) and `AvoidsFire(rules)` is `avoidsFire`.
+- **Rules.** `RuntimeBattleUnitRule` projects `SpecialAbility` (`specab`), `AvoidsFire` (nullable), `IsBrutal` and `IsNotBrutal`;
+  `RuntimeBattleArmor` projects `SpecialAbility` (a soldier's own special ability, for `avoidsFire`) and `AlwaysVisible`.
+- **BattleMap.** Tile-index forms: `HasNoFloor(int)`, `HasNoFloorOnly` (`hasNoFloor(nullptr)`), `TileAbove`, `TileBelow`, `HasGravLiftFloor`,
+  `HasLadderOn(part)`, `IsDoor`, `Visibility`/`IsVisible`/`SetVisibility`. `BattleState.UnitById` is internal.
+- **Queries.** The pathfinder is the port's internal query surface; the viewer-scoped path, path cost and reachable-tile queries are now named in the plan's S10 row (plan change; S8's walk calls the pathfinder directly). A player's search does not read hidden information: it ignores units it does not see.
+- **Tests.** `BattlePathfindingTests` (29, compatibility project): step costs and the three rounding modes, move types and the percentages, walls
+  and their average, strict checking, the depth surcharge and the fire penalty, strafing, stairs up and down and their detection (north, east,
+  TFTD), destinations above a hole or inside a -24 object, holes and falls, ladders, grav lifts and flying, units in the way for each side, the
+  overlapping unit, a big unit (average, doors, the X check, falling onto and under units), straight lines, A* around a wall, the limit,
+  unreachable ends, a brutal unit, a sneaking one, the reachable tiles in each form, the climb-down, fly-down, fly-run and fly-strafe percentages, wall ladders, the ladder-below no-fall exception, a big unit on stairs (hole-up mask), `alwaysVisible`, the `aiPerformanceOptimization` cap. The two A* paths (`[2, 2, 3, 3]`, `[3, 2, 2, 1]`) are pinned
+  and were checked against an independent re-implementation of the reference's heap and search (`.agent-tmp/astar_sim.py`); no reference
+  binary runs here.
+
 ## Next
 
-S2 — pathfinding (plan row S2). Notes for its worker:
+S3 — lighting (plan row S3). Notes for its worker:
 
-- **What S1 left for it.** `RuntimeBattleArmor.StepCosts`, `TurnCost`, `AllowsMoving`, `AllowsRunning`, `AllowsStrafing`, `AllowsSneaking` and the
-  heights; `RuntimeCampaignSettings.ExtendedRunningCost` and `ExtendedMovementCostRounding`; `BattleUnit.MoveCosts` and `ArmorMoveCosts` (the base
-  four kinds, saved), `HaveNoFloorBelow`, `Floating`, `MovementType`, `KneelUpCost`, `IsBigUnit`; `BattleMap.HasNoFloor`, `HasLadder`,
-  `TerrainLevel`, `TimeUnitCost`; `BattleState.CheckReservedTimeUnits`. `Pathfinding::getTUCost` reads the unit's per-kind move cost multipliers
-  (`getMoveCostWalk` and the others, combined with the base costs: read `Pathfinding.cpp` and `BattleUnit.cpp` for where they meet) (the kneel-up cost at `Pathfinding.cpp:1266` and `1270` is in `refreshPath`, the path preview, not `getTUCost`).
-- **Unit rule flags.** Project the unit rule's `isBrutal` and `isNotBrutal` for `BattleUnit::isBrutal` (`BattleUnit.IsBrutal` and `IsNotBrutal` are the
-  saved load-only ones); `brutalAI` (hostile, default on) and `brutalCivilians` (off) are options at their defaults.
-- **Where options go.** `BattleOptions` (`BattleActions.cs`) holds the user options at their defaults as static properties; add `strictBlockedChecking`,
-  `brutalAI` and the others there as a slice reads them. Do not make them process-wide mutable switches.
-- **`BattlePathing`** has the wall checks; the floor and unit parts of `isBlocked` and `isBlockedDirection` are S2's. Units out of play or before
-  the first turn: use `BattleState.TileOf`. `BattleState.SetTile` and `WalkStep` throw for a unit that still has its `InventoryTile`.
-- **Test helpers.** `BattleMovementGroundworkTests.Open` (a suited soldier past its first turn; `terrain:` adds MCD records such as a hole
-  and a ladder through `BattleTestTerrain`) and its `WithGun` / `WithSuit` rule edits are private; make them internal or copy the steps. The soldier's
-  `SUIT` armor has movement type 1 (fly), so a test of walking rules should replace it (`movementType: 0`).
-- Gotchas carried from branch 3 (see `docs/battle-session-ui-status.md` "## Next"): write test files with LF; add C#
-  string literals with `\n` through the Edit tool; the test runner is Microsoft Testing Platform
-  (`dotnet test --project <proj> --filter-class <full name>`); battle test helpers (`BattleStartTests.Requested`,
-  `Started`, `Battle`, `BattleSaveRootTests.Generated`, `BattleSaveUnitTests.Loaded`) are internal for reuse;
-  `BattleCampaignSaveTests.AtFirstTurn` (plays `BeginBriefing`, `ConfirmBriefing` and `StartFirstTurn`) is private, so
-  make it internal or follow its steps for a battle past its first turn; a campaign snapshot with a battle restores
-  only with terrain files; raw string literals in test rules have their indentation stripped (list entries start at two
-  spaces).
-- Later slices (for planning ahead): S4 can read voxel data through `LoftempsCodec` (`src/Oxce.Formats/Terrain`); the battle does
-  not load it yet. S3 reads the lighting constants and S9 the smoke threshold from `RuntimeCampaignSettings`. Branch 2 and 3 reload
-  comparisons will see recomputed light and sight from S3 and S4 on; extend them rather than masking the new state.
+- **What S2 left for it.** `BattleMap.Visibility` (the tile's `Sint16` visible counter the sneaking search reads; S4 adds to and takes from it, as `Tile::setVisible` does) and
+  `BattleUnit.UnitsSpottedThisTurn` are runtime state S4 fills; S3 does not need them. The map's tile-index helpers (`TileAbove`, `TileBelow`,
+  `HasNoFloor(int)`) are reusable for the light and blockage walks.
+- **Constants.** `RuntimeCampaignSettings` has `MaximumStaticLightDistance` 16, `MaximumDynamicLightDistance` 24 and `EnhancedLighting` 0 (S1).
+- **Options.** `BattlePathingOptions` is pathfinding's only; give lighting its own value rather than growing it.
+- **Test helpers.** `BattlePathfindingTests.Flat` (private) builds a cleared 30x30x2 arena from `BattleMovementGroundworkTests.Open` (now with a
+  `ufo` argument) with TESTSET records appended after the three the generator uses (`Terrain`); copy that approach for light sources and blockers
+  (an MCD record's light fields: `LightBlock` at offset 51, `LightSource` at 58). `Open`, `Place`, `Set` and `East` are internal.
+- **Gotchas.** A post-edit hook reformats edited C# files, so read a file again before a second edit. A unit that still has its
+  `InventoryTile` has no tile of its own: do not run the pathfinder for it.
+- Later slices (for planning ahead): S4 can read voxel data through `LoftempsCodec` (`src/Oxce.Formats/Terrain`); the battle does not load it
+  yet. S9 reads the smoke threshold from `RuntimeCampaignSettings`. Branch 2 and 3 reload comparisons will see recomputed light and sight from S3
+  and S4 on; extend them rather than masking the new state. S8's walk calls `BattlePathfinder.Calculate` and `GetTuCost` (a walk prices each
+  step from the unit's state at that step) and relies on S4 to fill `UnitsSpottedThisTurn`.
+- Gotchas carried from branch 3 (see `docs/battle-session-ui-status.md` "## Next"): write test files with LF; add C# string literals with
+  `\n` through the Edit tool; the test runner is Microsoft Testing Platform (`dotnet test --project <proj> --filter-class <full name>`);
+  battle test helpers (`BattleStartTests.Requested`, `Started`, `Battle`, `BattleSaveRootTests.Generated`, `BattleSaveUnitTests.Loaded`) are
+  internal for reuse; `BattleCampaignSaveTests.AtFirstTurn` is private; a campaign snapshot with a battle restores only with terrain files; raw
+  string literals in test rules have their indentation stripped (list entries start at two spaces).

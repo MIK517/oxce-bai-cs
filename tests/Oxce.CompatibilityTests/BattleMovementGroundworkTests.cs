@@ -34,10 +34,10 @@ public sealed class BattleMovementGroundworkTests
         return result;
     }
 
-    private static (CampaignState Campaign, BattleState Battle, BattleUnit Soldier, RuntimeRuleCatalog Rules) Open(string? rules = null,
-        Action<Dictionary<string, byte[]>>? terrain = null)
+    internal static (CampaignState Campaign, BattleState Battle, BattleUnit Soldier, RuntimeRuleCatalog Rules) Open(string? rules = null,
+        Action<Dictionary<string, byte[]>>? terrain = null, string ufo = "UFO_SUITED")
     {
-        var (campaign, _) = Requested(rules ?? Rules, "UFO_SUITED");
+        var (campaign, _) = Requested(rules ?? Rules, ufo);
         if (terrain is not null) campaign.BattleTerrainFiles = TerrainFiles(terrain);
         Started(campaign);
         Assert.IsType<BriefingOpened>(Assert.Single(campaign.Execute(new BeginBriefing("T", "C")).Events));
@@ -494,12 +494,12 @@ public sealed class BattleMovementGroundworkTests
     private static void HoleAndLadder(Dictionary<string, byte[]> files) =>
         files["TERRAIN/TESTSET.MCD"] = Mcd(Record((42, 2)), Record((42, 3)), Record((42, 4), (59, 2)), Record((32, 1)), Record((34, 1)));
 
-    private static int Set(BattleState battle, string name) => battle.Map.DataSets.ToList().FindIndex(set => set.Name == name);
+    internal static int Set(BattleState battle, string name) => battle.Map.DataSets.ToList().FindIndex(set => set.Name == name);
 
-    private static void Place(BattleState battle, BattlePosition position, BattleTilePart part, int id) =>
+    internal static void Place(BattleState battle, BattlePosition position, BattleTilePart part, int id) =>
         battle.Map.SetPart(battle.Map.TileIndex(position), part, id, Set(battle, "TESTSET"));
 
-    private static BattlePosition East(BattlePosition position, int distance = 1) => position with { X = position.X + distance };
+    internal static BattlePosition East(BattlePosition position, int distance = 1) => position with { X = position.X + distance };
 
     [Fact]
     public void AWholeStepMovesTheUnitsTileSetsItsFacingAndGainsMotionPoints()
