@@ -216,7 +216,7 @@ internal sealed partial class BattleState
     /// with <paramref name="ufoInBattlescape"/> the rule of the campaign's UFO in battle ("" for none); the armor
     /// transformations follow the enviro effects. The units are made from <paramref name="campaign"/>'s soldiers and
     /// difficulty (without one, a soldier unit is a corrupted save). A value the battle cannot hold, or a restored battle that breaks
-    /// <see cref="Validate"/>, is a corrupted save. The lighting and field of view loadMapResources recomputes are Phase 7
+    /// <see cref="Validate"/>, is a corrupted save. The lighting loadMapResources recomputes is run (S3); its field of view is Phase 7
     /// branch 4's.
     /// </summary>
     public static BattleState Restore(BattleSnapshot snapshot, RuntimeContent content, BattleTerrainLoader terrain,
@@ -299,6 +299,8 @@ internal sealed partial class BattleState
             battle.RestoreUnits(snapshot, content, campaign);
             battle.RestoreItems(snapshot, content);
             battle.Validate(placement: false);
+            // loadMapResources: the lighting of the restored map.
+            battle.CalculateLighting(rules, BattleLightLayer.Ambient, terrainChanged: true);
         }
         catch (Exception failure) when (failure is InvalidOperationException or MapGenerationException)
         {

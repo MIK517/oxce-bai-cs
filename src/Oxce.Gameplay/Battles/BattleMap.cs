@@ -7,7 +7,7 @@ namespace Oxce.Gameplay.Battles;
 /// (<c>SavedBattleGame::getTileIndex</c>), the loaded map data sets the tiles refer to, and the per-block bookkeeping
 /// <c>SavedBattleGame</c> keeps (terrain and block names, reinforcement blocks).
 /// </summary>
-internal sealed class BattleMap
+internal sealed partial class BattleMap
 {
     public const int PartCount = 4;
 
@@ -79,6 +79,7 @@ internal sealed class BattleMap
         _units = new int[tiles];
         Array.Fill(_units, NoUnit);
         _visible = new short[tiles];
+        ResetLight(tiles);
         _terrainNames = Grid(width / 10, length / 10, "");
         _blockNames = Grid(width / 10, length / 10, "");
         _reinforcements = Grid(width / 10, length / 10, 0);

@@ -62,6 +62,8 @@ internal static class BattleGenerator
         if (state.Items.Any(item => item.Tile is not null && !item.XcomProperty && !item.IsSpecialWeapon && item.FuseTimer == -2 &&
                 rules.Items.GetRequiredValue(item.ItemType).BattleType == GrenadeBattleType && !rules.Battle.Equipment.Items[item.ItemType].Spawns))
             throw new MapGenerationException(PrimedJunk);
+        // run's last step: the lighting of the finished map, with its units and items.
+        state.CalculateLighting(rules, BattleLightLayer.Ambient, terrainChanged: true);
         return state;
     }
 

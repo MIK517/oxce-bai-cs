@@ -13,7 +13,7 @@ Phase 7 branch 4 (`claude/battle-movement`), from `main` after PR #80 (branch 3 
 | S0 planning | Done (2026-11-01) |
 | S1 movement groundwork: constants, action costs, reserved TUs, unit primitives | Done, awaiting audit (2026-11-01) |
 | S2 pathfinding | Done, awaiting audit (2026-11-01) |
-| S3 lighting | Planned |
+| S3 lighting | Done, awaiting audit (2026-11-01) |
 | S4 field of view and per-faction visibility | Planned |
 | S5 turning and kneeling | Planned |
 | S6 doors | Planned |
@@ -174,24 +174,73 @@ grav lift flags), `Options.cpp` (the defaults of `strictBlockedChecking`, `sneak
   and were checked against an independent re-implementation of the reference's heap and search (`.agent-tmp/astar_sim.py`); no reference
   binary runs here.
 
+## S3 — Lighting (2026-11-01)
+
+Reference: `TileEngine.cpp` (`calculateLighting`, `calculateSunShading`, `calculateTerrainBackground`, `calculateTerrainItems`,
+`calculateUnitLighting`, `addLight`, `calculateLineHelper`, `blockage`, `horizontalBlockage`, `verticalBlockage`, `togglePersonalLighting`, the
+`VisibilityBlockCache` helpers), `Tile.cpp` (`resetLightMulti`, `addLight`, `getLightMulti`, `getShade`, the object cache), `MapData.cpp`
+(`getBlock`), `BattleItem.cpp` (`getGlow`, `getGlowRange`), `BattleUnit.cpp` (`getRightHandWeapon`, `getLeftHandWeapon`),
+`BattlescapeGenerator.cpp` (`run`), `SavedBattleGame.cpp` (`loadMapResources`), `InventoryState.cpp` (the destructor).
+
+- **Light state.** `BattleMap` (now `partial`, `BattleMapLight.cs`) holds the four layers per tile (`BattleLightLayer`: ambient, fire, items, units;
+  `Light`, `AddLight`, `ResetLightMulti`, `LightMulti`, `Shade`) and the blockage cache (`BattleLightCache`: the blocked-direction bits, the big wall bits,
+  the height; `LightCache`, `HasSmoke`, `HasFire`, `BlocksUp`, `BlocksDown`, `Blocks(direction, z)`, `IsBigWall(direction)`). Runtime only: nothing is
+  saved, and `BattleMap.Reset` clears both. `TileAt(x, y, z)` is `getTile(Position)` (-1 outside the map).
+- **Blockage.** `BattleBlockage` (static, reused by S4 and S9) is `blockage`, `horizontalBlockage` and `verticalBlockage` on tile indexes, for
+  `BattleBlockType` `None` (`DT_NONE`: the map data's vision block), `Smoke` (`DT_SMOKE`) and `Damage` (every other damage type: the high explosive
+  block, which is `getBlock` at the default `battleTerrainSquishyness` of 1). The big wall direction table, the two-way diagonal check of the original
+  game for `None` (and the averaged form otherwise), the "-1 reveals a big wall" return, the open UFO door zeroing and `skipObject` are as the
+  reference. Quirks kept: a solid floor blocks sight with 256 unless it has no floor; a floor with a zero block adds its armor for smoke too and then
+  any part with map data stops smoke with 256 (`wall != 0`); the second way round a diagonal replaces the first's result.
+- **Lighting.** `BattleState.CalculateLighting(rules, layer, position, eventRadius, terrainChanged)` is `calculateLighting`: the blockage cache refresh (the
+  whole map, or the event radius plus one), the resets of the layer and those after it, then sun shading, terrain light sources and fires, glowing items
+  and the units. Sun: 15 less the global shade, 2 less under a roof (a floor or an object part pointing down above, summed) only when the global shade
+  is 4 or less. Terrain: the brightest light source of the four parts, 15 for a tile on fire, capped at `maxStatic - 1`. Items: a flare's glow
+  (battle type 10 while `defaultBehavior` with no fuse type, or with an enabled running fuse; the range is the rule's `power`), 10 for an item that
+  carries a burning unit, capped at `maxDynamic - 1`. Units (not out): the armor's personal light for the side (X-COM's only while the toggle is on),
+  the hand-held flares and burning corpses of the left and right hand, 15 on fire, capped likewise, added on each tile of the footprint.
+- **`addLight`.** Classic: a circle losing a level per tile, the distance `Round(sqrt(voxel distance squared) / 16)` in single precision as the reference
+  computes it. Enhanced (`lighting: enhanced` bits 1 fire, 2 items, 4 units): the two voxel lines from the source to the tile (`BattleLines.Walk` is
+  `calculateLineHelper`, S4 reuses it), with the cache stopping a line at a blocked direction (a big wall target excepted), smoke taking a level, a tile
+  lower than the line's height taking two, the fire layer stopping at a fire, the lines' average added where it exceeds the tile's light. Iteration
+  order (level, row, column) is the reference's, because the enhanced pruning reads the light already added.
+- **When it runs.** At the end of `BattleGenerator.Generate` and of `BattleState.Restore` (ambient, whole map, cache included), and at the end of
+  `StartFirstTurn` for the items layer (the pre-battle inventory's close; its gravity and field of view are S7 and S4). `TileShade(position)` is
+  `Tile::getShade` (0 bright to 15 dark); `TogglePersonalLighting(rules)` is `togglePersonalLighting` (the per-battle toggle is saved state; the
+  units layer is recomputed). Both are internal: the viewer-scoped shade query is S4's and the toggle command and button are S10's (the toggle
+  also needs S4's `recalculateFOV`). The events of walks, falls, deaths and explosions that call `calculateLighting` are those slices'.
+- **Gaps.** A flare's glow range is `getPowerBonus`: a flare whose rule binds a `damageBonus` script is refused at the first turn with
+  `battle.flare-power-bonus-unsupported` (branch 8 evaluates it). `strengthApplied` leaves no trace in the runtime rules, so it is not detected and the
+  range stays the rule's `power`. The "fire on the path stops a fire light" branch is ported and tested with `maxStatic: 24` (a source above 15 can arrive
+  at 15 or less; at the default 16 a fire is as bright as any source, so no layout shows it). A centre outside the map and a line leaving the map
+  are dark here, where the reference indexes out of range. `oxceTogglePersonalLightType` is at its default (per battle).
+- **Tests.** `BattleLightingTests` (25, compatibility project): walls, panes, UFO doors, floors, big walls (the direction table, the origin form, the
+  reveal), diagonals, vertical steps; the cache (directions, big walls, smoke, fire, heights, roofs, a partial refresh equal to a full one); the sun at
+  several shades and the roof at the 4/5 boundary; a light source's circle, rounding, level above and cap; fires and floor sources; ground flares and
+  fused ones; a flare in a hand, a unit on fire, a unit out; a burning corpse and the dynamic cap; each side's personal light and the toggle; enhanced
+  lighting per layer, windows, smoke and tall objects (hand-computed values); partial recomputes equal to a full one; a generated battle's lighting
+  equal to its reload's; the first turn's item lighting. Values were worked out by hand from the reference's arithmetic, not run against it.
+
 ## Next
 
-S3 — lighting (plan row S3). Notes for its worker:
+S4 — field of view and per-faction visibility (plan row S4). Notes for its worker:
 
-- **What S2 left for it.** `BattleMap.Visibility` (the tile's `Sint16` visible counter the sneaking search reads; S4 adds to and takes from it, as `Tile::setVisible` does) and
-  `BattleUnit.UnitsSpottedThisTurn` are runtime state S4 fills; S3 does not need them. The map's tile-index helpers (`TileAbove`, `TileBelow`,
-  `HasNoFloor(int)`) are reusable for the light and blockage walks.
-- **Constants.** `RuntimeCampaignSettings` has `MaximumStaticLightDistance` 16, `MaximumDynamicLightDistance` 24 and `EnhancedLighting` 0 (S1).
-- **Options.** `BattlePathingOptions` is pathfinding's only; give lighting its own value rather than growing it.
-- **Test helpers.** `BattlePathfindingTests.Flat` (private) builds a cleared 30x30x2 arena from `BattleMovementGroundworkTests.Open` (now with a
-  `ufo` argument) with TESTSET records appended after the three the generator uses (`Terrain`); copy that approach for light sources and blockers
-  (an MCD record's light fields: `LightBlock` at offset 51, `LightSource` at 58). `Open`, `Place`, `Set` and `East` are internal.
-- **Gotchas.** A post-edit hook reformats edited C# files, so read a file again before a second edit. A unit that still has its
-  `InventoryTile` has no tile of its own: do not run the pathfinder for it.
+- **What S3 left for it.** `BattleBlockage` (`HorizontalBlockage`, `VerticalBlockage`, `Blockage`, `BattleBlockType`), the cache (`BattleMap.LightCache`:
+  `Blocks(direction, z)`, `IsBigWall`, `HasSmoke`, `HasFire`, `Height`; refreshed by `CalculateLighting(..., terrainChanged: true)`), `BattleLines.Walk`
+  (`calculateLineHelper`), `BattleMapSubset` and `TileShade` / `BattleMap.Shade` (darkness limits read `getShade`). `BattleState.TogglePersonalLighting`
+  must also call S4's `recalculateFOV`. Sight, `calculateTilesInFOV` and `calculateLineTile` read the same cache (`TileEngine.cpp:4780`).
+- **Hooks to extend.** Generation, `Restore` and `StartFirstTurn` call `CalculateLighting`; S4 adds the field of view to the same three places (the reference
+  runs `recalculateFOV` after `loadMapResources`' lighting and in the inventory's destructor after the items lighting).
+- Carried from S2: `BattleMap.Visibility` and `BattleUnit.UnitsSpottedThisTurn` are runtime state S4 fills.
+- **Test helpers.** `BattleLightingTests.Flat` (private) builds a cleared 30x30x2 arena with the soldier at (25, 25, 0), personal light off, a chosen global shade
+  (the deployment's `shade` is edited into `UFO_SUITED`; `GlobalShade` is init-only) and TESTSET records appended after the generator's three (light
+  sources at offset 58, vision block 31, UFO door 30, big wall 33, high explosive block 43, terrain level 48); copy that approach for sight tests.
+- **Gotchas.** A post-edit hook reformats edited C# files, so read a file again before a second edit. A backslash-n written through a script may reach a C# file
+  as a real newline: check string literals that carry one. A unit that still has its `InventoryTile` has no tile of its own.
 - Later slices (for planning ahead): S4 can read voxel data through `LoftempsCodec` (`src/Oxce.Formats/Terrain`); the battle does not load it
-  yet. S9 reads the smoke threshold from `RuntimeCampaignSettings`. Branch 2 and 3 reload comparisons will see recomputed light and sight from S3
-  and S4 on; extend them rather than masking the new state. S8's walk calls `BattlePathfinder.Calculate` and `GetTuCost` (a walk prices each
-  step from the unit's state at that step) and relies on S4 to fill `UnitsSpottedThisTurn`.
+  yet. S9 reads the smoke threshold from `RuntimeCampaignSettings`. S8's walk calls `BattlePathfinder.Calculate` and `GetTuCost` (a walk prices each
+  step from the unit's state at that step), recomputes lighting with `CalculateLighting(Items or Units, position, 2)` after each step as
+  `UnitWalkBState.cpp:224` does, and relies on S4 to fill `UnitsSpottedThisTurn`.
 - Gotchas carried from branch 3 (see `docs/battle-session-ui-status.md` "## Next"): write test files with LF; add C# string literals with
   `\n` through the Edit tool; the test runner is Microsoft Testing Platform (`dotnet test --project <proj> --filter-class <full name>`);
   battle test helpers (`BattleStartTests.Requested`, `Started`, `Battle`, `BattleSaveRootTests.Generated`, `BattleSaveUnitTests.Loaded`) are

@@ -36,6 +36,9 @@ internal static class BattleFlowReasons
     internal static readonly CampaignReason SpawnNeedsGravity = new("battle.spawn-gravity-unsupported",
         "A primed spawn item lies near a tile without a floor, where its spawn would fall; gravity arrives with the tile engine (Phase 7 branch 4).");
 
+    internal static readonly CampaignReason FlareBonusUnsupported = new("battle.flare-power-bonus-unsupported",
+        "A flare's glow range is its power plus the damage bonus of its rule; evaluating a damage bonus script arrives with Phase 7 branch 8.");
+
     internal static readonly CampaignReason SpawnContentInvalid = new("battle.generation-failed",
         "A primed spawn item spawns a unit, but the mod lists no ten alien item levels for the battle's month.");
 
@@ -358,6 +361,10 @@ internal sealed partial class BattleState
             if (owner?.Status == BattleUnitStatus.IgnoreMe) continue;
             if (HasRuleScript(content, "items", item.ItemType, "newTurnItem")) return BattleFlowReasons.NewTurnScriptUnsupported;
         }
+        foreach (var item in _items)
+            if (item.ItemType is var type && content.RuntimeRules.Items.TryGet(type, out var handle) && content.RuntimeRules.Items[handle].Value.BattleType == FlareBattleType &&
+                (HasRuleScript(content, "items", type, "damageBonusBonusStats") || HasEventPlan(content, "damageBonusBonusStats")))
+                return BattleFlowReasons.FlareBonusUnsupported;
         var rules = content.RuntimeRules;
         foreach (var unit in _units)
         {
@@ -409,6 +416,8 @@ internal sealed partial class BattleState
             if (unit.OriginalFaction == BattleFaction.Player && !unit.IsOut) PrepareNewTurn(unit, equipment);
         Turn = 1;
         Phase = BattlePhase.InProgress;
+        // InventoryState's destructor, as the inventory closes: flares dropped or picked up (gravity and the field of view are S7 and S4).
+        CalculateLighting(content.RuntimeRules, BattleLightLayer.Items);
         Revision++;
     }
 
