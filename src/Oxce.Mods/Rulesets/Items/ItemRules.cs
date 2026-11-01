@@ -423,6 +423,7 @@ internal static class ItemRuleSchema
         ["recover"] = true,
         ["recoverCorpse"] = true,
         ["ignoreInBaseDefense"] = false,
+        ["strengthApplied"] = false,
         ["ignoreInCraftEquip"] = true,
         ["liveAlien"] = false,
         ["arcingShot"] = false,

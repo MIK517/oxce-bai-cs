@@ -605,6 +605,31 @@ public sealed class BattleLightingTests
         Assert.Equal(BattleFlowReasons.FlareBonusUnsupported.Text, blocked.Reason);
     }
 
+    [Fact]
+    public void AFlareWithStrengthAppliedIsRefusedAtTheFirstTurn()
+    {
+        var rules = Replaced(WithFlares(Rules), "power: 8", "power: 8" + "\n    strengthApplied: true");
+        var (campaign, _) = Requested(rules, "UFO_SUITED");
+        campaign.BattleTerrainFiles = TerrainFiles(Terrain);
+        Started(campaign);
+        campaign.Execute(new BeginBriefing("T", "C"));
+        campaign.Execute(new ConfirmBriefing());
+        var battle = Battle(campaign);
+        battle.AddItemOnTile(BattleState.ConstructItem(campaign.Content.RuntimeRules, battle.TakeItemId(), "FLARE"), new BattlePosition(0, 0, 0));
+        Assert.True(campaign.Content.RuntimeRules.Battle.Equipment.Items["FLARE"].StrengthApplied);
+        var blocked = Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(new StartFirstTurn()).Events));
+        Assert.Equal(BattleFlowReasons.FlareBonusUnsupported.Text, blocked.Reason);
+    }
+
+    [Fact]
+    public void EnhancedLightReachesTheLevelAboveWhenNothingIsInTheWay()
+    {
+        var arena = Flat(extraRules: "\nlighting: {enhanced: 1}\n");
+        arena.Put(10, 10, 0, BattleTilePart.ObjectPart, Lamp);
+        arena.Relight();
+        Assert.Equal((7, 8), (arena.Shade(10, 10, 1), arena.Shade(12, 10, 1)));
+    }
+
     // ---- partial recomputation ----
 
     [Fact]

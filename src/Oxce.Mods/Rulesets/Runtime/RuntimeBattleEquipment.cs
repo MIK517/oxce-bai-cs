@@ -87,6 +87,7 @@ public sealed class RuntimeBattleEquipment
             {
                 BigSprite = rule.Value.ResourceIndexes["bigSprite"].Index,
                 IgnoreInBaseDefense = values.Boolean("ignoreInBaseDefense"),
+                StrengthApplied = values.Boolean("strengthApplied"),
                 IgnoreInCraftEquip = values.Boolean("ignoreInCraftEquip"),
                 InventoryMoveCostPercent = values.GetInteger("inventoryMoveCostPercent"),
                 SpawnUnit = values.NullableName("spawnUnit") ?? "",
@@ -265,6 +266,9 @@ public sealed record RuntimeBattleItem(
 
     /// <summary>RuleItem's <c>ignoreInBaseDefense</c> (canBeEquippedBeforeBaseDefense) and <c>ignoreInCraftEquip</c>.</summary>
     public bool IgnoreInBaseDefense { get; init; }
+
+    /// <summary>RuleItem's <c>strengthApplied</c>: the power gets the owner's strength bonus (<c>getPowerBonus</c>).</summary>
+    public bool StrengthApplied { get; init; }
     public bool IgnoreInCraftEquip { get; init; } = true;
 
     /// <summary>RuleItem::isInventoryItem.</summary>

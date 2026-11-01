@@ -37,7 +37,6 @@ internal sealed class ItemRuleLoader : TypedRuleFamilyLoader<ItemRuleBuilder, It
         ApplyDamage(builder.Damage, reader, "damageType", "blastRadius", "damageAlter");
         ApplyDamage(builder.MeleeDamage, reader, "meleeType", null, "meleeAlter");
         reader.Defer("skillApplied", "stat-bonus compilation belongs to Phase 4");
-        reader.Defer("strengthApplied", "stat-bonus compilation belongs to Phase 4");
 
         if (reader.TryGet("flatRate", out var flatRate))
             GetUseFlat(builder, "Use").Time = YamlValueReader.ReadBoolean(flatRate!);

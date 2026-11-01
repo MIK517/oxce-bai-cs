@@ -363,7 +363,7 @@ internal sealed partial class BattleState
         }
         foreach (var item in _items)
             if (item.ItemType is var type && content.RuntimeRules.Items.TryGet(type, out var handle) && content.RuntimeRules.Items[handle].Value.BattleType == FlareBattleType &&
-                (HasRuleScript(content, "items", type, "damageBonusBonusStats") || HasEventPlan(content, "damageBonusBonusStats")))
+                (content.RuntimeRules.Battle.Equipment.Items[type].StrengthApplied || HasRuleScript(content, "items", type, "damageBonusBonusStats") || HasEventPlan(content, "damageBonusBonusStats")))
                 return BattleFlowReasons.FlareBonusUnsupported;
         var rules = content.RuntimeRules;
         foreach (var unit in _units)

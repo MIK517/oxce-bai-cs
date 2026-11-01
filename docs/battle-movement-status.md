@@ -209,12 +209,11 @@ Reference: `TileEngine.cpp` (`calculateLighting`, `calculateSunShading`, `calcul
   `Tile::getShade` (0 bright to 15 dark); `TogglePersonalLighting(rules)` is `togglePersonalLighting` (the per-battle toggle is saved state; the
   units layer is recomputed). Both are internal: the viewer-scoped shade query is S4's and the toggle command and button are S10's (the toggle
   also needs S4's `recalculateFOV`). The events of walks, falls, deaths and explosions that call `calculateLighting` are those slices'.
-- **Gaps.** A flare's glow range is `getPowerBonus`: a flare whose rule binds a `damageBonus` script is refused at the first turn with
-  `battle.flare-power-bonus-unsupported` (branch 8 evaluates it). `strengthApplied` leaves no trace in the runtime rules, so it is not detected and the
-  range stays the rule's `power`. The "fire on the path stops a fire light" branch is ported and tested with `maxStatic: 24` (a source above 15 can arrive
+- **Gaps.** A flare's glow range is `getPowerBonus`: a flare whose rule binds a `damageBonus` script or `strengthApplied` is refused at the first turn with
+  `battle.flare-power-bonus-unsupported` (branch 8 evaluates it). `strengthApplied` is now projected (`RuntimeBattleItem.StrengthApplied`) and refused the same way. The "fire on the path stops a fire light" branch is ported and tested with `maxStatic: 24` (a source above 15 can arrive
   at 15 or less; at the default 16 a fire is as bright as any source, so no layout shows it). A centre outside the map and a line leaving the map
   are dark here, where the reference indexes out of range. `oxceTogglePersonalLightType` is at its default (per battle).
-- **Tests.** `BattleLightingTests` (25, compatibility project): walls, panes, UFO doors, floors, big walls (the direction table, the origin form, the
+- **Tests.** `BattleLightingTests` (27, compatibility project): walls, panes, UFO doors, floors, big walls (the direction table, the origin form, the
   reveal), diagonals, vertical steps; the cache (directions, big walls, smoke, fire, heights, roofs, a partial refresh equal to a full one); the sun at
   several shades and the roof at the 4/5 boundary; a light source's circle, rounding, level above and cap; fires and floor sources; ground flares and
   fused ones; a flare in a hand, a unit on fire, a unit out; a burning corpse and the dynamic cap; each side's personal light and the toggle; enhanced
