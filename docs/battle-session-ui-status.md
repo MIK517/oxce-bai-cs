@@ -10,15 +10,16 @@ Phase 7 branch 3 (`claude/battle-session-ui`), from `main` after PR #79 (branch 
 | Slice | State |
 |---|---|
 | S0 planning | Done (2026-10-31) |
-| S1 session layer | Done, audit pending (2026-10-31) |
-| S2 host clock, pause policy and screen stack | Done, audit pending (2026-10-31) |
-| S3 briefing and the first turn | Done, audit pending (2026-10-31) |
-| S4 inventory | Done, audit pending (2026-10-31) |
-| S5 battlescape queries and view model | Done, audit pending (2026-10-31) |
-| S6 battlescape screens | Done, audit pending (2026-10-31) |
-| S6b host loop: battle screens from the SDL host, turn-1 autosave | Done, audit pending (2026-10-31) |
-| S6c geoscape popups, modes and client cover onto `ScreenNavigator` | Done, audit pending (2026-10-31); the logistics client's internal views are not split |
-| S7 acceptance | Done, audit pending (2026-10-31); the branch audit follows |
+| S1 session layer | Done and audited (2026-10-31) |
+| S2 host clock, pause policy and screen stack | Done and audited (2026-10-31) |
+| S3 briefing and the first turn | Done and audited (2026-10-31) |
+| S4 inventory | Done and audited (2026-10-31) |
+| S5 battlescape queries and view model | Done and audited (2026-10-31) |
+| S6 battlescape screens | Done and audited (2026-10-31) |
+| S6b host loop: battle screens from the SDL host, turn-1 autosave | Done and audited (2026-10-31) |
+| S6c geoscape popups, modes and client cover onto `ScreenNavigator` | Done and audited (2026-10-31); the logistics client's internal views are not split (Phase 8, see the plan) |
+| S7 acceptance | Done and audited (2026-10-31) |
+| Branch audit | Findings fixed (2026-11-01), see "Branch audit"; an independent check of the fixes follows |
 
 ## S0 — Planning (2026-10-31)
 
@@ -82,7 +83,7 @@ geoscape, logistics and quote tests pass unchanged.
   (80 ms steps, speed table, frame-budget chunks, notification interrupt, halt on a refused tick). `CampaignSession`
   owns one (`CampaignSession.Clock`, `SessionHandle.Clock`); its time advances run through `ExecuteAsHost` as
   `PlayerId.Host`, so every attached `ISessionClient` hears them. The battle stop is the campaign's `battle`
-  preflight: the refused advance halts the clock until a speed is selected. The clock test uses a refusing target with a made-up reason; the real `battle.in-progress` path is tested only through direct campaign calls (`BattleStartTests`), not through the clock.
+  preflight: the refused advance halts the clock until a speed is selected. The clock tests use a refusing target with a made-up reason; the real `battle.in-progress` preflight halting a `SessionClock` over a campaign with a battle is tested in `GeoscapeBattleHostTests` (branch audit).
 - **Pause policy.** Clients report a cover (`SessionClock.SetCovered(player, covered)`; `GeoscapeClient` reports
   `!TimeCanRun` each tick, which is the old popup, screen, destination, placing, naming and world-not-entered rule).
   The clock does not run, and banks no time, while any player reports one. Speed requests and the popup interrupt
@@ -146,14 +147,14 @@ Reference: `BriefingState` (constructor, `btnOkClick`), `NextTurnState` (turn-0 
 Tests: `BattleFirstTurnTests` (briefing names, operation names, briefing data, phase order, the preview, primed spawn
 items and their chances, which grenades spawn, the refusals before any change, reinforcement waves, bug hunt, the first turn's
 preparation, encumbrance and leg wounds, out and controlled units, reselection, seeded item randomization, no soldiers, script
-refusals, revive refusals, a reload past and before the first turn, the rule values), `StrategicBaseAttackTests` (`BriefBaseDefense` only; the `BeginBriefing` path to it has no test), `BattleSaveItemTests` (the restore note); the old save-gate tests now save from the start and play
+refusals, revive refusals, a reload past and before the first turn, the rule values), `StrategicBaseAttackTests` (`BriefBaseDefense`; the `BeginBriefing` path to it is in `BattleFirstTurnTests`), `BattleSaveItemTests` (the restore note); the old save-gate tests now save from the start and play
 the briefing and the first turn to reach turn 1.
 
 Gaps with an owner:
 
 - `tallyUnits` ignores surrender mode and captured units (a surrendering alien still counts) and the exit areas (branch 7).
-- `checkForCasualties` of the battlescape's constructor is refused (`battle.casualties-unsupported`, branch 6) when a unit is past the out threshold but not out.
-- A save from before the first turn: the briefing's craft or base is derived from the campaign's `inBattlescape` flags on restore (not saved).
+- `checkForCasualties` of the battlescape's constructor is refused by name (`battle.casualties-unsupported`, branch 6): at the briefing, and for the commands of a running battle (a loaded one included), when a unit is not dead with no health left or not unconscious with its stun at its health (branch audit; before, the check skipped units with a spawn unit and units already out).
+- A save from before the first turn: the briefing's craft or base is derived from the campaign's `inBattlescape` flags on restore (not saved). Whether the briefing already named the mission is derived too: saved lines mean it did (`BriefingOpened`), so a client that opens the loaded briefing cannot name it again (branch audit).
 - `applyGravity`, `calculateFOV` and the glow of a spawned item are branch 4's; `initItem`/`initUnit` script hooks are branch 8's.
 - The briefing's `Seedless` stream is the battle's; the hidden-movement background pick of `NextTurnState` is presentation.
 - `BriefingData` merges key by key across mods as in the reference (`MergeBriefing`); no gap.
@@ -174,7 +175,7 @@ Reference: `Inventory::mouseClick` (pick up, drop, Ctrl click), `fitItem`, `over
   get, from the same planning code, so a screen can grey out a drop without changing anything.
 - **When it opens.** After the briefing (`Inventory` phase: free moves) and in `InProgress` on X-COM's side (moves charge the section
   cost); the unit must be a live player-faction unit on the map whose armor has an inventory (`battle.inventory-unavailable`,
-  `battle.inventory-unit-unavailable`). The enemy-side refusal has no test (the side cannot be set before branch 6).
+  `battle.inventory-unit-unavailable`). The enemy-side refusal is tested by setting the battle's side (`BattleInventoryTests`, branch audit), as the view tests do.
 - **A move** (`PlanMove`, then `ApplyMove`): the item must be carried by the unit in a section or lie on its tile
   (`inventory-item-unknown`) and not be fixed (`inventory-item-fixed`); the section must exist (`inventory-slot-unknown`) and take the
   item (`inventory-section-unsupported`, `supportedInventorySections`, the ground always); a grid or hand position must not be taken
@@ -311,11 +312,11 @@ Not done (owner in brackets):
 - **`NextTurnState` itself**: the centering is done. The end-of-battle check on closing the pre-battle inventory is refused by name by the rules (`battle.no-live-soldiers`, `battle.no-live-aliens` at the briefing; `finishBattle` is branch 7's) and the screen shows the code (tested). The turn-1 autosave is S6b's (host loop work, plan row).
 - Real map drawing: isometric terrain sprites, pixel scrolling, the cursor, fog shade [Phase 8 presentation]; the plan view is a placeholder. The briefing's cutscene, music and background are listed, not played.
 - Inventory drag and drop, paperdoll and item sprites; the keyboard drop picks the first accepted cell.
-- The SDL application does not open these screens yet (the host loop that creates the session and calls `BattleUiContext.Open`) [S6b].
+- The SDL application opens these screens from S6b (the host loop that creates the session and calls `BattleUiContext.Open`).
 - Buttons refused by owner as client messages (`BattlescapeClient.LaterButtons` plus the `*Code` constants): kneel, walk, unit up and down, fire, both hand items, psi, special, skills, launch, reserve TU and kneel, zero TUs, end turn, abort, stats, options, minimap, Esc deselect, Ctrl-B, the digit keys (visible units), right and middle mouse buttons. The rules refuse the same actions in their branches.
 - Default keys differ from the reference's (it centers with Home, which also works; Ctrl-C toggles all layers as there; skip and undo use `K` and `R`, the level keys `[` `]`).
 - Navigator: two pops in a row reveal the middle screen once before it goes (harmless today). A map wider than 224 or longer than 200 tiles overflows the plan view.
-- Untested: the arrow scroll keys.
+- The arrow scroll keys are tested since the branch audit (one tile per press).
 
 ## S6b — Host loop: battle screens and the turn-1 save (2026-10-31)
 
@@ -341,13 +342,13 @@ Reference: `BattlescapeState::init` (the `_autosave` block: ironman save, else `
 
 Tests: `GeoscapeBattleHostTests` (the briefing opens above the geoscape and the clock stays still; briefing to battlescape requests the
 turn-1 save once; a running battle opens the battlescape without a save; OK on the popup starts the battle and the briefing carries a craft-or-base line;
-a refused start shows the reason and offers the request again; `BattleSavePolicy` for every kind). The turn-1 save reload is covered in two halves: branch 2's
+a refused start shows the reason and offers the request again; `BattleSavePolicy` for every kind). The turn-1 save reload is covered in two halves here, and end to end since the branch audit (`GeoscapeBattleHostTests`): branch 2's
 save tests reload a turn-1 save, and the host test opens a running battle; no single test saves through the host and reloads.
 
 Not done:
 
 - **Done in S6c** (see its section; text kept as written for S6b): the geoscape popup list, naming, selecting and placing modes and the logistics client are not moved onto a shared `ScreenNavigator` with
-  `Covers`**: they are still client state inside `GeoscapeClient` (which reports `TimeCanRun` as the cover); only the base and
+  `Covers`: they are still client state inside `GeoscapeClient` (which reports `TimeCanRun` as the cover); only the base and
   battle screens use the navigator. Moving them needs the navigator to composite translucent screens and the popup `Group`
   logic to become screens; it was not attempted in this part.
 - The SDL application cannot leave the battlescape (abort is branch 7), so there is no way back to the globe during a battle.
@@ -382,7 +383,7 @@ Not done:
 ## S7 — Acceptance (2026-10-31)
 
 Acceptance on branch 1's battles and the private active-battle saves, through the screens on one `ScreenNavigator` and the session's commands
-(`PrivateBattleGenerationTests.AssertPlays`, `PrivateBattleSaveTests`); no rule code changed.
+(`PrivateBattleGenerationTests.AssertPlays`, `PrivateBattleSaveTests`); the gravity narrowing below changed `BattleFirstTurn.cs` (`SpawnNeedsGravity`). Since the branch audit the contexts go through a `CampaignSession` handle with `BattleUnitControllers`, so unit commands are authorized as in the host.
 
 - **Branch 1's nine battles** (the Rosigma terror landing, five staged landings, three base defenses). Every battle shows its briefing for the local player. The six vanilla ones then play through: Enter confirms the briefing, Esc closes the
   pre-battle inventory (`StartFirstTurn`), the battlescape is on top at turn 1 and draws the level, ticks, has a selected X-COM unit and answers the soldier button; the battle is saved (`CheckSave` passes), reloads at turn 1
@@ -400,56 +401,49 @@ Acceptance on branch 1's battles and the private active-battle saves, through th
 
 Not done: the walk through the briefing for the Rosigma battles (branch 8's scripts); no SDL-level test (needs private data and a window).
 
+## Branch audit (2026-11-01)
+
+The audit of `git diff main...HEAD` found 5 High, 9 Medium and 2 Low items. Each is fixed with a test, or its remaining gap has a named owner.
+
+**High**
+
+1. *Briefing line template.* `GeoscapeClient.CaptureBriefingNames` composes `tr("STR_CRAFT_").arg(craft name)` or `tr("STR_BASE_UC_").arg(base name)` as `BriefingState` does (`GeoscapeNotifications.Format`). Test: `GeoscapeBattleHostTests.ABriefingSavedAndReloadedKeepsItsLines...` (a language with the templates). A base defense takes the same path with the base template and is tested in `GeoscapeBattleHostTests`.
+2. *A reloaded briefing.* `CampaignBattles.Restore` derives `BriefingOpened` from the saved lines (a save from before the briefing named anything is still named by the first client). `BeginBriefing` on a loaded briefing is then refused (`battle.briefing-already-open`), which the screen ignores, so the saved craft line is kept and no second operation name is drawn. The client forgets its lines when it opens a battle and in `ForgetBattle` (also run by `Replace`). Tests: `BattleFirstTurnTests.AReloadedBriefingKeepsItsLines...`, `GeoscapeBattleHostTests.ABriefingSavedAndReloadedKeepsItsLines...`.
+3. *Selection after the first turn.* `BattleInventoryScreen.Close` takes the unit `BattleFirstTurnStarted` reports (`BattleViewModel.FollowSelection`) before it opens the battlescape. Test: `BattleScreensTests.TheBattlescapeShowsTheUnitStartFirstTurnSelected...` (two units on one tile).
+4. *Casualty check.* `HasUncheckedCasualty` follows `checkForCasualties` (not dead with no health, or not unconscious with the stun at its health; spawn units and unconscious units at no health included; removed units skipped). A running battle that has such a unit refuses its battle commands with `battle.casualties-unsupported` through the command gate, which also covers a battle loaded already running (same code path; the test uses a live battle). With a casualty present a time advance is refused with the same code instead of `battle.in-progress`; the clock halts either way. The check itself stays branch 6's. Tests: `BattleFirstTurnTests` (`AUnitThePastOutThreshold...`, `ARunningBattleOpenedWithACasualty...`).
+5. *Aliens that come from spawns.* `ConfirmBriefing` counts the aliens after the spawn, as the reference does. With no live alien before it, the battle is refused at once when no primed item could add one (chance 0, X-COM or neutral faction, no spawn); otherwise the spawn runs on a copy of the battle (`Capture`, `Restore`) with the campaign's stream put back, so a refusal after a failed chance or for lack of room still changes nothing. Tests: `BattleFirstTurnTests` (`ABattleWhoseOnlyLiveAliensComeFromPrimedSpawnsIsPlayed`, `ABattleWithoutLiveAliensAfterItsSpawnsIsRefused...`).
+
+**Medium**
+
+6. *Turn-1 save.* The pre-battle inventory screen that starts the first turn calls `BattleUiContext.FirstTurnStarted`, which `GeoscapeClient` hooks to request `CampaignSaveKind.BattleTurnOne` (`NextTurnState::close` sets the autosave). The phase poll that could miss a transition is gone. A first turn started by a command from elsewhere (a second client) makes no save here, as the reference only saves in that state's `close`. Test: `GeoscapeBattleHostTests.TheTurnOneSaveDoesNotDependOnATickSeeingThePhaseBetween`.
+7. *Battle queries and the session (named gap).* `CampaignUiSession.ForCampaign` still reads the four battle queries from the campaign, and the client chooses the `BattleViewer`; a query carries no player. A single local player makes this moot today; deriving the viewer from the attached player and its controller slot belongs with the remote client work (the plan's audit step 5, after the first playable battle). Recorded in the plan. Unit commands are authorized by the session (`BattleUnitControllers`) and are now tested on real battle commands (`GeoscapeBattleHostTests`) and in the S7 acceptance.
+8. *Only vehicles.* `BattleBriefingScreen` closes the pre-battle inventory at once when no unit has an inventory (`InventoryState::init`, `btnOkClick`). Test: `BattleScreensTests.ABattleOfOnlyVehiclesClosesThePreBattleInventoryAtOnce`.
+9. *Enemy-turn inventory refusal.* Tested in `BattleInventoryTests.TheInventoryIsClosedOnTheEnemysTurnAndNothingMoves` (the side is set directly, as the view tests do). The S4 text was corrected.
+10. *S7 acceptance through a session.* `PrivateBattleGenerationTests.Context` (and so `PrivateBattleSaveTests`) uses a `CampaignSession` handle with `BattleUnitControllers`. The authorization itself is also tested directly (`GeoscapeBattleHostTests.ABattleUnitCommandFromAPlayerWhoDoesNotControl...`).
+11. *Plan change recorded.* The plan's S6c row says the logistics client's internal views stay one screen, owned by Phase 8.
+12. *Status drift.* The Progress table, the S2, S3, S4, S6, S6b and S7 text and "## Next" are corrected.
+13. *No advance during a battle through the real clock.* `GeoscapeBattleHostTests.TheCampaignsBattlePreflightHaltsTheSessionClockAndAnAdvanceIsRefused` runs the campaign's `battle` preflight through `SessionClock` (tick and manual advance).
+14. *End-to-end reload.* `GeoscapeBattleHostTests.TheTurnOneSaveReloadsIntoTheSameBattlescapeWithoutAnotherSave`: first turn through the host, capture, restore, and a new client opens the battlescape on the same selected unit and makes no save. The SDL file handling itself still needs a window and private data.
+
+**Low**
+
+15. *`maxRuns`.* `ReinforcementsRefusal` skips a wave whose `maxRuns` is 0 (its runs so far are 0 before turn 1) when its odds are 100 or more; the reference draws the odds before it checks the runs, so a wave with lower odds still spends a draw and stays refused (`battle.reinforcements-unsupported`, branch 6). Test: `AReinforcementWaveThatCouldDeployAtTheStartIsRefusedAndOthersAreNot`.
+16. *Doc slips.* The plan's refusal list names `battle.turn-recovery-script-unsupported` and `battle.casualties-unsupported`; the broken bold and the repeated "for the three Rosigma battles" are fixed; the arrow keys are checked (`TheBattlescapeOpensOnTheSelectedUnit...` tests the camera).
+
 ## Next
 
-The branch audit only: `git diff main...HEAD` (per `AGENTS.md`); S7's acceptance is done (see its section). Findings to look for in particular: the three Rosigma battles refused at the briefing by
-`battle.new-turn-script-unsupported` for the three Rosigma battles (branch 8 retires it and then `PrivateBattleGenerationTests` moves them to the play-through path), the logistics client's internal views not split (S6c), and translucent compositing
-on separate surfaces (Phase 8). Earlier parts: S6b (battle screens, turn-1 save), the screens in `Oxce.Engine/Battlescape` (`BattleUiContext.Open()` is the entry), `BattleViewModel` and `IBattleViewQuery` (S5); the host loop that creates a session sets `Controllers = new BattleUnitControllers(battleQuery)`; a screen's soldier buttons are `Next`, `Skip`, `ReselectSkipped`, the level buttons `LevelUp` and `LevelDown`, the center button `CenterOnSelection`. Buttons of later branches refuse by their owner's name. From S4:
+Branch 3 is complete once an independent check of the audit fixes passes. Branch 4 (pathfinding, walking, gravity, field of view) is next. Notes for it:
 
-- The inventory is a command set on stable IDs (`MoveInventoryItem`, `AutoPlaceInventoryItem`, both `IUnitCommand`) with
-  `IBattleInventoryQuery`; the host loop that creates a
-  `CampaignSession` must set `Controllers = new BattleUnitControllers(battleQuery)` (S6 wires it; `BattleUnitView.ControllerSlot` is the data).
-- The pre-battle inventory's close is still `StartFirstTurn` (it saves the equipment layout first). The inventory screen's previous and next soldier are `SelectNextUnit(InventoryOnly)` (`BattleViewModel.NextInventoryUnit`); the inventory takes any live X-COM unit by ID.
-- Ground items are per tile in `ArrivalOrder` (`ItemsOnTile`); any new code that puts an item on a tile or in an inventory should take
-  `NextArrival()` (`AddItemOnTile` and the inventory moves do).
-- The inventory's `Smart` flag is the client's `oxceSmartCtrlEquip` option (default true in the reference); the client keeps its options.
-- Not ported, named: `battle.inventory-ammo-unsupported`, `-throw-unsupported`, `-prime-unsupported`, `-layout-screens-unsupported`,
-  `-clear-unsupported`, `-autoequip-unsupported`, `-template-unsupported`, `-rename-unsupported`  (each refused by `UseInventoryFeature`; a drop onto a weapon that takes ammo is also the ammo one) and
-  `battle.inventory-danger-zone-unsupported` (branch 6). The screens (S6) show the buttons and send `UseInventoryFeature`, so the
-  refusals come from the rules.
-- From S3, still open: the briefing's names are set by the client's `BeginBriefing`; the SDL client does not send it yet (S6 builds the
-  briefing screen).
-- `PrimedSpawnItems`, `SpawnNeedsGravity` and `FirstTurnRefusal` are the checks to keep when branch 4 adds gravity and branch 8 script
-  bindings: retire `battle.spawn-gravity-unsupported`, `battle.new-turn-script-unsupported`, `battle.turn-recovery-script-unsupported`
-  where their owner lands.
-
-- Gaps with owner S6 (delivered in S6c: the cover from `Covers`, the widgets, popups and modes on the stack; the hook for a pop was S6) (moved there in the plan's slice table): the plan's shared widgets and the `ScreenNavigator.Covers` query
-  the session should read are not done (the cover comes from the client's `TimeCanRun`); `ScreenNavigator` has no hook for the screen
-  a pop reveals (the reference's `init`/`resetAll`) and keeps routing input after a stack change.
-- Extension time advances (`PlayerId.Host`) deliberately ignore covers and the clock's halt: they are explicit host commands (pinned by `ExtensionCommandsGoThroughTheSessionAndEveryClientHearsThem`). The simulation's preflights still apply.
-- A detached player's cover is cleared on detach. `SessionClock` is not thread-safe (the host loop is one thread). A second session over one extension session takes over the route.
-- Not migrated in S2, delivered in S6c except the logistics client's internal views: the geoscape's popup list (`_popups` with groups, the
-  naming, selecting and placing modes) is still client code inside `GeoscapeClient`; only the base screens use
-  `ScreenNavigator`. The logistics client was not changed. The navigator composites nothing: `Visible` lists the
-  screens to draw and the loop draws the top frame, so translucent compositing is for the first screen that needs it.
-- The host loop is still the single-player client: `GeoscapeClient.Tick` calls `SessionClock.Tick`. A battlescape
-  client must not tick the clock; a future host loop will.
-- `BattleUnitControllers` is the `IUnitControllers` (S4); the host loop installs it (S6).
-- Untested (unreachable or needs a removed base): the `ArgumentException` path of `QuoteStillHolds`; the
-  `PlaceStartingBase` quote clear (an unplaced base cannot be quoted).
-- Same gotchas as before (below).
-- Gotchas carried from branch 2 (see `docs/battle-save-status.md` "## Next"): write test files with LF; add C# string
-  literals with `\n` through the Edit tool; the test runner is Microsoft Testing Platform
-  (`dotnet test --project <proj> --filter-class <full name>`); battle test helpers (`BattleStartTests.Requested`,
-  `Started`, `Battle`, `BattleSaveRootTests.Generated`, `BattleSaveUnitTests.Loaded`) are internal for reuse; a
-  campaign snapshot with a battle restores only with terrain files; a test that needs a battle past its first turn plays
-  `BeginBriefing`, `ConfirmBriefing` and `StartFirstTurn` (`BattleCampaignSaveTests.AtFirstTurn`); raw string literals in test rules
-  have their indentation stripped (list entries start at two spaces).
-- Named refusals this branch owns, done in S3: `battle.preview-unsupported` (Phase 8, with the craft screens), `battle.casualties-unsupported` (branch 6), `battle.no-live-aliens`, `battle.no-live-soldiers`,
-  `battle.spawn-gravity-unsupported` (branch 4), `battle.turn-recovery-script-unsupported` (branch 8) and the ones it hands on below;
-  `battle.save-before-first-turn` is retired. S4 introduced the `battle.inventory-*-unsupported` refusals above (ammo, throw, prime, layout screens, clear, autoequip, template, rename, danger zone); S3 hands on
-  `battle.spawn-gravity-unsupported` (branch 4), `battle.turn-recovery-script-unsupported` and `battle.new-turn-script-unsupported` (branch 8), `battle.turn-one-revive-unsupported` and
-  `battle.reinforcements-unsupported` (branch 6), and `battle.no-live-aliens` and `battle.no-live-soldiers` (branch 7). The buttons of later branches
-  refuse by their owner's name (S6); the minimap and extended-battlescape links go to branch 8 or Phase 8. Kept by later owners:
-  `OxceBattleSave.UnsupportedTagType` (branch 8), the inherited "Crashed UFO battlescape transitions require tactical
-  simulation" (branch 7), the crashed UFO's power-source explosion (branch 5).
+- **Refusals branch 4 retires or inherits.** `battle.spawn-gravity-unsupported`: retire it where `applyGravity` lands (`BattleState.SpawnNeedsGravity` and `FallsAt` are the checks it replaces; the spawn then moves the unit instead of refusing). The battlescape buttons for walking, kneel, turning and unit up and down refuse with branch 4 as owner (`BattlescapeClient.LaterButtons` and its `*Code` constants): replace each with a command when it lands. A click on a tile is refused by walking's owner.
+- **Selection and the first turn.** `startFirstTurn` selects the unit on the inventory tile and the screen takes it (`BattleViewModel.FollowSelection`). Any new rule that moves the rules' selection (walking onto a tile, a unit falling) must reach clients through a command's event, as `UnitSelected`, `UnitSkipped` and `BattleFirstTurnStarted` do.
+- **Casualties.** `HasUncheckedCasualty` gates the briefing and the commands of a running battle (`CommandGate`); branch 6 ports `checkForCasualties` and removes both uses. Until then a unit that falls to 0 health in branch 5's damage must go through that port, not around it.
+- **`BriefingOpened`** is derived from the saved lines on restore (it is not saved). Branch 8's save work may save it if the header can hold it.
+- **Briefing lines and the turn-1 save.** The client composes the briefing lines with its language (`STR_CRAFT_`, `STR_BASE_UC_`); the turn-1 save is requested through `BattleUiContext.FirstTurnStarted`, so a host that builds a `BattleUiContext` itself must set it to get the autosave.
+- **Query viewer.** The battle queries take a `BattleViewer` chosen by the client (named gap, in the plan); the remote client work derives it from the player.
+- **Ground items and arrival order.** Ground items are per tile in `ArrivalOrder` (`ItemsOnTile`); any new code that puts an item on a tile or in an inventory should take `NextArrival()` (`AddItemOnTile` and the inventory moves do).
+- **Inventory.** The `Smart` flag is the client's `oxceSmartCtrlEquip` option (default true). Not ported, named: `battle.inventory-ammo-unsupported`, `-throw-unsupported`, `-prime-unsupported`, `-layout-screens-unsupported`, `-clear-unsupported`, `-autoequip-unsupported`, `-template-unsupported`, `-rename-unsupported` (each refused by `UseInventoryFeature`) and `battle.inventory-danger-zone-unsupported` (branch 6).
+- **Named refusals this branch hands on.** `battle.spawn-gravity-unsupported` (branch 4); `battle.turn-one-revive-unsupported`, `battle.reinforcements-unsupported` and `battle.casualties-unsupported` (branch 6); `battle.no-live-aliens` and `battle.no-live-soldiers` (branch 7); `battle.new-turn-script-unsupported` and `battle.turn-recovery-script-unsupported` (branch 8); `battle.preview-unsupported` (Phase 8). The three Rosigma battles are refused at the briefing by `battle.new-turn-script-unsupported`; when branch 8 retires it, `PrivateBattleGenerationTests` moves them to the play-through path. Kept by later owners: `OxceBattleSave.UnsupportedTagType` (branch 8), the inherited "Crashed UFO battlescape transitions require tactical simulation" (branch 7), the crashed UFO's power-source explosion (branch 5). `PrimedSpawnItems`, `SpawnNeedsGravity` and `FirstTurnRefusal` are the checks to keep when branches 4 and 8 retire theirs.
+- **Host and session.** Extension time advances (`PlayerId.Host`) deliberately ignore covers and the clock's halt: they are explicit host commands (pinned by `ExtensionCommandsGoThroughTheSessionAndEveryClientHearsThem`); the simulation's preflights still apply. A detached player's cover is cleared on detach. `SessionClock` is not thread-safe (the host loop is one thread). A second session over one extension session takes over the route. The host loop is still the single-player client: `GeoscapeClient.Tick` calls `SessionClock.Tick`, and a battlescape client must not tick the clock.
+- **Screens.** The logistics client's internal views stay one screen (Phase 8, with translucent compositing on separate surfaces). The navigator composites nothing: `Visible` lists the screens to draw and the loop draws the top frame. Real map drawing, the minimap and the extended-battlescape links are Phase 8 or branch 8.
+- Untested (unreachable or needs a removed base): the `ArgumentException` path of `QuoteStillHolds`; the `PlaceStartingBase` quote clear (an unplaced base cannot be quoted).
+- Gotchas carried from branch 2 (see `docs/battle-save-status.md` "## Next"): write test files with LF; add C# string literals with `\n` through the Edit tool (a script can turn `\n` into a real newline); the test runner is Microsoft Testing Platform (`dotnet test --project <proj> --filter-class <full name>`); battle test helpers (`BattleStartTests.Requested`, `Started`, `Battle`, `BattleSaveRootTests.Generated`, `BattleSaveUnitTests.Loaded`) are internal for reuse; a campaign snapshot with a battle restores only with terrain files; a test that needs a battle past its first turn plays `BeginBriefing`, `ConfirmBriefing` and `StartFirstTurn` (`BattleCampaignSaveTests.AtFirstTurn`); raw string literals in test rules have their indentation stripped (list entries start at two spaces).

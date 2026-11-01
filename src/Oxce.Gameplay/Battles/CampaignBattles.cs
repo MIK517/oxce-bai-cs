@@ -1,6 +1,7 @@
 using Oxce.Gameplay.Battles.Terrain;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
+using Oxce.Mods.Rulesets.Content;
 using Oxce.Mods.Rulesets.Runtime;
 
 namespace Oxce.Gameplay.Battles;
@@ -72,7 +73,16 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
             Blocked(_battle is null or { Phase: BattlePhase.Briefing } ? BattleInventoryReasons.Unavailable : BattleInventoryReasons.For(command.Feature)));
         // The geoscape is frozen during a battle: time stops in the preflight, every other command here.
         registry.Preflight(CampaignPreflightOrder.Battle, "battle", (_, _) => _battle is not null ? BattleInProgress.Text : null);
-        registry.CommandGate(command => _battle is not null && command is not (AdvanceCampaignTime or IBattleCommand) ? Blocked(BattleInProgress) : null);
+        registry.CommandGate(command =>
+        {
+            if (_battle is null) return null;
+            if (command is not (AdvanceCampaignTime or IBattleCommand)) return Blocked(BattleInProgress);
+            // The battlescape's constructor runs checkForCasualties on every battle it opens, a loaded one included; that is turn
+            // processing's (branch 6), so a running battle with a unit the check would take out refuses its commands by name.
+            return _battle is { Phase: BattlePhase.InProgress } running && running.HasUncheckedCasualty()
+                ? Blocked(BattleFlowReasons.CasualtiesUnsupported)
+                : null;
+        });
         registry.Capture(snapshot => _battle is null ? snapshot : snapshot with { Battle = _battle.Capture() });
         registry.Restore(Restore);
     }
@@ -89,6 +99,10 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         var ufo = campaign.Handlers.Operation<ICampaignDeploymentHandOver>().UfoInBattlescape;
         _battle = BattleState.Restore(saved, campaign.Content, Loader(files), ufo, BattleRestoreCampaign.From(campaign));
         // A battle before its first turn is briefed again: the briefing's craft or base is the one the campaign flags in the battlescape.
+        // A save keeps the lines the briefing set (not that it ran): lines present mean the briefing already named the mission, so
+        // a client that opens the briefing after the load cannot name it twice or draw a second operation name.
+        if (_battle.Turn < 1)
+            _battle.BriefingOpened = _battle.TargetName.Length != 0 || _battle.CraftOrBaseName.Length != 0;
         if (_battle.Turn < 1)
             foreach (var owner in campaign.BaseStates)
             {
@@ -233,19 +247,42 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         if (_battle is not { Phase: BattlePhase.Briefing } battle) return Blocked(BattleFlowReasons.NotInBriefing);
         var content = campaign.Content;
         var rules = content.RuntimeRules;
-        // The reference spawns first and tallies after; the aliens a spawn adds would only add to the count, and a battle
-        // whose live aliens all come from a spawn is refused here instead of after the spawn.
         // The battlescape's constructor runs checkForCasualties before the spawn; it is turn processing's.
         if (battle.HasUncheckedCasualty()) return Blocked(BattleFlowReasons.CasualtiesUnsupported);
-        if (battle.Tally().LiveAliens == 0) return Blocked(BattleFlowReasons.NoLiveAliens);
+        // The reference spawns first and tallies after: aliens that only the primed items bring count. Without any alien now, a
+        // battle is refused here when no spawn could add one, and otherwise once a trial spawn on a copy shows none arriving.
+        var noAliensYet = battle.Tally().LiveAliens == 0;
+        if (noAliensYet && !battle.PrimedSpawnsMayAddAliens(rules)) return Blocked(BattleFlowReasons.NoLiveAliens);
         if (ReinforcementsRefusal(battle, rules) is { } reinforcements) return Blocked(reinforcements);
         if (battle.SpawnNeedsGravity(rules)) return Blocked(BattleFlowReasons.SpawnNeedsGravity);
         if (battle.SpawnLacksItemLevels(rules)) return Blocked(BattleFlowReasons.SpawnContentInvalid);
         if (battle.FirstTurnRefusal(content, BattleRestoreCampaign.From(campaign)) is { } later) return Blocked(later);
+        if (noAliensYet && SpawnLeavesNoAliens(battle, content)) return Blocked(BattleFlowReasons.NoLiveAliens);
         var (units, items) = battle.SpawnFromPrimedItems(content, (int)campaign.Difficulty, campaign.Random);
         battle.CheckBugHuntMode(rules);
         battle.EnterInventory(rules);
         return new CampaignCommandResult([new BriefingConfirmed(units, items)]);
+    }
+
+    /// <summary>
+    /// Whether the primed items' spawns, run on a copy of the battle with the campaign's stream put back afterwards, leave the
+    /// aliens without a live unit (a chance that fails, or no room for the unit): the refusal then changes nothing.
+    /// </summary>
+    private bool SpawnLeavesNoAliens(BattleState battle, RuntimeContent content)
+    {
+        if (campaign.BattleTerrainFiles is not { } files) return false;
+        var scratch = BattleState.Restore(battle.Capture(), content, Loader(files),
+            campaign.Handlers.Operation<ICampaignDeploymentHandOver>().UfoInBattlescape, BattleRestoreCampaign.From(campaign));
+        var state = campaign.Random.State;
+        try
+        {
+            scratch.SpawnFromPrimedItems(content, (int)campaign.Difficulty, campaign.Random);
+            return scratch.Tally().LiveAliens == 0;
+        }
+        finally
+        {
+            campaign.Random.Restore(state);
+        }
     }
 
     /// <summary>
@@ -273,6 +310,9 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
             {
                 continue;
             }
+            // The wave's runs so far are 0 before the first turn. The reference draws its odds before it looks at the runs, so only a
+            // wave that spends no draw (odds of 100 or more) is skipped here; otherwise the draw is branch 6's and the battle is refused.
+            if (wave.MaximumRuns != -1 && wave.MaximumRuns <= 0 && wave.ExecutionOdds >= 100) continue;
             return BattleFlowReasons.ReinforcementsUnsupported;
         }
         return null;

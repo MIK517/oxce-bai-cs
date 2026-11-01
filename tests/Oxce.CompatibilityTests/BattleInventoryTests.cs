@@ -477,6 +477,25 @@ public sealed class BattleInventoryTests
     }
 
     [Fact]
+    public void TheInventoryIsClosedOnTheEnemysTurnAndNothingMoves()
+    {
+        // InventoryState opens on X-COM's turn only: in the battle with another side on turn, every inventory command and query refuses.
+        var (campaign, battle, soldier) = Open(firstTurn: true);
+        var queries = campaign.GetQuery<IBattleInventoryQuery>()!;
+        Assert.NotNull(queries.QueryInventory(BattleViewer.LocalPlayer, soldier.Id));
+        battle.Side = BattleFaction.Hostile;
+        var before = Where(battle, Grenade);
+        Assert.Equal("battle.inventory-unavailable", Refusal(campaign, new MoveInventoryItem(soldier.Id, Grenade, "STR_GROUND", 0, 0)));
+        Assert.Equal("battle.inventory-unavailable", Refusal(campaign, new AutoPlaceInventoryItem(soldier.Id, Grenade, Smart: true)));
+        Assert.Equal("battle.inventory-unavailable", queries.CheckInventoryMove(BattleViewer.LocalPlayer, soldier.Id, Grenade, "STR_GROUND", 0, 0));
+        Assert.Null(queries.QueryInventory(BattleViewer.LocalPlayer, soldier.Id));
+        Assert.Equal(before, Where(battle, Grenade));
+        // Back on X-COM's turn it opens again.
+        battle.Side = BattleFaction.Player;
+        Assert.NotNull(queries.QueryInventory(BattleViewer.LocalPlayer, soldier.Id));
+    }
+
+    [Fact]
     public void AFeatureRequestIsRefusedAsUnavailableWithoutAnOpenInventory()
     {
         var (campaign, _) = Requested(CostRules, "UFO_SUITED");

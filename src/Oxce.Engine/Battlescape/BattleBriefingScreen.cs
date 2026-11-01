@@ -27,8 +27,11 @@ public sealed class BattleBriefingScreen : BattleScreenBase
         if (input.Kind != GameInputEventKind.KeyPressed || input.IsRepeat || input.KeyCode is not (KeyEnter or KeyEscape)) return false;
         var result = Context.Commands.Execute(new ConfirmBriefing());
         Message = Code(result);
-        if (Message.Length == 0)
-            Context.Screens.Replace(new BattleInventoryScreen(Context, preBattle: true));
+        if (Message.Length != 0) return true;
+        var inventory = new BattleInventoryScreen(Context, preBattle: true);
+        Context.Screens.Replace(inventory);
+        // InventoryState::init: when no unit has an inventory (a mission with just vehicles) the inventory closes at once.
+        if (inventory.Inventory is null) inventory.CloseWhenNoUnitHasInventory();
         return true;
     }
 

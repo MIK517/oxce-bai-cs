@@ -141,6 +141,12 @@ public sealed class BattleInventoryScreen : BattleScreenBase, IRevealedScreen
         Reload();
     }
 
+    /// <summary><c>InventoryState::init</c>'s "starting a mission with just vehicles": the pre-battle inventory closes by itself.</summary>
+    internal void CloseWhenNoUnitHasInventory()
+    {
+        if (_preBattle && _view is null) Close();
+    }
+
     private void Close()
     {
         if (!_preBattle)
@@ -148,10 +154,16 @@ public sealed class BattleInventoryScreen : BattleScreenBase, IRevealedScreen
             ExitRequested = true;
             return;
         }
-        Message = Code(Context.Commands.Execute(new StartFirstTurn()));
+        var result = Context.Commands.Execute(new StartFirstTurn());
+        Message = Code(result);
         if (Message.Length != 0) return;
+        // startFirstTurn reselects the unit standing on the inventory tile; the battlescape shows that one, not the last unit
+        // the inventory walk stopped on.
+        if (result.Events.OfType<BattleFirstTurnStarted>().FirstOrDefault() is { } started) Context.Model.FollowSelection(started.SelectedUnitId);
         Context.Model.Refresh();
         Context.Screens.Replace(new BattlescapeClient(Context));
+        // NextTurnState::close sets the turn-1 autosave; the host that saves it hears of the first turn from the screen that starts it.
+        Context.FirstTurnStarted?.Invoke();
     }
 
     protected override void Draw()

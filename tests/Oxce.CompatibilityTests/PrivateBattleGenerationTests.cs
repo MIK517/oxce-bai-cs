@@ -7,6 +7,7 @@ using Oxce.Formats.Yaml;
 using Oxce.Gameplay.Battles;
 using Oxce.Gameplay.Battles.Terrain;
 using Oxce.Gameplay.Campaigns;
+using Oxce.Gameplay.Sessions;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Bootstrap;
 using Oxce.Mods.Rulesets.Content;
@@ -338,9 +339,18 @@ public sealed class PrivateBattleGenerationTests
         return code;
     }
 
-    internal static BattleUiContext Context(CampaignState campaign, BattleViewer viewer) => new(campaign, campaign.GetQuery<IBattleQuery>()!,
-        campaign.GetQuery<IBattleViewQuery>()!, campaign.GetQuery<IBattleInventoryQuery>()!, campaign.GetQuery<IBattleBriefingQuery>()!, viewer,
-        new ScreenNavigator());
+    /// <summary>
+    /// The screens' context over a session: the commands go through the local player's handle, so unit commands are authorized against the
+    /// battle's controllers as in the host (the session lives as long as the campaign it wraps).
+    /// </summary>
+    internal static BattleUiContext Context(CampaignState campaign, BattleViewer viewer)
+    {
+        var session = new CampaignSession(campaign, campaign, static () => TimeSpan.Zero);
+        session.Controllers = new BattleUnitControllers(campaign.GetQuery<IBattleQuery>()!);
+        var local = session.Attach(PlayerId.Local);
+        return new(local, campaign.GetQuery<IBattleQuery>()!, campaign.GetQuery<IBattleViewQuery>()!, campaign.GetQuery<IBattleInventoryQuery>()!,
+            campaign.GetQuery<IBattleBriefingQuery>()!, viewer, new ScreenNavigator());
+    }
 
     private static void Press(ScreenNavigator screens, uint key) =>
         Assert.True(screens.HandleInput(GameInputEvent.Key(GameInputEventKind.KeyPressed, 0, 0, 0, key, InputKeyModifiers.None)));

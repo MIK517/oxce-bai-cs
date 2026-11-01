@@ -41,6 +41,12 @@ public sealed class BattleUiContext
     /// <summary>The sprite of a terrain object (data set and index), or null when the client has none; a missing one is a diagnostic.</summary>
     public Func<string, int, IndexedSurface?>? Sprites { get; }
 
+    /// <summary>
+    /// Called by the pre-battle inventory screen when closing it started the first turn (<c>NextTurnState::close</c> sets the
+    /// autosave on turn 1); the host that owns the save hooks it.
+    /// </summary>
+    public Action? FirstTurnStarted { get; set; }
+
     /// <summary>The client's own selection and camera; every screen of this client shares it.</summary>
     public BattleViewModel Model { get; }
 

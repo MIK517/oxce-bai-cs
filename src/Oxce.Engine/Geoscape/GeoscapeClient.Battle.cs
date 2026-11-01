@@ -13,7 +13,6 @@ namespace Oxce.Engine.Geoscape;
 public sealed partial class GeoscapeClient
 {
     private BattleUiContext? _battle;
-    private BattlePhase? _battlePhase;
     private bool _battleShown;
     private (string Target, string CraftOrBase) _briefingNames = ("", "");
 
@@ -26,8 +25,10 @@ public sealed partial class GeoscapeClient
     private bool CanHostBattle => _session is { Battle: not null, BattleView: not null, BattleInventory: not null, BattleBriefing: not null };
 
     /// <summary>
-    /// Watches the session's battle: opens its screens once when the stack is free, and requests the turn-1 save when the
-    /// phase moves from the pre-battle inventory to the running battle (not for a battle loaded already running).
+    /// Watches the session's battle and opens its screens once when the stack is free. The turn-1 save is requested by the
+    /// pre-battle inventory screen that starts the first turn (<see cref="BattleUiContext.FirstTurnStarted"/>), as the reference
+    /// sets it in <c>NextTurnState::close</c>, so it does not depend on when a tick sees the phase (a battle loaded already
+    /// running makes no save).
     /// </summary>
     private void PollBattle()
     {
@@ -35,15 +36,10 @@ public sealed partial class GeoscapeClient
         var overview = _session.Battle!.QueryBattle(BattleViewer.LocalPlayer);
         if (overview is null)
         {
-            _battlePhase = null;
             _battleShown = false;
             _battle = null;
             return;
         }
-        var previous = _battlePhase;
-        _battlePhase = overview.Phase;
-        if (previous == BattlePhase.Inventory && overview.Phase == BattlePhase.InProgress && _setup.SaveRequested is { } requested)
-            Guard(() => requested(CampaignSaveKind.BattleTurnOne));
         SyncScreens();
         if (_battleShown || ForeignScreens != 0) return;
         OpenBattle();
@@ -54,7 +50,10 @@ public sealed partial class GeoscapeClient
     {
         _battle = new BattleUiContext(_session.Commands, _session.Battle!, _session.BattleView!, _session.BattleInventory!,
             _session.BattleBriefing!, BattleViewer.LocalPlayer, _screens, _setup.Font, _setup.Localize);
+        _battle.FirstTurnStarted = RequestTurnOneSave;
         if (!_battle.Open(_briefingNames.Target, _briefingNames.CraftOrBase)) return;
+        // The lines are the briefing's of this battle only: a battle loaded later is named by its save, not by these.
+        _briefingNames = ("", "");
         _battleShown = true;
         _rotateLongitude = _rotateLatitude = 0;
         _dragging = false;
@@ -75,16 +74,24 @@ public sealed partial class GeoscapeClient
             : GeoscapeScreens.TargetName(_world, request.Target, _setup.Localize);
         var craft = _world.Crafts.FirstOrDefault(entry => entry.BaseId == request.BaseId && entry.TypeId == request.CraftTypeId &&
             entry.Id == request.CraftId);
+        // BriefingState: tr("STR_CRAFT_").arg(craft name), or tr("STR_BASE_UC_").arg(base name) for a base defense.
         var owner = craft is not null
-            ? GeoscapeScreens.CraftName(craft, _setup.Localize)
-            : _overview.Bases.FirstOrDefault(entry => entry.Id == request.BaseId)?.Name ?? "";
+            ? GeoscapeNotifications.Format(_setup.Localize("STR_CRAFT_"), GeoscapeScreens.CraftName(craft, _setup.Localize))
+            : _overview.Bases.FirstOrDefault(entry => entry.Id == request.BaseId) is { } home
+                ? GeoscapeNotifications.Format(_setup.Localize("STR_BASE_UC_"), home.Name)
+                : "";
         _briefingNames = (target, owner);
+    }
+
+    private void RequestTurnOneSave()
+    {
+        if (_setup.SaveRequested is { } requested) Guard(() => requested(CampaignSaveKind.BattleTurnOne));
     }
 
     private void ForgetBattle()
     {
         _battle = null;
-        _battlePhase = null;
         _battleShown = false;
+        _briefingNames = ("", "");
     }
 }

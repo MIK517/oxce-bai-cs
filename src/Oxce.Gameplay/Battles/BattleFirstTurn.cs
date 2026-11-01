@@ -22,7 +22,7 @@ internal static class BattleFlowReasons
         "The craft deployment preview needs its own battle mode, which arrives with the craft screens (Phase 8).");
 
     internal static readonly CampaignReason NoLiveAliens = new("battle.no-live-aliens",
-        "The battle has no live aliens before its primed items spawn; the reference then ends in the aliens' crash screen unless a spawn adds aliens, and the battle outcome arrives with Phase 7 branch 7.");
+        "The battle has no live aliens once its primed items have spawned; the reference then ends in the aliens' crash screen, and the battle outcome arrives with Phase 7 branch 7.");
 
     internal static readonly CampaignReason CasualtiesUnsupported = new("battle.casualties-unsupported",
         "A unit is past the out threshold but not yet out; the casualty check the battlescape runs when it opens arrives with turn processing (Phase 7 branch 6).");
@@ -97,13 +97,18 @@ internal sealed partial class BattleState
     }
 
     /// <summary>
-    /// BattlescapeGame::tallyUnits for the counts the briefing and the first turn read: units that are not out (or are over
-    /// the out threshold but turn into another unit), by original faction. Surrender mode, captured units and the exit areas
-    /// are branch 7's. A surrendering alien still counts (surrender mode is branch 7's).
+    /// <c>BattlescapeGame::checkForCasualties</c>'s victims, which the battlescape's constructor runs for every battle it opens
+    /// (<c>hiddenExplosion</c>): a unit that is not dead and has no health left, or that is not unconscious and whose stun reaches
+    /// its health, whatever its spawn unit. The reference kills, stuns or converts them; turn processing (Phase 7 branch 6) does,
+    /// so the briefing and the running battle refuse by name while one exists.
     /// </summary>
     internal bool HasUncheckedCasualty() =>
-        _units.Any(static unit => !unit.IsOut && unit.IsOutThresholdExceeded && unit.SpawnUnit.Length == 0);
+        _units.Any(static unit => unit.Status != BattleUnitStatus.IgnoreMe && unit.Status != BattleUnitStatus.Dead &&
+            (unit.Health <= 0 || unit.StunLevel >= unit.Health && unit.Status != BattleUnitStatus.Unconscious));
 
+    /// <summary>BattlescapeGame::tallyUnits for the counts the briefing and the first turn read: units that are not out (or are over
+    /// the out threshold but turn into another unit), by original faction. Surrender mode, captured units and the exit areas
+    /// are branch 7's. A surrendering alien still counts (surrender mode is branch 7's).</summary>
     internal BattleTally Tally()
     {
         var aliens = 0;
@@ -244,18 +249,30 @@ internal sealed partial class BattleState
         return id is { } owner ? _units.Find(unit => unit.Id == owner) : null;
     }
 
-    private bool SpawnNewUnit(BattleItem item, RuntimeBattleItem rule, RuntimeRuleCatalog rules, UnitEquipment equipment, int difficulty,
-        IRandomSource random)
-    {
-        if (rule.SpawnUnit.Length == 0 || !RandomChance.Percent(random, rule.SpawnUnitChance)) return false;
-        var owner = OwnerOf(item);
-        var faction = rule.SpawnUnitFaction == -1 && owner is not null ? owner.Faction : rule.SpawnUnitFaction switch
+    /// <summary>spawnNewUnit's faction: the rule's, or the item owner's for -1 (any other value, or no owner, is the aliens').</summary>
+    private BattleFaction SpawnFaction(BattleItem item, RuntimeBattleItem rule) =>
+        rule.SpawnUnitFaction == -1 && OwnerOf(item) is { } owner ? owner.Faction : rule.SpawnUnitFaction switch
         {
             0 => BattleFaction.Player,
             1 => BattleFaction.Hostile,
             2 => BattleFaction.Neutral,
             _ => BattleFaction.Hostile,
         };
+
+    /// <summary>Whether a primed item could spawn a live alien (a unit on the aliens' side, drawn with a chance over 0).</summary>
+    internal bool PrimedSpawnsMayAddAliens(RuntimeRuleCatalog rules) =>
+        PrimedSpawnItems(rules).Any(item =>
+        {
+            var rule = rules.Battle.Equipment.Items[item.ItemType];
+            return rule.SpawnUnit.Length != 0 && rule.SpawnUnitChance > 0 && SpawnFaction(item, rule) == BattleFaction.Hostile;
+        });
+
+    private bool SpawnNewUnit(BattleItem item, RuntimeBattleItem rule, RuntimeRuleCatalog rules, UnitEquipment equipment, int difficulty,
+        IRandomSource random)
+    {
+        if (rule.SpawnUnit.Length == 0 || !RandomChance.Percent(random, rule.SpawnUnitChance)) return false;
+        var owner = OwnerOf(item);
+        var faction = SpawnFaction(item, rule);
         var (unitRule, armor) = UnitRule(rules, rule.SpawnUnit);
         // createTempUnit: the next ID after the last unit's; a player unit made this way is a summoned one.
         var unit = TempUnit(rules, (_units.Count == 0 ? -1 : _units[^1].Id) + 1, faction,

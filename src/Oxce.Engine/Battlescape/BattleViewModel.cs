@@ -76,6 +76,16 @@ public sealed class BattleViewModel
         return true;
     }
 
+    /// <summary>
+    /// Takes the rules' selection as this client's own (<c>BattlescapeState</c> shows <c>getSelectedUnit</c>), for when the rules
+    /// moved it themselves: <c>startFirstTurn</c> selects the unit standing on the inventory tile. A negative ID is no selection.
+    /// </summary>
+    public void FollowSelection(int unitId)
+    {
+        _selected = unitId >= 0 ? unitId : null;
+        _gate.Reset();
+    }
+
     /// <summary>Clicking a unit: <c>BattlescapeGame::primaryAction</c>'s selection; the camera stays.</summary>
     public bool Select(int unitId) => Send(new SelectUnit(unitId), centerOnSelection: false);
 

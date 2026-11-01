@@ -264,7 +264,7 @@ public sealed class BattleFirstTurnTests
     }
 
     [Fact]
-    public void ASpawnOnATileWithoutAFloorAndABattleWithoutAliensAreRefusedBeforeAnyChange()
+    public void ASpawnOnATileWithoutAFloorIsRefusedBeforeAnyChange()
     {
         var (campaign, battle) = Begun(SpawnRules(), "UFO_ARMORY");
         var tile = battle.Items.First(static item => item.ItemType == "GRENADE" && item.Tile is not null).Tile!.Value;
@@ -276,11 +276,111 @@ public sealed class BattleFirstTurnTests
         Assert.Equal(before.Item2, campaign.Random.State);
         Assert.Equal(BattlePhase.Briefing, battle.Phase);
         battle.Map.SetPart(index, BattleTilePart.Floor, floorId, floorSet);
+    }
 
+    private static void KillTheAliens(BattleState battle)
+    {
         foreach (var unit in battle.Units.Where(static unit => unit.OriginalFaction == BattleFaction.Hostile)) unit.Status = BattleUnitStatus.Dead;
-        Assert.Equal("battle.no-live-aliens", Refusal(campaign, new ConfirmBriefing()));
-        Assert.Equal(before.Item2, campaign.Random.State);
-        Assert.Equal(2, battle.Items.Count(static item => item.ItemType == "GRENADE" && item.Tile is not null));
+    }
+
+    [Fact]
+    public void ABattleWhoseOnlyLiveAliensComeFromPrimedSpawnsIsPlayed()
+    {
+        // BriefingState::btnOkClick spawns from the primed items first and counts the aliens after.
+        var (campaign, battle) = Begun(SpawnRules(), "UFO_ARMORY");
+        KillTheAliens(battle);
+        Assert.Equal(0, battle.Tally().LiveAliens);
+        Assert.Equal(new BriefingConfirmed(2, 2), Event<BriefingConfirmed>(campaign, new ConfirmBriefing()));
+        Assert.Equal(2, battle.Tally().LiveAliens);
+        Assert.Equal(BattlePhase.Inventory, battle.Phase);
+    }
+
+    [Fact]
+    public void ABattleWithoutLiveAliensAfterItsSpawnsIsRefusedBeforeAnyChange()
+    {
+        // No alien alive and no spawn that could add one: nothing spawns at all, or the spawn is X-COM's, or its chance is 0.
+        foreach (var rules in new[] { Rules.Replace("fuseTimers: {GRENADE: [3, 3]}", "fuseTimers: {GRENADE: [0, 0]}", StringComparison.Ordinal),
+                     SpawnRules(faction: 0), SpawnRules(faction: 2), SpawnRules(chance: 0) })
+        {
+            var (campaign, battle) = Begun(rules, "UFO_ARMORY");
+            KillTheAliens(battle);
+            var before = (campaign.Random.State, battle.Units.Count, battle.Items.Count);
+            Assert.Equal("battle.no-live-aliens", Refusal(campaign, new ConfirmBriefing()));
+            Assert.Equal(before, (campaign.Random.State, battle.Units.Count, battle.Items.Count));
+            Assert.Equal(BattlePhase.Briefing, battle.Phase);
+        }
+        // A spawn that might add an alien but does not (one chance in a hundred): the trial spawn on a copy shows it, the battle is refused
+        // and the stream is as it was; when the draw does succeed the battle is played.
+        var refused = 0;
+        for (ulong seed = 1; seed <= 12; seed++)
+        {
+            var (campaign, battle) = Begun(SpawnRules(chance: 1), "UFO_ARMORY");
+            KillTheAliens(battle);
+            campaign.Random.Restore(seed);
+            var before = (campaign.Random.State, battle.Units.Count, battle.Items.Count(static item => item.ItemType == "GRENADE" && item.Tile is not null));
+            var events = campaign.Execute(new ConfirmBriefing()).Events;
+            if (events.OfType<CampaignActionBlocked>().SingleOrDefault() is { } blocked)
+            {
+                refused++;
+                Assert.Equal("battle.no-live-aliens", blocked.Code);
+                Assert.Equal(before, (campaign.Random.State, battle.Units.Count, battle.Items.Count(static item => item.ItemType == "GRENADE" && item.Tile is not null)));
+                Assert.Equal(BattlePhase.Briefing, battle.Phase);
+            }
+            else
+            {
+                Assert.True(battle.Tally().LiveAliens > 0);
+            }
+        }
+        Assert.True(refused > 0);
+    }
+
+    [Fact]
+    public void AUnitPastTheOutThresholdIsACasualtyTheBattleDoesNotProcessYet()
+    {
+        // checkForCasualties takes out a unit that is not dead with no health, or not unconscious with the stun at its health,
+        // whatever its spawn unit; an unconscious unit with no health left is still one.
+        foreach (var make in new Action<BattleUnit>[]
+        {
+            static unit => unit.Health = 0,
+            static unit => unit.StunLevel = unit.Health,
+            static unit => { unit.Status = BattleUnitStatus.Unconscious; unit.Health = 0; },
+            static unit => { unit.SpawnUnit = "ALIEN"; unit.Health = 0; },
+        })
+        {
+            var (campaign, battle) = Begun();
+            Assert.False(battle.HasUncheckedCasualty());
+            make(battle.Units.First(static unit => unit.OriginalFaction == BattleFaction.Hostile));
+            Assert.True(battle.HasUncheckedCasualty());
+            Assert.Equal("battle.casualties-unsupported", Refusal(campaign, new ConfirmBriefing()));
+        }
+        // A unit that is out already (dead, or unconscious with the stun over its health) and a removed unit are not casualties.
+        var (second, other) = Begun();
+        var victim = other.Units.First(static unit => unit.OriginalFaction == BattleFaction.Hostile);
+        victim.Health = 0;
+        victim.Status = BattleUnitStatus.Dead;
+        Assert.False(other.HasUncheckedCasualty());
+        victim.Status = BattleUnitStatus.IgnoreMe;
+        Assert.False(other.HasUncheckedCasualty());
+        victim.Health = 10;
+        victim.StunLevel = 12;
+        victim.Status = BattleUnitStatus.Unconscious;
+        Assert.False(other.HasUncheckedCasualty());
+        Assert.IsType<BriefingConfirmed>(Assert.Single(second.Execute(new ConfirmBriefing()).Events));
+    }
+
+    [Fact]
+    public void ARunningBattleOpenedWithACasualtyRefusesItsCommandsByName()
+    {
+        // The battlescape's constructor runs checkForCasualties for a loaded battle too; branch 6 ports it, so until then the
+        // battle's own commands refuse by name and nothing changes.
+        var campaign = ToInventory();
+        Event<BattleFirstTurnStarted>(campaign, new StartFirstTurn());
+        var battle = Battle(campaign);
+        Assert.Null(campaign.Execute(new SelectNextUnit(battle.SelectedUnitId!.Value, false)).Events.OfType<CampaignActionBlocked>().FirstOrDefault());
+        battle.Units.First(static unit => unit.OriginalFaction == BattleFaction.Hostile).Health = 0;
+        var before = campaign.Random.State;
+        Assert.Equal("battle.casualties-unsupported", Refusal(campaign, new SelectNextUnit(battle.SelectedUnitId!.Value, false)));
+        Assert.Equal(before, campaign.Random.State);
     }
 
     [Fact]
@@ -343,6 +443,7 @@ public sealed class BattleFirstTurnTests
         {
             "{type: LATER, minTurn: 3}", "{type: LIST, turns: [2, 4]}", "{type: HARD, minDifficulty: 4}", "{type: EASY, maxDifficulty: -1}",
             "{type: OBJECTIVE, objectiveDestroyed: true}",
+            "{type: NEVER, maxRuns: 0}",
         })
         {
             var (campaign, _) = Begun(Waves(wave));
@@ -351,7 +452,7 @@ public sealed class BattleFirstTurnTests
         // Waves that would pass at turn 0: no limits, a turn list with 0, a range holding 0, whatever their odds or runs.
         foreach (var wave in new[]
         {
-            "{type: NOW}", "{type: LIST, turns: [0, 3]}", "{type: RANGE, minTurn: 0, maxTurn: 2, executionOdds: 10}", "{type: RARE, maxRuns: 0}",
+            "{type: NOW}", "{type: LIST, turns: [0, 3]}", "{type: RANGE, minTurn: 0, maxTurn: 2, executionOdds: 10}", "{type: ONCE, maxRuns: 1}", "{type: ODDS, maxRuns: 0, executionOdds: 10}",
         })
         {
             var (campaign, battle) = Begun(Waves(wave));
@@ -653,6 +754,32 @@ public sealed class BattleFirstTurnTests
         Assert.Equal("STR_UFO_GROUND_ASSAULT_BRIEFING", restored.GetQuery<IBattleBriefingQuery>()!.QueryBriefing()!.Description);
         Event<BriefingConfirmed>(restored, new ConfirmBriefing());
         Event<BattleFirstTurnStarted>(restored, new StartFirstTurn());
+    }
+
+    [Fact]
+    public void AReloadedBriefingKeepsItsLinesWhateverTheClientSendsAfterTheLoad()
+    {
+        // The briefing's constructor runs once (ADR 0039): a client that opens the loaded briefing sends its lines again (empty ones,
+        // after a load) and neither blanks the saved craft line nor draws another operation name.
+        var rules = Rules + "\noperationNamesFirst: [ALPHA, BETA, GAMMA]\noperationNamesLast: [ONE, TWO]\n";
+        var (campaign, battle) = Begun(rules);
+        Event<BriefingOpened>(campaign, new BeginBriefing("UFO-1", "Craft: SHIP-1"));
+        var named = battle.TargetName;
+        var restored = CampaignState.Restore(campaign.Capture(), campaign.Content, new SplitMix64RandomSource(3), TerrainFiles());
+        var before = restored.Random.State;
+        Assert.Equal("battle.briefing-already-open", Refusal(restored, new BeginBriefing("", "")));
+        Assert.Equal("battle.briefing-already-open", Refusal(restored, new BeginBriefing("OTHER", "Craft: OTHER")));
+        var again = Battle(restored);
+        Assert.Equal((named, "Craft: SHIP-1"), (again.TargetName, again.CraftOrBaseName));
+        Assert.Equal(before, restored.Random.State);
+        var briefing = restored.GetQuery<IBattleBriefingQuery>()!.QueryBriefing()!;
+        Assert.Equal((named, "Craft: SHIP-1"), (briefing.TargetName, briefing.CraftOrBaseName));
+
+        // A save from before the briefing named anything is still named by the first client that opens it.
+        var (unnamed, _) = Begun(rules);
+        var loaded = CampaignState.Restore(unnamed.Capture(), unnamed.Content, new SplitMix64RandomSource(3), TerrainFiles());
+        Event<BriefingOpened>(loaded, new BeginBriefing("UFO-1", "Craft: SHIP-1"));
+        Assert.Equal("Craft: SHIP-1", Battle(loaded).CraftOrBaseName);
     }
 
     [Fact]

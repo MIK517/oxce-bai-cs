@@ -17,9 +17,9 @@ public sealed class BattleScreensTests
 {
     private const uint Tab = 9, Enter = 13, Escape = 27, Right = 0x4000004f, Down = 0x40000051, PageUp = 0x4000004b;
 
-    private static (CampaignState Campaign, BattleState Battle, BattleUiContext Context) Open(BattlePhase phase)
+    private static (CampaignState Campaign, BattleState Battle, BattleUiContext Context) Open(BattlePhase phase, string? rules = null)
     {
-        var (campaign, _) = Requested(Rules, "UFO_CRAFTED", [new("VEHICLE", 0), new("VEHICLE_B", 0)]);
+        var (campaign, _) = Requested(rules ?? Rules, "UFO_CRAFTED", [new("VEHICLE", 0), new("VEHICLE_B", 0)]);
         Started(campaign);
         var battle = Battle(campaign);
         if (phase >= BattlePhase.Inventory) campaign.Execute(new ConfirmBriefing());
@@ -56,6 +56,45 @@ public sealed class BattleScreensTests
         Press(context.Screens, Escape);
         Assert.IsType<BattlescapeClient>(context.Screens.Top);
         Assert.Equal(BattlePhase.InProgress, battle.Phase);
+        Assert.Equal(1, context.Screens.Count);
+    }
+
+    [Fact]
+    public void TheBattlescapeShowsTheUnitStartFirstTurnSelectedNotTheLastOneTheInventoryWalkStoppedOn()
+    {
+        // startFirstTurn selects the unit standing on the inventory tile once the units are put back on their tiles; with two
+        // units on one tile the later one in the list stands there. The battlescape shows getSelectedUnit, not the client's walk.
+        var (_, battle, context) = Open(BattlePhase.Inventory);
+        // The soldier and a vehicle share a tile; the one later in the unit list is the one the reset leaves standing there.
+        var pair = battle.Units.Where(static unit => unit.Faction == BattleFaction.Player).Take(2).ToArray();
+        var (first, second) = (pair[0], pair[1]);
+        second.Position = first.Position;
+        battle.SelectedUnitId = first.Id;
+        context.Open();
+        Assert.IsType<BattleInventoryScreen>(context.Screens.Top);
+        Assert.Equal(first.Id, context.Model.SelectedUnitId);
+        Press(context.Screens, Escape);
+        var screen = Assert.IsType<BattlescapeClient>(context.Screens.Top);
+        Assert.Equal(second.Id, battle.SelectedUnitId);
+        Assert.Equal(second.Id, context.Model.SelectedUnitId);
+        Assert.NotNull(screen);
+    }
+
+    [Fact]
+    public void ABattleOfOnlyVehiclesClosesThePreBattleInventoryAtOnce()
+    {
+        // InventoryState::init: no unit with an inventory ("starting a mission with just vehicles") closes it with btnOkClick.
+        var vehicles = Rules.Replace("- type: SUIT\n    movementType: 1",
+            "- type: ARMOR\n    allowInv: false\n    movementType: 1\n    corpseBattle: [CORPSE]\n    corpseGeo: CORPSE\n    loftempsSet: [0]\n  - type: SUIT\n    allowInv: false\n    movementType: 1",
+            StringComparison.Ordinal);
+        Assert.NotEqual(Rules, vehicles);
+        var (_, battle, context) = Open(BattlePhase.Briefing, vehicles);
+        Assert.All(battle.Units.Where(static unit => unit.Faction == BattleFaction.Player), unit => Assert.False(battle.Rules!.Battle.Equipment.Armors[unit.ArmorId].HasInventory, unit.ArmorId));
+        Assert.True(context.Open());
+        Press(context.Screens, Enter);
+        Assert.Equal(BattlePhase.InProgress, battle.Phase);
+        Assert.Equal(1, battle.Turn);
+        Assert.IsType<BattlescapeClient>(context.Screens.Top);
         Assert.Equal(1, context.Screens.Count);
     }
 
@@ -246,9 +285,16 @@ public sealed class BattleScreensTests
         var model = screen.Model;
         var position = battle.Units.Single(unit => unit.Id == model.SelectedUnitId).Position!.Value;
         Assert.Equal((position.X, position.Y, position.Z), (model.Camera.Center.X, model.Camera.Center.Y, model.Camera.ViewLevel));
-        // Home and C center again after the camera moved; Ctrl-C toggles all layers.
+        // The arrow keys scroll the camera one tile (up and left toward lower coordinates), the level stays.
+        model.Camera.CenterOn(new BattlePosition(5, 5, 0));
         Press(context.Screens, 0x40000052);
+        Assert.Equal((5, 4, 0), (model.Camera.Center.X, model.Camera.Center.Y, model.Camera.ViewLevel));
+        Press(context.Screens, 0x40000050);
+        Assert.Equal((4, 4), (model.Camera.Center.X, model.Camera.Center.Y));
         Press(context.Screens, 0x40000051);
+        Press(context.Screens, 0x4000004f);
+        Assert.Equal((5, 5, 0), (model.Camera.Center.X, model.Camera.Center.Y, model.Camera.ViewLevel));
+        // Home and C center again after the camera moved; Ctrl-C toggles all layers.
         model.Camera.CenterOn(new BattlePosition(0, 0, 0));
         Press(context.Screens, 'c');
         Assert.Equal(position.X, model.Camera.Center.X);
