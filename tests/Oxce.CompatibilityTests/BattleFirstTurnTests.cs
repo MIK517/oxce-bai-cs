@@ -652,7 +652,11 @@ public sealed class BattleFirstTurnTests
         // The player tabbed to a second soldier that stands beside the pile; its tile before the game is the pile too.
         var second = new BattleUnit(901, BattleFaction.Player, BattleController.Human(0))
         {
-            Stats = first.Stats, ArmorId = first.ArmorId, UnitType = first.UnitType, Position = pile with { X = pile.X + 1 }, InventoryTile = pile,
+            Stats = first.Stats,
+            ArmorId = first.ArmorId,
+            UnitType = first.UnitType,
+            Position = pile with { X = pile.X + 1 },
+            InventoryTile = pile,
         };
         battle.AddUnit(second);
         battle.SelectedUnitId = second.Id;

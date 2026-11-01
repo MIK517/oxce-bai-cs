@@ -202,7 +202,11 @@ public sealed class BattleInventoryTests
         // A second soldier beside the pile: BattlescapeGenerator::deployXCOM gives every X-COM unit the craft inventory tile.
         var other = new BattleUnit(901, BattleFaction.Player, BattleController.Human(0))
         {
-            Stats = soldier.Stats, ArmorId = soldier.ArmorId, UnitType = soldier.UnitType, Position = pile with { X = pile.X + 1 }, InventoryTile = pile,
+            Stats = soldier.Stats,
+            ArmorId = soldier.ArmorId,
+            UnitType = soldier.UnitType,
+            Position = pile with { X = pile.X + 1 },
+            InventoryTile = pile,
         };
         battle.AddUnit(other);
         var query = campaign.GetQuery<IBattleInventoryQuery>()!;
