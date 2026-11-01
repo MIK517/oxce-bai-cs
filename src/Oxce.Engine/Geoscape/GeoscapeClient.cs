@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using System.Globalization;
-using System.Text;
 using Oxce.Engine.Input;
 using Oxce.Gameplay.Campaigns;
+using Oxce.Gameplay.Sessions;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Runtime;
 using Oxce.Rendering;
@@ -57,7 +57,10 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     private readonly GeoscapeClientSetup _setup;
     private readonly IndexedSurface _frame = new(Width, Height);
     private readonly GlobeRenderer _renderer;
-    private readonly GeoscapeTimeController _time;
+    private SessionClock _time;
+    private readonly Func<TimeSpan> _stopwatch;
+    private readonly ScreenNavigator _screens;
+    private readonly Dictionary<GeoscapeMode, GeoscapeModeScreen> _modeScreens = [];
     private readonly List<PopupEntry> _popups = [];
     /// <summary>A save the campaign requested (ironman or autosave), made once no window is open.</summary>
     private CampaignSaveKind? _pendingSave;
@@ -67,7 +70,6 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     private bool _worldReady;
     private GlobeScene _scene = GlobeScene.Empty;
     private GlobeTargets _targets = GlobeTargets.Empty;
-    private IIndexedLoopClient? _bases;
     private GlobeTarget? _selected;
     private GlobeRenderOptions _options;
     private string _status = "";
@@ -86,13 +88,15 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     {
         ArgumentNullException.ThrowIfNull(setup);
         _setup = setup;
+        _screens = new ScreenNavigator(new GeoscapeGlobeScreen(this));
         _session = setup.Session;
         if (_session.World is null) throw new ArgumentException("The geoscape needs the campaign world query.", nameof(setup));
         _options = setup.Options;
         View = new GlobeView(GlobeWidth, Height, PixelScale);
         _renderer = new GlobeRenderer(View, setup.Assets, setup.Rules.Campaign.Globe, setup.Font);
-        var stopwatch = setup.Stopwatch ?? CreateStopwatch();
-        _time = new GeoscapeTimeController(stopwatch);
+        // A session behind a host takes the host's clock; a bare campaign gets a clock of its own for this one client.
+        _stopwatch = setup.Stopwatch ?? CreateStopwatch();
+        _time = _session.Clock ?? new SessionClock(_session.Commands, _stopwatch);
         _world = _session.World.QueryWorld();
         _overview = _session.Queries.QueryOverview();
         ApplyView(_session.GlobeView);
@@ -116,36 +120,90 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
         _globeDirty = true;
     }
 
-    public IndexedSurface Frame => _bases?.Frame ?? _frame;
-    public IndexedPalette Palette => _bases?.Palette ?? _setup.Assets.Palette;
-    public long PresentationRevision => _bases is null ? _revision : checked(_revision + _bases.PresentationRevision);
+    public IndexedSurface Frame => _screens.Top?.Frame ?? _frame;
+    public IndexedPalette Palette => _screens.Top?.Palette ?? _setup.Assets.Palette;
+    public long PresentationRevision => checked(_revision + _screens.PresentationRevision);
     public bool ExitRequested { get; private set; }
 
     public GlobeView View { get; }
-    public GeoscapeTimeController Time => _time;
+    public SessionClock Time => _time;
     public CampaignWorldOverview World => _world;
     public GlobeTarget? Selected => _selected;
     public IReadOnlyList<GeoscapePopup> Popups => _popups.Select(static entry => entry.Popup).ToArray();
-    public bool BasesOpen => _bases is not null;
+    public bool BasesOpen => ForeignScreens != 0;
     public string Status => _status;
     public GlobeRenderOptions Options => _options;
 
     /// <summary>
-    /// Time may run: no popup, destination choice, open interception window or screen above the globe, and
-    /// the world has been entered.
+    /// Time may run: nothing sits above the globe on the screen stack (no popup, name box, destination or site choice,
+    /// base or battle screen), no interception window is open and the world has been entered.
     /// </summary>
-    public bool TimeCanRun => _popups.Count == 0 && _bases is null && _selecting is null && _placing is null &&
-        _naming is null && _worldReady && !InterceptionWindowsOpen;
+    public bool TimeCanRun => _worldReady && !InterceptionWindowsOpen && !Covered;
+
+    /// <summary>The globe is covered when any screen sits above it: <see cref="ScreenNavigator.Covers"/> of the root.</summary>
+    private bool Covered
+    {
+        // Read-only: a mode that is open but not yet pushed (the stack syncs at the end of a tick or input) already covers.
+        get => _screens.Covers(_screens.Root!) || _selecting is not null || _placing is not null || PopupShown || _naming is not null;
+    }
+
+    /// <summary>Screens on the stack that the base and battle screens own, not the geoscape's own popups and modes.</summary>
+    private int ForeignScreens => _screens.Count - _modeScreens.Count;
+
+    internal IndexedSurface GlobeFrame => _frame;
+    internal IndexedPalette GlobePalette => _setup.Assets.Palette;
+
+    /// <summary>
+    /// Puts a mode screen on the stack for each of a popup, a name box and a destination or site choice that is open, and
+    /// removes it when it ends. A mode that opens while a base or battle screen is up waits for it to close, as the
+    /// reference shows its queued popups only when the geoscape is on top.
+    /// </summary>
+    private void SyncScreens()
+    {
+        Want(GeoscapeMode.Selecting, _selecting is not null);
+        Want(GeoscapeMode.Placing, _placing is not null);
+        Want(GeoscapeMode.Popup, PopupShown);
+        Want(GeoscapeMode.Naming, _naming is not null);
+    }
+
+    private void Want(GeoscapeMode mode, bool wanted)
+    {
+        var present = _modeScreens.TryGetValue(mode, out var screen);
+        if (present && !wanted)
+        {
+            _modeScreens.Remove(mode);
+            _screens.Remove(screen!);
+            _revision++;
+        }
+        else if (!present && wanted && ForeignScreens == 0)
+        {
+            screen = new GeoscapeModeScreen(this, mode);
+            _modeScreens[mode] = screen;
+            _screens.Push(screen, opaque: false);
+            _revision++;
+        }
+    }
 
     public void Tick(TimeSpan fixedInterval)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(fixedInterval, TimeSpan.Zero);
-        if (_bases is not null)
-        {
-            _bases.Tick(fixedInterval);
-            if (_bases.ExitRequested) CloseBases();
-            return;
-        }
+        PollBattle();
+        SyncScreens();
+        // Base and battle screens above the geoscape cover it for the host clock even though this client stops ticking it.
+        if (ForeignScreens != 0) _time.SetCovered(_session.Player, true);
+        _screens.Tick(fixedInterval);
+        SyncScreens();
+    }
+
+    /// <summary>
+    /// A popup or the name box is the top state: the reference thinks only the top state, so the globe's timers wait
+    /// beneath it. Only the clock cover is reported.
+    /// </summary>
+    internal void TickCovered(TimeSpan fixedInterval) => _time.SetCovered(_session.Player, true);
+
+    /// <summary>The globe's own tick: the root and the geoscape's mode screens run it.</summary>
+    internal void TickGlobe(TimeSpan fixedInterval)
+    {
         var redraw = TickHover(fixedInterval);
         _blinkElapsed += fixedInterval;
         while (_blinkElapsed >= BlinkInterval)
@@ -170,12 +228,14 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
             _pendingSave = null;
             if (_setup.SaveRequested is { } requested) Guard(() => requested(save));
         }
+        // The client reports its cover; the host clock decides what that pauses.
+        _time.SetCovered(_session.Player, !TimeCanRun);
         if (TimeCanRun)
         {
-            GeoscapeTimeStep step;
+            SessionClockStep step;
             try
             {
-                step = _time.Tick(fixedInterval, _session.Commands);
+                step = _time.Tick(fixedInterval);
             }
             catch (Exception error) when (error is InvalidOperationException or InvalidDataException or OverflowException)
             {
@@ -216,12 +276,32 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
             _control = control;
             if (relabel) Redraw();
         }
-        if (_bases is not null)
+        _screens.HandleInput(input);
+        SyncScreens();
+    }
+
+    /// <summary>Input for a mode screen: the popup and the name box take it, a destination or site choice is the globe's.</summary>
+    internal void HandleModeInput(GeoscapeMode mode, in GameInputEvent input)
+    {
+        switch (mode)
         {
-            _bases.HandleInput(input);
-            if (_bases.ExitRequested) CloseBases();
-            return;
+            case GeoscapeMode.Naming when _naming is not null:
+                HandleNamingInput(input);
+                Redraw();
+                break;
+            case GeoscapeMode.Popup when PopupShown && _naming is null:
+                HandlePopupInput(input);
+                Redraw();
+                break;
+            default:
+                HandleGlobeInput(input);
+                break;
         }
+    }
+
+    /// <summary>Input for the globe: the open name box or popup first, then the keys and pointer of the geoscape.</summary>
+    internal void HandleGlobeInput(in GameInputEvent input)
+    {
         if (_naming is not null)
         {
             HandleNamingInput(input);
@@ -538,21 +618,20 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
         _rotateLongitude = _rotateLatitude = 0;
         _dragging = false;
         // Time belongs to the geoscape: the base screens may not advance it behind its popups.
-        _bases = _setup.OpenBases?.Invoke(_session) ?? new CampaignLogisticsClient(_session, _setup.Font, _setup.Localize,
+        var bases = _setup.OpenBases?.Invoke(_session) ?? new CampaignLogisticsClient(_session, _setup.Font, _setup.Localize,
             _setup.Save, _setup.Load is null ? null : () =>
             {
                 var session = _setup.Load();
                 Replace(session);
                 return session;
             }, advanceTime: false, baseId: baseId, buildNewBase: () => _buildNewBase = true);
+        _screens.Push(bases, closed: AfterBasesClosed);
+        _time.SetCovered(_session.Player, true);
         _revision++;
     }
 
-    private void CloseBases()
+    private void AfterBasesClosed()
     {
-        if (_bases is null) return;
-        _revision = checked(_revision + _bases.PresentationRevision + 1);
-        _bases = null;
         // Placing the first base in the base screens enters the world, as GeoscapeState::init does.
         EnterWorld();
         Refresh();
@@ -573,10 +652,13 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
     private void Replace(CampaignUiSession session)
     {
         if (session.World is null) throw new InvalidOperationException("The loaded session has no world query.");
+        _time.SetCovered(_session.Player, false);
         _session = session;
+        _time = session.Clock ?? new SessionClock(session.Commands, _stopwatch);
         // Nothing owed by the old campaign's clock may run on the loaded one, nor a save it requested.
         _time.Interrupt();
         _pendingSave = null;
+        ForgetBattle();
         _dogfightElapsed = TimeSpan.Zero;
         _popups.Clear();
         _selected = null;
@@ -591,6 +673,7 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
         _buildNewBase = false;
         _suppressText = null;
         _time.Select(CampaignTimeSpeed.FiveSeconds);
+        SyncScreens();
         // A loaded save always has a view: SavedGame's defaults are 0, 0, 0.
         ApplyView(session.GlobeView ?? new GlobeViewState(0, 0, 0));
         EnterWorld();
@@ -650,6 +733,7 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
 
     private void Redraw()
     {
+        SyncScreens();
         if (_globeDirty)
         {
             // BuildNewBaseState switches radar lines on while a site is chosen.
@@ -710,103 +794,29 @@ public sealed partial class GeoscapeClient : IIndexedLoopClient
         if (message.Length != 0) Wrap(message, SidebarLeft, Height - 60, Width - SidebarLeft - 2);
     }
 
-    private const int PopupLeft = 36;
     private const int MaximumTargetChoices = 16;
-    private const int PopupWidth = 440;
-    private const int ButtonHeight = 14;
 
     private void DrawPopup(GeoscapePopup popup)
     {
-        var (top, height) = PopupBounds(popup);
-        _frame.FillRectangle(PopupLeft, top, PopupWidth, height, 0);
-        _frame.FillRectangle(PopupLeft, top, PopupWidth, 2, HighlightColor);
-        _frame.FillRectangle(PopupLeft, top + height - 2, PopupWidth, 2, HighlightColor);
-        _frame.FillRectangle(PopupLeft, top, 2, height, HighlightColor);
-        _frame.FillRectangle(PopupLeft + PopupWidth - 2, top, 2, height, HighlightColor);
-        var y = Wrap(popup.Title, PopupLeft + 10, top + 10, PopupWidth - 20, HighlightColor) + 6;
-        foreach (var line in popup.Lines) y = Wrap(line, PopupLeft + 10, y, PopupWidth - 20) + 2;
-        for (var index = 0; index < popup.Actions.Count; index++)
-        {
-            var (bx, by, bw, bh) = ButtonRectangle(popup, index);
-            var action = _control && popup.Actions[index].ControlAlternative is { } alternative ? alternative : popup.Actions[index];
-            _frame.FillRectangle(bx, by, bw, bh, action.Disabled is null ? ButtonColor : (byte)0);
-            Text(action.Label, bx + 4, by + 3, action.Disabled is null ? (byte)0 : TextColor);
-        }
-    }
-
-    /// <summary>The popup sized to its title, lines and buttons, centred on the globe.</summary>
-    private (int Top, int Height) PopupBounds(GeoscapePopup popup)
-    {
-        var text = WrappedHeight(popup.Title, PopupWidth - 20) + 6;
-        foreach (var line in popup.Lines) text += WrappedHeight(line, PopupWidth - 20) + 2;
-        var height = Math.Min(Height - 8, 20 + text + 8 + popup.Actions.Count * (ButtonHeight + 2) + 8);
-        height = Math.Max(height, 120);
-        return ((Height - height) / 2, height);
-    }
-
-    private (int X, int Y, int Width, int Height) ButtonRectangle(GeoscapePopup popup, int index)
-    {
-        var (top, height) = PopupBounds(popup);
-        var bottom = top + height - 10;
-        return (PopupLeft + 10, bottom - (popup.Actions.Count - index) * (ButtonHeight + 2), PopupWidth - 20, ButtonHeight);
-    }
-
-    private int PopupButtonAt(GeoscapePopup popup, int x, int y)
-    {
-        for (var index = 0; index < popup.Actions.Count; index++)
-        {
-            var (bx, by, bw, bh) = ButtonRectangle(popup, index);
-            if (x >= bx && x < bx + bw && y >= by && y < by + bh) return index;
-        }
-        return -1;
-    }
-
-    /// <summary>The height <see cref="Wrap"/> would use for a text.</summary>
-    private int WrappedHeight(string text, int width)
-    {
         var font = _setup.Font;
-        var lines = 0;
-        var line = "";
-        foreach (var word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        PopupWidgets.DrawWindow(_frame, font, popup.Title, popup.Lines, popup.Actions.Count);
+        for (var index = 0; index < popup.Actions.Count; index++)
         {
-            var candidate = line.Length == 0 ? word : line + " " + word;
-            if (line.Length != 0 && font.Measure(candidate).Width > width)
-            {
-                lines++;
-                line = word;
-            }
-            else line = candidate;
+            var action = _control && popup.Actions[index].ControlAlternative is { } alternative ? alternative : popup.Actions[index];
+            PopupWidgets.DrawButton(_frame, font, PopupWidgets.ButtonRectangle(font, Height, popup.Title, popup.Lines,
+                popup.Actions.Count, index), action.Label, action.Disabled is not null);
         }
-        if (line.Length != 0) lines++;
-        return lines * (font.Height + 2);
     }
+
+    private int PopupButtonAt(GeoscapePopup popup, int x, int y) =>
+        PopupWidgets.ButtonAt(_setup.Font, Height, popup.Title, popup.Lines, popup.Actions.Count, x, y);
 
     private void Text(string text, int x, int y, byte color = TextColor) =>
         _setup.Font.DrawTextShifted(_frame, text, x, y, color);
 
     /// <summary>Draws word-wrapped text and returns the y below it.</summary>
-    private int Wrap(string text, int x, int y, int width, byte color = TextColor)
-    {
-        var font = _setup.Font;
-        var line = new StringBuilder();
-        foreach (var word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var candidate = line.Length == 0 ? word : line + " " + word;
-            if (line.Length != 0 && font.Measure(candidate).Width > width)
-            {
-                Text(line.ToString(), x, y, color);
-                y += font.Height + 2;
-                line.Clear().Append(word);
-            }
-            else line.Clear().Append(candidate);
-        }
-        if (line.Length != 0)
-        {
-            Text(line.ToString(), x, y, color);
-            y += font.Height + 2;
-        }
-        return y;
-    }
+    private int Wrap(string text, int x, int y, int width, byte color = TextColor) =>
+        PopupWidgets.Wrap(_frame, _setup.Font, text, x, y, width, color);
 
     /// <summary>Save and load report failures in the status line instead of ending the session.</summary>
     private void Guard(Action action)

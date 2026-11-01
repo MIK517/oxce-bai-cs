@@ -71,7 +71,7 @@ public sealed partial class CampaignState
         origin.Transfers.Clear(); origin.Transfers.AddRange(planned.Transfers);
         origin.Scientists = planned.Scientists; origin.Engineers = planned.Engineers;
         PublishAccounting(accounting);
-        _logisticsQuote = null;
+        _quotes.Remove(_actor);
         return new([new LogisticsOrderCompleted(origin.Id, LogisticsOperation.Sell, subtotal)]);
     }
 

@@ -119,16 +119,16 @@ internal sealed partial class BattleState
     };
 
     /// <summary>SavedBattleGame::getStorageSpace: a base defense's storage tiles, where the base's stores go.</summary>
-    public IReadOnlyList<BattlePosition> StorageSpace { get; init; } = [];
+    public IReadOnlyList<BattlePosition> StorageSpace { get; internal set; } = [];
 
     /// <summary>SavedBattleGame::getModuleMap: per 10x10 block, a base defense's module tiles (empty for other battles).</summary>
     public Generation.BattleBaseModule[][] BaseModules { get; init; } = [];
 
     /// <summary>SavedBattleGame::_turn: 0 until the first turn starts after the briefing.</summary>
-    public int Turn { get; private set; }
+    public int Turn { get; internal set; }
 
     /// <summary>SavedBattleGame::_side: the faction whose turn it is.</summary>
-    public BattleFaction Side { get; private set; } = BattleFaction.Player;
+    public BattleFaction Side { get; internal set; } = BattleFaction.Player;
 
     /// <summary>Changes with every committed battle change, so clients know to refresh.</summary>
     public long Revision { get; private set; }
@@ -241,8 +241,9 @@ internal sealed partial class BattleState
     internal BattleItem AddItemOnTile(BattleItem item, BattlePosition? tile)
     {
         ArgumentNullException.ThrowIfNull(item);
-        item.Tile = tile;
         item.Slot = tile is null ? "" : GroundSlot;
+        if (tile is { } position) AddToTile(item, position);
+        else item.Tile = null;
         AddItem(item);
         return item;
     }
@@ -296,9 +297,16 @@ internal sealed partial class BattleState
         if (!Enum.IsDefined(viewer.Faction)) throw new ArgumentOutOfRangeException(nameof(viewer));
         var units = new List<BattleUnitView>();
         foreach (var unit in _units)
-            if (Sees(viewer.Faction, unit)) units.Add(new BattleUnitView(unit.Id, unit.Faction, unit.Position));
+            if (Sees(viewer.Faction, unit)) units.Add(new BattleUnitView(unit.Id, unit.Faction, unit.Position)
+            {
+                ControllerSlot = unit.Controller.Kind == BattleControllerKind.Player ? unit.Controller.PlayerSlot : -1,
+            });
         return new BattleOverview(MissionType, DeploymentId, Width, Length, Height, Turn, Side, TurnLimit, Revision,
-            units.AsReadOnly());
+            units.AsReadOnly())
+        {
+            Phase = Phase,
+            RestoreNotes = RestoreNotes,
+        };
     }
 
     /// <summary>
@@ -394,6 +402,9 @@ internal sealed partial class BattleState
                 if (holders.ContainsKey(item.Id))
                     throw new InvalidOperationException($"Battle item {item.Id} is both on the map and in {kind} recovery.");
                 if (!recovered.Add(item.Id)) throw new InvalidOperationException($"Battle item {item.Id} is listed twice for recovery.");
+                // ADR 0039 (branch 3, S4): an owned recovery-list item in an inventory section would join the unit's inventory in the reference; refused (a special built-in item stays owned in no section).
+                if (item.OwnerUnitId is { } holder && !item.IsSpecialWeapon)
+                    throw new InvalidOperationException($"Battle item {item.Id} is owned by unit {holder} but listed for {kind} recovery.");
             }
         foreach (var (item, count) in holders)
             if (count > 1 || count == 0 && !restored) throw new InvalidOperationException($"Battle item {item} has {count} holders.");
@@ -447,6 +458,13 @@ internal sealed partial class BattleUnit
 
     /// <summary>The unit's tile, or null while it is not on the map.</summary>
     public BattlePosition? Position { get; set; }
+
+    /// <summary>
+    /// BattleUnit::setInventoryTile: before the first turn the generator gives every X-COM unit the craft inventory tile as its
+    /// tile, so the pre-battle inventory and startFirstTurn see the pile wherever the unit stands. Null once resetUnitTiles puts
+    /// the unit on its own tile, and for a unit spawned later or restored from a save (the reference's load sets the own tile).
+    /// </summary>
+    public BattlePosition? InventoryTile { get; set; }
 
     /// <summary>BattleUnit::getBaseStats: the soldier's statistics with all bonuses, or the unit rule's plus its armor's.</summary>
     public BattleUnitStats Stats { get; set; }

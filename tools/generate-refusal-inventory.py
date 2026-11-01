@@ -76,6 +76,8 @@ def classify(text):
     if text in OVERRIDES:
         return OVERRIDES[text]
     lowered = text.lower()
+    if ('inventory' in lowered or 'danger zone' in lowered) and ('not ported yet' in lowered or 'turn processing' in lowered):
+        return 'phase7'
     # Corrupted battle saves (Phase 7 branch 2) are input validation, not a battle boundary.
     if lowered.startswith('battle save '):
         return 'input'

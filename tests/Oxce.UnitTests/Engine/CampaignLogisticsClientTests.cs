@@ -95,6 +95,32 @@ public sealed class CampaignLogisticsClientTests
     }
 
     [Fact]
+    public void AHostedLogisticsClientAdvancesTimeThroughTheHostClockPolicy()
+    {
+        var content = CampaignLogisticsTests.LoadFixture();
+        var campaign = TestFixtures.CreateLogisticsCampaign(content, "Hosted");
+        var site = campaign.QueryBaseSites(true).First(site => site.Longitude != 0 || site.Latitude != 0);
+        campaign.Execute(new PlaceStartingBase(0, "Alpha", site.Longitude, site.Latitude));
+        var host = new Oxce.Gameplay.Sessions.CampaignSession(campaign, campaign, static () => TimeSpan.Zero);
+        using var local = host.Attach(Oxce.Gameplay.Sessions.PlayerId.Local);
+        var client = new CampaignLogisticsClient(CampaignUiSession.ForCampaign(campaign, local, local));
+        var start = campaign.QueryOverview().Time;
+
+        host.Clock.SetCovered(new Oxce.Gameplay.Sessions.PlayerId(2), true);
+        Key(' ');
+        Assert.Equal(start, campaign.QueryOverview().Time);
+        host.Clock.SetCovered(new Oxce.Gameplay.Sessions.PlayerId(2), false);
+        Key(' ');
+        Assert.NotEqual(start, campaign.QueryOverview().Time);
+        var advanced = campaign.QueryOverview().Time;
+        host.Clock.Halt("halted");
+        Key(' ');
+        Assert.Equal(advanced, campaign.QueryOverview().Time);
+
+        void Key(uint code) => client.HandleInput(GameInputEvent.Key(GameInputEventKind.KeyPressed, 0, 0, 0, code, InputKeyModifiers.None));
+    }
+
+    [Fact]
     public void OpaqueCraftInventoryIsReportedInsteadOfAssumedEmpty()
     {
         var content = CampaignLogisticsTests.LoadFixture();

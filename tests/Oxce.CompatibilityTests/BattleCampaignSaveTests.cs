@@ -31,11 +31,12 @@ public sealed class BattleCampaignSaveTests
             BattleTerrainFiles = terrain ? BattleStartTests.TerrainFiles() : null,
         };
 
-    /// <summary>The campaign's snapshot with its battle past the first turn (what startFirstTurn would leave: turn 1).</summary>
+    /// <summary>The campaign's snapshot with its battle past the briefing, the pre-battle inventory and startFirstTurn (turn 1).</summary>
     private static CampaignSnapshot AtFirstTurn(CampaignState campaign)
     {
-        var snapshot = campaign.Capture();
-        return snapshot with { Battle = snapshot.Battle! with { Turn = 1 } };
+        foreach (var command in new ICampaignCommand[] { new BeginBriefing("", ""), new ConfirmBriefing(), new StartFirstTurn() })
+            Assert.DoesNotContain(campaign.Execute(command).Events, static item => item is CampaignActionBlocked);
+        return campaign.Capture();
     }
 
     private static LoadedOxceCampaign Load(string text, CampaignState campaign, bool terrain = true) =>
@@ -53,13 +54,13 @@ public sealed class BattleCampaignSaveTests
     private static BattleState LoadedBattle(CampaignState campaign) => BattleStartTests.Battle(campaign);
 
     [Fact]
-    public void ATurnZeroBattleIsRefusedAndARestoredBattleIsSavedAndReloaded()
+    public void ABattleIsSavedFromItsBriefingOnAndAFirstTurnBattleIsSavedAndReloaded()
     {
         var (campaign, _) = Started();
-        // No save before the first turn: the reference saves only after the briefing and startFirstTurn.
-        Assert.Equal(CampaignBattles.BattleSaveBeforeFirstTurn.Text, campaign.QuerySaveRefusal());
-        Assert.Null(campaign.CaptureForSave(out var refusal));
-        Assert.Equal(CampaignBattles.BattleSaveBeforeFirstTurn.Text, refusal);
+        // The reference saves only after the briefing and startFirstTurn; the port saves from the start (ADR 0039).
+        Assert.Null(campaign.QuerySaveRefusal());
+        Assert.NotNull(campaign.CaptureForSave(out var refusal));
+        Assert.Null(refusal);
 
         var snapshot = AtFirstTurn(campaign);
         var text = OxceSaveAdapter.EmitNewCampaign(snapshot);

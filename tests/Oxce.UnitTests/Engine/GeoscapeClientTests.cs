@@ -1,3 +1,4 @@
+using Oxce.Gameplay.Sessions;
 using Oxce.Engine;
 using Oxce.Engine.Geoscape;
 using Oxce.Engine.Input;
@@ -14,7 +15,7 @@ namespace Oxce.UnitTests.Engine;
 
 public sealed class GeoscapeClientTests
 {
-    private static readonly TimeSpan Step = GeoscapeTimeController.GeoClock;
+    private static readonly TimeSpan Step = SessionClock.GeoClock;
 
     [Fact]
     public void TimeWaitsForTheFirstBaseThenRunsAtTheSelectedSpeed()
@@ -68,6 +69,176 @@ public sealed class GeoscapeClientTests
         var after = campaign.QueryOverview().Time;
         Assert.Equal((before.Minute + 1) % 60, after.Minute);
         Assert.Equal(before.Second, after.Second);
+    }
+
+    private sealed class Heard(List<SessionEvents> sink) : ISessionClient
+    {
+        public void OnEvents(SessionEvents batch) => sink.Add(batch);
+    }
+
+    [Fact]
+    public void AHostedClientSharesTheHostClockAndAnotherPlayersCoverPausesIt()
+    {
+        var content = CampaignLogisticsTests.LoadFixture();
+        var campaign = Placed(content);
+        var host = new CampaignSession(campaign, campaign, static () => TimeSpan.Zero);
+        var heard = new List<SessionEvents>();
+        using var observer = host.Attach(new PlayerId(2), new Heard(heard));
+        using var local = host.Attach(PlayerId.Local);
+        var texture = new IndexedSurface(32, 32);
+        texture.Clear(0x41);
+        var assets = new GeoscapeAssets(IndexedPalette.CreateGrayscale(),
+            new Dictionary<int, IndexedSurface> { [0] = texture, [1] = texture, [2] = texture },
+            new Dictionary<int, IndexedSurface>(), RuntimeGlobeColors.Default);
+        var client = new GeoscapeClient(new GeoscapeClientSetup(CampaignUiSession.ForCampaign(campaign, local, local),
+            content.RuntimeRules, assets, IndexedInterfaceFont.Create(), static text => text));
+
+        Assert.Same(host.Clock, client.Time);
+        var before = campaign.QueryOverview().Time;
+        client.Tick(Step);
+        Assert.NotEqual(before, campaign.QueryOverview().Time);
+        Assert.All(heard, batch => Assert.Equal(PlayerId.Host, batch.Actor));
+        Assert.NotEmpty(heard);
+
+        host.Clock.SetCovered(new PlayerId(2), true);
+        var paused = campaign.QueryOverview().Time;
+        for (var step = 0; step < 3; step++) client.Tick(Step);
+        Assert.Equal(paused, campaign.QueryOverview().Time);
+        host.Clock.SetCovered(new PlayerId(2), false);
+        client.Tick(Step);
+        Assert.NotEqual(paused, campaign.QueryOverview().Time);
+    }
+
+    [Fact]
+    public void AHostedClientReportsItsCoverToTheHostClock()
+    {
+        var content = CampaignLogisticsTests.LoadFixture();
+        var campaign = TestFixtures.CreateLogisticsCampaign(content, "Cover");
+        var host = new CampaignSession(campaign, campaign, static () => TimeSpan.Zero);
+        using var local = host.Attach(PlayerId.Local);
+        var texture = new IndexedSurface(32, 32);
+        texture.Clear(0x41);
+        var assets = new GeoscapeAssets(IndexedPalette.CreateGrayscale(),
+            new Dictionary<int, IndexedSurface> { [0] = texture, [1] = texture, [2] = texture },
+            new Dictionary<int, IndexedSurface>(), RuntimeGlobeColors.Default);
+        var client = new GeoscapeClient(new GeoscapeClientSetup(CampaignUiSession.ForCampaign(campaign, local, local),
+            content.RuntimeRules, assets, IndexedInterfaceFont.Create(), static text => text));
+        // Starting base placement: the world is not entered, so the geoscape is covered.
+        client.Tick(Step);
+        Assert.True(host.Clock.Covered);
+        // Esc is ignored, 'b' opens the base screens: they cover it too, though the client stops ticking the clock.
+        Key(client, 27);
+        Key(client, 'b');
+        client.Tick(Step);
+        Assert.True(host.Clock.Covered);
+    }
+
+    private static GeoscapeClient Hosted(CampaignState campaign, RuntimeContent content, CampaignSession host,
+        SessionHandle local, Func<CampaignUiSession>? load = null)
+    {
+        var texture = new IndexedSurface(32, 32);
+        texture.Clear(0x41);
+        var assets = new GeoscapeAssets(IndexedPalette.CreateGrayscale(),
+            new Dictionary<int, IndexedSurface> { [0] = texture, [1] = texture, [2] = texture },
+            new Dictionary<int, IndexedSurface>(), RuntimeGlobeColors.Default);
+        return new GeoscapeClient(new GeoscapeClientSetup(CampaignUiSession.ForCampaign(campaign, local, local),
+            content.RuntimeRules, assets, IndexedInterfaceFont.Create(), static text => text)
+        {
+            Load = load,
+        });
+    }
+
+    [Fact]
+    public void APopupCoversTheHostClockUntilItIsClosedAndALoadReleasesTheCover()
+    {
+        var content = CampaignLogisticsTests.LoadFixture();
+        var campaign = Placed(content);
+        var host = new CampaignSession(campaign, campaign, static () => TimeSpan.Zero);
+        using var local = host.Attach(PlayerId.Local);
+        var client = Hosted(campaign, content, host, local, () => CampaignUiSession.ForCampaign(campaign, local, local));
+        client.Tick(Step);
+        Assert.False(host.Clock.Covered);
+
+        Key(client, 0x40000042);
+        Assert.Single(client.Popups);
+        client.Tick(Step);
+        Assert.True(host.Clock.Covered);
+        Key(client, 27);
+        client.Tick(Step);
+        Assert.False(host.Clock.Covered);
+
+        // A load replaces the session: the cover the old popup held is released at once.
+        Key(client, 0x40000042);
+        client.Tick(Step);
+        Assert.True(host.Clock.Covered);
+        Key(client, 13);
+        Assert.Equal("Campaign loaded.", client.Status);
+        Assert.False(host.Clock.Covered);
+    }
+
+    [Fact]
+    public void PopupsAndModesAreScreensOnTheStackAndTheClockCoverFollowsThem()
+    {
+        var content = CampaignLogisticsTests.LoadFixture();
+        var campaign = Placed(content);
+        var host = new CampaignSession(campaign, campaign, static () => TimeSpan.Zero);
+        using var local = host.Attach(PlayerId.Local);
+        var client = Hosted(campaign, content, host, local, () => CampaignUiSession.ForCampaign(campaign, local, local));
+        client.Tick(Step);
+        Assert.Equal(0, client.Screens.Count);
+        Assert.False(client.Screens.Covers(client.Screens.Root!));
+        Assert.True(client.TimeCanRun);
+
+        // A popup is a translucent screen above the globe; closing it removes the screen.
+        Key(client, 0x40000042);
+        Assert.Equal(1, client.Screens.Count);
+        Assert.True(client.Screens.Covers(client.Screens.Root!));
+        Assert.False(client.TimeCanRun);
+        Assert.Equal(client.Screens.Top, client.Screens.Visible[^1]);
+        Key(client, 27);
+        Assert.Equal(0, client.Screens.Count);
+        Assert.True(client.TimeCanRun);
+
+        // The base screens sit above the globe too, and a site choice waits for them to close.
+        Key(client, 'b');
+        Assert.True(client.BasesOpen);
+        Assert.Equal(1, client.Screens.Count);
+        Assert.True(client.Screens.Covers(client.Screens.Root!));
+        // A site choice that starts while the base screens are up waits for them: it is not pushed above them.
+        client.BeginBasePlacement();
+        Assert.NotNull(client.PlacingBase);
+        Assert.Equal(1, client.Screens.Count);
+        Key(client, 27);
+        Assert.False(client.BasesOpen);
+        Assert.Equal(1, client.Screens.Count);
+        Assert.False(client.PlacingBase);
+    }
+
+    [Fact]
+    public void BasePlacementAndNamingCoverTheHostClock()
+    {
+        var content = CampaignLogisticsTests.LoadFixture();
+        var campaign = TestFixtures.CreateLogisticsCampaign(content, "Geoscape");
+        var host = new CampaignSession(campaign, campaign, static () => TimeSpan.Zero);
+        using var local = host.Attach(PlayerId.Local);
+        var client = Hosted(campaign, content, host, local);
+        client.Tick(Step);
+        Assert.True(client.PlacingBase);
+        Assert.True(host.Clock.Covered);
+        Assert.Equal(1, client.Screens.Count);
+
+        var site = campaign.QueryBaseSites(true).First(site => site.Longitude != 0 || site.Latitude != 0);
+        client.View.Center(site.Longitude, site.Latitude);
+        Click(client, 256, 200, 1);
+        Assert.NotNull(client.BaseName);
+        client.Tick(Step);
+        Assert.True(host.Clock.Covered);
+        Assert.Equal(2, client.Screens.Count);
+        client.HandleInput(GameInputEvent.TextEntry(0, 0, "Alpha"));
+        Key(client, 13);
+        client.Tick(Step);
+        Assert.Null(client.PlacingBase);
+        Assert.False(host.Clock.Covered);
     }
 
     [Fact]

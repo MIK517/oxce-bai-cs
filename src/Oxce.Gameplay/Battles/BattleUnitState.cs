@@ -106,6 +106,12 @@ internal sealed partial class BattleUnit
     public bool BannedInNextStage { get; set; }
     public List<int> MeleeAttackedBy { get; } = [];
     public bool AllowAutoCombat { get; set; } = true;
+
+    /// <summary>
+    /// basicEnergyRegeneration, the default energy recovery's term: a soldier's initial time units over three, else the unit
+    /// rule's <c>energyRecovery</c>.
+    /// </summary>
+    public int EnergyRegeneration { get; set; }
     public int Aggression { get; set; }
     public bool HasPanickedLastTurn { get; set; }
 
@@ -148,4 +154,21 @@ internal sealed class BattleAiState
     public List<int> WasHitBy { get; } = [];
     public bool WeaponPickedUp { get; set; }
     public int TargetFaction { get; set; }
+}
+
+internal sealed partial class BattleUnit
+{
+    /// <summary>
+    /// BattleUnit::updateEnemyKnowledge(index, clue: true, door: false): every faction's last spotted tile (and the blind shot one)
+    /// is the tile, and the turns since seen restart (<c>updateTurnsSinceSeenByClue</c>, default true).
+    /// </summary>
+    internal void UpdateEnemyKnowledge(int tileIndex)
+    {
+        for (var faction = 0; faction < TileLastSpottedBy.Length; faction++)
+        {
+            TileLastSpottedBy[faction] = tileIndex;
+            TileLastSpottedForBlindShotBy[faction] = tileIndex;
+            TurnsSinceSpotted[faction] = 0;
+        }
+    }
 }

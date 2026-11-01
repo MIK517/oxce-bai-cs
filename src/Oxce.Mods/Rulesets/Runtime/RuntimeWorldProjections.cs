@@ -423,6 +423,53 @@ public sealed record RuntimeDeploymentBattle(
 
     /// <summary>Why the <c>data</c> node is unusable (the reference throws reading it), or null.</summary>
     public string? DataInvalid { get; init; }
+
+    /// <summary>AlienDeployment::getBriefingData: the briefing screen's data (<c>briefing</c>).</summary>
+    public RuntimeBriefing Briefing { get; init; } = RuntimeBriefing.Default;
+
+    /// <summary>AlienDeployment::getReinforcementsData: the waves' pre-requisites (<c>reinforcements</c>), in rule order.</summary>
+    public IReadOnlyList<RuntimeReinforcementWave> Reinforcements { get; init; } = [];
+}
+
+/// <summary>
+/// BriefingData: the briefing's palette, text offset, title and description keys ("" for the mission type's own), music,
+/// background, cutscene ("" for none) and whether the target and the craft show.
+/// </summary>
+public sealed record RuntimeBriefing(int Palette, int TextOffset, string Title, string Description, string Music, string Background,
+    string Cutscene, bool ShowCraft, bool ShowTarget)
+{
+    public static RuntimeBriefing Default { get; } = new(0, 0, "", "", "GMDEFEND", "BACK16.SCR", "", true, true);
+
+    internal static RuntimeBriefing Read(Oxce.Formats.Yaml.YamlNode? node)
+    {
+        if (node is not Oxce.Formats.Yaml.YamlMappingNode map) return Default;
+        return new(map.ReadInt32("palette", 0), map.ReadInt32("textOffset", 0), map.ReadString("title", ""), map.ReadString("desc", ""),
+            map.ReadString("music", Default.Music), map.ReadString("background", Default.Background), map.ReadString("cutscene", ""),
+            map.ReadBoolean("showCraft", true), map.ReadBoolean("showTarget", true));
+    }
+}
+
+/// <summary>
+/// The pre-requisites of a ReinforcementsData wave that NextTurnState::determineReinforcements checks before it deploys:
+/// difficulty range, the objective trigger, turns or the turn range, execution odds and the largest number of runs.
+/// </summary>
+public sealed record RuntimeReinforcementWave(string Type, int MinimumDifficulty, int MaximumDifficulty, bool ObjectiveDestroyed,
+    IReadOnlyList<int> Turns, int MinimumTurn, int MaximumTurn, int ExecutionOdds, int MaximumRuns)
+{
+    internal static IReadOnlyList<RuntimeReinforcementWave> ReadAll(IReadOnlyList<Oxce.Formats.Yaml.YamlNode> nodes)
+    {
+        var result = new List<RuntimeReinforcementWave>();
+        foreach (var node in nodes)
+        {
+            if (node is not Oxce.Formats.Yaml.YamlMappingNode map) continue;
+            var turns = map.TryGet("turns", out var list) && list is Oxce.Formats.Yaml.YamlSequenceNode
+                ? Oxce.Formats.Yaml.YamlValueReader.ReadSequence(list!, Oxce.Formats.Yaml.YamlValueReader.ReadInt32) : [];
+            result.Add(new(map.ReadString("type", ""), map.ReadInt32("minDifficulty", 0), map.ReadInt32("maxDifficulty", 4),
+                map.ReadBoolean("objectiveDestroyed", false), Array.AsReadOnly(turns.ToArray()), map.ReadInt32("minTurn", 0),
+                map.ReadInt32("maxTurn", -1), map.ReadInt32("executionOdds", 100), map.ReadInt32("maxRuns", -1)));
+        }
+        return Array.AsReadOnly(result.ToArray());
+    }
 }
 
 /// <summary>

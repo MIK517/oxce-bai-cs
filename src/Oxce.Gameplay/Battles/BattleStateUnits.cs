@@ -95,6 +95,7 @@ internal sealed partial class BattleState
         sides.CopyTo(unit.CurrentArmor, 0);
         unit.Aggression = rule.Aggression;
         unit.SpawnUnit = rule.SpawnUnit;
+        unit.EnergyRegeneration = rule.EnergyRecovery;
         unit.IsVip = rule.IsVip;
         // Options::autoCombatDefaultHWP, autoCombatDefaultMindControl and autoCombatDefaultRemain, all on by default.
         unit.AllowAutoCombat = true;
@@ -160,6 +161,7 @@ internal sealed partial class BattleState
         unit.MoveCosts = unit.ArmorMoveCosts = battleArmor.MoveCosts;
         // The aggression is left uninitialized for a soldier (ADR 0039: 0).
         unit.AllowAutoCombat = personal.AllowAutoCombat;
+        unit.EnergyRegeneration = personal.InitialStats.GetValueOrDefault("tu") / 3;
         var bonuses = CampaignState.SoldierBonuses(personal, rules);
         for (var side = 0; side < battleArmor.Sides.Count; side++)
         {

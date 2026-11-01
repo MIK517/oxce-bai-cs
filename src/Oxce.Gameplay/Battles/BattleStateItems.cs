@@ -20,6 +20,10 @@ internal sealed partial class BattleState
     internal RuntimeRuleCatalog? Rules { get; init; }
 
     private readonly List<BattleItem> _conditionalRecovered = [];
+    private readonly List<string> _restoreNotes = [];
+
+    /// <summary>What the restore noticed and went on with (the reference logs it): a fifth special built-in item of a unit.</summary>
+    public IReadOnlyList<string> RestoreNotes => _restoreNotes;
 
     /// <summary>SavedBattleGame::getConditionalRecoveredItems: items off the map that go home if the battle is won, by ID.</summary>
     public IReadOnlyList<BattleItem> ConditionalRecoveredItems => _conditionalRecovered;
@@ -167,9 +171,10 @@ internal sealed partial class BattleState
                     if (item.Slot.Length == 0)
                     {
                         item.IsSpecialWeapon = true;
-                        // addLoadedSpecialWeapon: the first free of the four slots; a fifth stays owned, in no slot (the reference logs it; the port does not).
+                        // addLoadedSpecialWeapon: the first free of the four slots; a fifth stays owned, in no slot (the reference logs it; the port notes it in RestoreNotes).
                         var weapons = units[owner].SpecialWeaponIds;
                         if (weapons.Count < SpecialWeaponSlots) weapons.Add(item.Id);
+                        else _restoreNotes.Add($"Unit {owner} owns more than {SpecialWeaponSlots} special built-in items; item {item.Id} ({item.ItemType}) keeps its owner but takes no slot.");
                     }
                 }
                 item.PreviousOwnerUnitId = Find(entry.PreviousOwnerId);

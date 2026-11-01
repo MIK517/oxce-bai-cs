@@ -1,3 +1,4 @@
+using Oxce.Gameplay.Sessions;
 using Oxce.Core.Random;
 using Oxce.Engine;
 using Oxce.Engine.Geoscape;
@@ -78,7 +79,7 @@ public sealed class StrategicWorldGeoscapeScenarioTests
         Assert.False(Assert.Single(client.Interceptions).Minimized);
         Assert.False(client.TimeCanRun);
         var stopped = campaign.QueryOverview().Time;
-        client.Tick(GeoscapeTimeController.GeoClock);
+        client.Tick(SessionClock.GeoClock);
         Assert.Equal(stopped, campaign.QueryOverview().Time);
 
         // Recall from the craft screen; the clock restarts on a speed choice.
@@ -128,7 +129,7 @@ public sealed class StrategicWorldGeoscapeScenarioTests
                 // Time waits under a popup, a destination or base-site choice, a name and the base screens.
                 Assert.False(client.TimeCanRun);
                 var before = campaign().QueryOverview().Time;
-                client.Tick(GeoscapeTimeController.GeoClock);
+                client.Tick(SessionClock.GeoClock);
                 Assert.Equal(before, campaign().QueryOverview().Time);
             }
             Assert.False(choosing, "The drive does not answer choices other than popups.");
@@ -150,7 +151,7 @@ public sealed class StrategicWorldGeoscapeScenarioTests
                 continue;
             }
             if (stop() || !client.Time.Running) break;
-            client.Tick(GeoscapeTimeController.GeoClock);
+            client.Tick(SessionClock.GeoClock);
         }
         return seen;
     }
@@ -213,7 +214,7 @@ public sealed class StrategicWorldGeoscapeScenarioTests
         var client = Client(content, CampaignUiSession.ForCampaign(campaign, campaign, campaign), save: static () => { },
             load: static () => throw new InvalidOperationException("No load in this test."), saveRequested: saves.Add);
 
-        for (var frame = 0; frame < 20 && client.Popups.Count == 0; frame++) client.Tick(GeoscapeTimeController.GeoClock);
+        for (var frame = 0; frame < 20 && client.Popups.Count == 0; frame++) client.Tick(SessionClock.GeoClock);
         Assert.Equal("STR_XCOM_PROJECT_MONTHLY_REPORT", client.Popups[0].Title);
         Assert.NotNull(campaign.GetQuery<ICampaignMonthlyReportQuery>()!.QueryMonthlyReport());
         client.Choose(0);
@@ -224,7 +225,7 @@ public sealed class StrategicWorldGeoscapeScenarioTests
             Assert.Empty(saves);
             client.Choose(0);
         }
-        client.Tick(GeoscapeTimeController.GeoClock);
+        client.Tick(SessionClock.GeoClock);
         Assert.Equal([CampaignSaveKind.Autosave], saves);
     }
 

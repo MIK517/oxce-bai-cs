@@ -275,7 +275,6 @@ public sealed partial class CampaignState
         owner.Facilities.Clear(); owner.Facilities.AddRange(facilities);
         owner.Items.Clear(); foreach (var pair in stock) owner.Items.Add(pair.Key, pair.Value);
         _funds[^1] = funds; _incomes[^1] = income; _expenditures[^1] = spending;
-        _logisticsQuote = null;
     }
 
     private static bool SameFacilityEntity(FacilityState previous, FacilityState current) =>

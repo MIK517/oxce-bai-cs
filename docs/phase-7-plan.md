@@ -3,8 +3,9 @@
 Plan date: 2026-10-18. Baseline: `main` at `2b0c81fb` (audit cleanup, PR #77). Reference:
 `../oxce-bai` (`4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`).
 Status: branch 1 (`claude/battle-generation`) is complete and merged (PR #78); its slices, audits and evidence are
-recorded in [battle generation status](battle-generation-status.md). Branch 2 (`claude/battle-save`) is complete and awaits merge:
-[battle save status](battle-save-status.md).
+recorded in [battle generation status](battle-generation-status.md). Branch 2 (`claude/battle-save`) is complete and merged (PR #79):
+[battle save status](battle-save-status.md). Branch 3 (`claude/battle-session-ui`) is planned:
+[battle session and UI status](battle-session-ui-status.md).
 
 ## Goal and scope
 
@@ -215,6 +216,104 @@ module, reload with the same saved and derived state and the same viewer overvie
 conformance reader. Malformed battle saves fail with an actionable error. Saving a battle after its first turn works;
 the inherited "Active tactical battle is preserved" boundary retires, and branch 1's `battle.save-unsupported`
 narrows to the first-turn restriction branch 3 owns.
+
+## Branch 3 — Battle session and UI
+
+Reference: `BriefingState` (constructor, `btnOkClick`), `AliensCrashState`, `NextTurnState`,
+`NextTurnState` (turn 0 and 1 work), `BattlescapeGame::spawnFromPrimedItems`, `SavedBattleGame::startFirstTurn`, `randomizeItemLocations`, `resetUnitTiles`, `newTurnUpdateScripts`,
+`BattleUnit::prepareNewTurn`, `BattlescapeState` (construction, selection, next and previous soldier, level and center
+buttons, `updateSoldierInfo`), `Camera`, `Map` (draw order, cursor, levels), `InventoryState` and `Inventory` (the
+pre-battle layout and the in-battle moves), `RuleInventory` slot rules, `LoadGameState` (a battle save opens the
+battlescape), `Game` (the state stack), `GeoscapeState` (the pause policy the host takes over).
+
+### Branch decisions
+
+- **Session before battle UI (audit step 4, [ADR 0037](decisions/0037-host-authoritative-session.md)).** The session
+  layer is built first and the geoscape and logistics clients move onto it, so the battlescape is the first new client
+  and not a second pattern. It holds: a player identity on every command and query (single-player has one local
+  player; a battle controller slot maps to a player), authorization at the session boundary (a unit command from a
+  player who does not control the unit is refused with a classified reason; rules never check ownership, D2),
+  broadcast of committed events to every attached client, the host clock and pause policy, and per-actor quotes.
+  Transport, protocol and remote clients stay after Phase 7's first playable battle (audit step 5).
+- **Host clock and pause policy leave the UI.** `GeoscapeTimeController` and the covered and popup pause decisions
+  (ADR 0034 D3) become session state that clients inform (a client reports "covered", a client requests a speed). The
+  one-client behavior is the reference's and is pinned by the existing geoscape tests. While a battle exists the
+  session clock does not advance (the `battle` preflight, branch 1 S1).
+- **Per-actor quotes.** The logistics quote slot becomes a quote keyed by actor and ID; a time advance or another
+  actor's command no longer invalidates it (ADR 0037 rule 6).
+- **Screen stack.** `Oxce.Engine` gets a screen stack (audit E4): push, pop, replace, input routed to the top, an
+  opaque or translucent flag, shared widgets, and a "covers the geoscape" query the session reads. The geoscape and logistics modals
+  that are screens migrate onto it; no screen is rewritten for looks. Phase 8 screens use it.
+- **Briefing and the first turn belong here.** The briefing reads the deployment's briefing data and sets the
+  mission target and craft or base (`strTarget`, `strCraftOrBase`: the destination's name and `STR_CRAFT_` or
+  `STR_BASE_UC_` lines, and a random operation name from `RNG::seedless` when the mod has them), which are empty until
+  then and which branch 2 saves. Its confirm step (`btnOkClick`) runs `spawnFromPrimedItems` (units and items from
+  primed spawn grenades with fuse 0, grenades removed; branch 1 can generate such items) before the alien tally; S3
+  ports it. Cutscene and music are Phase 8's; the craft deployment preview (`isPreview`: skips the inventory, calls
+  `startFirstTurn`, and skips the new-turn scripts) is `battle.preview-unsupported`, refused at battle start.
+  `NextTurnState` is part of the start: at turn 0 it picks a hidden-movement background (`RNG::seedless`, presentation),
+  runs `checkBugHuntMode` (the saved `bughuntMode` can change) and `determineReinforcements` (allowed for the player
+  side at turn 0; it draws from the game RNG before `randomizeItemLocations`, so S3 orders the draws as the reference
+  does), and on close tallies units, finishes the battle when no soldiers live (branch 7), centers the camera and
+  autosaves on turn 1. A start in which a reinforcement wave could deploy (it passes its difficulty range and its trigger at turn 0) is refused as
+  `battle.reinforcements-unsupported`, owned by branch 6 (turn processing), which ports the deployment of waves; S3 decided this instead of porting
+  `determineReinforcements`, which needs the unit placement of branch 6.
+  `startFirstTurn` is ported whole: `randomizeItemLocations`
+  on the selected unit's tile (storage space, reference RNG order), `resetUnitTiles`, reselecting the unit that
+  stands on the inventory tile after the reset (the reference comment says closest to the ramp), `prepareNewTurn(false)` for every live X-COM unit, turn 1, `newTurnUpdateScripts`. `NewTurnUnit` and
+  `NewTurnItem` callbacks refuse by name until branch 8's bindings (a battle whose rules bind them cannot start);
+  `reviveUnconsciousUnits` and `convertInfected` are branch 6's and are guarded by a validated precondition (none can
+  apply to a generated battle at turn 1). Refusal names: `battle.new-turn-script-unsupported` (branch 8),
+  `battle.turn-one-revive-unsupported` (branch 6), `battle.no-live-aliens` (the `AliensCrashState` exit, branch 7),
+  `battle.preview-unsupported` and `battle.reinforcements-unsupported` (above), `battle.casualties-unsupported` (branch 6: a unit `checkForCasualties` would take out; refused at the briefing and for the commands of a running battle, a loaded one included), `battle.turn-recovery-script-unsupported` (branch 8: a scripted time unit or energy recovery), `battle.spawn-gravity-unsupported` (branch 4: a primed spawn item whose unit would fall, or whose tile above level 0 has no floor). Completing this retires `battle.save-before-first-turn`, the restriction branch 2 handed over.
+- **The pre-battle inventory is the reference's `InventoryState(false, ...)`.** Items move between slots under the
+  `RuleInventory` slot rules at no TU cost before the first turn and at the reference's cost during battle; moves are
+  commands on stable unit and item IDs with total validation. Closing the pre-battle inventory also runs `saveEquipmentLayout`, which
+  overwrites each soldier's `equipmentLayout` in the campaign (default `oxceAlternateCraftEquipmentManagement`, no
+  base); S4 ports it as a campaign effect of starting the first turn. Ammo loading, throwing and priming
+  (`battle.inventory-ammo-unsupported`, `battle.inventory-throw-unsupported`, `battle.inventory-prime-unsupported`)
+  and the inventory layout save and load screens (`InventorySaveState`, `InventoryLoadState`:
+  `battle.inventory-layout-screens-unsupported`, and S4 adds clear, autoequip, template and rename: `battle.inventory-clear-unsupported`, `-autoequip-unsupported`, `-template-unsupported`, `-rename-unsupported`) are deferred where the first playable battle does not need them. The open ADR 0039 note (an owned recovery-list item that keeps its owner without joining
+  the inventory) is resolved here: it joins the inventory or is refused.
+- **Battlescape view.** The map is drawn from `QueryBattle(viewer)` only: tiles the viewer's faction discovered, units
+  it spotted, never hidden state. Camera, level up and down, selection (next, previous, the selected unit) and the
+  legal-action display read queries; every gameplay change is a command (ADR 0037 rules 1, 3, 4, 6). Selection is not purely view state in the
+  reference: `BattlescapeState` changes `SavedBattleGame::_selectedUnit` (saved), and "next and stop" sets `undoUnit`
+  and the unit's `dontReselect` (both saved; `prepareNewTurn` clears `dontReselect`). The port keeps one selected unit
+  per player as client state and makes the saved fields commands: `SelectUnit` (writes `selectedUnit` for the
+  controlling local player's slot) and `SkipUnit` (writes `undoUnit` and `dontReselect`). With several players only the
+  battle's side-owning slot writes the saved `selectedUnit`; ADR 0039 records this intentional difference in S5.
+  The legal-action display lists what is legal for the selected unit now; actions of later branches appear as they
+  are ported, none is faked.
+- **Queries carry no player yet (named gap, branch audit).** Three battle queries (`IBattleQuery`, `IBattleViewQuery`, `IBattleInventoryQuery`) take a `BattleViewer` that the client chooses (`IBattleBriefingQuery` takes none), and `CampaignUiSession.ForCampaign` reads them from the campaign, not through the session handle; commands do carry the player. With one local player this changes nothing. Binding the viewer to the attached player and its controller slot (a query refused for a viewer the player does not own) belongs to the remote client work after the first playable battle (audit step 5, transport and protocol), where a second player exists to test it with.
+- **Indexed UI, headless first.** Battle screens run on the indexed loop client and are covered by scripted loop tests
+  (no pixels), as the geoscape clients are. A missing sprite is a diagnosed placeholder, not a crash.
+- **`LoadGameState` for battles.** Loading a save with a battle opens the battlescape directly, as the reference does
+  (no briefing); controllers and spotting are branch 2's restore.
+- **Out of scope.** Pathfinding and walking (branch 4), line of fire and shooting (5), end of turn, AI and morale (6),
+  abort and debriefing (7). Their buttons are present and refuse by the owning branch's name. The minimap and the
+  extended-battlescape link screens are listed in the status with an owner (branch 8 or Phase 8).
+
+### Slices
+
+| Slice | Scope | Tests beyond the corpus |
+|---|---|---|
+| S0 | This plan and the [battle session and UI status](battle-session-ui-status.md) record | none |
+| S1 | Session layer: player identity, command authorization, event broadcast, per-actor quotes; the geoscape and logistics clients go through it | an unauthorized command refused with no change, using a test-only unit command (the first real unit commands are S4's); two clients both receive an event; a quote survives another actor's command and a time advance |
+| S2 | Host clock and pause policy out of `GeoscapeTimeController` and `GeoscapeClient`; screen navigator in `Oxce.Engine` (`ScreenNavigator`) with the geoscape base screens on it. The geoscape popup list, naming, selecting and placing modes, the logistics client and shared widgets move to S6, with the session reading `ScreenNavigator.Covers` | one-client behavior equal to today; pause on popup and on cover; no advance during a battle; stack push, pop, replace, input routing |
+| S3 | Briefing and the first turn: briefing queries, `startFirstTurn` with its parts, the `NewTurn*` script refusals, `battle.save-before-first-turn` retired, `LoadGameState` into the battle | a generated battle starts and saves after its first turn; seeded item randomization; out units skipped; a bound `NewTurnUnit` callback refused; briefing sets `strTarget` and `strCraftOrBase`; primed spawn grenades spawn; a preview and reinforcements refused; the fifth loaded special item reported (branch 2's open note, via a restore diagnostics sink); a loaded battle opens without a briefing |
+| S4 | Pre-battle and in-battle inventory: slot rules, move commands, TU costs, ground and craft items, queries for the inventory screen, the recovery-list item decision | each slot type; a refused move changes nothing; TU cost; two-hand item; grid fit; an owned recovery-list item; closing the inventory writes `equipmentLayout`; each inventory refusal named |
+| S5 | Battlescape queries and view model: camera, levels, selection, visible tiles and units per viewer, legal-action display | a viewer never sees an unspotted unit or an undiscovered tile; selection skips out units; `SelectUnit` and `SkipUnit` write the saved fields; level bounds; only legal actions listed |
+| S6 | Battlescape screens on the stack and the indexed loop: briefing, pre-battle and in-battle inventory, map plan view with units, selection, level and camera, later branches' buttons refusing by owner's name; `ScreenNavigator` tells the screen a pop reveals | scripted loop tests over a generated battle; a missing sprite is a diagnostic |
+| S6b | Host loop work S6 left: opening the battle screens from the SDL host (`BattleUiContext.Open`, with the briefing lines from the deployment request), starting the battle from the request, and the turn-1 autosave of `NextTurnState::close` | the host loop opens a generated battle's screens and writes the turn-1 autosave; a refused start offers the request again |
+| S6c | Migrate the geoscape popups, naming, selecting and placing modes onto `ScreenNavigator` (S2's undelivered scope), with the shared widgets they need and the client cover derived from `ScreenNavigator.Covers`. **Plan change (branch audit):** the logistics client was already one screen on the stack; its internal views (readiness, management, personnel, research, production, orders) and its load-confirmation prompt stay one screen with a view enum, because no reference rule depends on their being stack entries; splitting them belongs to Phase 8 presentation, with translucent compositing on separate surfaces | the geoscape client behaves as before on the stack; a popup pauses the clock through `Covers`; existing geoscape and logistics tests unchanged |
+| S7 | Acceptance on branch 1's battles and the private active-battle saves; branch audit | none beyond acceptance |
+
+Acceptance: each generated acceptance battle of branch 1 passes the briefing, the pre-battle inventory and
+`startFirstTurn` (the three Rosigma battles, whose mod binds `newTurnUnit`/`newTurnItem` scripts, are instead refused at the briefing by `battle.new-turn-script-unsupported`, branch 8's, and still save and reload into the briefing), is shown in the battlescape through the indexed loop for a chosen player, can be saved (the
+first-turn restriction retired) and reloaded into the battlescape, and the private active-battle saves open directly.
+A client of another faction sees only its own spotted state. The geoscape behaves as before through the session and the
+host clock, with the existing geoscape tests unchanged.
 
 ## Inherited refusals
 

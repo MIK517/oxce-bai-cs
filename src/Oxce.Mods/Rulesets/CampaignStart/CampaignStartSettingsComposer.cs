@@ -113,9 +113,15 @@ internal static class CampaignStartSettingsComposer
         b.DifficultyDemigod = Read(root, "difficultyDemigod", b.DifficultyDemigod);
         b.ExtendedHwpLoadOrder = Read(root, "extendedHwpLoadOrder", b.ExtendedHwpLoadOrder);
         b.ExtendedForceSpawn = Read(root, "extendedForceSpawn", b.ExtendedForceSpawn);
+        b.ExtendedInventorySlotSorting = Read(root, "extendedInventorySlotSorting", b.ExtendedInventorySlotSorting);
+        b.ExtendedItemReloadCost = Read(root, "extendedItemReloadCost", b.ExtendedItemReloadCost);
         b.ShareAmmoCategories = Read(root, "shareAmmoCategories", b.ShareAmmoCategories);
         b.BaseDefenseMapFromLocation = Read(root, "baseDefenseMapFromLocation", b.BaseDefenseMapFromLocation);
         b.BughuntMinTurn = Read(root, "bughuntMinTurn", b.BughuntMinTurn);
+        b.BughuntMaxEnemies = Read(root, "bughuntMaxEnemies", b.BughuntMaxEnemies);
+        b.BughuntRank = Read(root, "bughuntRank", b.BughuntRank);
+        b.BughuntLowMorale = Read(root, "bughuntLowMorale", b.BughuntLowMorale);
+        b.BughuntTimeUnitsLeft = Read(root, "bughuntTimeUnitsLeft", b.BughuntTimeUnitsLeft);
         // std::pair reads from a two-element sequence; anything else leaves the pair as it was.
         if (root.TryGet("alienFuel", out var fuel) && fuel is YamlSequenceNode { Items.Count: 2 } fuelPair)
         {

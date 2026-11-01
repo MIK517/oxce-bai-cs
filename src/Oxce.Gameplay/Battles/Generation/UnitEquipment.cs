@@ -95,6 +95,15 @@ internal sealed class UnitEquipment
         return rule.CompatibleAmmo[slot].Count == 0 ? null : _rules.Items.GetExternalId(rule.CompatibleAmmo[slot][0]);
     }
 
+    /// <summary>RuleItem::getVehicleClipSize: the vehicle weapon's clip size when both it and its clip have one, else the clip's.</summary>
+    public int VehicleClipSize(string vehicleItem)
+    {
+        var weapon = ItemRule(vehicleItem).ClipSize;
+        if (VehicleClipAmmo(vehicleItem) is not { } clip) return weapon;
+        var ammo = ItemRule(clip).ClipSize;
+        return ammo > 0 && weapon > 0 ? weapon : ammo;
+    }
+
     public RuntimeBattleItem BattleItemRule(string itemType) => _equipment.Items.TryGetValue(itemType, out var rule)
         ? rule : throw new MapGenerationException($"Item {itemType} does not exist.");
 
@@ -498,6 +507,8 @@ internal sealed class UnitEquipment
     }
 
     /// <summary>BattleUnit::getCarriedWeight.</summary>
+    public int CarriedWeight(BattleUnit unit) => CarriedWeight(unit, Armor(unit.ArmorId));
+
     private int CarriedWeight(BattleUnit unit, RuntimeBattleArmor armor) =>
         Math.Max(0, armor.Weight + _battle.InventoryOf(unit).Sum(TotalWeight));
 

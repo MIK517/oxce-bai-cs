@@ -119,7 +119,6 @@ public sealed partial class CampaignState
         _funds[^1] = funds;
         _incomes[^1] = income;
         _expenditures[^1] = spending;
-        _logisticsQuote = null;
         return new([new CampaignBaseCreated(id, command.Name, site.Cost)]);
     }
 

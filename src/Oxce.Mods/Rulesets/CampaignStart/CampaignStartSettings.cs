@@ -65,11 +65,17 @@ public sealed class CampaignStartSettings
         DifficultyDemigod = builder.DifficultyDemigod;
         ExtendedHwpLoadOrder = builder.ExtendedHwpLoadOrder;
         ExtendedForceSpawn = builder.ExtendedForceSpawn;
+        ExtendedInventorySlotSorting = builder.ExtendedInventorySlotSorting;
+        ExtendedItemReloadCost = builder.ExtendedItemReloadCost;
         ShareAmmoCategories = builder.ShareAmmoCategories;
         BaseDefenseMapFromLocation = builder.BaseDefenseMapFromLocation;
         AlienFuelName = builder.AlienFuelName;
         AlienFuelQuantity = builder.AlienFuelQuantity;
         BughuntMinTurn = builder.BughuntMinTurn;
+        BughuntMaxEnemies = builder.BughuntMaxEnemies;
+        BughuntRank = builder.BughuntRank;
+        BughuntLowMorale = builder.BughuntLowMorale;
+        BughuntTimeUnitsLeft = builder.BughuntTimeUnitsLeft;
         AlienItemLevels = Array.AsReadOnly(builder.AlienItemLevels.Select(static levels => (IReadOnlyList<int>)levels.AsReadOnly()).ToArray());
         StatAdjustments = Array.AsReadOnly(builder.StatAdjustments.Select(static adjustment => adjustment.Build()).ToArray());
         BaseNamesFirst = builder.BaseNamesFirst.AsReadOnly();
@@ -231,6 +237,8 @@ public sealed class CampaignStartSettings
 
     /// <summary>Mod::EXTENDED_FORCE_SPAWN (<c>extendedForceSpawn</c>): aliens without a spawn node are placed near a friend.</summary>
     public bool ExtendedForceSpawn { get; init; }
+    public bool ExtendedInventorySlotSorting { get; init; }
+    public bool ExtendedItemReloadCost { get; init; }
 
     /// <summary>Mod::getShareAmmoCategories (<c>shareAmmoCategories</c>).</summary>
     public bool ShareAmmoCategories { get; init; }
@@ -244,6 +252,12 @@ public sealed class CampaignStartSettings
 
     /// <summary>Mod::getBughuntMinTurn (<c>bughuntMinTurn</c>).</summary>
     public int BughuntMinTurn { get; init; } = 999;
+
+    /// <summary>Mod::getBughuntMaxEnemies, getBughuntRank, getBughuntLowMorale and getBughuntTimeUnitsLeft.</summary>
+    public int BughuntMaxEnemies { get; init; } = 2;
+    public int BughuntRank { get; init; }
+    public int BughuntLowMorale { get; init; } = 40;
+    public int BughuntTimeUnitsLeft { get; init; } = 60;
 
     /// <summary>Mod::getAlienItemLevels: for each month, ten item levels one of which an alien draws.</summary>
     public IReadOnlyList<IReadOnlyList<int>> AlienItemLevels { get; init; } = [];
@@ -333,11 +347,17 @@ internal sealed class CampaignStartSettingsBuilder
     public bool DifficultyDemigod { get; set; }
     public bool ExtendedHwpLoadOrder { get; set; }
     public bool ExtendedForceSpawn { get; set; }
+    public bool ExtendedInventorySlotSorting { get; set; }
+    public bool ExtendedItemReloadCost { get; set; }
     public bool ShareAmmoCategories { get; set; }
     public int BaseDefenseMapFromLocation { get; set; }
     public string AlienFuelName { get; set; } = "";
     public int AlienFuelQuantity { get; set; }
     public int BughuntMinTurn { get; set; } = 999;
+    public int BughuntMaxEnemies { get; set; } = 2;
+    public int BughuntRank { get; set; }
+    public int BughuntLowMorale { get; set; } = 40;
+    public int BughuntTimeUnitsLeft { get; set; } = 60;
     public List<List<int>> AlienItemLevels { get; set; } = [];
     public StatAdjustmentBuilder[] StatAdjustments { get; } = [new(0.5, 0.5), new(1, 1), new(1, 1), new(1, 1), new(1, 1)];
     public List<string> BaseNamesFirst { get; } = [];

@@ -222,7 +222,7 @@ public sealed class BaseDefenseDeploymentTests
         var dummy = Assert.Single(battle.Units, static unit => unit.Faction == BattleFaction.Player);
         Assert.Equal(("SECTOID", true, new BattlePosition(0, 0, 0), 20), (dummy.UnitType, dummy.SummonedPlayerUnit, dummy.Position, dummy.Health));
         Assert.Equal(dummy.Id, battle.SelectedUnitId);
-        Assert.Equal(new BattlePosition(0, 0, 0), battle.CraftInventoryTile);
+        Assert.Equal((new BattlePosition(0, 0, 0), new BattlePosition(0, 0, 0)), (battle.CraftInventoryTile, dummy.InventoryTile));
     }
 
     [Fact]
@@ -325,5 +325,19 @@ public sealed class BaseDefenseDeploymentTests
     {
         var (campaign, _) = Requested(Room, Deployment.Replace("id: STR_GROUND", "id: STR_FLOOR", StringComparison.Ordinal), files: SpawnNodes);
         Assert.Equal("The mod has no STR_GROUND inventory.", Refusal(campaign));
+    }
+
+    [Fact]
+    public void TheHostsBriefingNamesTheDefendedBaseWithTheBaseTemplate()
+    {
+        // BriefingState: tr("STR_BASE_UC_").arg(base name) for a base defense.
+        var (campaign, request) = Requested(Room, Deployment, files: SpawnNodes, adjustBase: Defenders, adjust: Fitness);
+        var baseName = campaign.QueryOverview().Bases.Single(entry => entry.Id == request.BaseId).Name;
+        var client = GeoscapeBattleHostTests.Client(campaign, [], out _, out var local,
+            static text => text == "STR_BASE_UC_" ? "Base: {0}" : text);
+        using var session = local;
+        GeoscapeBattleHostTests.Key(client, 13);
+        client.Tick(TimeSpan.FromMilliseconds(80));
+        Assert.Equal("Base: " + baseName, campaign.GetQuery<IBattleBriefingQuery>()!.QueryBriefing()!.CraftOrBaseName);
     }
 }

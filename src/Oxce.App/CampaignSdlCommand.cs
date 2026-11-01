@@ -6,8 +6,10 @@ using Oxce.Engine;
 using Oxce.Engine.Geoscape;
 using Oxce.Engine.Input;
 using Oxce.Extensions;
+using Oxce.Gameplay.Battles;
 using Oxce.Gameplay.Battles.Terrain;
 using Oxce.Gameplay.Campaigns;
+using Oxce.Gameplay.Sessions;
 using Oxce.Mods.Bootstrap;
 using Oxce.Mods.Loading;
 using Oxce.Platform.Sdl;
@@ -52,9 +54,10 @@ internal static class CampaignSdlCommand
         OxceSaveDocument? source = null;
         var savePath = destination == "-" ? null : Path.GetFullPath(destination);
         CampaignUiSession session;
+        SessionHandle? hostSession = null;
         try
         {
-            session = loadAtStart ? Load() : CampaignUiSession.ForCampaign(campaign, extensionSession, extensionSession);
+            session = loadAtStart ? Load() : Attach();
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException)
         {
@@ -69,8 +72,7 @@ internal static class CampaignSdlCommand
             Save = savePath is null ? null : () => Save(savePath),
             // MonthlyReportState's SaveGameState: the ironman save replaces the campaign's save; the autosave writes
             // _autogeo_.asav beside it.
-            SaveRequested = savePath is null ? null : kind => Save(kind == CampaignSaveKind.Ironman ? savePath
-                : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(savePath))!, "_autogeo_.asav")),
+            SaveRequested = savePath is null ? null : kind => SaveRequested(kind, savePath),
             Load = savePath is null ? null : Load,
         });
         Console.WriteLine("Geoscape: 1-6 speed, arrows rotate, +/- zoom, wheel zoom, right click centre, middle drag scroll,");
@@ -102,6 +104,12 @@ internal static class CampaignSdlCommand
         PrintWarnings(extensionDiagnostics);
         return result;
 
+        // BattlescapeState::init on turn 1: the ironman save, else the battle autosave when the option is on.
+        void SaveRequested(CampaignSaveKind kind, string path)
+        {
+            if (BattleSavePolicy.PathFor(kind, campaign.Identity.Ironman, campaign.Options.Autosave, path) is { } target) Save(target);
+        }
+
         void Save(string path)
         {
             // D2: a pending acknowledgement with gameplay effects cannot be saved; the geoscape shows why.
@@ -121,6 +129,18 @@ internal static class CampaignSdlCommand
                 Console.Error.WriteLine($"{diagnostic.Code}: {diagnostic.Message}");
         }
 
+        // The local player's handle: every command and query of the clients goes through the host session.
+        CampaignUiSession Attach()
+        {
+            hostSession?.Dispose();
+            var host = new CampaignSession(extensionSession, extensionSession);
+            var local = host.Attach(PlayerId.Local);
+            // Every battle unit is the local player's to command until a second player attaches.
+            host.Controllers = new BattleUnitControllers(campaign.GetQuery<IBattleQuery>()!);
+            hostSession = local;
+            return CampaignUiSession.ForCampaign(campaign, local, local);
+        }
+
         CampaignUiSession Load()
         {
             var saveDiagnostics = new DiagnosticCollector();
@@ -134,7 +154,7 @@ internal static class CampaignSdlCommand
             campaign = restored.Campaign;
             source = restored.Source;
             var view = source.GlobeView;
-            return CampaignUiSession.ForCampaign(campaign, extensionSession, extensionSession) with
+            return Attach() with
             {
                 GlobeView = new GlobeViewState(view.Longitude, view.Latitude, view.Zoom),
             };
@@ -166,7 +186,8 @@ internal static class CampaignSdlCommand
                 .OfType<CampaignActionBlocked>().FirstOrDefault() is { } refused)
             throw new InvalidDataException("The starting base could not be placed: " + refused.Reason);
         var start = campaign.QueryOverview().Time;
-        var client = new GeoscapeClient(new GeoscapeClientSetup(CampaignUiSession.ForCampaign(campaign, campaign, campaign),
+        using var smokeLocal = new CampaignSession(campaign, campaign).Attach(PlayerId.Local);
+        var client = new GeoscapeClient(new GeoscapeClientSetup(CampaignUiSession.ForCampaign(campaign, smokeLocal, smokeLocal),
             content.RuntimeRules, geoscapeAssets, assets.Font, assets.Localize));
         static ScriptedInput Key(double seconds, uint key) => new(TimeSpan.FromSeconds(seconds),
             GameInputEvent.Key(GameInputEventKind.KeyPressed, 0, 0, 0, key, InputKeyModifiers.None));

@@ -14,20 +14,20 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Benchmarks](#oxcebenchmarks) | 19 | Engine, Formats, Mods, Rendering, Resources, Savegames |
 | [Oxce.App](#oxceapp) | 3 | Engine, Extensions, Formats, Mods, Platform.Sdl, Rendering, Savegames |
 | [Oxce.Core](#oxcecore) | 8 | - |
-| [Oxce.Engine](#oxceengine) | 29 | Core, Gameplay, Rendering, Resources |
+| [Oxce.Engine](#oxceengine) | 40 | Core, Gameplay, Rendering, Resources |
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 221 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 230 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 100 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 8 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 332 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 337 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
-| [Oxce.UnitTests](#oxceunittests) | 109 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
+| [Oxce.UnitTests](#oxceunittests) | 112 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
 | [Oxce.FixtureTool](#oxcefixturetool) | 1 | FixtureSupport, Formats, Mods, Savegames |
 | [Oxce.ResourceBrowser](#oxceresourcebrowser) | 2 | Formats, Mods, Platform.Sdl, Rendering, Resources |
@@ -106,7 +106,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Engine
 
-`src/Oxce.Engine` - 29 files.
+`src/Oxce.Engine` - 40 files.
 
 ### `Oxce.Engine`
 
@@ -116,6 +116,8 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `IGameHost` (interface) [IGameHost.cs](../src/Oxce.Engine/IGameHost.cs) - Owns the application loop without exposing a specific windowing backend.
 - `IIndexedLoopClient` (interface) [IIndexedLoopClient.cs](../src/Oxce.Engine/IIndexedLoopClient.cs) - Platform-neutral indexed-frame client driven by a window host.
 - `PresentationRevisionGate` (class) [PresentationRevisionGate.cs](../src/Oxce.Engine/PresentationRevisionGate.cs) - Tracks the last frame revision accepted by a presenter so unchanged simulation ticks do not repeat conversion and upload work.
+- `ScreenNavigator` (class) [ScreenNavigator.cs](../src/Oxce.Engine/ScreenNavigator.cs) - The reference's state stack (`Game::_states`): screens are pushed above one another, only the top one thinks and receives input, and a sc...
+- `IRevealedScreen` (interface) [ScreenNavigator.cs](../src/Oxce.Engine/ScreenNavigator.cs) - A screen that wants to know when the screen above it was popped (the reference's `State::init` and `resetAll`).
 - `ScriptedInput` (record struct) [ScriptedLoopClient.cs](../src/Oxce.Engine/ScriptedLoopClient.cs) - An input to replay once the scripted run reaches its time.
 - `ScriptedLoopClient` (class) [ScriptedLoopClient.cs](../src/Oxce.Engine/ScriptedLoopClient.cs) - Drives another client with timed inputs and ends the run after a duration, for unattended smoke runs of a real window host.
 
@@ -131,14 +133,27 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `ManagedAudioMixer` (class) [ManagedAudioMixer.cs](../src/Oxce.Engine/Audio/ManagedAudioMixer.cs)
 - `NullAudioOutput` (class) [NullAudioOutput.cs](../src/Oxce.Engine/Audio/NullAudioOutput.cs)
 
+### `Oxce.Engine.Battlescape`
+
+- `BattleBriefingScreen` (class) [BattleBriefingScreen.cs](../src/Oxce.Engine/Battlescape/BattleBriefingScreen.cs) - `BriefingState`: the mission's title, description and the target and craft lines.
+- `BattleCamera` (class) [BattleCamera.cs](../src/Oxce.Engine/Battlescape/BattleCamera.cs) - The battlescape camera's map-side state (`Camera`: `up`, `down`, `setViewLevel`, `centerOnPosition`, `toggleShowAllLayers`): the tile at...
+- `BattleInventoryScreen` (class) [BattleInventoryScreen.cs](../src/Oxce.Engine/Battlescape/BattleInventoryScreen.cs) - `InventoryState`: one unit's sections, carried items and the items on its tile, from `IBattleInventoryQuery`.
+- `BattleScreenBase` (class) [BattleScreenBase.cs](../src/Oxce.Engine/Battlescape/BattleScreenBase.cs) - Frame, palette, revision and message handling the battle screens share.
+- `BattleUiContext` (class) [BattleUiContext.cs](../src/Oxce.Engine/Battlescape/BattleUiContext.cs) - What the battle screens share (Phase 7 branch 3 S6): the command target, the queries for one viewer, the font, the language and the stack...
+- `BattleUiContext.Color` (class) [BattleUiContext.cs](../src/Oxce.Engine/Battlescape/BattleUiContext.cs) - Palette indices of the placeholder drawing.
+- `BattleViewModel` (class) [BattleViewModel.cs](../src/Oxce.Engine/Battlescape/BattleViewModel.cs) - A battlescape client's view of the battle (Phase 7 branch 3 S5): what the battle's queries answer for its viewer, its own selection and i...
+- `BattlescapeClient` (class) [BattlescapeClient.cs](../src/Oxce.Engine/Battlescape/BattlescapeClient.cs) - The battlescape screen (`BattlescapeState`) on the indexed loop: the level the camera shows as a flat plan of the tiles the viewer may se...
+
 ### `Oxce.Engine.Diagnostics`
 
 - `LoggingDiagnosticSink` (class) [LoggingDiagnosticSink.cs](../src/Oxce.Engine/Diagnostics/LoggingDiagnosticSink.cs)
 
 ### `Oxce.Engine.Geoscape`
 
+- `BattleSavePolicy` (class) [BattleSavePolicy.cs](../src/Oxce.Engine/Geoscape/BattleSavePolicy.cs) - Where a save the campaign or the battle asked for goes (`SaveGameState`, `BattlescapeState::init`'s turn-1 block).
 - `GeoscapeAssets` (class) [GeoscapeAssets.cs](../src/Oxce.Engine/Geoscape/GeoscapeAssets.cs) - Indexed resources the globe draws with.
 - `GeoscapeClient` (class) [GeoscapeClient.Bases.cs](../src/Oxce.Engine/Geoscape/GeoscapeClient.Bases.cs) - Base placement on the globe: BuildNewBaseState (radar preview under the pointer), ConfirmNewBaseState (cost and area), BaseNameState and...
+- `GeoscapeClient` (class) [GeoscapeClient.Battle.cs](../src/Oxce.Engine/Geoscape/GeoscapeClient.Battle.cs) - The host loop's battle hand-over (Phase 7 branch 3 S6b): when the session has a battle, the screens of its phase (`BattleUiContext.Open`)...
 - `GeoscapeClient` (class) [GeoscapeClient.Interceptions.cs](../src/Oxce.Engine/Geoscape/GeoscapeClient.Interceptions.cs) - The interception windows (DogfightState) over the globe and the dogfight timer of `GeoscapeState::think` (D3): while any window is open t...
 - `GeoscapeClient` (class) [GeoscapeClient.Screens.cs](../src/Oxce.Engine/Geoscape/GeoscapeClient.Screens.cs) - The craft and target screens: GeoscapeCraftState, InterceptState, SelectDestinationState, MultipleTargetsState, ConfirmDestinationState a...
 - `GeoscapeClientSetup` (record) [GeoscapeClient.cs](../src/Oxce.Engine/Geoscape/GeoscapeClient.cs) - What a geoscape client needs; persistence and the clock are supplied by the host.
@@ -158,8 +173,6 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `GeoscapeLostUfo` (record) [GeoscapeScreens.cs](../src/Oxce.Engine/Geoscape/GeoscapeScreens.cs) - GeoscapeCraftState's lost-target variant: the UFO's last known position and marker id.
 - `GeoscapeDestination` (record) [GeoscapeScreens.cs](../src/Oxce.Engine/Geoscape/GeoscapeScreens.cs) - Where a wing is sent: a globe target or a new waypoint.
 - `GeoscapeScreens` (class) [GeoscapeScreens.cs](../src/Oxce.Engine/Geoscape/GeoscapeScreens.cs) - The geoscape's craft and target screens as popups: GeoscapeCraftState, InterceptState, ConfirmDestinationState and TargetInfoState.
-- `GeoscapeTimeStep` (record struct) [GeoscapeTimeController.cs](../src/Oxce.Engine/Geoscape/GeoscapeTimeController.cs) - The outcome of one host tick of the geoscape clock.
-- `GeoscapeTimeController` (class) [GeoscapeTimeController.cs](../src/Oxce.Engine/Geoscape/GeoscapeTimeController.cs) - GeoscapeState::timeAdvance driven by the host clock.
 - `GlobeRenderer` (class) [GlobeRenderer.cs](../src/Oxce.Engine/Geoscape/GlobeRenderer.cs) - Draws the globe into an indexed surface as Globe::draw and Globe::blit compose it: ocean and textured land; radar circles and flight path...
 - `GlobeMarker` (record struct) [GlobeScene.cs](../src/Oxce.Engine/Geoscape/GlobeScene.cs) - A marker frame at a globe position.
 - `GlobeCircle` (record struct) [GlobeScene.cs](../src/Oxce.Engine/Geoscape/GlobeScene.cs) - A radar circle: centre, range in radians, segment count and the drawn-segment stride.
@@ -337,7 +350,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 221 files.
+`src/Oxce.Gameplay` - 230 files.
 
 ### `Oxce.Gameplay`
 
@@ -352,9 +365,29 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BattlePosition` (record struct) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - A tile position: x along the width, y along the length, z the level (0 is the ground level).
 - `StartBattle` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - Starts the battle the pending deployment request asks for (`ConfirmLandingState::btnYesClick`, `BaseDefenseState` and `ConfirmCydoniaStat...
 - `BattleStarted` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The battle a deployment request asked for has started.
+- `BattlePhase` (enum) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - Where a battle stands before and in play: the briefing (`BriefingState`), the pre-battle inventory (`InventoryState(false)`) and then the...
+- `IBattleCommand` (interface) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - A command of the running battle: it is not held back by the battle itself, as the campaign's commands are.
+- `BeginBriefing` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - `BriefingState`'s constructor: the mission target and the craft or base line (the already localized `strTarget` and `strCraftOrBase` line...
+- `ConfirmBriefing` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - `BriefingState::btnOkClick` with `NextTurnState`'s turn-0 work: spawns the units and items of primed spawn items, tallies the units and c...
+- `StartFirstTurn` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - `SavedBattleGame::startFirstTurn`, run when the pre-battle inventory closes: the first turn of the X-COM side.
+- `BriefingOpened` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The briefing named the mission target and the craft or base.
+- `BriefingConfirmed` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The briefing was confirmed; primed spawn items created units and items.
+- `BattleFirstTurnStarted` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The first turn began (turn 1, the X-COM side).
+- `BattleBriefing` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - What the briefing screen shows (`BriefingState`): title and description keys, music, background and cutscene, the palette and text offset...
+- `IBattleBriefingQuery` (interface) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The briefing of the current battle, or null while there is none or it is in progress.
 - `BattleUnitView` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - A unit as a viewer sees it.
 - `BattleOverview` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The battle as a viewer sees it; `Revision` changes with every committed battle change.
 - `IBattleQuery` (interface) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The current battle, if any, as a viewer sees it (ADR 0038: every battle query takes a viewer).
+- `MoveInventoryItem` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - `Inventory::mouseClick`'s drop: a unit's item goes to a position of an inventory section (a hand, a grid slot, or the ground of the unit'...
+- `AutoPlaceInventoryItem` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - `Inventory::mouseClick`'s Ctrl click: a ground item goes to the best section that holds it (the cheapest to reach a hand when `Smart`, th...
+- `InventoryFeature` (enum) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - What an inventory screen can ask for that is not ported yet; each is refused by its own name.
+- `UseInventoryFeature` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - A request for a feature of the inventory screen that arrives later; it is always refused by the feature's name.
+- `InventoryItemMoved` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - An item moved between sections, or to or from the ground.
+- `BattleInventoryItemView` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - An item as the inventory screen draws it: its section and position, size and what it holds.
+- `BattleInventoryCell` (record struct) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - A grid cell of a section.
+- `BattleInventorySlotView` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - An inventory section: `Type` is 0 for a grid, 1 for a hand and 2 for the ground.
+- `BattleInventoryView` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - A unit's inventory screen: sections, carried items and the items on its tile.
+- `IBattleInventoryQuery` (interface) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - What the inventory screen reads (ADR 0038: a viewer sees only its own faction's inventory).
 - `BattleItemSnapshot` (record) [BattleItemSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleItemSnapshot.cs) - One saved item (`SavedBattleGame::load`'s item passes and `BattleItem::load` and `save`, Phase 7 branch 2 S4).
 - `BattleSnapshot` (record) [BattleSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleSnapshot.cs) - The persistence boundary of `BattleState` (Phase 7 branch 2): what `SavedBattleGame::load` reads and `save` writes, as values.
 - `BattleTileSnapshot` (record struct) [BattleSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleSnapshot.cs) - One saved tile (Tile::loadBinary and saveBinary, or the old Tile::load): each part's map data ID and data set ID (-1 for none), smoke, fi...
@@ -368,6 +401,21 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BattleUnitStatisticsSnapshot` (record) [BattleUnitSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleUnitSnapshot.cs) - BattleUnitStatistics (`tempUnitStatistics`): what the debriefing credits the unit with.
 - `BattleUnitKillSnapshot` (record) [BattleUnitSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleUnitSnapshot.cs) - BattleUnitKills: a kill or stun the unit made.
 - `BattleUnitStats` (record struct) [BattleUnitStats.cs](../src/Oxce.Gameplay/Battles/BattleUnitStats.cs) - UnitStats: twelve 16-bit statistics in the reference's field order.
+- `SelectUnit` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - Clicking a unit of the side on turn (`BattlescapeGame::primaryAction`'s "select unit"): the unit becomes the selection.
+- `SelectNextUnit` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - The next or previous soldier button (`BattlescapeState::btnNextSoldierClick`, `btnPrevSoldierClick`), walking the unit list from `UnitId`...
+- `SkipUnit` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - "Next and stop" (`btnNextStopLClick` by list order, `btnNextStopMClick` by distance): the unit is remembered as the undo unit, may not be...
+- `ReselectSkippedUnit` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - `btnNextStopRClick`: the unit that was skipped last (the undo unit, `UnitId`) is selected again.
+- `UnitSelected` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - A unit was selected.
+- `UnitSkipped` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - A unit was skipped.
+- `BattleActionKind` (enum) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - What a battle client can ask for now that the rules list as legal for a unit; later branches add their own.
+- `BattleLegalActions` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - The legal actions for a viewer's unit now (only those the rules would accept, none faked for later branches), and the other units of its...
+- `BattleSelectionView` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - What the selection looks like to a viewer: the saved selection and undo unit (only when they are the viewer's side's), the units of the s...
+- `BattleTilePartView` (record struct) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - A discovered part of a tile: the terrain object (data set name and index in it) and the part it occupies.
+- `BattleTileItemView` (record struct) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - An item lying on a visible tile floor.
+- `BattleTileView` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - A tile as a viewer sees it: only its discovered parts, the smoke and fire when the floor is discovered, the items on it and the unit stan...
+- `BattleLevelView` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - One level of the map for a viewer: the map size and the tiles it may see, in index order.
+- `BattleUnitInfo` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - `BattlescapeState::updateSoldierInfo`: a viewer's own unit with its bars, hands, the hostile units it sees and its wounded (and burning)...
+- `IBattleViewQuery` (interface) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - The queries of the battlescape screen (ADR 0038: every one takes the viewer and answers from what its side knows).
 
 ### `Oxce.Gameplay.Battles.Terrain`
 
@@ -455,7 +503,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CommendationAward` (record) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs) - One commendation a soldier was given or raised this month, at its new level.
 - `SoldiersCommended` (record) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs) - CommendationState: the soldiers medalled for this month's service, with what each was given.
 - `PsiTrainingReminder` (record) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs) - PsiTrainingState: a base has a psi lab and soldiers train only at the month boundary.
-- `CampaignSaveKind` (enum) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs)
+- `CampaignSaveKind` (enum) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs) - Autosave and Ironman come from the monthly report; BattleTurnOne is BattlescapeState's save when the first turn starts (the host maps it...
 - `CampaignSaveRequested` (record) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs) - SaveGameState after the monthly report: an ironman save, or an autosave when the option is on.
 - `ICampaignMonthlyReportQuery` (interface) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs)
 - `CampaignState` (class) [CampaignMonthly.cs](../src/Oxce.Gameplay/Campaigns/CampaignMonthly.cs)
@@ -669,6 +717,22 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `WorldTrajectory` (class) [WorldTrajectory.cs](../src/Oxce.Gameplay/Campaigns/World/WorldTrajectory.cs) - Trajectory and wave timing arithmetic.
 - `WorldUfoShields` (class) [WorldUfoShields.cs](../src/Oxce.Gameplay/Campaigns/World/WorldUfoShields.cs) - GeoscapeState::time5Seconds flying-UFO block and Ufo::setShield at 4df3a5e.
 - `WorldWeightedOptions` (class) [WorldWeightedOptions.cs](../src/Oxce.Gameplay/Campaigns/World/WorldWeightedOptions.cs) - An ordered weighted option set.
+
+### `Oxce.Gameplay.Sessions`
+
+- `BattleUnitControllers` (class) [BattleUnitControllers.cs](../src/Oxce.Gameplay/Sessions/BattleUnitControllers.cs) - The battle's unit ownership for the session (ADR 0037 rule 2): a unit controlled by a human slot belongs to the player the host maps the...
+- `CampaignSession` (class) [CampaignSession.cs](../src/Oxce.Gameplay/Sessions/CampaignSession.cs) - The host's session layer (ADR 0037): players attach to it, every command carries its sender, unit commands are authorized before the simu...
+- `SessionHandle` (class) [CampaignSession.cs](../src/Oxce.Gameplay/Sessions/CampaignSession.cs) - One player's view of the session: commands are sent as that player and queries are read for that player.
+- `SessionClockStep` (record struct) [SessionClock.cs](../src/Oxce.Gameplay/Sessions/SessionClock.cs) - The outcome of one host tick of the geoscape clock.
+- `SessionClock` (class) [SessionClock.cs](../src/Oxce.Gameplay/Sessions/SessionClock.cs) - GeoscapeState::timeAdvance driven by the host clock.
+- `PlayerId` (record struct) [SessionContracts.cs](../src/Oxce.Gameplay/Sessions/SessionContracts.cs) - A player of the host's session (ADR 0037).
+- `IActorCommandTarget` (interface) [SessionContracts.cs](../src/Oxce.Gameplay/Sessions/SessionContracts.cs) - A command target that also learns who sent the command.
+- `IHostRoutedCommands` (interface) [SessionContracts.cs](../src/Oxce.Gameplay/Sessions/SessionContracts.cs) - A layer under the session that originates commands of its own (extensions).
+- `IUnitCommand` (interface) [SessionContracts.cs](../src/Oxce.Gameplay/Sessions/SessionContracts.cs) - A command that addresses one battle unit by its stable ID.
+- `IUnitControllers` (interface) [SessionContracts.cs](../src/Oxce.Gameplay/Sessions/SessionContracts.cs) - Which player controls a unit.
+- `ISessionClient` (interface) [SessionContracts.cs](../src/Oxce.Gameplay/Sessions/SessionContracts.cs) - Receives every event the session commits, whoever caused it (ADR 0037 rule 3).
+- `SessionEvents` (record) [SessionContracts.cs](../src/Oxce.Gameplay/Sessions/SessionContracts.cs) - The events of one committed command and the player who sent it.
+- `SessionReasons` (class) [SessionContracts.cs](../src/Oxce.Gameplay/Sessions/SessionContracts.cs) - Classified refusals the session itself produces.
 
 ## Oxce.Mods
 
@@ -1037,6 +1101,8 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RuntimeAlienRaceRule` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - The strategic projection of an alien race: retaliation aggression and the retaliation mission timeline in rule order (AlienRace::retaliat...
 - `RuntimeAlienDeploymentRule` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - The runtime projection of an alien deployment: site and alien-base bookkeeping, and in `Battle` the battlescape properties the battle gen...
 - `RuntimeDeploymentBattle` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - AlienDeployment battlescape properties read by `BattlescapeGenerator::run`: the map size (`getDimensions`), `turnLimit`, `chronoTrigger`...
+- `RuntimeBriefing` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - BriefingData: the briefing's palette, text offset, title and description keys ("" for the mission type's own), music, background, cutscen...
+- `RuntimeReinforcementWave` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - The pre-requisites of a ReinforcementsData wave that NextTurnState::determineReinforcements checks before it deploys: difficulty range, t...
 - `RuntimeDeploymentData` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - DeploymentData: an alien rank (or a custom unit type), quantities by difficulty (low, medium, high), random extras (`dQty`, `extraQty`),...
 - `RuntimeAlienRaceEvolution` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - Reference: `AlienDeployment::getAlienRaceEvolution` tuples.
 
@@ -1249,7 +1315,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 332 files.
+`tests/Oxce.CompatibilityTests` - 337 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1259,18 +1325,22 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>327 test classes</summary>
+<details><summary>332 test classes</summary>
 
 - `BaseDefenseDeploymentTests` ([BaseDefenseDeploymentTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseDeploymentTests.cs))
 - `BaseDefenseMapTests` ([BaseDefenseMapTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseMapTests.cs))
 - `BattleCampaignSaveTests` ([BattleCampaignSaveTests.cs](../tests/Oxce.CompatibilityTests/BattleCampaignSaveTests.cs))
 - `BattleEntryPointTests` ([BattleEntryPointTests.cs](../tests/Oxce.CompatibilityTests/BattleEntryPointTests.cs))
+- `BattleFirstTurnTests` ([BattleFirstTurnTests.cs](../tests/Oxce.CompatibilityTests/BattleFirstTurnTests.cs))
+- `BattleInventoryTests` ([BattleInventoryTests.cs](../tests/Oxce.CompatibilityTests/BattleInventoryTests.cs))
 - `BattleSaveItemTests` ([BattleSaveItemTests.cs](../tests/Oxce.CompatibilityTests/BattleSaveItemTests.cs))
 - `BattleSaveMapTests` ([BattleSaveMapTests.cs](../tests/Oxce.CompatibilityTests/BattleSaveMapTests.cs))
 - `BattleSaveRootTests` ([BattleSaveRootTests.cs](../tests/Oxce.CompatibilityTests/BattleSaveRootTests.cs))
 - `BattleSaveUnitTests` ([BattleSaveUnitTests.cs](../tests/Oxce.CompatibilityTests/BattleSaveUnitTests.cs))
+- `BattleScreensTests` ([BattleScreensTests.cs](../tests/Oxce.CompatibilityTests/BattleScreensTests.cs))
 - `BattleStartTests` ([BattleStartTests.cs](../tests/Oxce.CompatibilityTests/BattleStartTests.cs))
 - `BattleTerrainLoaderTests` ([BattleTerrainLoaderTests.cs](../tests/Oxce.CompatibilityTests/BattleTerrainLoaderTests.cs))
+- `BattleViewTests` ([BattleViewTests.cs](../tests/Oxce.CompatibilityTests/BattleViewTests.cs))
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
 - `CampaignSaveRegressionFixtureTests` ([CampaignSaveRegressionFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignSaveRegressionFixtureTests.cs))
@@ -1282,6 +1352,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `EquipmentProductionRulesFixtureTests` ([EquipmentProductionRulesFixtureTests.cs](../tests/Oxce.CompatibilityTests/EquipmentProductionRulesFixtureTests.cs))
 - `FixturePipelineTests` ([FixturePipelineTests.cs](../tests/Oxce.CompatibilityTests/FixturePipelineTests.cs))
 - `FlcFixtureTests` ([FlcFixtureTests.cs](../tests/Oxce.CompatibilityTests/FlcFixtureTests.cs))
+- `GeoscapeBattleHostTests` ([GeoscapeBattleHostTests.cs](../tests/Oxce.CompatibilityTests/GeoscapeBattleHostTests.cs))
 - `GlobeSceneTests` ([GlobeSceneTests.cs](../tests/Oxce.CompatibilityTests/GlobeSceneTests.cs))
 - `GmCatFixtureTests` ([GmCatFixtureTests.cs](../tests/Oxce.CompatibilityTests/GmCatFixtureTests.cs))
 - `IndexedBmpFixtureTests` ([IndexedBmpFixtureTests.cs](../tests/Oxce.CompatibilityTests/IndexedBmpFixtureTests.cs))
@@ -1602,13 +1673,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.UnitTests
 
-`tests/Oxce.UnitTests` - 109 files.
+`tests/Oxce.UnitTests` - 112 files.
 
 ### `Oxce.UnitTests`
 
 - `AllocationMeasurement` (class) [AllocationMeasurement.cs](../tests/Oxce.UnitTests/AllocationMeasurement.cs)
 
-<details><summary>108 test classes</summary>
+<details><summary>111 test classes</summary>
 
 - `ProjectDependencyTests` ([ProjectDependencyTests.cs](../tests/Oxce.UnitTests/Architecture/ProjectDependencyTests.cs))
 - `DiagnosticTests` ([DiagnosticTests.cs](../tests/Oxce.UnitTests/Core/DiagnosticTests.cs))
@@ -1619,12 +1690,12 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `GeoscapeClientTests` ([GeoscapeClientTests.cs](../tests/Oxce.UnitTests/Engine/GeoscapeClientTests.cs))
 - `GeoscapeNotificationsTests` ([GeoscapeNotificationsTests.cs](../tests/Oxce.UnitTests/Engine/GeoscapeNotificationsTests.cs))
 - `GeoscapeScreensTests` ([GeoscapeScreensTests.cs](../tests/Oxce.UnitTests/Engine/GeoscapeScreensTests.cs))
-- `GeoscapeTimeControllerTests` ([GeoscapeTimeControllerTests.cs](../tests/Oxce.UnitTests/Engine/GeoscapeTimeControllerTests.cs))
 - `GlobeRendererTests` ([GlobeRendererTests.cs](../tests/Oxce.UnitTests/Engine/GlobeRendererTests.cs))
 - `GlobeViewTests` ([GlobeViewTests.cs](../tests/Oxce.UnitTests/Engine/GlobeViewTests.cs))
 - `InputAudioTests` ([InputAudioTests.cs](../tests/Oxce.UnitTests/Engine/InputAudioTests.cs))
 - `ManagedAudioMixerTests` ([ManagedAudioMixerTests.cs](../tests/Oxce.UnitTests/Engine/ManagedAudioMixerTests.cs))
 - `PresentationRevisionGateTests` ([PresentationRevisionGateTests.cs](../tests/Oxce.UnitTests/Engine/PresentationRevisionGateTests.cs))
+- `ScreenNavigatorTests` ([ScreenNavigatorTests.cs](../tests/Oxce.UnitTests/Engine/ScreenNavigatorTests.cs))
 - `ScriptedLoopClientTests` ([ScriptedLoopClientTests.cs](../tests/Oxce.UnitTests/Engine/ScriptedLoopClientTests.cs))
 - `ManagedExtensionHostTests` ([ManagedExtensionHostTests.cs](../tests/Oxce.UnitTests/Extensions/ManagedExtensionHostTests.cs))
 - `CanonicalJsonTests` ([CanonicalJsonTests.cs](../tests/Oxce.UnitTests/Fixtures/CanonicalJsonTests.cs))
@@ -1656,6 +1727,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CampaignCapabilityRegistryTests` ([CampaignCapabilityRegistryTests.cs](../tests/Oxce.UnitTests/Gameplay/CampaignCapabilityRegistryTests.cs))
 - `CampaignFoundationTests` ([CampaignFoundationTests.cs](../tests/Oxce.UnitTests/Gameplay/CampaignFoundationTests.cs))
 - `CampaignLogisticsTests` ([CampaignLogisticsTests.cs](../tests/Oxce.UnitTests/Gameplay/CampaignLogisticsTests.cs))
+- `CampaignSessionTests` ([CampaignSessionTests.cs](../tests/Oxce.UnitTests/Gameplay/CampaignSessionTests.cs))
 - `CampaignTimeDispatcherTests` ([CampaignTimeDispatcherTests.cs](../tests/Oxce.UnitTests/Gameplay/CampaignTimeDispatcherTests.cs))
 - `CampaignTimeSpeedTests` ([CampaignTimeSpeedTests.cs](../tests/Oxce.UnitTests/Gameplay/CampaignTimeSpeedTests.cs))
 - `CraftLogisticsTests` ([CraftLogisticsTests.cs](../tests/Oxce.UnitTests/Gameplay/CraftLogisticsTests.cs))
@@ -1666,6 +1738,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `ResearchCounterProjectionTests` ([ResearchCounterProjectionTests.cs](../tests/Oxce.UnitTests/Gameplay/ResearchCounterProjectionTests.cs))
 - `ResearchItemLifecycleTests` ([ResearchItemLifecycleTests.cs](../tests/Oxce.UnitTests/Gameplay/ResearchItemLifecycleTests.cs))
 - `ResearchScoreCapacityTests` ([ResearchScoreCapacityTests.cs](../tests/Oxce.UnitTests/Gameplay/ResearchScoreCapacityTests.cs))
+- `SessionClockTests` ([SessionClockTests.cs](../tests/Oxce.UnitTests/Gameplay/SessionClockTests.cs))
 - `SoldierGenerationTests` ([SoldierGenerationTests.cs](../tests/Oxce.UnitTests/Gameplay/SoldierGenerationTests.cs))
 - `SoldierPilotingTests` ([SoldierPilotingTests.cs](../tests/Oxce.UnitTests/Gameplay/SoldierPilotingTests.cs))
 - `WorldAlienBaseHuntingTests` ([WorldAlienBaseHuntingTests.cs](../tests/Oxce.UnitTests/Gameplay/WorldAlienBaseHuntingTests.cs))
@@ -1710,6 +1783,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `IndexedSurfaceTests` ([IndexedSurfaceTests.cs](../tests/Oxce.UnitTests/Rendering/IndexedSurfaceTests.cs))
 - `ResourceRuntimeTests` ([ResourceRuntimeTests.cs](../tests/Oxce.UnitTests/Resources/ResourceRuntimeTests.cs))
 - `OxceSaveAdapterTests` ([OxceSaveAdapterTests.cs](../tests/Oxce.UnitTests/Savegames/OxceSaveAdapterTests.cs))
+- `ScreenNavigatorRevealTests` ([ScreenNavigatorRevealTests.cs](../tests/Oxce.UnitTests/ScreenNavigatorRevealTests.cs))
 - `ScriptApiAndHostTests` ([ScriptApiAndHostTests.cs](../tests/Oxce.UnitTests/Scripting/ScriptApiAndHostTests.cs))
 - `ScriptCompilerAndVmTests` ([ScriptCompilerAndVmTests.cs](../tests/Oxce.UnitTests/Scripting/ScriptCompilerAndVmTests.cs))
 - `ScriptEventsAndValuesTests` ([ScriptEventsAndValuesTests.cs](../tests/Oxce.UnitTests/Scripting/ScriptEventsAndValuesTests.cs))
@@ -1825,6 +1899,7 @@ Prefer these over local copies (see AGENTS.md, *Test conventions*).
 - `TypedRuleReplayFixtureTests.ProbeRule` (private record) [TypedRuleReplayFixtureTests.cs](../tests/Oxce.CompatibilityTests/TypedRuleReplayFixtureTests.cs)
 - `VirtualFileCatalogFixtureTests.FixtureRow` (private record) [VirtualFileCatalogFixtureTests.cs](../tests/Oxce.CompatibilityTests/VirtualFileCatalogFixtureTests.cs)
 - `ScriptedLoopClientTests.Recorder` (private class) [ScriptedLoopClientTests.cs](../tests/Oxce.UnitTests/Engine/ScriptedLoopClientTests.cs)
+- `CampaignSessionTests.Recorder` (private class) [CampaignSessionTests.cs](../tests/Oxce.UnitTests/Gameplay/CampaignSessionTests.cs)
 - `ContentSnapshotTests.TemporaryArchiveMod` (private class) [ContentSnapshotTests.cs](../tests/Oxce.UnitTests/Mods/ContentSnapshotTests.cs)
 - `InstallationContentLoaderTests.ProgressCollector` (private class) [InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs)
 - `InstallationContentLoaderTests.CancellingProgress` (private class) [InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs)

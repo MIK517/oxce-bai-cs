@@ -7,7 +7,7 @@ using Oxce.Scripting.Globals;
 
 namespace Oxce.Gameplay.Campaigns;
 
-public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQuery
+public sealed partial class CampaignState : Sessions.IActorCommandTarget, ICampaignQuery
 {
     public const int BaseGridSize = 6;
     public const int MaximumCommandTicks = 1_000_000;
@@ -119,20 +119,33 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     public int MonthsPassed { get; private set; }
     public int DaysPassed { get; private set; }
 
-    public CampaignCommandResult Execute(ICampaignCommand command)
+    public CampaignCommandResult Execute(ICampaignCommand command) => Execute(Sessions.PlayerId.Local, command);
+
+    /// <summary>Runs <paramref name="command"/> for <paramref name="actor"/>, whose per-player state (quotes) it may use.</summary>
+    public CampaignCommandResult Execute(Sessions.PlayerId actor, ICampaignCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
         lock (_transactionGate)
         {
-            if (_faulted is { } faulted) return new CampaignCommandResult([new CampaignActionBlocked(faulted)]);
-            var restriction = _restrictions.FirstOrDefault(r => r.BaseId is null && r.BlocksLogistics && r.BlocksTime);
-            if (restriction is not null) return new CampaignCommandResult([new CampaignActionBlocked(restriction.Feature)]);
-            if (Ending != 0) return new CampaignCommandResult([new CampaignActionBlocked("This campaign has ended.")]);
-            if (!_handlers.TryGetCommand(command.GetType(), out var handler))
-                throw new ArgumentException($"Unsupported campaign command '{command.GetType().Name}'.",
-                    nameof(command));
-            return _handlers.CommandGate(command) ?? handler(command);
+            var previous = _actor;
+            _actor = actor;
+            try { return ExecuteCore(command); }
+            finally { _actor = previous; }
         }
+    }
+
+    private Sessions.PlayerId _actor = Sessions.PlayerId.Local;
+
+    private CampaignCommandResult ExecuteCore(ICampaignCommand command)
+    {
+        if (_faulted is { } faulted) return new CampaignCommandResult([new CampaignActionBlocked(faulted)]);
+        var restriction = _restrictions.FirstOrDefault(r => r.BaseId is null && r.BlocksLogistics && r.BlocksTime);
+        if (restriction is not null) return new CampaignCommandResult([new CampaignActionBlocked(restriction.Feature)]);
+        if (Ending != 0) return new CampaignCommandResult([new CampaignActionBlocked("This campaign has ended.")]);
+        if (!_handlers.TryGetCommand(command.GetType(), out var handler))
+            throw new ArgumentException($"Unsupported campaign command '{command.GetType().Name}'.",
+                nameof(command));
+        return _handlers.CommandGate(command) ?? handler(command);
     }
 
     /// <summary>
@@ -432,7 +445,6 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         ArgumentOutOfRangeException.ThrowIfGreaterThan(command.FiveSecondTicks, MaximumCommandTicks);
         if (!Enum.IsDefined(command.SelectedSpeed)) throw new ArgumentOutOfRangeException(nameof(command), "Selected speed is invalid.");
         var previous = Time;
-        _logisticsQuote = null;
         var effects = new TimeEffects(this, command.SelectedSpeed);
         var result = CampaignTimeDispatcher.Advance(Time, command.FiveSecondTicks, effects);
         var advanced = new CampaignTimeAdvanced(previous, Time, result.Summary) { SelectedSpeed = command.SelectedSpeed };
@@ -603,7 +615,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             if (target.Crafts[index].Logistics is { } state)
                 target.Crafts[index] = target.Crafts[index] with
                 { Logistics = state with { Longitude = command.Longitude, Latitude = command.Latitude } };
-        _logisticsQuote = null;
+        _quotes.Clear();
         return new CampaignCommandResult(
             [new StartingBasePlaced(command.BaseIndex, command.Name, command.Longitude, command.Latitude)]);
     }

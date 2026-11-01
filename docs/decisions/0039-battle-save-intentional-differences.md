@@ -153,12 +153,38 @@ item in an unknown inventory section to the ground silently, and logs a fifth sp
 item joins its owner's inventory in the load's list order in the reference (`items`, `recoverConditional`,
 `recoverGuaranteed`, `itemsSpecial`); the port's inventory is the battle's items the unit owns in a section, in ID
 order, which is the same for every save the reference writes (its lists are in ID order) but differs for a hand-made
-unsorted list, and an owned item of a recovery list keeps its owner without joining the unit's inventory. The
+unsorted list. The
 reference's generator sends only unowned items to the recovery lists (`BattlescapeGenerator`), so only a hand-made save
-reaches this; branch 3 (the inventory) owns joining such an item to its owner's inventory or refusing it.
+reaches this; branch 3 (S4) refuses such a save: `BattleState.Validate` fails an item that is owned, in an inventory section and listed for recovery (a special built-in item, owned in no section, stays).
 
 **Items in block style (S4).** `position` and `ammoItemSlots` are flow style in the reference; the port writes block
 style, which reads the same.
+
+**The briefing and the first turn (Phase 7 branch 3 S3).** The reference saves only from the first turn on, since
+nothing before it reaches the save screen, and a save never holds a battle at turn 0. The port retires
+`battle.save-before-first-turn`: a battle saves at any time, and a save from before the first turn loads as the reference
+cannot show it (the C++ engine would open such a save in the battlescape without `startFirstTurn`), in the briefing again, with the craft or base taken from the campaign's `inBattlescape` flags (`Phase` follows the saved turn: below 1 is the briefing, otherwise the battle is in
+progress). The briefing names the mission once per load, `spawnFromPrimedItems` finds no primed item left, and the turn-0
+reinforcement check runs again, so nothing is doubled. `startFirstTurn` dereferences `getSelectedUnit()` and its tile; a
+battle with no X-COM soldier on the map is refused (`battle.no-live-soldiers`) before it, and a selected unit that is off
+the map skips the inventory-tile steps (`randomizeItemLocations` and the reselection). The reference's `NextTurnState`
+draws `executionOdds` of a reinforcement wave from the game stream; the port refuses a start in which a wave could
+deploy (`battle.reinforcements-unsupported`) without drawing, so the stream is not spent on a refusal. The briefing's
+lines (`strTarget`, `strCraftOrBase`) are composed by the client with its language, as the geoscape's names are, and set by
+`BeginBriefing`; the operation name is drawn from the battle's own seedless stream.
+
+Selection (branch 3, S5). In the reference `SavedBattleGame::_selectedUnit` and `_undoUnit` are the one player's selection,
+and `BattleUnit::_dontReselect` is a unit flag. The port keeps one selection per player as client state and writes the
+saved fields only for the side-owning slot: the lowest human slot among the units that fight for the side on turn. A
+`SelectUnit`, `SelectNextUnit` or `SkipUnit` from a unit another slot controls changes no saved selection or undo unit (the event
+says `Saved: false`); the skipped unit's `dontReselect` flag, a unit field, is set whoever sends it, and
+`ReselectSkippedUnit` works on the saved undo unit only. One consequence of the reference's loop stays: walking back to the only
+selectable unit keeps it, or leaves no selection when it is flagged. `selectNextPlayerUnitByDistance` sorts with `std::sort`,
+which leaves the order of equal distances open; the port takes the earlier unit in the list. A client with no selection starts
+from the first unit the selection query lists (the last one going back), since the commands address a unit; skipping from no
+selection therefore does not clear the undo unit as `btnNextStopLClick` does. Before the first turn only the inventory walk
+(`InventoryOnly`) selects, as in `InventoryState`; confirming the briefing runs `InventoryState::init`'s move off a unit without an
+inventory.
 
 ## Consequences
 

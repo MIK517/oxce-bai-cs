@@ -526,9 +526,10 @@ public sealed class BattleStartTests
         Assert.Equal(CampaignBattles.BattleInProgress.Text, Refusal(campaign, new RecallCraft(request.BaseId, "SHIP", 1)));
         Assert.Equal(CampaignBattles.BattleInProgress.Text, Refusal(campaign, new StartBattle()));
         Assert.Equivalent(before, campaign.Capture(), strict: true);
-        Assert.Equal(CampaignBattles.BattleSaveBeforeFirstTurn.Text, campaign.QuerySaveRefusal());
-        Assert.Null(campaign.CaptureForSave(out var refusal));
-        Assert.Equal(CampaignBattles.BattleSaveBeforeFirstTurn.Text, refusal);
+        // Saving is open from the start: a battle before its first turn is saved as it is and briefed again on loading.
+        Assert.Null(campaign.QuerySaveRefusal());
+        Assert.NotNull(campaign.CaptureForSave(out var refusal));
+        Assert.Null(refusal);
     }
 
     [Fact]
@@ -671,6 +672,9 @@ public sealed class BattleStartTests
             battle.Units.Where(static unit => unit.Faction == BattleFaction.Player)
                 .Select(static unit => (unit.Id, unit.UnitType, unit.ArmorSize, unit.Position!.Value)));
         Assert.Equal(BattleState.MaximumSoldierId, battle.SelectedUnitId);
+        // deployXCOM's last pass: until the first turn every X-COM unit's tile is the craft inventory tile, the first start tile.
+        Assert.Equal(new BattlePosition(x, y, 0), battle.CraftInventoryTile);
+        Assert.All(battle.Units.Where(static unit => unit.Faction == BattleFaction.Player), unit => Assert.Equal(battle.CraftInventoryTile, unit.InventoryTile));
         // The large vehicle stands on all four of its tiles.
         foreach (var (dx, dy) in new[] { (0, 0), (1, 0), (0, 1), (1, 1) })
             Assert.Equal(BattleState.MaximumSoldierId, map.UnitAt(map.TileIndex(new(x + dx, y + dy, 0))));

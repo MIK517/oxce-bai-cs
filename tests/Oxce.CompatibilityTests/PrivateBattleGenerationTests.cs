@@ -1,8 +1,13 @@
 using System.Text.Json;
 using Oxce.Core.Random;
+using Oxce.Engine;
+using Oxce.Engine.Battlescape;
+using Oxce.Engine.Input;
+using Oxce.Formats.Yaml;
 using Oxce.Gameplay.Battles;
 using Oxce.Gameplay.Battles.Terrain;
 using Oxce.Gameplay.Campaigns;
+using Oxce.Gameplay.Sessions;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Bootstrap;
 using Oxce.Mods.Rulesets.Content;
@@ -66,11 +71,13 @@ public sealed class PrivateBattleGenerationTests
             // The ten soldiers on board, each of them on the map; the player sees its own side only.
             Assert.Equal(request!.Soldiers.Order(), battle.Units.Where(static unit => unit.SoldierId is not null).Select(static unit => unit.SoldierId!.Value).Order());
             Assert.Equal(10, campaign.GetQuery<IBattleQuery>()!.QueryBattle(BattleViewer.LocalPlayer)!.Units.Count);
-            // The campaign holds for the battle, and saving waits for the first turn (Phase 7 branch 3).
+            // The campaign holds for the battle, which can be saved from the start (Phase 7 branch 3).
             Assert.Null(campaign.GetQuery<ICampaignLandingQuery>()!.QueryDeploymentRequest());
             Assert.Equal(CampaignBattles.BattleInProgress.Text, Blocked(campaign.Execute(new AdvanceCampaignTime(1))));
-            Assert.Equal(CampaignBattles.BattleSaveBeforeFirstTurn.Text, campaign.QuerySaveRefusal());
+            Assert.Null(campaign.QuerySaveRefusal());
             AssertReloads(loaded, campaign, battle);
+            // Its turret spawners stand on floors, where applyGravity does nothing; the mod binds new-turn scripts, which are branch 8's.
+            Assert.Equal("battle.new-turn-script-unsupported", AssertPlaysOrIsRefusedAtTheBriefing(loaded, campaign, battle));
         });
     }
 
@@ -100,7 +107,7 @@ public sealed class PrivateBattleGenerationTests
         var (_, request, stop) = RunToDeployment(campaign, dispatch: true);
         Assert.True(request is not null, $"{family}/{save} stopped without a deployment request: {stop}");
         return (campaign, request);
-    });
+    }, new() { [("modded/rosigma", "Middle.sav")] = "battle.new-turn-script-unsupported" });
 
     [Fact]
     public void StagedBaseDefensesGenerateValidatedBattles() => AssertShapes(new()
@@ -119,7 +126,7 @@ public sealed class PrivateBattleGenerationTests
         var (campaign, request, events) = StageBaseAttack(loaded, LoadSave(loaded, family, save));
         Assert.True(request is not null, $"{family}/{save}: {string.Join(", ", events)}");
         return (campaign, request);
-    });
+    }, new() { [("modded/rosigma", "Early.sav")] = "battle.new-turn-script-unsupported" });
 
     /// <summary>
     /// handleBaseDefense's gate: TFTD <c>Middle.sav</c>'s two soldiers are on the Triton, which is out, and the base has no
@@ -210,7 +217,7 @@ public sealed class PrivateBattleGenerationTests
                 cancellationToken: TestContext.Current.CancellationToken);
             Assert.True(loaded.IsSuccess, loaded.DescribeFailure());
             var options = new OxceSaveLoadOptions(request.MasterId, request.ActiveMods.ToHashSet(StringComparer.Ordinal),
-                new Oxce.Formats.Yaml.YamlReadOptions { MaxBytes = 32 * 1024 * 1024, MaxNodes = 2_000_000 });
+                new YamlReadOptions { MaxBytes = 32 * 1024 * 1024, MaxNodes = 2_000_000 });
             test(new LoadedFamily(loaded.Content!, options, new VirtualBattleTerrainFiles(loaded.VirtualFiles!)));
         }
         finally { cacheDirectory.Delete(recursive: true); }
@@ -255,10 +262,133 @@ public sealed class PrivateBattleGenerationTests
             var viewer = new BattleViewer(faction);
             var before = battle.Overview(viewer);
             var after = restored.Overview(viewer);
-            Assert.Equivalent(before with { Turn = 1, Revision = 0 }, after with { Revision = 0 }, strict: true);
+            Assert.Equivalent(before with { Turn = 1, Revision = 0, Phase = BattlePhase.InProgress }, after with { Revision = 0 }, strict: true);
             Assert.Equal(before.Units, after.Units);
         }
         Assert.Null(reloaded.QuerySaveRefusal());
+    }
+
+    /// <summary>
+    /// Phase 7 branch 3 S7 acceptance: the generated battle passes the briefing, the pre-battle inventory and
+    /// <c>startFirstTurn</c> through the screens on one stack, is shown in the battlescape for the local player, is saved
+    /// (the first-turn restriction is retired) and reloaded into the battlescape directly. A client of another faction sees
+    /// only its own side's units and the units its side spotted.
+    /// </summary>
+    private static string? AssertPlaysOrIsRefusedAtTheBriefing(LoadedFamily loaded, CampaignState campaign, BattleState battle)
+    {
+        var context = Context(campaign, BattleViewer.LocalPlayer);
+        Assert.True(context.Open("Target", "Craft"));
+        Assert.IsType<BattleBriefingScreen>(context.Screens.Top);
+        Press(context.Screens, 13);
+        // A refusal of a later branch (gravity, scripts) leaves the battle in its briefing with the code on the screen; it still saves and reloads into the briefing.
+        if (context.Screens.Top is BattleBriefingScreen refused) return AssertRefusedAtTheBriefing(loaded, campaign, battle, refused);
+        Assert.Equal(BattlePhase.Inventory, battle.Phase);
+        Press(context.Screens, 27);
+        var screen = Assert.IsType<BattlescapeClient>(context.Screens.Top);
+        Assert.Equal((BattlePhase.InProgress, 1), (battle.Phase, battle.Turn));
+        AssertShown(context, screen, battle);
+        AssertOtherSidesSeeOnlyTheirOwn(campaign, battle);
+        // The battle is saved as it is on turn 1 and reloads straight into the battlescape.
+        Assert.Null(campaign.QuerySaveRefusal());
+        var text = OxceSaveAdapter.EmitLoadedCampaign(campaign.Capture(), Sources.TryGetValue(campaign, out var source) ? source
+            : throw new InvalidOperationException("The campaign was not loaded by LoadSave."));
+        BattleSaveConformance.CheckSave(text);
+        var reloaded = OxceSaveAdapter.Load(text, "battle.sav", loaded.Content, new SplitMix64RandomSource(17),
+            loaded.Options with { BattleTerrainFiles = loaded.Files }).Campaign;
+        var restored = BattleStartTests.Battle(reloaded);
+        Assert.Equal((BattlePhase.InProgress, 1), (restored.Phase, restored.Turn));
+        var again = Context(reloaded, BattleViewer.LocalPlayer);
+        Assert.True(again.Open());
+        var shown = Assert.IsType<BattlescapeClient>(again.Screens.Top);
+        Assert.Equal(1, again.Screens.Count);
+        AssertShown(again, shown, restored);
+        AssertOtherSidesSeeOnlyTheirOwn(reloaded, restored);
+        foreach (var faction in Enum.GetValues<BattleFaction>())
+            Assert.Equal(battle.Overview(new BattleViewer(faction)).Units, restored.Overview(new BattleViewer(faction)).Units);
+        return null;
+    }
+
+    private static string AssertRefusedAtTheBriefing(LoadedFamily loaded, CampaignState campaign, BattleState battle, BattleBriefingScreen briefing)
+    {
+        var code = briefing.Message;
+        Assert.StartsWith("battle.", code, StringComparison.Ordinal);
+        Assert.Equal(BattlePhase.Briefing, battle.Phase);
+        AssertOtherSidesSeeOnlyTheirOwn(campaign, battle);
+        Assert.Null(campaign.QuerySaveRefusal());
+        var text = OxceSaveAdapter.EmitLoadedCampaign(campaign.Capture(), Sources.TryGetValue(campaign, out var source) ? source
+            : throw new InvalidOperationException("The campaign was not loaded by LoadSave."));
+        // A save before the first turn is an intentional difference (ADR 0039): its turn is 0, so only the body's reading rules apply.
+        // The header's turn, mission, target and craft or base still match the body's.
+        var documents = YamlCompatibilityReader.Parse(text, "battle.sav",
+            new YamlReadOptions { MaxBytes = 32 * 1024 * 1024, MaxNodes = 2_000_000 }).Documents;
+        var header = (YamlMappingNode)documents[0].Root;
+        var body = (YamlMappingNode)documents[1].Root;
+        Assert.True(body.TryGet("battleGame", out var saved) && saved is YamlMappingNode);
+        var savedBattle = (YamlMappingNode)saved!;
+        BattleSaveConformance.Check(savedBattle);
+        Assert.Equal(0, savedBattle.ReadInt32("turn", -1));
+        Assert.Equal(0, header.ReadInt32("turn", -1));
+        Assert.Equal((savedBattle.ReadString("missionType", ""), savedBattle.ReadString("strTarget", ""), savedBattle.ReadString("strCraftOrBase", "")),
+            (header.ReadString("mission", ""), header.ReadString("target", ""), header.ReadString("craftOrBase", "")));
+        var reloaded = OxceSaveAdapter.Load(text, "battle.sav", loaded.Content, new SplitMix64RandomSource(17),
+            loaded.Options with { BattleTerrainFiles = loaded.Files }).Campaign;
+        Assert.Equal(BattlePhase.Briefing, BattleStartTests.Battle(reloaded).Phase);
+        var again = Context(reloaded, BattleViewer.LocalPlayer);
+        Assert.True(again.Open("Target", "Craft"));
+        Assert.IsType<BattleBriefingScreen>(again.Screens.Top);
+        return code;
+    }
+
+    /// <summary>
+    /// The screens' context over a session: the commands go through the local player's handle, so unit commands are authorized against the
+    /// battle's controllers as in the host (the session lives as long as the campaign it wraps).
+    /// </summary>
+    internal static BattleUiContext Context(CampaignState campaign, BattleViewer viewer)
+    {
+        var session = new CampaignSession(campaign, campaign, static () => TimeSpan.Zero);
+        session.Controllers = new BattleUnitControllers(campaign.GetQuery<IBattleQuery>()!);
+        var local = session.Attach(PlayerId.Local);
+        return new(local, campaign.GetQuery<IBattleQuery>()!, campaign.GetQuery<IBattleViewQuery>()!, campaign.GetQuery<IBattleInventoryQuery>()!,
+            campaign.GetQuery<IBattleBriefingQuery>()!, viewer, new ScreenNavigator());
+    }
+
+    private static void Press(ScreenNavigator screens, uint key) =>
+        Assert.True(screens.HandleInput(GameInputEvent.Key(GameInputEventKind.KeyPressed, 0, 0, 0, key, InputKeyModifiers.None)));
+
+    /// <summary>The battlescape draws the viewer's level, runs on ticks and answers the soldier buttons.</summary>
+    private static void AssertShown(BattleUiContext context, BattlescapeClient screen, BattleState battle)
+    {
+        context.Screens.Tick(TimeSpan.FromMilliseconds(16));
+        Assert.True(screen.Frame.Width > 0 && screen.Frame.Height > 0);
+        Assert.Contains(screen.Frame.Pixels.ToArray(), static pixel => pixel == BattleUiContext.Color.Floor);
+        Assert.NotNull(screen.Model.SelectedUnitId);
+        var selected = battle.Units.Single(unit => unit.Id == screen.Model.SelectedUnitId);
+        Assert.Equal(BattleFaction.Player, selected.Faction);
+        if (battle.Side == BattleFaction.Player && battle.Units.Count(static unit => unit.Faction == BattleFaction.Player) > 1)
+        {
+            var revision = screen.PresentationRevision;
+            Press(context.Screens, 9);
+            Assert.NotEqual(selected.Id, screen.Model.SelectedUnitId);
+            Assert.True(screen.PresentationRevision > revision);
+        }
+    }
+
+    /// <summary>A viewer's tiles show a unit only when it is the viewer's side's or the side spotted it.</summary>
+    internal static void AssertOtherSidesSeeOnlyTheirOwn(CampaignState campaign, BattleState battle)
+    {
+        var view = campaign.GetQuery<IBattleViewQuery>()!;
+        foreach (var faction in Enum.GetValues<BattleFaction>())
+        {
+            var viewer = new BattleViewer(faction);
+            for (var level = 0; level < battle.Height; level++)
+                foreach (var tile in view.QueryLevel(viewer, level)!.Tiles.Where(static tile => tile.UnitId is not null))
+                {
+                    var unit = battle.Units.Single(candidate => candidate.Id == tile.UnitId);
+                    Assert.True(unit.Faction == faction || unit.IsSpottedBy(faction), $"{faction} sees unit {unit.Id}, which it did not spot.");
+                }
+            Assert.All(campaign.GetQuery<IBattleQuery>()!.QueryBattle(viewer)!.Units, unit =>
+                Assert.True(unit.Faction == faction || battle.Units.Single(candidate => candidate.Id == unit.Id).IsSpottedBy(faction)));
+        }
     }
 
     /// <summary>
@@ -285,10 +415,13 @@ public sealed class PrivateBattleGenerationTests
     /// and compares them with the expected ones.
     /// </summary>
     private static void AssertShapes(Dictionary<(string Family, string Save), BattleShape> expected, string record,
-        Func<LoadedFamily, string, string, (CampaignState Campaign, CampaignDeploymentRequest Request)> stage)
+        Func<LoadedFamily, string, string, (CampaignState Campaign, CampaignDeploymentRequest Request)> stage,
+        Dictionary<(string Family, string Save), string>? refusals = null)
     {
+        refusals ??= [];
         var installation = TestFixtures.RequirePrivateInstallation();
         var measured = new Dictionary<(string Family, string Save), BattleShape>();
+        var refused = new Dictionary<(string Family, string Save), string?>();
         foreach (var family in expected.Keys.Select(static key => key.Family).Distinct())
             WithFamily(installation, family, loaded =>
             {
@@ -298,6 +431,7 @@ public sealed class PrivateBattleGenerationTests
                     var battle = Start(campaign);
                     measured[(family, save)] = Shape(request, battle);
                     AssertReloads(loaded, campaign, battle);
+                    refused[(family, save)] = AssertPlaysOrIsRefusedAtTheBriefing(loaded, campaign, battle);
                 }
             });
         var path = TestFixtures.RepositoryPath("artifacts", record);
@@ -305,6 +439,9 @@ public sealed class PrivateBattleGenerationTests
         File.WriteAllText(path, JsonSerializer.Serialize(measured.OrderBy(static pair => pair.Key)
             .Select(static pair => new { pair.Key.Family, pair.Key.Save, Shape = pair.Value }), Indented));
         Assert.Equal(expected.OrderBy(static pair => pair.Key).ToArray(), measured.OrderBy(static pair => pair.Key).ToArray());
+        // Phase 7 branch 3 S7: the battles that do not play through are refused at the briefing by the named rule of a later branch.
+        Assert.Equal(refusals.OrderBy(static pair => pair.Key).ToArray(),
+            refused.Where(static pair => pair.Value is not null).OrderBy(static pair => pair.Key).Select(static pair => KeyValuePair.Create(pair.Key, pair.Value!)).ToArray());
     }
 
     /// <summary>Starts the pending request's battle, which must not be refused, and checks it again.</summary>

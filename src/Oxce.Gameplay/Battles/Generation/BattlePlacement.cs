@@ -80,6 +80,51 @@ internal sealed class BattlePlacement(BattleState battle, IRandomSource random)
     }
 
     /// <summary>
+    /// TileEngine::isPositionValidForUnit with its surrounding check: the position, then the eight neighbours (starting at
+    /// <paramref name="startDirection"/>, offset by the unit's size) whose tiles are inside the map, free of other units,
+    /// passable and not behind a low big wall, and a large unit's sides unblocked. Unlike setUnitPosition it asks for no floor.
+    /// Returns the position taken, or null.
+    /// </summary>
+    internal static BattlePosition? ValidForUnit(BattleMap map, BattleUnit unit, BattlePosition position, bool surrounding, int startDirection)
+    {
+        var size = unit.ArmorSize;
+        ReadOnlySpan<int> xs = [0, 1, 1, 1, 0, -1, -1, -1];
+        ReadOnlySpan<int> ys = [-1, -1, 0, 1, 1, 1, 0, -1];
+        var candidates = new List<BattlePosition> { position };
+        if (surrounding)
+            for (var index = 0; index < 8; index++)
+            {
+                var direction = (startDirection + index) % 8;
+                candidates.Add(new BattlePosition(position.X + xs[direction] * size, position.Y + ys[direction] * size, position.Z));
+            }
+        foreach (var candidate in candidates)
+        {
+            var passed = true;
+            for (var x = size - 1; x >= 0; x--)
+                for (var y = size - 1; y >= 0; y--)
+                {
+                    var at = new BattlePosition(candidate.X + x, candidate.Y + y, candidate.Z);
+                    if (!map.Contains(at))
+                    {
+                        passed = false;
+                        continue;
+                    }
+                    var tile = map.TileIndex(at);
+                    var item = map.MapData(tile, BattleTilePart.ObjectPart);
+                    if (map.UnitAt(tile) is { } other && other != unit.Id ||
+                        map.TimeUnitCost(tile, BattleTilePart.ObjectPart, unit.MovementType) == InvalidMoveCost ||
+                        item is { BigWall: > 0 and <= 3 })
+                        passed = false;
+                }
+            if (passed && size > 1)
+                for (var direction = 2; direction <= 4; direction++)
+                    if (BattlePathing.IsBlockedDirection(map, unit.MovementType, candidate, direction)) passed = false;
+            if (passed) return candidate;
+        }
+        return null;
+    }
+
+    /// <summary>
     /// BattlescapeGenerator::placeUnitNearFriend: up to ten times, a random placed unit of the same side at least as large
     /// (100 draws at most) and a place next to it.
     /// </summary>

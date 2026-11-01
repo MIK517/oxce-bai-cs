@@ -1,3 +1,4 @@
+using Oxce.Gameplay.Sessions;
 using Oxce.Core.Random;
 using Oxce.Engine;
 using Oxce.Engine.Geoscape;
@@ -236,7 +237,7 @@ public sealed class StrategicLandingTests
         var (content, campaign) = Create();
         var client = Client(content, campaign);
         var before = Ship(campaign);
-        client.Tick(GeoscapeTimeController.GeoClock);
+        client.Tick(SessionClock.GeoClock);
         var popup = Assert.Single(client.Popups);
         Assert.Equal(["STR_YES", "STR_NO"], popup.Actions.Select(static action => action.Label));
         // ConfirmLandingState::togglePatrolButton: held Ctrl turns No into Patrol, and Esc presses it.
@@ -346,13 +347,13 @@ public sealed class StrategicLandingTests
     {
         var (content, campaign) = Create();
         var client = Client(content, campaign);
-        client.Tick(GeoscapeTimeController.GeoClock);
+        client.Tick(SessionClock.GeoClock);
         Press(client, 13);
         var popup = Assert.Single(client.Popups);
-        Assert.Equal("Tactical combat is not available yet", popup.Title);
+        Assert.Equal("Start the battle", popup.Title);
         Assert.Equal("STR_UFO_GROUND_ASSAULT", popup.Lines[0]);
         var reloaded = Reload(content, campaign, 17, "deployment-ui.sav");
-        Assert.Equal("Tactical combat is not available yet", Assert.Single(Client(content, reloaded).Popups).Title);
+        Assert.Equal("Start the battle", Assert.Single(Client(content, reloaded).Popups).Title);
     }
 }
 
@@ -429,7 +430,7 @@ public sealed class StrategicFinalMissionTests
         Assert.Equal("STR_ARE_YOU_SURE_CYDONIA", confirm.Title);
         client.HandleInput(GameInputEvent.Key(GameInputEventKind.KeyPressed, 0, 0, 0, 13, InputKeyModifiers.None));
         Assert.Null(client.SelectingWing);
-        Assert.Equal("Tactical combat is not available yet", Assert.Single(client.Popups).Title);
+        Assert.Equal("Start the battle", Assert.Single(client.Popups).Title);
         Assert.Equal("STR_FINAL_ASSAULT", campaign.GetQuery<ICampaignLandingQuery>()!.QueryDeploymentRequest()!.MissionType);
     }
 

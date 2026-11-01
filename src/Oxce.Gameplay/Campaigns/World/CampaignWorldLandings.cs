@@ -183,6 +183,19 @@ internal sealed partial class CampaignWorld : ICampaignLandingQuery, Battles.ICa
         }
     }
 
+    /// <summary>
+    /// BriefingState's constructor for a base defense: when the base has a retaliation mission, the base is no longer a
+    /// retaliation target and a multi-UFO retaliation mission is marked as in progress (more UFOs may be coming).
+    /// </summary>
+    void Battles.ICampaignDeploymentHandOver.BriefBaseDefense(int baseId)
+    {
+        if (campaign.BaseById(baseId) is not { } owner || RetaliationMissionOf(owner) is not { } mission) return;
+        owner.RetaliationTarget = false;
+        if (!MissionRule(mission).MultiUfoRetaliation) return;
+        var index = _missions.FindIndex(candidate => candidate.Id == mission.Id);
+        _missions[index] = _missions[index] with { MultiUfoRetaliationInProgress = true };
+    }
+
     /// <summary>The rule of the first UFO in the battlescape (DebriefingState's loop over the UFOs), or "".</summary>
     string Battles.ICampaignDeploymentHandOver.UfoInBattlescape
     {

@@ -3,6 +3,7 @@ using Oxce.Core.Graphics;
 using Oxce.Engine.Input;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
+using Oxce.Gameplay.Sessions;
 using Oxce.Rendering;
 
 namespace Oxce.Engine;
@@ -24,10 +25,22 @@ public sealed record CampaignUiSession(ICampaignQuery Queries, ICampaignCommandT
     public ICampaignBaseDefenseQuery? BaseDefense { get; init; } = Queries as ICampaignBaseDefenseQuery;
     /// <summary>The countries' funding (FundingState).</summary>
     public ICampaignFundingQuery? Funding { get; init; } = Queries as ICampaignFundingQuery;
+    /// <summary>The battle queries of the battle screens; all four must be present for the geoscape to open a battle.</summary>
+    public Oxce.Gameplay.Battles.IBattleQuery? Battle { get; init; }
+    /// <summary>The battle's view query (selection, levels, visible tiles).</summary>
+    public Oxce.Gameplay.Battles.IBattleViewQuery? BattleView { get; init; }
+    /// <summary>The battle's inventory query.</summary>
+    public Oxce.Gameplay.Battles.IBattleInventoryQuery? BattleInventory { get; init; }
+    /// <summary>The battle's briefing query.</summary>
+    public Oxce.Gameplay.Battles.IBattleBriefingQuery? BattleBriefing { get; init; }
     /// <summary>The open interception windows.</summary>
     public ICampaignInterceptionQuery? Interceptions { get; init; } = Queries as ICampaignInterceptionQuery;
     /// <summary>Where the geoscape globe looked when the campaign was saved (SavedGame globe fields).</summary>
     public Geoscape.GlobeViewState? GlobeView { get; init; }
+    /// <summary>The player this client acts as; it reports its geoscape cover to the host clock under this identity.</summary>
+    public PlayerId Player { get; init; } = PlayerId.Local;
+    /// <summary>The host's clock when the commands go through a session; a bare campaign has none.</summary>
+    public SessionClock? Clock { get; init; }
 
     /// <summary>Reads every typed query from the campaign while commands use <paramref name="commands"/>.</summary>
     public static CampaignUiSession ForCampaign(CampaignState campaign, ICampaignQuery queries,
@@ -36,6 +49,8 @@ public sealed record CampaignUiSession(ICampaignQuery Queries, ICampaignCommandT
         ArgumentNullException.ThrowIfNull(campaign);
         return new(queries, commands)
         {
+            Player = (commands as SessionHandle)?.Player ?? PlayerId.Local,
+            Clock = (commands as SessionHandle)?.Clock,
             Readiness = campaign,
             ResearchProduction = campaign,
             World = campaign.GetQuery<ICampaignWorldQuery>(),
@@ -43,6 +58,10 @@ public sealed record CampaignUiSession(ICampaignQuery Queries, ICampaignCommandT
             BaseDefense = campaign.GetQuery<ICampaignBaseDefenseQuery>(),
             Interceptions = campaign.GetQuery<ICampaignInterceptionQuery>(),
             Funding = campaign.GetQuery<ICampaignFundingQuery>(),
+            Battle = campaign.GetQuery<Oxce.Gameplay.Battles.IBattleQuery>(),
+            BattleView = campaign.GetQuery<Oxce.Gameplay.Battles.IBattleViewQuery>(),
+            BattleInventory = campaign.GetQuery<Oxce.Gameplay.Battles.IBattleInventoryQuery>(),
+            BattleBriefing = campaign.GetQuery<Oxce.Gameplay.Battles.IBattleBriefingQuery>(),
         };
     }
 }
@@ -206,7 +225,11 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
             else if (key == ' ')
             {
                 _screen = null;
-                Feedback(_session.Commands.Execute(new AdvanceCampaignTime((input.Modifiers & InputKeyModifiers.Shift) != 0 ? 720 : 12)));
+                var ticks = (input.Modifiers & InputKeyModifiers.Shift) != 0 ? 720 : 12;
+                // On a hosted session the host clock's pause policy and halt apply to a manual advance too.
+                Feedback(_session.Clock is { } clock
+                    ? clock.Advance(ticks)
+                    : _session.Commands.Execute(new AdvanceCampaignTime(ticks)));
             }
             else if (key is (uint)'i' or (uint)'b' or (uint)'t' || key == 's' && _view != CampaignView.Management)
             {

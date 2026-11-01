@@ -42,14 +42,44 @@ public sealed partial class CampaignState
 
     public const int MaximumLogisticsLines = 10_000;
     private long _nextQuoteId;
-    private LogisticsQuote? _logisticsQuote;
+
+    /// <summary>
+    /// The open logistics quote of each actor (ADR 0037 rule 6): another actor's command or a time advance never
+    /// clears it, and a submit revalidates it against the campaign as it is then.
+    /// </summary>
+    private readonly Dictionary<Sessions.PlayerId, OpenQuote> _quotes = [];
+
+    private sealed record OpenQuote(PrepareLogisticsQuote Request, LogisticsQuote Quote);
 
     private BaseState FindBase(int id) => _bases.FirstOrDefault(b => b.Id == id) ??
         throw new ArgumentException($"Base {id} does not exist.", nameof(id));
 
     private CampaignCommandResult QuoteLogistics(PrepareLogisticsQuote command)
     {
-        _logisticsQuote = null;
+        _quotes.Remove(_actor);
+        var result = BuildLogisticsQuote(command, checked(_nextQuoteId + 1));
+        if (result.Events.Count == 1 && result.Events[0] is LogisticsQuoted quoted)
+        {
+            _nextQuoteId = quoted.Quote.Id;
+            _quotes[_actor] = new(command, quoted.Quote);
+        }
+        return result;
+    }
+
+    /// <summary>True when quoting the same request now gives the same rows: the open quote is still honest.</summary>
+    private bool QuoteStillHolds(OpenQuote open)
+    {
+        CampaignCommandResult now;
+        try { now = BuildLogisticsQuote(open.Request, open.Quote.Id); }
+        catch (ArgumentException) { return false; }
+        if (now.Events.Count != 1 || now.Events[0] is not LogisticsQuoted { Quote: var current }) return false;
+        var quote = open.Quote;
+        return current.BaseId == quote.BaseId && current.Operation == quote.Operation &&
+            current.DestinationBaseId == quote.DestinationBaseId && current.Rows.SequenceEqual(quote.Rows);
+    }
+
+    private CampaignCommandResult BuildLogisticsQuote(PrepareLogisticsQuote command, long quoteId)
+    {
         if (!Enum.IsDefined(command.Operation)) throw new ArgumentOutOfRangeException(nameof(command));
         var origin = FindBase(command.BaseId);
         var destination = command.Operation == LogisticsOperation.Transfer
@@ -126,14 +156,13 @@ public sealed partial class CampaignState
                 command.Operation == LogisticsOperation.Transfer ? hours : rule.TransferTime, unavailable));
         }
         if (rows.Count > MaximumLogisticsLines) return Blocked("The logistics catalog exceeds the bounded row limit.");
-        var quote = new LogisticsQuote(checked(++_nextQuoteId), origin.Id, command.Operation,
+        var quote = new LogisticsQuote(quoteId, origin.Id, command.Operation,
             command.Operation == LogisticsOperation.Transfer ? destination.Id : null, _funds[^1], UsedStores(destination),
             AvailableStores(destination), UsedQuarters(destination), AvailableQuarters(destination), CampaignSnapshot.ReadOnly(rows))
         {
             TransferCostMultiplier = _content.RuntimeRules.Campaign.GlobalTransferCostMultiplier,
             TransferCostDivisor = _content.RuntimeRules.Campaign.GlobalTransferCostDivisor,
         };
-        _logisticsQuote = quote;
         return new CampaignCommandResult([new LogisticsQuoted(quote)]);
 
         void AddStaff(CampaignTransferKind kind, string label, int owned, int hireCost,
@@ -169,8 +198,14 @@ public sealed partial class CampaignState
     private CampaignCommandResult SubmitLogistics(SubmitLogisticsOrder command)
     {
         ArgumentNullException.ThrowIfNull(command.Lines);
-        var quote = _logisticsQuote;
-        if (quote is null || quote.Id != command.QuoteId) return Blocked("This quote has expired; reopen the logistics screen.");
+        if (!_quotes.TryGetValue(_actor, out var open) || open.Quote.Id != command.QuoteId)
+            return Blocked("This quote has expired; reopen the logistics screen.");
+        if (!QuoteStillHolds(open))
+        {
+            _quotes.Remove(_actor);
+            return Blocked("This quote has expired; reopen the logistics screen.");
+        }
+        var quote = open.Quote;
         if (command.Lines.Count == 0 || command.Lines.Count > MaximumLogisticsLines)
             return Blocked("An order must contain a bounded non-empty selection.");
         var selections = command.Lines.OrderBy(s => s.RowId).ToArray();
@@ -394,7 +429,7 @@ public sealed partial class CampaignState
         if (transfers.Count != 0) _nextIds["oxcePortTransfer"] = nextTransferId;
         if (recruitCount != 0) _nextIds["STR_SOLDIER"] = nextSoldierId;
         foreach (var pair in craftIds) _nextIds[pair.Key] = pair.Value;
-        _logisticsQuote = null;
+        _quotes.Remove(_actor);
         return new CampaignCommandResult([new LogisticsOrderCompleted(origin.Id, quote.Operation, subtotal)]);
     }
 
