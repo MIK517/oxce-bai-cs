@@ -391,8 +391,8 @@ internal sealed partial class BattleState
         content.EventPlans.Any(plan => plan.ParserName == parser && plan.Plan.Count != 0);
 
     /// <summary>
-    /// SavedBattleGame::startFirstTurn: the ground items of the selected unit's tile go to random storage tiles (a base
-    /// defense), the units are put back on their tiles, the unit standing on the inventory tile is selected, every live X-COM
+    /// SavedBattleGame::startFirstTurn: the ground items of the selected unit's tile (the craft inventory tile, <see cref="TileOf"/>)
+    /// go to random storage tiles (a base defense), the units are put back on their tiles, the unit standing on that tile is selected, every live X-COM
     /// unit prepares its first turn, and the turn is 1. The new-turn scripts, reviving and converting are refused beforehand
     /// (<see cref="FirstTurnRefusal"/>). Without a selected unit on the map (a null dereference in the reference) the
     /// inventory-tile steps are skipped (ADR 0039).
@@ -401,7 +401,7 @@ internal sealed partial class BattleState
     {
         var equipment = new UnitEquipment(this, content.RuntimeRules, Seedless);
         var selected = SelectedUnitId is { } id ? _units.Find(unit => unit.Id == id) : null;
-        var inventoryTile = selected?.Position;
+        var inventoryTile = selected is null ? null : TileOf(selected);
         if (inventoryTile is { } tile) RandomizeItemLocations(tile, random);
         ResetUnitTiles();
         if (inventoryTile is { } pile && Map.UnitAt(Map.TileIndex(pile)) is { } standing) SelectedUnitId = standing;
@@ -431,6 +431,7 @@ internal sealed partial class BattleState
     {
         foreach (var unit in _units)
         {
+            unit.InventoryTile = null;
             if (!unit.IsOut && unit.Position is { } position)
                 foreach (var covered in BattleMap.Footprint(position, unit.ArmorSize)) Map.SetUnitAt(Map.TileIndex(covered), unit.Id);
             if (unit.Faction == BattleFaction.Player) unit.SetSpottedBy(BattleFaction.Player, true);

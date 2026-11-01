@@ -459,6 +459,13 @@ internal sealed partial class BattleUnit
     /// <summary>The unit's tile, or null while it is not on the map.</summary>
     public BattlePosition? Position { get; set; }
 
+    /// <summary>
+    /// BattleUnit::setInventoryTile: before the first turn the generator gives every X-COM unit the craft inventory tile as its
+    /// tile, so the pre-battle inventory and startFirstTurn see the pile wherever the unit stands. Null once resetUnitTiles puts
+    /// the unit on its own tile, and for a unit spawned later or restored from a save (the reference's load sets the own tile).
+    /// </summary>
+    public BattlePosition? InventoryTile { get; set; }
+
     /// <summary>BattleUnit::getBaseStats: the soldier's statistics with all bonuses, or the unit rule's plus its armor's.</summary>
     public BattleUnitStats Stats { get; set; }
 

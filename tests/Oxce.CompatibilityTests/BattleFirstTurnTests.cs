@@ -642,6 +642,59 @@ public sealed class BattleFirstTurnTests
     }
 
     [Fact]
+    public void WithAUnitOffThePileSelectedTheFirstTurnScattersThePileAndSelectsTheUnitOnIt()
+    {
+        var campaign = ToInventory();
+        var battle = Battle(campaign);
+        var first = Soldier(battle);
+        var pile = first.Position!.Value;
+        Assert.Equal((pile, pile), (battle.CraftInventoryTile, first.InventoryTile));
+        // The player tabbed to a second soldier that stands beside the pile; its tile before the game is the pile too.
+        var second = new BattleUnit(901, BattleFaction.Player, BattleController.Human(0))
+        {
+            Stats = first.Stats, ArmorId = first.ArmorId, UnitType = first.UnitType, Position = pile with { X = pile.X + 1 }, InventoryTile = pile,
+        };
+        battle.AddUnit(second);
+        battle.SelectedUnitId = second.Id;
+        var equipment = new UnitEquipment(battle, campaign.Content.RuntimeRules, battle.Seedless);
+        BattleItem[] pileItems = [equipment.CreateItemForTile("GUN", pile), equipment.CreateItemForTile("CLIP", pile)];
+        var storage = new BattlePosition(1, 1, 0);
+        battle.StorageSpace = [pile, storage];
+
+        Assert.Equal(first.Id, Event<BattleFirstTurnStarted>(campaign, new StartFirstTurn()).SelectedUnitId);
+        Assert.Equal([storage], battle.StorageSpace);
+        Assert.All(pileItems, item => Assert.Equal(storage, item.Tile));
+        Assert.Equal(((BattlePosition?)null, (BattlePosition?)null), (first.InventoryTile, second.InventoryTile));
+        Assert.Equal(second.Id, battle.Map.UnitAt(battle.Map.TileIndex(second.Position!.Value)));
+    }
+
+    [Fact]
+    public void ASpawnedUnitOrItemWithANewTurnScriptRefusesTheBriefingsConfirmationAndChangesNothing()
+    {
+        // Rules only the spawn uses: the battle had none of them before its primed grenades spawn.
+        var armor = "\narmors:\n  - type: SPAWN_ARMOR\n    size: 1\n    allowInv: false\n    corpseBattle: [CORPSE]\n    corpseGeo: CORPSE\n    loftempsSet: [0]\n" +
+            "    scripts:\n      newTurnUnit: |\n        return;\n";
+        var unit = SpawnRules(unit: "SPAWNED").Replace("\narmors:\n", armor, StringComparison.Ordinal)
+            .Replace("\nunits:\n", "\nunits:\n  - type: SPAWNED\n    armor: SPAWN_ARMOR\n    stats: {tu: 50}\n", StringComparison.Ordinal);
+        var item = SpawnRules().Replace("spawnItem: CLIP", "spawnItem: SPAWN_CLIP", StringComparison.Ordinal)
+            .Replace("\nitems:\n", "\nitems:\n  - type: SPAWN_CLIP\n    battleType: 2\n    scripts:\n      newTurnItem: |\n        return;\n", StringComparison.Ordinal);
+        foreach (var rules in new[] { unit, item })
+        {
+            Assert.NotEqual(SpawnRules(), rules);
+            var (campaign, battle) = Begun(rules, "UFO_ARMORY");
+            Event<BriefingOpened>(campaign, new BeginBriefing("UFO-1", "SHIP"));
+            var before = (campaign.Capture(), campaign.Random.State);
+            Assert.Equal("battle.new-turn-script-unsupported", Refusal(campaign, new ConfirmBriefing()));
+            Assert.Equal(before.Item2, campaign.Random.State);
+            Assert.Equal(BattlePhase.Briefing, battle.Phase);
+            Assert.Equivalent(before.Item1, campaign.Capture(), strict: true);
+        }
+        // The same spawn without the scripts confirms.
+        var (plain, _) = Begun(SpawnRules(), "UFO_ARMORY");
+        Event<BriefingConfirmed>(plain, new ConfirmBriefing());
+    }
+
+    [Fact]
     public void WithoutAStorageSpaceTheGroundItemsStayAndNoDrawIsSpent()
     {
         var campaign = ToInventory();

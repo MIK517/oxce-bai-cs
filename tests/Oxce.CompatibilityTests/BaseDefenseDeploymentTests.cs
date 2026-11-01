@@ -222,7 +222,7 @@ public sealed class BaseDefenseDeploymentTests
         var dummy = Assert.Single(battle.Units, static unit => unit.Faction == BattleFaction.Player);
         Assert.Equal(("SECTOID", true, new BattlePosition(0, 0, 0), 20), (dummy.UnitType, dummy.SummonedPlayerUnit, dummy.Position, dummy.Health));
         Assert.Equal(dummy.Id, battle.SelectedUnitId);
-        Assert.Equal(new BattlePosition(0, 0, 0), battle.CraftInventoryTile);
+        Assert.Equal((new BattlePosition(0, 0, 0), new BattlePosition(0, 0, 0)), (battle.CraftInventoryTile, dummy.InventoryTile));
     }
 
     [Fact]

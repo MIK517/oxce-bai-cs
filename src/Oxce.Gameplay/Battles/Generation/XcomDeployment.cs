@@ -121,6 +121,7 @@ internal sealed class XcomDeployment
             if (soldier.ArmorSize == 1) AddSoldier(soldier);
         if (_battle.Units.Count == 0)
             throw new MapGenerationException("Map generator encountered an error: no xcom units could be placed on the map.");
+        SetInventoryTiles();
         AddCraftItems(request);
         var layouts = owner.Soldiers.Where(soldier => request.Soldiers.Contains(soldier.Id) && soldier.Personal is not null)
             .ToDictionary(static soldier => soldier.Id, static soldier => soldier.Personal!.EquipmentLayout);
@@ -160,6 +161,7 @@ internal sealed class XcomDeployment
             if (soldier.ArmorSize == 1) AddSoldier(soldier);
         // A base with soldiers but nowhere to spawn them (a previous defense destroyed everything but the lift).
         if (_battle.Units.Count == 0) AddDummy();
+        SetInventoryTiles();
         if (!_rules.Inventories.TryGet(BattleState.GroundSlot, out _))
             throw new MapGenerationException("The mod has no STR_GROUND inventory.");
         // The base's stores the defenders can use. The reference walks its stores in RuleItem address order; the port
@@ -235,6 +237,13 @@ internal sealed class XcomDeployment
         _battle.AddUnit(unit);
         _battle.SelectedUnitId = unit.Id;
         _battle.CraftInventoryTile = firstTile;
+    }
+
+    /// <summary>deployXCOM's last pass over the units: every X-COM unit's tile is the craft inventory tile until the first turn (setInventoryTile).</summary>
+    private void SetInventoryTiles()
+    {
+        foreach (var unit in _battle.Units)
+            if (unit.Faction == BattleFaction.Player) unit.InventoryTile = _battle.CraftInventoryTile;
     }
 
     /// <summary>

@@ -194,6 +194,32 @@ public sealed class BattleInventoryTests
     }
 
     [Fact]
+    public void BeforeTheFirstTurnAUnitOffThePileUsesTheCraftInventoryTileAsItsGround()
+    {
+        var (campaign, battle, soldier) = Open();
+        var pile = soldier.Position!.Value;
+        Assert.Equal((pile, pile), (battle.CraftInventoryTile, soldier.InventoryTile));
+        // A second soldier beside the pile: BattlescapeGenerator::deployXCOM gives every X-COM unit the craft inventory tile.
+        var other = new BattleUnit(901, BattleFaction.Player, BattleController.Human(0))
+        {
+            Stats = soldier.Stats, ArmorId = soldier.ArmorId, UnitType = soldier.UnitType, Position = pile with { X = pile.X + 1 }, InventoryTile = pile,
+        };
+        battle.AddUnit(other);
+        var query = campaign.GetQuery<IBattleInventoryQuery>()!;
+        Assert.Equal([GroundSupply, OtherGroundSupply], query.QueryInventory(BattleViewer.LocalPlayer, other.Id)!.Ground.Select(static item => item.ItemId));
+        Moved(campaign, new MoveInventoryItem(other.Id, GroundSupply, "STR_LEFT_HAND", 0, 0));
+        Assert.Equal(("STR_LEFT_HAND", 0, 0, (int?)other.Id, (BattlePosition?)null), Where(battle, GroundSupply));
+        // The drop lands on the pile, and the unit standing there learns the tile.
+        Moved(campaign, new MoveInventoryItem(other.Id, GroundSupply, "STR_GROUND", 0, 0));
+        Assert.Equal(("STR_GROUND", 0, 0, (int?)null, (BattlePosition?)pile), Where(battle, GroundSupply));
+        // From the first turn each unit's ground is its own tile.
+        Assert.IsType<BattleFirstTurnStarted>(Assert.Single(campaign.Execute(new StartFirstTurn()).Events));
+        Assert.Equal(((BattlePosition?)null, (BattlePosition?)null), (soldier.InventoryTile, other.InventoryTile));
+        Assert.Empty(query.QueryInventory(BattleViewer.LocalPlayer, other.Id)!.Ground);
+        Assert.Equal([GroundSupply, OtherGroundSupply], query.QueryInventory(BattleViewer.LocalPlayer, soldier.Id)!.Ground.Select(static item => item.ItemId).Order());
+    }
+
+    [Fact]
     public void AnUnconsciousUnitCarriedAsAnItemLeavesTheMapAndDroppedLiesOnTheTile()
     {
         var (campaign, battle, soldier) = Open();

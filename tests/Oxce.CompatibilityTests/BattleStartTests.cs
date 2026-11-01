@@ -672,6 +672,9 @@ public sealed class BattleStartTests
             battle.Units.Where(static unit => unit.Faction == BattleFaction.Player)
                 .Select(static unit => (unit.Id, unit.UnitType, unit.ArmorSize, unit.Position!.Value)));
         Assert.Equal(BattleState.MaximumSoldierId, battle.SelectedUnitId);
+        // deployXCOM's last pass: until the first turn every X-COM unit's tile is the craft inventory tile, the first start tile.
+        Assert.Equal(new BattlePosition(x, y, 0), battle.CraftInventoryTile);
+        Assert.All(battle.Units.Where(static unit => unit.Faction == BattleFaction.Player), unit => Assert.Equal(battle.CraftInventoryTile, unit.InventoryTile));
         // The large vehicle stands on all four of its tiles.
         foreach (var (dx, dy) in new[] { (0, 0), (1, 0), (0, 1), (1, 1) })
             Assert.Equal(BattleState.MaximumSoldierId, map.UnitAt(map.TileIndex(new(x + dx, y + dy, 0))));

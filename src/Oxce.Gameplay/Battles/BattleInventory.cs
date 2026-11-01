@@ -120,8 +120,11 @@ internal sealed partial class BattleState
     private static bool IsHeld(BattleUnit unit, BattleItem item) =>
         item.OwnerUnitId == unit.Id && item.Slot.Length != 0 && !item.IsSpecialWeapon;
 
+    /// <summary>BattleUnit::getTile: the craft inventory tile before the first turn (<see cref="BattleUnit.InventoryTile"/>), else the unit's own.</summary>
+    internal static BattlePosition? TileOf(BattleUnit unit) => unit.InventoryTile ?? unit.Position;
+
     private static bool IsOnTileOf(BattleUnit unit, BattleItem item) =>
-        item.OwnerUnitId is null && item.Tile is { } tile && tile == unit.Position && item.Slot == GroundSlot;
+        item.OwnerUnitId is null && item.Tile is { } tile && tile == TileOf(unit) && item.Slot == GroundSlot;
 
     /// <summary>
     /// The pick-up and drop of <c>Inventory::mouseClick</c>, checked: the item must be the unit's or lie on its tile and not be
@@ -170,7 +173,7 @@ internal sealed partial class BattleState
         rules.Items.TryGet(item.ItemType, out var handle) ? rules.Items[handle].Value.BattleType : 0;
 
     /// <summary>
-    /// TileEngine::itemMoveInventory: to the ground the item leaves its owner and lies on the unit's tile (an unconscious unit it
+    /// TileEngine::itemMoveInventory: to the ground the item leaves its owner and lies on the unit's tile (<see cref="TileOf"/>; an unconscious unit it
     /// is lands there); from the ground (or from nowhere) it joins the unit (and an unconscious unit it is leaves the map); between
     /// sections only the section and position change. The time units are spent first, as the reference does.
     /// </summary>
@@ -182,13 +185,14 @@ internal sealed partial class BattleState
         {
             if (to.Type == RuntimeBattleInventory.Ground)
             {
+                var tile = TileOf(unit)!.Value;
                 MoveToOwner(item, null);
-                AddToTile(item, unit.Position!.Value);
+                AddToTile(item, tile);
                 // TileEngine::itemMoveInventory: the dropper (the unit on the tile) learns the tile as a clue (updateEnemyKnowledge).
-                var dropper = Map.UnitAt(Map.TileIndex(unit.Position.Value)) is { } standing ? _units.Find(candidate => candidate.Id == standing) : null;
-                dropper?.UpdateEnemyKnowledge(Map.TileIndex(unit.Position.Value));
+                var dropper = Map.UnitAt(Map.TileIndex(tile)) is { } standing ? _units.Find(candidate => candidate.Id == standing) : null;
+                dropper?.UpdateEnemyKnowledge(Map.TileIndex(tile));
                 if (item.CorpseUnitId is { } corpse && _units.Find(candidate => candidate.Id == corpse) is { Status: BattleUnitStatus.Unconscious } lying)
-                    lying.Position = unit.Position;
+                    lying.Position = tile;
             }
             else if (item.Slot.Length == 0 || item.Slot == GroundSlot)
             {
@@ -400,6 +404,6 @@ internal sealed partial class BattleState
         var slots = rules.Battle.Equipment.Inventories.Select(static section => new BattleInventorySlotView(section.Id, section.Type,
             section.Slots.Select(static cell => new BattleInventoryCell(cell.X, cell.Y)).ToArray())).ToArray();
         return new BattleInventoryView(unitId, unit!.TimeUnits, InventoryChargesTimeUnits, slots,
-            OrderedInventoryOf(unit).Select(View).ToArray(), ItemsOnTile(unit.Position!.Value).Select(View).ToArray());
+            OrderedInventoryOf(unit).Select(View).ToArray(), ItemsOnTile(TileOf(unit)!.Value).Select(View).ToArray());
     }
 }

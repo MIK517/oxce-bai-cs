@@ -234,7 +234,9 @@ public sealed class BattleScreensTests
     [Fact]
     public void TheInventoryOpensOverTheBattlescapeAndPoppingRevealsItAgain()
     {
-        var (campaign, _, context) = Open(BattlePhase.InProgress);
+        var (campaign, battle, context) = Open(BattlePhase.InProgress);
+        // The first turn selected the vehicle on the craft inventory tile, which has no inventory: the map opens on the soldier.
+        battle.SelectedUnitId = battle.Units.First(static unit => unit.SoldierId is not null).Id;
         context.Open();
         var map = Assert.IsType<BattlescapeClient>(context.Screens.Top);
         Press(context.Screens, 'i');

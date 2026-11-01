@@ -239,8 +239,8 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
     /// <summary>
     /// BriefingState::btnOkClick and NextTurnState's turn-0 work. Everything that can refuse is checked first, so a refusal
     /// changes nothing: no live aliens (the aliens' crash screen), a wave that could deploy at the start (branch 6), a spawn
-    /// near a tile without a floor (branch 4), a script or a revive the first turn cannot do yet. Then primed spawn items
-    /// spawn, and bug hunt mode is checked.
+    /// near a tile without a floor (branch 4), a script or a revive the first turn cannot do yet, before and after the spawn
+    /// (so that the pre-battle inventory always leads to a first turn). Then primed spawn items spawn, and bug hunt mode is checked.
     /// </summary>
     private CampaignCommandResult ConfirmBriefing()
     {
@@ -257,7 +257,7 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         if (battle.SpawnNeedsGravity(rules)) return Blocked(BattleFlowReasons.SpawnNeedsGravity);
         if (battle.SpawnLacksItemLevels(rules)) return Blocked(BattleFlowReasons.SpawnContentInvalid);
         if (battle.FirstTurnRefusal(content, BattleRestoreCampaign.From(campaign)) is { } later) return Blocked(later);
-        if (noAliensYet && SpawnLeavesNoAliens(battle, content)) return Blocked(BattleFlowReasons.NoLiveAliens);
+        if (TrialSpawnRefusal(battle, content, noAliensYet) is { } spawned) return Blocked(spawned);
         var (units, items) = battle.SpawnFromPrimedItems(content, (int)campaign.Difficulty, campaign.Random);
         battle.CheckBugHuntMode(rules);
         battle.EnterInventory(rules);
@@ -265,19 +265,22 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
     }
 
     /// <summary>
-    /// Whether the primed items' spawns, run on a copy of the battle with the campaign's stream put back afterwards, leave the
-    /// aliens without a live unit (a chance that fails, or no room for the unit): the refusal then changes nothing.
+    /// The primed items' spawns, run on a copy of the battle with the campaign's stream put back afterwards, so that a refusal
+    /// changes nothing: no live alien when there was none before (a chance that fails, or no room for the unit), or a unit or
+    /// item they bring that <see cref="BattleState.FirstTurnRefusal"/> refuses (a new-turn or recovery script of its own).
     /// </summary>
-    private bool SpawnLeavesNoAliens(BattleState battle, RuntimeContent content)
+    private CampaignReason? TrialSpawnRefusal(BattleState battle, RuntimeContent content, bool noAliensYet)
     {
-        if (campaign.BattleTerrainFiles is not { } files) return false;
+        if (battle.PrimedSpawnItems(content.RuntimeRules).Count == 0 || campaign.BattleTerrainFiles is not { } files) return null;
+        var restored = BattleRestoreCampaign.From(campaign);
         var scratch = BattleState.Restore(battle.Capture(), content, Loader(files),
-            campaign.Handlers.Operation<ICampaignDeploymentHandOver>().UfoInBattlescape, BattleRestoreCampaign.From(campaign));
+            campaign.Handlers.Operation<ICampaignDeploymentHandOver>().UfoInBattlescape, restored);
         var state = campaign.Random.State;
         try
         {
             scratch.SpawnFromPrimedItems(content, (int)campaign.Difficulty, campaign.Random);
-            return scratch.Tally().LiveAliens == 0;
+            if (noAliensYet && scratch.Tally().LiveAliens == 0) return BattleFlowReasons.NoLiveAliens;
+            return scratch.FirstTurnRefusal(content, restored);
         }
         finally
         {

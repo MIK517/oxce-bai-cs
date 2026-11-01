@@ -19,7 +19,7 @@ Phase 7 branch 3 (`claude/battle-session-ui`), from `main` after PR #79 (branch 
 | S6b host loop: battle screens from the SDL host, turn-1 autosave | Done and audited (2026-10-31) |
 | S6c geoscape popups, modes and client cover onto `ScreenNavigator` | Done and audited (2026-10-31); the logistics client's internal views are not split (Phase 8, see the plan) |
 | S7 acceptance | Done and audited (2026-10-31) |
-| Branch audit | Findings fixed (2026-11-01), see "Branch audit"; an independent check of the fixes follows |
+| Branch audit | Findings fixed (2026-11-01), see "Branch audit"; the independent check's two findings are fixed too (2026-11-01) |
 
 ## S0 — Planning (2026-10-31)
 
@@ -121,11 +121,11 @@ Reference: `BriefingState` (constructor, `btnOkClick`), `NextTurnState` (turn-0 
   `RuntimeBriefing`, the deployment's `Reinforcements` waves, the bug hunt settings, the operation names, a unit's
   `energyRecovery` and an item's `spawnUnit`, `spawnItem`, their chances and `spawnUnitFaction`.
 - **Confirming.** `ConfirmBriefing` is `btnOkClick` with `NextTurnState`'s turn-0 work. Checked before anything changes: no live
-  aliens (`battle.no-live-aliens`, refused instead of the crash screen of branch 7; the reference tallies after the spawn, the
-  port before), a reinforcement wave that could deploy (`battle.reinforcements-unsupported`: difficulty range and trigger pass;
+  aliens (`battle.no-live-aliens`, refused instead of the crash screen of branch 7; counted after a trial spawn on a copy, as the
+  reference tallies after the spawn), a reinforcement wave that could deploy (`battle.reinforcements-unsupported`: difficulty range and trigger pass;
   odds and runs are not drawn), a primed spawn item within two tiles of a tile without a floor
   (`battle.spawn-gravity-unsupported`: `applyGravity` is branch 4's; narrowed in S7 to a unit that would fall or an item that would drop), a spawn without alien item levels
-  (`battle.generation-failed`), and what `startFirstTurn` would refuse. Then `spawnFromPrimedItems`: for each grenade primed
+  (`battle.generation-failed`), and what `startFirstTurn` would refuse, before the spawn and after the trial one. Then `spawnFromPrimedItems`: for each grenade primed
   with fuse 0 (enabled, on a tile, not X-COM's, spawning a unit or an item) `spawnNewUnit` (chance, owner's or the rule's
   faction, `createTempUnit`, `isPositionValidForUnit` with its surrounding tiles, direction, a tank's weapon and clip, the item
   level, `initUnit`), `spawnNewItem` and `removeItem` (whatever the chances). Then `checkBugHuntMode`.
@@ -430,9 +430,19 @@ The audit of `git diff main...HEAD` found 5 High, 9 Medium and 2 Low items. Each
 15. *`maxRuns`.* `ReinforcementsRefusal` skips a wave whose `maxRuns` is 0 (its runs so far are 0 before turn 1) when its odds are 100 or more; the reference draws the odds before it checks the runs, so a wave with lower odds still spends a draw and stays refused (`battle.reinforcements-unsupported`, branch 6). Test: `AReinforcementWaveThatCouldDeployAtTheStartIsRefusedAndOthersAreNot`.
 16. *Doc slips.* The plan's refusal list names `battle.turn-recovery-script-unsupported` and `battle.casualties-unsupported`; the broken bold and the repeated "for the three Rosigma battles" are fixed; the arrow keys are checked (`TheBattlescapeOpensOnTheSelectedUnit...` tests the camera).
 
+### Independent check (2026-11-01)
+
+A second audit of the whole branch, after the fixes above, found 1 High and 1 Medium item; both are fixed with tests that fail without the fix. The other fixes and the rest of the branch matched the reference (`prepareNewTurn(false)`, energy regeneration, recovery scripts, `selectPlayerUnit`, operation names, the spawn and tally order, the session lock order, per-player quotes, the screen stack and the turn-1 save path).
+
+- **High: the craft inventory tile before the first turn.** `deployXCOM` gives every X-COM unit the craft inventory tile as its tile (`setInventoryTile`) until `startFirstTurn`'s `resetUnitTiles`. The port used each unit's own position, so a soldier off the pile saw an empty ground in the pre-battle inventory, could not take the pile's items and dropped onto its own tile; and `startFirstTurn` scattered and reselected around the tile of whichever unit was selected. Now `BattleUnit.InventoryTile` holds that tile (`XcomDeployment.SetInventoryTiles`, the dummy included), `BattleState.TileOf` is `getTile` (the inventory's ground, pick-ups, drops with the dropper's clue and a dropped unconscious unit, and `StartFirstTurn`), and `ResetUnitTiles` clears it. It is not saved: a battle reloaded before its first turn uses each unit's own tile, as the reference's load does. Tests: `BattleInventoryTests.BeforeTheFirstTurnAUnitOffThePileUsesTheCraftInventoryTileAsItsGround`, `BattleFirstTurnTests.WithAUnitOffThePileSelectedTheFirstTurnScattersThePileAndSelectsTheUnitOnIt`, and the generator's tiles in `BattleStartTests.VehiclesComeFirst...` and `BaseDefenseDeploymentTests.WithoutASpawnPoint...`. In a battle whose vehicle deploys first, the first turn now selects that vehicle (it stands on the craft inventory tile, "the unit closest to the ramp"), not the soldier the inventory showed; `BattleViewTests.ASelectionNeedsTheBriefingToBeOverAndXcomsTurn` checks this, and `BattleScreensTests.TheInventoryOpensOverTheBattlescape...` selects the soldier before opening the map.
+- **Medium: a refusal after the briefing.** `ConfirmBriefing` checked `FirstTurnRefusal` before the spawn only, so a unit or item a primed item brings with a new-turn script of its own passed the briefing, and `StartFirstTurn` then refused it for good, leaving the battle in the pre-battle inventory. The trial spawn on a copy (`TrialSpawnRefusal`, which replaced `SpawnLeavesNoAliens`) now runs whenever there are primed spawn items and checks both no live aliens and `FirstTurnRefusal` after the spawn. Test: `BattleFirstTurnTests.ASpawnedUnitOrItemWithANewTurnScriptRefusesTheBriefingsConfirmationAndChangesNothing`.
+- **Low, left as is.** `battle.no-live-soldiers` could be refused at the briefing too; it stays at `StartFirstTurn` and stays branch 7's.
+
 ## Next
 
-Branch 3 is complete once an independent check of the audit fixes passes. Branch 4 (pathfinding, walking, gravity, field of view) is next. Notes for it:
+Branch 3 is complete: the independent check of the audit fixes found two more items, both fixed. Branch 4 (pathfinding, walking, gravity, field of view) is next. Notes for it:
+
+- **A unit's tile before the first turn.** Until `startFirstTurn`, an X-COM unit's tile is the craft inventory tile (`BattleUnit.InventoryTile`, read through `BattleState.TileOf`); its `Position` is where it really stands. Code that ports a `getTile()` that can run before the first turn should use `TileOf`.
 
 - **Refusals branch 4 retires or inherits.** `battle.spawn-gravity-unsupported`: retire it where `applyGravity` lands (`BattleState.SpawnNeedsGravity` and `FallsAt` are the checks it replaces; the spawn then moves the unit instead of refusing). The battlescape buttons for walking, kneel, turning and unit up and down refuse with branch 4 as owner (`BattlescapeClient.LaterButtons` and its `*Code` constants): replace each with a command when it lands. A click on a tile is refused by walking's owner.
 - **Selection and the first turn.** `startFirstTurn` selects the unit on the inventory tile and the screen takes it (`BattleViewModel.FollowSelection`). Any new rule that moves the rules' selection (walking onto a tile, a unit falling) must reach clients through a command's event, as `UnitSelected`, `UnitSkipped` and `BattleFirstTurnStarted` do.

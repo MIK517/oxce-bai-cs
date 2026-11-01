@@ -75,7 +75,8 @@ public sealed class BattleViewTests
         Assert.Null(battle.UndoUnitId);
         Assert.Equal([BattleActionKind.SelectNextInventoryUnit, BattleActionKind.SelectPreviousInventoryUnit], View(campaign).QueryLegalActions(BattleViewer.LocalPlayer, soldier)!.Actions);
         Assert.IsType<BattleFirstTurnStarted>(Assert.Single(campaign.Execute(new StartFirstTurn()).Events));
-        Assert.Equal(soldier, battle.SelectedUnitId);
+        // startFirstTurn selects the unit on the craft inventory tile: the large vehicle, placed first.
+        Assert.Equal((battle.CraftInventoryTile, FirstVehicle), (Unit(battle, FirstVehicle).Position, battle.SelectedUnitId));
         // The enemy's turn closes it again.
         (campaign, battle, soldier) = Playing();
         battle.Side = BattleFaction.Hostile;
