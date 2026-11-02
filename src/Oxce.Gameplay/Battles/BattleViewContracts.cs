@@ -88,7 +88,7 @@ public sealed record BattleLevelView(int Level, int Width, int Length, int Level
 
 /// <summary>
 /// <c>BattlescapeState::updateSoldierInfo</c>: a viewer's own unit with its bars, hands, the hostile units it sees and its wounded (and burning) units. The cap on indicators (<c>VISIBLE_MAX</c>) is the screen's.
-/// <see cref="VisibleHostileUnitIds"/> lists live hostile units the viewer's side has spotted (the per-unit field of view is branch 4's).
+/// <see cref="VisibleUnitIds"/> lists the units the unit itself sees, then the live hostile units the viewer's side has spotted.
 /// </summary>
 public sealed record BattleUnitInfo(
     int UnitId,
@@ -107,7 +107,7 @@ public sealed record BattleUnitInfo(
     bool Kneeled,
     BattleTileItemView? RightHand,
     BattleTileItemView? LeftHand,
-    IReadOnlyList<int> VisibleHostileUnitIds,
+    IReadOnlyList<int> VisibleUnitIds,
     IReadOnlyList<int> WoundedUnitIds,
     IReadOnlyList<int> BurningUnitIds);
 

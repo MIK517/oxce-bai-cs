@@ -572,7 +572,7 @@ public sealed class BattleFirstTurnTests
         var template = Soldier(battle);
         BattleUnit Extra(int id, BattleUnitStatus status, BattleFaction faction = BattleFaction.Player, BattleFaction original = BattleFaction.Player)
         {
-            var unit = new BattleUnit(id, faction, BattleController.Human(0)) { Stats = template.Stats, ArmorId = template.ArmorId, UnitType = template.UnitType };
+            var unit = new BattleUnit(id, faction, BattleController.Human(0)) { Stats = template.Stats, ArmorId = template.ArmorId, UnitType = template.UnitType, SoldierId = template.SoldierId };
             unit.OriginalFaction = original;
             unit.Status = status;
             unit.TimeUnits = 5;
@@ -603,7 +603,7 @@ public sealed class BattleFirstTurnTests
         var battle = Battle(campaign);
         var first = Soldier(battle);
         var template = first;
-        var second = new BattleUnit(901, BattleFaction.Player, BattleController.Human(0)) { Stats = template.Stats, ArmorId = template.ArmorId, UnitType = template.UnitType };
+        var second = new BattleUnit(901, BattleFaction.Player, BattleController.Human(0)) { Stats = template.Stats, ArmorId = template.ArmorId, UnitType = template.UnitType, SoldierId = template.SoldierId };
         battle.AddUnit(second);
         // Two units claim one tile; resetUnitTiles gives it to the later one, and the selection follows.
         second.Position = first.Position;
@@ -655,6 +655,7 @@ public sealed class BattleFirstTurnTests
             Stats = first.Stats,
             ArmorId = first.ArmorId,
             UnitType = first.UnitType,
+            SoldierId = first.SoldierId,
             Position = pile with { X = pile.X + 1 },
             InventoryTile = pile,
         };

@@ -118,6 +118,18 @@ public sealed class RuntimeBattleEquipment
             TurnCost = rule.Value.Integers["turnCost"],
             SpecialAbility = rule.Value.Integers["specab"],
             AlwaysVisible = rule.Value.Booleans["alwaysVisible"],
+            Loftemps = List(rule.Value.Loftemps),
+            VisibilityAtDark = rule.Value.Integers["visibilityAtDark"],
+            VisibilityAtDay = rule.Value.Integers["visibilityAtDay"],
+            CamouflageAtDark = rule.Value.Integers["camouflageAtDark"],
+            CamouflageAtDay = rule.Value.Integers["camouflageAtDay"],
+            AntiCamouflageAtDark = rule.Value.Integers["antiCamouflageAtDark"],
+            AntiCamouflageAtDay = rule.Value.Integers["antiCamouflageAtDay"],
+            PsiVision = rule.Value.Integers["psiVision"],
+            PsiCamouflage = rule.Value.Integers["psiCamouflage"],
+            VisibilityThroughSmoke = rule.Value.Integers["heatVision"],
+            VisibilityThroughFire = rule.Value.Integers["visibilityThroughFire"],
+            FearImmune = rule.Value.NullableBooleans["fearImmune"],
             TurnBeforeFirstStep = rule.Value.Booleans["turnBeforeFirstStep"],
             AllowsMoving = rule.Value.NullableBooleans["allowsMoving"] ?? true,
             AllowsRunning = rule.Value.NullableBooleans["allowsRunning"],
@@ -150,6 +162,8 @@ public sealed class RuntimeBattleEquipment
             AvoidsFire = rule.Value.AvoidsFire,
             IsBrutal = rule.Value.Booleans["isBrutal"],
             IsNotBrutal = rule.Value.Booleans["isNotBrutal"],
+            IgnoredByAi = rule.Value.Booleans["ignoredByAI"],
+            SpotterDuration = rule.Value.Integers["spotter"] == -1 ? rule.Value.Integers["intelligence"] : rule.Value.Integers["spotter"],
             Heights = new RuntimeUnitHeights(rule.Value.Integers["standHeight"], rule.Value.Integers["kneelHeight"], rule.Value.Integers["floatHeight"]),
         },
             StringComparer.Ordinal);
@@ -360,6 +374,26 @@ public sealed record RuntimeBattleArmor(
     /// <summary>Armor::isAlwaysVisible (<c>alwaysVisible</c>): units in it are visible to the player whether spotted or not.</summary>
     public bool AlwaysVisible { get; init; }
 
+    /// <summary>Armor::getLoftempsSet (<c>loftempsSet</c>): the line of fire template of each tile the unit covers; the first is also its radius.</summary>
+    public IReadOnlyList<int> Loftemps { get; init; } = [0];
+
+    /// <summary>Armor::getVisibilityAtDark and getVisibilityAtDay (0 for the unit's own default), and the camouflage and anti-camouflage of each.</summary>
+    public int VisibilityAtDark { get; init; }
+    public int VisibilityAtDay { get; init; }
+    public int CamouflageAtDark { get; init; }
+    public int CamouflageAtDay { get; init; }
+    public int AntiCamouflageAtDark { get; init; }
+    public int AntiCamouflageAtDay { get; init; }
+
+    /// <summary>Armor::getPsiVision, getPsiCamouflage, getVisibilityThroughSmoke (<c>heatVision</c>) and getVisibilityThroughFire.</summary>
+    public int PsiVision { get; init; }
+    public int PsiCamouflage { get; init; }
+    public int VisibilityThroughSmoke { get; init; }
+    public int VisibilityThroughFire { get; init; } = 100;
+
+    /// <summary>Armor::getFearImmune's nullable <c>fearImmune</c>; null takes the caller's default (false).</summary>
+    public bool? FearImmune { get; init; }
+
     /// <summary>Armor::getSpecialAbility (<c>specab</c>), which a soldier's unit takes as its own (SPECAB_BURNFLOOR is 2).</summary>
     public int SpecialAbility { get; init; }
 
@@ -438,6 +472,10 @@ public sealed record RuntimeBattleUnitRule(
     /// <summary>Unit's <c>isBrutal</c> and <c>isNotBrutal</c>, which override the options' choice of brutal AI.</summary>
     public bool IsBrutal { get; init; }
     public bool IsNotBrutal { get; init; }
+
+    /// <summary>Unit's <c>ignoredByAI</c> (BattleUnit::isIgnoredByAI) and Unit::getSpotterDuration (<c>spotter</c>, or <c>intelligence</c> for -1).</summary>
+    public bool IgnoredByAi { get; init; }
+    public int SpotterDuration { get; init; }
 
     /// <summary>Unit::avoidsFire.</summary>
     public bool AvoidsFireOrDefault => AvoidsFire ?? SpecialAbility < 2;

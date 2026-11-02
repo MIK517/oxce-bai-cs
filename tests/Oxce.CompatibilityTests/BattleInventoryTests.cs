@@ -22,12 +22,14 @@ public sealed class BattleInventoryTests
     private const int OtherGroundSupply = 6;
 
     /// <summary>Costs between the sections (the base rules define only the costs out of the belt and the back pack).</summary>
-    private static readonly string CostRules = Rules
+    internal static string WithCosts(string rules) => rules
         .Replace("- id: STR_GROUND\n    type: 2", "- id: STR_GROUND\n    type: 2\n    costs: {STR_BELT: 2, STR_BACK_PACK: 3, STR_RIGHT_HAND: 4, STR_LEFT_HAND: 4}", StringComparison.Ordinal)
         .Replace("- id: STR_RIGHT_HAND\n    type: 1", "- id: STR_RIGHT_HAND\n    type: 1\n    costs: {STR_BELT: 3, STR_BACK_PACK: 6, STR_GROUND: 5, STR_LEFT_HAND: 1}", StringComparison.Ordinal)
         .Replace("- id: STR_LEFT_HAND\n    type: 1", "- id: STR_LEFT_HAND\n    type: 1\n    costs: {STR_BELT: 3, STR_BACK_PACK: 2, STR_GROUND: 5, STR_RIGHT_HAND: 1}", StringComparison.Ordinal)
         .Replace("costs: {STR_RIGHT_HAND: 4, STR_LEFT_HAND: 4}", "costs: {STR_RIGHT_HAND: 4, STR_LEFT_HAND: 4, STR_GROUND: 2, STR_BACK_PACK: 5}", StringComparison.Ordinal)
         .Replace("costs: {STR_RIGHT_HAND: 8, STR_LEFT_HAND: 2}", "costs: {STR_RIGHT_HAND: 8, STR_LEFT_HAND: 2, STR_GROUND: 3, STR_BELT: 5}", StringComparison.Ordinal);
+
+    private static readonly string CostRules = WithCosts(Rules);
 
     static BattleInventoryTests() => Assert.NotEqual(Rules, CostRules);
 
@@ -205,6 +207,7 @@ public sealed class BattleInventoryTests
             Stats = soldier.Stats,
             ArmorId = soldier.ArmorId,
             UnitType = soldier.UnitType,
+            SoldierId = soldier.SoldierId,
             Position = pile with { X = pile.X + 1 },
             InventoryTile = pile,
         };

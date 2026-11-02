@@ -231,8 +231,11 @@ internal sealed partial class BattleState
         var unit = UnitById(unitId);
         if (unit is null || unit.Faction != viewer.Faction || unit.IsOut) return null;
         BattleTileItemView? Hand(bool right) => HandItem(rules, unit, right) is { } held ? new BattleTileItemView(held.Id, held.ItemType) : null;
-        var visible = _units.Where(other => other.OriginalFaction == BattleFaction.Hostile && !other.IsOut && other.IsSpottedBy(viewer.Faction))
-            .Select(static other => other.Id).ToArray();
+        // updateSoldierInfo: the units this unit sees (its visible-unit list, in order), then the hostile units any unit of its side sees.
+        var direct = unit.VisibleUnits;
+        var visible = direct.Concat(_units.Where(other => other.OriginalFaction == BattleFaction.Hostile && !other.IsOut &&
+                (viewer.Faction == BattleFaction.Player ? other.IsVisibleToPlayer(rules) : other.IsSpottedBy(viewer.Faction)) && !direct.Contains(other.Id))
+            .Select(static other => other.Id)).ToArray();
         // updateSoldierInfo's wounded list: units under the player's control (the unconscious too) with fatal wounds; burning ones are the
         // client's option (oxceShowBurningAsWounded).
         var indicated = _units.Where(other => other.Faction == viewer.Faction && other.Status is not (BattleUnitStatus.Dead or BattleUnitStatus.IgnoreMe) && !other.DisableIndicators).ToArray();
@@ -244,8 +247,9 @@ internal sealed partial class BattleState
     }
 
     /// <summary>
-    /// One level as the viewer sees it. Tile parts show where the viewer's side has discovered them (X-COM's flags;
-    /// another side sees the tiles it has explored); items and smoke only on a tile whose floor shows; a unit only when the viewer sees it.
+    /// One level as the viewer sees it. Tile parts show where the viewer's side has discovered them (the reference's flags for X-COM, the
+    /// port's for the other sides, which also see the tiles they have explored); items and smoke only on a tile whose floor shows; a unit
+    /// only when the viewer sees it.
     /// </summary>
     internal BattleLevelView? LevelView(BattleViewer viewer, int level)
     {
@@ -269,11 +273,11 @@ internal sealed partial class BattleState
                 var parts = new List<BattleTilePartView>();
                 foreach (var part in Enum.GetValues<BattleTilePart>())
                 {
-                    if (!(explored || viewer.Faction == BattleFaction.Player && Map.IsDiscovered(tile, part))) continue;
+                    if (!(explored || Map.IsDiscovered(tile, part, viewer.Faction))) continue;
                     var (id, set) = Map.Part(tile, part);
                     if (id >= 0 && set >= 0) parts.Add(new BattleTilePartView(part, Map.DataSets[set].Name, id));
                 }
-                var floorShown = explored || viewer.Faction == BattleFaction.Player && Map.IsDiscovered(tile, BattleTilePart.Floor);
+                var floorShown = explored || Map.IsDiscovered(tile, BattleTilePart.Floor, viewer.Faction);
                 var items = floorShown && itemsByTile.TryGetValue(position, out var onTile) ? onTile : [];
                 int? standing = Map.UnitAt(tile) is { } unitId && UnitById(unitId) is { } unit && !unit.IsOut && Sees(viewer.Faction, unit) ? unitId : null;
                 var smoke = floorShown ? Map.Smoke(tile) : 0;

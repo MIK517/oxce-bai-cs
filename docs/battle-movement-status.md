@@ -14,7 +14,7 @@ Phase 7 branch 4 (`claude/battle-movement`), from `main` after PR #80 (branch 3 
 | S1 movement groundwork: constants, action costs, reserved TUs, unit primitives | Done, awaiting audit (2026-11-01) |
 | S2 pathfinding | Done, awaiting audit (2026-11-01) |
 | S3 lighting | Done, awaiting audit (2026-11-01) |
-| S4 field of view and per-faction visibility | Planned |
+| S4 field of view and per-faction visibility | Done, awaiting audit (2026-11-01) |
 | S5 turning and kneeling | Planned |
 | S6 doors | Planned |
 | S7 gravity and falling | Planned |
@@ -220,28 +220,132 @@ Reference: `TileEngine.cpp` (`calculateLighting`, `calculateSunShading`, `calcul
   lighting per layer, windows, smoke and tall objects (hand-computed values); partial recomputes equal to a full one; a generated battle's lighting
   equal to its reload's; the first turn's item lighting. Values were worked out by hand from the reference's arithmetic, not run against it.
 
+## S4 — Field of view and per-faction visibility (2026-11-01)
+
+Reference: `TileEngine.cpp` (`calculateLineTile`, `calculateTilesInFOV`, `calculateUnitsInFOV`, both `calculateFOV` forms, `recalculateFOV`,
+`setupEventVisibilitySector`, `inEventVisibilitySector`, `visible`, `canTargetUnit`, `getSightOriginVoxel`, `getOriginVoxel`,
+`getVisibleDistanceMaxHelper`, `getTrajectoryDataHelper`, `trajectoryStepSize`, `calculateLineVoxel`, `voxelCheck`, `getDirectionTo`,
+`getSpottingUnits` for its origin and sight test), `BattleUnit.cpp` (`getRadiusVoxels`, `getLoftemps`, the visible-unit, visible-tile and
+line-of-fire lists, `checkViewSector`, `getMaxViewDistance*`, `setTurnsSinceSeen`, `setTileLastSpotted`, the `turnsSinceSpotted` and sniper
+setters, `getSpotterDuration`, the sight values the constructors set), `Tile.cpp` (`getOverlappingUnit`, `setLastExplored`,
+`setDiscovered`, `setVisible`), `Mod.cpp` (`maxViewDistance`, `maxDarknessToSeeUnits`, the voxel data), `Armor.cpp` (the vision fields),
+`InventoryState.cpp` (the destructor), `SavedBattleGame.cpp` (`loadMapResources`, `resetUnitTiles`, `isBeforeGame`).
+
+- **Line of fire templates.** `BattleVoxelData` (`GEODATA/LOFTEMPS.DAT`, 16 rows of 16 bits per template) is read through
+  `BattleTerrainLoader.TryLoadVoxelData` and kept on `BattleState.VoxelData`. A battle needs the file: generation fails
+  (`battle.generation-failed`) and a load is a corrupted save without it, and so when a map object (twelve layers) or a unit's armor
+  names a template past its end (`BattleState.VoxelDataFault`, ADR 0040; `battle.line-of-fire-data-invalid` stops the first turn for a unit
+  that arrives later). The test terrain files got `BattleTestTerrain.Loftemps()` (templates 0 empty, 1 solid, 2 empty, 3 an 8x8 unit pillar of
+  radius 3, 4 a slit along the middle rows).
+- **Rules and unit sight.** `RuntimeBattleArmor` projects `Loftemps`, the visibility, camouflage and anti-camouflage at dark and by day,
+  `PsiVision`, `PsiCamouflage`, `VisibilityThroughSmoke` (`heatVision`), `VisibilityThroughFire` and `FearImmune` (nullable);
+  `RuntimeBattleUnitRule` projects `IgnoredByAi` and `SpotterDuration` (`spotter`, or `intelligence` for -1); `RuntimeSoldierBonusRule`
+  the five vision values a bonus adds. `BattleUnit.Vision` (`BattleUnitVision`: the dark and day distances, psi vision, the smoke and fire
+  visibility) is set where the reference's constructors set them: a unit rule's unit sees `maxViewDistance` in the dark if hostile, else 9, by
+  the armor's value when it has one; a soldier's is the armor's plus its bonuses', clamped between 1 and the maximum. Runtime, never saved.
+  `BattleUnit` also has `HeightOf`, `FloatHeightOf`, `LoftempsOf`, `RadiusVoxels` (the first template, at most 5; 15 for a big unit),
+  `CheckViewSector` (the body's quadrant from any tile of the unit) and `SpotterDuration(rules)`.
+- **The sight engine.** `BattleSight` (`BattleState.Sight()`, one instance per operation, since it holds the event sector) is the port of
+  the tile engine's sight half: `VoxelCheck` and `CalculateLineVoxel` (the trajectory keeps the impact voxel twice when it stores the path,
+  as the reference does), `CalculateLineTile`, `CanTargetUnit` (the player's fine slices for a human-controlled unit, the five columns at
+  four heights for the others; single-precision arithmetic as the reference), `SightOriginVoxel`, `SnapShotOriginVoxel` (`getOriginVoxel` for
+  `BA_SNAPSHOT` at the default options, which S5's `getSpottingUnits` builds on), `Visible` (friends, the global distance, psi vision with
+  its camouflage and fear immunity, the darkness, camouflage and anti-camouflage distance, smoke and fire density along the line with
+  `visibilityThroughSmoke` and `-Fire`, and the quality formula in integers), `CalculateTilesInFov`, `CalculateUnitsInFov`,
+  `CalculateFov(unit)`, `CalculateFov(position, radius, updateTiles, appendToTileVisibility)` and `RecalculateFov`, with the event sector
+  (`setupEventVisibilitySector` in `MathF`, ADR 0040). `BattleState.IsBeforeGame` is `isBeforeGame`: true from generation, false after the
+  first turn's `resetUnitTiles` and after a load; while it is set no unit stops a voxel line.
+- **Spotting.** `calculateUnitsInFOV`'s rules are kept, quirks included: the player's sight marks every unit it checks visible (friends
+  too); only a hostile/non-hostile pair is listed (`bu` hostile and the seer not, or `bu` not hostile and the seer hostile and not yet
+  listing it), so the neutral faction never lists the player's units and the player never lists neutrals; a listed unit gets the seer's
+  `tileLastSpotted` (and the blind-shot one), `turnsSinceSeen` 0, the hostile entry of `turnsSinceSpotted` 0 and the hostile entry of the
+  sniper turns (the seer's spotter duration), and, for any other faction, that faction's entries of both arrays. The port's per-faction
+  spotting flags (D2): a listed unit is also marked spotted by the seer's faction when that is hostile or neutral. A big unit is checked
+  at its first tile in the view sector and later tiles inherit a negative result. Visible units leave the list by the last one taking
+  their place (`removeFromVisibleUnits`); `UnitsSpottedThisTurn` is cleared in `PrepareNewTurn` as `BattleUnit::prepareNewTurn` does.
+  `checkForReactivation` (the AI's state) is branch 6's.
+- **Tiles and discovery.** A unit's visible tiles are kept as the reference's list and set (`VisibleTiles`, `HasVisibleTile`), with the
+  line-of-fire tiles of the units it lists. A player's unit adds one to a tile's visibility count in `addToVisibleTiles` and another in
+  `calculateTilesInFOV`, and `clearVisibleTiles` takes one away for any faction's unit: the reference's counts drift by one for each full
+  recalculation and by one for each tile a hostile unit clears, and the port keeps that (only "is any" is read). The seeing faction
+  explores a tile (`Tile::setLastExplored`) only on its own turn. Discovery marks the tile's floor (which discovers its walls) and the west
+  wall of the tile east and the north wall of the tile south of each visible tile. The player's flags are the reference's; the hostile and
+  neutral factions have their own (`BattleMap.IsDiscovered(tile, part, faction)`, `SetDiscovered`, `DiscoveredFlags`), set the same way
+  for their units' sight and saved in `oxcePortBattle`'s `discovery` (`BattleSnapshot.FactionDiscovery`; ADR 0039).
+- **When it runs.** `StartFirstTurn` recalculates every unit's sight after the item lighting (`InventoryState`'s destructor); `Restore`
+  does after the ambient lighting (`loadMapResources`), keeping the saved spotting and discovery and only adding to them; and
+  `TogglePersonalLighting` does after the unit lighting. Generation does not (the reference's does not), and neither does spawning (`SpawnNewUnit` and `SpawnNewItem`
+  skip the reference's `calculateFOV` and glow update): the first turn's full recalculation covers a spawn at the first turn, and later
+  spawns are the slices that spawn (branch 5 onwards). A move in the inventory of a running battle recomputes the items' light and everyone's
+  sight (`InventoryState`'s destructor; the port has no close command, so each move does it). A restore of a save from before the first turn
+  (Briefing phase) computes no sight and keeps `IsBeforeGame`, so the first turn computes it as for a never-saved battle; a restore of a
+  battle with a `visibilityUnit` script keeps the saved spotting and discovery and computes none. `updateSoldierInfo` also runs
+  `calculateFOV(selectedUnit)` (battlescape init, selection, after actions); the port's selection commands and `QueryUnitInfo` do not, and S5
+  onwards must run it where the reference does. The walk, turn, door and fall slices call `CalculateFov` themselves.
+- **Queries.** `LevelView` shows a viewer the parts its faction has discovered (plus the tiles a non-player faction explored on its turn,
+  as before); `BattleUnitInfo.VisibleUnitIds` (was `VisibleHostileUnitIds`) is `updateSoldierInfo`'s list: the units the selected unit
+  sees in list order (only a hostile unit's list holds neutrals), then the hostile units its side has spotted. `BattleOverview` still shows a unit to a faction
+  that has spotted it.
+- **Refused.** `battle.visibility-script-unsupported` (branch 8): an armor in the battle with a `visibilityUnit` script, or a global event
+  of that name, refuses the briefing's confirmation, the first turn and, for a battle in progress, every battle command (the gate in
+  `CampaignBattles`). A load accepts such a battle (its recalculation runs without the script). The private corpus's Rosigma mod binds
+  one, so its battles stop at the briefing until branch 8. `battle.line-of-fire-data-invalid` as above.
+- **Not ported.** The turret direction (`strafe`), `battleRealisticAccuracy`, `oxceEnableOffCentreShooting` and `aiCheatMode` are at their
+  defaults (off), so `getSightOriginVoxel`'s off-centre form, `getOriginVoxel`'s realistic form and the cheating view sector are absent;
+  `canTargetUnit`'s `rememberObstacles` and `calculateLineTile`'s `minLightBlock` belong to their callers (branch 5); the `visibilityUnit`
+  script's distance in tiles (`visibleDistanceUnitMaxTile`) is not computed.
+- **Tests.** `BattleSightTests` (45) and `BattleSightCoverageTests` (13: other levels, a candidate unit, grav lift and open door voxels, tall and big origins, the darkness threshold at 9, soldier bonuses, the inventory move, a briefing save, the visibility script's gate and load, the line of fire data and discovery refusals), compatibility project on a cleared 30x30x2 arena, numbers worked out from the reference's arithmetic:
+  a seen pair and every spotting field (and sniper turns, intelligence), a wall hiding a unit and the partial update removing it, a low wall
+  seen over, a slit that hides neither form of `canTargetUnit`, 20 tiles by day and 21 not, 9 and 10 tiles in the dark, camouflage, anti-camouflage
+  and relative camouflage, fire cancelling both, a lit tile ending darkness, the personal light toggled, smoke (two, four, and the near-unit half),
+  heat vision and fire density, psi vision with camouflage and fear immunity, each direction's quadrant, a big unit, neutral pairs, the
+  spotted list and the visible list's swap removal, discovery and its east/south walls, the visibility counts' drift, the wall's tile revealed,
+  the other factions' discovery and level views, an event sector that appends what a change reveals as a full recheck does, an event behind
+  the unit, an out unit, `voxelCheck`'s every result, a line's trajectory and step sizes, the pre-game exclusion, the sight and snap-shot origins,
+  a loaded battle's sight equal to the never-saved one, the hostile discovery saved, written, read and restored, and the refusals.
+  The branch 2 and 3 reload comparisons now compare through `BattleSaveUnitTests.SightFree`, which drops the state a load's field of view
+  recomputes (the player's discovery, the other factions' discovery, each unit's spotting); the tests that put extra units on the map
+  give them the soldier's `SoldierId` (their heights are now read).
+
 ## Next
 
-S4 — field of view and per-faction visibility (plan row S4). Notes for its worker:
+S5 — turning and kneeling (plan row S5). Notes for its worker:
 
-- **What S3 left for it.** `BattleBlockage` (`HorizontalBlockage`, `VerticalBlockage`, `Blockage`, `BattleBlockType`), the cache (`BattleMap.LightCache`:
-  `Blocks(direction, z)`, `IsBigWall`, `HasSmoke`, `HasFire`, `Height`; refreshed by `CalculateLighting(..., terrainChanged: true)`), `BattleLines.Walk`
-  (`calculateLineHelper`), `BattleMapSubset` and `TileShade` / `BattleMap.Shade` (darkness limits read `getShade`). `BattleState.TogglePersonalLighting`
-  must also call S4's `recalculateFOV`. Sight, `calculateTilesInFOV` and `calculateLineTile` read the same cache (`TileEngine.cpp:4780`).
-- **Hooks to extend.** Generation, `Restore` and `StartFirstTurn` call `CalculateLighting`; S4 adds the field of view to the same three places (the reference
-  runs `recalculateFOV` after `loadMapResources`' lighting and in the inventory's destructor after the items lighting).
-- Carried from S2: `BattleMap.Visibility` and `BattleUnit.UnitsSpottedThisTurn` are runtime state S4 fills.
-- **Test helpers.** `BattleLightingTests.Flat` (private) builds a cleared 30x30x2 arena with the soldier at (25, 25, 0), personal light off, a chosen global shade
-  (the deployment's `shade` is edited into `UFO_SUITED`; `GlobalShade` is init-only) and TESTSET records appended after the generator's three (light
-  sources at offset 58, vision block 31, UFO door 30, big wall 33, high explosive block 43, terrain level 48); copy that approach for sight tests.
-- **Gotchas.** A post-edit hook reformats edited C# files, so read a file again before a second edit. A backslash-n written through a script may reach a C# file
-  as a real newline: check string literals that carry one. A unit that still has its `InventoryTile` has no tile of its own.
-- Later slices (for planning ahead): S4 can read voxel data through `LoftempsCodec` (`src/Oxce.Formats/Terrain`); the battle does not load it
-  yet. S9 reads the smoke threshold from `RuntimeCampaignSettings`. S8's walk calls `BattlePathfinder.Calculate` and `GetTuCost` (a walk prices each
-  step from the unit's state at that step), recomputes lighting with `CalculateLighting(Items or Units, position, 2)` after each step as
-  `UnitWalkBState.cpp:224` does, and relies on S4 to fill `UnitsSpottedThisTurn`.
-- Gotchas carried from branch 3 (see `docs/battle-session-ui-status.md` "## Next"): write test files with LF; add C# string literals with
-  `\n` through the Edit tool; the test runner is Microsoft Testing Platform (`dotnet test --project <proj> --filter-class <full name>`);
-  battle test helpers (`BattleStartTests.Requested`, `Started`, `Battle`, `BattleSaveRootTests.Generated`, `BattleSaveUnitTests.Loaded`) are
-  internal for reuse; `BattleCampaignSaveTests.AtFirstTurn` is private; a campaign snapshot with a battle restores only with terrain files; raw
-  string literals in test rules have their indentation stripped (list entries start at two spaces).
+- **What S4 left for it.** `BattleState.Sight()` (a `BattleSight` per operation): `CalculateFov(unit)` is the per-eighth update of
+  `UnitTurnBState::think` and returns whether new units were spotted (compare `UnitsSpottedThisTurn.Count` before and after, as the
+  turn does); `CalculateFov(position, 1, updateTiles: false)` is the update `BattlescapeGame::kneel` and the AI's turn-then-kneel run for
+  everyone through the unit's tile (`CalculateUnitsInFov` with the event sector; `appendToTileVisibility` is for terrain changes).
+  `BattlescapeGame::kneel` relies on the full `CalculateFov(unit)` of the selected unit that `updateSoldierInfo` runs next (its comment: "This
+  also updates the tile FOV of the unit"): it refreshes the kneeler's tiles and rebuilds its visible units in unit order, so S5's kneel must
+  run it.
+  `Visible`, `CanTargetUnit` and `SnapShotOriginVoxel` (the false action of `getSpottingUnits`, which builds a `BA_SNAPSHOT` origin from
+  the reacting unit towards the mover's tile) are what `getSpottingUnits`' spotting needs: for each opposing unit that passes the state
+  filters (nobody reacts on the neutral side's turn; not out, not over its out threshold, `ReactionScore` at least the mover's, not of the
+  battle's current side (`getSide()`), not a civilian unless the mover is a hostile that is not `IgnoredByAi`, within `maxViewDistance`), `CheckViewSector(mover.Position)` (or the AI's `WasHitBy`, a player
+  unit's hit state, `MeleeAttackedBy` under `extendedMeleeReactions` 2), then `CanTargetUnit(origin, tile, ..., excludeUnit: reactor)`
+  and `Visible(reactor, tile)`; a player reactor marks the mover spotted by the player, and every spotter adds the mover to its visible
+  units (`AddToVisibleUnits`, and a hostile or neutral spotter marks the mover spotted by its faction, plan D2; this is the part ported with the commands even for an unarmed spotter; the reaction itself is refused).
+  `BattleUnit.UnitsSpottedThisTurn`, `VisibleUnits`, `VisibleTiles`, the spotting fields and per-faction discovery are filled; the walk
+  (S8) clears the other factions' spotting flags at each step's end before its update (plan D2), which S4 does not do.
+- **Not done by S4 and needed by later slices.** The AI's `checkForReactivation` (branch 6); `Tile::setObstacle` and `rememberObstacles`
+  (branch 5's line-of-fire indicator); the `battleRealisticAccuracy`, off-centre and turret branches (options at their defaults).
+- **Test helpers.** `BattleSightTests.Flat` (private) builds the cleared 30x30x2 arena with the soldier at (10, 10) facing east and the
+  alien at a chosen distance facing west, the pillar template and height 22 for both, a chosen global shade and armor extras, then
+  `See()` (relight, forget the first turn's spotting and discovery, recalculate). TESTSET records 3 to 6 (floor, wall, low wall, post) are
+  its terrain; `BattleTestTerrain.Loftemps()` is the shared LOFTEMPS file. A wall object stops a line entering its tile unless that tile is
+  the target (the tile is revealed), and blocks leaving it. `Arena.Forget` zeroes the visibility counts: hostile units' clears take counts
+  away without adding any.
+- **Gotchas.** A post-edit hook reformats edited C# files, so read a file again before a second edit. A backslash-n written through a
+  script or heredoc reaches a C# file as a real newline: add string literals that carry one with the Edit or Write tool. A unit that still
+  has its `InventoryTile` has no tile of its own and `StartFirstTurn` is the first sight; tests that add `BattleUnit`s by hand must give
+  them a `SoldierId` or a unit rule, since heights are read. The reload comparisons go through `BattleSaveUnitTests.SightFree`.
+- Later slices (for planning ahead): S8's walk calls `BattlePathfinder.Calculate` and `GetTuCost`, recomputes lighting with
+  `CalculateLighting(Items or Units, position, 2)` after each step as `UnitWalkBState.cpp:224` does, then `CalculateFov(unit)` and
+  compares `UnitsSpottedThisTurn` for its stop on newly spotted units. S9 reads the smoke threshold from `RuntimeCampaignSettings`, and its
+  terrain changes call `RefreshBlockageCache` (via `CalculateLighting(..., terrainChanged: true)`) and then
+  `CalculateFov(position, radius, true, appendToTileVisibility: true)`.
+- Gotchas carried from branch 3 (see `docs/battle-session-ui-status.md` "## Next"): write test files with LF; the test runner is Microsoft
+  Testing Platform (`dotnet test --project <proj> --filter-class <full name>`); battle test helpers (`BattleStartTests.Requested`,
+  `Started`, `Battle`, `BattleSaveRootTests.Generated`, `BattleSaveUnitTests.Loaded`) are internal for reuse;
+  `BattleCampaignSaveTests.AtFirstTurn` is private; a campaign snapshot with a battle restores only with terrain files; raw string
+  literals in test rules have their indentation stripped (list entries start at two spaces).

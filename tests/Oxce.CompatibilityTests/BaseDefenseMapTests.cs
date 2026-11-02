@@ -137,6 +137,7 @@ public sealed class BaseDefenseMapTests
     {
         var files = new Dictionary<string, byte[]>
         {
+            ["GEODATA/LOFTEMPS.DAT"] = Loftemps(),
             ["TERRAIN/BLANKS.MCD"] = Mcd(Record(), Record((42, 1))),
             // XSET's second object is a base module (MCD byte 60).
             ["TERRAIN/XSET.MCD"] = Mcd(Record((42, 2)), Record((42, 3), (60, 1)), Record((42, 4))),

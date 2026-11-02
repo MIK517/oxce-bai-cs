@@ -102,13 +102,14 @@ internal sealed partial class BattleState
 
     /// <summary>
     /// TileEngine::togglePersonalLighting: the soldiers' personal light goes on or off (kept with the battle, as the default
-    /// <c>oxceTogglePersonalLightType</c> 1 does), and the units' light is recomputed. The reference also recalculates every unit's
-    /// field of view, which S4 adds here.
+    /// <c>oxceTogglePersonalLightType</c> 1 does), and the units' light is recomputed, then every unit's field of view (a unit sees
+    /// others by their tiles' light).
     /// </summary>
     internal void TogglePersonalLighting(RuntimeRuleCatalog rules)
     {
         TogglePersonalLight = !TogglePersonalLight;
         CalculateLighting(rules, BattleLightLayer.Units);
+        Sight().RecalculateFov();
         Revision++;
     }
 

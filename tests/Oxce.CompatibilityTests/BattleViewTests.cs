@@ -275,6 +275,9 @@ public sealed class BattleViewTests
         var view = View(campaign);
         var map = battle.Map;
         var hostile = new BattleViewer(BattleFaction.Hostile);
+        // The aliens' sight has discovered what they see (the port's per-faction discovery); take that away to look at the explored turn alone.
+        for (var tile = 0; tile < map.TileCount; tile++)
+            foreach (var part in Enum.GetValues<BattleTilePart>()) map.SetDiscovered(tile, part, false, BattleFaction.Hostile);
         // Nothing is explored by the aliens yet: no tile, and the X-COM units that nobody spotted stay hidden.
         var level = view.QueryLevel(hostile, 0)!;
         Assert.All(level.Tiles, shown =>
@@ -311,11 +314,11 @@ public sealed class BattleViewTests
         Assert.Equal(hand == default ? null : hand, info.RightHand);
         // Hostile units appear once the viewer's side spotted them, and not after they are out.
         var alien = Alien(battle);
-        Assert.Equal(alien.IsSpottedBy(BattleFaction.Player) ? [alien.Id] : [], info.VisibleHostileUnitIds);
+        Assert.Equal(alien.IsSpottedBy(BattleFaction.Player) ? [alien.Id] : [], info.VisibleUnitIds);
         battle.SetSpotted(alien, BattleFaction.Player, true);
-        Assert.Equal([alien.Id], view.QueryUnitInfo(BattleViewer.LocalPlayer, soldier)!.VisibleHostileUnitIds);
+        Assert.Equal([alien.Id], view.QueryUnitInfo(BattleViewer.LocalPlayer, soldier)!.VisibleUnitIds);
         alien.Status = BattleUnitStatus.Dead;
-        Assert.Empty(view.QueryUnitInfo(BattleViewer.LocalPlayer, soldier)!.VisibleHostileUnitIds);
+        Assert.Empty(view.QueryUnitInfo(BattleViewer.LocalPlayer, soldier)!.VisibleUnitIds);
         // Not another side's unit, not an out unit.
         Assert.Null(view.QueryUnitInfo(BattleViewer.LocalPlayer, alien.Id));
         Assert.Null(view.QueryUnitInfo(new BattleViewer(BattleFaction.Hostile), soldier));

@@ -91,6 +91,7 @@ internal sealed partial class BattleState
         unit.OriginalFaction = faction;
         unit.KilledBy = (int)faction;
         unit.OriginalMovementType = movement;
+        unit.Vision = BattleUnitVision.ForUnit(rules, battleArmor, faction);
         unit.MoveCosts = unit.ArmorMoveCosts = battleArmor.MoveCosts;
         sides.CopyTo(unit.CurrentArmor, 0);
         unit.Aggression = rule.Aggression;
@@ -163,6 +164,7 @@ internal sealed partial class BattleState
         unit.AllowAutoCombat = personal.AllowAutoCombat;
         unit.EnergyRegeneration = personal.InitialStats.GetValueOrDefault("tu") / 3;
         var bonuses = CampaignState.SoldierBonuses(personal, rules);
+        unit.Vision = BattleUnitVision.ForSoldier(rules, battleArmor, bonuses.Select(bonus => rules.SoldierBonuses[bonus].Value));
         for (var side = 0; side < battleArmor.Sides.Count; side++)
         {
             var value = battleArmor.Sides[side];

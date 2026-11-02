@@ -458,6 +458,13 @@ public sealed record RuntimeSoldierBonusRule(int ListOrder, IReadOnlyDictionary<
 {
     /// <summary>RuleSoldierBonus's side armor in UnitSide order (front, left = side + leftArmorDiff, right, rear, under).</summary>
     public IReadOnlyList<int> Sides { get; init; } = [0, 0, 0, 0, 0];
+
+    /// <summary>RuleSoldierBonus's <c>visibilityAtDark</c>, <c>visibilityAtDay</c>, <c>psiVision</c>, <c>heatVision</c> and <c>visibilityThroughFire</c>.</summary>
+    public int VisibilityAtDark { get; init; }
+    public int VisibilityAtDay { get; init; }
+    public int PsiVision { get; init; }
+    public int VisibilityThroughSmoke { get; init; }
+    public int VisibilityThroughFire { get; init; }
 }
 public sealed record RuntimeSoldierTransformationRule(
     IReadOnlyDictionary<string, string> Strings,

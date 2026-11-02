@@ -20,3 +20,15 @@ the order in which the search visited equal costs. The set of tiles is the refer
 The open set of the A* search is not such a case: `PathfindingOpenSet` is a `std::priority_queue`, and the port's heap
 follows the standard library's sift order (the same in libstdc++ and the MSVC library), so equal costs leave in the
 reference's order and the chosen path is the reference's.
+
+**The line of fire templates (S4).** Sight reads `Mod::getVoxelData` (`GEODATA/LOFTEMPS.DAT`) with `vector::at`, which throws, and
+so ends the program, for a template past the file's end or a missing file. The port needs the file to generate or load a battle and
+refuses (`battle.generation-failed`, or a corrupted save) when it is missing, unreadable, or a map object or an armor in the battle
+names a template it lacks; a unit that arrives later (a spawn) with such an armor stops the first turn
+(`battle.line-of-fire-data-invalid`). The reference's `voxelCheck` skips a tile that `Tile::isVoid` calls empty; the port tests the
+parts and units only, because a tile with only smoke or items falls through every check to empty as well.
+
+**The event sector's arithmetic (S4).** `setupEventVisibilitySector` computes its tangent points with `asinf`, `atan2f`, `sinf`,
+`cosf` and `roundf`; the port uses the single-precision functions of .NET (`MathF`). A tangent point on a rounding boundary can fall
+a tile either way between C libraries, as it can between two builds of the reference, so a partial update around an event
+(S6 onwards) may include or leave out one edge column. A full recheck is not affected, and neither is a unit's own sight.

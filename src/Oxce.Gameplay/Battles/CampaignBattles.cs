@@ -79,9 +79,10 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
             if (command is not (AdvanceCampaignTime or IBattleCommand)) return Blocked(BattleInProgress);
             // The battlescape's constructor runs checkForCasualties on every battle it opens, a loaded one included; that is turn
             // processing's (branch 6), so a running battle with a unit the check would take out refuses its commands by name.
-            return _battle is { Phase: BattlePhase.InProgress } running && running.HasUncheckedCasualty()
-                ? Blocked(BattleFlowReasons.CasualtiesUnsupported)
-                : null;
+            if (_battle is not { Phase: BattlePhase.InProgress } running) return null;
+            // Sight runs the armors' visibility scripts, which battle scripts (branch 8) will; until then such a battle's commands are refused.
+            if (command is IBattleCommand && running.VisibilityScriptRefusal(campaign.Content) is { } visibility) return Blocked(visibility);
+            return running.HasUncheckedCasualty() ? Blocked(BattleFlowReasons.CasualtiesUnsupported) : null;
         });
         registry.Capture(snapshot => _battle is null ? snapshot : snapshot with { Battle = _battle.Capture() });
         registry.Restore(Restore);
@@ -366,7 +367,7 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         if (_battle is not { } battle) return Blocked(BattleInventoryReasons.Unavailable);
         if (battle.PlanMove(campaign.Content.RuntimeRules, command.UnitId, command.ItemId, command.Slot ?? "", command.SlotX, command.SlotY, out var move) is { } refusal)
             return Blocked(refusal);
-        return Moved(battle, move!);
+        return Moved(battle, move!, campaign.Content.RuntimeRules);
     }
 
     private CampaignCommandResult AutoPlaceInventory(AutoPlaceInventoryItem command)
@@ -377,12 +378,19 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         // Smart choice with no section that takes a ground item: the reference "moves" it to the ground it lies on, at no cost.
         if (move is null)
             return new CampaignCommandResult([new InventoryItemMoved(command.UnitId, command.ItemId, BattleState.GroundSlot, BattleState.GroundSlot, 0, 0, 0)]);
-        return Moved(battle, move);
+        return Moved(battle, move, campaign.Content.RuntimeRules);
     }
 
-    private static CampaignCommandResult Moved(BattleState battle, InventoryMove move)
+    private static CampaignCommandResult Moved(BattleState battle, InventoryMove move, RuntimeRuleCatalog rules)
     {
         battle.ApplyMove(move);
+        // InventoryState's destructor in a running battle: the items' light (a flare dropped or picked up), then everyone's sight. The port has no
+        // close command, so each move does it.
+        if (battle.Phase == BattlePhase.InProgress)
+        {
+            battle.CalculateLighting(rules, BattleLightLayer.Items);
+            battle.RecalculateFov();
+        }
         return new CampaignCommandResult([new InventoryItemMoved(move.Unit.Id, move.Item.Id, move.From.Id, move.To.Id, move.X, move.Y, move.Cost)]);
     }
 

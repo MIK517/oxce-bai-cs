@@ -186,6 +186,14 @@ selection therefore does not clear the undo unit as `btnNextStopLClick` does. Be
 (`InventoryOnly`) selects, as in `InventoryState`; confirming the briefing runs `InventoryState::init`'s move off a unit without an
 inventory.
 
+Faction discovery (branch 4, S4). The reference keeps one set of discovered flags, the player's, and no rule reads a hostile or
+neutral faction's. The port gives each faction its own, set by the same `calculateTilesInFOV` for that faction's units (a viewer of the
+faction needs them, ADR 0038), and saves the hostile and neutral flags in `oxcePortBattle` as `discovery`, a list of `tile` (the
+tile index) with `hostile` and `neutral` (one bit per part: floor 1, west wall 2, north wall 4, object 8), for the tiles where either
+has any. A reference save has none, and a load keeps them and only adds, as the load's field of view does for the player's flags.
+The reference saves a player's flags only for tiles that are not void, so a load forgets a bare tile's discovery until the field of
+view finds it again; the hostile and neutral lists keep every tile.
+
 ## Consequences
 
 - A generated battle's root is written as the reference's generator leaves it; only the ambience delay's value differs,

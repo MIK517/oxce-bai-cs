@@ -90,6 +90,37 @@ public sealed class BattleSaveUnitTests
     };
 
     /// <summary>
+    /// A snapshot without the state the load's field of view recomputes (<c>recalculateFOV</c>): the player's discovered tile parts and the
+    /// factions' explored turns, the hostile and neutral discovery, and each unit's spotting (the player's visibility of other sides' units, the hostile and neutral
+    /// flags, the turns since spotted and seen, the sniper turns and the tiles last spotted). The reload comparisons keep every other value
+    /// strict; <c>BattleSightTests</c> compare a loaded battle's sight with the never-saved one's.
+    /// </summary>
+    internal static BattleSnapshot SightFree(BattleSnapshot snapshot) => snapshot with
+    {
+        FactionDiscovery = [],
+        Tiles = [.. snapshot.Tiles.Select(static tile => tile with
+        {
+            FloorDiscovered = false,
+            WestWallDiscovered = false,
+            NorthWallDiscovered = false,
+            LastExploredByHostile = 0,
+            LastExploredByNeutral = 0,
+            LastExploredByPlayer = 0,
+        })],
+        Units = [.. snapshot.Units.Select(static unit => unit with
+        {
+            Visible = unit.Faction == BattleFaction.Player,
+            SpottedByHostile = false,
+            SpottedByNeutral = false,
+            TurnsSinceSpotted = [255, 255, 255],
+            TurnsLeftSpottedForSnipers = [0, 0, 0],
+            TurnsSinceSeenBy = [255, 255, 255],
+            TileLastSpottedBy = [-1, -1, -1],
+            TileLastSpottedForBlindShotBy = [-1, -1, -1],
+        })],
+    };
+
+    /// <summary>
     /// A loaded rewrite of <paramref name="text"/> is stable: the first rewrite of a battle before its first turn adds what
     /// the load sets (resetUnitTiles' visibility), and a second rewrite is byte-stable.
     /// </summary>
@@ -122,7 +153,7 @@ public sealed class BattleSaveUnitTests
         var text = Emit(written);
         var restored = BattleState.Restore(OxceBattleSave.Read(Parse(text), campaign.Content), campaign.Content, Terrain(),
             campaign: BattleRestoreCampaign.From(campaign));
-        Assert.Equivalent(Loaded(snapshot), restored.Capture(), strict: true);
+        Assert.Equivalent(SightFree(Loaded(snapshot)), SightFree(restored.Capture()), strict: true);
         Assert.Equal(battle.SelectedUnitId, restored.SelectedUnitId);
         AssertLoadedRewriteIsStable(restored, text, campaign.Content, BattleRestoreCampaign.From(campaign));
     }
@@ -503,13 +534,15 @@ public sealed class BattleSaveUnitTests
     public void ControllersAndSpottingGoInThePortNodeOnlyWhenTheyDifferFromTheDefaults()
     {
         var battle = Restore("units:\n  - " + Alien + "}\n");
+        // A save from before the first turn has no sight yet: no port node.
         Assert.False(OxceBattleSave.Write(battle.Capture()).TryGet(OxceBattleSave.PortKey, out _));
         var unit = Unit(battle, 1000000);
         unit.Controller = BattleController.Human(2);
         battle.SetSpotted(unit, BattleFaction.Neutral, true);
         var written = OxceBattleSave.Write(battle.Capture());
-        Assert.Equal(Normalized(Parse("oxcePortBattle: {units: [{id: 1000000, controller: player, playerSlot: 2, spottedBy: [2]}]}\n")),
-            Normalized(new YamlMappingNode(written.Span, [written.Entries.Single(static entry => entry.ScalarKey == OxceBattleSave.PortKey)], null, null)));
+        var port = (YamlMappingNode)Value(written, OxceBattleSave.PortKey);
+        Assert.Equal(Normalized(Parse("units: [{id: 1000000, controller: player, playerSlot: 2, spottedBy: [2]}]\n")),
+            Normalized(new YamlMappingNode(written.Span, [port.Entries.Single(static entry => entry.ScalarKey == "units")], null, null)));
         var reread = BattleState.Restore(OxceBattleSave.Read(Parse(Emit(written)), Content), Content, Terrain(), campaign: Campaign);
         Assert.Equal((BattleController.Human(2), true, false), (reread.Units[0].Controller, reread.Units[0].IsSpottedBy(BattleFaction.Neutral),
             reread.Units[0].IsSpottedBy(BattleFaction.Hostile)));

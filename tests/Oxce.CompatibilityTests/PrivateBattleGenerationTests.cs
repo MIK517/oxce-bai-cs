@@ -251,8 +251,8 @@ public sealed class PrivateBattleGenerationTests
         BattleSaveConformance.CheckSave(text);
         var reloaded = OxceSaveAdapter.Load(text, "battle.sav", loaded.Content, new SplitMix64RandomSource(17),
             loaded.Options with { BattleTerrainFiles = loaded.Files }).Campaign;
-        var expected = WithoutUnsavedSlotPositions(BattleSaveUnitTests.Loaded(snapshot.Battle!));
-        var actual = reloaded.Capture().Battle!;
+        var expected = BattleSaveUnitTests.SightFree(WithoutUnsavedSlotPositions(BattleSaveUnitTests.Loaded(snapshot.Battle!)));
+        var actual = BattleSaveUnitTests.SightFree(reloaded.Capture().Battle!);
         Assert.Equivalent(expected, actual, strict: true);
         Assert.Equal(BattleSaveRootTests.Emit(OxceBattleSave.Write(expected)), BattleSaveRootTests.Emit(OxceBattleSave.Write(actual)));
         var restored = BattleStartTests.Battle(reloaded);
@@ -262,8 +262,9 @@ public sealed class PrivateBattleGenerationTests
             var viewer = new BattleViewer(faction);
             var before = battle.Overview(viewer);
             var after = restored.Overview(viewer);
-            Assert.Equivalent(before with { Turn = 1, Revision = 0, Phase = BattlePhase.InProgress }, after with { Revision = 0 }, strict: true);
-            Assert.Equal(before.Units, after.Units);
+            Assert.Equivalent(before with { Turn = 1, Revision = 0, Phase = BattlePhase.InProgress, Units = [] }, after with { Revision = 0, Units = [] }, strict: true);
+            // The load's field of view spots units the generated battle's viewers had not seen: it only adds to the units they see.
+            Assert.All(before.Units, unit => Assert.Contains(unit, after.Units));
         }
         Assert.Null(reloaded.QuerySaveRefusal());
     }

@@ -71,7 +71,7 @@ public sealed class BattleSaveRootTests
         // The units and items read as saved and take the constructors' values on restore (BattleSaveUnitTests, BattleSaveItemTests).
         Assert.Equivalent(BattleSaveItemTests.WithoutEntities(snapshot), BattleSaveItemTests.WithoutEntities(reread), strict: true);
         var restored = BattleState.Restore(reread, SharedContent.Value, Terrain(), campaign: BattleRestoreCampaign.From(campaign));
-        Assert.Equivalent(BattleSaveUnitTests.Loaded(snapshot), restored.Capture(), strict: true);
+        Assert.Equivalent(BattleSaveUnitTests.SightFree(BattleSaveUnitTests.Loaded(snapshot)), BattleSaveUnitTests.SightFree(restored.Capture()), strict: true);
         // The derived state: the deployment, from the mission type's deployment or the UFO in battle.
         Assert.Equal(battle.DeploymentId, BattleState.Restore(reread, SharedContent.Value, Terrain(), "UFO_SCOUT",
             BattleRestoreCampaign.From(campaign)).DeploymentId);

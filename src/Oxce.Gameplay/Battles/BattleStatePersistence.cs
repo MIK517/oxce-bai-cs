@@ -160,6 +160,7 @@ internal sealed partial class BattleState
             FlattenedMapBlockNames = Rows(Map.BlockNames),
             MapDataSets = Array.AsReadOnly(Map.DataSets.Select(static set => set.Name).ToArray()),
             Tiles = CaptureTiles(),
+            FactionDiscovery = CaptureFactionDiscovery(),
             Nodes = Array.AsReadOnly(Map.Nodes.Select(static node => new BattleNodeSnapshot(node.Id, node.Position, node.Type, node.Rank,
                 node.Flags, node.Reserved, node.Priority, node.Allocated, Array.AsReadOnly(node.Links.ToArray()), node.IsDummy)).ToArray()),
             ModuleMap = Array.AsReadOnly(BaseModules.Select(static row => (IReadOnlyList<BattleModuleSnapshot>)Array.AsReadOnly(
@@ -170,6 +171,19 @@ internal sealed partial class BattleState
             RecoverConditional = conditional,
             RecoverGuaranteed = guaranteed,
         };
+    }
+
+    /// <summary>The hostile and neutral discovery of the tiles that have any (the port's, ADR 0039).</summary>
+    private ReadOnlyCollection<BattleFactionDiscovery> CaptureFactionDiscovery()
+    {
+        var discovery = new List<BattleFactionDiscovery>();
+        for (var tile = 0; tile < Map.TileCount; tile++)
+        {
+            var hostile = Map.DiscoveredFlags(tile, BattleFaction.Hostile);
+            var neutral = Map.DiscoveredFlags(tile, BattleFaction.Neutral);
+            if (hostile != 0 || neutral != 0) discovery.Add(new BattleFactionDiscovery(tile, hostile, neutral));
+        }
+        return discovery.AsReadOnly();
     }
 
     /// <summary>
@@ -299,8 +313,19 @@ internal sealed partial class BattleState
             battle.RestoreUnits(snapshot, content, campaign);
             battle.RestoreItems(snapshot, content);
             battle.Validate(placement: false);
-            // loadMapResources: the lighting of the restored map.
+            // The line of fire templates sight reads; a template past the file's end is where the reference's vector::at throws.
+            if (terrain.TryLoadVoxelData(out var voxels) is { } voxelReason) throw new InvalidDataException($"Battle save: {voxelReason}");
+            battle.VoxelData = voxels;
+            if (battle.VoxelDataFault(rules) is { } voxelFault) throw new InvalidDataException($"Battle save: {voxelFault}");
+            // load's resetUnitTiles has put the units on their tiles. A save from before the first turn (which the reference cannot make)
+            // waits for the first turn's sight, and a battle whose armors bind a visibility script keeps its saved spotting: the script
+            // is branch 8's, and commands on it are refused.
+            var sees = snapshot.Turn >= 1;
+            battle.IsBeforeGame = !sees;
+            // loadMapResources: the lighting of the restored map, then every unit's field of view. The saved spotting and discovery stay:
+            // the recomputation only adds to them.
             battle.CalculateLighting(rules, BattleLightLayer.Ambient, terrainChanged: true);
+            if (sees && battle.VisibilityScriptRefusal(content) is null) battle.RecalculateFov();
         }
         catch (Exception failure) when (failure is InvalidOperationException or MapGenerationException)
         {
@@ -358,6 +383,13 @@ internal sealed partial class BattleState
             map.SetLastExplored(tile.Index, BattleFaction.Hostile, tile.LastExploredByHostile);
             map.SetLastExplored(tile.Index, BattleFaction.Neutral, tile.LastExploredByNeutral);
             map.SetLastExplored(tile.Index, BattleFaction.Player, tile.LastExploredByPlayer);
+        }
+        foreach (var discovered in snapshot.FactionDiscovery)
+        {
+            if ((uint)discovered.Tile >= (uint)map.TileCount)
+                throw new InvalidDataException($"Battle save discovery tile {discovered.Tile} lies outside the {snapshot.Width}x{snapshot.Length}x{snapshot.Height} map.");
+            map.RestoreDiscoveredFlags(discovered.Tile, BattleFaction.Hostile, discovered.HostileFlags);
+            map.RestoreDiscoveredFlags(discovered.Tile, BattleFaction.Neutral, discovered.NeutralFlags);
         }
         foreach (var node in snapshot.Nodes)
             map.AddNode(BattleNode.Restore(node.Id, node.Position, node.Type, node.Rank, node.Flags, node.Reserved, node.Priority,

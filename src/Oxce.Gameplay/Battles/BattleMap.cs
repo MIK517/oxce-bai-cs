@@ -18,6 +18,8 @@ internal sealed partial class BattleMap
     private int[] _ids = [];
     private int[] _sets = [];
     private byte[] _discovered = [];
+    private byte[] _discoveredHostile = [];
+    private byte[] _discoveredNeutral = [];
     private byte[] _smoke = [];
     private byte[] _fire = [];
     private byte[] _doorFrames = [];
@@ -72,6 +74,8 @@ internal sealed partial class BattleMap
         Array.Fill(_ids, -1);
         Array.Fill(_sets, -1);
         _discovered = new byte[tiles];
+        _discoveredHostile = new byte[tiles];
+        _discoveredNeutral = new byte[tiles];
         _smoke = new byte[tiles];
         _fire = new byte[tiles];
         _doorFrames = new byte[tiles];
@@ -217,6 +221,56 @@ internal sealed partial class BattleMap
             if (part == BattleTilePart.Floor)
                 _discovered[tile] |= (1 << (int)BattleTilePart.WestWall) | (1 << (int)BattleTilePart.NorthWall);
         }
+    }
+
+    private byte[] DiscoveryOf(BattleFaction faction) => faction switch
+    {
+        BattleFaction.Player => _discovered,
+        BattleFaction.Hostile => _discoveredHostile,
+        BattleFaction.Neutral => _discoveredNeutral,
+        _ => throw new ArgumentOutOfRangeException(nameof(faction)),
+    };
+
+    /// <summary>
+    /// The tile part's discovery by a faction. The player's is the reference's <c>discovered</c> flags; the hostile and neutral factions' are
+    /// the port's (ADR 0039): the field of view of their units sets them as the player's sets the player's, and no rule reads them.
+    /// </summary>
+    public bool IsDiscovered(int tile, BattleTilePart part, BattleFaction faction) => (DiscoveryOf(faction)[tile] & (1 << (int)part)) != 0;
+
+    /// <summary><see cref="SetDiscovered(int, BattleTilePart, bool)"/> for a faction.</summary>
+    public void SetDiscovered(int tile, BattleTilePart part, bool discovered, BattleFaction faction)
+    {
+        if (faction == BattleFaction.Player)
+        {
+            SetDiscovered(tile, part, discovered);
+            return;
+        }
+        var flags = DiscoveryOf(faction);
+        if (IsDiscovered(tile, part, faction) == discovered) return;
+        if (!discovered) flags[tile] = (byte)(flags[tile] & ~(1 << (int)part));
+        else
+        {
+            flags[tile] |= (byte)(1 << (int)part);
+            if (part == BattleTilePart.Floor) flags[tile] |= (1 << (int)BattleTilePart.WestWall) | (1 << (int)BattleTilePart.NorthWall);
+        }
+    }
+
+    /// <summary>A faction's discovered flags of a tile, one bit per <see cref="BattleTilePart"/>.</summary>
+    public int DiscoveredFlags(int tile, BattleFaction faction) => DiscoveryOf(faction)[tile];
+
+    /// <summary>Sets a hostile or neutral faction's discovered flags as saved.</summary>
+    public void RestoreDiscoveredFlags(int tile, BattleFaction faction, int flags)
+    {
+        if (faction == BattleFaction.Player) throw new ArgumentOutOfRangeException(nameof(faction), "The player's flags are restored part by part.");
+        DiscoveryOf(faction)[tile] = (byte)(flags & 0xF);
+    }
+
+    /// <summary>Whether no tile part has map data.</summary>
+    public bool HasNoParts(int tile)
+    {
+        for (var part = 0; part < PartCount; part++)
+            if (_ids[tile * PartCount + part] >= 0) return false;
+        return true;
     }
 
     /// <summary>Discovered flags as the save holds them (Tile::loadBinary): each part set alone, without setDiscovered's walls.</summary>

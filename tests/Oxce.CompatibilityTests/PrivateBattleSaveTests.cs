@@ -111,7 +111,10 @@ public sealed class PrivateBattleSaveTests
         finally { Directory.Delete(Path.GetDirectoryName(hostFile)!, recursive: true); }
         var written = OxceBattleSave.Write(battle.Capture(), source);
         BattleSaveConformance.Check(written);
-        Assert.Equal(Normalized(WithoutUnitQuirks(source)), Normalized(written));
+        // The restore changes nothing but what the load's field of view recomputes (recalculateFOV: the discovered tiles, the spotting, the
+        // port's discovery node), so the battle as read and as restored write alike once those are left out.
+        Assert.Equal(Normalized(WithoutSight(WithoutUnitQuirks(source))), Normalized(WithoutSight(written)));
+        Assert.Equivalent(BattleSaveUnitTests.SightFree(snapshot).Tiles, BattleSaveUnitTests.SightFree(battle.Capture()).Tiles, strict: true);
         var text = Emit(written);
         var reread = (YamlMappingNode)YamlCompatibilityReader.Parse(text, name, ReadOptions).Documents[0].Root;
         var again = OxceBattleSave.Write(BattleState.Restore(OxceBattleSave.Read(reread, content), content, terrain, ufo, campaign).Capture(), reread);
@@ -126,6 +129,27 @@ public sealed class PrivateBattleSaveTests
     private static YamlMappingNode WithoutUnitQuirks(YamlMappingNode battle) => new(battle.Span, battle.Entries.Select(entry =>
         entry.ScalarKey == "units" && entry.Value is YamlSequenceNode units
             ? entry with { Value = new YamlSequenceNode(units.Span, units.Items.Select(static unit => unit is YamlMappingNode map ? Once(map) : unit)) }
+            : entry), battle.Tag, battle.Anchor);
+
+    // What the load's field of view recomputes (recalculateFOV) and a rewrite of the restored battle therefore changes: the tiles' discovered
+    // flags (inside binTiles, compared as snapshots), the port's discovery node and each unit's spotting.
+    private static readonly string[] SightUnitKeys =
+    [
+        "visible", "turnsSinceSpotted", "turnsSinceSpottedByXcom", "turnsSinceSpottedByCivilian", "turnsLeftSpottedForSnipers",
+        "turnsLeftSpottedForSnipersByXcom", "turnsLeftSpottedForSnipersByCivilian", "turnsSinceSeenByHostile", "turnsSinceSeenByNeutral",
+        "turnsSinceSeenByPlayer", "tileLastSpottedByHostile", "tileLastSpottedByNeutral", "tileLastSpottedByPlayer",
+        "tileLastSpottedForBlindShotByHostile", "tileLastSpottedForBlindShotByNeutral", "tileLastSpottedForBlindShotByPlayer",
+    ];
+
+    private static YamlMappingNode WithoutSight(YamlMappingNode battle) => new(battle.Span, battle.Entries
+        .Where(static entry => entry.ScalarKey is not ("binTiles" or "oxcePortBattle"))
+        .Select(static entry => entry.ScalarKey == "units" && entry.Value is YamlSequenceNode units
+            ? entry with
+            {
+                Value = new YamlSequenceNode(units.Span, units.Items.Select(static unit => unit is YamlMappingNode map
+                    ? new YamlMappingNode(map.Span, map.Entries.Where(static field => !SightUnitKeys.Contains(field.ScalarKey)), map.Tag, map.Anchor)
+                    : unit)),
+            }
             : entry), battle.Tag, battle.Anchor);
 
     // The load also drops the AI module of a player's unit and of a dead or ignored one (SavedBattleGame::load, the units'

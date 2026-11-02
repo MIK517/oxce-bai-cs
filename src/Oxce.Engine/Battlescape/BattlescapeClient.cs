@@ -236,7 +236,7 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
             y += 12;
             Text($"L {unit.LeftHand?.ItemType ?? "-"}", x, y);
             y += 12;
-            Text($"Seen {unit.VisibleHostileUnitIds.Count}  Hurt {unit.WoundedUnitIds.Count}", x, y);
+            Text($"Seen {unit.VisibleUnitIds.Count}  Hurt {unit.WoundedUnitIds.Count}", x, y);
             y += 16;
         }
         else

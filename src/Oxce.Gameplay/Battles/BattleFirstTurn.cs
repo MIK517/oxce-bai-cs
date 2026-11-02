@@ -42,6 +42,12 @@ internal static class BattleFlowReasons
     internal static readonly CampaignReason SpawnContentInvalid = new("battle.generation-failed",
         "A primed spawn item spawns a unit, but the mod lists no ten alien item levels for the battle's month.");
 
+    internal static readonly CampaignReason VisibilityScriptUnsupported = new("battle.visibility-script-unsupported",
+        "The battle's rules bind a visibility script (visibilityUnit), which changes whether a unit is seen; script bindings in battle arrive with Phase 7 branch 8.");
+
+    internal static readonly CampaignReason LineOfFireDataInvalid = new("battle.line-of-fire-data-invalid",
+        "A unit's armor or a map object refers to a line of fire template that LOFTEMPS.DAT lacks, where the reference's sight would throw.");
+
     internal static readonly CampaignReason NewTurnScriptUnsupported = new("battle.new-turn-script-unsupported",
         "The battle's rules bind a new-turn script (newTurnUnit or newTurnItem); script bindings in battle arrive with Phase 7 branch 8.");
 
@@ -361,6 +367,8 @@ internal sealed partial class BattleState
             if (owner?.Status == BattleUnitStatus.IgnoreMe) continue;
             if (HasRuleScript(content, "items", item.ItemType, "newTurnItem")) return BattleFlowReasons.NewTurnScriptUnsupported;
         }
+        if (VisibilityScriptRefusal(content) is { } visibility) return visibility;
+        if (VoxelDataFault(content.RuntimeRules) is not null) return BattleFlowReasons.LineOfFireDataInvalid;
         foreach (var item in _items)
             if (item.ItemType is var type && content.RuntimeRules.Items.TryGet(type, out var handle) && content.RuntimeRules.Items[handle].Value.BattleType == FlareBattleType &&
                 (content.RuntimeRules.Battle.Equipment.Items[type].StrengthApplied || HasRuleScript(content, "items", type, "damageBonusBonusStats") || HasEventPlan(content, "damageBonusBonusStats")))
@@ -391,6 +399,18 @@ internal sealed partial class BattleState
         return null;
     }
 
+    /// <summary>
+    /// The armor's <c>visibilityUnit</c> script (or a global event of that name) changes whether a unit is seen, in <c>TileEngine::visible</c>;
+    /// battle scripts are branch 8's, so a battle whose units wear such an armor, or whose mods bind the event, stops.
+    /// </summary>
+    internal CampaignReason? VisibilityScriptRefusal(RuntimeContent content)
+    {
+        if (HasEventPlan(content, "visibilityUnit")) return BattleFlowReasons.VisibilityScriptUnsupported;
+        foreach (var unit in _units)
+            if (HasRuleScript(content, "armors", unit.ArmorId, "visibilityUnit")) return BattleFlowReasons.VisibilityScriptUnsupported;
+        return null;
+    }
+
     private static bool HasRuleScript(RuntimeContent content, string section, string id, string parser) =>
         content.Scripts.Any(artifact => artifact.OwnerSection == section && artifact.OwnerId == id && artifact.ParserName == parser);
 
@@ -416,8 +436,9 @@ internal sealed partial class BattleState
             if (unit.OriginalFaction == BattleFaction.Player && !unit.IsOut) PrepareNewTurn(unit, equipment);
         Turn = 1;
         Phase = BattlePhase.InProgress;
-        // InventoryState's destructor, as the inventory closes: flares dropped or picked up (gravity and the field of view are S7 and S4).
+        // InventoryState's destructor, as the inventory closes: flares dropped or picked up, then everyone's field of view (gravity is S7).
         CalculateLighting(content.RuntimeRules, BattleLightLayer.Items);
+        Sight().RecalculateFov();
         Revision++;
     }
 
@@ -449,6 +470,7 @@ internal sealed partial class BattleState
             }
             if (unit.Faction == BattleFaction.Player) unit.SetSpottedBy(BattleFaction.Player, true);
         }
+        IsBeforeGame = false;
     }
 
     /// <summary>
@@ -460,6 +482,7 @@ internal sealed partial class BattleState
     {
         if (unit.Status == BattleUnitStatus.IgnoreMe) return;
         unit.IsSurrendering = false;
+        unit.UnitsSpottedThisTurn.Clear();
         unit.MeleeAttackedBy.Clear();
         unit.DontReselect = false;
         unit.AiMedikitUsed = false;
