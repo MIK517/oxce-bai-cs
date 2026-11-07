@@ -139,6 +139,12 @@ internal sealed partial class BattleMap
 
     public void SetUnitAt(int tile, int? unitId) => _units[tile] = unitId ?? NoUnit;
 
+    /// <summary>A copy of which unit stands on each tile, for a trial run to put back.</summary>
+    internal int[] CaptureUnits() => (int[])_units.Clone();
+
+    /// <summary>Puts back what <see cref="CaptureUnits"/> copied.</summary>
+    internal void RestoreUnits(int[] units) => Array.Copy(units, _units, _units.Length);
+
     /// <summary>MapData::getTUCost: walking, flying or sliding (movement types 0, 1, 2).</summary>
     public static int MovementCost(BattleMapData data, int movementType) => movementType switch
     {

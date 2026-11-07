@@ -84,7 +84,9 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
             if (_battle is not { Phase: BattlePhase.InProgress } running) return null;
             // Sight runs the armors' visibility scripts, which battle scripts (branch 8) will; until then such a battle's commands are refused.
             if (command is IBattleCommand && running.VisibilityScriptRefusal(campaign.Content) is { } visibility) return Blocked(visibility);
-            return running.HasUncheckedCasualty() ? Blocked(BattleFlowReasons.CasualtiesUnsupported) : null;
+            // The same constructor queues the units that have no floor to fall; the port queues them at the first turn only, so a loaded
+            // battle with one refuses (S7).
+            return running.HasUncheckedCasualty() || running.HasFloorlessWalker() ? Blocked(BattleFlowReasons.CasualtiesUnsupported) : null;
         });
         registry.Capture(snapshot => _battle is null ? snapshot : snapshot with { Battle = _battle.Capture() });
         registry.Restore(Restore);
@@ -241,9 +243,9 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
 
     /// <summary>
     /// BriefingState::btnOkClick and NextTurnState's turn-0 work. Everything that can refuse is checked first, so a refusal
-    /// changes nothing: no live aliens (the aliens' crash screen), a wave that could deploy at the start (branch 6), a spawn
-    /// near a tile without a floor (branch 4), a script or a revive the first turn cannot do yet, before and after the spawn
-    /// (so that the pre-battle inventory always leads to a first turn). Then primed spawn items spawn, and bug hunt mode is checked.
+    /// changes nothing: no live aliens (the aliens' crash screen), a wave that could deploy at the start (branch 6), a script or a revive
+    /// the first turn cannot do yet, before and after the spawn, and a fall of the first turn that cannot run (so that the pre-battle
+    /// inventory always leads to a first turn). Then primed spawn items spawn, and bug hunt mode is checked.
     /// </summary>
     private CampaignCommandResult ConfirmBriefing()
     {
@@ -257,7 +259,6 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         var noAliensYet = battle.Tally().LiveAliens == 0;
         if (noAliensYet && !battle.PrimedSpawnsMayAddAliens(rules)) return Blocked(BattleFlowReasons.NoLiveAliens);
         if (ReinforcementsRefusal(battle, rules) is { } reinforcements) return Blocked(reinforcements);
-        if (battle.SpawnNeedsGravity(rules)) return Blocked(BattleFlowReasons.SpawnNeedsGravity);
         if (battle.SpawnLacksItemLevels(rules)) return Blocked(BattleFlowReasons.SpawnContentInvalid);
         if (battle.FirstTurnRefusal(content, BattleRestoreCampaign.From(campaign)) is { } later) return Blocked(later);
         if (TrialSpawnRefusal(battle, content, noAliensYet) is { } spawned) return Blocked(spawned);
@@ -283,7 +284,11 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         {
             scratch.SpawnFromPrimedItems(content, (int)campaign.Difficulty, campaign.Random);
             if (noAliensYet && scratch.Tally().LiveAliens == 0) return BattleFlowReasons.NoLiveAliens;
-            return scratch.FirstTurnRefusal(content, restored);
+            if (scratch.FirstTurnRefusal(content, restored) is { } refusal) return refusal;
+            // The units a spawn put in the air fall when the first turn starts: a fall that cannot run is refused now.
+            if (!scratch.MayFall()) return null;
+            scratch.EnterInventory(content.RuntimeRules);
+            return scratch.StartFirstTurn(content, campaign.Random);
         }
         finally
         {
@@ -331,10 +336,30 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         var content = campaign.Content;
         if (battle.Tally().LiveSoldiers == 0) return Blocked(BattleFlowReasons.NoLiveSoldiers);
         if (battle.FirstTurnRefusal(content, BattleRestoreCampaign.From(campaign)) is { } refusal) return Blocked(refusal);
+        if (TrialFirstTurnRefusal(battle, content) is { } fall) return Blocked(fall);
         // btnOkClick saves the layout first, unless the alternate craft equipment management keeps it with the base screens.
         var saved = campaign.Options.AlternateCraftEquipmentManagement ? 0 : SaveEquipmentLayout(battle, content.RuntimeRules);
-        battle.StartFirstTurn(content, campaign.Random);
+        // (Only a battle without terrain files has no trial copy, and a fall that stops then leaves the first turn half done.)
+        if (battle.StartFirstTurn(content, campaign.Random) is { } late) return Blocked(late);
         return new CampaignCommandResult([new BattleFirstTurnStarted(battle.SelectedUnitId ?? -1) { LayoutsSaved = saved }]);
+    }
+
+    /// <summary>The first turn run on a copy of the battle with the campaign's stream put back: the fall of a unit that cannot run is refused.</summary>
+    private CampaignReason? TrialFirstTurnRefusal(BattleState battle, RuntimeContent content)
+    {
+        // Only a unit without a floor can fall: a battle with none has nothing to try.
+        if (!battle.MayFall() || campaign.BattleTerrainFiles is not { } files) return null;
+        var scratch = BattleState.Restore(battle.Capture(), content, Loader(files),
+            campaign.Handlers.Operation<ICampaignDeploymentHandOver>().UfoInBattlescape, BattleRestoreCampaign.From(campaign));
+        var state = campaign.Random.State;
+        try
+        {
+            return scratch.StartFirstTurn(content, campaign.Random);
+        }
+        finally
+        {
+            campaign.Random.Restore(state);
+        }
     }
 
     /// <summary>BriefingState's page: which deployment's briefing data shows, and the lines the briefing set.</summary>
@@ -385,13 +410,17 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
 
     private static CampaignCommandResult Moved(BattleState battle, InventoryMove move, RuntimeRuleCatalog rules)
     {
+        // InventoryState's destructor in a running battle starts with gravity on the selected unit's tile (a unit without a floor falls).
+        var selected = battle.Phase == BattlePhase.InProgress && battle.SelectedUnitId is { } chosen ? battle.UnitById(chosen) : null;
+        if (selected?.Position is not null && battle.FallsRefusal(rules, selected) is { } fall) return Blocked(fall);
         battle.ApplyMove(move);
-        // InventoryState's destructor in a running battle: the items' light (a flare dropped or picked up), then everyone's sight. The port has no
-        // close command, so each move does it.
+        // The port has no close command, so each move does it: the items' light (a flare dropped or picked up), then everyone's sight.
         if (battle.Phase == BattlePhase.InProgress)
         {
+            battle.ApplyGravity(selected?.Position);
             battle.CalculateLighting(rules, BattleLightLayer.Items);
             battle.RecalculateFov();
+            battle.ResolveFalls(rules);
         }
         return new CampaignCommandResult([new InventoryItemMoved(move.Unit.Id, move.Item.Id, move.From.Id, move.To.Id, move.X, move.Y, move.Cost)]);
     }

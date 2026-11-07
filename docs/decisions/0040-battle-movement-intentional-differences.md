@@ -39,3 +39,16 @@ next check position, which the reference never reaches. The reference opens a UF
 for it (result 3, "still opening"); the port sets the door open at once. Light and sight already count the door open from frame 1 in the reference
 (`isUfoDoorOpen` is `currentFrame != 0`), so they are the same; only a walk's waiting differs, and result 3 never arises. A door opened by a right click whose
 time units cannot be paid after it opened (result 4 after the open, result 5) stays open, as in the reference.
+
+**Falling (S7).** `UnitFallBState` runs over many animation cycles: each unit's step takes 8 phases (16 for a diagonal escape, more for big
+units), the unit's tile changes at the middle phase, and a landed unit's light, sight and `checkReactionFire` run on the cycle after its
+last step, interleaved with units still in mid-step. The port runs rounds: every unit that stands still either takes its whole next step or
+has landed, all steps of a round complete together, and landings run at the start of the next round. In the reference a unit that starts falling is
+advanced in the same cycle (`++unit`), so its tile change can come a cycle before an escaping unit leaves its tile; the final state is the same, because `setTile`
+clears a tile only while it still names that unit. The sequence of units' tile changes is the reference's whenever the units fall independently; the order of one unit's landing light and
+sight update against another unit's mid-step differs. The reference keeps `tilesToFallInto` for the whole fall, never clearing it between
+cycles, and the port does too; the tiles it reserves for a big unit's escape (`escapeTiles`) are taken from the *last* section's tile
+(a tile offset by one from the unit's real footprint), as the reference does. The falling list is runtime state a save does not keep, so
+`StartFirstTurn` queues the units that have no floor again (the reference's `BattlescapeGame` constructor queues them through `checkForCasualties`, and the spawns queue theirs at the briefing). A fall that would knock out a unit
+below (no escape) is refused before it starts (`battle.fall-knockout-unsupported`, branch 6's casualty work), as are a landing that a reaction
+fire, a proximity explosion or a floor-burning unit (S9) could follow.

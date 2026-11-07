@@ -97,7 +97,7 @@ public sealed class RuntimeBattleEquipment
                 SpawnItemChance = values.GetInteger("spawnItemChance") == -1 ? values.GetInteger("specialChance") : values.GetInteger("spawnItemChance"),
                 ActionCosts = ActionCostsOf(rule.Value),
                 FuseTrigger = new RuntimeFuseTrigger(rule.Value.FuseTriggers.DefaultBehavior, rule.Value.FuseTriggers.ThrowTrigger,
-                    rule.Value.FuseTriggers.ProximityTrigger),
+                    rule.Value.FuseTriggers.ProximityTrigger, rule.Value.FuseTriggers.ProximityExplode),
             };
         }, StringComparer.Ordinal);
         var armors = personnel.Armors.Rules.ToDictionary(static rule => rule.Id, static rule => new RuntimeBattleArmor(
@@ -338,8 +338,8 @@ public sealed record RuntimeItemActionCosts(IReadOnlyDictionary<string, (Runtime
     public (RuntimeUseCost Cost, RuntimeUseFlat Flat) Of(string action) => Actions.TryGetValue(action, out var value) ? value : None;
 }
 
-/// <summary>RuleItemFuseTrigger's <c>defaultBehavior</c>, <c>throwTrigger</c> and <c>proximityTrigger</c>.</summary>
-public sealed record RuntimeFuseTrigger(bool DefaultBehavior, bool ThrowTrigger, bool ProximityTrigger)
+/// <summary>RuleItemFuseTrigger's <c>defaultBehavior</c>, <c>throwTrigger</c>, <c>proximityTrigger</c> and <c>proximityExplode</c>.</summary>
+public sealed record RuntimeFuseTrigger(bool DefaultBehavior, bool ThrowTrigger, bool ProximityTrigger, bool ProximityExplode = false)
 {
     public static RuntimeFuseTrigger Default { get; } = new(true, false, false);
 }

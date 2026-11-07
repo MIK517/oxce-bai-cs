@@ -1,4 +1,5 @@
 using Oxce.Gameplay.Battles;
+using Oxce.Gameplay.Battles.Terrain;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Sessions;
 using Xunit;
@@ -60,6 +61,63 @@ public sealed class BattleInventoryTests
     {
         var found = battle.Items.Single(candidate => candidate.Id == item);
         return (found.Slot, found.SlotX, found.SlotY, found.OwnerUnitId, found.Tile);
+    }
+
+    [Fact]
+    public void AnItemPutDownByAFlyingUnitOverAHoleDropsToTheFloorBelowWhenTheInventoryCloses()
+    {
+        // InventoryState's destructor: applyGravity on the selected unit's tile (the port runs it after each move of a running battle).
+        var (campaign, battle, soldier) = Open(firstTurn: true);
+        var ground = soldier.Position!.Value;
+        var above = ground with { Z = 1 };
+        battle.Map.SetPart(battle.Map.TileIndex(above), BattleTilePart.Floor, -1, -1);
+        battle.SetTile(soldier, above);
+        battle.SelectedUnitId = soldier.Id;
+        Moved(campaign, new MoveInventoryItem(soldier.Id, Gun, "STR_GROUND", 0, 0));
+        Assert.Equal((ground, true), (Where(battle, Gun).Tile!.Value, soldier.Floating));
+        Assert.Equal(above, soldier.Position);
+    }
+
+    private static (CampaignState Campaign, BattleState Battle, BattleUnit Soldier, BattlePosition Ground) WalkerInTheAir(string? rules = null)
+    {
+        var (campaign, battle, soldier) = Open(rules, firstTurn: true);
+        var ground = soldier.Position!.Value;
+        var above = ground with { Z = 1 };
+        battle.Map.SetPart(battle.Map.TileIndex(above), BattleTilePart.Floor, -1, -1);
+        soldier.MovementType = 0;
+        battle.SetTile(soldier, above);
+        battle.SelectedUnitId = soldier.Id;
+        return (campaign, battle, soldier, ground);
+    }
+
+    [Fact]
+    public void AWalkerWithoutAFloorFallsWhenTheInventoryCloses()
+    {
+        var (campaign, battle, soldier, ground) = WalkerInTheAir();
+        Assert.True(soldier.HaveNoFloorBelow);
+        // A loaded battle with a floorless walker refuses its commands (the constructor queues the fall, which the port does at the first turn only).
+        Assert.Equal("battle.casualties-unsupported", Refusal(campaign, new MoveInventoryItem(soldier.Id, Gun, "STR_GROUND", 0, 0)));
+        // Standing in the air only because a script changed its movement type is the same: nothing falls until a gravity call, so test the close itself.
+        Assert.Null(battle.FallsRefusal(campaign.Content.RuntimeRules, soldier));
+        battle.ApplyGravity(soldier.Position);
+        Assert.Null(battle.ResolveFalls(campaign.Content.RuntimeRules));
+        Assert.Equal(ground, soldier.Position);
+    }
+
+    [Fact]
+    public void AnInventoryMoveWhoseFallCannotRunIsRefusedBeforeTheMove()
+    {
+        var rules = CostRules.Replace("  - type: SUIT\n", "  - type: SUIT\n    specab: 2\n", StringComparison.Ordinal);
+        Assert.NotEqual(CostRules, rules);
+        var (campaign, battle, soldier, _) = WalkerInTheAir(rules);
+        var gun = Where(battle, Gun);
+        // The battle gate would stop it first: lift the walker's floorlessness for the gate by letting it float, then restore it for the check.
+        soldier.MovementType = 1;
+        battle.ApplyGravity(soldier.Position);
+        soldier.MovementType = 0;
+        soldier.Floating = false;
+        Assert.Equal("battle.burn-floor-unsupported", battle.FallsRefusal(campaign.Content.RuntimeRules, soldier)!.Code);
+        Assert.Equal(gun, Where(battle, Gun));
     }
 
     [Fact]
