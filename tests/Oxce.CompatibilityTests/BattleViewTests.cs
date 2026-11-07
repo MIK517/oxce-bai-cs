@@ -334,7 +334,8 @@ public sealed class BattleViewTests
         var view = View(campaign);
         var all = new[] { BattleActionKind.SelectNextInventoryUnit, BattleActionKind.SelectPreviousInventoryUnit, BattleActionKind.SelectNextUnit, BattleActionKind.SelectPreviousUnit, BattleActionKind.SkipUnit, BattleActionKind.SkipUnitByDistance };
         var actions = view.QueryLegalActions(BattleViewer.LocalPlayer, soldier)!;
-        Assert.Equal(all.Append(BattleActionKind.OpenInventory), actions.Actions);
+        // The movement actions of branch 4 (S10): turning, kneeling and walking are listed for a soldier; no ladder or flight, so no up and down.
+        Assert.Equal(all.Concat([BattleActionKind.OpenInventory, BattleActionKind.Turn, BattleActionKind.Kneel, BattleActionKind.Walk]), actions.Actions);
         Assert.Equal([FirstVehicle, SecondVehicle], actions.SelectableUnitIds);
         // The undo unit can be taken back only while another unit is selected.
         Event<UnitSkipped>(campaign, new SkipUnit(FirstVehicle));

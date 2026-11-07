@@ -165,6 +165,26 @@ internal sealed partial class BattleState
         return null;
     }
 
+    /// <summary>
+    /// <c>btnVisibleUnitClick</c>'s right click: the selectable unit of the side on turn that sees the target with the most time units left (a percent
+    /// of its base time units) is selected; none that sees it is a refusal (the reference does nothing).
+    /// </summary>
+    internal CampaignReason? SelectSpotter(RuntimeRuleCatalog rules, int unitId, int targetId, out BattleUnit? result, out bool saved)
+    {
+        result = null;
+        saved = false;
+        if (SelectionUnit(unitId, out _) is { } refusal) return refusal;
+        if (UnitById(targetId) is not { } target || !Sees(Side, target)) return BattleSelectionReasons.UnitUnknown;
+        var spotter = _units
+            .Where(unit => IsSelectable(rules, unit, Side, false, false) && unit.HasVisibleUnit(target))
+            .OrderByDescending(static unit => unit.Stats.TimeUnits > 0 ? unit.TimeUnits * 100 / unit.Stats.TimeUnits : 0)
+            .FirstOrDefault();
+        if (spotter is null) return BattleSelectionReasons.NoSpotter;
+        if (Select(spotter.Id, out saved) is { } failed) return failed;
+        result = spotter;
+        return null;
+    }
+
     /// <summary>The undo unit of the saved selection, when it can be selected again (<c>isSelectable(side, false, false)</c>).</summary>
     internal BattleUnit? UndoCandidate(RuntimeRuleCatalog rules) =>
         UndoUnitId is { } id && UnitById(id) is { } unit && IsSelectable(rules, unit, Side, false, false) ? unit : null;
@@ -219,6 +239,15 @@ internal sealed partial class BattleState
             if (UndoCandidate(rules) is not null) actions.Add(BattleActionKind.ReselectSkippedUnit);
             // btnInventoryClick: a selected unit whose armor has an inventory.
             if (InventoryAvailable(rules, unitId, out _) is null) actions.Add(BattleActionKind.OpenInventory);
+            // The movement buttons and clicks (S10): what each lists is what the command can start; the time units it needs are the command's refusal.
+            if (unit.Position is not null)
+            {
+                actions.Add(BattleActionKind.Turn);
+                if (AllowsKneeling(rules, unit) && !unit.Floating) actions.Add(BattleActionKind.Kneel);
+                if (ArmorOf(rules, unit).AllowsMoving) actions.Add(BattleActionKind.Walk);
+                if (UpDownLegal(rules, unit, up: true)) actions.Add(BattleActionKind.MoveUp);
+                if (UpDownLegal(rules, unit, up: false)) actions.Add(BattleActionKind.MoveDown);
+            }
             foreach (var other in _units)
                 if (other.Id != unitId && other.Faction == Side && !other.IsOut && other.Position is not null) others.Add(other.Id);
         }
@@ -283,7 +312,7 @@ internal sealed partial class BattleState
                 var smoke = floorShown ? Map.Smoke(tile) : 0;
                 var fire = floorShown ? Map.Fire(tile) : 0;
                 if (parts.Count == 0 && items.Count == 0 && standing is null && smoke == 0 && fire == 0) continue;
-                tiles.Add(new BattleTileView(position, parts, smoke, fire, items, standing));
+                tiles.Add(new BattleTileView(position, parts, smoke, fire, items, standing, Map.Shade(tile)));
             }
         return new BattleLevelView(level, Width, Length, Height, tiles, Revision);
     }

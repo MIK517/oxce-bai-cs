@@ -69,6 +69,7 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         registry.Command<SelectNextUnit>(SelectNextUnit);
         registry.Command<SkipUnit>(SkipUnit);
         registry.Command<ReselectSkippedUnit>(ReselectSkippedUnit);
+        registry.Command<SelectSpotter>(SelectSpotter);
         registry.Command<TurnUnit>(TurnUnit);
         registry.Command<KneelUnit>(KneelUnit);
         registry.Command<WalkUnit>(WalkUnit);
@@ -541,6 +542,13 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         }
     }
 
+    private CampaignCommandResult SelectSpotter(SelectSpotter command)
+    {
+        if (_battle is not { } battle) return Blocked(BattleSelectionReasons.Unavailable);
+        if (battle.SelectSpotter(campaign.Content.RuntimeRules, command.UnitId, command.TargetUnitId, out var result, out var saved) is { } refusal) return Blocked(refusal);
+        return new CampaignCommandResult([new UnitSelected(result!.Id, saved)]);
+    }
+
     private CampaignCommandResult ReselectSkippedUnit(ReselectSkippedUnit command)
     {
         if (_battle is not { } battle) return Blocked(BattleSelectionReasons.Unavailable);
@@ -558,6 +566,12 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
 
     public BattleLegalActions? QueryLegalActions(BattleViewer viewer, int unitId) =>
         campaign.Read(() => _battle?.LegalActions(campaign.Content.RuntimeRules, viewer, unitId));
+
+    public BattlePathView? QueryPath(BattleViewer viewer, int unitId, BattlePosition target, BattleMoveType move) =>
+        campaign.Read(() => _battle?.PathView(campaign.Content.RuntimeRules, viewer, unitId, target, move));
+
+    public BattleReachableView? QueryReachable(BattleViewer viewer, int unitId) =>
+        campaign.Read(() => _battle?.ReachableView(campaign.Content.RuntimeRules, viewer, unitId));
 
     public BattleInventoryView? QueryInventory(BattleViewer viewer, int unitId) =>
         campaign.Read(() => _battle?.InventoryView(campaign.Content.RuntimeRules, viewer, unitId));

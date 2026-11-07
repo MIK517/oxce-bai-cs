@@ -23,7 +23,7 @@ public sealed class BattleWalkTests
     }
 
     /// <summary>The soldier walks (unless <paramref name="flying"/>), the map is four levels high, the alien reacts fast and the gun has costs.</summary>
-    private static Arena Make(bool flying = false, string suitExtra = "", int distance = 5, string rulesExtra = "", Func<string, string>? edit = null) =>
+    internal static Arena Make(bool flying = false, string suitExtra = "", int distance = 5, string rulesExtra = "", Func<string, string>? edit = null) =>
         Flat(distance: distance, edit: rules =>
         {
             rules = Replaced(rules, "    shade: 0\n    width: 30\n    length: 30\n    height: 2", "    shade: 0\n    width: 30\n    length: 30\n    height: 4");
@@ -35,7 +35,7 @@ public sealed class BattleWalkTests
             return edit is null ? rules : edit(rules);
         });
 
-    private static BattlePosition At(int x, int y, int z = 0) => new(x, y, z);
+    internal static BattlePosition At(int x, int y, int z = 0) => new(x, y, z);
 
     private static string Refusal(CampaignCommandResult result) => Assert.IsType<CampaignActionBlocked>(Assert.Single(result.Events)).Code;
 
@@ -50,7 +50,7 @@ public sealed class BattleWalkTests
 
     private static UnitWalkEnded End(IReadOnlyList<ICampaignEvent> events) => Assert.IsType<UnitWalkEnded>(events[^1]);
 
-    private static BattleItem GunFor(Arena arena, BattleUnit unit)
+    internal static BattleItem GunFor(Arena arena, BattleUnit unit)
     {
         var gun = new BattleItem(arena.Battle.TakeItemId(), "GUN") { OwnerUnitId = unit.Id, Slot = "STR_RIGHT_HAND", IsWeaponWithAmmo = true };
         arena.Battle.AddItem(gun);

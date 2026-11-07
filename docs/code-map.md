@@ -14,18 +14,18 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Benchmarks](#oxcebenchmarks) | 19 | Engine, Formats, Mods, Rendering, Resources, Savegames |
 | [Oxce.App](#oxceapp) | 3 | Engine, Extensions, Formats, Mods, Platform.Sdl, Rendering, Savegames |
 | [Oxce.Core](#oxcecore) | 8 | - |
-| [Oxce.Engine](#oxceengine) | 40 | Core, Gameplay, Rendering, Resources |
+| [Oxce.Engine](#oxceengine) | 41 | Core, Gameplay, Rendering, Resources |
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 247 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 248 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 100 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 8 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 347 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 348 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 112 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -106,7 +106,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Engine
 
-`src/Oxce.Engine` - 40 files.
+`src/Oxce.Engine` - 41 files.
 
 ### `Oxce.Engine`
 
@@ -138,6 +138,8 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BattleBriefingScreen` (class) [BattleBriefingScreen.cs](../src/Oxce.Engine/Battlescape/BattleBriefingScreen.cs) - `BriefingState`: the mission's title, description and the target and craft lines.
 - `BattleCamera` (class) [BattleCamera.cs](../src/Oxce.Engine/Battlescape/BattleCamera.cs) - The battlescape camera's map-side state (`Camera`: `up`, `down`, `setViewLevel`, `centerOnPosition`, `toggleShowAllLayers`): the tile at...
 - `BattleInventoryScreen` (class) [BattleInventoryScreen.cs](../src/Oxce.Engine/Battlescape/BattleInventoryScreen.cs) - `InventoryState`: one unit's sections, carried items and the items on its tile, from `IBattleInventoryQuery`.
+- `BattleReplayFrame` (record struct) [BattleReplay.cs](../src/Oxce.Engine/Battlescape/BattleReplay.cs) - One beat of a replayed action: the unit it concerns, where a unit that moved now stands (a step or a fall; null for the others) and the l...
+- `BattleReplay` (class) [BattleReplay.cs](../src/Oxce.Engine/Battlescape/BattleReplay.cs) - Turns the events of a movement command into the frames the battlescape replays.
 - `BattleScreenBase` (class) [BattleScreenBase.cs](../src/Oxce.Engine/Battlescape/BattleScreenBase.cs) - Frame, palette, revision and message handling the battle screens share.
 - `BattleUiContext` (class) [BattleUiContext.cs](../src/Oxce.Engine/Battlescape/BattleUiContext.cs) - What the battle screens share (Phase 7 branch 3 S6): the command target, the queries for one viewer, the font, the language and the stack...
 - `BattleUiContext.Color` (class) [BattleUiContext.cs](../src/Oxce.Engine/Battlescape/BattleUiContext.cs) - Palette indices of the placeholder drawing.
@@ -350,7 +352,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 247 files.
+`src/Oxce.Gameplay` - 248 files.
 
 ### `Oxce.Gameplay`
 
@@ -422,6 +424,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `SelectNextUnit` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - The next or previous soldier button (`BattlescapeState::btnNextSoldierClick`, `btnPrevSoldierClick`), walking the unit list from `UnitId`...
 - `SkipUnit` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - "Next and stop" (`btnNextStopLClick` by list order, `btnNextStopMClick` by distance): the unit is remembered as the undo unit, may not be...
 - `ReselectSkippedUnit` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - `btnNextStopRClick`: the unit that was skipped last (the undo unit, `UnitId`) is selected again.
+- `SelectSpotter` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - The right click of a visible-unit button (`BattlescapeState::btnVisibleUnitClick`): of the units of the side that see `TargetUnitId` and...
 - `UnitSelected` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - A unit was selected.
 - `UnitSkipped` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - A unit was skipped.
 - `BattleActionKind` (enum) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - What a battle client can ask for now that the rules list as legal for a unit; later branches add their own.
@@ -429,9 +432,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BattleSelectionView` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - What the selection looks like to a viewer: the saved selection and undo unit (only when they are the viewer's side's), the units of the s...
 - `BattleTilePartView` (record struct) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - A discovered part of a tile: the terrain object (data set name and index in it) and the part it occupies.
 - `BattleTileItemView` (record struct) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - An item lying on a visible tile floor.
-- `BattleTileView` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - A tile as a viewer sees it: only its discovered parts, the smoke and fire when the floor is discovered, the items on it and the unit stan...
+- `BattleTileView` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - A tile as a viewer sees it: only its discovered parts (with the tile's shade, 0 full light to 15 dark: `Tile::getShade`), the smoke and f...
 - `BattleLevelView` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - One level of the map for a viewer: the map size and the tiles it may see, in index order.
 - `BattleUnitInfo` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - `BattlescapeState::updateSoldierInfo`: a viewer's own unit with its bars, hands, the hostile units it sees and its wounded (and burning)...
+- `BattlePathMarker` (enum) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - How a previewed step stands against the unit's time units, energy and reserve (`Pathfinding::refreshPath`'s marker colours).
+- `BattlePathStepView` (record struct) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - One tile of a previewed path: where the unit stands after the step, the direction it took (0-7, 8 up, 9 down), and the time units and ene...
+- `BattlePathView` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - A path as a player would see it previewed (`Pathfinding::calculate` then `refreshPath`): the steps, the time units and energy the whole w...
+- `BattleReachableView` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - The tiles a unit can reach with its time units and energy that the viewer has discovered, cheapest first (the first is its own).
 - `IBattleViewQuery` (interface) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - The queries of the battlescape screen (ADR 0038: every one takes the viewer and answers from what its side knows).
 
 ### `Oxce.Gameplay.Battles.Terrain`
@@ -1337,7 +1344,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 347 files.
+`tests/Oxce.CompatibilityTests` - 348 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1347,11 +1354,12 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>342 test classes</summary>
+<details><summary>343 test classes</summary>
 
 - `BaseDefenseDeploymentTests` ([BaseDefenseDeploymentTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseDeploymentTests.cs))
 - `BaseDefenseMapTests` ([BaseDefenseMapTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseMapTests.cs))
 - `BattleCampaignSaveTests` ([BattleCampaignSaveTests.cs](../tests/Oxce.CompatibilityTests/BattleCampaignSaveTests.cs))
+- `BattleClientMovementTests` ([BattleClientMovementTests.cs](../tests/Oxce.CompatibilityTests/BattleClientMovementTests.cs))
 - `BattleDoorTests` ([BattleDoorTests.cs](../tests/Oxce.CompatibilityTests/BattleDoorTests.cs))
 - `BattleEntryPointTests` ([BattleEntryPointTests.cs](../tests/Oxce.CompatibilityTests/BattleEntryPointTests.cs))
 - `BattleFireTests` ([BattleFireTests.cs](../tests/Oxce.CompatibilityTests/BattleFireTests.cs))

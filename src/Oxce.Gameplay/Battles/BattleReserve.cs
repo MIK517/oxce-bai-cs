@@ -142,15 +142,16 @@ internal sealed partial class BattleState
     /// snap, snap to aimed, aimed to none) and for kneeling (<see cref="KneelReserved"/>, when the armor allows it and the unit
     /// stands). A unit of another side than the one acting, or any neutral unit, only needs the time units. The warning a refusal shows is
     /// classified; its text belongs to the client. The hostile side's reserve is a percentage of the AI's reserve mode (branch 6): it is
-    /// not run and answers <see cref="ReservedTimeUnitsWarning.HostileReserveUnsupported"/>.
+    /// not run and answers <see cref="ReservedTimeUnitsWarning.HostileReserveUnsupported"/>. <paramref name="reserved"/> replaces the saved reserve (the path preview's temporary auto shot reserve).
     /// </summary>
-    internal ReservedTimeUnitsResult CheckReservedTimeUnits(RuntimeRuleCatalog rules, BattleUnit unit, int timeUnits, int energy, bool justChecking)
+    internal ReservedTimeUnitsResult CheckReservedTimeUnits(RuntimeRuleCatalog rules, BattleUnit unit, int timeUnits, int energy, bool justChecking, int? reserved = null)
     {
+        var reserve = reserved ?? TimeUnitsReserved;
         ArgumentNullException.ThrowIfNull(rules);
         ArgumentNullException.ThrowIfNull(unit);
         var cost = new BattleActionCost(unit)
         {
-            Type = (BattleActionType)TimeUnitsReserved,
+            Type = (BattleActionType)reserve,
             Weapon = MainHandWeapon(rules, unit, quickest: false),
         };
         if (Side != unit.Faction || Side == BattleFaction.Neutral) return new(timeUnits <= unit.TimeUnits);
@@ -187,7 +188,7 @@ internal sealed partial class BattleState
             if (justChecking) return new(false, ReservedTimeUnitsWarning.Silent);
             if (kneel != 0)
                 return new(false, cost.Type == BattleActionType.Kneel ? ReservedTimeUnitsWarning.Kneeling : ReservedTimeUnitsWarning.KneelingAndFiring);
-            return new(false, (BattleActionType)TimeUnitsReserved switch
+            return new(false, (BattleActionType)reserve switch
             {
                 BattleActionType.SnapShot => ReservedTimeUnitsWarning.SnapShot,
                 BattleActionType.AutoShot => ReservedTimeUnitsWarning.AutoShot,

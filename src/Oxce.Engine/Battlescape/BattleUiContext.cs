@@ -90,6 +90,10 @@ public sealed class BattleUiContext
             colors[16 + shade] = new((byte)(225 * brightness), (byte)(237 * brightness), (byte)(245 * brightness));
             colors[32 + shade] = new((byte)(125 * brightness), (byte)(215 * brightness), (byte)(165 * brightness));
             colors[48 + shade] = new((byte)(255 * brightness), (byte)(170 * brightness), (byte)(120 * brightness));
+            // The terrain shaded by the tile's light (Tile::getShade: 0 full light to 15 dark): floor, west and north walls, objects.
+            colors[Color.FloorShade + shade] = new((byte)(70 * brightness), (byte)(90 * brightness), (byte)(60 * brightness));
+            colors[Color.WallShade + shade] = new((byte)(150 * brightness), (byte)(120 * brightness), (byte)(80 * brightness));
+            colors[Color.ObjectShade + shade] = new((byte)(120 * brightness), (byte)(100 * brightness), (byte)(160 * brightness));
         }
         return new(colors);
     }
@@ -99,6 +103,12 @@ public sealed class BattleUiContext
     {
         public const byte Background = 1, Panel = 2, Floor = 3, WestWall = 4, NorthWall = 5, ObjectPart = 6, Smoke = 7, Fire = 8, Item = 9,
             Xcom = 10, Hostile = 11, Neutral = 12, Selected = 13, Camera = 14, Frame = 15;
+
+        /// <summary>First index of the 16 shades of the floor, the walls and the objects; shade 0 is full light.</summary>
+        public const byte FloorShade = 64, WallShade = 80, ObjectShade = 96;
+
+        /// <summary>The path preview's marker colours (green, yellow, red) and the reachable tiles'.</summary>
+        public const byte PathAffordable = Xcom, PathReserved = Neutral, PathUnaffordable = Hostile, ReachableTile = Camera;
 
         public const int White = 1, Green = 2, Orange = 3;
     }

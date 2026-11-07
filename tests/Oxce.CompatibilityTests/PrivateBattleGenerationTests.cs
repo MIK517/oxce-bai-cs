@@ -361,7 +361,7 @@ public sealed class PrivateBattleGenerationTests
     {
         context.Screens.Tick(TimeSpan.FromMilliseconds(16));
         Assert.True(screen.Frame.Width > 0 && screen.Frame.Height > 0);
-        Assert.Contains(screen.Frame.Pixels.ToArray(), static pixel => pixel == BattleUiContext.Color.Floor);
+        Assert.Contains(screen.Frame.Pixels.ToArray(), static pixel => pixel is >= BattleUiContext.Color.FloorShade and < BattleUiContext.Color.FloorShade + 16);
         Assert.NotNull(screen.Model.SelectedUnitId);
         var selected = battle.Units.Single(unit => unit.Id == screen.Model.SelectedUnitId);
         Assert.Equal(BattleFaction.Player, selected.Faction);

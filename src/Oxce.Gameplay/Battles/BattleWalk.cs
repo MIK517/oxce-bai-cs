@@ -19,6 +19,19 @@ internal sealed partial class BattleState
     /// <summary>What a walk did, for the command's last event.</summary>
     internal readonly record struct BattleWalkResult(BattleWalkStop Stop, int Steps, int TimeUnitsSpent, int EnergySpent);
 
+    /// <summary>Whether the armor allows running, strafing or sneaking for the unit's size (a normal walk always).</summary>
+    private static bool MoveTypeAllowed(RuntimeBattleArmor armor, BattleUnit unit, BattleMoveType move)
+    {
+        var small = !unit.IsBigUnit;
+        return move switch
+        {
+            BattleMoveType.Run => RuntimeBattleArmor.Allows(armor.AllowsRunning, small),
+            BattleMoveType.Strafe => RuntimeBattleArmor.Allows(armor.AllowsStrafing, small),
+            BattleMoveType.Sneak => RuntimeBattleArmor.Allows(armor.AllowsSneaking, small),
+            _ => true,
+        };
+    }
+
     /// <summary>
     /// The walk command (<c>primaryAction</c>): the path to <paramref name="target"/> for the move type, then <see cref="RunWalk"/>. Refused, before
     /// any change, when the armor does not allow moving (or the move type), there is no path, or the first step cannot be taken. Ordered events are
@@ -36,15 +49,7 @@ internal sealed partial class BattleState
         var armor = ArmorOf(rules, unit);
         if (!armor.AllowsMoving) return BattleMovementReasons.WalkNotAllowed;
         if (!Enum.IsDefined(move)) return BattleMovementReasons.WalkMoveNotAllowed;
-        var small = !unit.IsBigUnit;
-        var allowed = move switch
-        {
-            BattleMoveType.Run => RuntimeBattleArmor.Allows(armor.AllowsRunning, small),
-            BattleMoveType.Strafe => RuntimeBattleArmor.Allows(armor.AllowsStrafing, small),
-            BattleMoveType.Sneak => RuntimeBattleArmor.Allows(armor.AllowsSneaking, small),
-            _ => true,
-        };
-        if (!allowed) return BattleMovementReasons.WalkMoveNotAllowed;
+        if (!MoveTypeAllowed(armor, unit, move)) return BattleMovementReasons.WalkMoveNotAllowed;
         var bam = (BattleActionMove)move;
         var pathfinder = new BattlePathfinder(this, rules);
         pathfinder.Calculate(unit, target, bam);

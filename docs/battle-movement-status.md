@@ -20,7 +20,7 @@ Phase 7 branch 4 (`claude/battle-movement`), from `main` after PR #80 (branch 3 
 | S7 gravity and falling | Done, awaiting audit (2026-11-07) |
 | S8 walking and flying | Done, awaiting audit (2026-11-07) |
 | S9 fire, smoke and terrain destruction | Done, awaiting audit (2026-11-07) |
-| S10 battlescape client | Planned |
+| S10 battlescape client | Done, awaiting audit (2026-11-07) |
 | S11 acceptance | Planned |
 | Branch audit | Planned |
 
@@ -558,41 +558,68 @@ Reference: `Tile.cpp` (`ignite`, `addSmoke`, `setFire`, `setSmoke`, `destroy`, `
   smoke thinning, spreading, averaged where two meet, stopped by a smoke wall, rising from fire, and no change without fire or smoke. The retired refusal's tests (first turn, spawn, gravity, inventory, walk) now assert the unit lands and walks on. Not tested: the `status != standing` branch after a hit (the call
   cannot leave the status), a base defense mission built by the generator (the test sets the mission type and module grid by reflection), the hostile reserve's interplay.
 
+## S10 — Battlescape client (2026-11-07)
+
+Reference: `BattlescapeState` (`mapClick`, `btnKneelClick`, `btnUnitUpClick`, `btnUnitDownClick`, `btnVisibleUnitClick`, the keys), `BattlescapeGame` (`primaryAction`,
+`secondaryAction`, `moveUpDown`), `Pathfinding` (`previewPath`, `refreshPath`, `findReachable`), `Map` (the tile shade of the drawing), `Options` (`strafe`, `battleNewPreviewPath`).
+
+- **Rules side (Oxce.Gameplay).** `BattleMovementQueries.cs` (`BattleState`): `PathView` is `Pathfinding::calculate` plus `refreshPath` as an immutable `BattlePathView`: the steps (position, direction, time units and energy
+  left, not below 0, and a marker), the whole walk's time units (the kneel's standing up and, for an armor with `turnBeforeFirstStep`, the turn before the first step included) and energy, or the refusal code with no steps
+  (`battle.walk-not-allowed`, `battle.walk-move-not-allowed`, `battle.walk-no-path`). The marker is the reference's colour: red when time units or energy run out, yellow when `CheckReservedTimeUnits(..., justChecking: true)`
+  fails (with an auto shot reserve when none is set: `CheckReservedTimeUnits` takes the replacing reserve as an optional argument, no state is switched), else green. A hostile viewer's reserve (branch 6) is not a
+  reserve: it counts as kept. `ReachableView` is `findReachable` with no action cost kept back. Both are viewer-scoped (`IBattleViewQuery.QueryPath`, `QueryReachable`): only for a live unit of the viewer's side on
+  that side's turn, a path only to a tile on the map whose floor the viewer has discovered (the `LevelView` rule, so the preview tells nothing the plan does not show), and reachable tiles only where discovered.
+  `BattleLegalActions` now lists `Turn` (any unit on the map), `Kneel` (the armor allows it, the unit does not float), `Walk` (the armor allows moving) and `MoveUp` and `MoveDown` (`validateUpDown`, the level exists, the armor
+  moves): what the command can start; time units are the command's refusal. `BattleTileView.Shade` is `Tile::getShade` of each listed tile. `SelectSpotter` (new command, event `UnitSelected`) is the right click of a
+  visible-unit button: of the selectable units of the side that have the target in their visible list, the one with the most time units as a percent of its base statistic (a tie keeps list order) is selected;
+  none is `battle.selection-no-spotter` (the reference does nothing). `Walk`'s move check is the helper `MoveTypeAllowed` the query shares.
+- **Client side (Oxce.Engine).** `BattleViewModel`: `Walk` (the tile click: `WalkUnit` at the camera's level with Shift as `IgnoreSpottedEnemies`; the camera follows the unit), `Turn` (the right click), `Kneel`,
+  `MoveUpDown` (the camera follows to the unit's level), `CenterOnUnit`, `SelectSpotter`, `Preview` (the pointer over a tile), `Path` and `Reachable` (re-asked on each revision, level change or
+  preview change) and `LastEvents` (the events of the last command that ran). `BattleReplay.From` turns a movement command's events into frames (a step or fall with its position, and a line of text for the rest);
+  `BattlescapeClient` plays one frame a `Tick`, shows its line as the message, draws the steps played as a trail and a box on the last one, and ends the replay (playing it out at once, and dropping that press, as the busy game drops clicks; a right click then shows `battle.cancel-walk-unsupported`) on a press only (a release, a key repeat or the pointer moving do not end it). The replay is presentation: the battle already holds the result (ADR 0037). Input: left click on a visible unit of the viewer's side that is not selected selects it, on a hostile one does nothing (the
+  reference's `else if` skips the walk), anywhere else it walks (the unit's own tile is `battle.walk-no-path`); right click turns or opens the door in front; the middle button over a unit is
+  `battle.alien-inventory-unsupported (Phase 8 (AlienInventoryState))` (`AlienInventoryState` is a Phase 8 screen), elsewhere nothing; `X` kneel, `U` up, `D` down, `G` shows the reachable tiles; the keys
+  1 to 9 and 0 (a key is never a right click: Shift changes nothing) and the panel's buttons (up to `VISIBLE_MAX` 10, left click centers, right click selects the best spotter) are the visible-unit buttons. The plan view draws each
+  discovered part in the shade of its tile (palette ramps 64, 80 and 96 for floor, walls and objects), the previewed path (the panel shows the walk's cost; the amounts left per tile are in the view and not drawn), and the reachable tiles as dots. A part whose tile floor is not discovered is drawn black (the reference's shade 16). The pointer preview and the `G` overlay are the port's additions (the reference previews only on a click with `battleNewPreviewPath` on, default off, and `findReachable` serves only the AI), as the plan asks. A path whose steps cross a tile the viewer has not discovered is no preview (null).
+  Retired: `battle.kneel-unsupported`, `battle.walking-unsupported`, `battle.unit-up-unsupported`, `battle.unit-down-unsupported`, `battle.visible-unit-center-unsupported`,
+  `battle.secondary-action-unsupported`, `battle.middle-button-unsupported` (the middle button's name changed with its reason).
+- **Not ported.** `Options::strafe` (default off: Ctrl and Alt then move nothing, so the client sends `BattleMoveType.Normal` only, as the reference does with the default options), the two-click preview
+  (`battleNewPreviewPath`, default `PATH_NONE`: one click walks), the camera's pixel following during a walk, sounds (`playUnitResponseSound`), the cursor types, `cancelCurrentAction` for a walk in progress (a walk resolves fully in the rules, ADR 0037: the press is dropped and `battle.cancel-walk-unsupported` names it; branch 5's targeting adds a pending action), the wounded, burning and dizzy friends of `updateSoldierInfo` beside the visible units (`battle.wounded-indicators-unsupported` is shown in the panel while the selected unit has wounded or burning units), `reShade`'s night vision and `oxceFOW`'s shading, the carried unit's carrier for a visible-unit button on a unit without a position (`battle.visible-unit-carried-unsupported`), debug mode and the minimap.
+- **Tests.** `BattleClientMovementTests` (compatibility, 24): the path query (markers and costs of a straight walk and that the walk then costs the same, red steps and the zero floor, the reserve with and without a reserve
+  set, the kneel and the turn before the first step, the scoping to the viewer and to discovered tiles, a no path view and an armor that cannot move or run, a run), the reachable tiles (the cost limit, a diagonal,
+  discovery, another viewer), the legal actions (walker, flier, hovering, an armor that cannot kneel or move, another side's turn), the shade and discovered parts of `QueryLevel`, `SelectSpotter` (the lone spotter,
+  the most time units, a tie, an unknown target, no spotter), and the screen: a click walking with its replay frame by frame and the trail, an input during a replay, Shift against a plain click that
+  stops on a new unit, a refused walk (state and revision unchanged), a click on another unit and on a hostile one and the middle button, the right click turning and opening a door, the kneel key (and an armor that
+  cannot), the up and down keys with the camera's level, the visible-unit keys and buttons, the pointer's preview (with its colours) and the reachable overlay, the drawn shade and the undiscovered tile, and that the
+  later buttons stay refused while the walking keys are no later buttons. `BattleScreensTests` and `BattleViewTests` were adjusted (a tile click walks, the movement actions are listed, the shaded floor).
+  Not tested: a mouse click on the panel's second row of visible buttons, a kneeling unit's preview after the kneel key (the query is tested with a kneeling unit), the hostile viewer's screens (no client of another side yet).
+
 ## Next
 
-S10 — battlescape client (plan row S10): viewer-scoped path, path cost and reachable-tile queries over `BattlePathfinder`, walk by tile click, kneel, unit up and down, turn by right-click, the visible-unit buttons,
-discovered tiles and shade on the plan view, events replayed; the later-button refusals of this branch replaced. Notes for its worker:
+S11 — acceptance (plan row S11 and the plan's "Acceptance" paragraph): on each acceptance battle of branch 1 that starts (the three Rosigma battles stay refused at the briefing by branch 8's
+`battle.new-turn-script-unsupported`), after the first turn a soldier leaves the craft along a computed path (`WalkUnit` through `BattleViewModel.Walk` or the command), turns, kneels and stands, and opens a
+door where the map has one; field of view and spotting are as the rules say, the battle saves and reloads with equal lighting, field of view and spotting and still validates. Each private active-battle save
+loads with its lighting and field of view computed and a free player unit walks (or the walk is refused by a named reason of a later branch). A viewer of another faction sees only that faction's discoveries and
+spotted units (`QueryLevel`, `QueryPath` and `QueryReachable` take the viewer). Pathfinding and field-of-view costs on the largest acceptance map are recorded in the performance baselines. Notes for its worker:
 
-- **What S9 added that the client shows.** Tile fire and smoke are map state (`BattleMap.Fire`, `Smoke`); the walk's events are unchanged (a burner's hit adds no event, and a unit a burnt floor dropped is a `UnitFell` before `UnitWalkEnded`).
-  Commands that can meet fire refuse with `battle.hit-unit-unsupported` or `battle.terrain-explosion-unsupported` (branch 5) before any change; the client shows the refusal's reason like the others.
-  `SpreadFireAndSmoke` and `CloseUfoDoors` are routines for branch 6's end of turn, called by nothing yet.
-- **Walk facts.** `BattleState.Walk(rules, unitId, target, move, ignore, events)` and `MoveUpDown(...)` are the rule methods; the commands run them on a trial
-  copy first (`CampaignBattles.TrialRefusal`, not available without terrain files; the copy draws from the campaign's stream and puts it back, and the live battle gets `Random = campaign.Random` before it runs). A walk is `RunWalk`'s loop; the finished-step block's order is burn floor
-  (`BurnFloor`), spotting flag clearing for a non-player mover, `ProximityEffects`, `CalculateLighting(Units, position, 2)`, `CalculateFov(position, 2, false)`, the spotted test, then `HasPossibleReactor` and `SpotMover`; after the loop,
-  units still on `FallingUnits` fall (`ResolveFalls`). `BattleWalkTests.Make` builds the walking soldier on the four-level arena
-  (`suitExtra` and `rulesExtra` add armor and global rules; `flying: true` keeps the flier); `Walk`, `End` and `State` are its helpers. The ramp records `RampLow` (terrain level -8) and `RampHigh` (-16) join the sight
-  tests' terrain; a ladder is `GravLift` on the object part. A wall object (`Wall`) blocks sight but not movement; an impassable tile needs a movement cost of 255 in a new record.
-  A known unit stands in the end tile (`arena.See()` after `Stand`) for "no path".
-- **Fire test helpers.** `BattleFireTests.Make` is the four-level arena with a strength-30 walking soldier (`Burner()` gives it `specab: 2`); the sight tests' terrain has the fire records (`BurnFloor`, `BrittleFloor`, `Crate`, `Rubble`, `Barrel`, `Objective`, `Sturdy`,
-  `Brick`, `Chaff`, `BaseModule`, `Dud`): only a floor or object with a loft is found by a hit at a tile's centre, and the plain `Floor` has none and neither fuel (so a walker over it burns nothing). `Hit`, `Burn` (fire and smoke on a tile) and `State` are its helpers.
-- **Landing refusals are over-approximations** (`battle.proximity-unsupported`, `battle.reaction-fire-unsupported`), and the walk meets the same ones per step. A landing also refuses for a burner's hit (`battle.hit-unit-unsupported`, `battle.terrain-explosion-unsupported`, `battle.module-map-unsupported`) through the dry run, which does not apply the burn (ADR 0040).
-- **Not done and needed by later slices.** `itemDrop` (branch 5), the stomp's knock-out and `checkForCasualties` (branch 6), the hit's unit part and explosions (branch 5), the environment's damage to units, `calculateEnviDamage` and the end of turn's light and sight (branch 6);
-  `canUseWeapon`'s research, AI use delay, depth and two-handed rules, `getWeaponForReactions`' preferred hand and `reactionsDisabled*` (branch 5, with the real reaction);
-  `BattleUnit.HitState` is never set (damage is branch 5's) and no selection resets it (`resetUnitHitStates`); the legal-action list does not list turn, kneel, walk or up and down (S10);
-  the AI's walk parts (S8's "Not ported") and `checkForReactivation` (branch 6).
-- **S6's notes still apply.** `BattleState.UnitOpensDoor(rules, unit, rightClick: false, direction, out attempt)` is the walking form (results 0, 1, 4, 5; a UFO door is open at once); `CloseUfoDoors()` is
-  ready for branch 6; `SpotMover` and `HasPossibleReactor` are the spotting and refusal after a move, called only for the mover of the side on turn (`PassesSpottingFilters` reads `Side`).
-- **Test helpers.** `BattleGravityTests.Tall` builds the sight tests' `Flat` arena four levels high (a walking soldier, an armor `specab`, a reactive alien, a big alien and the grenade's fuse events
-  by parameter), `Raise` puts a unit on a tile, `State` is a string of the units' fields, the map's grid, the revision and the falling list to compare a refused trial. `BattleTurnKneelTests.Make`
-  builds the arena with a turn cost of 2, `tuSnap: 20`, `tuAimed: 50` and an alien with reactions 100; commands run through `arena.Campaign.Execute`; an unfinished casualty (health 0) refuses every command
-  (`battle.casualties-unsupported`), so test a dying unit through state queries. A unit that stands over a floorless tile at a level above 0 makes the gate refuse commands: put its floor first, then `SetTile`.
-- **Gotchas.** A post-edit hook reformats edited C# files, so read a file again before a second edit. A backslash-n written through a script or heredoc reaches a C# file
-  as a real newline: add string literals that carry one with the Edit or Write tool (an apostrophe inside a heredoc can also break the shell call: write files with the Write tool; a Python script
-  that needs a backslash-n builds it with `chr(92) + 'n'`). A unit that still has its `InventoryTile` has no tile of its own and `StartFirstTurn` is the first sight (and `SetTile` throws for it), so a fall before the first turn is the
-  first turn's; tests that add `BattleUnit`s by hand must give them a `SoldierId` or a unit rule, since heights are read, and a battle with such a unit cannot be restored for the trial
-  copies (`MayFall()` keeps the first turn's copy from being made unless a unit has no floor; a walk's copy is made for every walk, so walk tests use the arenas' generated units). The reload comparisons go through `BattleSaveUnitTests.SightFree`. The armor key for the
-  special ability is `specab`; an armor's run, strafe and walk costs are `moveCost: {runPercent: [time, energy]}` (a step on the arena's floor costs 4 × percent / 100: normal walk 100/50, run 75/75). The tile fire and smoke are saved, but `Overlaps` and `Explosive` are not
-  (a trial copy starts them at 0).
+- **What S10 added that acceptance uses.** `IBattleViewQuery.QueryPath(viewer, unitId, target, move)` and `QueryReachable(viewer, unitId)`; `BattleViewModel.Walk(x, y, ignoreSpottedEnemies)`, `Turn`, `Kneel`,
+  `MoveUpDown`, `Preview` and `LastEvents`; `BattlescapeClient`'s replay (`Replay`, `ReplayPlayed`, `Tick`); `BattleClientMovementTests.Client(arena)` (with `Key`, `ClickTile`, `Over`, `Tick`, `Play` and `Pixel`, all internal) builds a context, opens the battlescape, selects the
+  arena's soldier and sets the camera's level 0 (tile pixels: `screen.TileSize`, the click and pointer helpers in that file). The path query allocates a `BattlePathfinder` (a node per tile) on each call and
+  `LegalActions` creates one for each up and down check: the model asks again only when the revision, the camera's level or the preview changes, but a performance baseline should measure them.
+- **Reserve in the preview.** `KneelReserved` is on by default in these arenas, so a step that leaves less than the kneel's 4 time units reserved shows yellow (the reference's `justChecking` rule); tests that want
+  green near the limit set `arena.Battle.KneelReserved = false`. The soldier's gun costs percentages of the soldier's 60 time units (`tuSnap: 20` is 12).
+- **Discovery depends on facing.** A soldier facing east discovers a half-plane ahead: a tile due south of it is not discovered, so a path query towards it is null. Tests use targets ahead of the unit.
+- **Left for later branches (unchanged).** `itemDrop` (branch 5), the stomp's knock-out and `checkForCasualties` (branch 6), the hit's unit part and explosions (branch 5), the environment's damage to units,
+  `calculateEnviDamage` and the end of turn's light and sight (branch 6); `canUseWeapon`'s research, AI use delay, depth and two-handed rules, `getWeaponForReactions`' preferred hand and
+  `reactionsDisabled*` (branch 5, with the real reaction); `BattleUnit.HitState` is never set (damage is branch 5's) and no selection resets it (`resetUnitHitStates`); the AI's walk parts (S8's "Not ported")
+  and `checkForReactivation` (branch 6). `SpreadFireAndSmoke` and `CloseUfoDoors` are routines for branch 6's end of turn, called by nothing yet.
+- **S9's notes still apply.** Commands that can meet fire refuse with `battle.hit-unit-unsupported` or `battle.terrain-explosion-unsupported` (branch 5) before any change; the walk commands run on a trial copy first
+  (`CampaignBattles.TrialRefusal`, not available without terrain files).
+- **Gotchas.** A post-edit hook reformats edited C# files, so read a file again before a second edit. A backslash-n written through a script or heredoc reaches a C# file as a real newline: add string literals that
+  carry one with the Edit or Write tool (a Python script that needs a backslash-n builds it with `chr(92) + 'n'`; a heredoc that holds an apostrophe can also break the shell call: write scripts with the Write tool). The
+  armor key for the special ability is `specab`; an armor's run, strafe and walk costs are `moveCost: {runPercent: [time, energy]}`. A test that adds `BattleUnit`s by hand needs a `SoldierId` or a unit rule, and a
+  battle with such a unit cannot be restored for the trial copies. `BattleState.Revision` has no setter: a test that wants the client to read again announces a change through a command (a `SelectUnit` of the unit
+  already selected). The reload comparisons go through `BattleSaveUnitTests.SightFree`.
 - Gotchas carried from branch 3 (see `docs/battle-session-ui-status.md` "## Next"): write test files with LF; the test runner is Microsoft
   Testing Platform (`dotnet test --project <proj> --filter-class <full name>`); battle test helpers (`BattleStartTests.Requested`,
   `Started`, `Battle`, `BattleSaveRootTests.Generated`, `BattleSaveUnitTests.Loaded`) are internal for reuse;

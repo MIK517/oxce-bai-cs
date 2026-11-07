@@ -28,6 +28,13 @@ public sealed record SkipUnit(int UnitId, bool ByDistance = false) : IBattleComm
 public sealed record ReselectSkippedUnit(int UnitId) : IBattleCommand, IUnitCommand;
 
 /// <summary>
+/// The right click of a visible-unit button (<c>BattlescapeState::btnVisibleUnitClick</c>): of the units of the side that see
+/// <see cref="TargetUnitId"/> and can be selected, the one with the most time units left (as a percent of its own, list order for a tie) becomes
+/// the selection. <see cref="UnitId"/> is the unit the client has selected.
+/// </summary>
+public sealed record SelectSpotter(int UnitId, int TargetUnitId) : IBattleCommand, IUnitCommand;
+
+/// <summary>
 /// A unit was selected. <see cref="Saved"/> says whether the battle's saved selection was written (the side-owning slot's) or the
 /// selection stays the client's.
 /// </summary>
@@ -50,6 +57,21 @@ public enum BattleActionKind
     SelectNextInventoryUnit,
     SelectPreviousInventoryUnit,
     OpenInventory,
+
+    /// <summary>The right click: turn towards a tile, or open the door in front.</summary>
+    Turn,
+
+    /// <summary>The kneel button: the armor allows kneeling and the unit does not float.</summary>
+    Kneel,
+
+    /// <summary>A click on a tile: the armor allows moving.</summary>
+    Walk,
+
+    /// <summary>The unit up button: a level above can be moved to from here (<c>validateUpDown</c>).</summary>
+    MoveUp,
+
+    /// <summary>The unit down button.</summary>
+    MoveDown,
 }
 
 /// <summary>
@@ -72,7 +94,7 @@ public readonly record struct BattleTilePartView(BattleTilePart Part, string Dat
 public readonly record struct BattleTileItemView(int ItemId, string ItemType);
 
 /// <summary>
-/// A tile as a viewer sees it: only its discovered parts, the smoke and fire when the floor is discovered, the items on it and the
+/// A tile as a viewer sees it: only its discovered parts (with the tile's shade, 0 full light to 15 dark: <c>Tile::getShade</c>), the smoke and fire when the floor is discovered, the items on it and the
 /// unit standing on it when the viewer sees that unit. A tile with nothing to show is not listed.
 /// </summary>
 public sealed record BattleTileView(
@@ -81,7 +103,8 @@ public sealed record BattleTileView(
     int Smoke,
     int Fire,
     IReadOnlyList<BattleTileItemView> Items,
-    int? UnitId);
+    int? UnitId,
+    int Shade = 0);
 
 /// <summary>One level of the map for a viewer: the map size and the tiles it may see, in index order.</summary>
 public sealed record BattleLevelView(int Level, int Width, int Length, int LevelCount, IReadOnlyList<BattleTileView> Tiles, long Revision);
@@ -111,6 +134,36 @@ public sealed record BattleUnitInfo(
     IReadOnlyList<int> WoundedUnitIds,
     IReadOnlyList<int> BurningUnitIds);
 
+/// <summary>How a previewed step stands against the unit's time units, energy and reserve (<c>Pathfinding::refreshPath</c>'s marker colours).</summary>
+public enum BattlePathMarker
+{
+    /// <summary>Green: the unit can pay it and keep its reserve.</summary>
+    Affordable,
+
+    /// <summary>Yellow: the unit can pay it but would use the time units reserved for its weapon or for kneeling.</summary>
+    ReservedTimeUnits,
+
+    /// <summary>Red: the unit cannot pay time units or energy this far.</summary>
+    Unaffordable,
+}
+
+/// <summary>
+/// One tile of a previewed path: where the unit stands after the step, the direction it took (0-7, 8 up, 9 down), and the time units and
+/// energy the unit would have left (not below 0) as the reference shows them over the tile.
+/// </summary>
+public readonly record struct BattlePathStepView(BattlePosition Position, int Direction, int TimeUnitsLeft, int EnergyLeft, BattlePathMarker Marker);
+
+/// <summary>
+/// A path as a player would see it previewed (<c>Pathfinding::calculate</c> then <c>refreshPath</c>): the steps, the time units and energy the whole walk
+/// would cost (the kneel's standing up and the turn before the first step included in the time units), or the refusal code when there is no walk
+/// (<see cref="Steps"/> empty). The query reads the battle and changes nothing.
+/// </summary>
+public sealed record BattlePathView(int UnitId, BattlePosition Target, BattleMoveType Move, IReadOnlyList<BattlePathStepView> Steps, int TimeUnitsCost,
+    int EnergyCost, string NoPathReason);
+
+/// <summary>The tiles a unit can reach with its time units and energy that the viewer has discovered, cheapest first (the first is its own).</summary>
+public sealed record BattleReachableView(int UnitId, IReadOnlyList<BattlePosition> Tiles);
+
 /// <summary>The queries of the battlescape screen (ADR 0038: every one takes the viewer and answers from what its side knows).</summary>
 public interface IBattleViewQuery
 {
@@ -124,6 +177,16 @@ public interface IBattleViewQuery
 
     /// <summary>The actions the rules accept for the viewer's unit now, or null when the unit is not the viewer's side's live unit.</summary>
     BattleLegalActions? QueryLegalActions(BattleViewer viewer, int unitId);
+
+    /// <summary>
+    /// The path the unit would walk to a tile (<c>Pathfinding::calculate</c> and <c>refreshPath</c>), or null when the unit is not the viewer's
+    /// side's live unit on turn, the tile is outside the map, or the viewer has not discovered the tile (the preview must not tell what the
+    /// viewer cannot see). A path that does not exist is a view with no steps and the reason.
+    /// </summary>
+    BattlePathView? QueryPath(BattleViewer viewer, int unitId, BattlePosition target, BattleMoveType move = BattleMoveType.Normal);
+
+    /// <summary>The discovered tiles the unit can reach (<c>Pathfinding::findReachable</c>), or null for a unit that is not the viewer's side's live unit on turn.</summary>
+    BattleReachableView? QueryReachable(BattleViewer viewer, int unitId);
 }
 
 /// <summary>The reasons selection refuses.</summary>
@@ -134,6 +197,9 @@ internal static class BattleSelectionReasons
 
     internal static readonly CampaignReason UnitUnknown = new("battle.selection-unit-unknown",
         "The unit is no live unit of the side on turn.");
+
+    internal static readonly CampaignReason NoSpotter = new("battle.selection-no-spotter",
+        "No selectable unit of the side sees that unit.");
 
     internal static readonly CampaignReason NothingToUndo = new("battle.selection-nothing-to-undo",
         "The unit is not the last one skipped, or it cannot be selected again.");

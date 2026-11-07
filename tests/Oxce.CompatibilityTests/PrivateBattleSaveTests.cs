@@ -79,7 +79,7 @@ public sealed class PrivateBattleSaveTests
         var screen = Assert.IsType<BattlescapeClient>(context.Screens.Top);
         context.Screens.Tick(TimeSpan.FromMilliseconds(16));
         Assert.True(screen.Frame.Width > 0 && screen.Frame.Height > 0);
-        Assert.Contains(screen.Frame.Pixels.ToArray(), static pixel => pixel == BattleUiContext.Color.Floor);
+        Assert.Contains(screen.Frame.Pixels.ToArray(), static pixel => pixel is >= BattleUiContext.Color.FloorShade and < BattleUiContext.Color.FloorShade + 16);
         PrivateBattleGenerationTests.AssertOtherSidesSeeOnlyTheirOwn(loaded.Campaign, held);
         Assert.Equal(battle.DeploymentId, held.DeploymentId);
         Assert.Null(loaded.Campaign.QuerySaveRefusal());
