@@ -206,6 +206,20 @@ internal sealed partial class BattleUnit
     /// <summary>BattleUnit::abortTurn.</summary>
     public void AbortTurn() => Status = BattleUnitStatus.Standing;
 
+    /// <summary>BattleUnit::spendTimeUnits: spends the time units when the unit has them, else nothing.</summary>
+    public bool SpendTimeUnits(int timeUnits)
+    {
+        if (timeUnits > TimeUnits) return false;
+        TimeUnits -= timeUnits;
+        return true;
+    }
+
+    /// <summary>
+    /// BattleUnit::getHitState: the unit was hit since a unit of its side was last selected. Runtime state (not saved) that a player unit's
+    /// reaction reads in <c>getSpottingUnits</c>; the damage that sets it and the selection that resets it belong to branch 5.
+    /// </summary>
+    public bool HitState { get; set; }
+
     /// <summary>
     /// BattleUnit::getReactionScore: the reactions statistic scaled by the share of time units left. A unit with no time units
     /// statistic divides by zero, as the reference does (infinity or not a number).

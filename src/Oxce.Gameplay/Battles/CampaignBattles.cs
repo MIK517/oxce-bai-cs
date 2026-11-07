@@ -69,6 +69,8 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         registry.Command<SelectNextUnit>(SelectNextUnit);
         registry.Command<SkipUnit>(SkipUnit);
         registry.Command<ReselectSkippedUnit>(ReselectSkippedUnit);
+        registry.Command<TurnUnit>(TurnUnit);
+        registry.Command<KneelUnit>(KneelUnit);
         registry.Command<UseInventoryFeature>(command =>
             Blocked(_battle is null or { Phase: BattlePhase.Briefing } ? BattleInventoryReasons.Unavailable : BattleInventoryReasons.For(command.Feature)));
         // The geoscape is frozen during a battle: time stops in the preflight, every other command here.
@@ -435,6 +437,20 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         if (battle.Skip(campaign.Content.RuntimeRules, command.UnitId, command.ByDistance, out var result, out var saved) is { } refusal)
             return Blocked(refusal);
         return new CampaignCommandResult([new UnitSkipped(command.UnitId, result?.Id ?? -1, saved)]);
+    }
+
+    private CampaignCommandResult TurnUnit(TurnUnit command)
+    {
+        if (_battle is not { } battle) return Blocked(BattleSelectionReasons.Unavailable);
+        if (battle.TurnTowards(campaign.Content.RuntimeRules, command.UnitId, command.Target, out var turn) is { } refusal) return Blocked(refusal);
+        return new CampaignCommandResult([new UnitTurned(command.UnitId, turn.Direction, turn.Eighths, turn.TimeUnitsSpent, turn.Stop)]);
+    }
+
+    private CampaignCommandResult KneelUnit(KneelUnit command)
+    {
+        if (_battle is not { } battle) return Blocked(BattleSelectionReasons.Unavailable);
+        if (battle.KneelUnit(campaign.Content.RuntimeRules, command.UnitId, out var kneeling, out var spent) is { } refusal) return Blocked(refusal);
+        return new CampaignCommandResult([new UnitKneeled(command.UnitId, kneeling, spent)]);
     }
 
     private CampaignCommandResult ReselectSkippedUnit(ReselectSkippedUnit command)

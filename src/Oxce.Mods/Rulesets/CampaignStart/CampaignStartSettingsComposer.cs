@@ -117,6 +117,7 @@ internal static class CampaignStartSettingsComposer
         b.ExtendedItemReloadCost = Read(root, "extendedItemReloadCost", b.ExtendedItemReloadCost);
         b.ExtendedRunningCost = Read(root, "extendedRunningCost", b.ExtendedRunningCost);
         b.ExtendedMovementCostRounding = Read(root, "extendedMovementCostRounding", b.ExtendedMovementCostRounding);
+        b.ExtendedMeleeReactions = Read(root, "extendedMeleeReactions", b.ExtendedMeleeReactions);
         b.TooMuchSmokeThreshold = Read(root, "tooMuchSmokeThreshold", b.TooMuchSmokeThreshold);
         if (root.TryGet("lighting", out var lighting))
         {

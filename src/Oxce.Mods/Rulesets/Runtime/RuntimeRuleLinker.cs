@@ -395,6 +395,7 @@ public static class RuntimeRuleLinker
             ExtendedItemReloadCost = content.CampaignStart.Settings.ExtendedItemReloadCost,
             ExtendedRunningCost = content.CampaignStart.Settings.ExtendedRunningCost,
             ExtendedMovementCostRounding = content.CampaignStart.Settings.ExtendedMovementCostRounding,
+            ExtendedMeleeReactions = content.CampaignStart.Settings.ExtendedMeleeReactions,
             TooMuchSmokeThreshold = content.CampaignStart.Settings.TooMuchSmokeThreshold,
             MaximumStaticLightDistance = content.CampaignStart.Settings.MaximumStaticLightDistance,
             MaximumDynamicLightDistance = content.CampaignStart.Settings.MaximumDynamicLightDistance,

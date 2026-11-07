@@ -41,7 +41,10 @@ public sealed class BattleSightTests
     private static byte[] UfoDoorRecord() => Record([.. Enumerable.Range(8, 12).Select(offset => (offset, (byte)1)), (30, (byte)1)]);
 
     internal static void Terrain(Dictionary<string, byte[]> files) => files["TERRAIN/TESTSET.MCD"] = Mcd(Record((42, 2)), Record((42, 3)),
-        Record((42, 4), (59, 2)), Record((39, 4), (40, 4), (41, 4)), Solid(1, 12, true), Solid(1, 6, false), Solid(4, 12, false), Record((34, 1), (39, 4)), UfoDoorRecord());
+        Record((42, 4), (59, 2)), Record((39, 4), (40, 4), (41, 4)), Solid(1, 12, true), Solid(1, 6, false), Solid(4, 12, false), Record((34, 1), (39, 4)), UfoDoorRecord(), Record((35, 1), (46, 0)), Record((34, 1), (39, 4), (48, unchecked((byte)-24))));
+
+    internal const int SwingDoor = 9; // a swinging door (its alternative is the first record)
+    internal const int StairFloor = 10; // a floor with a terrain level of -24
 
     private const string SuitBlock = "  - type: SUIT\n    movementType: 1\n    builtInWeapons: [GUN, CLIP, GRENADE]\n    specialWeapon: AMP\n    storeItem: SUPPLY\n    corpseBattle: [CORPSE]\n    corpseGeo: CORPSE\n    loftempsSet: [0]";
     private const string SmallBlock = "  - type: SMALL_VEHICLE_ARMOR\n    size: 1\n    allowInv: false\n    corpseBattle: [CORPSE]\n    corpseGeo: CORPSE\n    loftempsSet: [0]";

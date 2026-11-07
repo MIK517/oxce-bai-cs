@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 241 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 243 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 100 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 8 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 342 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 343 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 112 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -350,7 +350,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 241 files.
+`src/Oxce.Gameplay` - 243 files.
 
 ### `Oxce.Gameplay`
 
@@ -389,6 +389,11 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BattleInventoryView` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - A unit's inventory screen: sections, carried items and the items on its tile.
 - `IBattleInventoryQuery` (interface) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - What the inventory screen reads (ADR 0038: a viewer sees only its own faction's inventory).
 - `BattleItemSnapshot` (record) [BattleItemSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleItemSnapshot.cs) - One saved item (`SavedBattleGame::load`'s item passes and `BattleItem::load` and `save`, Phase 7 branch 2 S4).
+- `TurnUnit` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - Turning a unit towards a tile (`BattlescapeGame::secondaryAction`, the right click: `UnitTurnBState`): the unit turns one eighth at a tim...
+- `KneelUnit` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - The kneel button (`BattlescapeState::btnKneelClick`, `BattlescapeGame::kneel`): the unit kneels, or stands up when it kneels, for the tim...
+- `BattleTurnStop` (enum) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - Why a turn ended.
+- `UnitTurned` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - A unit turned (possibly not all the way): its direction now, the eighths it turned and the time units it paid.
+- `UnitKneeled` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - A unit kneeled or stood up (`Kneeling` is whether it kneels now), paying `TimeUnitsSpent`.
 - `BattleSnapshot` (record) [BattleSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleSnapshot.cs) - The persistence boundary of `BattleState` (Phase 7 branch 2): what `SavedBattleGame::load` reads and `save` writes, as values.
 - `BattleTileSnapshot` (record struct) [BattleSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleSnapshot.cs) - One saved tile (Tile::loadBinary and saveBinary, or the old Tile::load): each part's map data ID and data set ID (-1 for none), smoke, fi...
 - `BattleFactionDiscovery` (record struct) [BattleSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleSnapshot.cs) - The tile parts the hostile and neutral factions have discovered on one tile, one bit per part (floor 1, west wall 2, north wall 4, object...
@@ -1321,7 +1326,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 342 files.
+`tests/Oxce.CompatibilityTests` - 343 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1331,7 +1336,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>337 test classes</summary>
+<details><summary>338 test classes</summary>
 
 - `BaseDefenseDeploymentTests` ([BaseDefenseDeploymentTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseDeploymentTests.cs))
 - `BaseDefenseMapTests` ([BaseDefenseMapTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseMapTests.cs))
@@ -1351,6 +1356,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BattleSightTests` ([BattleSightTests.cs](../tests/Oxce.CompatibilityTests/BattleSightTests.cs))
 - `BattleStartTests` ([BattleStartTests.cs](../tests/Oxce.CompatibilityTests/BattleStartTests.cs))
 - `BattleTerrainLoaderTests` ([BattleTerrainLoaderTests.cs](../tests/Oxce.CompatibilityTests/BattleTerrainLoaderTests.cs))
+- `BattleTurnKneelTests` ([BattleTurnKneelTests.cs](../tests/Oxce.CompatibilityTests/BattleTurnKneelTests.cs))
 - `BattleViewTests` ([BattleViewTests.cs](../tests/Oxce.CompatibilityTests/BattleViewTests.cs))
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))

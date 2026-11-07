@@ -569,6 +569,9 @@ public sealed record RuntimeCampaignSettings(
     public bool ExtendedRunningCost { get; init; }
     public int ExtendedMovementCostRounding { get; init; }
 
+    /// <summary>Mod::EXTENDED_MELEE_REACTIONS (<c>extendedMeleeReactions</c>): 0 none, 1 melee reactions in reach, 2 also when attacked from any side.</summary>
+    public int ExtendedMeleeReactions { get; init; }
+
     /// <summary>Mod::getTooMuchSmokeThreshold, getMaxStaticLightDistance, getMaxDynamicLightDistance and getEnhancedLighting.</summary>
     public int TooMuchSmokeThreshold { get; init; } = 10;
     public int MaximumStaticLightDistance { get; init; } = 16;

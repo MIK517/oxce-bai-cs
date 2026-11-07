@@ -69,6 +69,7 @@ public sealed class CampaignStartSettings
         ExtendedItemReloadCost = builder.ExtendedItemReloadCost;
         ExtendedRunningCost = builder.ExtendedRunningCost;
         ExtendedMovementCostRounding = builder.ExtendedMovementCostRounding;
+        ExtendedMeleeReactions = builder.ExtendedMeleeReactions;
         TooMuchSmokeThreshold = builder.TooMuchSmokeThreshold;
         MaximumStaticLightDistance = builder.MaximumStaticLightDistance;
         MaximumDynamicLightDistance = builder.MaximumDynamicLightDistance;
@@ -252,6 +253,9 @@ public sealed class CampaignStartSettings
     /// <summary>Mod::EXTENDED_MOVEMENT_COST_ROUNDING (<c>extendedMovementCostRounding</c>): 0 truncate, 1 round, 2 round up.</summary>
     public int ExtendedMovementCostRounding { get; init; }
 
+    /// <summary>Mod::EXTENDED_MELEE_REACTIONS (<c>extendedMeleeReactions</c>): 0 none, 1 melee reactions in reach, 2 also when attacked from any side.</summary>
+    public int ExtendedMeleeReactions { get; init; }
+
     /// <summary>Mod::getTooMuchSmokeThreshold (<c>tooMuchSmokeThreshold</c>).</summary>
     public int TooMuchSmokeThreshold { get; init; } = 10;
 
@@ -371,6 +375,7 @@ internal sealed class CampaignStartSettingsBuilder
     public bool ExtendedItemReloadCost { get; set; }
     public bool ExtendedRunningCost { get; set; }
     public int ExtendedMovementCostRounding { get; set; }
+    public int ExtendedMeleeReactions { get; set; }
     public int TooMuchSmokeThreshold { get; set; } = 10;
     public int MaximumStaticLightDistance { get; set; } = 16;
     public int MaximumDynamicLightDistance { get; set; } = 24;

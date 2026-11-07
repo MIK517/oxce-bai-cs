@@ -15,7 +15,7 @@ Phase 7 branch 4 (`claude/battle-movement`), from `main` after PR #80 (branch 3 
 | S2 pathfinding | Done, awaiting audit (2026-11-01) |
 | S3 lighting | Done, awaiting audit (2026-11-01) |
 | S4 field of view and per-faction visibility | Done, awaiting audit (2026-11-01) |
-| S5 turning and kneeling | Planned |
+| S5 turning and kneeling | Done, awaiting audit (2026-11-07) |
 | S6 doors | Planned |
 | S7 gravity and falling | Planned |
 | S8 walking and flying | Planned |
@@ -307,34 +307,80 @@ setters, `getSpotterDuration`, the sight values the constructors set), `Tile.cpp
   recomputes (the player's discovery, the other factions' discovery, each unit's spotting); the tests that put extra units on the map
   give them the soldier's `SoldierId` (their heights are now read).
 
+## S5 — Turning and kneeling (2026-11-07)
+
+Reference: `UnitTurnBState.cpp` (`init`, `think`), `BattlescapeGame.cpp` (`secondaryAction`, `kneel`, `popState`), `BattlescapeState.cpp`
+(`btnKneelClick`, `updateSoldierInfo`), `TileEngine.cpp` (`checkReactionFire`, `getSpottingUnits`, `determineReactionType`, `unitOpensDoor`),
+`Tile.cpp` (`openDoor`), `SavedBattleGame.cpp` (`canUseWeapon`), `BattleUnit.cpp` (`spendTimeUnits`, `getWeaponForReactions`,
+`getUtilityWeapon`, `getSpecialWeapon`), `Mod.cpp` (`extendedMeleeReactions`).
+
+- **Commands.** `TurnUnit(UnitId, Target)` (the right click, `secondaryAction` into `UnitTurnBState`) and `KneelUnit(UnitId)` (the kneel button,
+  `BattlescapeGame::kneel`) are `IBattleCommand`s and `IUnitCommand`s, run by `BattleState.TurnTowards` and `BattleState.KneelUnit`
+  (`BattleMovementCommands.cs`; contracts and reasons in `BattleMovementContracts.cs`), registered in `CampaignBattles`. Both use the selection's
+  unit rule: a live unit of the side on turn, after the briefing (`battle.selection-unavailable`, `battle.selection-unit-unknown`). Events:
+  `UnitTurned(UnitId, Direction, Eighths, TimeUnitsSpent, Stop)` with `BattleTurnStop` (arrived, no turn, spotted units, not enough time units,
+  reserved time units) and `UnitKneeled(UnitId, Kneeling, TimeUnitsSpent)`. The legal-action list does not offer them yet (S10 replaces
+  `battle.kneel-unsupported` and the rest of the buttons).
+- **Turn.** `lookAt` only turns when the tile is in another eighth than the unit's direction; the turret never turns alone (targeting and `strafe`
+  are not commands), so `tu` is the armor's turn cost and the body drags a turret (`BattleUnit.Turn`). Each eighth is one `think`: the reserve
+  check (`CheckReservedTimeUnits`), `spendTimeUnits`, `turn`, then the unit's full `CalculateFov`; a larger `UnitsSpottedThisTurn` aborts the turn
+  (the reference also tells brutal AI units of the side, which is branch 6's AI state), and a unit that stands again has arrived. A refusal of the
+  first eighth (`battle.turn-time-units-reserved`, `battle.turn-not-enough-time-units`) changes nothing; later ones end the turn (`Stop`) with what
+  was done. A target outside the map is `battle.turn-target-outside-map`. The AI's turn-then-kneel (`_action.kneel`) is branch 6's.
+  Light is not recomputed: a turn changes none.
+- **No turn, a door.** A unit that does not turn (same direction, or the tile it stands on) makes `init` try `unitOpensDoor(unit, true)`. That is
+  S6's: when a swinging door (not for a big unit) or a closed UFO door stands in the right-click tiles of its direction (`DoorChecks`, the
+  reference's table with `rClick` set, from the tile above when on stairs) the command is refused with `battle.door-unsupported` before any change
+  (over-approximating: payment and a blocking unit are not asked); with no door it completes as `NoTurn`. S6 retires the refusal.
+- **Kneel.** `allowsKneeling` (`battle.kneel-not-allowed`), not floating (`battle.kneel-floating`), and unless the unit kneels down with the kneel
+  reserve on, `CheckReservedTimeUnits` (`battle.kneel-time-units-reserved`); then the time units (`battle.kneel-not-enough-time-units`). It pays
+  4 (down) or 8 (up), changes stance, runs `CalculateFov(position, 1, updateTiles: false)` for everyone through the tile, then the unit's own full
+  `CalculateFov` (`updateSoldierInfo`, which refreshes its tiles and rebuilds its visible units), then the spotting of `checkReactionFire`.
+- **Reaction fire and spotting.** `SpotMover` is `getSpottingUnits`' side effects: each unit that passes `PassesSpottingFilters` (not out, not over
+  its out threshold, reaction score at least the mover's, not of the side on turn, civilian rule, within the view distance, nobody on the neutral
+  side's turn), faces the mover or was hit (`BattleUnit.Ai.WasHitBy`, else the new runtime `BattleUnit.HitState`, or `MeleeAttackedBy` under
+  `extendedMeleeReactions` 2, now a rule key in the runtime catalog), can target its tile from the snap-shot origin and sees it lists the mover
+  (`AddToVisibleUnits`) and its faction has spotted it (`SetSpotted`, ADR 0039; the player's spotter is the reference's `setVisible`). The
+  reaction itself is branch 5's, so `HasPossibleReactor` refuses a kneel with `battle.reaction-fire-unsupported` before any change when a unit
+  that passes the filters, is not respawning and has a reaction score above 0.001 carries a weapon `determineReactionType` could pick: any weapon
+  with ammo for its hit (a firearm's ammo slot for the hit is itself, so a rifle butt counts) and the time units for it, or a firearm with ammo
+  for its snap shot and the time units for it (a psi weapon needs a psi skill). The filters use the kneeler's reaction score after it paid, and
+  compare with it cut to an integer (`int threshold`, as the reference). Over-approximation: sight, range and melee reach are not asked, every
+  weapon of the hands and the special weapons counts (the preferred hand, `reactionsDisabled*` and `canUseWeapon`'s research, AI use delay,
+  depth, mana, two-handed and fixed-water rules only narrow it; the rules do not project those fields yet), so a kneel the reference would complete may
+  be refused, never the reverse. A unit that fails the state test never reacts.
+- **Tests.** `BattleTurnKneelTests` (compatibility, on the sight tests' arena with a turn cost of 2): each turn direction and its cost, the
+  shortest way (a half turn clockwise), no turn and the tile it stands on, a target outside the map, a stop on spotting then a turn that goes
+  on, a turn next to an armed unit, TU shortage mid-turn and at the first eighth, the reserve mid-turn and at the first eighth, a turret unit, the
+  door refusal (UFO door closed and open, other direction), selection refusals; kneel and stand-up costs, the field of view refresh, the floating,
+  armor, TU and reserve refusals (kneel reserve bypass), a refused kneel for an armed reactor in range (gun, melee, a rifle butt without or with
+  an unaffordable snap shot, a special weapon), completed for an unloaded gun, a psi weapon without psi skill, no time units, an out unit, a
+  respawning unit, a slower unit, a far one (the view distance edge), a free snap shot and a civilian faction; the threshold's integer cut; the
+  neutral side's turn and the mover's own side (state queries); every direction's right-click door tiles, a swinging door, a big unit, the
+  stairs offset; the spotting of a weaponless unit, a hit unit that faces away (hit state, the AI's memory, melee memory under rule 2).
+
 ## Next
 
-S5 — turning and kneeling (plan row S5). Notes for its worker:
+S6 — doors (plan row S6). Notes for its worker:
 
-- **What S4 left for it.** `BattleState.Sight()` (a `BattleSight` per operation): `CalculateFov(unit)` is the per-eighth update of
-  `UnitTurnBState::think` and returns whether new units were spotted (compare `UnitsSpottedThisTurn.Count` before and after, as the
-  turn does); `CalculateFov(position, 1, updateTiles: false)` is the update `BattlescapeGame::kneel` and the AI's turn-then-kneel run for
-  everyone through the unit's tile (`CalculateUnitsInFov` with the event sector; `appendToTileVisibility` is for terrain changes).
-  `BattlescapeGame::kneel` relies on the full `CalculateFov(unit)` of the selected unit that `updateSoldierInfo` runs next (its comment: "This
-  also updates the tile FOV of the unit"): it refreshes the kneeler's tiles and rebuilds its visible units in unit order, so S5's kneel must
-  run it.
-  `Visible`, `CanTargetUnit` and `SnapShotOriginVoxel` (the false action of `getSpottingUnits`, which builds a `BA_SNAPSHOT` origin from
-  the reacting unit towards the mover's tile) are what `getSpottingUnits`' spotting needs: for each opposing unit that passes the state
-  filters (nobody reacts on the neutral side's turn; not out, not over its out threshold, `ReactionScore` at least the mover's, not of the
-  battle's current side (`getSide()`), not a civilian unless the mover is a hostile that is not `IgnoredByAi`, within `maxViewDistance`), `CheckViewSector(mover.Position)` (or the AI's `WasHitBy`, a player
-  unit's hit state, `MeleeAttackedBy` under `extendedMeleeReactions` 2), then `CanTargetUnit(origin, tile, ..., excludeUnit: reactor)`
-  and `Visible(reactor, tile)`; a player reactor marks the mover spotted by the player, and every spotter adds the mover to its visible
-  units (`AddToVisibleUnits`, and a hostile or neutral spotter marks the mover spotted by its faction, plan D2; this is the part ported with the commands even for an unarmed spotter; the reaction itself is refused).
-  `BattleUnit.UnitsSpottedThisTurn`, `VisibleUnits`, `VisibleTiles`, the spotting fields and per-faction discovery are filled; the walk
-  (S8) clears the other factions' spotting flags at each step's end before its update (plan D2), which S4 does not do.
-- **Not done by S4 and needed by later slices.** The AI's `checkForReactivation` (branch 6); `Tile::setObstacle` and `rememberObstacles`
-  (branch 5's line-of-fire indicator); the `battleRealisticAccuracy`, off-centre and turret branches (options at their defaults).
-- **Test helpers.** `BattleSightTests.Flat` (private) builds the cleared 30x30x2 arena with the soldier at (10, 10) facing east and the
-  alien at a chosen distance facing west, the pillar template and height 22 for both, a chosen global shade and armor extras, then
-  `See()` (relight, forget the first turn's spotting and discovery, recalculate). TESTSET records 3 to 6 (floor, wall, low wall, post) are
-  its terrain; `BattleTestTerrain.Loftemps()` is the shared LOFTEMPS file. A wall object stops a line entering its tile unless that tile is
-  the target (the tile is revealed), and blocks leaving it. `Arena.Forget` zeroes the visibility counts: hostile units' clears take counts
-  away without adding any.
+- **What S5 left for it.** `TurnUnit` refuses with `battle.door-unsupported` (`BattleMovementReasons.DoorUnsupported`) when `unitOpensDoor(unit,
+  true)` would find a door in front of a unit that does not turn (`BattleState.DoorInFront`, `DoorChecks`: the reference's right-click table).
+  S6 ports `unitOpensDoor` (the right-click form from `UnitTurnBState::init` with `BA_NONE`, including its result 4 -> `STR_NOT_ENOUGH_TIME_UNITS`
+  and 5 for the reserve; the walking form is S8's), `Tile::openDoor`, `checkAdjacentDoors`, `calculateLighting(LL_FIRE, doorCentre, doorsOpened,
+  true)`, `calculateFOV(doorCentre, doorsOpened, true, true)` and `updateEnemyKnowledge` (`BattleUnit.UpdateEnemyKnowledge(tile)` exists, S3), then
+  retires the refusal and reuses `DoorChecks` (it takes the direction and the footprint tile). The walk's door form is called from S8. A
+  `TurnUnit` that does turn never reaches the door code.
+- **Spotting after a mover.** `BattleState.SpotMover(rules, sight, unit)` and `HasPossibleReactor(rules, unit)` are what S7 (landing) and S8 (each step)
+  run after the move, as `checkReactionFire` does; call `HasPossibleReactor` before the first change with the mover's planned reaction score (the
+  kneel evaluates it with the time units already paid) and refuse with `BattleMovementReasons.ReactionFireUnsupported`. `PassesSpottingFilters`
+  reads `Side`, so call them only for the mover of the side on turn.
+- **Not done and needed by later slices.** `canUseWeapon`'s research, AI use delay, depth and two-handed rules, `getWeaponForReactions`' preferred
+  hand and `reactionsDisabled*` (branch 5, with the real reaction); `BattleUnit.HitState` is never set (damage is branch 5's) and no selection
+  resets it (`resetUnitHitStates`); the legal-action list does not list turn or kneel (S10); the AI's turn-then-kneel and
+  `checkForReactivation` (branch 6).
+- **Test helpers.** `BattleTurnKneelTests.Make` builds the sight tests' `Flat` arena with a turn cost of 2, `tuSnap: 20`, `tuAimed: 50` and an
+  alien with reactions 100 (`BattleSightTests.SwingDoor` and `StairFloor` are TESTSET records 9 and 10); `Arm` gives the alien a loaded gun, `Hold` any item. Commands run through `arena.Campaign.Execute`; an unfinished
+  casualty (health 0) refuses every command (`battle.casualties-unsupported`), so test a dying unit through state queries.
 - **Gotchas.** A post-edit hook reformats edited C# files, so read a file again before a second edit. A backslash-n written through a
   script or heredoc reaches a C# file as a real newline: add string literals that carry one with the Edit or Write tool. A unit that still
   has its `InventoryTile` has no tile of its own and `StartFirstTurn` is the first sight; tests that add `BattleUnit`s by hand must give
