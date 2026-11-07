@@ -40,11 +40,34 @@ public sealed class BattleSightTests
 
     private static byte[] UfoDoorRecord() => Record([.. Enumerable.Range(8, 12).Select(offset => (offset, (byte)1)), (30, (byte)1)]);
 
-    internal static void Terrain(Dictionary<string, byte[]> files) => files["TERRAIN/TESTSET.MCD"] = Mcd(Record((42, 2)), Record((42, 3)),
-        Record((42, 4), (59, 2)), Record((39, 4), (40, 4), (41, 4)), Solid(1, 12, true), Solid(1, 6, false), Solid(4, 12, false), Record((34, 1), (39, 4)), UfoDoorRecord(), Record((35, 1), (46, 0)), Record((34, 1), (39, 4), (48, unchecked((byte)-24))));
+    internal static void Terrain(Dictionary<string, byte[]> files) => files["TERRAIN/TESTSET.MCD"] = Mcd([Record((42, 2)), Record((42, 3)),
+        Record((42, 4), (59, 2)), Record((39, 4), (40, 4), (41, 4)), Solid(1, 12, true), Solid(1, 6, false), Solid(4, 12, false), Record((34, 1), (39, 4)), UfoDoorRecord(), Record((35, 1), (46, 0)), Record((34, 1), (39, 4), (48, unchecked((byte)-24))),
+        .. DoorRecords]);
 
     internal const int SwingDoor = 9; // a swinging door (its alternative is the first record)
     internal const int StairFloor = 10; // a floor with a terrain level of -24
+
+    // The door tests' records (S6). A west wall door opens into an object of the north wall type, as vanilla doors do.
+    internal const int SwingDoorCost = 11; // a swinging door that costs 5 to walk, fly and slide through, opening into OpenDoorPart
+    internal const int OpenDoorPart = 12; // the open door: a north wall of 3 time units
+    internal const int UfoDoorCost = 13; // a UFO door that stops sight and costs 6 to walk through, 8 to slide and 10 to fly
+    internal const int SwingDoorFree = 14; // a swinging door that costs 0, opening into CostlyOpenDoor
+    internal const int CostlyOpenDoor = 15; // a north wall of 8 time units
+    internal const int SwingDoorSameWall = 16; // a swinging door whose alternative is of its own part (west wall)
+    internal const int PlainWestWall = 17; // a west wall with no cost
+    internal const int SwingDoorNowhere = 18; // a swinging door whose alternative lies past the data set's end
+
+    private static readonly byte[][] DoorRecords =
+    [
+        Record((35, 1), (39, 5), (40, 5), (41, 5), (46, 12), (53, 1)),
+        Record((39, 3), (40, 3), (41, 3), (53, 2)),
+        Record([.. Enumerable.Range(8, 12).Select(offset => (offset, (byte)1)), (30, (byte)1), (31, (byte)1), (39, (byte)6), (40, (byte)8), (41, (byte)10), (53, (byte)1)]),
+        Record((35, 1), (46, 15), (53, 1)),
+        Record((39, 8), (40, 8), (41, 8), (53, 2)),
+        Record((35, 1), (39, 4), (46, 17), (53, 1)),
+        Record((53, 1)),
+        Record((35, 1), (46, 200), (53, 1)),
+    ];
 
     private const string SuitBlock = "  - type: SUIT\n    movementType: 1\n    builtInWeapons: [GUN, CLIP, GRENADE]\n    specialWeapon: AMP\n    storeItem: SUPPLY\n    corpseBattle: [CORPSE]\n    corpseGeo: CORPSE\n    loftempsSet: [0]";
     private const string SmallBlock = "  - type: SMALL_VEHICLE_ARMOR\n    size: 1\n    allowInv: false\n    corpseBattle: [CORPSE]\n    corpseGeo: CORPSE\n    loftempsSet: [0]";

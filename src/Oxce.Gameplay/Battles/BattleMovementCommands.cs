@@ -5,7 +5,8 @@ using Oxce.Mods.Rulesets.Runtime;
 namespace Oxce.Gameplay.Battles;
 
 /// <summary>What <see cref="BattleState.TurnTowards"/> did.</summary>
-internal readonly record struct BattleTurnResult(int Direction, int Eighths, int TimeUnitsSpent, BattleTurnStop Stop);
+internal readonly record struct BattleTurnResult(int Direction, int Eighths, int TimeUnitsSpent, BattleTurnStop Stop,
+    BattleDoorResult Door = BattleDoorResult.None, int DoorsOpened = 0, BattlePosition? DoorCentre = null);
 
 /// <summary>
 /// Turning and kneeling (Phase 7 branch 4 S5): <c>UnitTurnBState</c> (<c>init</c> and <c>think</c>, the eighths collapsed into one command),
@@ -33,9 +34,10 @@ internal sealed partial class BattleState
         var turns = position != target && unit.DirectionTo(target) != unit.Direction;
         if (!turns)
         {
-            // init: a unit that is not turning tries the door in front of it (unitOpensDoor), which is S6's.
-            if (DoorInFront(unit)) return BattleMovementReasons.DoorUnsupported;
-            result = new BattleTurnResult(unit.Direction, 0, 0, BattleTurnStop.NoTurn);
+            // init: a unit that is not turning tries the door in front of it (unitOpensDoor with the right click).
+            if (UnitOpensDoor(rules, unit, true, -1, out var door) is { } unsupported) return unsupported;
+            if (door.Changed) Revision++;
+            result = new BattleTurnResult(unit.Direction, 0, door.TimeUnitsSpent, BattleTurnStop.NoTurn, door.Result, door.DoorsOpened, door.Centre);
             return null;
         }
 
@@ -213,82 +215,6 @@ internal sealed partial class BattleState
             if (!(other.CheckViewSector(position) || gotHit) || !sight.CanTargetUnit(origin, tile, out _, other) || !sight.Visible(other, tile)) continue;
             SetSpotted(mover, other.Faction, true);
             other.AddToVisibleUnits(mover.Id);
-        }
-    }
-
-    // ---- doors in front of a unit that does not turn ----
-
-    /// <summary>
-    /// Whether <c>TileEngine::unitOpensDoor(unit, true)</c> would find a door part it might open in front of the unit (its direction, the
-    /// right-click tiles): a swinging door (a big unit cannot open it) or a closed UFO door. Over-approximates: whether the unit could pay for
-    /// it and whether another unit blocks it are S6's.
-    /// </summary>
-    internal bool DoorInFront(BattleUnit unit)
-    {
-        var origin = unit.Position!.Value;
-        var size = unit.ArmorSize;
-        var stairs = Map.TerrainLevel(Map.TileIndex(origin)) < -12 ? 1 : 0;
-        for (var x = 0; x < size; x++)
-            for (var y = 0; y < size; y++)
-            {
-                if (Map.TileAt(origin.X + x, origin.Y + y, origin.Z + stairs) < 0) continue;
-                foreach (var (dx, dy, part) in DoorChecks(unit.Direction, x, y))
-                {
-                    var tile = Map.TileAt(origin.X + x + dx, origin.Y + y + dy, origin.Z + stairs);
-                    if (tile < 0 || Map.MapData(tile, part) is not { } data) continue;
-                    if (data.IsDoor && !unit.IsBigUnit || data.IsUfoDoor && !Map.IsUfoDoorOpen(tile, part)) return true;
-                }
-            }
-        return false;
-    }
-
-    /// <summary>The tiles and wall parts <c>unitOpensDoor</c> checks for a right click, for the unit tile (x, y) of its footprint.</summary>
-    private static IEnumerable<(int X, int Y, BattleTilePart Part)> DoorChecks(int direction, int x, int y)
-    {
-        const BattleTilePart west = BattleTilePart.WestWall;
-        const BattleTilePart north = BattleTilePart.NorthWall;
-        switch (direction)
-        {
-            case 0:
-                yield return (0, 0, north);
-                if (x != 0) yield return (0, -1, west);
-                break;
-            case 1:
-                yield return (0, 0, north);
-                yield return (1, -1, west);
-                yield return (1, 0, west);
-                yield return (1, 0, north);
-                break;
-            case 2:
-                yield return (1, 0, west);
-                break;
-            case 3:
-                if (y == 0) yield return (1, 1, west);
-                if (x == 0) yield return (1, 1, north);
-                yield return (1, 0, west);
-                yield return (0, 1, north);
-                break;
-            case 4:
-                yield return (0, 1, north);
-                break;
-            case 5:
-                yield return (0, 0, west);
-                yield return (-1, 1, north);
-                yield return (0, 1, west);
-                yield return (0, 1, north);
-                break;
-            case 6:
-                yield return (0, 0, west);
-                if (y != 0) yield return (-1, 0, north);
-                break;
-            case 7:
-                yield return (0, 0, west);
-                yield return (0, 0, north);
-                if (x != 0) yield return (-1, -1, west);
-                if (y != 0) yield return (-1, -1, north);
-                yield return (0, -1, west);
-                yield return (-1, 0, north);
-                break;
         }
     }
 }

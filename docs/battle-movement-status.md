@@ -16,7 +16,7 @@ Phase 7 branch 4 (`claude/battle-movement`), from `main` after PR #80 (branch 3 
 | S3 lighting | Done, awaiting audit (2026-11-01) |
 | S4 field of view and per-faction visibility | Done, awaiting audit (2026-11-01) |
 | S5 turning and kneeling | Done, awaiting audit (2026-11-07) |
-| S6 doors | Planned |
+| S6 doors | Done, awaiting audit (2026-11-07) |
 | S7 gravity and falling | Planned |
 | S8 walking and flying | Planned |
 | S9 fire, smoke and terrain destruction | Planned |
@@ -328,10 +328,8 @@ Reference: `UnitTurnBState.cpp` (`init`, `think`), `BattlescapeGame.cpp` (`secon
   first eighth (`battle.turn-time-units-reserved`, `battle.turn-not-enough-time-units`) changes nothing; later ones end the turn (`Stop`) with what
   was done. A target outside the map is `battle.turn-target-outside-map`. The AI's turn-then-kneel (`_action.kneel`) is branch 6's.
   Light is not recomputed: a turn changes none.
-- **No turn, a door.** A unit that does not turn (same direction, or the tile it stands on) makes `init` try `unitOpensDoor(unit, true)`. That is
-  S6's: when a swinging door (not for a big unit) or a closed UFO door stands in the right-click tiles of its direction (`DoorChecks`, the
-  reference's table with `rClick` set, from the tile above when on stairs) the command is refused with `battle.door-unsupported` before any change
-  (over-approximating: payment and a blocking unit are not asked); with no door it completes as `NoTurn`. S6 retires the refusal.
+- **No turn, a door.** A unit that does not turn (same direction, or the tile it stands on) makes `init` try `unitOpensDoor(unit, true)`, which
+  S6 ported (below); with no door it completes as `NoTurn`. (S5 refused this case with `battle.door-unsupported`; S6 retired it.)
 - **Kneel.** `allowsKneeling` (`battle.kneel-not-allowed`), not floating (`battle.kneel-floating`), and unless the unit kneels down with the kneel
   reserve on, `CheckReservedTimeUnits` (`battle.kneel-time-units-reserved`); then the time units (`battle.kneel-not-enough-time-units`). It pays
   4 (down) or 8 (up), changes stance, runs `CalculateFov(position, 1, updateTiles: false)` for everyone through the tile, then the unit's own full
@@ -356,20 +354,63 @@ Reference: `UnitTurnBState.cpp` (`init`, `think`), `BattlescapeGame.cpp` (`secon
   armor, TU and reserve refusals (kneel reserve bypass), a refused kneel for an armed reactor in range (gun, melee, a rifle butt without or with
   an unaffordable snap shot, a special weapon), completed for an unloaded gun, a psi weapon without psi skill, no time units, an out unit, a
   respawning unit, a slower unit, a far one (the view distance edge), a free snap shot and a civilian faction; the threshold's integer cut; the
-  neutral side's turn and the mover's own side (state queries); every direction's right-click door tiles, a swinging door, a big unit, the
-  stairs offset; the spotting of a weaponless unit, a hit unit that faces away (hit state, the AI's memory, melee memory under rule 2).
+  neutral side's turn and the mover's own side (state queries); the spotting of a weaponless unit, a hit unit that faces away (hit state, the AI's memory, melee memory under rule 2).
+
+## S6 — Doors (2026-11-07)
+
+Reference: `TileEngine.cpp` (`unitOpensDoor`, `checkAdjacentDoors`, `closeUfoDoors`), `Tile.cpp` (`openDoor`, `closeUfoDoor`, `getTUCost`,
+`isUfoDoorOpen`, `setMapData`), `UnitTurnBState.cpp` (`init`), `BattleUnit.cpp` (`updateEnemyKnowledge`, `setTurnsSinceSeen`,
+`setTileLastSpotted`), `BattlescapeGame.cpp` (`getReservedAction`, `getKneelReserved`).
+
+- **`BattleState.UnitOpensDoor(rules, unit, rightClick, direction, out BattleDoorAttempt)`** (`BattleDoors.cs`, internal) is `unitOpensDoor`
+  (`direction` -1 is the unit's own; the right-click form is what `TurnUnit` runs, the walking form with `rightClick: false` is for S8's walk).
+  It searches the footprint's tiles (from the tile above on stairs: terrain level below -12) in the reference's order through `DoorChecks`
+  (the table, with `rClick` adding the tiles beside the diagonals), takes the first part whose `openDoor` answers anything but -1, opens it,
+  works out the cost, checks `CheckReservedTimeUnits`, pays and updates light (`CalculateLighting(Fire, centre, doorsOpened, terrainChanged)`)
+  and sight (`CalculateFov(centre, doorsOpened, true, true)`) through the doorway and the unit's `UpdateEnemyKnowledge`.
+- **`openDoor`.** A private `OpenDoor(rules, tile, part, unit, rightClick, apply)` is `Tile::openDoor`: the cost is the part's own movement
+  cost for the unit's movement type plus the kneel reserve for a standing unit whose armor allows kneeling, added to the reserved action's
+  cost for the main-hand weapon (`BattleActionCost`), plus half as much energy when walking; a big unit gets -1 at a swinging door; result 4
+  when the cost (when non-zero) cannot be paid; -1 when the unit the tile holds is not the opener and stands elsewhere than the tile's
+  position (so a big unit's *other* tiles keep a door shut, and a unit on the door's own tile does not, as the reference tests it); a swinging
+  door moves to its alternative object, which goes to the part its own object type names and then empties the door's part (a door whose
+  alternative has the door's own part ends empty, as in the reference's two calls; a test pins it); a closed UFO door's frame is set (open).
+  Probing (`apply: false`) changes nothing, so the search can finish before the door opens.
+- **Results.** `BattleDoorResult` (public): `None` (-1), `Opened` (0), `UfoDoorOpened` (1), `NotEnoughTimeUnits` (4, from `openDoor` or from a spend
+  that fails after the door opened, as the reference) and `ReservedTimeUnits` (5, the door is open and nothing was paid). The reference's result 3
+  (a UFO door still opening) cannot happen: the animation is collapsed and a UFO door is open at once. A swinging door opened by right click
+  costs the *other* wall's part of its tile (the open door), so a door that moves into the other wall part costs that part; the walking form of a
+  swinging door costs nothing here (the step pays) and a UFO door's cost is read with the door still closed, as the reference reads it at frame 1.
+- **Adjacent doors.** `CheckAdjacentDoors` opens the run of UFO door parts of the same part (along y for a west wall, along x for a north
+  wall) either side, counts the ones that actually opened (an open one is passed over and not counted), and the centre is the start moved by
+  half the net offset (integer division towards zero).
+- **Command.** `TurnUnit` runs the door when the unit does not turn: `BattleTurnResult` and `UnitTurned` carry `Door`, `DoorsOpened` and
+  `DoorCentre`, and `TimeUnitsSpent` is the door's cost. The revision rises when the state changed (result 5 and a failed spend change it, result
+  4 from the cost check does not). `battle.door-unsupported` is gone. The hostile side's reserve stays `battle.hostile-reserve-unsupported`: it
+  is refused before the door opens, because the reference opens the door before it asks. The AI's `checkForReactivation` after a right click is branch 6's.
+- **`CloseUfoDoors`.** `BattleState.CloseUfoDoors()` (internal, for branch 6's end of turn) is `closeUfoDoors`: every open UFO door closes except
+  on a big unit's tile whose open north wall has the same unit's tile north of it, or open west wall has it to the west; it returns the number of
+  tiles closed (a tile counts once). It recomputes nothing: the caller refreshes light and sight (`CalculateLighting(..., terrainChanged: true)`,
+  `RecalculateFov`), as the reference's end of turn does, and there is no visibility cache to reset.
+- **Fix to branch 3 S4 (inventory).** `BattleUnit.UpdateEnemyKnowledge` (written for the inventory drop) wrote `TurnsSinceSpotted` where the reference sets `turnsSinceSeen`; it now sets
+  `TurnsSinceSeenBy` and takes the `door` flag (a door's knowledge leaves the player's side's entries alone). The inventory drop's behaviour changes with it, and `BattleInventoryTests` now asserts `TurnsSinceSeenBy`.
+- **Not ported.** The sounds, `Tile::animate`'s door frames, the AI's visible-tile count check, and the reference's out-of-range alternative object
+  (a door whose alternative lies past its data set is not opened and the search goes on, where the reference throws; ADR 0040).
+- **Tests.** `BattleDoorTests` (26, compatibility project): a swinging door opened by a unit that faces it and the cost of its open part; the
+  tiles a direction looks at, in both forms; a door of a part the direction does not look at; a turn that really turns; a door moving to its own
+  part; an alternative past the data set; a unit elsewhere than on the tile, a big unit's cover; a big unit with swinging and UFO doors; stairs; a UFO
+  door row with its centre, count, sight through the doorway and the enemy knowledge; an open door in the run; a north wall run and its refreshed
+  blockage cache; another direction; not enough time units, the reserve (result 4 and result 5), a failed spend, the kneel reserve; the walking form's
+  energy and costs; the hostile side's refusal; `CloseUfoDoors` with a big unit and with a small one.
 
 ## Next
 
-S6 — doors (plan row S6). Notes for its worker:
+S7 — gravity and falling (plan row S7). Notes for its worker:
 
-- **What S5 left for it.** `TurnUnit` refuses with `battle.door-unsupported` (`BattleMovementReasons.DoorUnsupported`) when `unitOpensDoor(unit,
-  true)` would find a door in front of a unit that does not turn (`BattleState.DoorInFront`, `DoorChecks`: the reference's right-click table).
-  S6 ports `unitOpensDoor` (the right-click form from `UnitTurnBState::init` with `BA_NONE`, including its result 4 -> `STR_NOT_ENOUGH_TIME_UNITS`
-  and 5 for the reserve; the walking form is S8's), `Tile::openDoor`, `checkAdjacentDoors`, `calculateLighting(LL_FIRE, doorCentre, doorsOpened,
-  true)`, `calculateFOV(doorCentre, doorsOpened, true, true)` and `updateEnemyKnowledge` (`BattleUnit.UpdateEnemyKnowledge(tile)` exists, S3), then
-  retires the refusal and reuses `DoorChecks` (it takes the direction and the footprint tile). The walk's door form is called from S8. A
-  `TurnUnit` that does turn never reaches the door code.
+- **What S6 left for it.** `BattleState.UnitOpensDoor(rules, unit, rightClick: false, direction, out attempt)` is the walking form S8 calls with the
+  step's direction (the reference's walk checks the door before each step, `UnitWalkBState.cpp:353`); its results 0, 1, 4 and 5 mean what they do in
+  the reference, and a UFO door is open at once, so S8 never waits for result 3. `CloseUfoDoors()` is ready for branch 6's end of turn.
+
 - **Spotting after a mover.** `BattleState.SpotMover(rules, sight, unit)` and `HasPossibleReactor(rules, unit)` are what S7 (landing) and S8 (each step)
   run after the move, as `checkReactionFire` does; call `HasPossibleReactor` before the first change with the mover's planned reaction score (the
   kneel evaluates it with the time units already paid) and refuse with `BattleMovementReasons.ReactionFireUnsupported`. `PassesSpottingFilters`
@@ -378,7 +419,7 @@ S6 — doors (plan row S6). Notes for its worker:
   hand and `reactionsDisabled*` (branch 5, with the real reaction); `BattleUnit.HitState` is never set (damage is branch 5's) and no selection
   resets it (`resetUnitHitStates`); the legal-action list does not list turn or kneel (S10); the AI's turn-then-kneel and
   `checkForReactivation` (branch 6).
-- **Test helpers.** `BattleTurnKneelTests.Make` builds the sight tests' `Flat` arena with a turn cost of 2, `tuSnap: 20`, `tuAimed: 50` and an
+- **Test helpers.** The door tests' TESTSET records 11-18 (`BattleSightTests.SwingDoorCost` ... `SwingDoorNowhere`) are there for S8's door walks. `BattleTurnKneelTests.Make` builds the sight tests' `Flat` arena with a turn cost of 2, `tuSnap: 20`, `tuAimed: 50` and an
   alien with reactions 100 (`BattleSightTests.SwingDoor` and `StairFloor` are TESTSET records 9 and 10); `Arm` gives the alien a loaded gun, `Hold` any item. Commands run through `arena.Campaign.Execute`; an unfinished
   casualty (health 0) refuses every command (`battle.casualties-unsupported`), so test a dying unit through state queries.
 - **Gotchas.** A post-edit hook reformats edited C# files, so read a file again before a second edit. A backslash-n written through a

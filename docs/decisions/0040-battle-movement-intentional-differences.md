@@ -32,3 +32,10 @@ parts and units only, because a tile with only smoke or items falls through ever
 `cosf` and `roundf`; the port uses the single-precision functions of .NET (`MathF`). A tangent point on a rounding boundary can fall
 a tile either way between C libraries, as it can between two builds of the reference, so a partial update around an event
 (S6 onwards) may include or leave out one edge column. A full recheck is not affected, and neither is a unit's own sight.
+
+**Doors (S6).** `Tile::openDoor` reads a swinging door's alternative with `MapDataSet::getObject(getAltMCD())`, which throws a fatal exception when the
+index lies past the set's end (load-time validation only logs it). The port treats such a door as not openable (result -1) and the search goes on to the
+next check position, which the reference never reaches. The reference opens a UFO door over animation frames (`Tile::animate`, frame 7 open) and a walk waits
+for it (result 3, "still opening"); the port sets the door open at once. Light and sight already count the door open from frame 1 in the reference
+(`isUfoDoorOpen` is `currentFrame != 0`), so they are the same; only a walk's waiting differs, and result 3 never arises. A door opened by a right click whose
+time units cannot be paid after it opened (result 4 after the open, result 5) stays open, as in the reference.

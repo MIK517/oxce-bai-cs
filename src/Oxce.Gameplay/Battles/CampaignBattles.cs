@@ -443,7 +443,7 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
     {
         if (_battle is not { } battle) return Blocked(BattleSelectionReasons.Unavailable);
         if (battle.TurnTowards(campaign.Content.RuntimeRules, command.UnitId, command.Target, out var turn) is { } refusal) return Blocked(refusal);
-        return new CampaignCommandResult([new UnitTurned(command.UnitId, turn.Direction, turn.Eighths, turn.TimeUnitsSpent, turn.Stop)]);
+        return new CampaignCommandResult([new UnitTurned(command.UnitId, turn.Direction, turn.Eighths, turn.TimeUnitsSpent, turn.Stop, turn.Door, turn.DoorsOpened, turn.DoorCentre)]);
     }
 
     private CampaignCommandResult KneelUnit(KneelUnit command)

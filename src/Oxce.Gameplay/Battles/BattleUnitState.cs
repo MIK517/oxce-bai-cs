@@ -159,16 +159,18 @@ internal sealed class BattleAiState
 internal sealed partial class BattleUnit
 {
     /// <summary>
-    /// BattleUnit::updateEnemyKnowledge(index, clue: true, door: false): every faction's last spotted tile (and the blind shot one)
-    /// is the tile, and the turns since seen restart (<c>updateTurnsSinceSeenByClue</c>, default true).
+    /// BattleUnit::updateEnemyKnowledge(index, clue: true, door): the hostile and neutral factions' last spotted tile (and the blind shot
+    /// one) is the tile and their turns since seen restart (<c>updateTurnsSinceSeenByClue</c>, default true); the player's too unless the
+    /// knowledge comes from a door (<paramref name="door"/>), which tells the player's side nothing.
     /// </summary>
-    internal void UpdateEnemyKnowledge(int tileIndex)
+    internal void UpdateEnemyKnowledge(int tileIndex, bool door = false)
     {
         for (var faction = 0; faction < TileLastSpottedBy.Length; faction++)
         {
+            if (door && faction == (int)BattleFaction.Player) continue;
             TileLastSpottedBy[faction] = tileIndex;
             TileLastSpottedForBlindShotBy[faction] = tileIndex;
-            TurnsSinceSpotted[faction] = 0;
+            TurnsSinceSeenBy[faction] = 0;
         }
     }
 }

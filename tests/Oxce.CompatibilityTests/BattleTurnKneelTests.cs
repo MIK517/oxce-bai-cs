@@ -193,26 +193,6 @@ public sealed class BattleTurnKneelTests
     }
 
     [Fact]
-    public void ADoorInFrontOfAUnitThatDoesNotTurnIsRefusedAsS6sAndOthersAreNot()
-    {
-        var arena = Make();
-        var soldier = arena.Soldier;
-        // A closed UFO door in the east wall of the tile east of the soldier, who faces east: the turn would try to open it.
-        arena.Put(11, 10, 0, BattleTilePart.WestWall, UfoDoor);
-        Assert.Equal("battle.door-unsupported", Refusal(Run(arena, new TurnUnit(soldier.Id, At(15, 10)))));
-        // Once open it does nothing, and a turn that really turns never tries a door.
-        arena.Map.SetDoorFrame(arena.Tile(11, 10), BattleTilePart.WestWall, true);
-        Assert.Equal(BattleTurnStop.NoTurn, Event<UnitTurned>(Run(arena, new TurnUnit(soldier.Id, At(15, 10)))).Stop);
-        arena.Map.SetDoorFrame(arena.Tile(11, 10), BattleTilePart.WestWall, false);
-        Assert.Equal(BattleTurnStop.Arrived, Event<UnitTurned>(Run(arena, new TurnUnit(soldier.Id, At(10, 15)))).Stop);
-        // Right-click tiles for a direction: facing south the unit looks at the north wall of the tile south of it, not the east one.
-        arena.Put(10, 11, 0, BattleTilePart.NorthWall, UfoDoor);
-        Assert.Equal("battle.door-unsupported", Refusal(Run(arena, new TurnUnit(soldier.Id, At(10, 15)))));
-        arena.Clear(10, 11, 0, BattleTilePart.NorthWall);
-        Assert.Equal(BattleTurnStop.NoTurn, Event<UnitTurned>(Run(arena, new TurnUnit(soldier.Id, At(10, 15)))).Stop);
-    }
-
-    [Fact]
     public void ATurnIsRefusedOutsideTheSelectionRulesAndForUnitsOutOrOfAnotherSide()
     {
         var arena = Make();
@@ -540,74 +520,5 @@ public sealed class BattleTurnKneelTests
         Assert.False(arena.Battle.HasPossibleReactor(arena.Rules, arena.Soldier));
         arena.Soldier.Faction = BattleFaction.Hostile;
         Assert.True(arena.Battle.HasPossibleReactor(arena.Rules, arena.Soldier));
-    }
-
-    private static readonly (int Dx, int Dy, BattleTilePart Part)[][] RightClickDoors =
-    [
-        [(0, 0, BattleTilePart.NorthWall)],
-        [(0, 0, BattleTilePart.NorthWall), (1, -1, BattleTilePart.WestWall), (1, 0, BattleTilePart.WestWall), (1, 0, BattleTilePart.NorthWall)],
-        [(1, 0, BattleTilePart.WestWall)],
-        [(1, 1, BattleTilePart.WestWall), (1, 1, BattleTilePart.NorthWall), (1, 0, BattleTilePart.WestWall), (0, 1, BattleTilePart.NorthWall)],
-        [(0, 1, BattleTilePart.NorthWall)],
-        [(0, 0, BattleTilePart.WestWall), (-1, 1, BattleTilePart.NorthWall), (0, 1, BattleTilePart.WestWall), (0, 1, BattleTilePart.NorthWall)],
-        [(0, 0, BattleTilePart.WestWall)],
-        [(0, 0, BattleTilePart.WestWall), (0, 0, BattleTilePart.NorthWall), (0, -1, BattleTilePart.WestWall), (-1, 0, BattleTilePart.NorthWall)],
-    ];
-
-    [Fact]
-    public void EachDirectionChecksItsRightClickDoorTilesAndNoOthers()
-    {
-        var arena = Make();
-        var soldier = arena.Soldier;
-        for (var direction = 0; direction < 8; direction++)
-        {
-            soldier.SetDirection(direction);
-            foreach (var part in new[] { BattleTilePart.WestWall, BattleTilePart.NorthWall })
-                for (var dx = -1; dx <= 1; dx++)
-                    for (var dy = -1; dy <= 1; dy++)
-                    {
-                        arena.Put(10 + dx, 10 + dy, 0, part, UfoDoor);
-                        var expected = RightClickDoors[direction].Contains((dx, dy, part));
-                        Assert.True(expected == arena.Battle.DoorInFront(soldier), $"direction {direction}, ({dx}, {dy}) {part}");
-                        arena.Clear(10 + dx, 10 + dy, 0, part);
-                    }
-        }
-    }
-
-    [Fact]
-    public void ASwingingDoorCountsUnlessTheUnitIsBigAndAStairsUnitLooksOneLevelUp()
-    {
-        var arena = Make(distance: 15);
-        var soldier = arena.Soldier;
-        arena.Put(11, 10, 0, BattleTilePart.WestWall, SwingDoor);
-        Assert.True(arena.Battle.DoorInFront(soldier));
-        Assert.Equal("battle.door-unsupported", Refusal(Run(arena, new TurnUnit(soldier.Id, At(15, 10)))));
-        arena.Clear(11, 10, 0, BattleTilePart.WestWall);
-        // On stairs the doors are those one level up.
-        arena.Put(10, 10, 0, BattleTilePart.Floor, StairFloor);
-        arena.Put(11, 10, 1, BattleTilePart.WestWall, SwingDoor);
-        Assert.True(arena.Battle.DoorInFront(soldier));
-        arena.Clear(11, 10, 1, BattleTilePart.WestWall);
-        arena.Put(11, 10, 0, BattleTilePart.WestWall, SwingDoor);
-        Assert.False(arena.Battle.DoorInFront(soldier));
-        arena.Clear(11, 10, 0, BattleTilePart.WestWall);
-
-        // A big unit (2x2) cannot open a swinging door, but a UFO door is found, and some entries are for its far column only (direction 0
-        // checks the west wall of the tile north of its second column).
-        var huge = Flat(distance: 15, bigAlien: true);
-        var tank = huge.Alien;
-        Assert.Equal(2, tank.ArmorSize);
-        var at = tank.Position!.Value;
-        tank.SetDirection(2);
-        huge.Put(at.X + 2, at.Y, 0, BattleTilePart.WestWall, SwingDoor);
-        Assert.False(huge.Battle.DoorInFront(tank));
-        huge.Put(at.X + 2, at.Y, 0, BattleTilePart.WestWall, UfoDoor);
-        Assert.True(huge.Battle.DoorInFront(tank));
-        huge.Clear(at.X + 2, at.Y, 0, BattleTilePart.WestWall);
-        tank.SetDirection(0);
-        huge.Put(at.X, at.Y - 1, 0, BattleTilePart.WestWall, UfoDoor);
-        Assert.False(huge.Battle.DoorInFront(tank));
-        huge.Put(at.X + 1, at.Y - 1, 0, BattleTilePart.WestWall, UfoDoor);
-        Assert.True(huge.Battle.DoorInFront(tank));
     }
 }

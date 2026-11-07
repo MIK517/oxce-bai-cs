@@ -506,7 +506,8 @@ public sealed class BattleInventoryTests
         var tile = battle.TileIndex(soldier.Position!.Value);
         Assert.All(soldier.TileLastSpottedBy, value => Assert.Equal(tile, value));
         Assert.All(soldier.TileLastSpottedForBlindShotBy, value => Assert.Equal(tile, value));
-        Assert.All(soldier.TurnsSinceSpotted, static value => Assert.Equal(0, value));
+        Assert.All(soldier.TurnsSinceSeenBy, static value => Assert.Equal(0, value));
+        Assert.All(soldier.TurnsSinceSpotted, static value => Assert.Equal(255, value));
     }
 
     [Fact]
