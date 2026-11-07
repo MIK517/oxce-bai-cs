@@ -548,15 +548,103 @@ public sealed class BattleWalkTests
     {
         var arena = Flat(personalLight: true, edit: rules => Replaced(rules, "    shade: 0\n    width: 30", "    shade: 15\n    width: 30"));
         var soldier = arena.Soldier;
-        soldier.Direction = 2;
+        arena.Stand(arena.Alien, 24, 10, 6);
         arena.Relight();
-        var (before, afterBefore) = (arena.Battle.TileShade(At(10, 10)), arena.Battle.TileShade(At(14, 10)));
-        Assert.NotNull(soldier.Position);
+        arena.See();
+        var (here, there) = (arena.Battle.TileShade(At(10, 10)), arena.Battle.TileShade(At(14, 10)));
+        // The personal light makes the soldier's own tile brighter than the dark tile four tiles on.
+        Assert.True(here < there, $"{here} {there}");
+        Assert.False(Arena.Sees(soldier, arena.Alien));
         var events = Events(arena.Campaign.Execute(new WalkUnit(soldier.Id, At(14, 10))));
         Assert.Equal(BattleWalkStop.Arrived, End(events).Stop);
-        // The light is at the new place and gone from the old one.
-        Assert.True(arena.Battle.TileShade(At(14, 10)) < afterBefore || afterBefore == 0);
-        Assert.True(arena.Battle.TileShade(At(10, 10)) >= before);
+        // The light is at the new place and gone from the old one: the two tiles trade shades on the flat map.
+        Assert.Equal((there, here), (arena.Battle.TileShade(At(10, 10)), arena.Battle.TileShade(At(14, 10))));
+    }
+
+    [Fact]
+    public void ADarkWalkersSightReachesFartherAsItMovesAndTheWalkStopsWhereItSeesAUnit()
+    {
+        var arena = Flat(personalLight: true, edit: rules => Replaced(rules, "    shade: 0\n    width: 30", "    shade: 15\n    width: 30"));
+        var soldier = arena.Soldier;
+        arena.Stand(arena.Alien, 26, 10, 6);
+        arena.See();
+        Assert.False(Arena.Sees(soldier, arena.Alien));
+        var events = Events(arena.Campaign.Execute(new WalkUnit(soldier.Id, At(22, 10))));
+        var end = End(events);
+        Assert.Equal(BattleWalkStop.SpottedUnits, end.Stop);
+        Assert.True(end.Steps is > 0 and < 12);
+        Assert.True(Arena.Sees(soldier, arena.Alien));
+        Assert.Equal([arena.Alien.Id], Assert.IsType<UnitsSpotted>(events[^2]).Spotted);
+    }
+
+    [Fact]
+    public void AUnitOfTheHostileSideCannotWalkYetSoTheHostileReserveRefusalIsNotReachable()
+    {
+        // The selection rules refuse every command while the hostile side is on turn (turn processing is branch 6's), so
+        // CheckReservedTimeUnits' hostile answer (battle.hostile-reserve-unsupported) cannot reach the walk through the command or the method.
+        var arena = Make();
+        arena.Battle.Side = BattleFaction.Hostile;
+        Assert.Equal("battle.selection-unavailable", arena.Battle.Walk(arena.Rules, arena.Alien.Id, At(17, 10), BattleMoveType.Normal, false, [])?.Code);
+    }
+
+    [Fact]
+    public void AKneelingUnitThatAReactorWouldShootAtIsRefusedByTheKneelBeforeAnyChange()
+    {
+        var arena = Make();
+        GunFor(arena, arena.Alien);
+        arena.Soldier.Kneeled = true;
+        var state = State(arena);
+        // Called on the battle itself: a refusal after a step would leave the walk done, a refusal of the kneel leaves nothing.
+        Assert.Equal("battle.reaction-fire-unsupported", arena.Battle.Walk(arena.Rules, arena.Soldier.Id, At(12, 10), BattleMoveType.Normal, false, [])?.Code);
+        Assert.Equal(state, State(arena));
+        Assert.Equal("battle.reaction-fire-unsupported", Refusal(arena.Campaign.Execute(new WalkUnit(arena.Soldier.Id, At(12, 10)))));
+    }
+
+    [Theory]
+    [InlineData("proximityTrigger")]
+    [InlineData("deathTrap")]
+    public void AStepNextToAProximityTriggerItemOrOntoADeathTrapIsRefusedBeforeAnyChange(string kind)
+    {
+        var arena = Make(edit: rules =>
+        {
+            if (kind == "proximityTrigger")
+                return Replaced(rules, "- type: GRENADE\n    battleType: 4\n    weight: 1", "- type: GRENADE\n    battleType: 4\n    weight: 1\n    fuseTriggerEvents: {proximityTrigger: true}");
+            return Replaced(rules, "- type: GRENADE\n    battleType: 4\n    weight: 1", "- type: GRENADE\n    battleType: 4\n    weight: 1\n  - type: STR_DEATH_TRAP_200\n    battleType: 0\n    weight: 1");
+        });
+        if (kind == "proximityTrigger") arena.Battle.AddItemOnTile(new BattleItem(arena.Battle.TakeItemId(), "GRENADE"), At(13, 11));
+        else arena.Put(12, 10, 0, BattleTilePart.Floor, DeathTrapFloor);
+        var state = State(arena);
+        Assert.Equal("battle.proximity-unsupported", Refusal(arena.Campaign.Execute(new WalkUnit(arena.Soldier.Id, At(12, 10)))));
+        Assert.Equal(state, State(arena));
+    }
+
+    [Fact]
+    public void AUnitPokingUpFromBelowAHoleStopsTheWalkAfterTheStepsBeforeIt()
+    {
+        // A tall alien stands below a floorless tile on the path, out of the soldier's knowledge: the second step would be "in the way".
+        var arena = Make(edit: rules => rules.Replace("standHeight: 22", "standHeight: 30", StringComparison.Ordinal));
+        arena.Put(10, 10, 1, BattleTilePart.Floor, Floor);
+        arena.Put(11, 10, 1, BattleTilePart.Floor, Floor);
+        arena.Battle.SetTile(arena.Soldier, At(10, 10, 1));
+        arena.Stand(arena.Alien, 12, 10, 6);
+        arena.See();
+        arena.Battle.SetSpotted(arena.Alien, BattleFaction.Player, false);
+        var events = Walk(arena, At(12, 10, 1));
+        Assert.Equal(new UnitWalkEnded(arena.Soldier.Id, BattleWalkStop.UnitInTheWay, 1, 4, 2, At(11, 10, 1)), End(events));
+    }
+
+    [Fact]
+    public void AFirstStepOntoATileWhoseHolePokesAUnitFromBelowIsRefused()
+    {
+        // A tall alien below a floorless tile pokes into it: stepping there is "in the way" although the tile itself is empty.
+        var arena = Make(edit: rules => rules.Replace("standHeight: 22", "standHeight: 30", StringComparison.Ordinal));
+        arena.Put(10, 10, 1, BattleTilePart.Floor, Floor);
+        arena.Battle.SetTile(arena.Soldier, At(10, 10, 1));
+        arena.Stand(arena.Alien, 11, 10, 6);
+        arena.See();
+        arena.Battle.SetSpotted(arena.Alien, BattleFaction.Player, false);
+        var late = arena.Battle.Walk(arena.Rules, arena.Soldier.Id, At(11, 10, 1), BattleMoveType.Normal, false, new List<ICampaignEvent>());
+        Assert.Equal("battle.walk-unit-in-the-way", late?.Code);
     }
 
     [Fact]
@@ -591,6 +679,22 @@ public sealed class BattleWalkTests
         Assert.Equal(new UnitKneeled(still.Soldier.Id, false, 8), stood[0]);
         Assert.Equal(new UnitWalkEnded(still.Soldier.Id, BattleWalkStop.Arrived, 0, 8, 0, At(10, 10)), End(stood));
         Assert.Equal((units - 8, At(10, 10)), (still.Soldier.TimeUnits, still.Soldier.Position!.Value));
+    }
+
+    [Fact]
+    public void AnUpButtonWithAUnitAboveIsRefusedAndTheNoPathEndOfMoveUpDownIsNotReachable()
+    {
+        // validateUpDown already refuses a tile above that holds a unit, and no arena that passes it was found where the path is missing, so the
+        // path-less end of moveUpDown (postPathProcedures alone) cannot be reached through the command; the walk's own dir == -1 branch is
+        // the same code that ends every walk and is run by each test.
+        var arena = Make(flying: true);
+        var friend = arena.Alien;
+        arena.Put(10, 10, 1, BattleTilePart.Floor, Floor);
+        arena.Battle.SetTile(friend, At(10, 10, 1));
+        arena.See();
+        var state = State(arena);
+        Assert.Equal("battle.up-down-impossible", Refusal(arena.Campaign.Execute(new MoveUnitUpDown(arena.Soldier.Id, true))));
+        Assert.Equal(state, State(arena));
     }
 
     [Fact]

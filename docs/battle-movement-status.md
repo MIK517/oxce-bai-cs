@@ -501,15 +501,15 @@ Reference: `UnitWalkBState.cpp` (`init`, `think`, `postPathProcedures`), `Battle
   `_action.desperate`, charging, hiding, `finalFacing`, `finalAction`, `dontReselect`, melee at the end of a charge, `clearTimeUnits` for an unhandled panic (all branch 6;
   the player's walk never has them); the camera, the sounds (`playMovementSound`, so `selectMoveSoundUnit` changes no state, confirmed: the hook is not read), `isPreview`'s refill;
   `BattlescapeGame`'s `getPanicHandled` is always true for a player's command. The burn-floor `ignite` and the `hit` it makes (S9).
-- **Tests.** `BattleWalkTests` (compatibility, 28, on the sight arena four levels high with a walking soldier): a straight walk (events, costs, motion points, the grid), a diagonal
+- **Tests.** `BattleWalkTests` (compatibility, 36, on the sight arena four levels high with a walking soldier): a straight walk (events, costs, motion points, the grid), a diagonal
   step with its free turn, the turn before the first step paid and the free turn between steps, no `turnBeforeFirstStep` (charged only on a sighting stop), a stop after the
   step that shows a new unit and the Shift walk, a stop on a sighting by the first turn (the turn paid), run costs (the default and a custom percentage), a refused run, the extended running cost, a strafe step,
   a refused sneak, TU shortage (a stop and a refusal), energy shortage, the reserve, a kneeling unit standing up (and its refusal), a refused armor, no path, targets outside and units of another side, a
   known and an unknown unit in the way, a swinging door, a UFO door (and the refusal when the door and step cannot be paid), a ramp up a level, a ladder with the jump onto the ledge, flying up and down,
   a flier over a hole, a walk off a ledge, a fall onto a unit that moves aside and the knock-out refusal (called on the battle itself), the reaction, burn-floor and proximity refusals with the state compared before and
-  after, the hostile faction's spotting by a weaponless unit, the personal light, and the selection kept. Also: an undefined move type, the flag clearing, a kneeling unit with the up and down buttons (and with an armor that cannot move). Not tested: a big unit's walk, the ladder jump cancelled midway (`falling` set by
-  `cancelCurentMove`), `MoveUpDown` with no path, the hostile reserve refusal, the kneel's reaction refusal inside a walk, a unit poking up from the level below, the `Incapacitated` stop, a stop at a unit in the way after some steps,
-  the death trap and `proximityTrigger` cases of the proximity refusal (S7's tests cover `ProximityEffects` itself), the AI's stops.
+  after, the hostile faction's spotting by a weaponless unit, the personal light, and the selection kept. Also: an undefined move type, the flag clearing, a kneeling unit with the up and down buttons (and with an armor that cannot move). Also: the kneel's reaction refusal inside a walk (called on the battle, state unchanged), a unit poking up from below a hole (a first-step refusal and a stop after one step), the `proximityTrigger` and death-trap cases of the proximity refusal,
+  the light that moves with the walker (the two tiles trade shades) and the sight that grows with it (a stop on a unit seen in the dark). Not reachable, so not tested: the hostile reserve refusal (the selection rules refuse every command of the hostile side first, `battle.selection-unavailable`), `MoveUpDown` with no path
+  (`validateUpDown` refuses a tile above that holds a unit and no arena that passes it lacks a path), the `Incapacitated` stop (nothing in a player's walk puts the walker out: damage is branch 5's). Not tested: a big unit's walk, the ladder jump cancelled midway (`falling` set by `cancelCurentMove`), the AI's stops.
 
 ## Next
 
