@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 245 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 246 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 100 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 8 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 345 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 346 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 112 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -350,7 +350,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 245 files.
+`src/Oxce.Gameplay` - 246 files.
 
 ### `Oxce.Gameplay`
 
@@ -392,6 +392,16 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BattleItemSnapshot` (record) [BattleItemSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleItemSnapshot.cs) - One saved item (`SavedBattleGame::load`'s item passes and `BattleItem::load` and `save`, Phase 7 branch 2 S4).
 - `TurnUnit` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - Turning a unit towards a tile (`BattlescapeGame::secondaryAction`, the right click: `UnitTurnBState`): the unit turns one eighth at a tim...
 - `KneelUnit` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - The kneel button (`BattlescapeState::btnKneelClick`, `BattlescapeGame::kneel`): the unit kneels, or stands up when it kneels, for the tim...
+- `BattleMoveType` (enum) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - How a unit moves along a path (`BattleActionMove` without the guided missile): the player's client sends `Normal`.
+- `WalkUnit` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - Walking, or flying, to a tile (`BattlescapeGame::primaryAction`'s "start walking" and `UnitWalkBState`): the path is calculated for the m...
+- `MoveUnitUpDown` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - The unit up and down buttons (`BattlescapeGame::moveUpDown`): a flying unit, or one on a ladder or a lift, moves one level.
+- `BattleWalkStop` (enum) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - Why a walk ended.
+- `UnitStepped` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - One step of a walk: a tile in a direction (0-7, 8 up, 9 down), what it cost and where the unit stands afterwards (a step down stairs or o...
+- `UnitWalkTurned` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - A turn of one eighth during a walk: the direction now and the time units it cost (turning is free except before the first step).
+- `UnitWalkOpenedDoor` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - A door opened on the way: what happened, how many door parts opened, where light and sight were updated and the time units it cost.
+- `UnitFell` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - A unit moved by gravity during a walk: a unit that fell, or one that moved out of the way of a falling unit.
+- `UnitsSpotted` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - The units a walker saw for the first time this turn (the walk stopped there unless it ignores them).
+- `UnitWalkEnded` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - A walk ended: why, how many steps it took and what it cost in all (the kneel, the doors, the turns before the first step and the steps).
 - `BattleTurnStop` (enum) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - Why a turn ended.
 - `UnitTurned` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - A unit turned (possibly not all the way): its direction now, the eighths it turned and the time units it paid.
 - `UnitKneeled` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - A unit kneeled or stood up (`Kneeling` is whether it kneels now), paying `TimeUnitsSpent`.
@@ -1327,7 +1337,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 345 files.
+`tests/Oxce.CompatibilityTests` - 346 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1337,7 +1347,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>340 test classes</summary>
+<details><summary>341 test classes</summary>
 
 - `BaseDefenseDeploymentTests` ([BaseDefenseDeploymentTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseDeploymentTests.cs))
 - `BaseDefenseMapTests` ([BaseDefenseMapTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseMapTests.cs))
@@ -1361,6 +1371,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BattleTerrainLoaderTests` ([BattleTerrainLoaderTests.cs](../tests/Oxce.CompatibilityTests/BattleTerrainLoaderTests.cs))
 - `BattleTurnKneelTests` ([BattleTurnKneelTests.cs](../tests/Oxce.CompatibilityTests/BattleTurnKneelTests.cs))
 - `BattleViewTests` ([BattleViewTests.cs](../tests/Oxce.CompatibilityTests/BattleViewTests.cs))
+- `BattleWalkTests` ([BattleWalkTests.cs](../tests/Oxce.CompatibilityTests/BattleWalkTests.cs))
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
 - `CampaignSaveRegressionFixtureTests` ([CampaignSaveRegressionFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignSaveRegressionFixtureTests.cs))

@@ -71,6 +71,8 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         registry.Command<ReselectSkippedUnit>(ReselectSkippedUnit);
         registry.Command<TurnUnit>(TurnUnit);
         registry.Command<KneelUnit>(KneelUnit);
+        registry.Command<WalkUnit>(WalkUnit);
+        registry.Command<MoveUnitUpDown>(MoveUnitUpDown);
         registry.Command<UseInventoryFeature>(command =>
             Blocked(_battle is null or { Phase: BattlePhase.Briefing } ? BattleInventoryReasons.Unavailable : BattleInventoryReasons.For(command.Feature)));
         // The geoscape is frozen during a battle: time stops in the preflight, every other command here.
@@ -480,6 +482,49 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         if (_battle is not { } battle) return Blocked(BattleSelectionReasons.Unavailable);
         if (battle.KneelUnit(campaign.Content.RuntimeRules, command.UnitId, out var kneeling, out var spent) is { } refusal) return Blocked(refusal);
         return new CampaignCommandResult([new UnitKneeled(command.UnitId, kneeling, spent)]);
+    }
+
+    private CampaignCommandResult WalkUnit(WalkUnit command)
+    {
+        if (_battle is not { } battle) return Blocked(BattleSelectionReasons.Unavailable);
+        var rules = campaign.Content.RuntimeRules;
+        // The walk runs on a copy of the battle first: what it meets that is not ported (the reaction fire after a step, a proximity explosion, a
+        // burning floor, a fall that knocks a unit out) is refused before the real walk changes anything.
+        if (TrialRefusal(battle, trial => trial.Walk(rules, command.UnitId, command.Target, command.Move, command.IgnoreSpottedEnemies, [])) is { } trial)
+            return Blocked(trial);
+        var events = new List<ICampaignEvent>();
+        if (battle.Walk(rules, command.UnitId, command.Target, command.Move, command.IgnoreSpottedEnemies, events) is { } refusal) return Blocked(refusal);
+        return new CampaignCommandResult(events);
+    }
+
+    private CampaignCommandResult MoveUnitUpDown(MoveUnitUpDown command)
+    {
+        if (_battle is not { } battle) return Blocked(BattleSelectionReasons.Unavailable);
+        var rules = campaign.Content.RuntimeRules;
+        if (TrialRefusal(battle, trial => trial.MoveUpDown(rules, command.UnitId, command.Up, [])) is { } trial) return Blocked(trial);
+        var events = new List<ICampaignEvent>();
+        if (battle.MoveUpDown(rules, command.UnitId, command.Up, events) is { } refusal) return Blocked(refusal);
+        return new CampaignCommandResult(events);
+    }
+
+    /// <summary>
+    /// Runs a command's rule on a copy of the battle (the reference's state machine can meet a refusal after it has changed things) and
+    /// returns what it refused, or null. Without the attached terrain files there is no copy, and a later refusal leaves the walk half done.
+    /// </summary>
+    private CampaignReason? TrialRefusal(BattleState battle, Func<BattleState, CampaignReason?> run)
+    {
+        if (campaign.BattleTerrainFiles is not { } files) return null;
+        var scratch = BattleState.Restore(battle.Capture(), campaign.Content, Loader(files),
+            campaign.Handlers.Operation<ICampaignDeploymentHandOver>().UfoInBattlescape, BattleRestoreCampaign.From(campaign));
+        // Runtime state a save does not keep is the live battle's, so the copy stops where the live walk would.
+        foreach (var live in battle.Units)
+            if (scratch.UnitById(live.Id) is { } copy)
+            {
+                copy.UnitsSpottedThisTurn.Clear();
+                copy.UnitsSpottedThisTurn.AddRange(live.UnitsSpottedThisTurn);
+                foreach (var faction in Enum.GetValues<BattleFaction>()) copy.SetSpottedBy(faction, live.IsSpottedBy(faction));
+            }
+        return run(scratch);
     }
 
     private CampaignCommandResult ReselectSkippedUnit(ReselectSkippedUnit command)

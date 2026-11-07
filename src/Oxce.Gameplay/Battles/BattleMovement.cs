@@ -214,6 +214,14 @@ internal sealed partial class BattleUnit
         return true;
     }
 
+    /// <summary>BattleUnit::spendEnergy: spends the energy when the unit has it, else nothing.</summary>
+    public bool SpendEnergy(int energy)
+    {
+        if (energy > Energy) return false;
+        Energy -= energy;
+        return true;
+    }
+
     /// <summary>
     /// BattleUnit::getHitState: the unit was hit since a unit of its side was last selected. Runtime state (not saved) that a player unit's
     /// reaction reads in <c>getSpottingUnits</c>; the damage that sets it and the selection that resets it belong to branch 5.

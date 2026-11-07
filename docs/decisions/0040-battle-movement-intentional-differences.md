@@ -52,3 +52,13 @@ cycles, and the port does too; the tiles it reserves for a big unit's escape (`e
 `StartFirstTurn` queues the units that have no floor again (the reference's `BattlescapeGame` constructor queues them through `checkForCasualties`, and the spawns queue theirs at the briefing). A fall that would knock out a unit
 below (no escape) is refused before it starts (`battle.fall-knockout-unsupported`, branch 6's casualty work), as are a landing that a reaction
 fire, a proximity explosion or a floor-burning unit (S9) could follow.
+
+**Walking (S8).** `UnitWalkBState::think` calls `unitOpensDoor` and, when a UFO door starts to open (result 1), returns to wait for the animation; the port opens
+the door at once and thinks again in the next cycle (the step cost is read again, so a door that took the time units a step needed stops the walk there, as the
+reference's next cycle would). A step is whole (`BattleUnit::startWalking` and `keepWalking`'s phases collapse), so the reference's checks in the middle of a
+step (the destination tile occupied by another unit, the `_falling` reset at each phase before the last) never see a change and are not run. A walk that cannot
+take its first step is a refusal with a reason where the reference ends silently; a walk whose first step is taken and whose later one cannot is a stop with
+its reason in the events. Refusals met after a step (the reaction fire of branch 5, a proximity explosion, a burning floor, a fall that knocks a unit out) are
+found by running the walk on a copy of the battle first, into which the live battle's runtime sight state (the units spotted this turn and the spotting flags) is copied, so the copy stops where the live walk does.
+`moveUpDown` always walks normally with Shift off (the reference reuses the flags of the last `primaryAction`), and a move type the armor does not allow (a run, strafe or sneak)
+is refused where the reference falls back to a normal walk; the player's client sends neither.

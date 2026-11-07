@@ -18,7 +18,7 @@ Phase 7 branch 4 (`claude/battle-movement`), from `main` after PR #80 (branch 3 
 | S5 turning and kneeling | Done, awaiting audit (2026-11-07) |
 | S6 doors | Done, awaiting audit (2026-11-07) |
 | S7 gravity and falling | Done, awaiting audit (2026-11-07) |
-| S8 walking and flying | Planned |
+| S8 walking and flying | Done, awaiting audit (2026-11-07) |
 | S9 fire, smoke and terrain destruction | Planned |
 | S10 battlescape client | Planned |
 | S11 acceptance | Planned |
@@ -452,37 +452,98 @@ the fall state's push at `think`), `InventoryState.cpp` (the destructor), `Battl
   dropping, an alien in the air falling at the first turn and a refused first turn (burn floor) that changes nothing. `BattleInventoryTests`: an item put
   down by a hovering unit drops; a floorless walker's commands are refused by the gate (so `Moved`'s own pre-move refusal can only matter once S8 can leave a walker queued) and its fall runs. The briefing refuses a spawn that could not land. (The spawn tests that asked for `SpawnNeedsGravity` are replaced.)
 
+## S8 — Walking and flying (2026-11-07)
+
+Reference: `UnitWalkBState.cpp` (`init`, `think`, `postPathProcedures`), `BattlescapeGame.cpp` (`primaryAction`'s walk, `moveUpDown`, `kneel`, `checkReservedTU`),
+`BattlescapeState.cpp` (`btnUnitUpClick`, `btnUnitDownClick`), `BattleUnit.cpp` (`startWalking`, `keepWalking`, `spendEnergy`), `Armor.cpp` (`allowsRunning`,
+`allowsStrafing`, `allowsSneaking`, `allowsMoving`), `Tile.cpp` (`getOverlappingUnit`), `Pathfinding.cpp` (the S2 port: `calculate`, `getTUCost`, `validateUpDown`).
+
+- **Commands.** `WalkUnit(UnitId, Target, Move, IgnoreSpottedEnemies)` and `MoveUnitUpDown(UnitId, Up)` (`BattleMovementContracts.cs`; both `IBattleCommand` and
+  `IUnitCommand`, registered in `CampaignBattles`). `BattleMoveType` (public: normal, run, strafe, sneak) maps to the pathfinding's `BattleActionMove`; the
+  player's client sends normal. `BattleState.Walk` (`BattleWalk.cs`) is `primaryAction`'s walk: the unit of the side on turn, a target in the map, the armor's
+  `allowsMoving` (`battle.walk-not-allowed`), `allowsRunning`, `allowsStrafing` or `allowsSneaking` for the move type (`Armor::allowsRunning(def)`: the armor's
+  value, else true for a small unit; `battle.walk-move-not-allowed`), then `Calculate` for the move type (no path: `battle.walk-no-path`, also a unit already on the
+  target) and `RunWalk`. `ignoreSpottedEnemies` is the command's flag or a run with the `extendedRunningCost` constant. The path is calculated before a kneeling unit stands up, as the reference does. The selection is not touched.
+- **`MoveUpDown`** is the buttons' `validateUpDown` (`battle.up-down-impossible` when it fails or the tile a level above or below is outside the map) then
+  `moveUpDown`: a kneeling unit stands up first (the kneel's own refusals pass through, nothing having changed), the path to the tile a level above or below is
+  calculated with the normal move type and `RunWalk` follows. A kneeling unit stands up and pays first, then an armor that does not allow moving ends the walk with no step (the reference's `think` aborts silently
+  after `moveUpDown`'s kneel); with no kneel to do, that is the refusal `battle.walk-not-allowed`. The move type is always normal and Shift is off (the reference carries the last
+  `primaryAction`'s flags into `moveUpDown`; ADR 0040). A walk with no path at all (`dir == -1`) ends in `postPathProcedures` only: its light and sight updates run and nothing moves.
+- **`RunWalk`** is `UnitWalkBState` as one loop whose cycles are the reference's `think` calls (the animation phases collapsed into `WalkStep`, so a step started in one
+  cycle is finished at the start of the next, followed in that same cycle by the next step's start, as in the reference where the "step finished" block falls into the
+  standing block). `init` sets `beforeFirstStep` (not strafing, a start direction, not the unit's facing). A cycle: a kneeling unit stands up through `KneelUnit` (the kneel's refusals refuse
+  the walk; its reaction refusal likewise); an out unit stops; after a step the position block (`fallingWhenStopped`, `falling` with the ladder "jump" exception for a
+  vertical step from a ladder with a path left, and the fall onto a unit below: the path loses its next step, the unit joins `FallingUnits` and `ResolveFalls` runs, as
+  `UnitFallBState` pushed in front does) and the finished-step block (a burning floor is S9's, `battle.burn-floor-unsupported`; the other factions' spotting of the mover is cleared (plan D2, any mover); a proximity event refuses; `CalculateLighting(Units, position, 2)` and `CalculateFov(position, 2, false)`; a newly spotted unit cancels unless the walk
+  ignores them or falls; and when the unit is not falling the `HasPossibleReactor` refusal and `SpotMover`, `checkReactionFire`'s spotting, as `Land` does); then the
+  standing block: no direction left is `postPathProcedures` (`CalculateLighting(Units, position)`, `CalculateFov(unit)`); otherwise `GetTuCost` for the action's move
+  type (a falling unit goes down), then in the reference's order the invalid step, time units, energy, `CheckReservedTimeUnits` (not while falling), the free turn towards the step (not for a strafe or a
+  vertical step), `UnitOpensDoor` (walking form) with a UFO door ending the cycle (the walk thinks again at once: ADR 0040), the unit in the way (`Tile::getOverlappingUnit` with
+  `TUO_IGNORE_SMALL` on each tile of the footprint at the step's destination, `BattleSight.OverlappingUnit(tile, 26)`), the dequeue, and the spend of time units and then energy
+  and `WalkStep`; and the turning block: before the first step an armor with `turnBeforeFirstStep` pays the turn cost for each eighth (`spendTimeUnits` that fails does not stop
+  the turn, as the reference), another armor counts the eighths and pays them (`preMovementCost * turnCost`) only when a sighting stops the turn; `turn`, `CalculateFov(unit)` and a new sighting abort the turn
+  and cancel. `cancelCurentMove` keeps a unit that stopped without a floor falling first (a further cycle), otherwise it drops the path and pops.
+  `BattleUnit.SpendEnergy` is `spendEnergy`.
+- **Result.** Ordered events: `UnitKneeled` (standing up), `UnitWalkTurned` (one per eighth with the time units it cost), `UnitWalkOpenedDoor`, `UnitStepped` (from, to, direction 0-7, 8 up, 9 down,
+  time units and energy), `UnitFell` (a unit moved by gravity during the walk: the walker falling onto another, and the unit that moved aside; positions only), `UnitsSpotted` (the IDs
+  the stop saw) and last `UnitWalkEnded` (`BattleWalkStop`: arrived, spotted units, not enough time units, not enough energy, reserved time units, path blocked, unit in the way,
+  incapacitated; steps, the walk's time units and energy in all, the position). A walk that stops before it changed anything (nothing paid, turned, opened or moved) is a
+  refusal instead, with the stop's reason (`battle.walk-blocked`, `battle.walk-not-enough-time-units`, `battle.walk-not-enough-energy`, `battle.walk-time-units-reserved`,
+  `battle.walk-unit-in-the-way`), and no revision change: this is the nearest to the reference's silent abort.
+- **Refusals before any change (the trial copy).** What the reference hands to later work is met in the middle of a walk (after a step), so the command runs the walk
+  on a copy of the battle first (`CampaignBattles.TrialRefusal`: `Capture` and `Restore` with the attached terrain files, as the first turn's trial) and only then
+  on the battle: the reaction-fire refusal after a step (`battle.reaction-fire-unsupported`, `HasPossibleReactor` with the over-approximation of S5), a proximity event
+  (`battle.proximity-unsupported`), a floor-burning unit (`battle.burn-floor-unsupported`, S9), a fall onto a unit that cannot move aside
+  (`battle.fall-knockout-unsupported`, branch 6) and the hostile side's reserve. Without terrain files no copy is made and a late refusal leaves the walk half done (the method
+  returns the reason). `Restore` recomputes the sight a save does not keep, so `TrialRefusal` puts the live battle's `UnitsSpottedThisTurn` and the three spotting flags of every unit into the copy;
+  the walk's stops and paths are then the live walk's. An undefined move type is refused as `battle.walk-move-not-allowed`.
+- **Not ported.** The AI parts of `think` and `postPathProcedures`: `checkForReactivation` of the side's brutal units on a sighting, the brutal AI's stop after a UFO door,
+  `_action.desperate`, charging, hiding, `finalFacing`, `finalAction`, `dontReselect`, melee at the end of a charge, `clearTimeUnits` for an unhandled panic (all branch 6;
+  the player's walk never has them); the camera, the sounds (`playMovementSound`, so `selectMoveSoundUnit` changes no state, confirmed: the hook is not read), `isPreview`'s refill;
+  `BattlescapeGame`'s `getPanicHandled` is always true for a player's command. The burn-floor `ignite` and the `hit` it makes (S9).
+- **Tests.** `BattleWalkTests` (compatibility, 28, on the sight arena four levels high with a walking soldier): a straight walk (events, costs, motion points, the grid), a diagonal
+  step with its free turn, the turn before the first step paid and the free turn between steps, no `turnBeforeFirstStep` (charged only on a sighting stop), a stop after the
+  step that shows a new unit and the Shift walk, a stop on a sighting by the first turn (the turn paid), run costs (the default and a custom percentage), a refused run, the extended running cost, a strafe step,
+  a refused sneak, TU shortage (a stop and a refusal), energy shortage, the reserve, a kneeling unit standing up (and its refusal), a refused armor, no path, targets outside and units of another side, a
+  known and an unknown unit in the way, a swinging door, a UFO door (and the refusal when the door and step cannot be paid), a ramp up a level, a ladder with the jump onto the ledge, flying up and down,
+  a flier over a hole, a walk off a ledge, a fall onto a unit that moves aside and the knock-out refusal (called on the battle itself), the reaction, burn-floor and proximity refusals with the state compared before and
+  after, the hostile faction's spotting by a weaponless unit, the personal light, and the selection kept. Also: an undefined move type, the flag clearing, a kneeling unit with the up and down buttons (and with an armor that cannot move). Not tested: a big unit's walk, the ladder jump cancelled midway (`falling` set by
+  `cancelCurentMove`), `MoveUpDown` with no path, the hostile reserve refusal, the kneel's reaction refusal inside a walk, a unit poking up from the level below, the `Incapacitated` stop, a stop at a unit in the way after some steps,
+  the death trap and `proximityTrigger` cases of the proximity refusal (S7's tests cover `ProximityEffects` itself), the AI's stops.
+
 ## Next
 
-S8 — walking and flying (plan row S8). Notes for its worker:
+S9 — fire, smoke and terrain destruction (plan row S9). Notes for its worker:
 
-- **What S7 left for it.** `BattleState.ApplyGravity`, `AddFallingUnit`, `FallsRefusal(rules, extra)` and `ResolveFalls(rules)` are what S8's walk calls when a step ends
-  without a floor (`UnitWalkBState.cpp:184` pushes `UnitFallBState` after the step; the reference's walk then waits for it). A walk is checked before its first step
-  with `FallsRefusal` for the units its steps could drop, so refusals stay before any change; the fall of the walker itself runs the same routine
-  (`WalkStep` for each level; the unit lands with `Land`'s light, sight and `SpotMover`, which S8 may need to share with its own per-step spotting). `Land` checks `HasPossibleReactor` on every path (the non-trial path included); only the unit's own side on turn reacts.
-  `MayFall()` is the cheap test for "could anything fall".
-- **Landing refusals are over-approximations** (`battle.proximity-unsupported`, `battle.reaction-fire-unsupported`, `battle.burn-floor-unsupported`): S8's walk
-  hits the same ones per step. S9 retires `battle.burn-floor-unsupported` by porting `Tile::ignite`, `hit` and the burn-floor branch of the fall.
+- **What S8 left for it.** The walk's finished-step block refuses a floor-burning mover (`BattleWalk.cs`, `battle.burn-floor-unsupported`, tested by `BattleWalkTests.AUnitThatBurnsTheFloor...`):
+  the reference there calls `_unit->getTile()->ignite(1)` and `TileEngine::hit(..., DT_IN, false)` on the unit's voxel, then, when the unit's status is not standing (a hole was burnt and it fell),
+  `abortPath` and return. S9 retires the refusal in both places (the walk's, and `Land`'s in `BattleGravity.cs`); `RunWalk`'s `Think` is where the call goes (after the
+  `falling` test, before the faction flag clearing), and the burnt-through case must end the walk (`pathfinder.AbortPath()`, stop) with the fall running in `ResolveFalls`.
+  `FallsRefusal` and `TrialRefusal` stay the way to keep refusals before any change.
+- **Walk facts S9's and later tests need.** `BattleState.Walk(rules, unitId, target, move, ignore, events)` and `MoveUpDown(...)` are the rule methods; the commands run them on a trial
+  copy first (`CampaignBattles.TrialRefusal`, not available without terrain files). A walk is `RunWalk`'s loop; the finished-step block's order is burn floor, spotting flag clearing for a non-player mover, `ProximityEffects`,
+  `CalculateLighting(Units, position, 2)`, `CalculateFov(position, 2, false)`, the spotted test, then `HasPossibleReactor` and `SpotMover`. `BattleWalkTests.Make` builds the walking soldier on the four-level arena
+  (`suitExtra` and `rulesExtra` add armor and global rules; `flying: true` keeps the flier); `Walk`, `End` and `State` are its helpers. The ramp records `RampLow` (terrain level -8) and `RampHigh` (-16) join the sight
+  tests' terrain; a ladder is `GravLift` on the object part. A wall object (`Wall`) blocks sight but not movement; an impassable tile needs a movement cost of 255 in a new record.
+  A known unit stands in the end tile (`arena.See()` after `Stand`) for "no path".
+- **Landing refusals are over-approximations** (`battle.proximity-unsupported`, `battle.reaction-fire-unsupported`, `battle.burn-floor-unsupported`), and the walk meets the same ones per step.
 - **Not done and needed by later slices.** `itemDrop` (branch 5), the stomp's knock-out and `checkForCasualties` (branch 6), `UnitFallBState`'s burn-floor branch (S9);
   `canUseWeapon`'s research, AI use delay, depth and two-handed rules, `getWeaponForReactions`' preferred hand and `reactionsDisabled*` (branch 5, with the real reaction);
-  `BattleUnit.HitState` is never set (damage is branch 5's) and no selection resets it (`resetUnitHitStates`); the legal-action list does not list turn or kneel (S10);
-  the AI's turn-then-kneel and `checkForReactivation` (branch 6).
-- **S6's notes still apply.** `BattleState.UnitOpensDoor(rules, unit, rightClick: false, direction, out attempt)` is the walking form (results 0, 1, 4, 5; a UFO door is
-  open at once); `CloseUfoDoors()` is ready for branch 6; `SpotMover` and `HasPossibleReactor` are the spotting and refusal after a move, called only for the mover
-  of the side on turn (`PassesSpottingFilters` reads `Side`).
-- **Test helpers.** `BattleGravityTests.Tall` builds the sight tests' `Flat` arena four levels high (a walking soldier, an armor `specab`, a reactive alien, a big alien and
-  the grenade's fuse events by parameter), `Raise` puts a unit on a tile, `State` is a string of the units' fields, the map's grid, the revision and the falling list
-  to compare a refused trial. The door tests' TESTSET records 11-18 are there for S8's door walks. `BattleTurnKneelTests.Make` builds the arena with a turn cost of 2,
-  `tuSnap: 20`, `tuAimed: 50` and an alien with reactions 100; commands run through `arena.Campaign.Execute`; an unfinished casualty (health 0) refuses every command
-  (`battle.casualties-unsupported`), so test a dying unit through state queries.
+  `BattleUnit.HitState` is never set (damage is branch 5's) and no selection resets it (`resetUnitHitStates`); the legal-action list does not list turn, kneel, walk or up and down (S10);
+  the AI's walk parts (S8's "Not ported") and `checkForReactivation` (branch 6).
+- **S6's notes still apply.** `BattleState.UnitOpensDoor(rules, unit, rightClick: false, direction, out attempt)` is the walking form (results 0, 1, 4, 5; a UFO door is open at once); `CloseUfoDoors()` is
+  ready for branch 6; `SpotMover` and `HasPossibleReactor` are the spotting and refusal after a move, called only for the mover of the side on turn (`PassesSpottingFilters` reads `Side`).
+- **Test helpers.** `BattleGravityTests.Tall` builds the sight tests' `Flat` arena four levels high (a walking soldier, an armor `specab`, a reactive alien, a big alien and the grenade's fuse events
+  by parameter), `Raise` puts a unit on a tile, `State` is a string of the units' fields, the map's grid, the revision and the falling list to compare a refused trial. `BattleTurnKneelTests.Make`
+  builds the arena with a turn cost of 2, `tuSnap: 20`, `tuAimed: 50` and an alien with reactions 100; commands run through `arena.Campaign.Execute`; an unfinished casualty (health 0) refuses every command
+  (`battle.casualties-unsupported`), so test a dying unit through state queries. A unit that stands over a floorless tile at a level above 0 makes the gate refuse commands: put its floor first, then `SetTile`.
 - **Gotchas.** A post-edit hook reformats edited C# files, so read a file again before a second edit. A backslash-n written through a script or heredoc reaches a C# file
-  as a real newline: add string literals that carry one with the Edit or Write tool (an apostrophe inside a heredoc can also break the shell call: write files with the Write tool).
-  A unit that still has its `InventoryTile` has no tile of its own and `StartFirstTurn` is the first sight (and `SetTile` throws for it), so a fall before the first turn is the
-  first turn's; tests that add `BattleUnit`s by hand must give them a `SoldierId` or a unit rule, since heights are read, and a battle with such a unit cannot be restored for the
-  trial copies (`MayFall()` keeps the copy from being made unless a unit has no floor). The reload comparisons go through `BattleSaveUnitTests.SightFree`. The armor key for the
-  special ability is `specab`.
-- Later slices (for planning ahead): S8's walk calls `BattlePathfinder.Calculate` and `GetTuCost`, recomputes lighting with `CalculateLighting(Items or Units, position, 2)` after each
-  step as `UnitWalkBState.cpp:224` does, then `CalculateFov(unit)` and compares `UnitsSpottedThisTurn` for its stop on newly spotted units. S9 reads the smoke threshold from
+  as a real newline: add string literals that carry one with the Edit or Write tool (an apostrophe inside a heredoc can also break the shell call: write files with the Write tool; a Python script
+  that needs a backslash-n builds it with `chr(92) + 'n'`). A unit that still has its `InventoryTile` has no tile of its own and `StartFirstTurn` is the first sight (and `SetTile` throws for it), so a fall before the first turn is the
+  first turn's; tests that add `BattleUnit`s by hand must give them a `SoldierId` or a unit rule, since heights are read, and a battle with such a unit cannot be restored for the trial
+  copies (`MayFall()` keeps the first turn's copy from being made unless a unit has no floor; a walk's copy is made for every walk, so walk tests use the arenas' generated units). The reload comparisons go through `BattleSaveUnitTests.SightFree`. The armor key for the
+  special ability is `specab`; an armor's run, strafe and walk costs are `moveCost: {runPercent: [time, energy]}` (a step on the arena's floor costs 4 × percent / 100: normal walk 100/50, run 75/75).
+- Later slices (for planning ahead): S9 reads the smoke threshold from
   `RuntimeCampaignSettings`, and its terrain changes call `RefreshBlockageCache` (via `CalculateLighting(..., terrainChanged: true)`) and then
   `CalculateFov(position, radius, true, appendToTileVisibility: true)`.
 - Gotchas carried from branch 3 (see `docs/battle-session-ui-status.md` "## Next"): write test files with LF; the test runner is Microsoft

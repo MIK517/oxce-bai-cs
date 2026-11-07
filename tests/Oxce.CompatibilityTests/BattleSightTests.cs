@@ -56,6 +56,8 @@ public sealed class BattleSightTests
     internal const int SwingDoorSameWall = 16; // a swinging door whose alternative is of its own part (west wall)
     internal const int PlainWestWall = 17; // a west wall with no cost
     internal const int SwingDoorNowhere = 18; // a swinging door whose alternative lies past the data set's end
+    internal const int RampLow = 19; // a floor with a terrain level of -8, the first step of a stair
+    internal const int RampHigh = 20; // a floor with a terrain level of -16, the second step: a unit on it goes up a level
 
     private static readonly byte[][] DoorRecords =
     [
@@ -67,6 +69,8 @@ public sealed class BattleSightTests
         Record((35, 1), (39, 4), (46, 17), (53, 1)),
         Record((53, 1)),
         Record((35, 1), (46, 200), (53, 1)),
+        Record((34, 1), (39, 4), (48, unchecked((byte)-8))),
+        Record((34, 1), (39, 4), (48, unchecked((byte)-16))),
     ];
 
     private const string SuitBlock = "  - type: SUIT\n    movementType: 1\n    builtInWeapons: [GUN, CLIP, GRENADE]\n    specialWeapon: AMP\n    storeItem: SUPPLY\n    corpseBattle: [CORPSE]\n    corpseGeo: CORPSE\n    loftempsSet: [0]";
