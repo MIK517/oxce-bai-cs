@@ -6,9 +6,6 @@ namespace Oxce.Gameplay.Battles;
 /// <summary>The reasons gravity and falling refuse before any change (Phase 7 branch 4 S7).</summary>
 internal static class BattleGravityReasons
 {
-    internal static readonly CampaignReason BurnFloorUnsupported = new("battle.burn-floor-unsupported",
-        "A unit that burns the floor it stands on would land, and the burning floor (and the hit that makes) arrives with the fire and smoke work (Phase 7 branch 4 S9).");
-
     internal static readonly CampaignReason FallKnockOutUnsupported = new("battle.fall-knockout-unsupported",
         "A falling unit would land on a unit that cannot move out of the way and knock it out; the knock-out and the casualty check that follows arrive with turn processing (Phase 7 branch 6).");
 
@@ -20,7 +17,7 @@ internal static class BattleGravityReasons
 /// Gravity and falling (Phase 7 branch 4 S7): <c>TileEngine::applyGravity</c> and the fall routine of <c>UnitFallBState</c>. The animation
 /// is collapsed: each cycle every falling unit that stands still either takes its next step down, or has landed. A fall that would knock
 /// out the unit it lands on (no escape) is refused before any change, as are a landing the reaction fire (branch 5) or a proximity
-/// explosion (branch 5) could follow and the landing of a unit that burns the floor (S9).
+/// explosion (branch 5) could follow.
 /// </summary>
 internal sealed partial class BattleState
 {
@@ -253,14 +250,15 @@ internal sealed partial class BattleState
     }
 
     /// <summary>
-    /// A unit that has stopped falling (<c>UnitFallBState::think</c>'s else branch): a floor-burning unit (S9) and a proximity explosion
+    /// A unit that has stopped falling (<c>UnitFallBState::think</c>'s else branch): a floor-burning unit burns the floor under it (a hit that reaches a unit or starts an explosion refuses), and a proximity explosion
     /// refuse; otherwise its light moves with it, everyone's sight of the area is updated, its own tiles are, and what
     /// <c>checkReactionFire</c> spots happens (a reactor refuses).
     /// </summary>
     private CampaignReason? Land(RuntimeRuleCatalog rules, BattleUnit unit, bool dryRun)
     {
         var position = unit.Position!.Value;
-        if (SpecialAbilityOf(rules, unit) >= 2) return BattleGravityReasons.BurnFloorUnsupported;
+        // If the unit burns floor tiles, burn floor tiles (a hole it burns leaves it standing: gravity queued it, and it leaves the list below).
+        if (BurnsFloor(rules, unit) && BurnFloor(rules, unit, dryRun) is { } burnRefusal) return burnRefusal;
         if (ProximityEffects(rules, unit)) return BattleGravityReasons.ProximityUnsupported;
         var reacts = unit.Faction == Side;
         // The trial copies of the first turn run this too (not a dry run), so the reactor test is part of both.

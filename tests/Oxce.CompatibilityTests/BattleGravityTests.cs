@@ -268,14 +268,16 @@ public sealed class BattleGravityTests
     }
 
     [Fact]
-    public void AUnitThatBurnsTheFloorRefusesToLand()
+    public void AUnitThatBurnsTheFloorLandsLikeAnyOtherWhenTheHitHasNothingToReach()
     {
         var arena = Tall(walkingSoldier: true, suitExtra: "    specab: 2\n");
         Raise(arena, arena.Soldier, 10, 10, 2);
         arena.Battle.ApplyGravity(arena.Soldier.Position);
         var before = State(arena);
-        Assert.Equal("battle.burn-floor-unsupported", arena.Battle.FallsRefusal(arena.Rules)!.Code);
+        Assert.Null(arena.Battle.FallsRefusal(arena.Rules));
         Assert.Equal(before, State(arena));
+        Assert.Null(arena.Battle.ResolveFalls(arena.Rules));
+        Assert.Equal(At(10, 10, 0), arena.Soldier.Position);
     }
 
     [Fact]
@@ -413,8 +415,12 @@ public sealed class BattleGravityTests
         // Armor::getSpecialAbility is none for the alien's armor; its unit rule has specab 2 (the silacoid's).
         var arena = Flat(edit: rules => Replaced(Replaced(rules, "    shade: 0\n    width: 30\n    length: 30\n    height: 2", "    shade: 0\n    width: 30\n    length: 30\n    height: 4"),
             "  - type: ALIEN\n", "  - type: ALIEN\n    specab: 2\n"));
+        // (The floor it lands on is one a hit reaches, with a strength for the hit to have.)
+        arena.Put(12, 12, 0, BattleTilePart.Floor, BurnFloor);
+        arena.Alien.Stats = arena.Alien.Stats with { Strength = 30 };
         Raise(arena, arena.Alien, 12, 12, 2);
         arena.Battle.ApplyGravity(arena.Alien.Position);
-        Assert.Equal("battle.burn-floor-unsupported", arena.Battle.FallsRefusal(arena.Rules)!.Code);
+        Assert.Null(arena.Battle.ResolveFalls(arena.Rules));
+        Assert.Equal(4, arena.Map.Fire(arena.Tile(12, 12)));
     }
 }

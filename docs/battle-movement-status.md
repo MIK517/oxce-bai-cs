@@ -19,7 +19,7 @@ Phase 7 branch 4 (`claude/battle-movement`), from `main` after PR #80 (branch 3 
 | S6 doors | Done, awaiting audit (2026-11-07) |
 | S7 gravity and falling | Done, awaiting audit (2026-11-07) |
 | S8 walking and flying | Done, awaiting audit (2026-11-07) |
-| S9 fire, smoke and terrain destruction | Planned |
+| S9 fire, smoke and terrain destruction | Done, awaiting audit (2026-11-07) |
 | S10 battlescape client | Planned |
 | S11 acceptance | Planned |
 | Branch audit | Planned |
@@ -64,7 +64,7 @@ battle options the rules read).
     unit's field of view, and the first turn's field of view comes from closing the pre-battle inventory and
     `updateSoldierInfo`.
 - Interruptions of later branches are refused before the first change with state-only, over-approximating checks
-  (reaction fire, proximity, burn floor until S9, a fall with no escape), so every completed command matches the
+  (reaction fire, proximity, a hit that reaches a unit or an explosion (S9), a fall with no escape), so every completed command matches the
   reference. The refusal reveals that an unseen unit is near; the plan names this leak and branch 5 ends it.
 - The plan was audited before this commit. Fixed from the audit: turns carry no reaction check; `getSpottingUnits`'
   spotting is ported with the commands and the reaction filter is the exact state part of `determineReactionType`;
@@ -420,12 +420,12 @@ the fall state's push at `think`), `InventoryState.cpp` (the destructor), `Battl
   `GetTuCost`, and every section of the unit must reach a tile in the map that no unit stands on (but itself), no escape takes, no fall reaches, and
   that has a floor (a flying unit does not need one); the unit then steps there (turning to that direction) and joins the falling list, and its tiles are
   reserved (from the last section's tile, bug for bug, ADR 0040). With none the reference knocks the unit out and `checkForCasualties` follows.
-- **Landing.** (The trial copies of the first turn run it for real, so the reactor test runs on both paths.) A unit that stopped falling: a floor-burning unit (`specab` 2 or 3, the armor's, else the unit rule's, as `BattleUnit`'s constructor takes it) refuses (S9, `battle.burn-floor-unsupported`); a proximity event refuses
+- **Landing.** (The trial copies of the first turn run it for real, so the reactor test runs on both paths.) A unit that stopped falling: a floor-burning unit (`specab` 2 or 3, the armor's, else the unit rule's, as `BattleUnit`'s constructor takes it) burns the floor under it (S9 retired `battle.burn-floor-unsupported`); a proximity event refuses
   (`battle.proximity-unsupported`, below); then the units' light with radius 2 at its tile (`CalculateLighting(Units)`, as `checkForProximityGrenades`
   returned no change), `CalculateFov(position, 2, false)` for everyone around, the unit's own `CalculateFov(unit, true, false)`, and for a unit of the side on
   turn `SpotMover` (`checkReactionFire`'s spotting) after a `HasPossibleReactor` check (`battle.reaction-fire-unsupported`).
 - **Refusals before any change.** `FallsRefusal(rules, extra)` runs the whole fall as a trial on the live state and puts back the units' fields, the map's unit
-  grid, the falling list and the revision (`FallSnapshot`): no escape for a unit below is `battle.fall-knockout-unsupported` (new: the stomp's knock-out, branch 6); `battle.burn-floor-unsupported`;
+  grid, the falling list and the revision (`FallSnapshot`): no escape for a unit below is `battle.fall-knockout-unsupported` (new: the stomp's knock-out, branch 6);
   `battle.reaction-fire-unsupported`; `battle.proximity-unsupported`: an item with a `proximityTrigger` fuse, or a lit one (enabled and timer 0 or more)
   that is a proximity grenade or has `proximityExplode`, lies on a tile within one of the unit's tiles, or a floor special type of 200 or more under
   the unit names an item rule `STR_DEATH_TRAP_<n>` (the over-approximation: chance rolls and `isTargetAllowed` are not asked; `RuntimeFuseTrigger` now carries
@@ -474,7 +474,7 @@ Reference: `UnitWalkBState.cpp` (`init`, `think`, `postPathProcedures`), `Battle
   standing block). `init` sets `beforeFirstStep` (not strafing, a start direction, not the unit's facing). A cycle: a kneeling unit stands up through `KneelUnit` (the kneel's refusals refuse
   the walk; its reaction refusal likewise); an out unit stops; after a step the position block (`fallingWhenStopped`, `falling` with the ladder "jump" exception for a
   vertical step from a ladder with a path left, and the fall onto a unit below: the path loses its next step, the unit joins `FallingUnits` and `ResolveFalls` runs, as
-  `UnitFallBState` pushed in front does) and the finished-step block (a burning floor is S9's, `battle.burn-floor-unsupported`; the other factions' spotting of the mover is cleared (plan D2, any mover); a proximity event refuses; `CalculateLighting(Units, position, 2)` and `CalculateFov(position, 2, false)`; a newly spotted unit cancels unless the walk
+  `UnitFallBState` pushed in front does) and the finished-step block (the floor burns (S9); the other factions' spotting of the mover is cleared (plan D2, any mover); a proximity event refuses; `CalculateLighting(Units, position, 2)` and `CalculateFov(position, 2, false)`; a newly spotted unit cancels unless the walk
   ignores them or falls; and when the unit is not falling the `HasPossibleReactor` refusal and `SpotMover`, `checkReactionFire`'s spotting, as `Land` does); then the
   standing block: no direction left is `postPathProcedures` (`CalculateLighting(Units, position)`, `CalculateFov(unit)`); otherwise `GetTuCost` for the action's move
   type (a falling unit goes down), then in the reference's order the invalid step, time units, energy, `CheckReservedTimeUnits` (not while falling), the free turn towards the step (not for a strafe or a
@@ -493,41 +493,90 @@ Reference: `UnitWalkBState.cpp` (`init`, `think`, `postPathProcedures`), `Battle
 - **Refusals before any change (the trial copy).** What the reference hands to later work is met in the middle of a walk (after a step), so the command runs the walk
   on a copy of the battle first (`CampaignBattles.TrialRefusal`: `Capture` and `Restore` with the attached terrain files, as the first turn's trial) and only then
   on the battle: the reaction-fire refusal after a step (`battle.reaction-fire-unsupported`, `HasPossibleReactor` with the over-approximation of S5), a proximity event
-  (`battle.proximity-unsupported`), a floor-burning unit (`battle.burn-floor-unsupported`, S9), a fall onto a unit that cannot move aside
+  (`battle.proximity-unsupported`), a fall onto a unit that cannot move aside
   (`battle.fall-knockout-unsupported`, branch 6) and the hostile side's reserve. Without terrain files no copy is made and a late refusal leaves the walk half done (the method
   returns the reason). `Restore` recomputes the sight a save does not keep, so `TrialRefusal` puts the live battle's `UnitsSpottedThisTurn` and the three spotting flags of every unit into the copy;
   the walk's stops and paths are then the live walk's. An undefined move type is refused as `battle.walk-move-not-allowed`.
 - **Not ported.** The AI parts of `think` and `postPathProcedures`: `checkForReactivation` of the side's brutal units on a sighting, the brutal AI's stop after a UFO door,
   `_action.desperate`, charging, hiding, `finalFacing`, `finalAction`, `dontReselect`, melee at the end of a charge, `clearTimeUnits` for an unhandled panic (all branch 6;
   the player's walk never has them); the camera, the sounds (`playMovementSound`, so `selectMoveSoundUnit` changes no state, confirmed: the hook is not read), `isPreview`'s refill;
-  `BattlescapeGame`'s `getPanicHandled` is always true for a player's command. The burn-floor `ignite` and the `hit` it makes (S9).
+  `BattlescapeGame`'s `getPanicHandled` is always true for a player's command. (The burn-floor `ignite` and `hit` are S9's, done.)
 - **Tests.** `BattleWalkTests` (compatibility, 36, on the sight arena four levels high with a walking soldier): a straight walk (events, costs, motion points, the grid), a diagonal
   step with its free turn, the turn before the first step paid and the free turn between steps, no `turnBeforeFirstStep` (charged only on a sighting stop), a stop after the
   step that shows a new unit and the Shift walk, a stop on a sighting by the first turn (the turn paid), run costs (the default and a custom percentage), a refused run, the extended running cost, a strafe step,
   a refused sneak, TU shortage (a stop and a refusal), energy shortage, the reserve, a kneeling unit standing up (and its refusal), a refused armor, no path, targets outside and units of another side, a
   known and an unknown unit in the way, a swinging door, a UFO door (and the refusal when the door and step cannot be paid), a ramp up a level, a ladder with the jump onto the ledge, flying up and down,
-  a flier over a hole, a walk off a ledge, a fall onto a unit that moves aside and the knock-out refusal (called on the battle itself), the reaction, burn-floor and proximity refusals with the state compared before and
+  a flier over a hole, a walk off a ledge, a fall onto a unit that moves aside and the knock-out refusal (called on the battle itself), the reaction and proximity refusals (and S9's burn-floor refusal, since retired) with the state compared before and
   after, the hostile faction's spotting by a weaponless unit, the personal light, and the selection kept. Also: an undefined move type, the flag clearing, a kneeling unit with the up and down buttons (and with an armor that cannot move). Also: the kneel's reaction refusal inside a walk (called on the battle, state unchanged), a unit poking up from below a hole (a first-step refusal and a stop after one step), the `proximityTrigger` and death-trap cases of the proximity refusal,
   the light that moves with the walker (the two tiles trade shades) and the sight that grows with it (a stop on a unit seen in the dark). Not reachable, so not tested: the hostile reserve refusal (the selection rules refuse every command of the hostile side first, `battle.selection-unavailable`), `MoveUpDown` with no path
   (`validateUpDown` refuses a tile above that holds a unit and no arena that passes it lacks a path), the `Incapacitated` stop (nothing in a player's walk puts the walker out: damage is branch 5's). Not tested: a big unit's walk, the ladder jump cancelled midway (`falling` set by `cancelCurentMove`), the AI's stops.
 
+## S9 — Fire, smoke and terrain destruction (2026-11-07)
+
+Reference: `Tile.cpp` (`ignite`, `addSmoke`, `setFire`, `setSmoke`, `destroy`, `damage`, `setExplosive`, `getFlammability`, `getFuel`, `prepareNewTurn`),
+`TileEngine.cpp` (`hit`, `hitTile`, `applyGravity`), `SavedBattleGame.cpp` (`prepareNewTurn`, `addDestroyedObjective`, `allObjectivesDestroyed`),
+`UnitWalkBState.cpp` (the finished-step block), `UnitFallBState.cpp` (the landing), `RuleDamageType.cpp` and `Mod.cpp` (the base `DT_IN`), `MapDataSet.cpp`
+(`getScorchedEarthTile`), `BattlescapeGame.cpp` (`think`'s push of the fall state), `Options` (`battleAutoEnd`).
+
+- **Tile state.** `BattleMap` keeps three more runtime arrays no save holds (as the reference): `Overlaps` (`Tile::_overlaps`, a `Uint8`), `Explosive` and
+  `ExplosiveType` (`setExplosive`'s moving maximum). `BattleFire.cs` (`BattleState`): `Flammability` (lowest of the parts, 255 for none) and `Fuel` (highest),
+  `Ignite(tile, power)` (chance `power - flammability / 10 + 15` percent, the roll drawn first, then fuel; a burning tile keeps its fire; fire
+  is fuel + 1 as a `Uint8`, so a fuel of 255 wraps to 0; the smoke is `15 - clamp(flammability / 10, 1, 12)`, the overlap 1), `AddSmoke` (kept in 1 to 15 until a second smoke
+  arrives the same turn, then summed as a `Uint8`; none on a burning tile; the overlap counts), `SetTileFire` and `SetTileSmoke` (clamped to 0-255), `TileIsVoid`.
+  The sprite animation offsets the reference draws with every fire and smoke change are presentation and draw nothing.
+- **Destroying parts.** `DestroyPart` is `Tile::destroy`: the part is cleared, replaced by the object's `dieMCD` form (same data set, put in the dead object's own part), a part with
+  an explosive strength marks the tile (`SetExplosive`), a grav lift is never destroyed, and a ground-level floor that is gone becomes scorched earth (data set 0, object 1, as the generator's fill
+  does). It returns whether the part was the mission's objective; `DamagePart` is `Tile::damage` (the power reaches the armor). `AddDestroyedObjective` counts one (never past the
+  needed count). Deterministic choices where the reference throws or dereferences null (ADR 0040): a `dieMCD` past the data set leaves the part cleared, and a first data set without a second object leaves
+  a destroyed ground floor empty (the port takes scorched earth from set 0, the reference BLANKS' tile; these are the same with BLANKS first); the other S9 choices are in ADR 0040 too. The completion popup (`missionComplete`) is presentation, and `autoEndBattle` does nothing at the default `battleAutoEnd` (off), so only the count changes.
+- **`HitTerrain`** is the tile part of `TileEngine::hit` for a hit with no weapon (branch 5 adds the weapon, the unit hits and the explosions to the same code): the voxel check (the attacker excluded)
+  decides; a floor, wall or object runs `HitTile` (smoke at the damage type's smoke threshold replaces fire and needs less than `tooMuchSmokeThreshold` smoke and a terrain level above -24; fire
+  needs a tile that is not void, has a floor or an object and no fire: fuel + 1 turns at twice the threshold, less below), the base defense module count (an object of an X-COM module whose armor the
+  damage reaches) and `DamagePart` with the objective count; a unit in the voxel or a live body on the tile of a floor or object hit is `battle.hit-unit-unsupported` (branch 5), a destroyed part with an
+  explosive strength `battle.terrain-explosion-unsupported` (branch 5) and, for a base module in a block a restored map lacks, `battle.module-map-unsupported`, all before any change (a dry run asks only that: it draws nothing). When the terrain changed or fire or smoke appeared: gravity on the tile, light of the ambient layer
+  (a destroyed floor above the ground) or the fire layer around it with the blockage cache refreshed, and the field of view around it with the tiles appended; otherwise only the sight of the units around.
+  `BattleTileDamageType` carries the parts of `RuleDamageType` the code reads (`Fire` is the base `DT_IN`: fire threshold 0, `ToTile` 0 so a hit does no damage to the part unless its armor is 0, `TileDamageMethod` 2,
+  the damage rolled in `fireDamageRange`); the other random types throw until branch 5 builds the types from the item rules.
+- **Burning floors.** `BurnFloor` (walks and falls): `Ignite(tile, 1)` and a `DT_IN` hit at the voxel `(x * 16 + 8, y * 16 + 8, z * 24 - terrain level)` with the unit's strength. The walk does it in the finished-step block
+  after the falling test (not while falling) and then still stands: the reference's test of "not standing" is for a status the call never leaves (a hole queues the unit through `applyGravity`; it stays standing), so the path goes
+  on (the next step over a hole is no valid step: the walk stops `PathBlocked`) and when the walk is over, as `BattlescapeGame::think` pushes the fall state, `ResolveFalls` runs (`UnitFell` events). The landing of
+  `UnitFallBState` burns, and then, bug for bug, takes the unit off the falling list even when the hole it burnt left it no floor (it hangs in the air). `FallsRefusal`'s dry run asks only the hit's refusals
+  (the burn itself would change the map the snapshot does not hold). `battle.burn-floor-unsupported` is gone, `BattleState.Random` is the stream these draw from (the campaign hands its own to the battle before each command; a trial copy draws from it and puts it
+  back, so the live run draws the same numbers).
+- **`SpreadFireAndSmoke(environment)`** is `SavedBattleGame::prepareNewTurn` for branch 6's end of turn: burning tiles not set alight this turn count down and ignite the four neighbours no wall shields (`horizontalBlockage` with the damage block, the
+  tile's smoke the power), or burn out (smoke cleared, a burnable object and its floor destroyed with the objective count, a burnable bare floor destroyed, then gravity on the tile); smoking tiles that do not burn thin out by one and
+  pass their smoke to open neighbours with none or with smoke added this turn; a burning tile's smoke rises one level through a floorless tile and spreads at half strength; the smoke added this turn is averaged and the overlaps cleared
+  (the tiles that still smoke call `environment`, `Tile::applyEnvi`, which branch 6 supplies). `FireSpreadRefusal` is checked first: a fire that burns out over an exploding part (the object, the floor, or the object's dead form that takes the floor's place) is `battle.terrain-explosion-unsupported` before any change.
+  Not in it (branch 6): the units' `calculateEnviDamage`, the AI's danger flags, the light and sight updates of the end of turn, and resolving the falls it queues.
+- **Not ported.** `hitUnit` and the unit part of `hit` (branch 5), `explode` and the explosive chain, the hit log, the `isPreview` shortcuts, `Tile::animate`'s sprites, and a dry run of a landing burner does not apply
+  the burn (a later landing of the same fall could differ in terrains the burn changes: only a fall of several burners over the same tiles).
+- **Tests.** `BattleFireTests` (compatibility, 43): ignite (fuel + 1, smoke, overlap; kept fire; no flammability and no draw; no fuel; a zero chance; the wrapping fuel), the smoke clamps, byte sum and burning tile, `HitTile` (fire,
+  void and burning tiles, the fire below twice the threshold, smoke replacing fire, the smoke limit, the smoke formula below twice the threshold), the tile damage fraction, rounding, limit and method 1, a hit on a floor (fire, smoke, light), a floor broken on the ground and above
+  it (scorched earth, a hole and the unit queued to fall), an object that holds and one that wears to its dead form, objectives (a hit, the cap, burnt down), the dead form past the set and the grav lift, a wall part, nothing found, the unit and body refusals
+  (a live body, a dead one, a unit in the voxel, the attacker excluded), the explosion refusal and its dry run, a base defense module count, a burner's walk (fire on each tile, none on the start tile, draws per step), a burner on a floor with no voxels, a walk that burns through (the stop and the fall), the walk's two
+  refusals with the state compared, a unit without the ability, a landing burner (and its dry run), a landing that burns through, a landing refused for a body, fire spreading past a wall, a fire set this turn, a fire burning out (object, floor, gravity, item drop), bare floors that burn or hold, an objective burnt down, the explosion refusal of the routine,
+  smoke thinning, spreading, averaged where two meet, stopped by a smoke wall, rising from fire, and no change without fire or smoke. The retired refusal's tests (first turn, spawn, gravity, inventory, walk) now assert the unit lands and walks on. Not tested: the `status != standing` branch after a hit (the call
+  cannot leave the status), a base defense mission built by the generator (the test sets the mission type and module grid by reflection), the hostile reserve's interplay.
+
 ## Next
 
-S9 — fire, smoke and terrain destruction (plan row S9). Notes for its worker:
+S10 — battlescape client (plan row S10): viewer-scoped path, path cost and reachable-tile queries over `BattlePathfinder`, walk by tile click, kneel, unit up and down, turn by right-click, the visible-unit buttons,
+discovered tiles and shade on the plan view, events replayed; the later-button refusals of this branch replaced. Notes for its worker:
 
-- **What S8 left for it.** The walk's finished-step block refuses a floor-burning mover (`BattleWalk.cs`, `battle.burn-floor-unsupported`, tested by `BattleWalkTests.AUnitThatBurnsTheFloor...`):
-  the reference there calls `_unit->getTile()->ignite(1)` and `TileEngine::hit(..., DT_IN, false)` on the unit's voxel, then, when the unit's status is not standing (a hole was burnt and it fell),
-  `abortPath` and return. S9 retires the refusal in both places (the walk's, and `Land`'s in `BattleGravity.cs`); `RunWalk`'s `Think` is where the call goes (after the
-  `falling` test, before the faction flag clearing), and the burnt-through case must end the walk (`pathfinder.AbortPath()`, stop) with the fall running in `ResolveFalls`.
-  `FallsRefusal` and `TrialRefusal` stay the way to keep refusals before any change.
-- **Walk facts S9's and later tests need.** `BattleState.Walk(rules, unitId, target, move, ignore, events)` and `MoveUpDown(...)` are the rule methods; the commands run them on a trial
-  copy first (`CampaignBattles.TrialRefusal`, not available without terrain files). A walk is `RunWalk`'s loop; the finished-step block's order is burn floor, spotting flag clearing for a non-player mover, `ProximityEffects`,
-  `CalculateLighting(Units, position, 2)`, `CalculateFov(position, 2, false)`, the spotted test, then `HasPossibleReactor` and `SpotMover`. `BattleWalkTests.Make` builds the walking soldier on the four-level arena
+- **What S9 added that the client shows.** Tile fire and smoke are map state (`BattleMap.Fire`, `Smoke`); the walk's events are unchanged (a burner's hit adds no event, and a unit a burnt floor dropped is a `UnitFell` before `UnitWalkEnded`).
+  Commands that can meet fire refuse with `battle.hit-unit-unsupported` or `battle.terrain-explosion-unsupported` (branch 5) before any change; the client shows the refusal's reason like the others.
+  `SpreadFireAndSmoke` and `CloseUfoDoors` are routines for branch 6's end of turn, called by nothing yet.
+- **Walk facts.** `BattleState.Walk(rules, unitId, target, move, ignore, events)` and `MoveUpDown(...)` are the rule methods; the commands run them on a trial
+  copy first (`CampaignBattles.TrialRefusal`, not available without terrain files; the copy draws from the campaign's stream and puts it back, and the live battle gets `Random = campaign.Random` before it runs). A walk is `RunWalk`'s loop; the finished-step block's order is burn floor
+  (`BurnFloor`), spotting flag clearing for a non-player mover, `ProximityEffects`, `CalculateLighting(Units, position, 2)`, `CalculateFov(position, 2, false)`, the spotted test, then `HasPossibleReactor` and `SpotMover`; after the loop,
+  units still on `FallingUnits` fall (`ResolveFalls`). `BattleWalkTests.Make` builds the walking soldier on the four-level arena
   (`suitExtra` and `rulesExtra` add armor and global rules; `flying: true` keeps the flier); `Walk`, `End` and `State` are its helpers. The ramp records `RampLow` (terrain level -8) and `RampHigh` (-16) join the sight
   tests' terrain; a ladder is `GravLift` on the object part. A wall object (`Wall`) blocks sight but not movement; an impassable tile needs a movement cost of 255 in a new record.
   A known unit stands in the end tile (`arena.See()` after `Stand`) for "no path".
-- **Landing refusals are over-approximations** (`battle.proximity-unsupported`, `battle.reaction-fire-unsupported`, `battle.burn-floor-unsupported`), and the walk meets the same ones per step.
-- **Not done and needed by later slices.** `itemDrop` (branch 5), the stomp's knock-out and `checkForCasualties` (branch 6), `UnitFallBState`'s burn-floor branch (S9);
+- **Fire test helpers.** `BattleFireTests.Make` is the four-level arena with a strength-30 walking soldier (`Burner()` gives it `specab: 2`); the sight tests' terrain has the fire records (`BurnFloor`, `BrittleFloor`, `Crate`, `Rubble`, `Barrel`, `Objective`, `Sturdy`,
+  `Brick`, `Chaff`, `BaseModule`, `Dud`): only a floor or object with a loft is found by a hit at a tile's centre, and the plain `Floor` has none and neither fuel (so a walker over it burns nothing). `Hit`, `Burn` (fire and smoke on a tile) and `State` are its helpers.
+- **Landing refusals are over-approximations** (`battle.proximity-unsupported`, `battle.reaction-fire-unsupported`), and the walk meets the same ones per step. A landing also refuses for a burner's hit (`battle.hit-unit-unsupported`, `battle.terrain-explosion-unsupported`, `battle.module-map-unsupported`) through the dry run, which does not apply the burn (ADR 0040).
+- **Not done and needed by later slices.** `itemDrop` (branch 5), the stomp's knock-out and `checkForCasualties` (branch 6), the hit's unit part and explosions (branch 5), the environment's damage to units, `calculateEnviDamage` and the end of turn's light and sight (branch 6);
   `canUseWeapon`'s research, AI use delay, depth and two-handed rules, `getWeaponForReactions`' preferred hand and `reactionsDisabled*` (branch 5, with the real reaction);
   `BattleUnit.HitState` is never set (damage is branch 5's) and no selection resets it (`resetUnitHitStates`); the legal-action list does not list turn, kneel, walk or up and down (S10);
   the AI's walk parts (S8's "Not ported") and `checkForReactivation` (branch 6).
@@ -542,10 +591,8 @@ S9 — fire, smoke and terrain destruction (plan row S9). Notes for its worker:
   that needs a backslash-n builds it with `chr(92) + 'n'`). A unit that still has its `InventoryTile` has no tile of its own and `StartFirstTurn` is the first sight (and `SetTile` throws for it), so a fall before the first turn is the
   first turn's; tests that add `BattleUnit`s by hand must give them a `SoldierId` or a unit rule, since heights are read, and a battle with such a unit cannot be restored for the trial
   copies (`MayFall()` keeps the first turn's copy from being made unless a unit has no floor; a walk's copy is made for every walk, so walk tests use the arenas' generated units). The reload comparisons go through `BattleSaveUnitTests.SightFree`. The armor key for the
-  special ability is `specab`; an armor's run, strafe and walk costs are `moveCost: {runPercent: [time, energy]}` (a step on the arena's floor costs 4 × percent / 100: normal walk 100/50, run 75/75).
-- Later slices (for planning ahead): S9 reads the smoke threshold from
-  `RuntimeCampaignSettings`, and its terrain changes call `RefreshBlockageCache` (via `CalculateLighting(..., terrainChanged: true)`) and then
-  `CalculateFov(position, radius, true, appendToTileVisibility: true)`.
+  special ability is `specab`; an armor's run, strafe and walk costs are `moveCost: {runPercent: [time, energy]}` (a step on the arena's floor costs 4 × percent / 100: normal walk 100/50, run 75/75). The tile fire and smoke are saved, but `Overlaps` and `Explosive` are not
+  (a trial copy starts them at 0).
 - Gotchas carried from branch 3 (see `docs/battle-session-ui-status.md` "## Next"): write test files with LF; the test runner is Microsoft
   Testing Platform (`dotnet test --project <proj> --filter-class <full name>`); battle test helpers (`BattleStartTests.Requested`,
   `Started`, `Battle`, `BattleSaveRootTests.Generated`, `BattleSaveUnitTests.Loaded`) are internal for reuse;

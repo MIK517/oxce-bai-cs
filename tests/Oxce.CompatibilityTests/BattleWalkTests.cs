@@ -522,12 +522,12 @@ public sealed class BattleWalkTests
     }
 
     [Fact]
-    public void AUnitThatBurnsTheFloorItStandsOnIsRefusedBeforeAnyChange()
+    public void AUnitThatBurnsTheFloorItStandsOnWalksOnWhenThereIsNothingForTheHitToReach()
     {
         var arena = Make(suitExtra: "    specab: 2\n");
-        var state = State(arena);
-        Assert.Equal("battle.burn-floor-unsupported", Refusal(arena.Campaign.Execute(new WalkUnit(arena.Soldier.Id, At(12, 10)))));
-        Assert.Equal(state, State(arena));
+        // (The fire tests walk over floors with voxels: the hits and their refusals are BattleFireTests's.)
+        Events(arena.Campaign.Execute(new WalkUnit(arena.Soldier.Id, At(12, 10))));
+        Assert.Equal(At(12, 10), arena.Soldier.Position);
     }
 
     [Fact]

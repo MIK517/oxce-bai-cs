@@ -325,19 +325,18 @@ public sealed class BattleFirstTurnTests
     }
 
     [Fact]
-    public void AFirstTurnWhoseFallCannotRunIsRefusedBeforeAnyChange()
+    public void AFloorBurningAlienInTheAirFallsAndLandsAtTheFirstTurnLikeAnyOther()
     {
         var rules = Rules.Replace("  - type: SMALL_VEHICLE_ARMOR\n", "  - type: SMALL_VEHICLE_ARMOR\n    specab: 2\n", StringComparison.Ordinal);
-        var (campaign, battle, alien, _) = AlienOverAHole(rules);
-        var before = campaign.Random.State;
-        var upper = alien.Position;
-        Assert.Equal("battle.burn-floor-unsupported", Refusal(campaign, new StartFirstTurn()));
-        Assert.Equal((before, upper, BattlePhase.Inventory, 0), (campaign.Random.State, alien.Position, battle.Phase, battle.Turn));
+        var (campaign, battle, alien, ground) = AlienOverAHole(rules);
+        // The floor it lands on has no voxels in this map (the hit finds nothing to burn), and the first turn starts.
+        Event<BattleFirstTurnStarted>(campaign, new StartFirstTurn());
+        Assert.Equal((ground, BattlePhase.InProgress, 1), (alien.Position, battle.Phase, battle.Turn));
         Assert.Empty(battle.FallingUnits);
     }
 
     [Fact]
-    public void ABriefingWhoseSpawnCouldNotLandIsRefusedBeforeAnyChange()
+    public void ABriefingWhoseSpawnBurnsTheFloorItLandsOnIsConfirmedLikeAnyOther()
     {
         var rules = SpawnRules().Replace("  - type: SMALL_VEHICLE_ARMOR\n", "  - type: SMALL_VEHICLE_ARMOR\n    specab: 2\n", StringComparison.Ordinal);
         var (campaign, battle) = Begun(rules, "UFO_ARMORY");
@@ -345,9 +344,11 @@ public sealed class BattleFirstTurnTests
         grenades[1].XcomProperty = true;
         var tile = grenades[0].Tile!.Value;
         battle.Map.SetPart(battle.Map.TileIndex(tile), BattleTilePart.Floor, -1, -1);
-        var before = campaign.Random.State;
-        Assert.Equal("battle.burn-floor-unsupported", Refusal(campaign, new ConfirmBriefing()));
-        Assert.Equal((before, BattlePhase.Briefing), (campaign.Random.State, battle.Phase));
+        Event<BriefingConfirmed>(campaign, new ConfirmBriefing());
+        Assert.NotEqual(BattlePhase.Briefing, battle.Phase);
+        // The spawned unit waits to fall until the first turn, where it lands and its ability burns the (voxel-less) floor.
+        Assert.Single(battle.FallingUnits);
+        Event<BattleFirstTurnStarted>(campaign, new StartFirstTurn());
         Assert.Empty(battle.FallingUnits);
     }
 

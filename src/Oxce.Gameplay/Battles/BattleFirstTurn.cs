@@ -368,6 +368,7 @@ internal sealed partial class BattleState
     /// </summary>
     internal CampaignReason? StartFirstTurn(RuntimeContent content, IRandomSource random)
     {
+        Random = random;
         var equipment = new UnitEquipment(this, content.RuntimeRules, Seedless);
         var selected = SelectedUnitId is { } id ? _units.Find(unit => unit.Id == id) : null;
         var inventoryTile = selected is null ? null : TileOf(selected);

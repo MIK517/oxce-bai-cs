@@ -409,7 +409,7 @@ kneel and personal-light fields, `allowsMoving`, `allowsKneeling`).
   names it in its slice and takes the default; options become settings with Phase 8's options screen.
 - **Interruptions owned by later branches are refused before the first change (D4).** A walk, a kneel and a fall run
   the reference's checks for reaction fire (`checkReactionFire`, branch 5), proximity grenades and death traps
-  (`checkForProximityGrenades`, branch 5) and the burn-floor abilities (`SPECAB_BURNFLOOR`, S9 of this branch); a
+  (`checkForProximityGrenades`, branch 5) and the burn-floor abilities (`SPECAB_BURNFLOOR`, whose floor-burning hit S9 ports; only a hit that reaches a unit or an explosion is refused); a
   player's turn does not (only the AI's turn-then-kneel does, branch 6). A command whose planned steps could reach
   one of them is refused with a named reason before any change, using only state conditions (no forecast):
   - reaction fire: an opposing unit that passes the state filters of `getSpottingUnits` and `determineReactionType`
@@ -427,7 +427,7 @@ kneel and personal-light fields, `allowsMoving`, `allowsKneeling`).
 
   The refusals over-approximate (a walk the reference would complete may be refused), never under-approximate,
   so every completed command is the reference's. Names: `battle.reaction-fire-unsupported` and
-  `battle.proximity-trigger-unsupported` (branch 5), `battle.burn-floor-unsupported` (S9 retires it). Because these
+  `battle.proximity-trigger-unsupported` (branch 5), `battle.hit-unit-unsupported` and `battle.terrain-explosion-unsupported` (branch 5; S9 retired `battle.burn-floor-unsupported`). Because these
   read units the player may not see, the refusal tells the player that an unseen unit is near; this named leak ends
   with branch 5. AI reactivation (`checkForReactivation`, the AI's `wantToEndTurn`) is AI-module state that only branch
   6's AI turn reads; it is not modelled until then and needs no refusal.

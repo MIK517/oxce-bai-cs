@@ -22,6 +22,9 @@ internal sealed partial class BattleMap
     private byte[] _discoveredNeutral = [];
     private byte[] _smoke = [];
     private byte[] _fire = [];
+    private byte[] _overlaps = [];
+    private short[] _explosive = [];
+    private byte[] _explosiveType = [];
     private byte[] _doorFrames = [];
     private int[] _lastExplored = [];
     private int[] _units = [];
@@ -78,6 +81,9 @@ internal sealed partial class BattleMap
         _discoveredNeutral = new byte[tiles];
         _smoke = new byte[tiles];
         _fire = new byte[tiles];
+        _overlaps = new byte[tiles];
+        _explosive = new short[tiles];
+        _explosiveType = new byte[tiles];
         _doorFrames = new byte[tiles];
         _lastExplored = new int[tiles * FactionCount];
         _units = new int[tiles];
@@ -290,6 +296,30 @@ internal sealed partial class BattleMap
 
     public void SetSmoke(int tile, int smoke) => _smoke[tile] = checked((byte)smoke);
     public void SetFire(int tile, int fire) => _fire[tile] = checked((byte)fire);
+
+    /// <summary>
+    /// Tile::getOverlaps: how much smoke or fire was added to the tile this turn (a <c>Uint8</c>; runtime state, which no save keeps).
+    /// </summary>
+    public int Overlaps(int tile) => _overlaps[tile];
+
+    public void SetOverlaps(int tile, int overlaps) => _overlaps[tile] = unchecked((byte)overlaps);
+
+    /// <summary>Tile::addOverlap.</summary>
+    public void AddOverlap(int tile) => _overlaps[tile] = unchecked((byte)(_overlaps[tile] + 1));
+
+    /// <summary>Tile::getExplosive: the "virtual" explosive a destroyed part left (runtime state, no save keeps it).</summary>
+    public int Explosive(int tile) => _explosive[tile];
+
+    /// <summary>Tile::getExplosiveType.</summary>
+    public int ExplosiveType(int tile) => _explosiveType[tile];
+
+    /// <summary>Tile::setExplosive: the power on the tile is a moving maximum unless forced.</summary>
+    public void SetExplosive(int tile, int power, int damageType, bool force = false)
+    {
+        if (!force && _explosive[tile] >= power) return;
+        _explosive[tile] = unchecked((short)power);
+        _explosiveType[tile] = unchecked((byte)damageType);
+    }
 
     /// <summary>
     /// Whether a wall's door frame is set (Tile's <c>currentFrame</c> of the part at 7, as loadBinary and the text load set

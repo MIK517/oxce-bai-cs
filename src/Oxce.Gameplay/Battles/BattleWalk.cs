@@ -8,7 +8,7 @@ namespace Oxce.Gameplay.Battles;
 /// their end. The reference's <c>think</c> is called once per animation tick: the port runs it as one loop whose cycles are the reference's
 /// (a step starts in one cycle and is finished, with everything that follows it, at the start of the next; a turn eighth is one cycle), a step
 /// collapsed into <see cref="WalkStep"/>. What the reference hands to later work is refused by name: the reaction fire after a step
-/// (<see cref="HasPossibleReactor"/>), proximity explosions, burning floors and a fall that finds no escape. The command checks them on a trial
+/// (<see cref="HasPossibleReactor"/>), proximity explosions, a burning floor whose hit reaches a unit or an explosion, and a fall that finds no escape. The command checks them on a trial
 /// copy of the battle first, so a refusal changes nothing.
 /// </summary>
 internal sealed partial class BattleState
@@ -182,11 +182,20 @@ internal sealed partial class BattleState
                         }
                 }
 
-                // The burning of floors by a unit that does so is S9's (and so is the fall it can start).
-                if (!falling && SpecialAbilityOf(rules, unit) >= 2)
+                // if the unit burns floor tiles, burn floor tiles as long as we're not falling
+                if (!falling && BurnsFloor(rules, unit))
                 {
-                    refusal = BattleGravityReasons.BurnFloorUnsupported;
-                    return true;
+                    if (BurnFloor(rules, unit, dryRun: false) is { } burnRefusal)
+                    {
+                        refusal = burnRefusal;
+                        return true;
+                    }
+                    // (A unit that burnt a hole stays standing: gravity queued it, and its fall runs when the walk is over.)
+                    if (unit.Status != BattleUnitStatus.Standing)
+                    {
+                        pathfinder.AbortPath();
+                        return true;
+                    }
                 }
                 foreach (var faction in Enum.GetValues<BattleFaction>())
                     if (faction != unit.Faction) SetSpotted(unit, faction, false);
@@ -340,6 +349,18 @@ internal sealed partial class BattleState
         for (var cycle = 0; !Think(); cycle++)
             if (cycle > limit) throw new InvalidOperationException($"The walk of battle unit {unit.Id} does not end.");
 
+        // BattlescapeGame::think pushes the fall state once the walk is over: a unit a burnt floor dropped falls now.
+        if (refusal is null && _fallingUnits.Count != 0)
+        {
+            var before = _units.Select(static candidate => (candidate, candidate.Position)).ToArray();
+            refusal = ResolveFalls(rules);
+            foreach (var (candidate, was) in before)
+                if (candidate.Position is { } now && was is { } from && now != from)
+                {
+                    events.Add(new UnitFell(candidate.Id, from, now));
+                    changed = true;
+                }
+        }
         if (refusal is not null) return refusal;
         if (!changed)
         {

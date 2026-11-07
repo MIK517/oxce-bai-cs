@@ -105,7 +105,7 @@ public sealed class BattleInventoryTests
     }
 
     [Fact]
-    public void AnInventoryMoveWhoseFallCannotRunIsRefusedBeforeTheMove()
+    public void AnInventoryMoveWhoseFallBurnsTheFloorIsNotRefused()
     {
         var rules = CostRules.Replace("  - type: SUIT\n", "  - type: SUIT\n    specab: 2\n", StringComparison.Ordinal);
         Assert.NotEqual(CostRules, rules);
@@ -116,7 +116,7 @@ public sealed class BattleInventoryTests
         battle.ApplyGravity(soldier.Position);
         soldier.MovementType = 0;
         soldier.Floating = false;
-        Assert.Equal("battle.burn-floor-unsupported", battle.FallsRefusal(campaign.Content.RuntimeRules, soldier)!.Code);
+        Assert.Null(battle.FallsRefusal(campaign.Content.RuntimeRules, soldier));
         Assert.Equal(gun, Where(battle, Gun));
     }
 

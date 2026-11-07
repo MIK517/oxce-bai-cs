@@ -42,7 +42,7 @@ public sealed class BattleSightTests
 
     internal static void Terrain(Dictionary<string, byte[]> files) => files["TERRAIN/TESTSET.MCD"] = Mcd([Record((42, 2)), Record((42, 3)),
         Record((42, 4), (59, 2)), Record((39, 4), (40, 4), (41, 4)), Solid(1, 12, true), Solid(1, 6, false), Solid(4, 12, false), Record((34, 1), (39, 4)), UfoDoorRecord(), Record((35, 1), (46, 0)), Record((34, 1), (39, 4), (48, unchecked((byte)-24))),
-        .. DoorRecords]);
+        .. DoorRecords, .. FireRecords]);
 
     internal const int SwingDoor = 9; // a swinging door (its alternative is the first record)
     internal const int StairFloor = 10; // a floor with a terrain level of -24
@@ -59,6 +59,38 @@ public sealed class BattleSightTests
     internal const int RampLow = 19; // a floor with a terrain level of -8, the first step of a stair
     internal const int DeathTrapFloor = 21; // a walkable floor of special type 200 (a death trap)
     internal const int RampHigh = 20; // a floor with a terrain level of -16, the second step: a unit on it goes up a level
+
+    // The fire tests' records (S9). Loft layer 0 (offset 8) is the voxel layer a unit's burning hit reaches.
+    internal const int BurnFloor = 22; // a walkable floor with a loft: armor 100, flammable 10, fuel 3
+    internal const int BrittleFloor = 23; // like it, armor 0 (a hit of 0 destroys it), flammable 20, fuel 2
+    internal const int Crate = 24; // an object (solid) of armor 100, flammable 10, fuel 4 that burns down to Rubble
+    internal const int Rubble = 25; // an object that does not burn or break (flammable and armor 255)
+    internal const int Barrel = 26; // a solid object of armor 0, flammable 10, fuel 2, that explodes with strength 20
+    internal const int Objective = 27; // a solid object of armor 0, flammable 10, fuel 2, special type 7
+    internal const int Sturdy = 28; // a walkable floor with a loft, armor 255 and flammable 255: fire stays and destroys nothing
+    internal const int Brick = 29; // a west wall that stops smoke and fire (block values 255), armor 255, flammable 255
+    internal const int Chaff = 30; // a floor with a loft whose fuel is 255 (the fire timer wraps), flammable 0
+    internal const int BaseModule = 32; // a solid object of armor 0 that is part of an X-COM base module
+    internal const int PowderFloor = 33; // a floor with a loft: armor 0, flammable 10, fuel 2, explosive 20
+    internal const int Fuse = 34; // an object of armor 0, flammable 10, fuel 2, whose dead form is PowderFloor (a floor part)
+    internal const int Dud = 31; // a floor with a loft, armor 0, a dead form that lies past the data set (die 200)
+
+    private static readonly byte[][] FireRecords =
+    [
+        Record((8, 1), (39, 4), (40, 4), (41, 4), (42, 100), (45, 10), (57, 3)),
+        Record((8, 1), (39, 4), (40, 4), (41, 4), (42, 0), (45, 20), (57, 2)),
+        Record([.. Enumerable.Range(8, 12).Select(offset => (offset, (byte)1)), (39, (byte)4), (42, (byte)100), (44, (byte)25), (45, (byte)10), (53, (byte)3), (57, (byte)4)]),
+        Record((53, 3), (42, 255), (45, 255)),
+        Record([.. Enumerable.Range(8, 12).Select(offset => (offset, (byte)1)), (39, (byte)4), (42, (byte)0), (45, (byte)10), (53, (byte)3), (54, (byte)1), (55, (byte)20), (57, (byte)2)]),
+        Record([.. Enumerable.Range(8, 12).Select(offset => (offset, (byte)1)), (39, (byte)4), (42, (byte)0), (45, (byte)10), (53, (byte)3), (57, (byte)2), (59, (byte)7)]),
+        Record((8, 1), (39, 4), (40, 4), (41, 4), (42, 255), (45, 255)),
+        Record([.. Enumerable.Range(8, 12).Select(offset => (offset, (byte)1)), (39, (byte)4), (42, (byte)255), (43, (byte)255), (45, (byte)255), (53, (byte)1), (37, (byte)1)]),
+        Record((8, 1), (39, 4), (40, 4), (41, 4), (42, 100), (45, 0), (57, 255)),
+        Record((8, 1), (39, 4), (40, 4), (41, 4), (42, 0), (44, 200), (45, 255)),
+        Record([.. Enumerable.Range(8, 12).Select(offset => (offset, (byte)1)), (39, (byte)4), (42, (byte)0), (45, (byte)255), (53, (byte)3), (60, (byte)1)]),
+        Record((8, 1), (39, 4), (40, 4), (41, 4), (42, 0), (45, 10), (54, 1), (55, 20), (57, 2)),
+        Record([.. Enumerable.Range(8, 12).Select(offset => (offset, (byte)1)), (39, (byte)4), (42, (byte)0), (44, (byte)33), (45, (byte)10), (53, (byte)3), (57, (byte)2)]),
+    ];
 
     private static readonly byte[][] DoorRecords =
     [

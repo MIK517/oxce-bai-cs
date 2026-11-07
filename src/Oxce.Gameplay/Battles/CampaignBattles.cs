@@ -396,6 +396,7 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         if (_battle is not { } battle) return Blocked(BattleInventoryReasons.Unavailable);
         if (battle.PlanMove(campaign.Content.RuntimeRules, command.UnitId, command.ItemId, command.Slot ?? "", command.SlotX, command.SlotY, out var move) is { } refusal)
             return Blocked(refusal);
+        battle.Random = campaign.Random;
         return Moved(battle, move!, campaign.Content.RuntimeRules);
     }
 
@@ -407,6 +408,7 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         // Smart choice with no section that takes a ground item: the reference "moves" it to the ground it lies on, at no cost.
         if (move is null)
             return new CampaignCommandResult([new InventoryItemMoved(command.UnitId, command.ItemId, BattleState.GroundSlot, BattleState.GroundSlot, 0, 0, 0)]);
+        battle.Random = campaign.Random;
         return Moved(battle, move, campaign.Content.RuntimeRules);
     }
 
@@ -493,6 +495,7 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         if (TrialRefusal(battle, trial => trial.Walk(rules, command.UnitId, command.Target, command.Move, command.IgnoreSpottedEnemies, [])) is { } trial)
             return Blocked(trial);
         var events = new List<ICampaignEvent>();
+        battle.Random = campaign.Random;
         if (battle.Walk(rules, command.UnitId, command.Target, command.Move, command.IgnoreSpottedEnemies, events) is { } refusal) return Blocked(refusal);
         return new CampaignCommandResult(events);
     }
@@ -503,6 +506,7 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         var rules = campaign.Content.RuntimeRules;
         if (TrialRefusal(battle, trial => trial.MoveUpDown(rules, command.UnitId, command.Up, [])) is { } trial) return Blocked(trial);
         var events = new List<ICampaignEvent>();
+        battle.Random = campaign.Random;
         if (battle.MoveUpDown(rules, command.UnitId, command.Up, events) is { } refusal) return Blocked(refusal);
         return new CampaignCommandResult(events);
     }
@@ -524,7 +528,17 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
                 copy.UnitsSpottedThisTurn.AddRange(live.UnitsSpottedThisTurn);
                 foreach (var faction in Enum.GetValues<BattleFaction>()) copy.SetSpottedBy(faction, live.IsSpottedBy(faction));
             }
-        return run(scratch);
+        // The copy draws from the campaign's stream (a fire catching) and puts it back, so the live run draws the same numbers.
+        scratch.Random = campaign.Random;
+        var random = campaign.Random.State;
+        try
+        {
+            return run(scratch);
+        }
+        finally
+        {
+            campaign.Random.Restore(random);
+        }
     }
 
     private CampaignCommandResult ReselectSkippedUnit(ReselectSkippedUnit command)
