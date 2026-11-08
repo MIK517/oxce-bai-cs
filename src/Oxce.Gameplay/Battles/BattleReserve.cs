@@ -63,6 +63,17 @@ internal sealed partial class BattleState
     internal static bool AllowsKneeling(RuntimeRuleCatalog rules, BattleUnit unit) =>
         RuntimeBattleArmor.Allows(ArmorOf(rules, unit).AllowsKneeling, unit.SoldierId is not null);
 
+    /// <summary>The time units kept for kneeling down: the kneel cost while kneeling is reserved and the unit stands and may kneel, else 0.</summary>
+    private int ReservedKneelCost(RuntimeRuleCatalog rules, BattleUnit unit) =>
+        KneelReserved && !unit.Kneeled && AllowsKneeling(rules, unit) ? BattleUnit.KneelDownCost : 0;
+
+    /// <summary>BattleUnit::getSpecialWeapon's candidates: the unit's special weapons that are in the battle, in its order.</summary>
+    private IEnumerable<BattleItem> SpecialWeapons(BattleUnit unit)
+    {
+        foreach (var id in unit.SpecialWeaponIds)
+            if (_items.FirstOrDefault(item => item.Id == id) is { } special) yield return special;
+    }
+
     /// <summary>BattleItem::getAmmoForAction (const): the item feeding an action (0 aimed or launch, 1 auto, 2 snap, 3 hit), null when unloaded or spent.</summary>
     private BattleItem? AmmoForAction(RuntimeRuleCatalog rules, BattleItem item, int action)
     {
@@ -115,10 +126,7 @@ internal sealed partial class BattleState
         if (right is null)
         {
             // The AI may also use a special weapon, when both hands are empty: the first special firearm.
-            foreach (var id in unit.SpecialWeaponIds)
-                if (_items.FirstOrDefault(item => item.Id == id) is { } special && ItemRuleOf(rules, special.ItemType).BattleType == BattleTypeFirearm)
-                    return special;
-            return null;
+            return SpecialWeapons(unit).FirstOrDefault(special => ItemRuleOf(rules, special.ItemType).BattleType == BattleTypeFirearm);
         }
         var timeRight = unit.ActionCost(rules.Battle.Equipment.Items[right.ItemType].ActionCosts, BattleActionType.SnapShot).Time;
         var timeLeft = unit.ActionCost(rules.Battle.Equipment.Items[left!.ItemType].ActionCosts, BattleActionType.SnapShot).Time;
@@ -169,7 +177,7 @@ internal sealed partial class BattleState
             cost.Type = BattleActionType.AimedShot;
             cost.UpdateTimeUnits(rules);
         }
-        var kneel = KneelReserved && !unit.Kneeled && AllowsKneeling(rules, unit) ? BattleUnit.KneelDownCost : 0;
+        var kneel = ReservedKneelCost(rules, unit);
         // No aimed shot either: reserve nothing, or only the kneel.
         if (cost.Time == 0 && cost.Type == BattleActionType.AimedShot)
         {

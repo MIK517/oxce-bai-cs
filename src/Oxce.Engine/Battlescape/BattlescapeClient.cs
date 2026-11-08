@@ -207,10 +207,10 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
     /// <summary>The pointer over a tile previews the path to it. The reference previews only on a click and only with <c>battleNewPreviewPath</c> on (default off); the hover is the port's addition.</summary>
     private bool Hover(in GameInputEvent input)
     {
-        var before = (Model.Path, Model.Reachable);
+        var before = Model.Path;
         if (TileAt(input) is var (x, y)) Model.Preview(x, y);
         else Model.Preview(null, null);
-        return !ReferenceEquals(before.Path, Model.Path);
+        return !ReferenceEquals(before, Model.Path);
     }
 
     private bool Click(in GameInputEvent input)
@@ -248,6 +248,9 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
         return true;
     }
 
+    /// <summary>How many visible-unit buttons the unit's panel shows (at most <see cref="VisibleMax"/>).</summary>
+    private static int VisibleButtonCount(BattleUnitInfo unit) => Math.Min(VisibleMax, unit.VisibleUnitIds.Count);
+
     private int? VisibleButtonAt(in GameInputEvent input)
     {
         if (Model.SelectedUnit is not { } unit) return null;
@@ -256,14 +259,14 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
         var (column, row) = (px / (VisibleButtonWidth + 2), py / (VisibleButtonHeight + 2));
         if (column >= VisibleButtonColumns || px % (VisibleButtonWidth + 2) >= VisibleButtonWidth || py % (VisibleButtonHeight + 2) >= VisibleButtonHeight) return null;
         var index = row * VisibleButtonColumns + column;
-        return index < Math.Min(VisibleMax, unit.VisibleUnitIds.Count) ? index : null;
+        return index < VisibleButtonCount(unit) ? index : null;
     }
 
     /// <summary>The visible-unit key, or button: the camera centers on the unit; the right click form selects the unit that sees it best.</summary>
     private void VisibleUnit(int index, bool right)
     {
         Model.Refresh();
-        if (Model.SelectedUnit is not { } unit || index >= Math.Min(VisibleMax, unit.VisibleUnitIds.Count)) return;
+        if (Model.SelectedUnit is not { } unit || index >= VisibleButtonCount(unit)) return;
         var target = unit.VisibleUnitIds[index];
         if (right) Report(Model.SelectSpotter(target));
         else Report(Model.CenterOnUnit(target));
@@ -317,15 +320,16 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
             // Map::drawTerrain: a part whose tile floor is not discovered is drawn in shade 16 (black).
             var floorKnown = tile.Parts.Any(static part => part.Part == BattleTilePart.Floor);
             var shade = Math.Clamp(tile.Shade, 0, 15);
+            byte Shaded(byte first) => floorKnown ? (byte)(first + shade) : (byte)0;
             foreach (var part in tile.Parts)
             {
                 if (Context.Sprites?.Invoke(part.DataSet, part.ObjectIndex) is null) Context.Diagnostics.Add($"missing sprite {part.DataSet}#{part.ObjectIndex}");
                 switch (part.Part)
                 {
-                    case BattleTilePart.Floor: Frame.FillRectangle(x, y, size, size, floorKnown ? (byte)(BattleUiContext.Color.FloorShade + shade) : (byte)0); break;
-                    case BattleTilePart.WestWall: Frame.FillRectangle(x, y, Math.Max(1, size / 4), size, floorKnown ? (byte)(BattleUiContext.Color.WallShade + shade) : (byte)0); break;
-                    case BattleTilePart.NorthWall: Frame.FillRectangle(x, y, size, Math.Max(1, size / 4), floorKnown ? (byte)(BattleUiContext.Color.WallShade + shade) : (byte)0); break;
-                    default: Frame.FillRectangle(x + size / 4, y + size / 4, Math.Max(1, size / 2), Math.Max(1, size / 2), floorKnown ? (byte)(BattleUiContext.Color.ObjectShade + shade) : (byte)0); break;
+                    case BattleTilePart.Floor: Frame.FillRectangle(x, y, size, size, Shaded(BattleUiContext.Color.FloorShade)); break;
+                    case BattleTilePart.WestWall: Frame.FillRectangle(x, y, Math.Max(1, size / 4), size, Shaded(BattleUiContext.Color.WallShade)); break;
+                    case BattleTilePart.NorthWall: Frame.FillRectangle(x, y, size, Math.Max(1, size / 4), Shaded(BattleUiContext.Color.WallShade)); break;
+                    default: Frame.FillRectangle(x + size / 4, y + size / 4, Math.Max(1, size / 2), Math.Max(1, size / 2), Shaded(BattleUiContext.Color.ObjectShade)); break;
                 }
             }
             if (tile.Smoke > 0) Frame.FillRectangle(x, y, size, 1, BattleUiContext.Color.Smoke);
@@ -352,7 +356,7 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
         if (Model.Reachable is not { } reachable) return;
         foreach (var position in reachable.Tiles)
             if (position.Z == Model.Camera.ViewLevel)
-                Frame.FillRectangle(position.X * size + size / 2, position.Y * size + size / 2, 1, 1, BattleUiContext.Color.ReachableTile);
+                Dot(position, size, BattleUiContext.Color.ReachableTile);
     }
 
     /// <summary>
@@ -379,9 +383,13 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
     {
         for (var index = 0; index < _replayAt; index++)
             if (_replay[index].Position is { } position && position.Z == Model.Camera.ViewLevel)
-                Frame.FillRectangle(position.X * size + size / 2, position.Y * size + size / 2, 1, 1, BattleUiContext.Color.Selected);
+                Dot(position, size, BattleUiContext.Color.Selected);
         if (ReplayFrame is { Position: { } now } && now.Z == Model.Camera.ViewLevel) DrawBox(now.X * size, now.Y * size, size, BattleUiContext.Color.Selected);
     }
+
+    /// <summary>A one-pixel marker in the middle of a tile.</summary>
+    private void Dot(BattlePosition position, int size, byte color) =>
+        Frame.FillRectangle(position.X * size + size / 2, position.Y * size + size / 2, 1, 1, color);
 
     private void DrawBox(int x, int y, int size, byte color)
     {
@@ -444,7 +452,7 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
     private void DrawVisibleButtons(int x)
     {
         if (Model.SelectedUnit is not { } unit) return;
-        for (var index = 0; index < Math.Min(VisibleMax, unit.VisibleUnitIds.Count); index++)
+        for (var index = 0; index < VisibleButtonCount(unit); index++)
         {
             var (bx, by) = (x + index % VisibleButtonColumns * (VisibleButtonWidth + 2), VisibleButtonsY + index / VisibleButtonColumns * (VisibleButtonHeight + 2));
             Frame.FillRectangle(bx, by, VisibleButtonWidth, VisibleButtonHeight, BattleUiContext.Color.Hostile);

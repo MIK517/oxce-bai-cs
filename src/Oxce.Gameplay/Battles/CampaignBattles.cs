@@ -278,25 +278,17 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
     /// </summary>
     private CampaignReason? TrialSpawnRefusal(BattleState battle, RuntimeContent content, bool noAliensYet)
     {
-        if (battle.PrimedSpawnItems(content.RuntimeRules).Count == 0 || campaign.BattleTerrainFiles is not { } files) return null;
-        var restored = BattleRestoreCampaign.From(campaign);
-        var scratch = BattleState.Restore(battle.Capture(), content, Loader(files),
-            campaign.Handlers.Operation<ICampaignDeploymentHandOver>().UfoInBattlescape, restored);
-        var state = campaign.Random.State;
-        try
+        if (battle.PrimedSpawnItems(content.RuntimeRules).Count == 0) return null;
+        return TrialRefusal(battle, scratch =>
         {
             scratch.SpawnFromPrimedItems(content, (int)campaign.Difficulty, campaign.Random);
             if (noAliensYet && scratch.Tally().LiveAliens == 0) return BattleFlowReasons.NoLiveAliens;
-            if (scratch.FirstTurnRefusal(content, restored) is { } refusal) return refusal;
+            if (scratch.FirstTurnRefusal(content, BattleRestoreCampaign.From(campaign)) is { } refusal) return refusal;
             // The units a spawn put in the air fall when the first turn starts: a fall that cannot run is refused now.
             if (!scratch.MayFall()) return null;
             scratch.EnterInventory(content.RuntimeRules);
             return scratch.StartFirstTurn(content, campaign.Random);
-        }
-        finally
-        {
-            campaign.Random.Restore(state);
-        }
+        });
     }
 
     /// <summary>
@@ -348,22 +340,9 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
     }
 
     /// <summary>The first turn run on a copy of the battle with the campaign's stream put back: the fall of a unit that cannot run is refused.</summary>
-    private CampaignReason? TrialFirstTurnRefusal(BattleState battle, RuntimeContent content)
-    {
+    private CampaignReason? TrialFirstTurnRefusal(BattleState battle, RuntimeContent content) =>
         // Only a unit without a floor can fall: a battle with none has nothing to try.
-        if (!battle.MayFall() || campaign.BattleTerrainFiles is not { } files) return null;
-        var scratch = BattleState.Restore(battle.Capture(), content, Loader(files),
-            campaign.Handlers.Operation<ICampaignDeploymentHandOver>().UfoInBattlescape, BattleRestoreCampaign.From(campaign));
-        var state = campaign.Random.State;
-        try
-        {
-            return scratch.StartFirstTurn(content, campaign.Random);
-        }
-        finally
-        {
-            campaign.Random.Restore(state);
-        }
-    }
+        battle.MayFall() ? TrialRefusal(battle, scratch => scratch.StartFirstTurn(content, campaign.Random)) : null;
 
     /// <summary>BriefingState's page: which deployment's briefing data shows, and the lines the briefing set.</summary>
     public BattleBriefing? QueryBriefing() => campaign.Read(() =>
@@ -419,12 +398,10 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         var selected = battle.Phase == BattlePhase.InProgress && battle.SelectedUnitId is { } chosen ? battle.UnitById(chosen) : null;
         if (selected?.Position is not null && battle.FallsRefusal(rules, selected) is { } fall) return Blocked(fall);
         battle.ApplyMove(move);
-        // The port has no close command, so each move does it: the items' light (a flare dropped or picked up), then everyone's sight.
+        // The port has no close command, so each move closes the inventory (the fall it starts was checked above).
         if (battle.Phase == BattlePhase.InProgress)
         {
-            battle.ApplyGravity(selected?.Position);
-            battle.CalculateLighting(rules, BattleLightLayer.Items);
-            battle.RecalculateFov();
+            battle.CloseInventory(rules);
             battle.ResolveFalls(rules);
         }
         return new CampaignCommandResult([new InventoryItemMoved(move.Unit.Id, move.Item.Id, move.From.Id, move.To.Id, move.X, move.Y, move.Cost)]);
@@ -487,28 +464,25 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         return new CampaignCommandResult([new UnitKneeled(command.UnitId, kneeling, spent)]);
     }
 
-    private CampaignCommandResult WalkUnit(WalkUnit command)
-    {
-        if (_battle is not { } battle) return Blocked(BattleSelectionReasons.Unavailable);
-        var rules = campaign.Content.RuntimeRules;
-        // The walk runs on a copy of the battle first: what it meets that is not ported (the reaction fire after a step, a proximity explosion, a
-        // burning floor, a fall that knocks a unit out) is refused before the real walk changes anything.
-        if (TrialRefusal(battle, trial => trial.Walk(rules, command.UnitId, command.Target, command.Move, command.IgnoreSpottedEnemies, [])) is { } trial)
-            return Blocked(trial);
-        var events = new List<ICampaignEvent>();
-        battle.Random = campaign.Random;
-        if (battle.Walk(rules, command.UnitId, command.Target, command.Move, command.IgnoreSpottedEnemies, events) is { } refusal) return Blocked(refusal);
-        return new CampaignCommandResult(events);
-    }
+    private CampaignCommandResult WalkUnit(WalkUnit command) => RunMovement((battle, rules, events) =>
+        battle.Walk(rules, command.UnitId, command.Target, command.Move, command.IgnoreSpottedEnemies, events));
 
-    private CampaignCommandResult MoveUnitUpDown(MoveUnitUpDown command)
+    private CampaignCommandResult MoveUnitUpDown(MoveUnitUpDown command) => RunMovement((battle, rules, events) =>
+        battle.MoveUpDown(rules, command.UnitId, command.Up, events));
+
+    /// <summary>
+    /// A movement that runs <c>UnitWalkBState</c>: first on a copy of the battle, so that what it meets that is not ported (the reaction fire after
+    /// a step, a proximity explosion, a burning floor, a fall that knocks a unit out) is refused before the real one changes anything; then on the
+    /// battle, drawing from the campaign's stream, with its events.
+    /// </summary>
+    private CampaignCommandResult RunMovement(Func<BattleState, RuntimeRuleCatalog, List<ICampaignEvent>, CampaignReason?> move)
     {
         if (_battle is not { } battle) return Blocked(BattleSelectionReasons.Unavailable);
         var rules = campaign.Content.RuntimeRules;
-        if (TrialRefusal(battle, trial => trial.MoveUpDown(rules, command.UnitId, command.Up, [])) is { } trial) return Blocked(trial);
+        if (TrialRefusal(battle, trial => move(trial, rules, [])) is { } trial) return Blocked(trial);
         var events = new List<ICampaignEvent>();
         battle.Random = campaign.Random;
-        if (battle.MoveUpDown(rules, command.UnitId, command.Up, events) is { } refusal) return Blocked(refusal);
+        if (move(battle, rules, events) is { } refusal) return Blocked(refusal);
         return new CampaignCommandResult(events);
     }
 

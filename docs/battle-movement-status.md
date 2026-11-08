@@ -23,6 +23,7 @@ Phase 7 branch 4 (`claude/battle-movement`), from `main` after PR #80 (branch 3 
 | S10 battlescape client | Done and audited (2026-11-07) |
 | S11 acceptance | Done and audited (2026-11-08) |
 | Branch audit | Fixes done and audited, awaiting merge (2026-11-08) |
+| Deduplication audit | Done (2026-11-08) |
 
 ## S0 — Planning (2026-11-01)
 
@@ -479,7 +480,7 @@ Reference: `UnitWalkBState.cpp` (`init`, `think`, `postPathProcedures`), `Battle
   standing block: no direction left is `postPathProcedures` (`CalculateLighting(Units, position)`, `CalculateFov(unit)`); otherwise `GetTuCost` for the action's move
   type (a falling unit goes down), then in the reference's order the invalid step, time units, energy, `CheckReservedTimeUnits` (not while falling), the free turn towards the step (not for a strafe or a
   vertical step), `UnitOpensDoor` (walking form) with a UFO door ending the cycle (the walk thinks again at once: ADR 0040), the unit in the way (`Tile::getOverlappingUnit` with
-  `TUO_IGNORE_SMALL` on each tile of the footprint at the step's destination, `BattleSight.OverlappingUnit(tile, 26)`), the dequeue, and the spend of time units and then energy
+  `TUO_IGNORE_SMALL` on each tile of the footprint at the step's destination, `BattleState.OverlappingUnit(rules, tile, OverlapIgnoreSmall)`), the dequeue, and the spend of time units and then energy
   and `WalkStep`; and the turning block: before the first step an armor with `turnBeforeFirstStep` pays the turn cost for each eighth (`spendTimeUnits` that fails does not stop
   the turn, as the reference), another armor counts the eighths and pays them (`preMovementCost * turnCost`) only when a sighting stops the turn; `turn`, `CalculateFov(unit)` and a new sighting abort the turn
   and cancel. `cancelCurentMove` keeps a unit that stopped without a floor falling first (a further cycle), otherwise it drops the path and pops.
@@ -571,7 +572,7 @@ Reference: `BattlescapeState` (`mapClick`, `btnKneelClick`, `btnUnitUpClick`, `b
   `BattleLegalActions` now lists `Turn` (any unit on the map), `Kneel` (the armor allows it, the unit does not float), `Walk` (the armor allows moving) and `MoveUp` and `MoveDown` (`validateUpDown`, the level exists, the armor
   moves): what the command can start; time units are the command's refusal. `BattleTileView.Shade` is `Tile::getShade` of each listed tile. `SelectSpotter` (new command, event `UnitSelected`) is the right click of a
   visible-unit button: of the selectable units of the side that have the target in their visible list, the one with the most time units as a percent of its base statistic (a tie keeps list order) is selected;
-  none is `battle.selection-no-spotter` (the reference does nothing). `Walk`'s move check is the helper `MoveTypeAllowed` the query shares.
+  none is `battle.selection-no-spotter` (the reference does nothing). `Walk`'s move check is the helper `MoveRefusal` the query shares.
 - **Client side (Oxce.Engine).** `BattleViewModel`: `Walk` (the tile click: `WalkUnit` at the camera's level with Shift as `IgnoreSpottedEnemies`; the camera follows the unit), `Turn` (the right click), `Kneel`,
   `MoveUpDown` (the camera follows to the unit's level), `CenterOnUnit`, `SelectSpotter`, `Preview` (the pointer over a tile), `Path` and `Reachable` (re-asked on each revision, level change or
   preview change) and `LastEvents` (the events of the last command that ran). `BattleReplay.From` turns a movement command's events into frames (a step or fall with its position, and a line of text for the rest);
@@ -636,6 +637,23 @@ The branch audit (`git diff main...HEAD`, report in `.agent-tmp/audit13-findings
 - **M6.** `TwoUnitsBelowCannotEscapeOntoTheSameTile`: two units below with one shared escape tile (refused with `battle.fall-knockout-unsupported`, state untouched), and with a second way open (each takes its own).
 - **M7-M10, L2, L4.** Status Progress table, the plan's refusal names and trial-copy wording (`docs/phase-7-plan.md`), the implementation plan's branch 4 line, the performance doc's "not per walk" claim (the trial copy's restore costs a full lighting and field of view per walk command, unmeasured), `AGENTS.md`'s list of status records, the stale "Not tested" line, and "## Next"'s refusal list.
 - **Not changed.** L1: the two loop-limit throws (`BattleGravity`, `BattleWalk`) are invariant guards and stay untested. L3: the death-trap refusal stays broader than the reference (any `STR_DEATH_TRAP_<n>` rule), as documented in S7; branch 5 narrows it with the real proximity check.
+
+## Deduplication audit (2026-11-08)
+
+A review of `git diff main...HEAD` for repeated code. Behaviour is unchanged except the one fix below.
+
+- **Fix.** `PathView` priced the previewed steps on a second pathfinder, whose `StrafeMove` was never set, so a one-step strafe was previewed one time unit cheaper than its walk paid. `refreshPath` uses the pathfinder that calculated the path; the port now does too. Test: `AStrafeStepIsPreviewedWithTheExtraTimeUnitItsWalkPays` (fails without the fix: 6 instead of 7).
+- **Shared geometry.** `BattleGeometry` holds the direction vectors, `VectorToDirection`, `DirectionTo`, `Step`, the 2x2 part offsets, the horizontal squared distance and the voxel size of a tile. It replaces the copies in `BattleBlockage`, `BattlePathfinder` (two), `BattleSight`, `BattleUnit`, `AlienDeployment` and `BattlePlacement`. `BattleBigWalls` holds the big wall types once for `BattleBlockage` and `BattlePathing`.
+- **One copy of a rule.** `BattleState.OverlappingUnit` replaces the copies in `BattleSight` and `BattlePathfinder`. Also shared now:
+  - `UnitOnTile`, `BattleUnit.RequiredPosition`, and `BattleLightCache.BlocksStep` (the tile line's big-wall exception, used by sight and enhanced light);
+  - `BattleMap.Neighbour` and `BattleMap.Area`;
+  - `DestroyedForm` (`dieMCD` with the data set bound), `IsFloorlessWalker`, and `ResolveFalls(rules, events, out moved)` (the walk's `UnitFell` events);
+  - `MoveRefusal` (walk and preview), `ReservedKneelCost` (doors and reserve), and `SpecialWeapons` (reserve and reaction);
+  - `CloseInventory` (first turn and inventory moves), `RuntimeUseCost.Zero`, and the rule heights helper.
+- **Smaller cleanups.** In `BattlePathfinder`: the step check, the wall-cost sum, the knows-of-unit test, the four stairs cases, the node reset and Bresenham's local direction tables now appear once each. Sight's per-call offset and sign tables are now static.
+- **Command layer.** `CampaignBattles.TrialRefusal` is now the only trial copy: the spawn and first-turn trials use it too, so they also copy the live spotting state, which matches the save there. `RunMovement` serves both `WalkUnit` and `MoveUnitUpDown`.
+- **Client.** `BattlescapeClient` has one helper each for the shaded colour, the tile dot and the visible-button count.
+- **Tests.** `BattleTestSupport` holds `Replaced`, `Refusal`, `Events`, `End` and `GunFor`, which eight test files had each copied.
 
 ## Next
 

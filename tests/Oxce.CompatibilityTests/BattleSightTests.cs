@@ -7,6 +7,7 @@ using Oxce.Mods.Rulesets.Runtime;
 using Xunit;
 using static Oxce.CompatibilityTests.BattleMovementGroundworkTests;
 using static Oxce.CompatibilityTests.BattleStartTests;
+using static Oxce.CompatibilityTests.BattleTestSupport;
 using static Oxce.CompatibilityTests.BattleTestTerrain;
 
 namespace Oxce.CompatibilityTests;
@@ -110,13 +111,6 @@ public sealed class BattleSightTests
     private const string SuitBlock = "  - type: SUIT\n    movementType: 1\n    builtInWeapons: [GUN, CLIP, GRENADE]\n    specialWeapon: AMP\n    storeItem: SUPPLY\n    corpseBattle: [CORPSE]\n    corpseGeo: CORPSE\n    loftempsSet: [0]";
     private const string SmallBlock = "  - type: SMALL_VEHICLE_ARMOR\n    size: 1\n    allowInv: false\n    corpseBattle: [CORPSE]\n    corpseGeo: CORPSE\n    loftempsSet: [0]";
     private const string BigBlock = "  - type: VEHICLE_ARMOR\n    size: 2\n    allowInv: false\n    specialWeapon: RAM\n    stats: {tu: 10}\n    corpseBattle: [CORPSE, CORPSE, CORPSE, CORPSE]\n    corpseGeo: CORPSE\n    loftempsSet: [0, 0, 0, 0]";
-
-    private static string Replaced(string rules, string from, string to)
-    {
-        var result = rules.Replace(from, to, StringComparison.Ordinal);
-        Assert.NotEqual(rules, result);
-        return result;
-    }
 
     /// <summary>The rules for a sight test: the soldier and the alien (or a big one) have the pillar template and a height of 22.</summary>
     internal static string SightRules(int shade, string soldierExtra = "", string alienExtra = "", string? unitExtra = null, int soldierHeight = 22)

@@ -3,6 +3,7 @@ using Oxce.Gameplay.Battles.Terrain;
 using Oxce.Gameplay.Campaigns;
 using Xunit;
 using static Oxce.CompatibilityTests.BattleSightTests;
+using static Oxce.CompatibilityTests.BattleTestSupport;
 
 namespace Oxce.CompatibilityTests;
 
@@ -14,13 +15,6 @@ namespace Oxce.CompatibilityTests;
 public sealed class BattleWalkTests
 {
     private const string GunText = "- type: GUN\n    battleType: 1\n    compatibleAmmo: [CLIP]\n    weight: 1";
-
-    private static string Replaced(string rules, string from, string to)
-    {
-        var result = rules.Replace(from, to, StringComparison.Ordinal);
-        Assert.NotEqual(rules, result);
-        return result;
-    }
 
     /// <summary>The soldier walks (unless <paramref name="flying"/>), the map is four levels high, the alien reacts fast and the gun has costs.</summary>
     internal static Arena Make(bool flying = false, string suitExtra = "", int distance = 5, string rulesExtra = "", Func<string, string>? edit = null) =>
@@ -37,28 +31,8 @@ public sealed class BattleWalkTests
 
     internal static BattlePosition At(int x, int y, int z = 0) => new(x, y, z);
 
-    private static string Refusal(CampaignCommandResult result) => Assert.IsType<CampaignActionBlocked>(Assert.Single(result.Events)).Code;
-
     private static IReadOnlyList<ICampaignEvent> Walk(Arena arena, BattlePosition target, BattleMoveType move = BattleMoveType.Normal, bool ignore = false) =>
         Events(arena.Campaign.Execute(new WalkUnit(arena.Soldier.Id, target, move, ignore)));
-
-    private static IReadOnlyList<ICampaignEvent> Events(CampaignCommandResult result)
-    {
-        Assert.DoesNotContain(result.Events, static @event => @event is CampaignActionBlocked);
-        return result.Events;
-    }
-
-    private static UnitWalkEnded End(IReadOnlyList<ICampaignEvent> events) => Assert.IsType<UnitWalkEnded>(events[^1]);
-
-    internal static BattleItem GunFor(Arena arena, BattleUnit unit)
-    {
-        var gun = new BattleItem(arena.Battle.TakeItemId(), "GUN") { OwnerUnitId = unit.Id, Slot = "STR_RIGHT_HAND", IsWeaponWithAmmo = true };
-        arena.Battle.AddItem(gun);
-        var clip = new BattleItem(arena.Battle.TakeItemId(), "CLIP") { AmmoQuantity = 5, IsAmmo = true };
-        arena.Battle.AddItem(clip);
-        gun.AmmoSlots[0] = clip.Id;
-        return gun;
-    }
 
     /// <summary>The state a refused walk must leave as it found it.</summary>
     private static string State(Arena arena) => string.Join('|', arena.Battle.Units.Select(unit =>
@@ -527,7 +501,7 @@ public sealed class BattleWalkTests
     public void AStepNextToAnArmedOpposingUnitThatCouldReactIsRefusedBeforeAnyChange()
     {
         var arena = Make();
-        GunFor(arena, arena.Alien);
+        GunFor(arena.Battle, arena.Alien);
         var state = State(arena);
         Assert.Equal("battle.reaction-fire-unsupported", Refusal(arena.Campaign.Execute(new WalkUnit(arena.Soldier.Id, At(12, 10)))));
         Assert.Equal(state, State(arena));
@@ -609,7 +583,7 @@ public sealed class BattleWalkTests
     public void AKneelingUnitThatAReactorWouldShootAtIsRefusedByTheKneelBeforeAnyChange()
     {
         var arena = Make();
-        GunFor(arena, arena.Alien);
+        GunFor(arena.Battle, arena.Alien);
         arena.Soldier.Kneeled = true;
         var state = State(arena);
         // Called on the battle itself: a refusal after a step would leave the walk done, a refusal of the kneel leaves nothing.

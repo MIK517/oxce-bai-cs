@@ -134,7 +134,7 @@ internal sealed partial class BattleState
         {
             var tuCost = BattleMap.MovementCost(data, unit.MovementType);
             cost = BattleActionCost.For(rules, (BattleActionType)TimeUnitsReserved, unit, MainHandWeapon(rules, unit, quickest: false));
-            tuCost += KneelReserved && !unit.Kneeled && AllowsKneeling(rules, unit) ? BattleUnit.KneelDownCost : 0;
+            tuCost += ReservedKneelCost(rules, unit);
             cost.Time += tuCost;
             if (!rightClick) cost.Energy += tuCost / 2;
         }
@@ -145,18 +145,16 @@ internal sealed partial class BattleState
             if (unit is { IsBigUnit: true }) return DoorNone;
             if (unit is not null && cost.Time != 0 && !cost.HaveTimeUnits()) return DoorNotEnough;
             // Another unit in the doorway keeps it shut (a big unit's other tiles do not count).
-            if (Map.UnitAt(tile) is { } standing && UnitById(standing) is { } blocker && blocker != unit && blocker.Position != Map.PositionOf(tile))
+            if (UnitOnTile(tile) is { } blocker && blocker != unit && blocker.Position != Map.PositionOf(tile))
                 return DoorNone;
             // A door whose alternative lies past its data set's end has no object to turn into (the reference reads out of range; ADR 0040).
-            var (_, objectSet) = Map.Part(tile, part);
-            if ((uint)data.AlternateMcd >= (uint)Map.DataSets[objectSet].Objects.Count) return DoorNone;
+            var (_, set) = Map.Part(tile, part);
+            var alternative = data.AlternateMcd;
+            if ((uint)alternative >= (uint)Map.DataSets[set].Objects.Count) return DoorNone;
             if (apply)
             {
-                var (_, set) = Map.Part(tile, part);
-                var alternative = data.AlternateMcd;
-                var replacement = Map.DataSets[set].Objects[alternative];
                 // The alternative goes to the part its own object type names, and then this part is emptied, as the reference's two calls do.
-                Map.SetPart(tile, replacement.ObjectType, alternative, set);
+                Map.SetPart(tile, Map.DataSets[set].Objects[alternative].ObjectType, alternative, set);
                 Map.SetPart(tile, part, -1, -1);
             }
             return DoorOpened;
@@ -206,13 +204,13 @@ internal sealed partial class BattleState
         var closed = 0;
         for (var tile = 0; tile < Map.TileCount; tile++)
         {
-            if (Map.UnitAt(tile) is { } id && UnitById(id) is { IsBigUnit: true })
+            if (UnitOnTile(tile) is { IsBigUnit: true } big)
             {
                 var position = Map.PositionOf(tile);
                 var north = Map.TileAt(position.X, position.Y - 1, position.Z);
                 var west = Map.TileAt(position.X - 1, position.Y, position.Z);
-                if (Map.IsUfoDoorOpen(tile, BattleTilePart.NorthWall) && north >= 0 && Map.UnitAt(north) == id ||
-                    Map.IsUfoDoorOpen(tile, BattleTilePart.WestWall) && west >= 0 && Map.UnitAt(west) == id)
+                if (Map.IsUfoDoorOpen(tile, BattleTilePart.NorthWall) && north >= 0 && Map.UnitAt(north) == big.Id ||
+                    Map.IsUfoDoorOpen(tile, BattleTilePart.WestWall) && west >= 0 && Map.UnitAt(west) == big.Id)
                     continue;
             }
             // Tile::closeUfoDoor: the floor, west wall and north wall; only walls keep a frame here. A tile counts once.

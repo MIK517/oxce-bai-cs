@@ -13,23 +13,26 @@ namespace Oxce.Gameplay.Battles;
 /// </summary>
 internal sealed partial class BattleState
 {
-    /// <summary>TUO_IGNORE_SMALL: a unit below whose top pokes less than 2 voxels into the tile is not "in the way".</summary>
-    private const int OverlapIgnoreSmall = 26;
-
     /// <summary>What a walk did, for the command's last event.</summary>
     internal readonly record struct BattleWalkResult(BattleWalkStop Stop, int Steps, int TimeUnitsSpent, int EnergySpent);
 
-    /// <summary>Whether the armor allows running, strafing or sneaking for the unit's size (a normal walk always).</summary>
-    private static bool MoveTypeAllowed(RuntimeBattleArmor armor, BattleUnit unit, BattleMoveType move)
+    /// <summary>
+    /// Why the armor stops the unit from moving this way: it does not allow moving, or not the move type (running, strafing and sneaking by the
+    /// unit's size; a normal walk always). Null when it may.
+    /// </summary>
+    private static CampaignReason? MoveRefusal(RuntimeBattleArmor armor, BattleUnit unit, BattleMoveType move)
     {
+        if (!armor.AllowsMoving) return BattleMovementReasons.WalkNotAllowed;
         var small = !unit.IsBigUnit;
-        return move switch
+        var allowed = move switch
         {
+            BattleMoveType.Normal => true,
             BattleMoveType.Run => RuntimeBattleArmor.Allows(armor.AllowsRunning, small),
             BattleMoveType.Strafe => RuntimeBattleArmor.Allows(armor.AllowsStrafing, small),
             BattleMoveType.Sneak => RuntimeBattleArmor.Allows(armor.AllowsSneaking, small),
-            _ => true,
+            _ => false,
         };
+        return allowed ? null : BattleMovementReasons.WalkMoveNotAllowed;
     }
 
     /// <summary>
@@ -49,10 +52,7 @@ internal sealed partial class BattleState
         // never reaches its end must not start.
         if (unit.Status != BattleUnitStatus.Standing) return BattleMovementReasons.WalkUnitBusy;
         if (!Contains(target)) return BattleMovementReasons.WalkTargetOutside;
-        var armor = ArmorOf(rules, unit);
-        if (!armor.AllowsMoving) return BattleMovementReasons.WalkNotAllowed;
-        if (!Enum.IsDefined(move)) return BattleMovementReasons.WalkMoveNotAllowed;
-        if (!MoveTypeAllowed(armor, unit, move)) return BattleMovementReasons.WalkMoveNotAllowed;
+        if (MoveRefusal(ArmorOf(rules, unit), unit, move) is { } notAllowed) return notAllowed;
         var bam = (BattleActionMove)move;
         var pathfinder = new BattlePathfinder(this, rules);
         pathfinder.Calculate(unit, target, bam);
@@ -183,10 +183,7 @@ internal sealed partial class BattleState
                             fallingWhenStopped = false;
                             pathfinder.DequeuePath();
                             AddFallingUnit(unit);
-                            var before = _units.Select(static candidate => (candidate, candidate.Position)).ToArray();
-                            refusal = ResolveFalls(rules);
-                            foreach (var (candidate, was) in before)
-                                if (candidate.Position is { } now && was is { } from && now != from) events.Add(new UnitFell(candidate.Id, from, now));
+                            refusal = ResolveFalls(rules, events, out _);
                             return refusal is not null;
                         }
                 }
@@ -296,7 +293,7 @@ internal sealed partial class BattleState
                         var ahead = step.Position with { X = step.Position.X + x, Y = step.Position.Y + y };
                         if (!Contains(ahead)) continue;
                         // Can't walk into units in this tile, or on top of other units sticking their head into this tile.
-                        if (!falling && sight.OverlappingUnit(Map.TileIndex(ahead), OverlapIgnoreSmall) is { } inTheWay && inTheWay != unit)
+                        if (!falling && OverlappingUnit(rules, Map.TileIndex(ahead), OverlapIgnoreSmall) is { } inTheWay && inTheWay != unit)
                             return Cancel(BattleWalkStop.UnitInTheWay);
                     }
 
@@ -361,14 +358,8 @@ internal sealed partial class BattleState
         // BattlescapeGame::think pushes the fall state once the walk is over: a unit a burnt floor dropped falls now.
         if (refusal is null && _fallingUnits.Count != 0)
         {
-            var before = _units.Select(static candidate => (candidate, candidate.Position)).ToArray();
-            refusal = ResolveFalls(rules);
-            foreach (var (candidate, was) in before)
-                if (candidate.Position is { } now && was is { } from && now != from)
-                {
-                    events.Add(new UnitFell(candidate.Id, from, now));
-                    changed = true;
-                }
+            refusal = ResolveFalls(rules, events, out var fell);
+            changed |= fell;
         }
         if (refusal is not null) return refusal;
         if (!changed)

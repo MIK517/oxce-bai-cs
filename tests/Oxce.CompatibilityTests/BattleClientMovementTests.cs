@@ -8,6 +8,7 @@ using Xunit;
 using static Oxce.CompatibilityTests.BattleSightTests;
 using static Oxce.CompatibilityTests.BattleStartTests;
 using static Oxce.CompatibilityTests.BattleWalkTests;
+using static Oxce.CompatibilityTests.BattleTestSupport;
 
 namespace Oxce.CompatibilityTests;
 
@@ -85,14 +86,6 @@ public sealed class BattleClientMovementTests
         var walked = Events(arena.Campaign.Execute(new WalkUnit(soldier.Id, At(13, 10))));
         Assert.Equal(view.TimeUnitsCost, End(walked).TimeUnitsSpent);
     }
-
-    private static IReadOnlyList<ICampaignEvent> Events(CampaignCommandResult result)
-    {
-        Assert.DoesNotContain(result.Events, static @event => @event is CampaignActionBlocked);
-        return result.Events;
-    }
-
-    private static UnitWalkEnded End(IReadOnlyList<ICampaignEvent> events) => Assert.IsType<UnitWalkEnded>(events[^1]);
 
     [Fact]
     public void AStepTheUnitCannotPayIsRedAndTheTimeUnitsLeftStopAtZero()
@@ -198,6 +191,19 @@ public sealed class BattleClientMovementTests
         var still = Make(suitExtra: "    allowsMoving: false\n");
         Assert.Equal("battle.walk-not-allowed", Queries(still).QueryPath(BattleViewer.LocalPlayer, still.Soldier.Id, At(13, 10))!.NoPathReason);
         Assert.Null(Queries(still).QueryReachable(BattleViewer.LocalPlayer, still.Soldier.Id));
+    }
+
+    [Fact]
+    public void AStrafeStepIsPreviewedWithTheExtraTimeUnitItsWalkPays()
+    {
+        // refreshPath prices the steps on the pathfinder that calculated the path, so the one-step strafe's extra time unit shows: the
+        // soldier faces east and strafes south-east, a diagonal step of 6 and 1 for strafing.
+        var arena = Make(suitExtra: "    allowsStrafing: true\n");
+        var soldier = arena.Soldier;
+        var view = Queries(arena).QueryPath(BattleViewer.LocalPlayer, soldier.Id, At(11, 11), BattleMoveType.Strafe)!;
+        Assert.Equal((1, 7), (view.Steps.Count, view.TimeUnitsCost));
+        var walked = Events(arena.Campaign.Execute(new WalkUnit(soldier.Id, At(11, 11), BattleMoveType.Strafe)));
+        Assert.Equal(view.TimeUnitsCost, End(walked).TimeUnitsSpent);
     }
 
     [Fact]

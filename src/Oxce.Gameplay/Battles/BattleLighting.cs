@@ -123,7 +123,7 @@ internal sealed partial class BattleState
     {
         ArgumentNullException.ThrowIfNull(rules);
         var settings = rules.Campaign;
-        var whole = new BattleMapSubset(0, Map.Width, 0, Map.Length);
+        var whole = Map.Area;
         var dynamic = whole;
         var @static = whole;
         if (position is { } center)
@@ -145,7 +145,7 @@ internal sealed partial class BattleState
     /// <summary>TileEngine.cpp's iterateTiles: the tiles of a subset on every level, level by level, row by row.</summary>
     private IEnumerable<int> TilesIn(BattleMapSubset subset)
     {
-        var clipped = subset.Intersect(new BattleMapSubset(0, Map.Width, 0, Map.Length));
+        var clipped = subset.Intersect(Map.Area);
         if (clipped.IsEmpty) yield break;
         for (var z = 0; z < Map.Height; z++)
             for (var y = clipped.BeginY; y < clipped.EndY; y++)
@@ -167,16 +167,14 @@ internal sealed partial class BattleState
                 .WithBlockDown(BattleBlockage.VerticalBlockage(Map, tile, Map.TileBelow(tile), BattleBlockType.None) > 127);
             for (var direction = 0; direction < 8; direction++)
             {
-                var (dx, dy) = BattleBlockage.DirectionVector(direction);
-                var next = Map.TileAt(position.X + dx, position.Y + dy, position.Z);
+                var next = Map.Neighbour(position, direction);
                 var result = BattleBlockage.HorizontalBlockage(Map, tile, next, BattleBlockType.None, true);
                 cache = cache.WithBigWall(direction, result == -1);
                 result = BattleBlockage.HorizontalBlockage(Map, tile, next, BattleBlockType.None);
                 cache = cache.WithBlock(direction, 0, result > 127 || result == -1);
-                next = Map.TileAt(position.X + dx, position.Y + dy, position.Z + 1);
-                cache = cache.WithBlock(direction, 1, BattleBlockage.VerticalBlockage(Map, tile, next, BattleBlockType.None) > 127);
-                next = Map.TileAt(position.X + dx, position.Y + dy, position.Z - 1);
-                cache = cache.WithBlock(direction, -1, BattleBlockage.VerticalBlockage(Map, tile, next, BattleBlockType.None) > 127);
+                for (var levelOffset = -1; levelOffset <= 1; levelOffset += 2)
+                    cache = cache.WithBlock(direction, levelOffset,
+                        BattleBlockage.VerticalBlockage(Map, tile, Map.Neighbour(position, direction, levelOffset), BattleBlockType.None) > 127);
             }
             Map.SetLightCache(tile, cache);
         }
@@ -198,7 +196,7 @@ internal sealed partial class BattleState
                 {
                     var above = Map.TileAt(position.X, position.Y, z);
                     block += BattleBlockage.Blockage(Map, above, BattleTilePart.Floor, BattleBlockType.None);
-                    block += BattleBlockage.Blockage(Map, above, BattleTilePart.ObjectPart, BattleBlockType.None, BattleBlockage.DirectionDown);
+                    block += BattleBlockage.Blockage(Map, above, BattleTilePart.ObjectPart, BattleBlockType.None, BattleUnit.DirectionDown);
                 }
                 if (block > 0) light -= 2;
             }
@@ -234,7 +232,7 @@ internal sealed partial class BattleState
             if (item.Tile is not { } at || item.Slot != GroundSlot || !Map.Contains(at)) continue;
             var tile = Map.TileIndex(at);
             if (GlowRange(rules, item) is { } range) glow[tile] = Math.Max(glow[tile], range);
-            if (item.CorpseUnitId is { } corpse && _units.Find(unit => unit.Id == corpse) is { Fire: not 0 }) glow[tile] = Math.Max(glow[tile], StunnedFireLightPower);
+            if (IsBurningBody(item)) glow[tile] = Math.Max(glow[tile], StunnedFireLightPower);
         }
         foreach (var tile in TilesIn(area.Expand(maxDynamic - 1)))
         {
@@ -258,6 +256,9 @@ internal sealed partial class BattleState
         return glows ? rule.Power : null;
     }
 
+    /// <summary>The item is the body of a unit that burns (a stunned unit lying as an item).</summary>
+    private bool IsBurningBody(BattleItem item) => item.CorpseUnitId is { } corpse && UnitById(corpse) is { Fire: not 0 };
+
     /// <summary>TileEngine::calculateUnitLighting: personal light, hand-held flares and fire of the units that are not out.</summary>
     private void CalculateUnitLighting(BattleMapSubset area, RuntimeRuleCatalog rules)
     {
@@ -280,7 +281,7 @@ internal sealed partial class BattleState
             {
                 if (weapon is null) continue;
                 if (GlowRange(rules, weapon) is { } range) light = Math.Max(light, range);
-                if (weapon.CorpseUnitId is { } corpse && _units.Find(other => other.Id == corpse) is { Fire: not 0 }) light = Math.Max(light, StunnedFireLightPower);
+                if (IsBurningBody(weapon)) light = Math.Max(light, StunnedFireLightPower);
             }
             if (unit.Fire != 0) light = Math.Max(light, FireLightPower);
             if (light >= maxDynamic) light = maxDynamic - 1;
@@ -313,7 +314,7 @@ internal sealed partial class BattleState
         var topTargetVoxel = (short)(Map.Height * accuracyZ - 1);
         var topCenterVoxel = (short)((Map.LightCache(centerTile).BlocksUp ? center.Z + 1 : Map.Height) * accuracyZ - 1);
         var maxFirePower = Math.Min(15, settings.MaximumStaticLightDistance - 1);
-        var reach = area.Intersect(BattleMapSubset.Around(center, power - 1)).Intersect(new BattleMapSubset(0, Map.Width, 0, Map.Length));
+        var reach = area.Intersect(BattleMapSubset.Around(center, power - 1)).Intersect(Map.Area);
         if (reach.IsEmpty) return;
         for (var z = 0; z < Map.Height; z++)
             for (var y = reach.BeginY; y < reach.EndY; y++)
@@ -366,8 +367,7 @@ internal sealed partial class BattleState
             var point = new BattlePosition(voxel.X / accuracyXy, voxel.Y / accuracyXy, voxel.Z / accuracyZ);
             if (light <= 0) return true;
             if (point == lastPoint) return false;
-            var direction = BattleBlockage.VectorToDirection(point.X - lastPoint.X, point.Y - lastPoint.Y);
-            var differenceZ = point.Z - lastPoint.Z;
+            var direction = BattleGeometry.VectorToDirection(point.X - lastPoint.X, point.Y - lastPoint.Y);
             var lastTile = Map.TileAt(lastPoint.X, lastPoint.Y, lastPoint.Z);
             if (lastTile < 0)
             {
@@ -375,8 +375,7 @@ internal sealed partial class BattleState
                 return true;
             }
             var cache = Map.LightCache(lastTile);
-            var result = cache.Blocks(direction, differenceZ);
-            if (result && differenceZ == 0 && direction >= 0 && cache.IsBigWall(direction) && point == target) result = false;
+            var result = cache.BlocksStep(direction, point.Z - lastPoint.Z, point == target);
             if (steps > 1)
             {
                 if (cache.HasFire && fire && light <= maxFirePower) result = true;

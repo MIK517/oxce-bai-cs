@@ -6,6 +6,7 @@ using Oxce.Mods.Rulesets.Runtime;
 using Xunit;
 using static Oxce.CompatibilityTests.BattleMovementGroundworkTests;
 using static Oxce.CompatibilityTests.BattleStartTests;
+using static Oxce.CompatibilityTests.BattleTestSupport;
 using static Oxce.CompatibilityTests.BattleTestTerrain;
 
 namespace Oxce.CompatibilityTests;
@@ -67,13 +68,6 @@ public sealed class BattleLightingTests
             Battle.AddItem(item);
             return item;
         }
-    }
-
-    private static string Replaced(string rules, string from, string to)
-    {
-        var result = rules.Replace(from, to, StringComparison.Ordinal);
-        Assert.NotEqual(rules, result);
-        return result;
     }
 
     private static string WithShade(string rules, int shade) =>
@@ -176,7 +170,7 @@ public sealed class BattleLightingTests
         Assert.Equal([0, 0, 0, 0, 0, 255, 255, 255],
             Enumerable.Range(0, 8).Select(direction => BattleBlockage.Blockage(arena.Map, tile, BattleTilePart.ObjectPart, BattleBlockType.None, direction)));
         // Vertically a big wall that is not the full block (1) lets power through.
-        Assert.Equal(0, BattleBlockage.Blockage(arena.Map, tile, BattleTilePart.ObjectPart, BattleBlockType.None, BattleBlockage.DirectionUp));
+        Assert.Equal(0, BattleBlockage.Blockage(arena.Map, tile, BattleTilePart.ObjectPart, BattleBlockType.None, BattleUnit.DirectionUp));
         // A diagonal big wall stops everything unless checked from its own tile (the origin form); smoke is stopped either way.
         arena.Put(8, 8, 0, BattleTilePart.ObjectPart, BigWallNesw);
         var diagonal = arena.Tile(8, 8);
@@ -207,7 +201,7 @@ public sealed class BattleLightingTests
         foreach (var (x, y, direction) in new[] { (12, 12, 3), (14, 12, 5), (16, 14, 7) })
         {
             var from = arena.Tile(x, y);
-            var (dx, dy) = BattleBlockage.DirectionVector(direction);
+            var (dx, dy) = BattleGeometry.DirectionVector(direction);
             var to = arena.Tile(x + dx, y + dy);
             Assert.Equal(0, BattleBlockage.HorizontalBlockage(arena.Map, from, to, BattleBlockType.None));
             Assert.Equal(0, BattleBlockage.HorizontalBlockage(arena.Map, from, to, BattleBlockType.Damage));
@@ -521,7 +515,7 @@ public sealed class BattleLightingTests
             (15, 20, 7, (15, 20, BattleTilePart.NorthWall), (14, 20, BattleTilePart.NorthWall)),
         })
         {
-            var (dx, dy) = BattleBlockage.DirectionVector(direction);
+            var (dx, dy) = BattleGeometry.DirectionVector(direction);
             var from = arena.Tile(x, y);
             var to = arena.Tile(x + dx, y + dy);
             arena.Put(first.Item1, first.Item2, 0, first.Item3, WallLos);
@@ -537,7 +531,7 @@ public sealed class BattleLightingTests
             (22, 5, 7, (22, 4, BattleTilePart.WestWall)),
         })
         {
-            var (dx, dy) = BattleBlockage.DirectionVector(direction);
+            var (dx, dy) = BattleGeometry.DirectionVector(direction);
             arena.Put(pane.Item1, pane.Item2, 0, pane.Item3, Pane);
             Assert.Equal(25, BattleBlockage.HorizontalBlockage(arena.Map, arena.Tile(x, y), arena.Tile(x + dx, y + dy), BattleBlockType.Damage));
         }

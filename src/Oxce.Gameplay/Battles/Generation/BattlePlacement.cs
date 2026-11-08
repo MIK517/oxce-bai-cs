@@ -88,14 +88,13 @@ internal sealed class BattlePlacement(BattleState battle, IRandomSource random)
     internal static BattlePosition? ValidForUnit(BattleMap map, BattleUnit unit, BattlePosition position, bool surrounding, int startDirection)
     {
         var size = unit.ArmorSize;
-        ReadOnlySpan<int> xs = [0, 1, 1, 1, 0, -1, -1, -1];
-        ReadOnlySpan<int> ys = [-1, -1, 0, 1, 1, 1, 0, -1];
         var candidates = new List<BattlePosition> { position };
         if (surrounding)
             for (var index = 0; index < 8; index++)
             {
                 var direction = (startDirection + index) % 8;
-                candidates.Add(new BattlePosition(position.X + xs[direction] * size, position.Y + ys[direction] * size, position.Z));
+                var (dx, dy) = BattleGeometry.DirectionVector(direction);
+                candidates.Add(new BattlePosition(position.X + dx * size, position.Y + dy * size, position.Z));
             }
         foreach (var candidate in candidates)
         {

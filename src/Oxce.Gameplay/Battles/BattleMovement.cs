@@ -94,33 +94,11 @@ internal sealed partial class BattleUnit
     /// <summary>BattleUnit::kneel.</summary>
     public void Kneel(bool kneeled) => Kneeled = kneeled;
 
-    /// <summary>
-    /// BattleUnit::directionTo: the direction to a point (0 north, clockwise to 7 north-west) from the unit's position, by dividing the
-    /// pie into eighths centred on the directions.
-    /// </summary>
-    public int DirectionTo(BattlePosition point)
-    {
-        var from = Position ?? throw new InvalidOperationException($"Battle unit {Id} is not on the map.");
-        double ox = point.X - from.X;
-        double oy = point.Y - from.Y;
-        var angle = Math.Atan2(ox, -oy);
-        // Divide the pie in 4 angles each at 1/8th before each quarter.
-        var pie = new[]
-        {
-            Math.PI / 4.0 * 4.0 - Math.PI / 4.0 / 2.0,
-            Math.PI / 4.0 * 3.0 - Math.PI / 4.0 / 2.0,
-            Math.PI / 4.0 * 2.0 - Math.PI / 4.0 / 2.0,
-            Math.PI / 4.0 * 1.0 - Math.PI / 4.0 / 2.0,
-        };
-        if (angle > pie[0] || angle < -pie[0]) return 4;
-        if (angle > pie[1]) return 3;
-        if (angle > pie[2]) return 2;
-        if (angle > pie[3]) return 1;
-        if (angle < -pie[1]) return 5;
-        if (angle < -pie[2]) return 6;
-        if (angle < -pie[3]) return 7;
-        return 0;
-    }
+    /// <summary>The unit's tile, for the rules that need the unit on the map (throws for one that is not).</summary>
+    public BattlePosition RequiredPosition => Position ?? throw new InvalidOperationException($"Battle unit {Id} is not on the map.");
+
+    /// <summary>BattleUnit::directionTo: the direction to a point (0 north, clockwise to 7 north-west) from the unit's position.</summary>
+    public int DirectionTo(BattlePosition point) => BattleGeometry.DirectionTo(RequiredPosition, point);
 
     /// <summary>BattleUnit::lookAt(point, turret): sets the direction to turn to; the unit (or turret) turns when it differs.</summary>
     public void LookAt(BattlePosition point, bool turret)
@@ -330,7 +308,7 @@ internal sealed partial class BattleState
         ArgumentNullException.ThrowIfNull(rules);
         ArgumentNullException.ThrowIfNull(unit);
         if (direction is < 0 or > BattleUnit.DirectionDown) throw new ArgumentOutOfRangeException(nameof(direction));
-        if (unit.Position is not { } start) throw new InvalidOperationException($"Battle unit {unit.Id} is not on the map.");
+        var start = unit.RequiredPosition;
 
         // startWalking
         if (direction >= BattleUnit.DirectionUp)

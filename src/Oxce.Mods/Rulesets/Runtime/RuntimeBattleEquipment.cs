@@ -164,7 +164,7 @@ public sealed class RuntimeBattleEquipment
             IsNotBrutal = rule.Value.Booleans["isNotBrutal"],
             IgnoredByAi = rule.Value.Booleans["ignoredByAI"],
             SpotterDuration = rule.Value.Integers["spotter"] == -1 ? rule.Value.Integers["intelligence"] : rule.Value.Integers["spotter"],
-            Heights = new RuntimeUnitHeights(rule.Value.Integers["standHeight"], rule.Value.Integers["kneelHeight"], rule.Value.Integers["floatHeight"]),
+            Heights = HeightsOf(rule.Value.Integers),
         },
             StringComparer.Ordinal);
         var soldierWeapons = personnel.Soldiers.Rules.Where(static rule => rule.Value.Strings["specialWeapon"].Length != 0)
@@ -173,8 +173,7 @@ public sealed class RuntimeBattleEquipment
             .ToDictionary(static rule => rule.Id, static rule => (IReadOnlyList<string>)List(rule.Value.InventoryOrder), StringComparer.Ordinal);
         var weaponSets = content.EquipmentProduction.WeaponSets.Rules
             .ToDictionary(static rule => rule.Id, static rule => (IReadOnlyList<string>)List(rule.Value.Weapons), StringComparer.Ordinal);
-        var soldierHeights = personnel.Soldiers.Rules.ToDictionary(static rule => rule.Id, static rule => new RuntimeUnitHeights(
-            rule.Value.Integers["standHeight"], rule.Value.Integers["kneelHeight"], rule.Value.Integers["floatHeight"]), StringComparer.Ordinal);
+        var soldierHeights = personnel.Soldiers.Rules.ToDictionary(static rule => rule.Id, static rule => HeightsOf(rule.Value.Integers), StringComparer.Ordinal);
         return new(List(inventories), Map(items), Map(armors), Map(units), Map(soldierWeapons), Map(categories), Map(weaponSets))
         {
             SoldierHeights = Map(soldierHeights),
@@ -195,7 +194,7 @@ public sealed class RuntimeBattleEquipment
         var melee = rule.Actions["Melee"];
         var use = rule.UseCosts["Use"];
         var useFlat = rule.UseFlats["Use"];
-        var zero = new RuntimeUseCost(0, 0, 0, 0, 0, 0);
+        var zero = RuntimeUseCost.Zero;
         var costs = new Dictionary<string, (RuntimeUseCost, RuntimeUseFlat)>(StringComparer.Ordinal)
         {
             [RuntimeItemActionCosts.Aimed] = (Coalesce(aimed.Cost), Coalesce(aimed.Flat, useFlat)),
@@ -227,6 +226,10 @@ public sealed class RuntimeBattleEquipment
         return new RuntimeUseFlat(Pick(static v => v.Time), Pick(static v => v.Energy), Pick(static v => v.Morale), Pick(static v => v.Health),
             Pick(static v => v.Stun), Pick(static v => v.Mana));
     }
+
+    /// <summary>The <c>standHeight</c>, <c>kneelHeight</c> and <c>floatHeight</c> of a unit or soldier rule.</summary>
+    private static RuntimeUnitHeights HeightsOf(IReadOnlyDictionary<string, int> integers) =>
+        new(integers["standHeight"], integers["kneelHeight"], integers["floatHeight"]);
 
     private static ReadOnlyCollection<T> List<T>(IEnumerable<T> source) => Array.AsReadOnly(source.ToArray());
 
@@ -306,7 +309,10 @@ public sealed record RuntimeBattleItem(
 }
 
 /// <summary>RuleItemUseCost: the time units, energy, morale, health, stun and mana an action costs (percent unless flat).</summary>
-public sealed record RuntimeUseCost(int Time, int Energy, int Morale, int Health, int Stun, int Mana);
+public sealed record RuntimeUseCost(int Time, int Energy, int Morale, int Health, int Stun, int Mana)
+{
+    public static RuntimeUseCost Zero { get; } = new(0, 0, 0, 0, 0, 0);
+}
 
 /// <summary>RuleItemUseFlat: for each resource of a <see cref="RuntimeUseCost"/>, whether it is a flat value instead of a percentage.</summary>
 public sealed record RuntimeUseFlat(bool Time, bool Energy, bool Morale, bool Health, bool Stun, bool Mana);
@@ -328,7 +334,7 @@ public sealed record RuntimeItemActionCosts(IReadOnlyDictionary<string, (Runtime
     public const string Prime = "Prime";
     public const string Unprime = "Unprime";
 
-    private static readonly (RuntimeUseCost, RuntimeUseFlat) None = (new RuntimeUseCost(0, 0, 0, 0, 0, 0),
+    private static readonly (RuntimeUseCost, RuntimeUseFlat) None = (RuntimeUseCost.Zero,
         new RuntimeUseFlat(false, true, true, true, true, true));
 
     public static RuntimeItemActionCosts Default { get; } = new(new ReadOnlyDictionary<string, (RuntimeUseCost, RuntimeUseFlat)>(

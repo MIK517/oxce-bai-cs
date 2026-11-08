@@ -3,6 +3,7 @@ using Oxce.Gameplay.Battles.Terrain;
 using Oxce.Gameplay.Campaigns;
 using Xunit;
 using static Oxce.CompatibilityTests.BattleSightTests;
+using static Oxce.CompatibilityTests.BattleTestSupport;
 
 namespace Oxce.CompatibilityTests;
 
@@ -15,13 +16,6 @@ public sealed class BattleTurnKneelTests
 {
     private const string GunText = "- type: GUN\n    battleType: 1\n    compatibleAmmo: [CLIP]\n    weight: 1";
     private const string AlienStats = "stats: {tu: 50, firing: 61}";
-
-    private static string Replaced(string rules, string from, string to)
-    {
-        var result = rules.Replace(from, to, StringComparison.Ordinal);
-        Assert.NotEqual(rules, result);
-        return result;
-    }
 
     /// <summary>A flat arena with a turn cost of 2, snap shots of 20 and aimed shots of 50 percent, and an alien that reacts fast.</summary>
     private static Arena Make(Func<string, string>? edit = null, int distance = 5)
@@ -40,8 +34,6 @@ public sealed class BattleTurnKneelTests
     private static BattlePosition At(int x, int y) => new(x, y, 0);
 
     private static T Event<T>(CampaignCommandResult result) where T : ICampaignEvent => Assert.IsType<T>(Assert.Single(result.Events));
-
-    private static string Refusal(CampaignCommandResult result) => Assert.IsType<CampaignActionBlocked>(Assert.Single(result.Events)).Code;
 
     private static CampaignCommandResult Run(Arena arena, ICampaignCommand command) => arena.Campaign.Execute(command);
 

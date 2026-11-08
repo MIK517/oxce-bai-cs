@@ -2,6 +2,7 @@ using Oxce.Gameplay.Battles;
 using Oxce.Gameplay.Battles.Terrain;
 using Xunit;
 using static Oxce.CompatibilityTests.BattleSightTests;
+using static Oxce.CompatibilityTests.BattleTestSupport;
 
 namespace Oxce.CompatibilityTests;
 
@@ -13,13 +14,6 @@ namespace Oxce.CompatibilityTests;
 public sealed class BattleGravityTests
 {
     private const string GunText = "- type: GUN\n    battleType: 1\n    compatibleAmmo: [CLIP]\n    weight: 1";
-
-    private static string Replaced(string rules, string from, string to)
-    {
-        var result = rules.Replace(from, to, StringComparison.Ordinal);
-        Assert.NotEqual(rules, result);
-        return result;
-    }
 
     private static Arena Tall(bool walkingSoldier = false, string suitExtra = "", bool reactive = false, bool bigAlien = false, string grenadeEvents = "", bool proximityGrenade = false) =>
         Flat(bigAlien: bigAlien, edit: rules =>
@@ -50,16 +44,6 @@ public sealed class BattleGravityTests
 
     private static BattleItem Drop(Arena arena, string type, BattlePosition tile) =>
         arena.Battle.AddItemOnTile(new BattleItem(arena.Battle.TakeItemId(), type), tile);
-
-    private static BattleItem GunFor(Arena arena, BattleUnit unit)
-    {
-        var gun = new BattleItem(arena.Battle.TakeItemId(), "GUN") { OwnerUnitId = unit.Id, Slot = "STR_RIGHT_HAND", IsWeaponWithAmmo = true };
-        arena.Battle.AddItem(gun);
-        var clip = new BattleItem(arena.Battle.TakeItemId(), "CLIP") { AmmoQuantity = 5, IsAmmo = true };
-        arena.Battle.AddItem(clip);
-        gun.AmmoSlots[0] = clip.Id;
-        return gun;
-    }
 
     [Fact]
     public void AUnitWithoutAFloorFallsLevelByLevelToTheFloorBelow()
@@ -278,7 +262,7 @@ public sealed class BattleGravityTests
         var arena = Tall(walkingSoldier: true, reactive: true);
         Raise(arena, arena.Soldier, 10, 10, 2);
         arena.Battle.ApplyGravity(arena.Soldier.Position);
-        var gun = GunFor(arena, arena.Alien);
+        var gun = GunFor(arena.Battle, arena.Alien);
         var before = State(arena);
         Assert.Equal("battle.reaction-fire-unsupported", arena.Battle.FallsRefusal(arena.Rules)!.Code);
         Assert.Equal(before, State(arena));
@@ -288,7 +272,7 @@ public sealed class BattleGravityTests
         arena = Tall(walkingSoldier: true, reactive: true);
         Raise(arena, arena.Soldier, 10, 10, 2);
         arena.Battle.ApplyGravity(arena.Soldier.Position);
-        gun = GunFor(arena, arena.Alien);
+        gun = GunFor(arena.Battle, arena.Alien);
         // Without its gun, the alien sees the soldier land and has it among its visible units.
         arena.Battle.RemoveItem(gun);
         Assert.Null(arena.Battle.FallsRefusal(arena.Rules));
@@ -302,7 +286,7 @@ public sealed class BattleGravityTests
     {
         // checkReactionFire only reacts to the side on turn: the alien lands on the player's turn beside an armed soldier.
         var arena = Tall(walkingSoldier: true, reactive: true);
-        GunFor(arena, arena.Soldier);
+        GunFor(arena.Battle, arena.Soldier);
         Raise(arena, arena.Alien, 15, 10, 2);
         arena.Battle.ApplyGravity(arena.Alien.Position);
         Assert.Null(arena.Battle.FallsRefusal(arena.Rules));

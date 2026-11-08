@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 248 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 249 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 100 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 8 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 349 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 350 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 112 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -352,7 +352,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 248 files.
+`src/Oxce.Gameplay` - 249 files.
 
 ### `Oxce.Gameplay`
 
@@ -1344,12 +1344,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 349 files.
+`tests/Oxce.CompatibilityTests` - 350 files.
 
 ### `Oxce.CompatibilityTests`
 
 - `BattleAcceptanceDriver` (internal class) [BattleAcceptanceDriver.cs](../tests/Oxce.CompatibilityTests/BattleAcceptanceDriver.cs) - Phase 7 branch 4 S11: the scripted soldier of the acceptance battles.
 - `BattleSaveConformance` (internal class) [BattleSaveConformance.cs](../tests/Oxce.CompatibilityTests/BattleSaveConformance.cs) - The conformance reader (Phase 7 plan, branch 2 decisions): applies the reading rules of the reference's `SavedBattleGame::load` (`src/Sav...
+- `BattleTestSupport` (internal class) [BattleTestSupport.cs](../tests/Oxce.CompatibilityTests/BattleTestSupport.cs) - Helpers the battle movement tests share: rule text edits, command results, the walk's last event and a loaded gun.
 - `BattleTestTerrain` (internal class) [BattleTestTerrain.cs](../tests/Oxce.CompatibilityTests/BattleTestTerrain.cs) - Synthetic terrain files for battle tests: MCD records, MAP blocks and an in-memory file port.
 - `ContentStateDump` (internal class) [ContentStateDump.cs](../tests/Oxce.CompatibilityTests/ContentStateDump.cs) - Deterministic dump of every instance field reachable from an object graph.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
@@ -1884,6 +1885,11 @@ Prefer these over local copies (see AGENTS.md, *Test conventions*).
 
 - `BattleSaveConformance` (class) - The conformance reader (Phase 7 plan, branch 2 decisions): applies the reading rules of the reference's `SavedBattleGame::load` (`src/Sav...
 - members: `CheckSave`, `Check`
+
+### [tests/Oxce.CompatibilityTests/BattleTestSupport.cs](../tests/Oxce.CompatibilityTests/BattleTestSupport.cs)
+
+- `BattleTestSupport` (class) - Helpers the battle movement tests share: rule text edits, command results, the walk's last event and a loaded gun.
+- members: `Replaced`, `Refusal`, `Events`, `End`, `GunFor`
 
 ### [tests/Oxce.CompatibilityTests/BattleTestTerrain.cs](../tests/Oxce.CompatibilityTests/BattleTestTerrain.cs)
 

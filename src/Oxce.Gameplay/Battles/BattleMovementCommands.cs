@@ -145,7 +145,7 @@ internal sealed partial class BattleState
         if (other.Faction == BattleFaction.Neutral && !(mover.Faction == BattleFaction.Hostile && !IgnoredByAi(rules, mover))) return false;
         if (mover.Position is not { } at || other.Position is not { } from) return false;
         var maximum = rules.Campaign.MaximumViewDistance;
-        return (at.X - from.X) * (at.X - from.X) + (at.Y - from.Y) * (at.Y - from.Y) <= maximum * maximum;
+        return BattleGeometry.HorizontalDistanceSquared(at, from) <= maximum * maximum;
     }
 
     /// <summary><c>int threshold = unit->getReactionScore()</c>: the mover's score cut to an integer (a score that is not finite stays as it is).</summary>
@@ -180,8 +180,7 @@ internal sealed partial class BattleState
         var weapons = new List<BattleItem>();
         if (HandWeapon(unit, RightHand) is { } right) weapons.Add(right);
         if (HandWeapon(unit, LeftHand) is { } left) weapons.Add(left);
-        foreach (var id in unit.SpecialWeaponIds)
-            if (_items.FirstOrDefault(item => item.Id == id) is { } special) weapons.Add(special);
+        weapons.AddRange(SpecialWeapons(unit));
         foreach (var weapon in weapons)
         {
             var rule = ItemRuleOf(rules, weapon.ItemType);

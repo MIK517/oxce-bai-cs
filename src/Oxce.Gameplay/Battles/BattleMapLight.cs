@@ -77,6 +77,16 @@ internal sealed partial class BattleMap
     /// <summary>The tile at a position, or -1 outside the map (SavedBattleGame::getTile's null).</summary>
     public int TileAt(int x, int y, int z) =>
         (uint)x < (uint)Width && (uint)y < (uint)Length && (uint)z < (uint)Height ? x + y * Width + z * Width * Length : -1;
+
+    /// <summary>The tile beside a position in a compass direction (0-7), <paramref name="levelOffset"/> levels up or down, or -1 outside the map.</summary>
+    public int Neighbour(BattlePosition position, int direction, int levelOffset = 0)
+    {
+        var (dx, dy) = BattleGeometry.DirectionVector(direction);
+        return TileAt(position.X + dx, position.Y + dy, position.Z + levelOffset);
+    }
+
+    /// <summary>The whole map as a <see cref="BattleMapSubset"/>.</summary>
+    public BattleMapSubset Area => new(0, Width, 0, Length);
 }
 
 /// <summary>
@@ -97,6 +107,13 @@ internal readonly record struct BattleLightCache(uint BlockDirections, byte BigW
     private static readonly uint SmokeBit = SelectBit(+7, +1) << 2;
 
     public bool Blocks(int direction, int z) => (BlockDirections & SelectBit(direction, z)) != 0;
+
+    /// <summary>
+    /// The tile line's test of one step from this tile (<c>calculateLineTile</c> and the enhanced <c>addLight</c>): <see cref="Blocks"/>, except
+    /// that a big wall on the same level does not stop a line that ends on the tile behind it (<paramref name="endsAtTarget"/>).
+    /// </summary>
+    public bool BlocksStep(int direction, int z, bool endsAtTarget) =>
+        Blocks(direction, z) && !(z == 0 && direction >= 0 && IsBigWall(direction) && endsAtTarget);
     public bool BlocksUp => (BlockDirections & BlockUp) != 0;
     public bool BlocksDown => (BlockDirections & BlockDown) != 0;
     public bool HasFire => (BlockDirections & FireBit) != 0;

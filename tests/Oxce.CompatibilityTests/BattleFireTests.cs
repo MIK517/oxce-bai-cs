@@ -5,6 +5,7 @@ using Oxce.Gameplay.Campaigns;
 using Xunit;
 using static Oxce.CompatibilityTests.BattleMovementGroundworkTests;
 using static Oxce.CompatibilityTests.BattleSightTests;
+using static Oxce.CompatibilityTests.BattleTestSupport;
 
 namespace Oxce.CompatibilityTests;
 
@@ -16,13 +17,6 @@ namespace Oxce.CompatibilityTests;
 /// </summary>
 public sealed class BattleFireTests
 {
-    private static string Replaced(string rules, string from, string to)
-    {
-        var result = rules.Replace(from, to, StringComparison.Ordinal);
-        Assert.NotEqual(rules, result);
-        return result;
-    }
-
     private static Arena Make(string suitExtra = "", string alienExtra = "", int shade = 0, bool flying = false)
     {
         var arena = Flat(shade: shade, alienExtra: alienExtra, edit: rules =>
@@ -45,14 +39,6 @@ public sealed class BattleFireTests
     {
         for (var x = x0; x <= x1; x++)
             for (var y = y0; y <= y1; y++) arena.Put(x, y, z, BattleTilePart.Floor, id);
-    }
-
-    private static string Refusal(CampaignCommandResult result) => Assert.IsType<CampaignActionBlocked>(Assert.Single(result.Events)).Code;
-
-    private static IReadOnlyList<ICampaignEvent> Events(CampaignCommandResult result)
-    {
-        Assert.DoesNotContain(result.Events, static @event => @event is CampaignActionBlocked);
-        return result.Events;
     }
 
     private static CampaignReason? Hit(Arena arena, int x, int y, int z = 0, BattleUnit? attacker = null, int power = 30, BattleTileDamageType? type = null) =>

@@ -1,4 +1,5 @@
 using Oxce.Gameplay.Battles.Terrain;
+using static Oxce.Gameplay.Battles.BattleBigWalls;
 
 namespace Oxce.Gameplay.Battles;
 
@@ -20,20 +21,8 @@ internal enum BattleBlockType
 /// </summary>
 internal static class BattleBlockage
 {
-    /// <summary>Pathfinding::DIR_UP and DIR_DOWN.</summary>
-    public const int DirectionUp = 8;
-    public const int DirectionDown = 9;
-
-    // Pathfinding's big wall types.
-    private const int Block = 1;
-    private const int BigWallNesw = 2;
-    private const int BigWallNwse = 3;
-    private const int BigWallWest = 4;
-    private const int BigWallNorth = 5;
-    private const int BigWallEast = 6;
-    private const int BigWallSouth = 7;
-    private const int BigWallEastAndSouth = 8;
-    private const int BigWallWestAndNorth = 9;
+    private const int DirectionUp = BattleUnit.DirectionUp;
+    private const int DirectionDown = BattleUnit.DirectionDown;
 
     private const BattleTilePart West = BattleTilePart.WestWall;
     private const BattleTilePart North = BattleTilePart.NorthWall;
@@ -48,8 +37,8 @@ internal static class BattleBlockage
     };
 
     /// <summary>
-    /// TileEngine::blockage: the amount one part of a tile blocks. A direction other than -1 (0-7, <see cref="DirectionUp"/>,
-    /// <see cref="DirectionDown"/>) asks about the object part's big wall in that direction; 256 and more is a solid stop.
+    /// TileEngine::blockage: the amount one part of a tile blocks. A direction other than -1 (0-7, <see cref="BattleUnit.DirectionUp"/>,
+    /// <see cref="BattleUnit.DirectionDown"/>) asks about the object part's big wall in that direction; 256 and more is a solid stop.
     /// </summary>
     public static int Blockage(BattleMap map, int tile, BattleTilePart part, BattleBlockType type, int direction = -1, bool checkingFromOrigin = false)
     {
@@ -91,7 +80,7 @@ internal static class BattleBlockage
                         break;
                     case DirectionUp:
                     case DirectionDown:
-                        if (wall != 0 && wall != Block) check = false;
+                        if (wall != 0 && wall != BigWallBlock) check = false;
                         break;
                 }
             }
@@ -160,7 +149,7 @@ internal static class BattleBlockage
         var startPosition = map.PositionOf(start);
         var endPosition = map.PositionOf(end);
         if (startPosition.Z != endPosition.Z) return 0;
-        var direction = VectorToDirection(endPosition.X - startPosition.X, endPosition.Y - startPosition.Y);
+        var direction = BattleGeometry.VectorToDirection(endPosition.X - startPosition.X, endPosition.Y - startPosition.Y);
         if (direction == -1) return 0;
         int sx = startPosition.X, sy = startPosition.Y, sz = startPosition.Z;
         int North1() => map.TileAt(sx, sy - 1, sz);
@@ -274,18 +263,4 @@ internal static class BattleBlockage
 
     /// <summary>Tile::isBigWall: the object part is a big wall of any kind.</summary>
     public static bool IsBigWall(BattleMap map, int tile) => map.MapData(tile, Obj) is { BigWall: not 0 };
-
-    private static readonly int[] DirectionX = [0, 1, 1, 1, 0, -1, -1, -1];
-    private static readonly int[] DirectionY = [-1, -1, 0, 1, 1, 1, 0, -1];
-
-    /// <summary>Pathfinding::vectorToDirection of a horizontal vector (0 north, clockwise), or -1 for none.</summary>
-    public static int VectorToDirection(int x, int y)
-    {
-        for (var direction = 0; direction < 8; direction++)
-            if (DirectionX[direction] == x && DirectionY[direction] == y) return direction;
-        return -1;
-    }
-
-    /// <summary>Pathfinding::directionToVector for the eight compass directions.</summary>
-    public static (int X, int Y) DirectionVector(int direction) => (DirectionX[direction], DirectionY[direction]);
 }

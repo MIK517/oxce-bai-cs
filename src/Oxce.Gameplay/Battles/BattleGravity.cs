@@ -29,9 +29,12 @@ internal sealed partial class BattleState
     private const int DeathTraps = 200;
     private const int ProximityGrenadeBattleType = 5;
 
-    /// <summary>Whether a unit that does not fly has no floor under it (what the battlescape's constructor queues to fall).</summary>
-    internal bool HasFloorlessWalker() => _units.Any(static unit =>
-        unit.Position is not null && unit.HaveNoFloorBelow && !unit.IsOutThresholdExceeded && unit.MovementType != MovementTypeFly);
+    /// <summary>A unit on the map that does not fly, has no floor under it and is not out (what the battlescape's constructor queues to fall).</summary>
+    private static bool IsFloorlessWalker(BattleUnit unit) =>
+        unit.Position is not null && unit.HaveNoFloorBelow && !unit.IsOutThresholdExceeded && unit.MovementType != MovementTypeFly;
+
+    /// <summary>Whether a unit that does not fly has no floor under it (<see cref="IsFloorlessWalker"/>).</summary>
+    internal bool HasFloorlessWalker() => _units.Any(IsFloorlessWalker);
 
     /// <summary>Whether any unit could fall when the first turn starts: one is queued, or a unit that does not fly has no floor under it.</summary>
     internal bool MayFall() => _fallingUnits.Count != 0 || HasFloorlessWalker();
@@ -54,7 +57,7 @@ internal sealed partial class BattleState
     {
         if (at is not { } tile) return null;
         var index = Map.TileIndex(tile);
-        var occupant = Map.UnitAt(index) is { } id ? _units.Find(unit => unit.Id == id) : null;
+        var occupant = UnitOnTile(index);
         var items = ItemsOnTile(tile).ToArray();
         if (items.Length == 0 && occupant is null) return tile;
 
@@ -84,7 +87,7 @@ internal sealed partial class BattleState
         while (landing.Z > 0 && Map.HasNoFloor(landing)) landing = landing with { Z = landing.Z - 1 };
         foreach (var item in items)
         {
-            if (item.CorpseUnitId is { } corpse && _units.Find(unit => unit.Id == corpse) is { } body && body.Position == tile)
+            if (item.CorpseUnitId is { } corpse && UnitById(corpse) is { } body && body.Position == tile)
             {
                 // setPosition(rt) sets the last position too.
                 body.LastPosition = body.Position;
@@ -110,7 +113,7 @@ internal sealed partial class BattleState
             if (extra is not null)
             {
                 UpdateTileFloorState(extra);
-                if (extra.HaveNoFloorBelow && !extra.IsOutThresholdExceeded && extra.MovementType != MovementTypeFly) AddFallingUnit(extra);
+                if (IsFloorlessWalker(extra)) AddFallingUnit(extra);
             }
             return RunFalls(rules, dryRun: true);
         }
@@ -134,6 +137,21 @@ internal sealed partial class BattleState
         return refusal;
     }
 
+    /// <summary><see cref="ResolveFalls(RuntimeRuleCatalog)"/>, adding a <see cref="UnitFell"/> for each unit that ended elsewhere; <paramref name="moved"/> when any did.</summary>
+    internal CampaignReason? ResolveFalls(RuntimeRuleCatalog rules, List<ICampaignEvent> events, out bool moved)
+    {
+        var before = _units.Select(static unit => (unit, unit.Position)).ToArray();
+        var refusal = ResolveFalls(rules);
+        moved = false;
+        foreach (var (unit, was) in before)
+            if (unit.Position is { } now && was is { } from && now != from)
+            {
+                events.Add(new UnitFell(unit.Id, from, now));
+                moved = true;
+            }
+        return refusal;
+    }
+
     /// <summary>
     /// The queue a battle starting its first turn has: the battlescape's constructor (<c>checkForCasualties</c>, BattlescapeGame.cpp:194 and
     /// 1026-1030) queues every unit that does not fly and has no floor, before the briefing's spawns queue theirs; the list is runtime state a save
@@ -143,8 +161,7 @@ internal sealed partial class BattleState
     {
         _fallingUnits.Clear();
         foreach (var unit in _units)
-            if (unit.Position is not null && unit.HaveNoFloorBelow && !unit.IsOutThresholdExceeded && unit.MovementType != MovementTypeFly)
-                AddFallingUnit(unit);
+            if (IsFloorlessWalker(unit)) AddFallingUnit(unit);
     }
 
     private CampaignReason? RunFalls(RuntimeRuleCatalog rules, bool dryRun)
@@ -175,7 +192,7 @@ internal sealed partial class BattleState
                         for (var y = unit.ArmorSize - 1; y >= 0; y--)
                             tilesToFallInto.Add(Map.TileIndex(new BattlePosition(position.X + x, position.Y + y, position.Z - 1)));
                     foreach (var tile in tilesToFallInto)
-                        if (Map.UnitAt(tile) is { } belowId && _units.Find(candidate => candidate.Id == belowId) is { } below &&
+                        if (UnitOnTile(tile) is { } below &&
                             !_fallingUnits.Contains(below) && !unitsToMove.Contains(below))
                             unitsToMove.Add(below);
                     if (unit.Status == BattleUnitStatus.Standing) steps.Add((unit, BattleUnit.DirectionDown, position with { Z = position.Z - 1 }));
@@ -211,10 +228,10 @@ internal sealed partial class BattleState
     {
         var position = unitBelow.Position!.Value;
         var total = unitBelow.ArmorSize * unitBelow.ArmorSize;
-        ReadOnlySpan<(int X, int Y)> offsets = [(0, 0), (1, 0), (0, 1), (1, 1)];
+        var offsets = BattleGeometry.BigUnitOffsets;
         for (var direction = 0; direction < BattleUnit.DirectionUp; direction++)
         {
-            var (dx, dy) = BattleBlockage.DirectionVector(direction);
+            var (dx, dy) = BattleGeometry.DirectionVector(direction);
             if (!pathfinder.GetTuCost(position, direction, unitBelow, BattleActionMove.Normal).IsValid) continue;
             for (var section = 0; section < total;)
             {

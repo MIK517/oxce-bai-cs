@@ -19,6 +19,9 @@ internal sealed partial class BattleState
 
     internal BattleUnit? UnitById(int id) => _units.Find(unit => unit.Id == id);
 
+    /// <summary>Tile::getUnit: the unit standing on the tile (any tile of a big unit), or null.</summary>
+    internal BattleUnit? UnitOnTile(int tile) => Map.UnitAt(tile) is { } id ? UnitById(id) : null;
+
     /// <summary>BattleUnit::hasInventory: the unit's armor has an inventory.</summary>
     private static bool HasInventory(RuntimeRuleCatalog rules, BattleUnit unit) =>
         rules.Battle.Equipment.Armors.TryGetValue(unit.ArmorId, out var armor) && armor.HasInventory;

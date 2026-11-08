@@ -370,7 +370,7 @@ internal sealed partial class BattleState
     {
         Random = random;
         var equipment = new UnitEquipment(this, content.RuntimeRules, Seedless);
-        var selected = SelectedUnitId is { } id ? _units.Find(unit => unit.Id == id) : null;
+        var selected = SelectedUnitId is { } id ? UnitById(id) : null;
         var inventoryTile = selected is null ? null : TileOf(selected);
         if (inventoryTile is { } tile) RandomizeItemLocations(tile, random);
         ResetUnitTiles();
@@ -379,15 +379,22 @@ internal sealed partial class BattleState
             if (unit.OriginalFaction == BattleFaction.Player && !unit.IsOut) PrepareNewTurn(unit, equipment);
         Turn = 1;
         Phase = BattlePhase.InProgress;
-        // InventoryState's destructor, as the inventory closes: gravity on the selected unit's tile, flares dropped or picked up, then
-        // everyone's field of view. The falls the spawns and that gravity started run when the battlescape first thinks.
+        // The falls the spawns and the inventory's gravity started run when the battlescape first thinks.
         var rules = content.RuntimeRules;
         RequeueFallingUnits();
+        CloseInventory(rules);
+        return ResolveFalls(rules);
+    }
+
+    /// <summary>
+    /// InventoryState's destructor, as the inventory closes: gravity on the selected unit's tile, the items' light (a flare dropped or picked
+    /// up), then everyone's field of view. The falls that gravity queues are the caller's to resolve.
+    /// </summary>
+    internal void CloseInventory(RuntimeRuleCatalog rules)
+    {
         ApplyGravity(SelectedUnitId is { } chosen ? UnitById(chosen)?.Position : null);
         CalculateLighting(rules, BattleLightLayer.Items);
-        Sight().RecalculateFov();
-        Revision++;
-        return ResolveFalls(rules);
+        RecalculateFov();
     }
 
     /// <summary>

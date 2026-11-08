@@ -4,6 +4,7 @@ using Oxce.Mods.Rulesets.Runtime;
 using Xunit;
 using static Oxce.CompatibilityTests.BattleMovementGroundworkTests;
 using static Oxce.CompatibilityTests.BattleStartTests;
+using static Oxce.CompatibilityTests.BattleTestSupport;
 using static Oxce.CompatibilityTests.BattleTestTerrain;
 
 namespace Oxce.CompatibilityTests;
@@ -475,13 +476,6 @@ public sealed class BattlePathfindingTests
     }
 
     private const string SuitText = "- type: SUIT\n    movementType: 1";
-
-    private static string Replaced(string rules, string from, string to)
-    {
-        var result = rules.Replace(from, to, StringComparison.Ordinal);
-        Assert.NotEqual(rules, result);
-        return result;
-    }
 
     [Fact]
     public void ABigUnitMovesAsTheAverageOfItsFourTilesNeverThroughADoorAndNeverOntoOrOffAUnit()

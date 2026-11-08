@@ -156,7 +156,7 @@ internal sealed partial class BattleUnit
             _ => null,
         };
         // Any other action pays nothing, with the use flags as the default.
-        var (cost, flat) = key is null ? (new RuntimeUseCost(0, 0, 0, 0, 0, 0), costs.Of(RuntimeItemActionCosts.Use).Flat) : costs.Of(key);
+        var (cost, flat) = key is null ? (RuntimeUseCost.Zero, costs.Of(RuntimeItemActionCosts.Use).Flat) : costs.Of(key);
         return ApplyPercentages(cost, flat);
     }
 

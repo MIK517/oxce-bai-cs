@@ -26,8 +26,8 @@ internal enum BattleVoxelType
 /// </summary>
 internal sealed class BattleSight
 {
-    private const int TileXy = 16;
-    private const int TileZ = 24;
+    private const int TileXy = BattleGeometry.VoxelsPerTile;
+    private const int TileZ = BattleGeometry.VoxelsPerLevel;
 
     /// <summary>TileEngine::heightFromCenter.</summary>
     private static readonly int[] HeightFromCenter = [0, -2, +2, -4, +4, -6, +6, -8, +8, -10, +10, -12, +12];
@@ -65,21 +65,6 @@ internal sealed class BattleSight
 
     // ---- voxels ----
 
-    private static BattlePosition ToTile(BattlePosition voxel) => new(voxel.X / TileXy, voxel.Y / TileXy, voxel.Z / TileZ);
-
-    /// <summary>Tile::getOverlappingUnit: the unit on the tile, or the one below it whose top reaches into a tile with no floor.</summary>
-    internal BattleUnit? OverlappingUnit(int tile, int range = 24)
-    {
-        var standing = _map.UnitAt(tile) is { } id ? _battle.UnitById(id) : null;
-        if (standing is null && tile >= _map.Width * _map.Length && _map.HasNoFloor(tile) && _map.MapData(tile, BattleTilePart.ObjectPart) is null)
-        {
-            var below = _map.TileBelow(tile);
-            standing = _map.UnitAt(below) is { } belowId ? _battle.UnitById(belowId) : null;
-            if (standing is not null && standing.HeightOf(_rules) + standing.FloatHeightOf(_rules) - _map.TerrainLevel(below) <= range) standing = null;
-        }
-        return standing;
-    }
-
     /// <summary>TileEngine::voxelCheck: what a voxel holds, from the terrain's line of fire templates and the unit standing in it.</summary>
     public BattleVoxelType VoxelCheck(BattlePosition voxel, BattleUnit? excludeUnit, bool excludeAllUnits = false, bool onlyVisible = false,
         BattleUnit? excludeAllBut = null)
@@ -106,7 +91,7 @@ internal sealed class BattleSight
 
         if (!excludeAllUnits)
         {
-            var unit = OverlappingUnit(tile);
+            var unit = _battle.OverlappingUnit(_rules, tile);
             if (unit is not null && !unit.IsOut && unit != excludeUnit && (excludeAllBut is null || unit == excludeAllBut) &&
                 (!onlyVisible || unit.IsVisibleToPlayer(_rules)) && unit.Position is { } unitPosition)
             {
@@ -134,6 +119,10 @@ internal sealed class BattleSight
     }
 
     private static readonly int[] BigUnitParts = [1, 0, 3, 2];
+
+    // calculateTilesInFOV's quadrant signs of the view cone, by the unit's direction.
+    private static readonly int[] FovSignX = [+1, +1, +1, +1, -1, -1, -1, -1];
+    private static readonly int[] FovSignY = [-1, -1, -1, +1, +1, +1, -1, -1];
 
     /// <summary>
     /// TileEngine::calculateLineVoxel: the first voxel of the line from origin to target that holds something. The trajectory gets every
@@ -173,13 +162,8 @@ internal sealed class BattleSight
         {
             var point = new BattlePosition(tuple.X, tuple.Y, tuple.Z);
             trajectory.Add(point);
-            var directionX = point.X - last.X;
-            var directionY = point.Y - last.Y;
-            var differenceZ = point.Z - last.Z;
-            var direction = BattleBlockage.VectorToDirection(directionX, directionY);
-            var cache = _map.LightCache(_map.TileIndex(last));
-            var result = cache.Blocks(direction, differenceZ);
-            if (result && differenceZ == 0 && direction >= 0 && cache.IsBigWall(direction) && point == target) result = false;
+            var direction = BattleGeometry.VectorToDirection(point.X - last.X, point.Y - last.Y);
+            var result = _map.LightCache(_map.TileIndex(last)).BlocksStep(direction, point.Z - last.Z, point == target);
             last = point;
             return result;
         });
@@ -216,7 +200,7 @@ internal sealed class BattleSight
         BattleUnit? targetUnit;
         if (potentialUnit is null)
         {
-            targetUnit = _map.UnitAt(tile) is { } id ? _battle.UnitById(id) : null;
+            targetUnit = _battle.UnitOnTile(tile);
             if (targetUnit is null) return false; // no unit in this tile, even if it elevated and appearing in it.
         }
         else targetUnit = potentialUnit;
@@ -229,7 +213,7 @@ internal sealed class BattleSight
             if (excludeUnit.Faction != BattleFaction.Player) isPlayer = false;
             if (IsAiControlled(excludeUnit)) isUnderAiControl = true;
         }
-        var targetPosition = targetUnit.Position ?? throw new InvalidOperationException($"Battle unit {targetUnit.Id} is not on the map.");
+        var targetPosition = targetUnit.RequiredPosition;
         var targetVoxel = new BattlePosition(targetPosition.X * TileXy, targetPosition.Y * TileXy, targetPosition.Z * TileZ);
         var targetMinHeight = targetVoxel.Z - _map.TerrainLevel(tile) + targetUnit.FloatHeightOf(_rules);
         var heightRange = !targetUnit.IsOut ? targetUnit.HeightOf(_rules) : 12;
@@ -367,7 +351,7 @@ internal sealed class BattleSight
     /// <summary>TileEngine::getSightOriginVoxel: roughly the unit's eyeball, a voxel below its top.</summary>
     public BattlePosition SightOriginVoxel(BattleUnit unit)
     {
-        var position = unit.Position ?? throw new InvalidOperationException($"Battle unit {unit.Id} is not on the map.");
+        var position = unit.RequiredPosition;
         var tile = _map.TileIndex(position);
         var x = position.X * TileXy + 8;
         var y = position.Y * TileXy + 8;
@@ -392,7 +376,7 @@ internal sealed class BattleSight
     /// </summary>
     public BattlePosition SnapShotOriginVoxel(BattleUnit unit, BattlePosition target)
     {
-        var origin = unit.Position ?? throw new InvalidOperationException($"Battle unit {unit.Id} is not on the map.");
+        var origin = unit.RequiredPosition;
         var unitSize = unit.ArmorSize;
         const int weaponShift = 4; // the original weapon position shift from the top of the unit's head
         var tile = _map.TileIndex(origin);
@@ -413,36 +397,14 @@ internal sealed class BattleSight
                 z -= weaponShift;
             }
         }
-        int[] shiftX = [8, 14, 15, 15, 8, 1, 1, 1];
-        int[] shiftY = [1, 1, 8, 15, 15, 15, 8, 1];
-        var direction = DirectionTo(origin, target);
-        // The centre origin: the standard offset.
-        return new BattlePosition(x + shiftX[direction] * unitSize, y + shiftY[direction] * unitSize, z);
+        // TileEngine::getDirectionTo, then the centre origin: the standard offset.
+        var direction = BattleGeometry.DirectionTo(origin, target);
+        return new BattlePosition(x + SnapShiftX[direction] * unitSize, y + SnapShiftY[direction] * unitSize, z);
     }
 
-    /// <summary>TileEngine::getDirectionTo: the compass direction from a tile to another, by the angle in eighths.</summary>
-    internal static int DirectionTo(BattlePosition origin, BattlePosition target)
-    {
-        double ox = target.X - origin.X;
-        double oy = target.Y - origin.Y;
-        var angle = Math.Atan2(ox, -oy);
-        // Divide the pie in 4 angles each at 1/8th before each quarter.
-        double[] pie =
-        [
-            Math.PI / 4.0 * 4.0 - Math.PI / 4.0 / 2.0,
-            Math.PI / 4.0 * 3.0 - Math.PI / 4.0 / 2.0,
-            Math.PI / 4.0 * 2.0 - Math.PI / 4.0 / 2.0,
-            Math.PI / 4.0 * 1.0 - Math.PI / 4.0 / 2.0,
-        ];
-        if (angle > pie[0] || angle < -pie[0]) return 4;
-        if (angle > pie[1]) return 3;
-        if (angle > pie[2]) return 2;
-        if (angle > pie[3]) return 1;
-        if (angle < -pie[1]) return 5;
-        if (angle < -pie[2]) return 6;
-        if (angle < -pie[3]) return 7;
-        return 0;
-    }
+    /// <summary>getOriginVoxel's standard offsets of the weapon from the tile's corner, by the direction to the target.</summary>
+    private static readonly int[] SnapShiftX = [8, 14, 15, 15, 8, 1, 1, 1];
+    private static readonly int[] SnapShiftY = [1, 1, 8, 15, 15, 15, 8, 1];
 
     // ---- seeing ----
 
@@ -501,7 +463,7 @@ internal sealed class BattleSight
         var tile = -1;
         for (var index = 0; index < trajectory.Count; index++)
         {
-            var at = ToTile(trajectory[index]);
+            var at = BattleGeometry.TileOfVoxel(trajectory[index]);
             var step = TrajectoryStepSize(trajectory, index);
             if (tracked != at)
             {
@@ -529,12 +491,12 @@ internal sealed class BattleSight
     public bool Visible(BattleUnit current, int tile)
     {
         // If there is no tile or no unit, we can't see it.
-        if (tile < 0 || _map.UnitAt(tile) is not { } id || _battle.UnitById(id) is not { } target) return false;
+        if (tile < 0 || _battle.UnitOnTile(tile) is not { } target) return false;
         // Friendlies are always seen.
         if (current.Faction == target.Faction) return true;
-        var from = current.Position ?? throw new InvalidOperationException($"Battle unit {current.Id} is not on the map.");
+        var from = current.RequiredPosition;
         var to = _map.PositionOf(tile);
-        var distanceSq = (from.X - to.X) * (from.X - to.X) + (from.Y - to.Y) * (from.Y - to.Y);
+        var distanceSq = BattleGeometry.HorizontalDistanceSquared(from, to);
         // If beyond the global max. range, nobody can see anyone.
         if (distanceSq > _maxViewDistanceSq) return false;
 
@@ -576,7 +538,7 @@ internal sealed class BattleSight
     private bool SetupEventVisibilitySector(BattlePosition observer, BattlePosition eventPosition, int eventRadius)
     {
         if (eventRadius == 0 || eventPosition == Invalid ||
-            (observer.X - eventPosition.X) * (observer.X - eventPosition.X) + (observer.Y - eventPosition.Y) * (observer.Y - eventPosition.Y) <= eventRadius * eventRadius)
+            BattleGeometry.HorizontalDistanceSquared(observer, eventPosition) <= eventRadius * eventRadius)
         {
             _eventObserver = Invalid;
             return true;
@@ -625,7 +587,7 @@ internal sealed class BattleSight
             unit.ClearVisibleTiles(_map);
             return;
         }
-        var self = unit.Position ?? throw new InvalidOperationException($"Battle unit {unit.Id} is not on the map.");
+        var self = unit.RequiredPosition;
         var skipNarrowArcTest = false;
         if (SetupEventVisibilitySector(self, eventAt, eventRadius))
         {
@@ -635,12 +597,10 @@ internal sealed class BattleSight
         }
         // Only recalculate the lines to the tiles that are at the event or further away.
         var distanceSqrMin = skipNarrowArcTest ? 0
-            : Math.Max((self.X - eventAt.X) * (self.X - eventAt.X) + (self.Y - eventAt.Y) * (self.Y - eventAt.Y) - eventRadius * eventRadius, 0);
+            : Math.Max(BattleGeometry.HorizontalDistanceSquared(self, eventAt) - eventRadius * eventRadius, 0);
 
         // The tiles to test, by the view direction.
         var swap = direction is 0 or 4;
-        int[] signX = [+1, +1, +1, +1, -1, -1, -1, -1];
-        int[] signY = [-1, -1, -1, +1, +1, +1, -1, -1];
         if (unit.HeightOf(_rules) + unit.FloatHeightOf(_rules) + -_map.TerrainLevel(_map.TileIndex(self)) >= 24 + 4)
         {
             var above = _map.TileAt(self.X, self.Y, self.Z + 1);
@@ -666,7 +626,7 @@ internal sealed class BattleSight
             {
                 var distanceSqr = x * x + y * y;
                 if (distanceSqr > _maxViewDistanceSq || distanceSqr < distanceSqrMin) continue;
-                var test = new BattlePosition(self.X + signX[direction] * (swap ? y : x), self.Y + signY[direction] * (swap ? x : y), 0);
+                var test = new BattlePosition(self.X + FovSignX[direction] * (swap ? y : x), self.Y + FovSignY[direction] * (swap ? x : y), 0);
                 // Only continue if the column of tiles at (x, y) is within the narrow arc of interest.
                 if (!InEventVisibilitySector(test)) continue;
                 for (var z = 0; z < _map.Height; z++)
@@ -712,7 +672,7 @@ internal sealed class BattleSight
         var eventAt = eventPosition ?? Invalid;
         var oldCount = unit.UnitsSpottedThisTurn.Count;
         if (unit.IsOut) return false;
-        var self = unit.Position ?? throw new InvalidOperationException($"Battle unit {unit.Id} is not on the map.");
+        var self = unit.RequiredPosition;
         if (SetupEventVisibilitySector(self, eventAt, eventRadius))
         {
             // Asked to do a full check, or the event overlaps our tile: better check everything.
@@ -821,7 +781,7 @@ internal sealed class BattleSight
         {
             if (unit.Position is not { } at) continue;
             // Could this unit have observed the event?
-            if ((position.X - at.X) * (position.X - at.X) + (position.Y - at.Y) * (position.Y - at.Y) > updateRadius) continue;
+            if (BattleGeometry.HorizontalDistanceSquared(position, at) > updateRadius) continue;
             if (updateTiles)
             {
                 if (!appendToTileVisibility) unit.ClearVisibleTiles(_map);

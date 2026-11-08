@@ -1,6 +1,21 @@
 using Oxce.Gameplay.Battles.Terrain;
+using static Oxce.Gameplay.Battles.BattleBigWalls;
 
 namespace Oxce.Gameplay.Battles;
+
+/// <summary>Pathfinding's big wall types (<c>BIGWALL_*</c>): an object part's <see cref="BattleMapData.BigWall"/>.</summary>
+internal static class BattleBigWalls
+{
+    public const int BigWallBlock = 1;
+    public const int BigWallNesw = 2;
+    public const int BigWallNwse = 3;
+    public const int BigWallWest = 4;
+    public const int BigWallNorth = 5;
+    public const int BigWallEast = 6;
+    public const int BigWallSouth = 7;
+    public const int BigWallEastAndSouth = 8;
+    public const int BigWallWestAndNorth = 9;
+}
 
 /// <summary>
 /// The wall checks of <c>Pathfinding::isBlockedDirection</c> and <c>isBlocked</c> for a unit moving normally (no missile):
@@ -12,16 +27,6 @@ internal static class BattlePathing
 {
     /// <summary>Pathfinding::INVALID_MOVE_COST.</summary>
     public const int InvalidMoveCost = 255;
-
-    // Pathfinding's big wall types.
-    private const int BigWallNesw = 2;
-    private const int BigWallNwse = 3;
-    private const int BigWallWest = 4;
-    private const int BigWallNorth = 5;
-    private const int BigWallEast = 6;
-    private const int BigWallSouth = 7;
-    private const int BigWallEastAndSouth = 8;
-    private const int BigWallWestAndNorth = 9;
 
     private enum Part { WestWall, NorthWall, BigWall }
 

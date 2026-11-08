@@ -22,6 +22,24 @@ internal sealed partial class BattleState
     /// <summary>The sight of this battle, for one operation.</summary>
     internal BattleSight Sight() => new(this);
 
+    /// <summary>TUO_IGNORE_SMALL: a unit below whose top pokes less than 2 voxels into the tile is not "in the way".</summary>
+    internal const int OverlapIgnoreSmall = 26;
+
+    /// <summary>
+    /// Tile::getOverlappingUnit: the unit on the tile, or, when the tile has no floor and no object, the unit below whose top stands more than
+    /// <paramref name="range"/> voxels above the base of its own tile (24, the default, is any voxel in this tile; see <see cref="OverlapIgnoreSmall"/>).
+    /// </summary>
+    internal BattleUnit? OverlappingUnit(RuntimeRuleCatalog rules, int tile, int range = 24)
+    {
+        var standing = UnitOnTile(tile);
+        if (standing is null && Map.TileBelow(tile) is var below and >= 0 && Map.HasNoFloor(tile) && Map.MapData(tile, BattleTilePart.ObjectPart) is null)
+        {
+            standing = UnitOnTile(below);
+            if (standing is not null && standing.HeightOf(rules) + standing.FloatHeightOf(rules) - Map.TerrainLevel(below) <= range) standing = null;
+        }
+        return standing;
+    }
+
     /// <summary>TileEngine::recalculateFOV: every unit with a tile sees again, tiles and units.</summary>
     internal void RecalculateFov()
     {
@@ -79,7 +97,7 @@ internal sealed partial class BattleUnit
     /// </summary>
     public bool CheckViewSector(BattlePosition position)
     {
-        var self = Position ?? throw new InvalidOperationException($"Battle unit {Id} is not on the map.");
+        var self = RequiredPosition;
         for (var x = 0; x < ArmorSize; ++x)
             for (var y = 0; y < ArmorSize; ++y)
             {

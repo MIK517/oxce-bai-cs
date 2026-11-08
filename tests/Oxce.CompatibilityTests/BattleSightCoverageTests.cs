@@ -60,9 +60,9 @@ public sealed class BattleSightCoverageTests
         Assert.Equal(BattleVoxelType.Empty, sight.VoxelCheck(voxel, null));
         // The 30 voxel soldier pokes 6 voxels into the open tile above, which holds its pillar there.
         Assert.Equal(BattleVoxelType.Unit, sight.VoxelCheck(new BattlePosition(168, 168, 26), null));
-        Assert.Equal(arena.Soldier, sight.OverlappingUnit(arena.Tile(10, 10, 1)));
+        Assert.Equal(arena.Soldier, arena.Battle.OverlappingUnit(arena.Rules, arena.Tile(10, 10, 1)));
         var short22 = Flat();
-        Assert.Null(short22.Battle.Sight().OverlappingUnit(short22.Tile(10, 10, 1)));
+        Assert.Null(short22.Battle.OverlappingUnit(short22.Rules, short22.Tile(10, 10, 1)));
     }
 
     [Fact]

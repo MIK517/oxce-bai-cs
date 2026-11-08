@@ -3,6 +3,7 @@ using Oxce.Gameplay.Battles.Terrain;
 using Oxce.Gameplay.Campaigns;
 using Xunit;
 using static Oxce.CompatibilityTests.BattleSightTests;
+using static Oxce.CompatibilityTests.BattleTestSupport;
 
 namespace Oxce.CompatibilityTests;
 
@@ -22,8 +23,6 @@ public sealed class BattleDoorTests
 
     private static UnitTurned TurnEast(Arena arena) =>
         Assert.IsType<UnitTurned>(Assert.Single(arena.Campaign.Execute(new TurnUnit(arena.Soldier.Id, At(15, 10))).Events));
-
-    private static string Refusal(CampaignCommandResult result) => Assert.IsType<CampaignActionBlocked>(Assert.Single(result.Events)).Code;
 
     private static int UfoCost(BattleUnit unit) => unit.MovementType switch { 0 => 6, 1 => 10, _ => 8 };
 

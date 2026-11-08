@@ -5,6 +5,7 @@ using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Rulesets.Runtime;
 using Xunit;
 using static Oxce.CompatibilityTests.BattleStartTests;
+using static Oxce.CompatibilityTests.BattleTestSupport;
 using static Oxce.CompatibilityTests.BattleTestTerrain;
 
 namespace Oxce.CompatibilityTests;
@@ -27,13 +28,6 @@ public sealed class BattleMovementGroundworkTests
     private static string WithGun(string extra) => Replaced(Rules, GunText, GunText + "\n    " + extra);
 
     private static string WithSuit(string extra) => Replaced(Rules, SuitText, SuitText + "\n    " + extra);
-
-    private static string Replaced(string rules, string from, string to)
-    {
-        var result = rules.Replace(from, to, StringComparison.Ordinal);
-        Assert.NotEqual(rules, result);
-        return result;
-    }
 
     internal static (CampaignState Campaign, BattleState Battle, BattleUnit Soldier, RuntimeRuleCatalog Rules) Open(string? rules = null,
         Action<Dictionary<string, byte[]>>? terrain = null, string ufo = "UFO_SUITED")

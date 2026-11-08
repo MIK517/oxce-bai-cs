@@ -127,18 +127,23 @@ internal sealed partial class BattleState
         {
             if (original.IsGravLift) return false;
             objective = original.SpecialType == objectiveType;
+            var dead = DestroyedForm(tile, part, original);
             Map.SetPart(tile, part, -1, -1);
-            if (original.DieMcd != 0 && (uint)original.DieMcd < (uint)Map.DataSets[set].Objects.Count)
-            {
-                var dead = Map.DataSets[set].Objects[original.DieMcd];
-                Map.SetPart(tile, dead.ObjectType, original.DieMcd, set);
-            }
+            if (dead is not null) Map.SetPart(tile, dead.ObjectType, original.DieMcd, set);
             if (original.Explosive != 0) Map.SetExplosive(tile, original.Explosive, original.ExplosiveType);
         }
         if (part == BattleTilePart.Floor && Map.PositionOf(tile).Z == 0 && Map.MapData(tile, BattleTilePart.Floor) is null &&
             Map.DataSets.Count != 0 && Map.DataSets[0].Objects.Count > 1)
             Map.SetPart(tile, BattleTilePart.Floor, 1, 0);
         return objective;
+    }
+
+    /// <summary>The part's destroyed form (<c>dieMCD</c>, of the part's data set), or null for none or one past the data set's end (ADR 0040).</summary>
+    private BattleMapData? DestroyedForm(int tile, BattleTilePart part, BattleMapData data)
+    {
+        if (data.DieMcd == 0) return null;
+        var objects = Map.DataSets[Map.Part(tile, part).Set].Objects;
+        return (uint)data.DieMcd < (uint)objects.Count ? objects[data.DieMcd] : null;
     }
 
     /// <summary>Tile::damage: a part whose armor the power reaches is destroyed. Returns whether that destroyed the objective.</summary>
@@ -201,7 +206,7 @@ internal sealed partial class BattleState
     {
         ArgumentNullException.ThrowIfNull(rules);
         ArgumentNullException.ThrowIfNull(type);
-        var tilePosition = new BattlePosition(voxel.X / 16, voxel.Y / 16, voxel.Z / 24);
+        var tilePosition = BattleGeometry.TileOfVoxel(voxel);
         if (!Contains(tilePosition) || power <= 0) return null;
         var tile = Map.TileIndex(tilePosition);
         var sight = Sight();
@@ -234,7 +239,7 @@ internal sealed partial class BattleState
         }
         else if (part == BattleVoxelType.Unit)
         {
-            if (sight.OverlappingUnit(tile) is { Health: > 0 }) return BattleFireReasons.HitUnitUnsupported;
+            if (OverlappingUnit(rules, tile) is { Health: > 0 }) return BattleFireReasons.HitUnitUnsupported;
             if (dryRun) return null;
         }
         else if (dryRun)
@@ -302,12 +307,8 @@ internal sealed partial class BattleState
             {
                 var target = part == BattleTilePart.Floor ? floor : Map.MapData(tile, part);
                 if (target is { IsGravLift: false, Explosive: not 0 }) return BattleFireReasons.TerrainExplosionUnsupported;
-                if (part == BattleTilePart.ObjectPart && target is { DieMcd: not 0 } original)
-                {
-                    var set = Map.Part(tile, part).Set;
-                    if ((uint)original.DieMcd < (uint)Map.DataSets[set].Objects.Count && Map.DataSets[set].Objects[original.DieMcd] is { ObjectType: BattleTilePart.Floor } dead)
-                        floor = dead;
-                }
+                if (part == BattleTilePart.ObjectPart && target is not null && DestroyedForm(tile, part, target) is { ObjectType: BattleTilePart.Floor } dead)
+                    floor = dead;
             }
         }
         return null;
@@ -361,8 +362,7 @@ internal sealed partial class BattleState
                 // propagate in four cardinal directions (0, 2, 4, 6)
                 for (var direction = 0; direction <= 6; direction += 2)
                 {
-                    var (dx, dy) = BattleBlockage.DirectionVector(direction);
-                    var next = Map.TileAt(position.X + dx, position.Y + dy, position.Z);
+                    var next = Map.Neighbour(position, direction);
                     // if there's no wall blocking the path of the flames, attempt to set this tile on fire
                     if (next >= 0 && BattleBlockage.HorizontalBlockage(Map, tile, next, BattleBlockType.Damage) == 0) Ignite(next, Map.Smoke(tile));
                 }
@@ -392,8 +392,7 @@ internal sealed partial class BattleState
                 // spread in four cardinal directions as long as there are no walls blocking us
                 for (var direction = 0; direction <= 6; direction += 2)
                 {
-                    var (dx, dy) = BattleBlockage.DirectionVector(direction);
-                    var next = Map.TileAt(position.X + dx, position.Y + dy, position.Z);
+                    var next = Map.Neighbour(position, direction);
                     if (next < 0 || BattleBlockage.HorizontalBlockage(Map, tile, next, BattleBlockType.Smoke) != 0) continue;
                     // only add smoke to empty tiles, or tiles with no fire, and smoke that was added this turn
                     if (Map.Smoke(next) == 0 || Map.Fire(next) == 0 && Map.Overlaps(next) != 0) AddSmoke(next, Map.Smoke(tile));
@@ -407,8 +406,7 @@ internal sealed partial class BattleState
                 // then it spreads in the four cardinal directions.
                 for (var direction = 0; direction <= 6; direction += 2)
                 {
-                    var (dx, dy) = BattleBlockage.DirectionVector(direction);
-                    var next = Map.TileAt(position.X + dx, position.Y + dy, position.Z);
+                    var next = Map.Neighbour(position, direction);
                     if (next >= 0 && BattleBlockage.HorizontalBlockage(Map, tile, next, BattleBlockType.Smoke) == 0) AddSmoke(next, Map.Smoke(tile) / 2);
                 }
             }

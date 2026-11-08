@@ -63,18 +63,10 @@ internal sealed class BattlePathfinder
     private const int Up = BattleUnit.DirectionUp;
     private const int Down = BattleUnit.DirectionDown;
 
-    /// <summary>Pathfinding::dir_x, dir_y and dir_z: the vectors of the ten directions (the eight compass ones, up and down).</summary>
-    private static readonly int[] DirX = [0, 1, 1, 1, 0, -1, -1, -1, 0, 0];
-    private static readonly int[] DirY = [-1, -1, 0, 1, 1, 1, 0, -1, 0, 0];
-    private static readonly int[] DirZ = [0, 0, 0, 0, 0, 0, 0, 0, 1, -1];
-
     // The order the reference looks for the ladder: the object, the north wall, the west wall.
     private static readonly BattleTilePart[] LadderParts = [BattleTilePart.ObjectPart, BattleTilePart.NorthWall, BattleTilePart.WestWall];
 
     private static readonly PathfindingStep Invalid = new(new PathfindingCost(InvalidMoveCost, 0), default, default);
-
-    // The part offsets of a 2x2 unit's tiles.
-    private static readonly (int X, int Y)[] Offsets = [(0, 0), (1, 0), (0, 1), (1, 1)];
 
     private struct Node
     {
@@ -162,7 +154,7 @@ internal sealed class BattlePathfinder
     /// foot goes up for a player's unit, an object of terrain level -24 or a hole is walked past, as the reference does.
     /// </summary>
     public IReadOnlyList<int> Calculate(BattleUnit unit, BattlePosition endPosition, BattleActionMove bam, int maxTimeUnitCost = 1000) =>
-        Calculate(unit, unit.Position ?? throw new InvalidOperationException($"Battle unit {unit.Id} is not on the map."), endPosition, bam, maxTimeUnitCost);
+        Calculate(unit, unit.RequiredPosition, endPosition, bam, maxTimeUnitCost);
 
     /// <summary>Pathfinding::calculate from another start position.</summary>
     public IReadOnlyList<int> Calculate(BattleUnit unit, BattlePosition startPosition, BattlePosition endPosition, BattleActionMove bam,
@@ -210,7 +202,7 @@ internal sealed class BattlePathfinder
             Math.Abs(startPosition.X - endPosition.X) <= 1 && Math.Abs(startPosition.Y - endPosition.Y) <= 1;
         if (StrafeMove)
         {
-            var direction = VectorToDirection(endPosition.X - startPosition.X, endPosition.Y - startPosition.Y);
+            var direction = BattleGeometry.VectorToDirection(endPosition.X - startPosition.X, endPosition.Y - startPosition.Y);
             if (direction == -1 || Math.Min(Math.Abs(8 + direction - unit.Direction),
                     Math.Min(Math.Abs(unit.Direction - direction), Math.Abs(8 + unit.Direction - direction))) > 2)
                 StrafeMove = false; // Strafing backwards-ish is unsupported.
@@ -228,13 +220,6 @@ internal sealed class BattlePathfinder
         return Path;
     }
 
-    private static int VectorToDirection(int x, int y)
-    {
-        for (var direction = 0; direction < 8; direction++)
-            if (DirX[direction] == x && DirY[direction] == y) return direction;
-        return -1;
-    }
-
     private static void CheckSize(BattleUnit unit)
     {
         if (unit.ArmorSize is < 1 or > 2)
@@ -246,8 +231,7 @@ internal sealed class BattlePathfinder
     private bool AStarPath(BattlePosition startPosition, BattlePosition endPosition, BattleActionMove bam, bool sneak, int maxTimeUnitCost)
     {
         var unit = _unit!;
-        foreach (ref var node in _nodes.AsSpan()) node.Checked = false;
-        foreach (ref var node in _nodes.AsSpan()) node.OpenEntry = 0;
+        ResetNodes(_nodes);
         var start = _map.TileIndex(startPosition);
         Connect(_nodes, start, default, -1, 0, endPosition);
         var open = new OpenSet(_nodes);
@@ -282,6 +266,16 @@ internal sealed class BattlePathfinder
             }
         }
         return false;
+    }
+
+    /// <summary>Every node unchecked and out of the open set, before a search.</summary>
+    private static void ResetNodes(Node[] nodes)
+    {
+        foreach (ref var node in nodes.AsSpan())
+        {
+            node.Checked = false;
+            node.OpenEntry = 0;
+        }
     }
 
     /// <summary>PathfindingNode::connect with a target: the guess is four time units a tile of distance, set once.</summary>
@@ -392,7 +386,7 @@ internal sealed class BattlePathfinder
         ArgumentNullException.ThrowIfNull(unit);
         if (direction is < 0 or > Down) throw new ArgumentOutOfRangeException(nameof(direction));
         CheckSize(unit);
-        var pos = Add(startPosition, DirX[direction], DirY[direction], DirZ[direction]);
+        var pos = BattleGeometry.Step(startPosition, direction);
 
         var movementType = MovementTypeOf(unit, bam);
         var fly = movementType == BattleState.MovementTypeFly;
@@ -417,8 +411,9 @@ internal sealed class BattlePathfinder
 
         for (var i = 0; i < numberOfParts; i++)
         {
-            var st = Tile(Add(startPosition, Offsets[i].X, Offsets[i].Y, 0));
-            var dt = Tile(Add(pos, Offsets[i].X, Offsets[i].Y, 0));
+            var (offsetX, offsetY) = BattleGeometry.BigUnitOffsets[i];
+            var st = Tile(Add(startPosition, offsetX, offsetY, 0));
+            var dt = Tile(Add(pos, offsetX, offsetY, 0));
             if (st < 0 || dt < 0) return Invalid;
             startTile[i] = st;
             aboveStart[i] = _map.TileAbove(st);
@@ -428,32 +423,26 @@ internal sealed class BattlePathfinder
             belowDestination[i] = _map.TileBelow(dt);
         }
 
+        // check if we can go this way: no wall in the way and not more than 8 voxels down
+        bool CannotStep(int from, int to) => IsBlockedDirection(unit, from, direction, bam) || _map.TerrainLevel(from) - _map.TerrainLevel(to) > 8;
+
         // check move up or down
         for (var i = 0; i < numberOfParts; i++)
         {
             var maskCurrentPart = 1 << i;
             var checkClimbing = i == 0 && numberOfParts == 1 && !fly;
 
-            if (direction < Up && _map.TerrainLevel(startTile[i]) > -16)
-            {
-                // check if we can go this way
-                if (IsBlockedDirection(unit, startTile[i], direction, bam)) return Invalid;
-                if (_map.TerrainLevel(startTile[i]) - _map.TerrainLevel(destinationTile[i]) > 8) return Invalid;
-            }
+            if (direction < Up && _map.TerrainLevel(startTile[i]) > -16 && CannotStep(startTile[i], destinationTile[i])) return Invalid;
 
             // if we are on a stairs try to go up a level
             if (direction < Up && _map.TerrainLevel(startTile[i]) <= -16 && aboveDestination[i] >= 0 && !_map.HasNoFloor(aboveDestination[i]))
                 maskOfPartsGoingUp |= maskCurrentPart;
             else if (direction < Up && !fly && belowDestination[i] >= 0 && CanFallDown(destinationTile[i]) && _map.TerrainLevel(belowDestination[i]) <= -12)
                 maskOfPartsGoingDown |= maskCurrentPart;
-            else if (fly && OverlappingUnit(destinationTile[i]) is { } overlapping)
+            else if (fly && _battle.OverlappingUnit(_rules, destinationTile[i], BattleState.OverlapIgnoreSmall) is { } overlapping)
             {
                 // 2 or more voxels poking into this tile = no go
-                var knowsOfOverlapping = false;
-                if (unit.Faction == BattleFaction.Player && overlapping.IsVisibleToPlayer(_rules)) knowsOfOverlapping = true; // the player knows all visible units
-                if (unit.Faction == overlapping.Faction && !IgnoreFriends) knowsOfOverlapping = true;
-                if (unit.Faction != BattleFaction.Player && unit.UnitsSpottedThisTurn.Contains(overlapping.Id)) knowsOfOverlapping = true;
-                if (overlapping != unit && knowsOfOverlapping) return Invalid;
+                if (overlapping != unit && KnowsOf(unit, overlapping, friends: !IgnoreFriends)) return Invalid;
             }
 
             if (aboveStart[i] >= 0 && _map.HasNoFloor(aboveStart[i])) maskOfPartsHoleUp |= maskCurrentPart;
@@ -512,9 +501,7 @@ internal sealed class BattlePathfinder
             var sameLevel = Z(destinationTile[i]) == Z(startTile[i]);
             if (direction < Up && sameLevel)
             {
-                // check if we can go this way
-                if (IsBlockedDirection(unit, startTile[i], direction, bam)) return Invalid;
-                if (_map.TerrainLevel(startTile[i]) - _map.TerrainLevel(destinationTile[i]) > 8) return Invalid;
+                if (CannotStep(startTile[i], destinationTile[i])) return Invalid;
             }
             else if (direction >= Up && !triedStairsDown)
             {
@@ -542,54 +529,25 @@ internal sealed class BattlePathfinder
             {
                 startTile[i] = _map.TileAbove(startTile[i]);
                 if (startTile[i] < 0) return Invalid;
-                if (direction < Up)
-                {
-                    // check if we can go this way
-                    if (IsBlockedDirection(unit, startTile[i], direction, bam)) return Invalid;
-                    if (_map.TerrainLevel(startTile[i]) - _map.TerrainLevel(destinationTile[i]) > 8) return Invalid;
-                }
+                if (direction < Up && CannotStep(startTile[i], destinationTile[i])) return Invalid;
             }
 
             // Walking through rubble walls: the average of the walls in the way, but not for doors diagonally (impossible, so if it can
             // be walked past diagonally there is no wall).
             var wallCounter = 0;
             var wallcost = 0;
-            if ((direction == 0 || direction == 7 || direction == 1) && !_map.HasLadderOn(startTile[i], BattleTilePart.NorthWall))
+            void AddWall(int tile, BattleTilePart wall)
             {
-                var wallTmp = _map.TimeUnitCost(startTile[i], BattleTilePart.NorthWall, movementType);
-                if (wallTmp > 0)
-                {
-                    wallcost += wallTmp;
-                    wallCounter++;
-                }
+                if (_map.HasLadderOn(tile, wall)) return;
+                var wallTmp = _map.TimeUnitCost(tile, wall, movementType);
+                if (wallTmp <= 0) return;
+                wallcost += wallTmp;
+                wallCounter++;
             }
-            if (!triedStairsDown && (direction == 2 || direction == 1 || direction == 3) && !_map.HasLadderOn(destinationTile[i], BattleTilePart.WestWall))
-            {
-                var wallTmp = _map.TimeUnitCost(destinationTile[i], BattleTilePart.WestWall, movementType);
-                if (wallTmp > 0)
-                {
-                    wallcost += wallTmp;
-                    wallCounter++;
-                }
-            }
-            if (!triedStairsDown && (direction == 4 || direction == 3 || direction == 5) && !_map.HasLadderOn(destinationTile[i], BattleTilePart.NorthWall))
-            {
-                var wallTmp = _map.TimeUnitCost(destinationTile[i], BattleTilePart.NorthWall, movementType);
-                if (wallTmp > 0)
-                {
-                    wallcost += wallTmp;
-                    wallCounter++;
-                }
-            }
-            if ((direction == 6 || direction == 5 || direction == 7) && !_map.HasLadderOn(startTile[i], BattleTilePart.WestWall))
-            {
-                var wallTmp = _map.TimeUnitCost(startTile[i], BattleTilePart.WestWall, movementType);
-                if (wallTmp > 0)
-                {
-                    wallcost += wallTmp;
-                    wallCounter++;
-                }
-            }
+            if (direction is 0 or 7 or 1) AddWall(startTile[i], BattleTilePart.NorthWall);
+            if (!triedStairsDown && direction is 2 or 1 or 3) AddWall(destinationTile[i], BattleTilePart.WestWall);
+            if (!triedStairsDown && direction is 4 or 3 or 5) AddWall(destinationTile[i], BattleTilePart.NorthWall);
+            if (direction is 6 or 5 or 7) AddWall(startTile[i], BattleTilePart.WestWall);
 
             // "average" cost
             if (wallCounter > 0) wallcost /= wallCounter;
@@ -721,13 +679,10 @@ internal sealed class BattlePathfinder
         var movementType = MovementTypeOf(unit, bam);
         if (part == BattleTilePart.Floor)
         {
-            if (_map.UnitAt(tile) is { } standing && !IgnoreFriends)
+            if (!IgnoreFriends && _battle.UnitOnTile(tile) is { } standing)
             {
-                var other = _battle.UnitById(standing)!;
-                if (other == unit || other.IsOut) return false;
-                if (unit.Faction == BattleFaction.Player && other.IsVisibleToPlayer(_rules)) return true; // the player knows all visible units
-                if (unit.Faction == other.Faction) return true;
-                if (unit.Faction != BattleFaction.Player && unit.UnitsSpottedThisTurn.Contains(other.Id)) return true;
+                if (standing == unit || standing.IsOut) return false;
+                if (KnowsOf(unit, standing, friends: true)) return true;
             }
             else if (_map.HasNoFloorOnly(tile) && movementType != BattleState.MovementTypeFly)
             {
@@ -750,25 +705,13 @@ internal sealed class BattlePathfinder
         return _map.TimeUnitCost(tile, part, movementType) == InvalidMoveCost; // blocking part
     }
 
-    /// <summary>Tile::getOverlappingUnit with <c>TUO_IGNORE_SMALL</c> (26): the unit on the tile, else one below whose voxels poke into it.</summary>
-    private BattleUnit? OverlappingUnit(int tile)
-    {
-        const int ignoreSmall = 26;
-        var id = _map.UnitAt(tile);
-        if (id is null && tile >= _layer && _map.HasNoFloor(tile) && _map.MapData(tile, BattleTilePart.ObjectPart) is null)
-        {
-            var below = tile - _layer;
-            id = _map.UnitAt(below);
-            if (id is { } belowId)
-            {
-                var other = _battle.UnitById(belowId)!;
-                var heights = BattleState.HeightsOf(_rules, other);
-                // if the unit below has no voxels poking into the tile, don't select it.
-                if ((other.Kneeled ? heights.Kneel : heights.Stand) + heights.Floating - _map.TerrainLevel(below) <= ignoreSmall) id = null;
-            }
-        }
-        return id is { } found ? _battle.UnitById(found) : null;
-    }
+    /// <summary>
+    /// Whether the mover knows of the other unit in its way: the player knows all visible units, a hostile or neutral mover the units it spotted
+    /// this turn, and any mover the units of its own side when <paramref name="friends"/> counts them.
+    /// </summary>
+    private bool KnowsOf(BattleUnit unit, BattleUnit other, bool friends) =>
+        unit.Faction == BattleFaction.Player && other.IsVisibleToPlayer(_rules) || friends && unit.Faction == other.Faction ||
+        unit.Faction != BattleFaction.Player && unit.UnitsSpottedThisTurn.Contains(other.Id);
 
     /// <summary>Pathfinding::canFallDown: a unit can fall from a tile that is above the ground level and has no floor.</summary>
     private bool CanFallDown(int tile) => tile >= _layer && _map.HasNoFloor(tile);
@@ -796,29 +739,15 @@ internal sealed class BattlePathfinder
         bool Exists(int x, int y) => Tile(Add(endPosition, x, y, 0)) >= 0;
         bool StartAt(int x, int y) => startPosition == Add(endPosition, x, y, 0);
 
-        // The upper part of the stairs to the south (-16), the lower part (-8) one further; the start on one of the three tiles.
-        if (Exists(0, 1) && Level(0, 1) == -16)
-        {
-            if (Exists(0, 2) && Level(0, 2) != -8) return false;
-            if (StartAt(0, 1) || StartAt(0, 2) || StartAt(0, 3)) return true;
-        }
-        // The same for the east-west oriented stairs.
-        if (Exists(1, 0) && Level(1, 0) == -16)
-        {
-            if (Exists(2, 0) && Level(2, 0) != -8) return false;
-            if (StartAt(1, 0) || StartAt(2, 0) || StartAt(3, 0)) return true;
-        }
-        // TFTD's stairs: -18 then -12.
-        if (Exists(0, 1) && Level(0, 1) == -18)
-        {
-            if (Exists(0, 2) && Level(0, 2) != -12) return false;
-            if (StartAt(0, 1) || StartAt(0, 2) || StartAt(0, 3)) return true;
-        }
-        if (Exists(1, 0) && Level(1, 0) == -18)
-        {
-            if (Exists(2, 0) && Level(2, 0) != -12) return false;
-            if (StartAt(1, 0) || StartAt(2, 0) || StartAt(3, 0)) return true;
-        }
+        // The upper part of the stairs to the south (-16), the lower part (-8) one further, the start on one of the three tiles; then the
+        // east-west oriented stairs; then TFTD's stairs (-18, then -12) the same two ways.
+        foreach (var (upper, lower) in (ReadOnlySpan<(int, int)>)[(-16, -8), (-18, -12)])
+            foreach (var (dx, dy) in (ReadOnlySpan<(int, int)>)[(0, 1), (1, 0)])
+            {
+                if (!Exists(dx, dy) || Level(dx, dy) != upper) continue;
+                if (Exists(2 * dx, 2 * dy) && Level(2 * dx, 2 * dy) != lower) return false;
+                if (StartAt(dx, dy) || StartAt(2 * dx, 2 * dy) || StartAt(3 * dx, 3 * dy)) return true;
+            }
         return false;
     }
 
@@ -830,7 +759,7 @@ internal sealed class BattlePathfinder
 
     private bool ValidateUpDown(BattleUnit unit, int startTile, int direction)
     {
-        var endPosition = Add(_map.PositionOf(startTile), DirX[direction], DirY[direction], DirZ[direction]);
+        var endPosition = BattleGeometry.Step(_map.PositionOf(startTile), direction);
         var destination = Tile(endPosition);
         if (destination < 0) return false;
         if (_map.HasGravLiftFloor(startTile) && _map.HasGravLiftFloor(destination)) return true;
@@ -847,8 +776,6 @@ internal sealed class BattlePathfinder
     private bool BresenhamPath(BattlePosition origin, BattlePosition target, BattleActionMove bam, bool sneak)
     {
         var unit = _unit!;
-        int[] xd = [0, 1, 1, 1, 0, -1, -1, -1];
-        int[] yd = [-1, -1, 0, 1, 1, 1, 0, -1];
         var lastPoint = origin;
         var lastTuCost = -1;
         _totalCost = default;
@@ -896,10 +823,8 @@ internal sealed class BattlePathfinder
             {
                 var realNextPoint = new BattlePosition(cx, cy, cz);
                 // get the direction
-                int dir;
-                for (dir = 0; dir < 8; dir++)
-                    if (xd[dir] == cx - lastPoint.X && yd[dir] == cy - lastPoint.Y) break;
-                if (dir == 8) dir = cz - lastPoint.Z > 0 ? Up : Down;
+                var dir = BattleGeometry.VectorToDirection(cx - lastPoint.X, cy - lastPoint.Y);
+                if (dir == -1) dir = cz - lastPoint.Z > 0 ? Up : Down;
                 var r = GetTuCost(lastPoint, dir, unit, bam);
                 var nextPoint = r.Position;
                 var tuCost = r.Cost.Time + r.Penalty.Time;
@@ -967,7 +892,7 @@ internal sealed class BattlePathfinder
         CheckSize(unit);
         _unit = unit;
         var ranOutOfTimeUnits = false;
-        var start = alternateStart ?? unit.Position ?? throw new InvalidOperationException($"Battle unit {unit.Id} is not on the map.");
+        var start = alternateStart ?? unit.RequiredPosition;
         var tuMax = unit.TimeUnits - cost.Time;
         var energyMax = unit.Energy - cost.Energy;
         if (useMaxTimeUnits)
@@ -979,8 +904,7 @@ internal sealed class BattlePathfinder
 
         var nodes = _nodes;
         if (alternateStart is not null) nodes = _altNodes ??= new Node[_map.TileCount];
-        foreach (ref var node in nodes.AsSpan()) node.Checked = false;
-        foreach (ref var node in nodes.AsSpan()) node.OpenEntry = 0;
+        ResetNodes(nodes);
         var startTile = Tile(start);
         if (startTile < 0) throw new InvalidOperationException($"The start {start} is outside the map.");
         Connect(nodes, startTile, default, -1, 0);

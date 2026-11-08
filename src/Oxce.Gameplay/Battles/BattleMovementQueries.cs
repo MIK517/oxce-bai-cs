@@ -37,10 +37,11 @@ internal sealed partial class BattleState
         if (ViewersUnitOnTurn(viewer, unitId) is not { } unit || !Contains(target) || !ViewerKnowsTile(viewer, Map.TileIndex(target))) return null;
         BattlePathView None(string code) => new(unit.Id, target, move, [], 0, 0, code);
         var armor = ArmorOf(rules, unit);
-        if (!armor.AllowsMoving) return None(BattleMovementReasons.WalkNotAllowed.Code);
-        if (!Enum.IsDefined(move) || !MoveTypeAllowed(armor, unit, move)) return None(BattleMovementReasons.WalkMoveNotAllowed.Code);
+        if (MoveRefusal(armor, unit, move) is { } notAllowed) return None(notAllowed.Code);
 
-        var path = new BattlePathfinder(this, rules).Calculate(unit, target, (BattleActionMove)move);
+        // refreshPath prices the steps on the pathfinder that calculated them: a one-step strafe (StrafeMove) costs one more.
+        var pathfinder = new BattlePathfinder(this, rules);
+        var path = pathfinder.Calculate(unit, target, (BattleActionMove)move);
         if (path.Count == 0) return None(BattleMovementReasons.WalkNoPath.Code);
 
         var timeUnits = unit.TimeUnits;
@@ -61,9 +62,8 @@ internal sealed partial class BattleState
         }
         // The preview checks the reserve as if an auto shot were reserved when nothing is.
         int? reserved = TimeUnitsReserved == (int)BattleActionType.None ? (int)BattleActionType.AutoShot : null;
-        var pathfinder = new BattlePathfinder(this, rules);
         var steps = new List<BattlePathStepView>(path.Count);
-        var position = unit.Position!.Value;
+        var position = unit.RequiredPosition;
         foreach (var direction in path)
         {
             var step = pathfinder.GetTuCost(position, direction, unit, (BattleActionMove)move);

@@ -128,7 +128,7 @@ internal sealed class AlienDeployment
         // The first unit's position; a base defense's dummy that could not stand on the first tile is off the map here,
         // where the reference's unit keeps its default position (0, 0, 0) without a tile.
         var craft = _battle.Units[0].Position ?? default;
-        if (Distance2d(spawned, craft) <= 20 && RandomChance.Percent(_random, odds)) direction = DirectionTo(unit.Position!.Value, craft);
+        if (Distance2d(spawned, craft) <= 20 && RandomChance.Percent(_random, odds)) direction = BattleGeometry.DirectionTo(unit.Position!.Value, craft);
         unit.SetDirection(direction != -1 ? direction : _random.NextInclusive(0, 7));
         _battle.AddUnit(unit);
         return unit;
@@ -147,25 +147,5 @@ internal sealed class AlienDeployment
     }
 
     /// <summary>Position::distance2d: the rounded-up horizontal distance.</summary>
-    private static int Distance2d(BattlePosition from, BattlePosition to)
-    {
-        var dx = from.X - to.X;
-        var dy = from.Y - to.Y;
-        return (int)Math.Ceiling(Math.Sqrt(dx * dx + dy * dy));
-    }
-
-    /// <summary>BattleUnit::directionTo: the eighth of the circle the point lies in, 0 north and clockwise.</summary>
-    private static int DirectionTo(BattlePosition from, BattlePosition point)
-    {
-        var angle = Math.Atan2(point.X - from.X, -(double)(point.Y - from.Y));
-        ReadOnlySpan<double> pie = [Math.PI - Math.PI / 8, Math.PI * 3 / 4 - Math.PI / 8, Math.PI / 2 - Math.PI / 8, Math.PI / 4 - Math.PI / 8];
-        if (angle > pie[0] || angle < -pie[0]) return 4;
-        if (angle > pie[1]) return 3;
-        if (angle > pie[2]) return 2;
-        if (angle > pie[3]) return 1;
-        if (angle < -pie[1]) return 5;
-        if (angle < -pie[2]) return 6;
-        if (angle < -pie[3]) return 7;
-        return 0;
-    }
+    private static int Distance2d(BattlePosition from, BattlePosition to) => (int)Math.Ceiling(Math.Sqrt(BattleGeometry.HorizontalDistanceSquared(from, to)));
 }
