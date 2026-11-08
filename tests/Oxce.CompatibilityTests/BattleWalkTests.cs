@@ -322,6 +322,24 @@ public sealed class BattleWalkTests
         Assert.Equal(state, State(walled));
     }
 
+    /// <summary>
+    /// Phase 7 branch 4 S11: a save can hold a unit mid-panic (status 8); the port's walk steps standing units only (the panic and berserk
+    /// walks are branch 6's), so the command is refused before it starts instead of looping, and nothing changes.
+    /// </summary>
+    [Fact]
+    public void AUnitThatIsNotStandingIsRefusedTheWalkAndTheUpAndDownMove()
+    {
+        foreach (var status in new[] { BattleUnitStatus.Panicking, BattleUnitStatus.Berserk, BattleUnitStatus.Walking, BattleUnitStatus.Turning })
+        {
+            var arena = Make();
+            arena.Soldier.Status = status;
+            var state = State(arena);
+            Assert.Equal("battle.walk-unit-busy-unsupported", Refusal(arena.Campaign.Execute(new WalkUnit(arena.Soldier.Id, At(12, 10)))));
+            Assert.Equal("battle.walk-unit-busy-unsupported", Refusal(arena.Campaign.Execute(new MoveUnitUpDown(arena.Soldier.Id, true))));
+            Assert.Equal(state, State(arena));
+        }
+    }
+
     [Fact]
     public void AUnitInTheWayThatTheWalkerDoesNotKnowOfRefusesTheWalkAndAKnownOneIsWalkedAround()
     {

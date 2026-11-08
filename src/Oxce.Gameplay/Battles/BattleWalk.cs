@@ -45,6 +45,9 @@ internal sealed partial class BattleState
         if (SelectionUnit(unitId, out var found) is { } closed) return closed;
         var unit = found!;
         if (unit.Position is null) return BattleSelectionReasons.UnitUnknown;
+        // UnitWalkBState steps a unit that is standing, panicking or berserk; the last two are the AI's and the panic's (branch 6), and a walk that
+        // never reaches its end must not start.
+        if (unit.Status != BattleUnitStatus.Standing) return BattleMovementReasons.WalkUnitBusy;
         if (!Contains(target)) return BattleMovementReasons.WalkTargetOutside;
         var armor = ArmorOf(rules, unit);
         if (!armor.AllowsMoving) return BattleMovementReasons.WalkNotAllowed;
@@ -70,6 +73,7 @@ internal sealed partial class BattleState
         if (SelectionUnit(unitId, out var found) is { } closed) return closed;
         var unit = found!;
         if (unit.Position is not { } position) return BattleSelectionReasons.UnitUnknown;
+        if (unit.Status != BattleUnitStatus.Standing) return BattleMovementReasons.WalkUnitBusy;
         var pathfinder = new BattlePathfinder(this, rules);
         if (!pathfinder.ValidateUpDown(unit, position, up ? BattleUnit.DirectionUp : BattleUnit.DirectionDown)) return BattleMovementReasons.UpDownImpossible;
         var target = position with { Z = position.Z + (up ? 1 : -1) };

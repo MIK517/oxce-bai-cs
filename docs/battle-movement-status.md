@@ -21,7 +21,7 @@ Phase 7 branch 4 (`claude/battle-movement`), from `main` after PR #80 (branch 3 
 | S8 walking and flying | Done, awaiting audit (2026-11-07) |
 | S9 fire, smoke and terrain destruction | Done, awaiting audit (2026-11-07) |
 | S10 battlescape client | Done, awaiting audit (2026-11-07) |
-| S11 acceptance | Planned |
+| S11 acceptance | Done, awaiting audit (2026-11-08) |
 | Branch audit | Planned |
 
 ## S0 — Planning (2026-11-01)
@@ -288,7 +288,7 @@ setters, `getSpotterDuration`, the sight values the constructors set), `Tile.cpp
   that has spotted it.
 - **Refused.** `battle.visibility-script-unsupported` (branch 8): an armor in the battle with a `visibilityUnit` script, or a global event
   of that name, refuses the briefing's confirmation, the first turn and, for a battle in progress, every battle command (the gate in
-  `CampaignBattles`). A load accepts such a battle (its recalculation runs without the script). The private corpus's Rosigma mod binds
+  `CampaignBattles`). A load accepts such a battle but skips its field of view recalculation (`BattleStatePersistence`: the saved spotting and discovery stay). The private corpus's Rosigma mod binds
   one, so its battles stop at the briefing until branch 8. `battle.line-of-fire-data-invalid` as above.
 - **Not ported.** The turret direction (`strafe`), `battleRealisticAccuracy`, `oxceEnableOffCentreShooting` and `aiCheatMode` are at their
   defaults (off), so `getSightOriginVoxel`'s off-centre form, `getOriginVoxel`'s realistic form and the cheating view sector are absent;
@@ -594,25 +594,48 @@ Reference: `BattlescapeState` (`mapClick`, `btnKneelClick`, `btnUnitUpClick`, `b
   later buttons stay refused while the walking keys are no later buttons. `BattleScreensTests` and `BattleViewTests` were adjusted (a tile click walks, the movement actions are listed, the shaded floor).
   Not tested: a mouse click on the panel's second row of visible buttons, a kneeling unit's preview after the kneel key (the query is tested with a kneeling unit), the hostile viewer's screens (no client of another side yet).
 
+## S11 — Acceptance (2026-11-08)
+
+Reference: the whole movement stack; no new rules except one refusal (below).
+
+- **Generated battles** (`PrivateBattleGenerationTests`, through `AssertPlaysOrIsRefusedAtTheBriefing`). Each of the six battles that start (UFO `Begining` farm, TFTD `Begining` island, `IronMode` and `Middle`, the two staged base
+  defenses; the three Rosigma battles stay refused at the briefing by `battle.new-turn-script-unsupported`) now, after the first turn, is played by `BattleAcceptanceDriver` through the client's `BattleViewModel`
+  (the commands the screen sends): a soldier walks to the farthest tile its reachable-tile query lists whose previewed path leaves 28 time units, turns and kneels and stands, and a soldier opens a door where the map has
+  one it can reach (it walks to a tile beside the door and turns towards it until the right click opens it). A UFO door opened on all six maps (on the UFO farm, port, UFO base defense and drill base only once the opponents were spent, see below), and the test asserts it for each. The soldier turns, kneels and stands on all six (asserted). **Leaving the craft is only partly shown:** the reachable tiles are the viewer's discovered ones, so on the TFTD island and sunken-escort maps the soldier inside the Triton has one reachable tile and its 'computed path' is one step (24,16,0 to 23,16,0, beside the Triton's door); the other four maps walk 3 to 5 steps from the craft's tile. The driver does not check that the unit ends outside the craft (the craft's tiles are not in the battle's view). The battle still validates, and every viewer still sees only its own side's discoveries and
+  spotted units. The battle then saves and reloads: every viewer's discovered tiles with their parts, shade, smoke, fire, items and visible units equal the live battle's on every level
+  (`BattleAcceptanceDriver.AssertSameSight`), and the units each viewer sees are the live ones and possibly more (the load's field of view looks from every unit at once).
+- **Walk and reaction fire.** On every battle the soldier's walk, tried as it is, is refused with `battle.reaction-fire-unsupported` (branch 5's name): `HasPossibleReactor` over-approximates (plan D4) and an opposing
+  unit with a weapon and a reaction score at least the mover's stands within the view distance on each of these maps (first turn, nothing spotted). The driver then walks with the opposing units' time units set to 0
+  (their reaction score is 0, so the rules accept the walk) and gives them back; `Outcome.OpponentsSpent` says which. This is the acceptance's one setup; branch 5 replaces it with real reaction fire. The same
+  applies to the door step. A reloaded battle may therefore show a viewer a unit it had not seen (the walker spotted by hostile units whose reaction was 0): the reload comparisons accept more, not fewer.
+- **Private active-battle saves** (`PrivateBattleSaveTests.AssertFreeUnitWalks`, on its own load of each of the eight saves; placement is not re-validated, a saved battle keeps its units where they were): the loaded
+  battle has discovered, shaded tiles for the local player and a player unit on the map, and the driver must return an outcome: a walk, turn, kneel and stand, or a named `battle.*-unsupported` refusal (own-rule refusals fail the test).
+  Results (`artifacts/private-battle-acceptance-walks.json`): the vanilla UFO `battlescape.sav` and `battlescape 2.sav` and TFTD `battlescape 1.sav` walk (TFTD's also opens a UFO door); TFTD `battlescape 2.sav` is refused
+  with `battle.reaction-fire-unsupported` even with the opponents spent; vanilla UFO `_autobattle_.asav` is refused with `battle.walk-unit-busy-unsupported` (its first soldier is held mid-panic); the **three Rosigma saves are
+  refused with `battle.visibility-script-unsupported` (branch 8)**: the mod binds a `visibilityUnit` script, so the gate in `CampaignBattles` refuses every battle command, `SelectUnit` included, and the driver reports that
+  refused selection as the outcome. Their queries (path, reachable, level) still answer, and are timed. Because of the same refusal the load skips `RecalculateFov` for them (`BattleStatePersistence`): a loaded
+  Rosigma battle has its lighting computed (`CalculateLighting`) but keeps its saved spotting and discovery, so "lighting and field of view computed on load" holds for the other five saves only.
+- **Found by acceptance, fixed.** A save can hold a unit mid-panic (status 8, which `OxceBattleSave` already reports as a warning): `WalkUnit` on it threw "The walk of battle unit 7 does not end" (the port's `RunWalk`
+  steps `Standing` units only; the reference's `UnitWalkBState` also steps panicking and berserk ones, which are the panic's and the AI's walks, branch 6). `Walk` and `MoveUpDown` now refuse any unit whose status is not
+  `Standing` with the new `battle.walk-unit-busy-unsupported` (branch 6) before anything changes. Test: `AUnitThatIsNotStandingIsRefusedTheWalkAndTheUpAndDownMove`.
+- **Performance.** `BattleAcceptanceDriver.Measure` records medians of `QueryPath` (to the farthest reachable tile with a visible path), `QueryReachable`, a whole `RecalculateFov` and `QueryLevel` in
+  `artifacts/private-battle-acceptance-timings.json`; the table is in [Performance baselines](performance-baselines.md#battle-movement-queries-and-field-of-view-branch-4-s11-2026-11-08). The path and reachable queries
+  allocate a pathfinder on each call (S10's note); they stay well under a frame except `QueryReachable` on the vanilla UFO `_autobattle_` save (12 ms) and the full field of view on 60x60x8 maps (about 1 s in Debug, once, at a load; on Rosigma the load does not run it, see the perf table's note).
+- **Tests.** `PrivateBattleGenerationTests` (the six played battles, the reload comparison, the other viewers), `PrivateBattleSaveTests` (the saves), and the walk-status refusal in `BattleWalkTests`. Not tested: a walk of
+  the Rosigma battles (refused at the briefing), and the hostile viewer's own walk (no client of another side).
+
 ## Next
 
-S11 — acceptance (plan row S11 and the plan's "Acceptance" paragraph): on each acceptance battle of branch 1 that starts (the three Rosigma battles stay refused at the briefing by branch 8's
-`battle.new-turn-script-unsupported`), after the first turn a soldier leaves the craft along a computed path (`WalkUnit` through `BattleViewModel.Walk` or the command), turns, kneels and stands, and opens a
-door where the map has one; field of view and spotting are as the rules say, the battle saves and reloads with equal lighting, field of view and spotting and still validates. Each private active-battle save
-loads with its lighting and field of view computed and a free player unit walks (or the walk is refused by a named reason of a later branch). A viewer of another faction sees only that faction's discoveries and
-spotted units (`QueryLevel`, `QueryPath` and `QueryReachable` take the viewer). Pathfinding and field-of-view costs on the largest acceptance map are recorded in the performance baselines. Notes for its worker:
+Only the branch audit remains (`git diff main...HEAD`, per `AGENTS.md`). Notes for its worker:
 
-- **What S10 added that acceptance uses.** `IBattleViewQuery.QueryPath(viewer, unitId, target, move)` and `QueryReachable(viewer, unitId)`; `BattleViewModel.Walk(x, y, ignoreSpottedEnemies)`, `Turn`, `Kneel`,
-  `MoveUpDown`, `Preview` and `LastEvents`; `BattlescapeClient`'s replay (`Replay`, `ReplayPlayed`, `Tick`); `BattleClientMovementTests.Client(arena)` (with `Key`, `ClickTile`, `Over`, `Tick`, `Play` and `Pixel`, all internal) builds a context, opens the battlescape, selects the
-  arena's soldier and sets the camera's level 0 (tile pixels: `screen.TileSize`, the click and pointer helpers in that file). The path query allocates a `BattlePathfinder` (a node per tile) on each call and
-  `LegalActions` creates one for each up and down check: the model asks again only when the revision, the camera's level or the preview changes, but a performance baseline should measure them.
-- **Reserve in the preview.** `KneelReserved` is on by default in these arenas, so a step that leaves less than the kneel's 4 time units reserved shows yellow (the reference's `justChecking` rule); tests that want
-  green near the limit set `arena.Battle.KneelReserved = false`. The soldier's gun costs percentages of the soldier's 60 time units (`tuSnap: 20` is 12).
-- **Discovery depends on facing.** A soldier facing east discovers a half-plane ahead: a tile due south of it is not discovered, so a path query towards it is null. Tests use targets ahead of the unit.
+- **What S11 added.** `tests/Oxce.CompatibilityTests/BattleAcceptanceDriver.cs` (`Walk`, `OpenDoor`, `Measure`, `Record`, `AssertSameSight`); the refusal `battle.walk-unit-busy-unsupported`; the acceptance records
+  `artifacts/private-battle-acceptance-walks.json` and `artifacts/private-battle-acceptance-timings.json` (not committed, like the other artifacts).
+- **Acceptance setup to retire in branch 5.** The driver sets the opposing units' time units to 0 so the walk is not refused by `battle.reaction-fire-unsupported` (S11 above); remove `WithOpponentsSpent` when real reaction fire exists. The subset comparisons of the reloads (`AssertSameSight`, the units in `PrivateBattleGenerationTests`) likely stay: a walk's
+  field of view is limited to the event sector around the unit (`calculateFOV(pos, 2, false)`), while a load's `recalculateFOV` looks from every unit, so the load can spot more than the live battle whatever the time units.
 - **Left for later branches (unchanged).** `itemDrop` (branch 5), the stomp's knock-out and `checkForCasualties` (branch 6), the hit's unit part and explosions (branch 5), the environment's damage to units,
   `calculateEnviDamage` and the end of turn's light and sight (branch 6); `canUseWeapon`'s research, AI use delay, depth and two-handed rules, `getWeaponForReactions`' preferred hand and
-  `reactionsDisabled*` (branch 5, with the real reaction); `BattleUnit.HitState` is never set (damage is branch 5's) and no selection resets it (`resetUnitHitStates`); the AI's walk parts (S8's "Not ported")
-  and `checkForReactivation` (branch 6). `SpreadFireAndSmoke` and `CloseUfoDoors` are routines for branch 6's end of turn, called by nothing yet.
+  `reactionsDisabled*` (branch 5, with the real reaction); `BattleUnit.HitState` is never set and no selection resets it (`resetUnitHitStates`); the AI's walk parts (S8's "Not ported"), the panic and berserk
+  walks (`battle.walk-unit-busy-unsupported`) and `checkForReactivation` (branch 6). `SpreadFireAndSmoke` and `CloseUfoDoors` are routines for branch 6's end of turn, called by nothing yet.
 - **S9's notes still apply.** Commands that can meet fire refuse with `battle.hit-unit-unsupported` or `battle.terrain-explosion-unsupported` (branch 5) before any change; the walk commands run on a trial copy first
   (`CampaignBattles.TrialRefusal`, not available without terrain files).
 - **Gotchas.** A post-edit hook reformats edited C# files, so read a file again before a second edit. A backslash-n written through a script or heredoc reaches a C# file as a real newline: add string literals that
@@ -620,8 +643,5 @@ spotted units (`QueryLevel`, `QueryPath` and `QueryReachable` take the viewer). 
   armor key for the special ability is `specab`; an armor's run, strafe and walk costs are `moveCost: {runPercent: [time, energy]}`. A test that adds `BattleUnit`s by hand needs a `SoldierId` or a unit rule, and a
   battle with such a unit cannot be restored for the trial copies. `BattleState.Revision` has no setter: a test that wants the client to read again announces a change through a command (a `SelectUnit` of the unit
   already selected). The reload comparisons go through `BattleSaveUnitTests.SightFree`.
-- Gotchas carried from branch 3 (see `docs/battle-session-ui-status.md` "## Next"): write test files with LF; the test runner is Microsoft
-  Testing Platform (`dotnet test --project <proj> --filter-class <full name>`); battle test helpers (`BattleStartTests.Requested`,
-  `Started`, `Battle`, `BattleSaveRootTests.Generated`, `BattleSaveUnitTests.Loaded`) are internal for reuse;
-  `BattleCampaignSaveTests.AtFirstTurn` is private; a campaign snapshot with a battle restores only with terrain files; raw string
-  literals in test rules have their indentation stripped (list entries start at two spaces).
+  Gotchas carried from branch 3 (see `docs/battle-session-ui-status.md` "## Next"): write test files with LF; the test runner is Microsoft Testing Platform (`dotnet test --project <proj> --filter-class <full name>`);
+  battle test helpers are internal for reuse; raw string literals in test rules have their indentation stripped.

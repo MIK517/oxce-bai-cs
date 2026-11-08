@@ -71,6 +71,7 @@ public sealed class PrivateBattleSaveTests
         // S5: the campaign's load restores the same battle (its deployment from the UFO in the battlescape), which the
         // campaign may save (past its first turn), and its rewrite holds the battle as the module writes it.
         var held = BattleStartTests.Battle(loaded.Campaign);
+        AssertFreeUnitWalks(path, content, options);
         // Phase 7 branch 3 S7: the loaded battle opens directly in the battlescape, which draws and ticks for the local player,
         // and no viewer of another side sees a unit its side did not spot.
         var context = PrivateBattleGenerationTests.Context(loaded.Campaign, BattleViewer.LocalPlayer);
@@ -119,6 +120,35 @@ public sealed class PrivateBattleSaveTests
         var reread = (YamlMappingNode)YamlCompatibilityReader.Parse(text, name, ReadOptions).Documents[0].Root;
         var again = OxceBattleSave.Write(BattleState.Restore(OxceBattleSave.Read(reread, content), content, terrain, ufo, campaign).Capture(), reread);
         Assert.Equal(text, Emit(again));
+    }
+
+    /// <summary>
+    /// Phase 7 branch 4 S11: the loaded battle has its lighting and field of view computed (the player sees discovered, shaded tiles and
+    /// its own units' sight) and, when it is the player's turn, a free player unit walks along a computed path (or the walk is refused
+    /// by a named reason of a later branch). Runs on its own load, so the comparisons of <see cref="Verify"/> see the battle as saved.
+    /// </summary>
+    private static void AssertFreeUnitWalks(string path, RuntimeContent content, OxceSaveLoadOptions options)
+    {
+        var name = Path.GetFileName(path);
+        var campaign = OxceSaveAdapter.LoadFile(path, content, new SplitMix64RandomSource(1), options).Campaign;
+        var battle = BattleStartTests.Battle(campaign);
+        var context = PrivateBattleGenerationTests.Context(campaign, BattleViewer.LocalPlayer);
+        Assert.True(context.Open());
+        var screen = Assert.IsType<BattlescapeClient>(context.Screens.Top);
+        var view = campaign.GetQuery<IBattleViewQuery>()!;
+        var discovered = Enumerable.Range(0, battle.Height).Sum(level => view.QueryLevel(BattleViewer.LocalPlayer, level)!.Tiles.Count);
+        Assert.True(discovered > 0, $"{name}: no tile is discovered after the load.");
+        Assert.Contains(battle.Units, static unit => unit.Faction == BattleFaction.Player && unit.Position is not null);
+        var label = $"{Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(path)))}/{name}";
+        BattleAcceptanceDriver.Measure(label, campaign, battle);
+        if (battle.Side != BattleFaction.Player || battle.Phase != BattlePhase.InProgress) return;
+        var outcome = BattleAcceptanceDriver.Walk(screen, battle);
+        // A battle whose armors bind a visibility script refuses even the selection (branch 8): the refusal is named, not silent.
+        Assert.NotNull(outcome);
+        Assert.True(outcome!.Refusal is not null || outcome.Steps > 0, name);
+        BattleAcceptanceDriver.Record(label, outcome, BattleAcceptanceDriver.OpenDoor(screen, battle));
+        // Placement is the generator's rule; a saved battle keeps its units where they were.
+        battle.Validate(placement: false);
     }
 
     // BattleUnit::save writes turnsSinceSpotted, turnsLeftSpottedForSnipers and turnsSinceStunned twice, the first two

@@ -740,3 +740,33 @@ month ticks and one or two reloads per save).
 
 Saving and reloading a campaign takes about 4 to 13 ms; the first reload of the run (UFO `Begining.sav`, 69 ms)
 includes JIT warm-up.
+
+## Battle movement queries and field of view (branch 4 S11, 2026-11-08)
+
+Measured by the acceptance tests (`PrivateBattleGenerationTests` after each played battle's reload, `PrivateBattleSaveTests` on each loaded active-battle save; Debug build, recorded in
+`artifacts/private-battle-acceptance-timings.json`). Each value is the median of nine runs after one warm-up, for the local player's first unit with reachable tiles: `QueryPath` to its farthest
+reachable tile that has a visible path (the table gives the path's length in steps; a unit with no such tile is not measured), `QueryReachable` (the discovered tiles it can reach), a whole `RecalculateFov`
+(every unit sees again, as on a load) and `QueryLevel` of the unit's level. `QueryPath` and `QueryReachable` allocate a `BattlePathfinder` per call and the model asks again only when the revision, the
+camera's level or the preview changes. Paths are short where discovery is small (the units inside the Triton or at a Rosigma load, whose saved discovery is what the viewer knows).
+
+| Battle or save | Map | Units | Path steps | QueryPath (us) | QueryReachable (us) | RecalculateFov (ms) | QueryLevel (us) |
+|---|---|---:|---:|---:|---:|---:|---:|
+| UFO farm landing | 40x40x4 | 12 | 14 | 4,383 | 6,592 | 35.7 | 266 |
+| TFTD island terror | 50x50x4 | 41 | 1 | 28 | 155 | 131.2 | 578 |
+| TFTD sunken escort | 50x50x4 | 15 | 1 | 14 | 174 | 37.4 | 518 |
+| TFTD port terror | 50x50x4 | 38 | 13 | 2,637 | 4,903 | 95.3 | 512 |
+| UFO base defense | 60x60x2 | 18 | 12 | 1,637 | 1,683 | 20.6 | 1,435 |
+| TFTD base defense | 60x60x4 | 33 | 13 | 2,464 | 3,334 | 62.4 | 982 |
+| Rosigma `_autobattle_.asav` (largest map) | 60x60x8 | 47 | 1 | 51 | 7,362 | 1,121.0 | 647 |
+| Rosigma `battlescape 1.sav` | 60x60x8 | 47 | 1 | 64 | 7,237 | 1,062.8 | 801 |
+| Rosigma `battlescape 2.sav` | 60x60x8 | 49 | 2 | 79 | 6,488 | 720.9 | 1,054 |
+| TFTD `battlescape 1.sav` | 50x50x4 | 45 | 12 | 2,239 | 4,027 | 175.9 | 805 |
+| TFTD `battlescape 2.sav` | 50x50x4 | 45 | 3 | 55 | 551 | 255.2 | 609 |
+| UFO `_autobattle_.asav` | 40x40x4 | 15 | 14 | 177 | 12,385 | 11.9 | 920 |
+| UFO `battlescape 2.sav` | 40x40x4 | 15 | 4 | 113 | 780 | 40.5 | 524 |
+| UFO `battlescape.sav` | 40x40x4 | 15 | 11 | 3,303 | 4,809 | 22.8 | 359 |
+
+On the largest acceptance map (Rosigma, 28,800 tiles) one unit's reachable query takes about 7 ms and a level's query under 1.1 ms, so a selection change fits a frame; its path query is measured over one or two
+steps only, so it says little there. Paths of 11 to 14 steps on the 40x40 to 60x60 maps cost 1.3 to 4.4 ms (a pathfinder allocation and the search). The whole field of view takes 11 to 255 ms on the 4-level maps
+and about 0.7 to 1.1 s on the 8-level Rosigma maps in a Debug build; **the Rosigma figure is `RecalculateFov` called directly: the port does not run it on loading those battles (their visibility script is refused,
+branch 8), so it is a cost branch 8 will add, not one measured at a load.** For the other battles it runs once per load (`recalculateFOV`), not per walk (a walk recalculates around the unit). A Release build was not measured.

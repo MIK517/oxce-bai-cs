@@ -25,7 +25,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 8 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 348 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 349 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 112 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -1344,10 +1344,11 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 348 files.
+`tests/Oxce.CompatibilityTests` - 349 files.
 
 ### `Oxce.CompatibilityTests`
 
+- `BattleAcceptanceDriver` (internal class) [BattleAcceptanceDriver.cs](../tests/Oxce.CompatibilityTests/BattleAcceptanceDriver.cs) - Phase 7 branch 4 S11: the scripted soldier of the acceptance battles.
 - `BattleSaveConformance` (internal class) [BattleSaveConformance.cs](../tests/Oxce.CompatibilityTests/BattleSaveConformance.cs) - The conformance reader (Phase 7 plan, branch 2 decisions): applies the reading rules of the reference's `SavedBattleGame::load` (`src/Sav...
 - `BattleTestTerrain` (internal class) [BattleTestTerrain.cs](../tests/Oxce.CompatibilityTests/BattleTestTerrain.cs) - Synthetic terrain files for battle tests: MCD records, MAP blocks and an in-memory file port.
 - `ContentStateDump` (internal class) [ContentStateDump.cs](../tests/Oxce.CompatibilityTests/ContentStateDump.cs) - Deterministic dump of every instance field reachable from an object graph.
@@ -1871,6 +1872,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 Shared sources compiled into several projects, and non-test types that tests reuse.
 Prefer these over local copies (see AGENTS.md, *Test conventions*).
+
+### [tests/Oxce.CompatibilityTests/BattleAcceptanceDriver.cs](../tests/Oxce.CompatibilityTests/BattleAcceptanceDriver.cs)
+
+- `BattleAcceptanceDriver` (class) - Phase 7 branch 4 S11: the scripted soldier of the acceptance battles.
+- `BattleAcceptanceDriver.Outcome` (record) - What a battle's scripted turn did; `Refusal` is the named reason when a command was refused.
+- `BattleAcceptanceDriver.Timing` (record) - The cost of the queries and the field of view on one battle, in microseconds (medians) of a Debug build.
+- members: `Walk`, `Record`, `Measure`, `AssertSameSight`, `RequireLaterBranch`, `OpenDoor`
 
 ### [tests/Oxce.CompatibilityTests/BattleSaveConformance.cs](../tests/Oxce.CompatibilityTests/BattleSaveConformance.cs)
 

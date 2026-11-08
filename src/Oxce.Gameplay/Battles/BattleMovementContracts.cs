@@ -162,6 +162,9 @@ internal static class BattleMovementReasons
     internal static readonly CampaignReason WalkTimeUnitsReserved = new("battle.walk-time-units-reserved",
         "The first step would use the time units reserved for the unit's weapon or for kneeling.");
 
+    internal static readonly CampaignReason WalkUnitBusy = new("battle.walk-unit-busy-unsupported",
+        "The unit is not standing: it is panicking or berserk (a save can hold it so; those walks belong to the panic and the AI, Phase 7 branch 6) or in the middle of another action, which a walk does not resume.");
+
     internal static readonly CampaignReason WalkUnitInTheWay = new("battle.walk-unit-in-the-way",
         "Another unit stands where the first step goes.");
 
