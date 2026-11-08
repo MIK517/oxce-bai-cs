@@ -83,7 +83,7 @@ public sealed class BattleCampaignSaveTests
         Assert.NotNull(restored.CaptureForSave(out _));
         // The saved state reloads as the load sets it (resetUnitTiles' visibility); the deployment is derived from the UFO
         // in the battlescape (the ground assault's mission type names none).
-        Assert.Equivalent(BattleSaveUnitTests.Loaded(snapshot.Battle!), restored.Capture().Battle, strict: true);
+        Assert.Equivalent(BattleSaveUnitTests.SightFree(BattleSaveUnitTests.Loaded(snapshot.Battle!)), BattleSaveUnitTests.SightFree(restored.Capture().Battle!), strict: true);
         Assert.Equal("UFO_SCOUT", LoadedBattle(restored).DeploymentId);
         // A loaded rewrite is stable from the second write on.
         var first = OxceSaveAdapter.EmitLoadedCampaign(restored.Capture(), loaded.Source);
@@ -322,6 +322,6 @@ public sealed class BattleCampaignSaveTests
     {
         var (campaign, _) = Started();
         var shadow = campaign.CreateShadow();
-        Assert.Equivalent(BattleSaveUnitTests.Loaded(campaign.Capture().Battle!), shadow.Capture().Battle, strict: true);
+        Assert.Equivalent(BattleSaveUnitTests.SightFree(BattleSaveUnitTests.Loaded(campaign.Capture().Battle!)), BattleSaveUnitTests.SightFree(shadow.Capture().Battle!), strict: true);
     }
 }

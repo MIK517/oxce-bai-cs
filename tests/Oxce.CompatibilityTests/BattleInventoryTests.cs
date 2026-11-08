@@ -1,4 +1,5 @@
 using Oxce.Gameplay.Battles;
+using Oxce.Gameplay.Battles.Terrain;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Sessions;
 using Xunit;
@@ -22,12 +23,14 @@ public sealed class BattleInventoryTests
     private const int OtherGroundSupply = 6;
 
     /// <summary>Costs between the sections (the base rules define only the costs out of the belt and the back pack).</summary>
-    private static readonly string CostRules = Rules
+    internal static string WithCosts(string rules) => rules
         .Replace("- id: STR_GROUND\n    type: 2", "- id: STR_GROUND\n    type: 2\n    costs: {STR_BELT: 2, STR_BACK_PACK: 3, STR_RIGHT_HAND: 4, STR_LEFT_HAND: 4}", StringComparison.Ordinal)
         .Replace("- id: STR_RIGHT_HAND\n    type: 1", "- id: STR_RIGHT_HAND\n    type: 1\n    costs: {STR_BELT: 3, STR_BACK_PACK: 6, STR_GROUND: 5, STR_LEFT_HAND: 1}", StringComparison.Ordinal)
         .Replace("- id: STR_LEFT_HAND\n    type: 1", "- id: STR_LEFT_HAND\n    type: 1\n    costs: {STR_BELT: 3, STR_BACK_PACK: 2, STR_GROUND: 5, STR_RIGHT_HAND: 1}", StringComparison.Ordinal)
         .Replace("costs: {STR_RIGHT_HAND: 4, STR_LEFT_HAND: 4}", "costs: {STR_RIGHT_HAND: 4, STR_LEFT_HAND: 4, STR_GROUND: 2, STR_BACK_PACK: 5}", StringComparison.Ordinal)
         .Replace("costs: {STR_RIGHT_HAND: 8, STR_LEFT_HAND: 2}", "costs: {STR_RIGHT_HAND: 8, STR_LEFT_HAND: 2, STR_GROUND: 3, STR_BELT: 5}", StringComparison.Ordinal);
+
+    private static readonly string CostRules = WithCosts(Rules);
 
     static BattleInventoryTests() => Assert.NotEqual(Rules, CostRules);
 
@@ -58,6 +61,63 @@ public sealed class BattleInventoryTests
     {
         var found = battle.Items.Single(candidate => candidate.Id == item);
         return (found.Slot, found.SlotX, found.SlotY, found.OwnerUnitId, found.Tile);
+    }
+
+    [Fact]
+    public void AnItemPutDownByAFlyingUnitOverAHoleDropsToTheFloorBelowWhenTheInventoryCloses()
+    {
+        // InventoryState's destructor: applyGravity on the selected unit's tile (the port runs it after each move of a running battle).
+        var (campaign, battle, soldier) = Open(firstTurn: true);
+        var ground = soldier.Position!.Value;
+        var above = ground with { Z = 1 };
+        battle.Map.SetPart(battle.Map.TileIndex(above), BattleTilePart.Floor, -1, -1);
+        battle.SetTile(soldier, above);
+        battle.SelectedUnitId = soldier.Id;
+        Moved(campaign, new MoveInventoryItem(soldier.Id, Gun, "STR_GROUND", 0, 0));
+        Assert.Equal((ground, true), (Where(battle, Gun).Tile!.Value, soldier.Floating));
+        Assert.Equal(above, soldier.Position);
+    }
+
+    private static (CampaignState Campaign, BattleState Battle, BattleUnit Soldier, BattlePosition Ground) WalkerInTheAir(string? rules = null)
+    {
+        var (campaign, battle, soldier) = Open(rules, firstTurn: true);
+        var ground = soldier.Position!.Value;
+        var above = ground with { Z = 1 };
+        battle.Map.SetPart(battle.Map.TileIndex(above), BattleTilePart.Floor, -1, -1);
+        soldier.MovementType = 0;
+        battle.SetTile(soldier, above);
+        battle.SelectedUnitId = soldier.Id;
+        return (campaign, battle, soldier, ground);
+    }
+
+    [Fact]
+    public void AWalkerWithoutAFloorFallsWhenTheInventoryCloses()
+    {
+        var (campaign, battle, soldier, ground) = WalkerInTheAir();
+        Assert.True(soldier.HaveNoFloorBelow);
+        // A loaded battle with a floorless walker refuses its commands (the constructor queues the fall, which the port does at the first turn only).
+        Assert.Equal("battle.casualties-unsupported", Refusal(campaign, new MoveInventoryItem(soldier.Id, Gun, "STR_GROUND", 0, 0)));
+        // Standing in the air only because a script changed its movement type is the same: nothing falls until a gravity call, so test the close itself.
+        Assert.Null(battle.FallsRefusal(campaign.Content.RuntimeRules, soldier));
+        battle.ApplyGravity(soldier.Position);
+        Assert.Null(battle.ResolveFalls(campaign.Content.RuntimeRules));
+        Assert.Equal(ground, soldier.Position);
+    }
+
+    [Fact]
+    public void AnInventoryMoveWhoseFallBurnsTheFloorIsNotRefused()
+    {
+        var rules = CostRules.Replace("  - type: SUIT\n", "  - type: SUIT\n    specab: 2\n", StringComparison.Ordinal);
+        Assert.NotEqual(CostRules, rules);
+        var (campaign, battle, soldier, _) = WalkerInTheAir(rules);
+        var gun = Where(battle, Gun);
+        // The battle gate would stop it first: lift the walker's floorlessness for the gate by letting it float, then restore it for the check.
+        soldier.MovementType = 1;
+        battle.ApplyGravity(soldier.Position);
+        soldier.MovementType = 0;
+        soldier.Floating = false;
+        Assert.Null(battle.FallsRefusal(campaign.Content.RuntimeRules, soldier));
+        Assert.Equal(gun, Where(battle, Gun));
     }
 
     [Fact]
@@ -205,6 +265,7 @@ public sealed class BattleInventoryTests
             Stats = soldier.Stats,
             ArmorId = soldier.ArmorId,
             UnitType = soldier.UnitType,
+            SoldierId = soldier.SoldierId,
             Position = pile with { X = pile.X + 1 },
             InventoryTile = pile,
         };
@@ -503,7 +564,8 @@ public sealed class BattleInventoryTests
         var tile = battle.TileIndex(soldier.Position!.Value);
         Assert.All(soldier.TileLastSpottedBy, value => Assert.Equal(tile, value));
         Assert.All(soldier.TileLastSpottedForBlindShotBy, value => Assert.Equal(tile, value));
-        Assert.All(soldier.TurnsSinceSpotted, static value => Assert.Equal(0, value));
+        Assert.All(soldier.TurnsSinceSeenBy, static value => Assert.Equal(0, value));
+        Assert.All(soldier.TurnsSinceSpotted, static value => Assert.Equal(255, value));
     }
 
     [Fact]

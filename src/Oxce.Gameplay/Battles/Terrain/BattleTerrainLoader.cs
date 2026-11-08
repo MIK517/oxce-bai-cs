@@ -16,6 +16,7 @@ internal sealed class BattleTerrainLoader(RuntimeBattleRules rules, IBattleTerra
     private readonly IBattleTerrainFiles _files = files ?? throw new ArgumentNullException(nameof(files));
     private readonly Dictionary<string, BattleMapDataSet> _dataSets = new(StringComparer.Ordinal);
     private readonly Dictionary<string, BattleMapBlockData> _blocks = new(StringComparer.Ordinal);
+    private BattleVoxelData? _voxelData;
 
     public string? TryLoadDataSet(string name, out BattleMapDataSet? dataSet)
     {
@@ -49,6 +50,23 @@ internal sealed class BattleTerrainLoader(RuntimeBattleRules rules, IBattleTerra
         }
         dataSet = new BattleMapDataSet(name, Array.AsReadOnly(objects));
         _dataSets.Add(name, dataSet);
+        return null;
+    }
+
+    /// <summary>The line of fire templates (<c>Mod::getVoxelData</c>), read once.</summary>
+    public string? TryLoadVoxelData(out BattleVoxelData? data)
+    {
+        data = _voxelData;
+        if (data is not null) return null;
+        if (Read(BattleVoxelData.VirtualPath, out var bytes) is { } missing) return missing;
+        try
+        {
+            data = _voxelData = BattleVoxelData.Decode(bytes);
+        }
+        catch (InvalidDataException exception)
+        {
+            return $"Invalid file {BattleVoxelData.VirtualPath}: {exception.Message}";
+        }
         return null;
     }
 

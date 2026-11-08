@@ -17,7 +17,10 @@ internal sealed partial class BattleState
         Phase == BattlePhase.Briefing || Side != BattleFaction.Player || Phase == BattlePhase.Inventory && !inventoryWalk
             ? BattleSelectionReasons.Unavailable : null;
 
-    private BattleUnit? UnitById(int id) => _units.Find(unit => unit.Id == id);
+    internal BattleUnit? UnitById(int id) => _units.Find(unit => unit.Id == id);
+
+    /// <summary>Tile::getUnit: the unit standing on the tile (any tile of a big unit), or null.</summary>
+    internal BattleUnit? UnitOnTile(int tile) => Map.UnitAt(tile) is { } id ? UnitById(id) : null;
 
     /// <summary>BattleUnit::hasInventory: the unit's armor has an inventory.</summary>
     private static bool HasInventory(RuntimeRuleCatalog rules, BattleUnit unit) =>
@@ -165,6 +168,26 @@ internal sealed partial class BattleState
         return null;
     }
 
+    /// <summary>
+    /// <c>btnVisibleUnitClick</c>'s right click: the selectable unit of the side on turn that sees the target with the most time units left (a percent
+    /// of its base time units) is selected; none that sees it is a refusal (the reference does nothing).
+    /// </summary>
+    internal CampaignReason? SelectSpotter(RuntimeRuleCatalog rules, int unitId, int targetId, out BattleUnit? result, out bool saved)
+    {
+        result = null;
+        saved = false;
+        if (SelectionUnit(unitId, out _) is { } refusal) return refusal;
+        if (UnitById(targetId) is not { } target || !Sees(Side, target)) return BattleSelectionReasons.UnitUnknown;
+        var spotter = _units
+            .Where(unit => IsSelectable(rules, unit, Side, false, false) && unit.HasVisibleUnit(target))
+            .OrderByDescending(static unit => unit.Stats.TimeUnits > 0 ? unit.TimeUnits * 100 / unit.Stats.TimeUnits : 0)
+            .FirstOrDefault();
+        if (spotter is null) return BattleSelectionReasons.NoSpotter;
+        if (Select(spotter.Id, out saved) is { } failed) return failed;
+        result = spotter;
+        return null;
+    }
+
     /// <summary>The undo unit of the saved selection, when it can be selected again (<c>isSelectable(side, false, false)</c>).</summary>
     internal BattleUnit? UndoCandidate(RuntimeRuleCatalog rules) =>
         UndoUnitId is { } id && UnitById(id) is { } unit && IsSelectable(rules, unit, Side, false, false) ? unit : null;
@@ -219,6 +242,15 @@ internal sealed partial class BattleState
             if (UndoCandidate(rules) is not null) actions.Add(BattleActionKind.ReselectSkippedUnit);
             // btnInventoryClick: a selected unit whose armor has an inventory.
             if (InventoryAvailable(rules, unitId, out _) is null) actions.Add(BattleActionKind.OpenInventory);
+            // The movement buttons and clicks (S10): what each lists is what the command can start; the time units it needs are the command's refusal.
+            if (unit.Position is not null)
+            {
+                actions.Add(BattleActionKind.Turn);
+                if (AllowsKneeling(rules, unit) && !unit.Floating) actions.Add(BattleActionKind.Kneel);
+                if (ArmorOf(rules, unit).AllowsMoving) actions.Add(BattleActionKind.Walk);
+                if (UpDownLegal(rules, unit, up: true)) actions.Add(BattleActionKind.MoveUp);
+                if (UpDownLegal(rules, unit, up: false)) actions.Add(BattleActionKind.MoveDown);
+            }
             foreach (var other in _units)
                 if (other.Id != unitId && other.Faction == Side && !other.IsOut && other.Position is not null) others.Add(other.Id);
         }
@@ -231,8 +263,11 @@ internal sealed partial class BattleState
         var unit = UnitById(unitId);
         if (unit is null || unit.Faction != viewer.Faction || unit.IsOut) return null;
         BattleTileItemView? Hand(bool right) => HandItem(rules, unit, right) is { } held ? new BattleTileItemView(held.Id, held.ItemType) : null;
-        var visible = _units.Where(other => other.OriginalFaction == BattleFaction.Hostile && !other.IsOut && other.IsSpottedBy(viewer.Faction))
-            .Select(static other => other.Id).ToArray();
+        // updateSoldierInfo: the units this unit sees (its visible-unit list, in order), then the hostile units any unit of its side sees.
+        var direct = unit.VisibleUnits;
+        var visible = direct.Concat(_units.Where(other => other.OriginalFaction == BattleFaction.Hostile && !other.IsOut &&
+                (viewer.Faction == BattleFaction.Player ? other.IsVisibleToPlayer(rules) : other.IsSpottedBy(viewer.Faction)) && !direct.Contains(other.Id))
+            .Select(static other => other.Id)).ToArray();
         // updateSoldierInfo's wounded list: units under the player's control (the unconscious too) with fatal wounds; burning ones are the
         // client's option (oxceShowBurningAsWounded).
         var indicated = _units.Where(other => other.Faction == viewer.Faction && other.Status is not (BattleUnitStatus.Dead or BattleUnitStatus.IgnoreMe) && !other.DisableIndicators).ToArray();
@@ -244,8 +279,9 @@ internal sealed partial class BattleState
     }
 
     /// <summary>
-    /// One level as the viewer sees it. Tile parts show where the viewer's side has discovered them (X-COM's flags;
-    /// another side sees the tiles it has explored); items and smoke only on a tile whose floor shows; a unit only when the viewer sees it.
+    /// One level as the viewer sees it. Tile parts show where the viewer's side has discovered them (the reference's flags for X-COM, the
+    /// port's for the other sides, which also see the tiles they have explored); items and smoke only on a tile whose floor shows; a unit
+    /// only when the viewer sees it.
     /// </summary>
     internal BattleLevelView? LevelView(BattleViewer viewer, int level)
     {
@@ -269,17 +305,17 @@ internal sealed partial class BattleState
                 var parts = new List<BattleTilePartView>();
                 foreach (var part in Enum.GetValues<BattleTilePart>())
                 {
-                    if (!(explored || viewer.Faction == BattleFaction.Player && Map.IsDiscovered(tile, part))) continue;
+                    if (!(explored || Map.IsDiscovered(tile, part, viewer.Faction))) continue;
                     var (id, set) = Map.Part(tile, part);
                     if (id >= 0 && set >= 0) parts.Add(new BattleTilePartView(part, Map.DataSets[set].Name, id));
                 }
-                var floorShown = explored || viewer.Faction == BattleFaction.Player && Map.IsDiscovered(tile, BattleTilePart.Floor);
+                var floorShown = explored || Map.IsDiscovered(tile, BattleTilePart.Floor, viewer.Faction);
                 var items = floorShown && itemsByTile.TryGetValue(position, out var onTile) ? onTile : [];
                 int? standing = Map.UnitAt(tile) is { } unitId && UnitById(unitId) is { } unit && !unit.IsOut && Sees(viewer.Faction, unit) ? unitId : null;
                 var smoke = floorShown ? Map.Smoke(tile) : 0;
                 var fire = floorShown ? Map.Fire(tile) : 0;
                 if (parts.Count == 0 && items.Count == 0 && standing is null && smoke == 0 && fire == 0) continue;
-                tiles.Add(new BattleTileView(position, parts, smoke, fire, items, standing));
+                tiles.Add(new BattleTileView(position, parts, smoke, fire, items, standing, Map.Shade(tile)));
             }
         return new BattleLevelView(level, Width, Length, Height, tiles, Revision);
     }

@@ -112,14 +112,15 @@ public sealed class BattleSaveMapTests
             for (var part = 0; part < BattleMap.PartCount; part++)
             {
                 Assert.Equal(map.Part(tile, (BattleTilePart)part), restored.Map.Part(tile, (BattleTilePart)part));
-                Assert.Equal(map.IsDiscovered(tile, (BattleTilePart)part), restored.Map.IsDiscovered(tile, (BattleTilePart)part));
+                // The load's field of view only adds to the saved discovery.
+                Assert.True(!map.IsDiscovered(tile, (BattleTilePart)part) || restored.Map.IsDiscovered(tile, (BattleTilePart)part));
             }
         // The restored parts point at the loaded objects.
         var floor = expected.First(tile => map.MapData(tile, BattleTilePart.Floor) is not null);
         Assert.Equal(map.MapData(floor, BattleTilePart.Floor)!.Armor, restored.Map.MapData(floor, BattleTilePart.Floor)!.Armor);
         Assert.Equal(map.Nodes.Select(static node => (node.Id, node.Position, node.IsDummy, string.Join(",", node.Links))),
             restored.Map.Nodes.Select(static node => (node.Id, node.Position, node.IsDummy, string.Join(",", node.Links))));
-        Assert.Equivalent(BattleSaveUnitTests.Loaded(snapshot), restored.Capture(), strict: true);
+        Assert.Equivalent(BattleSaveUnitTests.SightFree(BattleSaveUnitTests.Loaded(snapshot)), BattleSaveUnitTests.SightFree(restored.Capture()), strict: true);
         BattleSaveUnitTests.AssertLoadedRewriteIsStable(restored, text, SharedContent.Value, BattleRestoreCampaign.From(campaign));
     }
 

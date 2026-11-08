@@ -117,6 +117,7 @@ public static partial class OxceBattleSave
                 : battle.TryGet("moduleMap", out var modules)
                     ? Array.AsReadOnly(Value(modules!, "moduleMap", ReadModuleMap))
                     : BattleSnapshot.UncountedModuleMap(snapshot.Width, snapshot.Length),
+            FactionDiscovery = PortDiscovery(battle),
             Units = Units(battle, content, diagnostics),
             Items = ReadItems(battle, "items", content, diagnostics),
             RecoverConditional = ReadItems(battle, "recoverConditional", content, diagnostics),
@@ -230,7 +231,7 @@ public static partial class OxceBattleSave
             Pair("toggleBrightness", Integer(snapshot.ToggleBrightness)),
             // saveBase: only non-zero values, and no tags node without one.
             Pair("tags", ScriptValues(Tags(snapshot.ScriptValues))),
-            Pair(PortKey, WritePort(snapshot.Units, source)),
+            Pair(PortKey, WritePort(snapshot.Units, snapshot.FactionDiscovery, source)),
         ]);
     }
 

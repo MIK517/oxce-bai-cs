@@ -62,6 +62,10 @@ internal static class BattleGenerator
         if (state.Items.Any(item => item.Tile is not null && !item.XcomProperty && !item.IsSpecialWeapon && item.FuseTimer == -2 &&
                 rules.Items.GetRequiredValue(item.ItemType).BattleType == GrenadeBattleType && !rules.Battle.Equipment.Items[item.ItemType].Spawns))
             throw new MapGenerationException(PrimedJunk);
+        // The line of fire templates sight reads: a template past the file's end is where the reference's vector::at throws.
+        if (state.VoxelDataFault(rules) is { } voxelFault) throw new MapGenerationException(voxelFault);
+        // run's last step: the lighting of the finished map, with its units and items.
+        state.CalculateLighting(rules, BattleLightLayer.Ambient, terrainChanged: true);
         return state;
     }
 
@@ -129,6 +133,9 @@ internal static class BattleGenerator
         // The same stream then draws the units' presentation values (BattleUnit's recolor and a civilian's unified rank).
         state.Seedless = new SplitMix64RandomSource(random.State ^ SeedlessSalt);
         state.SetAmbience(terrain, state.Seedless);
+        // Mod::getVoxelData, which the tile engine sees by; a missing or unusable file is a failed generation, as every terrain file is.
+        if (loader.TryLoadVoxelData(out var voxels) is { } voxelReason) throw new MapGenerationException(voxelReason);
+        state.VoxelData = voxels;
         return new(state, generated, inputs, terrain, id, deployment);
     }
 

@@ -180,14 +180,14 @@ public sealed class BattleScreensTests
         Press(context.Screens, 'c');
         Assert.NotNull(model.SelectedUnit);
         Assert.Contains(BattleActionKind.SkipUnit, model.Actions!.Actions);
-        Assert.Contains(screen.Frame.Pixels.ToArray(), pixel => pixel == BattleUiContext.Color.Floor);
+        Assert.Contains(screen.Frame.Pixels.ToArray(), pixel => pixel is >= BattleUiContext.Color.FloorShade and < BattleUiContext.Color.FloorShade + 16);
         // Every distinct terrain object without a sprite is listed once.
         Assert.NotEmpty(context.Diagnostics);
         Assert.All(context.Diagnostics, static note => Assert.StartsWith("missing sprite ", note));
     }
 
     [Fact]
-    public void AClickOnAUnitSelectsItAndAClickOnATileIsRefusedByTheOwnerOfWalking()
+    public void AClickOnAUnitSelectsItAndAClickOnATileWalksOrShowsTheRulesRefusal()
     {
         var (_, _, context) = Open(BattlePhase.InProgress);
         context.Open();
@@ -201,7 +201,8 @@ public sealed class BattleScreensTests
         Assert.Equal(target.UnitId, model.SelectedUnitId);
         var empty = model.Level!.Tiles.First(tile => tile.UnitId is null);
         context.Screens.HandleInput(Click(empty.Position.X * size + 1, empty.Position.Y * size + 1));
-        Assert.StartsWith("battle.walking-unsupported", screen.Message);
+        // The click is a walk now (branch 4): it ran, or the rules refused it with their own code.
+        Assert.True(model.LastEvents.Count > 0 || screen.Message.StartsWith("battle.walk-", StringComparison.Ordinal), screen.Message);
         // A click outside the map area does nothing.
         var revision = screen.PresentationRevision;
         context.Screens.HandleInput(Click(MapEdge, 10));
@@ -329,14 +330,12 @@ public sealed class BattleScreensTests
         var revision = battle.Revision;
         Press(context.Screens, Escape);
         Assert.Equal(BattlescapeClient.DeselectCode, screen.Message);
-        Press(context.Screens, '3');
-        Assert.Equal(BattlescapeClient.VisibleUnitCode, screen.Message);
         Press(context.Screens, 'b', InputKeyModifiers.LeftControl);
         Assert.Equal(BattlescapeClient.BriefingAgainCode, screen.Message);
-        context.Screens.HandleInput(Click(10, 10, 3));
-        Assert.Equal(BattlescapeClient.SecondaryActionCode, screen.Message);
-        context.Screens.HandleInput(Click(10, 10, 2));
-        Assert.Equal(BattlescapeClient.MiddleButtonCode, screen.Message);
+        // The middle button over a unit is the alien inventory of Phase 8.
+        var shown = screen.Model.Level!.Tiles.First(tile => tile.UnitId == screen.Model.SelectedUnitId).Position;
+        context.Screens.HandleInput(Click(shown.X * screen.TileSize + 1, shown.Y * screen.TileSize + 1, 2));
+        Assert.Equal(BattlescapeClient.AlienInventoryCode, screen.Message);
         Assert.Equal(revision, battle.Revision);
     }
 

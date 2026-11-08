@@ -122,7 +122,7 @@ public sealed class BattleSaveItemTests
         var text = Emit(written);
         var content = campaign.Content;
         var restored = BattleState.Restore(OxceBattleSave.Read(Parse(text), content), content, Terrain(), campaign: BattleRestoreCampaign.From(campaign));
-        Assert.Equivalent(BattleSaveUnitTests.Loaded(snapshot), restored.Capture(), strict: true);
+        Assert.Equivalent(BattleSaveUnitTests.SightFree(BattleSaveUnitTests.Loaded(snapshot)), BattleSaveUnitTests.SightFree(restored.Capture()), strict: true);
         // The item counter: the highest ID plus one (the generator's gaps are not kept).
         var ids = battle.Items.Concat(battle.GuaranteedRecoveredItems).Select(static item => item.Id).ToArray();
         Assert.Equal(ids.Max() + 1, restored.NextItemId);

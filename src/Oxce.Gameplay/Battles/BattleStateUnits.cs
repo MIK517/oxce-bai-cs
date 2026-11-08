@@ -38,6 +38,15 @@ internal sealed partial class BattleState
 
     private const ulong RestoredSeedlessSeed = 0x5EED_1E55_0000_0001UL;
 
+    /// <summary>
+    /// The game's <c>RNG::generate</c> for the rules that draw during a battle command (a fire catching, the damage a hit rolls). The campaign
+    /// hands its stream to the battle before a command runs (and a trial copy runs on it with the stream put back after); a battle built by hand
+    /// has a stream of its own.
+    /// </summary>
+    internal IRandomSource Random { get; set; } = new SplitMix64RandomSource(RestoredRandomSeed);
+
+    private const ulong RestoredRandomSeed = 0x5EED_F1AE_0000_0002UL;
+
     /// <summary>BattleUnit::deriveHostileRank: the alien ranks whose index is a hostile unit's unified rank.</summary>
     private static readonly string[] HostileRanks =
     [
@@ -91,6 +100,7 @@ internal sealed partial class BattleState
         unit.OriginalFaction = faction;
         unit.KilledBy = (int)faction;
         unit.OriginalMovementType = movement;
+        unit.Vision = BattleUnitVision.ForUnit(rules, battleArmor, faction);
         unit.MoveCosts = unit.ArmorMoveCosts = battleArmor.MoveCosts;
         sides.CopyTo(unit.CurrentArmor, 0);
         unit.Aggression = rule.Aggression;
@@ -163,6 +173,7 @@ internal sealed partial class BattleState
         unit.AllowAutoCombat = personal.AllowAutoCombat;
         unit.EnergyRegeneration = personal.InitialStats.GetValueOrDefault("tu") / 3;
         var bonuses = CampaignState.SoldierBonuses(personal, rules);
+        unit.Vision = BattleUnitVision.ForSoldier(rules, battleArmor, bonuses.Select(bonus => rules.SoldierBonuses[bonus].Value));
         for (var side = 0; side < battleArmor.Sides.Count; side++)
         {
             var value = battleArmor.Sides[side];
@@ -439,6 +450,8 @@ internal sealed partial class BattleState
         unit.SavedPosition = saved.Position;
         unit.Direction = saved.Direction;
         unit.DirectionTurret = saved.DirectionTurret;
+        unit.ToDirection = unit.Direction;
+        unit.ToDirectionTurret = unit.DirectionTurret;
         unit.TimeUnits = saved.TimeUnits ?? unit.TimeUnits;
         unit.Health = saved.Health ?? unit.Health;
         unit.Mana = saved.Mana ?? unit.Mana;

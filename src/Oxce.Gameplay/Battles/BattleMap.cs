@@ -7,7 +7,7 @@ namespace Oxce.Gameplay.Battles;
 /// (<c>SavedBattleGame::getTileIndex</c>), the loaded map data sets the tiles refer to, and the per-block bookkeeping
 /// <c>SavedBattleGame</c> keeps (terrain and block names, reinforcement blocks).
 /// </summary>
-internal sealed class BattleMap
+internal sealed partial class BattleMap
 {
     public const int PartCount = 4;
 
@@ -18,11 +18,17 @@ internal sealed class BattleMap
     private int[] _ids = [];
     private int[] _sets = [];
     private byte[] _discovered = [];
+    private byte[] _discoveredHostile = [];
+    private byte[] _discoveredNeutral = [];
     private byte[] _smoke = [];
     private byte[] _fire = [];
+    private byte[] _overlaps = [];
+    private short[] _explosive = [];
+    private byte[] _explosiveType = [];
     private byte[] _doorFrames = [];
     private int[] _lastExplored = [];
     private int[] _units = [];
+    private short[] _visible = [];
     private string[][] _terrainNames = [];
     private string[][] _blockNames = [];
     private int[][] _reinforcements = [];
@@ -71,12 +77,19 @@ internal sealed class BattleMap
         Array.Fill(_ids, -1);
         Array.Fill(_sets, -1);
         _discovered = new byte[tiles];
+        _discoveredHostile = new byte[tiles];
+        _discoveredNeutral = new byte[tiles];
         _smoke = new byte[tiles];
         _fire = new byte[tiles];
+        _overlaps = new byte[tiles];
+        _explosive = new short[tiles];
+        _explosiveType = new byte[tiles];
         _doorFrames = new byte[tiles];
         _lastExplored = new int[tiles * FactionCount];
         _units = new int[tiles];
         Array.Fill(_units, NoUnit);
+        _visible = new short[tiles];
+        ResetLight(tiles);
         _terrainNames = Grid(width / 10, length / 10, "");
         _blockNames = Grid(width / 10, length / 10, "");
         _reinforcements = Grid(width / 10, length / 10, 0);
@@ -132,6 +145,12 @@ internal sealed class BattleMap
 
     public void SetUnitAt(int tile, int? unitId) => _units[tile] = unitId ?? NoUnit;
 
+    /// <summary>A copy of which unit stands on each tile, for a trial run to put back.</summary>
+    internal int[] CaptureUnits() => (int[])_units.Clone();
+
+    /// <summary>Puts back what <see cref="CaptureUnits"/> copied.</summary>
+    internal void RestoreUnits(int[] units) => Array.Copy(units, _units, _units.Length);
+
     /// <summary>MapData::getTUCost: walking, flying or sliding (movement types 0, 1, 2).</summary>
     public static int MovementCost(BattleMapData data, int movementType) => movementType switch
     {
@@ -158,13 +177,44 @@ internal sealed class BattleMap
     }
 
     /// <summary>Tile::hasNoFloor: no floor (or a no-floor floor), unless the tile below is raised to the full height.</summary>
-    public bool HasNoFloor(BattlePosition position)
+    public bool HasNoFloor(BattlePosition position) => HasNoFloor(TileIndex(position));
+
+    /// <summary><see cref="HasNoFloor(BattlePosition)"/> by tile index.</summary>
+    public bool HasNoFloor(int tile)
     {
-        var tile = TileIndex(position);
-        var noFloor = MapData(tile, BattleTilePart.Floor) is not { } floor || floor.HasNoFloor;
-        if (noFloor && position.Z > 0 && TerrainLevel(TileIndex(position with { Z = position.Z - 1 })) == -24) return false;
+        var noFloor = HasNoFloorOnly(tile);
+        if (noFloor && tile >= Width * Length && TerrainLevel(tile - Width * Length) == -24) return false;
         return noFloor;
     }
+
+    /// <summary>Tile::hasNoFloor(nullptr): the tile's own floor only, without the tile below.</summary>
+    public bool HasNoFloorOnly(int tile) => MapData(tile, BattleTilePart.Floor) is not { } floor || floor.HasNoFloor;
+
+    /// <summary>The tile index above a tile (SavedBattleGame::getAboveTile), or -1 on the top level.</summary>
+    public int TileAbove(int tile) => tile / (Width * Length) >= Height - 1 ? -1 : tile + Width * Length;
+
+    /// <summary>The tile index below a tile (SavedBattleGame::getBelowTile), or -1 on the ground level.</summary>
+    public int TileBelow(int tile) => tile < Width * Length ? -1 : tile - Width * Length;
+
+    /// <summary>Tile::hasGravLiftFloor.</summary>
+    public bool HasGravLiftFloor(int tile) => MapData(tile, BattleTilePart.Floor) is { IsGravLift: true };
+
+    /// <summary>Tile::hasLadderOnObject, hasLadderOnNorthWall and hasLadderOnWestWall: a grav lift in that part.</summary>
+    public bool HasLadderOn(int tile, BattleTilePart part) => MapData(tile, part) is { IsGravLift: true };
+
+    /// <summary>Tile::isDoor.</summary>
+    public bool IsDoor(int tile, BattleTilePart part) => MapData(tile, part) is { IsDoor: true };
+
+    /// <summary>Tile::getVisible: the tile's visibility counter (a <c>Sint16</c> the field of view adds to and takes from; runtime state).</summary>
+    public int Visibility(int tile) => _visible[tile];
+
+    public bool IsVisible(int tile) => _visible[tile] != 0;
+
+    public void SetVisibility(int tile, int visibility) => _visible[tile] = unchecked((short)visibility);
+
+    /// <summary>Tile::hasLadder: a grav lift object on the tile's object part or either wall (Tile::setMapData's ladder flags).</summary>
+    public bool HasLadder(int tile) =>
+        HasLadderOn(tile, BattleTilePart.ObjectPart) || HasLadderOn(tile, BattleTilePart.NorthWall) || HasLadderOn(tile, BattleTilePart.WestWall);
 
     /// <summary>Tile::getFloorSpecialTileType (TILE, 0, without a floor).</summary>
     public int FloorSpecialType(int tile) => MapData(tile, BattleTilePart.Floor)?.SpecialType ?? 0;
@@ -184,6 +234,56 @@ internal sealed class BattleMap
         }
     }
 
+    private byte[] DiscoveryOf(BattleFaction faction) => faction switch
+    {
+        BattleFaction.Player => _discovered,
+        BattleFaction.Hostile => _discoveredHostile,
+        BattleFaction.Neutral => _discoveredNeutral,
+        _ => throw new ArgumentOutOfRangeException(nameof(faction)),
+    };
+
+    /// <summary>
+    /// The tile part's discovery by a faction. The player's is the reference's <c>discovered</c> flags; the hostile and neutral factions' are
+    /// the port's (ADR 0039): the field of view of their units sets them as the player's sets the player's, and no rule reads them.
+    /// </summary>
+    public bool IsDiscovered(int tile, BattleTilePart part, BattleFaction faction) => (DiscoveryOf(faction)[tile] & (1 << (int)part)) != 0;
+
+    /// <summary><see cref="SetDiscovered(int, BattleTilePart, bool)"/> for a faction.</summary>
+    public void SetDiscovered(int tile, BattleTilePart part, bool discovered, BattleFaction faction)
+    {
+        if (faction == BattleFaction.Player)
+        {
+            SetDiscovered(tile, part, discovered);
+            return;
+        }
+        var flags = DiscoveryOf(faction);
+        if (IsDiscovered(tile, part, faction) == discovered) return;
+        if (!discovered) flags[tile] = (byte)(flags[tile] & ~(1 << (int)part));
+        else
+        {
+            flags[tile] |= (byte)(1 << (int)part);
+            if (part == BattleTilePart.Floor) flags[tile] |= (1 << (int)BattleTilePart.WestWall) | (1 << (int)BattleTilePart.NorthWall);
+        }
+    }
+
+    /// <summary>A faction's discovered flags of a tile, one bit per <see cref="BattleTilePart"/>.</summary>
+    public int DiscoveredFlags(int tile, BattleFaction faction) => DiscoveryOf(faction)[tile];
+
+    /// <summary>Sets a hostile or neutral faction's discovered flags as saved.</summary>
+    public void RestoreDiscoveredFlags(int tile, BattleFaction faction, int flags)
+    {
+        if (faction == BattleFaction.Player) throw new ArgumentOutOfRangeException(nameof(faction), "The player's flags are restored part by part.");
+        DiscoveryOf(faction)[tile] = (byte)(flags & 0xF);
+    }
+
+    /// <summary>Whether no tile part has map data.</summary>
+    public bool HasNoParts(int tile)
+    {
+        for (var part = 0; part < PartCount; part++)
+            if (_ids[tile * PartCount + part] >= 0) return false;
+        return true;
+    }
+
     /// <summary>Discovered flags as the save holds them (Tile::loadBinary): each part set alone, without setDiscovered's walls.</summary>
     public void RestoreDiscovered(int tile, BattleTilePart part, bool discovered) => _discovered[tile] = discovered
         ? (byte)(_discovered[tile] | 1 << (int)part)
@@ -195,6 +295,30 @@ internal sealed class BattleMap
 
     public void SetSmoke(int tile, int smoke) => _smoke[tile] = checked((byte)smoke);
     public void SetFire(int tile, int fire) => _fire[tile] = checked((byte)fire);
+
+    /// <summary>
+    /// Tile::getOverlaps: how much smoke or fire was added to the tile this turn (a <c>Uint8</c>; runtime state, which no save keeps).
+    /// </summary>
+    public int Overlaps(int tile) => _overlaps[tile];
+
+    public void SetOverlaps(int tile, int overlaps) => _overlaps[tile] = unchecked((byte)overlaps);
+
+    /// <summary>Tile::addOverlap.</summary>
+    public void AddOverlap(int tile) => _overlaps[tile] = unchecked((byte)(_overlaps[tile] + 1));
+
+    /// <summary>Tile::getExplosive: the "virtual" explosive a destroyed part left (runtime state, no save keeps it).</summary>
+    public int Explosive(int tile) => _explosive[tile];
+
+    /// <summary>Tile::getExplosiveType.</summary>
+    public int ExplosiveType(int tile) => _explosiveType[tile];
+
+    /// <summary>Tile::setExplosive: the power on the tile is a moving maximum unless forced.</summary>
+    public void SetExplosive(int tile, int power, int damageType, bool force = false)
+    {
+        if (!force && _explosive[tile] >= power) return;
+        _explosive[tile] = unchecked((short)power);
+        _explosiveType[tile] = unchecked((byte)damageType);
+    }
 
     /// <summary>
     /// Whether a wall's door frame is set (Tile's <c>currentFrame</c> of the part at 7, as loadBinary and the text load set

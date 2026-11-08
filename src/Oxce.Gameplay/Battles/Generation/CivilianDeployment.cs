@@ -80,7 +80,7 @@ internal sealed class CivilianDeployment
         {
             return null;
         }
-        unit.Direction = _random.NextInclusive(0, 7);
+        unit.SetDirection(_random.NextInclusive(0, 7));
         _battle.AddUnit(unit);
         return unit;
     }

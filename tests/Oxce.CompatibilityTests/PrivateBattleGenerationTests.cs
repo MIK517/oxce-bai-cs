@@ -31,6 +31,8 @@ namespace Oxce.CompatibilityTests;
 /// </summary>
 public sealed class PrivateBattleGenerationTests
 {
+    private static readonly string[] DoorsOpened = ["CULTA/FARM", "ISLAND/ISLAND_TERROR", "MSUNK/THREEBIG", "PORT/PORT_TERROR", "XBASE/XBASE", "XBASES/BASE_DRILL"];
+
     private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
 
     // The loaded save each campaign came from, which a loaded rewrite writes over.
@@ -251,8 +253,8 @@ public sealed class PrivateBattleGenerationTests
         BattleSaveConformance.CheckSave(text);
         var reloaded = OxceSaveAdapter.Load(text, "battle.sav", loaded.Content, new SplitMix64RandomSource(17),
             loaded.Options with { BattleTerrainFiles = loaded.Files }).Campaign;
-        var expected = WithoutUnsavedSlotPositions(BattleSaveUnitTests.Loaded(snapshot.Battle!));
-        var actual = reloaded.Capture().Battle!;
+        var expected = BattleSaveUnitTests.SightFree(WithoutUnsavedSlotPositions(BattleSaveUnitTests.Loaded(snapshot.Battle!)));
+        var actual = BattleSaveUnitTests.SightFree(reloaded.Capture().Battle!);
         Assert.Equivalent(expected, actual, strict: true);
         Assert.Equal(BattleSaveRootTests.Emit(OxceBattleSave.Write(expected)), BattleSaveRootTests.Emit(OxceBattleSave.Write(actual)));
         var restored = BattleStartTests.Battle(reloaded);
@@ -262,8 +264,9 @@ public sealed class PrivateBattleGenerationTests
             var viewer = new BattleViewer(faction);
             var before = battle.Overview(viewer);
             var after = restored.Overview(viewer);
-            Assert.Equivalent(before with { Turn = 1, Revision = 0, Phase = BattlePhase.InProgress }, after with { Revision = 0 }, strict: true);
-            Assert.Equal(before.Units, after.Units);
+            Assert.Equivalent(before with { Turn = 1, Revision = 0, Phase = BattlePhase.InProgress, Units = [] }, after with { Revision = 0, Units = [] }, strict: true);
+            // The load's field of view spots units the generated battle's viewers had not seen: it only adds to the units they see.
+            Assert.All(before.Units, unit => Assert.Contains(unit, after.Units));
         }
         Assert.Null(reloaded.QuerySaveRefusal());
     }
@@ -288,6 +291,19 @@ public sealed class PrivateBattleGenerationTests
         Assert.Equal((BattlePhase.InProgress, 1), (battle.Phase, battle.Turn));
         AssertShown(context, screen, battle);
         AssertOtherSidesSeeOnlyTheirOwn(campaign, battle);
+        // Phase 7 branch 4 S11: after the first turn a soldier leaves along a computed path, turns, kneels and stands, and a soldier opens a door
+        // where one is in reach; only a refusal named by a later branch may stop the walk. Every viewer still sees only its own discoveries.
+        var outcome = BattleAcceptanceDriver.Walk(screen, battle);
+        Assert.NotNull(outcome);
+        Assert.True(outcome!.Refusal is null, "Every walk is refused: " + outcome.Refusal);
+        Assert.True(outcome.Steps > 0 && outcome.To != outcome.From);
+        Assert.True(outcome.Turned && outcome.KneltAndStood, $"The soldier turned {outcome.Turned} and knelt and stood {outcome.KneltAndStood}.");
+        var door = BattleAcceptanceDriver.OpenDoor(screen, battle);
+        BattleAcceptanceDriver.Record(battle.TerrainId + "/" + battle.MapScriptId, outcome, door);
+        // A UFO door opens on each of the six maps today.
+        if (DoorsOpened.Contains(battle.TerrainId + "/" + battle.MapScriptId)) Assert.NotNull(door);
+        battle.Validate();
+        AssertOtherSidesSeeOnlyTheirOwn(campaign, battle);
         // The battle is saved as it is on turn 1 and reloads straight into the battlescape.
         Assert.Null(campaign.QuerySaveRefusal());
         var text = OxceSaveAdapter.EmitLoadedCampaign(campaign.Capture(), Sources.TryGetValue(campaign, out var source) ? source
@@ -303,8 +319,16 @@ public sealed class PrivateBattleGenerationTests
         Assert.Equal(1, again.Screens.Count);
         AssertShown(again, shown, restored);
         AssertOtherSidesSeeOnlyTheirOwn(reloaded, restored);
+        // The reload computes the same lighting, field of view and spotting every viewer sees, and the battle still validates.
+        restored.Validate();
+        BattleAcceptanceDriver.AssertSameSight(campaign, reloaded, restored);
+        BattleAcceptanceDriver.Measure(battle.TerrainId + "/" + battle.MapScriptId, reloaded, restored);
         foreach (var faction in Enum.GetValues<BattleFaction>())
-            Assert.Equal(battle.Overview(new BattleViewer(faction)).Units, restored.Overview(new BattleViewer(faction)).Units);
+        {
+            // The load looks from every unit at once: it keeps what the viewers saw and may add what a walk past tired opponents did not show them.
+            var kept = restored.Overview(new BattleViewer(faction)).Units;
+            Assert.All(battle.Overview(new BattleViewer(faction)).Units, unit => Assert.Contains(unit, kept));
+        }
         return null;
     }
 
@@ -360,7 +384,7 @@ public sealed class PrivateBattleGenerationTests
     {
         context.Screens.Tick(TimeSpan.FromMilliseconds(16));
         Assert.True(screen.Frame.Width > 0 && screen.Frame.Height > 0);
-        Assert.Contains(screen.Frame.Pixels.ToArray(), static pixel => pixel == BattleUiContext.Color.Floor);
+        Assert.Contains(screen.Frame.Pixels.ToArray(), static pixel => pixel is >= BattleUiContext.Color.FloorShade and < BattleUiContext.Color.FloorShade + 16);
         Assert.NotNull(screen.Model.SelectedUnitId);
         var selected = battle.Units.Single(unit => unit.Id == screen.Model.SelectedUnitId);
         Assert.Equal(BattleFaction.Player, selected.Faction);

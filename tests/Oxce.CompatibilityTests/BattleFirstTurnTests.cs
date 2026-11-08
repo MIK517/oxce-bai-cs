@@ -264,18 +264,92 @@ public sealed class BattleFirstTurnTests
     }
 
     [Fact]
-    public void ASpawnOnATileWithoutAFloorIsRefusedBeforeAnyChange()
+    public void ASpawnOnATileWithoutAFloorQueuesItsUnitAndTheFirstTurnLandsIt()
     {
+        // applyGravity queues the spawned unit at the briefing; the fall (a landing, on level 0) runs when the first turn starts.
         var (campaign, battle) = Begun(SpawnRules(), "UFO_ARMORY");
-        var tile = battle.Items.First(static item => item.ItemType == "GRENADE" && item.Tile is not null).Tile!.Value;
-        var index = battle.Map.TileIndex(tile);
-        var (floorId, floorSet) = battle.Map.Part(index, BattleTilePart.Floor);
-        battle.Map.SetPart(index, BattleTilePart.Floor, -1, -1);
-        var before = (campaign.Capture(), campaign.Random.State);
-        Assert.Equal("battle.spawn-gravity-unsupported", Refusal(campaign, new ConfirmBriefing()));
-        Assert.Equal(before.Item2, campaign.Random.State);
-        Assert.Equal(BattlePhase.Briefing, battle.Phase);
-        battle.Map.SetPart(index, BattleTilePart.Floor, floorId, floorSet);
+        var grenades = battle.Items.Where(static item => item.ItemType == "GRENADE" && item.Tile is not null).ToArray();
+        grenades[1].XcomProperty = true;
+        var tile = grenades[0].Tile!.Value;
+        battle.Map.SetPart(battle.Map.TileIndex(tile), BattleTilePart.Floor, -1, -1);
+        Event<BriefingOpened>(campaign, new BeginBriefing("UFO-1", "SHIP"));
+        Assert.Equal(new BriefingConfirmed(1, 1), Event<BriefingConfirmed>(campaign, new ConfirmBriefing()));
+        var spawned = battle.Units[^1];
+        Assert.Equal(tile, spawned.Position);
+        Assert.True(spawned.HaveNoFloorBelow);
+        Assert.Same(spawned, Assert.Single(battle.FallingUnits));
+        Event<BattleFirstTurnStarted>(campaign, new StartFirstTurn());
+        Assert.Empty(battle.FallingUnits);
+        Assert.Equal(tile, spawned.Position);
+    }
+
+    [Fact]
+    public void ASpawnedItemOnATileAboveLevelZeroWithoutAFloorDropsToTheFloorBelow()
+    {
+        var (campaign, battle) = Begun(SpawnRules(unit: ""), "UFO_ARMORY");
+        var grenade = battle.Items.First(static item => item.ItemType == "GRENADE" && item.Tile is not null);
+        var tile = grenade.Tile!.Value;
+        var upper = tile with { Z = 1 };
+        Assert.True(battle.Map.Contains(upper));
+        battle.Map.SetPart(battle.Map.TileIndex(upper), BattleTilePart.Floor, -1, -1);
+        grenade.Tile = upper;
+        Event<BriefingConfirmed>(campaign, new ConfirmBriefing());
+        // The clip the grenade spawned lay on its tile and fell to level 0.
+        var clip = battle.Items.Last(static item => item.ItemType == "CLIP" && item.Tile is not null);
+        Assert.Equal(tile.Z, clip.Tile!.Value.Z);
+        Assert.Empty(battle.ItemsOnTile(upper));
+    }
+
+    private static (CampaignState Campaign, BattleState Battle, BattleUnit Alien, BattlePosition Ground) AlienOverAHole(string? rules = null)
+    {
+        var campaign = ToInventory(rules);
+        var battle = Battle(campaign);
+        var alien = battle.Units.First(static unit => unit.OriginalFaction == BattleFaction.Hostile && unit.Position is not null);
+        var ground = alien.Position!.Value;
+        var upper = ground with { Z = 1 };
+        battle.Map.SetPart(battle.Map.TileIndex(upper), BattleTilePart.Floor, -1, -1);
+        battle.SetTile(alien, upper);
+        Assert.True(alien.HaveNoFloorBelow);
+        return (campaign, battle, alien, ground);
+    }
+
+    [Fact]
+    public void AUnitInTheAirFallsWhenTheFirstTurnStarts()
+    {
+        var (campaign, battle, alien, ground) = AlienOverAHole();
+        Assert.True(battle.MayFall());
+        Event<BattleFirstTurnStarted>(campaign, new StartFirstTurn());
+        Assert.Equal((ground, false), (alien.Position, alien.HaveNoFloorBelow));
+        Assert.Empty(battle.FallingUnits);
+        Assert.Equal(battle.Map.UnitAt(battle.Map.TileIndex(ground)), alien.Id);
+    }
+
+    [Fact]
+    public void AFloorBurningAlienInTheAirFallsAndLandsAtTheFirstTurnLikeAnyOther()
+    {
+        var rules = Rules.Replace("  - type: SMALL_VEHICLE_ARMOR\n", "  - type: SMALL_VEHICLE_ARMOR\n    specab: 2\n", StringComparison.Ordinal);
+        var (campaign, battle, alien, ground) = AlienOverAHole(rules);
+        // The floor it lands on has no voxels in this map (the hit finds nothing to burn), and the first turn starts.
+        Event<BattleFirstTurnStarted>(campaign, new StartFirstTurn());
+        Assert.Equal((ground, BattlePhase.InProgress, 1), (alien.Position, battle.Phase, battle.Turn));
+        Assert.Empty(battle.FallingUnits);
+    }
+
+    [Fact]
+    public void ABriefingWhoseSpawnBurnsTheFloorItLandsOnIsConfirmedLikeAnyOther()
+    {
+        var rules = SpawnRules().Replace("  - type: SMALL_VEHICLE_ARMOR\n", "  - type: SMALL_VEHICLE_ARMOR\n    specab: 2\n", StringComparison.Ordinal);
+        var (campaign, battle) = Begun(rules, "UFO_ARMORY");
+        var grenades = battle.Items.Where(static item => item.ItemType == "GRENADE" && item.Tile is not null).ToArray();
+        grenades[1].XcomProperty = true;
+        var tile = grenades[0].Tile!.Value;
+        battle.Map.SetPart(battle.Map.TileIndex(tile), BattleTilePart.Floor, -1, -1);
+        Event<BriefingConfirmed>(campaign, new ConfirmBriefing());
+        Assert.NotEqual(BattlePhase.Briefing, battle.Phase);
+        // The spawned unit waits to fall until the first turn, where it lands and its ability burns the (voxel-less) floor.
+        Assert.Single(battle.FallingUnits);
+        Event<BattleFirstTurnStarted>(campaign, new StartFirstTurn());
+        Assert.Empty(battle.FallingUnits);
     }
 
     private static void KillTheAliens(BattleState battle)
@@ -381,40 +455,6 @@ public sealed class BattleFirstTurnTests
         var before = campaign.Random.State;
         Assert.Equal("battle.casualties-unsupported", Refusal(campaign, new SelectNextUnit(battle.SelectedUnitId!.Value, false)));
         Assert.Equal(before, campaign.Random.State);
-    }
-
-    [Fact]
-    public void ASpawnBesideATileWithoutAFloorIsNotRefusedWhereGravityActsOnNothing()
-    {
-        // applyGravity acts on the tile the unit takes, not on its surroundings: the neighbours of a floored spawn may be open air.
-        var (campaign, battle) = Begun(SpawnRules(), "UFO_ARMORY");
-        var grenades = battle.Items.Where(static item => item.ItemType == "GRENADE" && item.Tile is not null).ToArray();
-        var rules = campaign.Content.RuntimeRules;
-        // One spawner only, so that no other spawn could take the neighbour's place.
-        grenades[1].XcomProperty = true;
-        Assert.False(battle.SpawnNeedsGravity(rules));
-        var tile = grenades[0].Tile!.Value;
-        var neighbour = tile with { X = tile.X + 2 };
-        battle.Map.SetPart(battle.Map.TileIndex(neighbour), BattleTilePart.Floor, -1, -1);
-        Assert.False(battle.SpawnNeedsGravity(rules));
-        // Two spawners close together each take their own tile, so the floorless tile two away still counts for nothing.
-        grenades[1].XcomProperty = false;
-        grenades[1].Tile = tile with { X = tile.X + 1 };
-        Assert.False(battle.SpawnNeedsGravity(rules));
-        // Two on one tile: the second takes the first free position, the one to the north, which has no floor.
-        grenades[1].Tile = tile;
-        var north = tile with { Y = tile.Y - 1 };
-        Assert.False(battle.SpawnNeedsGravity(rules));
-        battle.Map.SetPart(battle.Map.TileIndex(north), BattleTilePart.Floor, -1, -1);
-        Assert.True(battle.SpawnNeedsGravity(rules));
-        grenades[1].XcomProperty = true;
-        // The unit's own tile above level 0 without a floor drops its items, and the same tile with a floor does not.
-        var upper = tile with { Z = 1 };
-        if (battle.Map.Contains(upper))
-        {
-            grenades[0].Tile = upper;
-            Assert.True(battle.SpawnNeedsGravity(rules) == battle.Map.HasNoFloor(upper));
-        }
     }
 
     [Fact]
@@ -572,7 +612,7 @@ public sealed class BattleFirstTurnTests
         var template = Soldier(battle);
         BattleUnit Extra(int id, BattleUnitStatus status, BattleFaction faction = BattleFaction.Player, BattleFaction original = BattleFaction.Player)
         {
-            var unit = new BattleUnit(id, faction, BattleController.Human(0)) { Stats = template.Stats, ArmorId = template.ArmorId, UnitType = template.UnitType };
+            var unit = new BattleUnit(id, faction, BattleController.Human(0)) { Stats = template.Stats, ArmorId = template.ArmorId, UnitType = template.UnitType, SoldierId = template.SoldierId };
             unit.OriginalFaction = original;
             unit.Status = status;
             unit.TimeUnits = 5;
@@ -603,7 +643,7 @@ public sealed class BattleFirstTurnTests
         var battle = Battle(campaign);
         var first = Soldier(battle);
         var template = first;
-        var second = new BattleUnit(901, BattleFaction.Player, BattleController.Human(0)) { Stats = template.Stats, ArmorId = template.ArmorId, UnitType = template.UnitType };
+        var second = new BattleUnit(901, BattleFaction.Player, BattleController.Human(0)) { Stats = template.Stats, ArmorId = template.ArmorId, UnitType = template.UnitType, SoldierId = template.SoldierId };
         battle.AddUnit(second);
         // Two units claim one tile; resetUnitTiles gives it to the later one, and the selection follows.
         second.Position = first.Position;
@@ -655,6 +695,7 @@ public sealed class BattleFirstTurnTests
             Stats = first.Stats,
             ArmorId = first.ArmorId,
             UnitType = first.UnitType,
+            SoldierId = first.SoldierId,
             Position = pile with { X = pile.X + 1 },
             InventoryTile = pile,
         };

@@ -125,6 +125,12 @@ public sealed record BattleSnapshot(int Width, int Length, int Height, string Mi
     /// </summary>
     public IReadOnlyList<IReadOnlyList<BattleModuleSnapshot>> ModuleMap { get; init; } = [];
 
+    /// <summary>
+    /// Port-only (<c>oxcePortBattle</c> <c>discovery</c>, ADR 0039): the tile parts the hostile and neutral factions have discovered, for
+    /// the tiles where either has any, in index order. The reference keeps only the player's discovery, in the tiles above.
+    /// </summary>
+    public IReadOnlyList<BattleFactionDiscovery> FactionDiscovery { get; init; } = [];
+
     /// <summary><c>units</c>, in the battle's order (S3); a unit whose rule or armor is gone is left out on read.</summary>
     public IReadOnlyList<BattleUnitSnapshot> Units { get; init; } = [];
 
@@ -203,6 +209,12 @@ public readonly record struct BattleTileSnapshot(int Index)
         _ => throw new ArgumentOutOfRangeException(nameof(part)),
     };
 }
+
+/// <summary>
+/// The tile parts the hostile and neutral factions have discovered on one tile, one bit per part (floor 1, west wall 2, north wall 4,
+/// object 8), as the factions' units' field of view sets them.
+/// </summary>
+public readonly record struct BattleFactionDiscovery(int Tile, int HostileFlags, int NeutralFlags);
 
 /// <summary>
 /// One saved route node (Node::load and save): <c>segment</c> is neither read nor written. A dummy is a node the

@@ -16,6 +16,9 @@ public sealed class BattleViewModel
     private readonly PresentationRevisionGate _gate = new();
     private int? _selected;
     private int _levelRead = -1;
+    private (int X, int Y)? _previewTile;
+    private bool _previewDirty;
+    private bool _showReachable;
 
     public BattleViewModel(ICampaignCommandTarget commands, IBattleQuery battle, IBattleViewQuery view, BattleViewer viewer)
     {
@@ -44,6 +47,29 @@ public sealed class BattleViewModel
 
     public BattleLegalActions? Actions { get; private set; }
 
+    /// <summary>
+    /// The path to the previewed tile (<see cref="Preview"/>) at the camera's level, as the rules answer for this viewer; null with no preview, no
+    /// selection or a tile the viewer has not discovered. A path that does not exist is a view with no steps and its reason.
+    /// </summary>
+    public BattlePathView? Path { get; private set; }
+
+    /// <summary>The discovered tiles the selected unit can reach, while <see cref="ShowReachable"/> is on.</summary>
+    public BattleReachableView? Reachable { get; private set; }
+
+    /// <summary>Whether the reachable tiles are asked for and shown.</summary>
+    public bool ShowReachable
+    {
+        get => _showReachable;
+        set
+        {
+            _showReachable = value;
+            _previewDirty = true;
+        }
+    }
+
+    /// <summary>The events of the last command that ran (empty after a refusal): what the screen replays.</summary>
+    public IReadOnlyList<ICampaignEvent> LastEvents { get; private set; } = [];
+
     /// <summary>The refusal code of the last command, or "".</summary>
     public string Message { get; private set; } = "";
 
@@ -58,12 +84,12 @@ public sealed class BattleViewModel
         {
             var had = Overview is not null;
             Overview = null;
-            (Selection, Level, SelectedUnit, Actions, _selected) = (null, null, null, null, null);
+            (Selection, Level, SelectedUnit, Actions, _selected, Path, Reachable) = (null, null, null, null, null, null, null);
             _gate.Reset();
             return had;
         }
         var changed = _gate.TryAccept(overview.Revision);
-        if (!changed && Camera.ViewLevel == _levelRead) return false;
+        if (!changed && Camera.ViewLevel == _levelRead && !_previewDirty) return false;
         Overview = overview;
         Camera.SetMap(overview.Width, overview.Length, overview.Height);
         Selection = _view.QuerySelection(Viewer);
@@ -73,6 +99,10 @@ public sealed class BattleViewModel
         Actions = _selected is { } unit ? _view.QueryLegalActions(Viewer, unit) : null;
         _levelRead = Camera.ViewLevel;
         Level = _view.QueryLevel(Viewer, Camera.ViewLevel);
+        // The preview and the reachable tiles are the rules' answers for the selected unit now; a new revision or level asks again.
+        Path = _selected is { } walker && _previewTile is var (x, y) ? _view.QueryPath(Viewer, walker, new BattlePosition(x, y, Camera.ViewLevel)) : null;
+        Reachable = _showReachable && _selected is { } reacher ? _view.QueryReachable(Viewer, reacher) : null;
+        _previewDirty = false;
         return true;
     }
 
@@ -115,6 +145,70 @@ public sealed class BattleViewModel
         // session's reason. Skipping from nothing does not clear the undo unit as the reference does (ADR 0039).
         var units = Selection?.SelectableUnitIds ?? [];
         return Send(new SelectUnit(units.Count == 0 ? -1 : backwards ? units[^1] : units[0]), !keepCamera);
+    }
+
+    /// <summary>Previews the path to a tile of the camera's level (the pointer over it), or none (null).</summary>
+    public void Preview(int? x, int? y)
+    {
+        var tile = x is { } px && y is { } py ? (px, py) : ((int, int)?)null;
+        if (_previewTile == tile) return;
+        _previewTile = tile;
+        _previewDirty = true;
+        Refresh();
+    }
+
+    /// <summary>
+    /// A click on a tile (<c>BattlescapeGame::primaryAction</c>'s "start walking"): the selected unit walks to the tile at the camera's level;
+    /// <paramref name="ignoreSpottedEnemies"/> is the Shift key. The camera follows the unit.
+    /// </summary>
+    public bool Walk(int x, int y, bool ignoreSpottedEnemies) =>
+        SendMovement(unit => new WalkUnit(unit, new BattlePosition(x, y, Camera.ViewLevel), BattleMoveType.Normal, ignoreSpottedEnemies), follow: true);
+
+    /// <summary>The right click on a tile (<c>secondaryAction</c>): the selected unit turns towards it, or tries the door it faces.</summary>
+    public bool Turn(int x, int y) => SendMovement(unit => new TurnUnit(unit, new BattlePosition(x, y, Camera.ViewLevel)), follow: false);
+
+    /// <summary>The kneel button (<c>btnKneelClick</c>).</summary>
+    public bool Kneel() => SendMovement(static unit => new KneelUnit(unit), follow: false);
+
+    /// <summary>The unit up and down buttons (<c>btnUnitUpClick</c>, <c>btnUnitDownClick</c>); the camera follows the unit to its level.</summary>
+    public bool MoveUpDown(bool up) => SendMovement(unit => new MoveUnitUpDown(unit, up), follow: true);
+
+    private bool SendMovement(Func<int, ICampaignCommand> command, bool follow)
+    {
+        Refresh();
+        Message = "";
+        LastEvents = [];
+        // With nothing selected the command names no unit and the rules refuse it (as the selection buttons do).
+        var result = _commands.Execute(command(_selected ?? -1));
+        Message = result.Events.OfType<CampaignActionBlocked>().FirstOrDefault()?.Code ?? "";
+        if (Message.Length != 0) return false;
+        LastEvents = result.Events;
+        _gate.Reset();
+        Refresh();
+        if (follow) CenterOnSelection();
+        return true;
+    }
+
+    /// <summary>A visible-unit button's left click (<c>btnVisibleUnitClick</c>): the camera centers on that unit.</summary>
+    public bool CenterOnUnit(int unitId)
+    {
+        Message = "";
+        if (Overview?.Units.FirstOrDefault(unit => unit.Id == unitId)?.Position is not { } position)
+        {
+            // The reference centers on the unit that carries it (Phase 7 branch 5, with the carried units).
+            Message = "battle.visible-unit-carried-unsupported (Phase 7 branch 5)";
+            return false;
+        }
+        Camera.CenterOn(position);
+        Refresh();
+        return true;
+    }
+
+    /// <summary>A visible-unit button's right click: the rules select the unit of the side that sees it with the most time units left, and the camera centers on it.</summary>
+    public bool SelectSpotter(int targetUnitId)
+    {
+        Refresh();
+        return Send(new SelectSpotter(_selected ?? -1, targetUnitId), centerOnSelection: true);
     }
 
     private bool Send(ICampaignCommand command, bool centerOnSelection)

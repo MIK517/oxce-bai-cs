@@ -405,6 +405,7 @@ public sealed class BattleStartTests
 
     private static Dictionary<string, byte[]> TerrainFileMap() => new()
     {
+        ["GEODATA/LOFTEMPS.DAT"] = Loftemps(),
         ["TERRAIN/BLANKS.MCD"] = Mcd(Record(), Record((42, 1))),
         // TESTSET's third object (MAP ID 4) is a UFO power source (special type 2).
         ["TERRAIN/TESTSET.MCD"] = Mcd(Record((42, 2)), Record((42, 3)), Record((42, 4), (59, 2))),

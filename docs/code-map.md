@@ -14,18 +14,18 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Benchmarks](#oxcebenchmarks) | 19 | Engine, Formats, Mods, Rendering, Resources, Savegames |
 | [Oxce.App](#oxceapp) | 3 | Engine, Extensions, Formats, Mods, Platform.Sdl, Rendering, Savegames |
 | [Oxce.Core](#oxcecore) | 8 | - |
-| [Oxce.Engine](#oxceengine) | 40 | Core, Gameplay, Rendering, Resources |
+| [Oxce.Engine](#oxceengine) | 41 | Core, Gameplay, Rendering, Resources |
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 230 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 249 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 100 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 8 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 337 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 350 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 112 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -106,7 +106,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Engine
 
-`src/Oxce.Engine` - 40 files.
+`src/Oxce.Engine` - 41 files.
 
 ### `Oxce.Engine`
 
@@ -138,6 +138,8 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BattleBriefingScreen` (class) [BattleBriefingScreen.cs](../src/Oxce.Engine/Battlescape/BattleBriefingScreen.cs) - `BriefingState`: the mission's title, description and the target and craft lines.
 - `BattleCamera` (class) [BattleCamera.cs](../src/Oxce.Engine/Battlescape/BattleCamera.cs) - The battlescape camera's map-side state (`Camera`: `up`, `down`, `setViewLevel`, `centerOnPosition`, `toggleShowAllLayers`): the tile at...
 - `BattleInventoryScreen` (class) [BattleInventoryScreen.cs](../src/Oxce.Engine/Battlescape/BattleInventoryScreen.cs) - `InventoryState`: one unit's sections, carried items and the items on its tile, from `IBattleInventoryQuery`.
+- `BattleReplayFrame` (record struct) [BattleReplay.cs](../src/Oxce.Engine/Battlescape/BattleReplay.cs) - One beat of a replayed action: the unit it concerns, where a unit that moved now stands (a step or a fall; null for the others) and the l...
+- `BattleReplay` (class) [BattleReplay.cs](../src/Oxce.Engine/Battlescape/BattleReplay.cs) - Turns the events of a movement command into the frames the battlescape replays.
 - `BattleScreenBase` (class) [BattleScreenBase.cs](../src/Oxce.Engine/Battlescape/BattleScreenBase.cs) - Frame, palette, revision and message handling the battle screens share.
 - `BattleUiContext` (class) [BattleUiContext.cs](../src/Oxce.Engine/Battlescape/BattleUiContext.cs) - What the battle screens share (Phase 7 branch 3 S6): the command target, the queries for one viewer, the font, the language and the stack...
 - `BattleUiContext.Color` (class) [BattleUiContext.cs](../src/Oxce.Engine/Battlescape/BattleUiContext.cs) - Palette indices of the placeholder drawing.
@@ -350,7 +352,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 230 files.
+`src/Oxce.Gameplay` - 249 files.
 
 ### `Oxce.Gameplay`
 
@@ -378,6 +380,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BattleUnitView` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - A unit as a viewer sees it.
 - `BattleOverview` (record) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The battle as a viewer sees it; `Revision` changes with every committed battle change.
 - `IBattleQuery` (interface) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - The current battle, if any, as a viewer sees it (ADR 0038: every battle query takes a viewer).
+- `BattleDoorResult` (enum) [BattleDoors.cs](../src/Oxce.Gameplay/Battles/BattleDoors.cs) - What a unit's try at a door did (the result of `TileEngine::unitOpensDoor`).
 - `MoveInventoryItem` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - `Inventory::mouseClick`'s drop: a unit's item goes to a position of an inventory section (a hand, a grid slot, or the ground of the unit'...
 - `AutoPlaceInventoryItem` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - `Inventory::mouseClick`'s Ctrl click: a ground item goes to the best section that holds it (the cheapest to reach a hand when `Smart`, th...
 - `InventoryFeature` (enum) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - What an inventory screen can ask for that is not ported yet; each is refused by its own name.
@@ -389,8 +392,24 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BattleInventoryView` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - A unit's inventory screen: sections, carried items and the items on its tile.
 - `IBattleInventoryQuery` (interface) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - What the inventory screen reads (ADR 0038: a viewer sees only its own faction's inventory).
 - `BattleItemSnapshot` (record) [BattleItemSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleItemSnapshot.cs) - One saved item (`SavedBattleGame::load`'s item passes and `BattleItem::load` and `save`, Phase 7 branch 2 S4).
+- `TurnUnit` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - Turning a unit towards a tile (`BattlescapeGame::secondaryAction`, the right click: `UnitTurnBState`): the unit turns one eighth at a tim...
+- `KneelUnit` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - The kneel button (`BattlescapeState::btnKneelClick`, `BattlescapeGame::kneel`): the unit kneels, or stands up when it kneels, for the tim...
+- `BattleMoveType` (enum) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - How a unit moves along a path (`BattleActionMove` without the guided missile): the player's client sends `Normal`.
+- `WalkUnit` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - Walking, or flying, to a tile (`BattlescapeGame::primaryAction`'s "start walking" and `UnitWalkBState`): the path is calculated for the m...
+- `MoveUnitUpDown` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - The unit up and down buttons (`BattlescapeGame::moveUpDown`): a flying unit, or one on a ladder or a lift, moves one level.
+- `BattleWalkStop` (enum) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - Why a walk ended.
+- `UnitStepped` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - One step of a walk: a tile in a direction (0-7, 8 up, 9 down), what it cost and where the unit stands afterwards (a step down stairs or o...
+- `UnitWalkTurned` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - A turn of one eighth during a walk: the direction now and the time units it cost (turning is free except before the first step).
+- `UnitWalkOpenedDoor` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - A door opened on the way: what happened, how many door parts opened, where light and sight were updated and the time units it cost.
+- `UnitFell` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - A unit moved by gravity during a walk: a unit that fell, or one that moved out of the way of a falling unit.
+- `UnitsSpotted` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - The units a walker saw for the first time this turn (the walk stopped there unless it ignores them).
+- `UnitWalkEnded` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - A walk ended: why, how many steps it took and what it cost in all (the kneel, the doors, the turns before the first step and the steps).
+- `BattleTurnStop` (enum) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - Why a turn ended.
+- `UnitTurned` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - A unit turned (possibly not all the way): its direction now, the eighths it turned and the time units it paid.
+- `UnitKneeled` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - A unit kneeled or stood up (`Kneeling` is whether it kneels now), paying `TimeUnitsSpent`.
 - `BattleSnapshot` (record) [BattleSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleSnapshot.cs) - The persistence boundary of `BattleState` (Phase 7 branch 2): what `SavedBattleGame::load` reads and `save` writes, as values.
 - `BattleTileSnapshot` (record struct) [BattleSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleSnapshot.cs) - One saved tile (Tile::loadBinary and saveBinary, or the old Tile::load): each part's map data ID and data set ID (-1 for none), smoke, fi...
+- `BattleFactionDiscovery` (record struct) [BattleSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleSnapshot.cs) - The tile parts the hostile and neutral factions have discovered on one tile, one bit per part (floor 1, west wall 2, north wall 4, object...
 - `BattleNodeSnapshot` (record) [BattleSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleSnapshot.cs) - One saved route node (Node::load and save): `segment` is neither read nor written.
 - `BattleModuleSnapshot` (record struct) [BattleSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleSnapshot.cs) - One block of a base defense's module map: the base module tiles in all (the pair's first) and left (its second).
 - `BattleUnitStatus` (enum) [BattleUnitSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleUnitSnapshot.cs) - UnitStatus: the reference's values (`src/Mod/Unit.h`).
@@ -405,6 +424,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `SelectNextUnit` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - The next or previous soldier button (`BattlescapeState::btnNextSoldierClick`, `btnPrevSoldierClick`), walking the unit list from `UnitId`...
 - `SkipUnit` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - "Next and stop" (`btnNextStopLClick` by list order, `btnNextStopMClick` by distance): the unit is remembered as the undo unit, may not be...
 - `ReselectSkippedUnit` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - `btnNextStopRClick`: the unit that was skipped last (the undo unit, `UnitId`) is selected again.
+- `SelectSpotter` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - The right click of a visible-unit button (`BattlescapeState::btnVisibleUnitClick`): of the units of the side that see `TargetUnitId` and...
 - `UnitSelected` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - A unit was selected.
 - `UnitSkipped` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - A unit was skipped.
 - `BattleActionKind` (enum) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - What a battle client can ask for now that the rules list as legal for a unit; later branches add their own.
@@ -412,9 +432,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BattleSelectionView` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - What the selection looks like to a viewer: the saved selection and undo unit (only when they are the viewer's side's), the units of the s...
 - `BattleTilePartView` (record struct) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - A discovered part of a tile: the terrain object (data set name and index in it) and the part it occupies.
 - `BattleTileItemView` (record struct) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - An item lying on a visible tile floor.
-- `BattleTileView` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - A tile as a viewer sees it: only its discovered parts, the smoke and fire when the floor is discovered, the items on it and the unit stan...
+- `BattleTileView` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - A tile as a viewer sees it: only its discovered parts (with the tile's shade, 0 full light to 15 dark: `Tile::getShade`), the smoke and f...
 - `BattleLevelView` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - One level of the map for a viewer: the map size and the tiles it may see, in index order.
 - `BattleUnitInfo` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - `BattlescapeState::updateSoldierInfo`: a viewer's own unit with its bars, hands, the hostile units it sees and its wounded (and burning)...
+- `BattlePathMarker` (enum) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - How a previewed step stands against the unit's time units, energy and reserve (`Pathfinding::refreshPath`'s marker colours).
+- `BattlePathStepView` (record struct) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - One tile of a previewed path: where the unit stands after the step, the direction it took (0-7, 8 up, 9 down), and the time units and ene...
+- `BattlePathView` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - A path as a player would see it previewed (`Pathfinding::calculate` then `refreshPath`): the steps, the time units and energy the whole w...
+- `BattleReachableView` (record) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - The tiles a unit can reach with its time units and energy that the viewer has discovered, cheapest first (the first is its own).
 - `IBattleViewQuery` (interface) [BattleViewContracts.cs](../src/Oxce.Gameplay/Battles/BattleViewContracts.cs) - The queries of the battlescape screen (ADR 0038: every one takes the viewer and answers from what its side knows).
 
 ### `Oxce.Gameplay.Battles.Terrain`
@@ -1002,10 +1026,15 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RuntimeBattleInventory` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - RuleInventory as the battle reads it.
 - `RuntimeInventorySlot` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs)
 - `RuntimeBattleItem` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - RuleItem's equipment fields: fixed weapon, default inventory slot and position, inventory size, supported sections, turret type, psi and...
-- `RuntimeFuseTrigger` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - RuleItemFuseTrigger's `defaultBehavior`, `throwTrigger` and `proximityTrigger`.
+- `RuntimeUseCost` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - RuleItemUseCost: the time units, energy, morale, health, stun and mana an action costs (percent unless flat).
+- `RuntimeUseFlat` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - RuleItemUseFlat: for each resource of a `RuntimeUseCost`, whether it is a flat value instead of a percentage.
+- `RuntimeItemActionCosts` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - An item's action costs as `BattleUnit::getActionTUs(RuleItem)` reads them, with the reference's fallbacks applied (an unset auto or snap...
+- `RuntimeFuseTrigger` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - RuleItemFuseTrigger's `defaultBehavior`, `throwTrigger`, `proximityTrigger` and `proximityExplode`.
 - `RuntimeBattleArmor` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - Armor's equipment fields: built-in weapons, special and self-destruct items, two main weapons, inventory, weight.
 - `RuntimeArmorMoveCosts` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - ArmorMoveCost of each base kind: (time percent, energy percent).
+- `RuntimeArmorStepCosts` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - Armor's per-step `moveCost` percentages: (time percent, energy percent) of each kind of step.
 - `RuntimeBattleUnitRule` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - Unit's battle fields: statistics, built-in weapon sets (plain and weighted), melee and psi weapons, living weapon, race.
+- `RuntimeUnitHeights` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - The voxel heights of a unit standing, kneeling and floating (the unit rule's or soldier's, unless the armor sets its own).
 - `RuntimeBattleRules` (class) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - The rule families only the battlescape reads (Phase 7, ADR 0038), linked as one group by `Link`, apart from the strategic families.
 - `RuntimeTerrain` (record) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - RuleTerrain as the battle generator reads it (sprites stay with presentation).
 - `RuntimeEnviroChances` (record struct) [RuntimeBattleRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleRules.cs) - The environmental conditions' global chances per faction (EnvironmentalCondition::globalChance).
@@ -1315,32 +1344,45 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 337 files.
+`tests/Oxce.CompatibilityTests` - 350 files.
 
 ### `Oxce.CompatibilityTests`
 
+- `BattleAcceptanceDriver` (internal class) [BattleAcceptanceDriver.cs](../tests/Oxce.CompatibilityTests/BattleAcceptanceDriver.cs) - Phase 7 branch 4 S11: the scripted soldier of the acceptance battles.
 - `BattleSaveConformance` (internal class) [BattleSaveConformance.cs](../tests/Oxce.CompatibilityTests/BattleSaveConformance.cs) - The conformance reader (Phase 7 plan, branch 2 decisions): applies the reading rules of the reference's `SavedBattleGame::load` (`src/Sav...
+- `BattleTestSupport` (internal class) [BattleTestSupport.cs](../tests/Oxce.CompatibilityTests/BattleTestSupport.cs) - Helpers the battle movement tests share: rule text edits, command results, the walk's last event and a loaded gun.
 - `BattleTestTerrain` (internal class) [BattleTestTerrain.cs](../tests/Oxce.CompatibilityTests/BattleTestTerrain.cs) - Synthetic terrain files for battle tests: MCD records, MAP blocks and an in-memory file port.
 - `ContentStateDump` (internal class) [ContentStateDump.cs](../tests/Oxce.CompatibilityTests/ContentStateDump.cs) - Deterministic dump of every instance field reachable from an object graph.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>332 test classes</summary>
+<details><summary>343 test classes</summary>
 
 - `BaseDefenseDeploymentTests` ([BaseDefenseDeploymentTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseDeploymentTests.cs))
 - `BaseDefenseMapTests` ([BaseDefenseMapTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseMapTests.cs))
 - `BattleCampaignSaveTests` ([BattleCampaignSaveTests.cs](../tests/Oxce.CompatibilityTests/BattleCampaignSaveTests.cs))
+- `BattleClientMovementTests` ([BattleClientMovementTests.cs](../tests/Oxce.CompatibilityTests/BattleClientMovementTests.cs))
+- `BattleDoorTests` ([BattleDoorTests.cs](../tests/Oxce.CompatibilityTests/BattleDoorTests.cs))
 - `BattleEntryPointTests` ([BattleEntryPointTests.cs](../tests/Oxce.CompatibilityTests/BattleEntryPointTests.cs))
+- `BattleFireTests` ([BattleFireTests.cs](../tests/Oxce.CompatibilityTests/BattleFireTests.cs))
 - `BattleFirstTurnTests` ([BattleFirstTurnTests.cs](../tests/Oxce.CompatibilityTests/BattleFirstTurnTests.cs))
+- `BattleGravityTests` ([BattleGravityTests.cs](../tests/Oxce.CompatibilityTests/BattleGravityTests.cs))
 - `BattleInventoryTests` ([BattleInventoryTests.cs](../tests/Oxce.CompatibilityTests/BattleInventoryTests.cs))
+- `BattleLightingTests` ([BattleLightingTests.cs](../tests/Oxce.CompatibilityTests/BattleLightingTests.cs))
+- `BattleMovementGroundworkTests` ([BattleMovementGroundworkTests.cs](../tests/Oxce.CompatibilityTests/BattleMovementGroundworkTests.cs))
+- `BattlePathfindingTests` ([BattlePathfindingTests.cs](../tests/Oxce.CompatibilityTests/BattlePathfindingTests.cs))
 - `BattleSaveItemTests` ([BattleSaveItemTests.cs](../tests/Oxce.CompatibilityTests/BattleSaveItemTests.cs))
 - `BattleSaveMapTests` ([BattleSaveMapTests.cs](../tests/Oxce.CompatibilityTests/BattleSaveMapTests.cs))
 - `BattleSaveRootTests` ([BattleSaveRootTests.cs](../tests/Oxce.CompatibilityTests/BattleSaveRootTests.cs))
 - `BattleSaveUnitTests` ([BattleSaveUnitTests.cs](../tests/Oxce.CompatibilityTests/BattleSaveUnitTests.cs))
 - `BattleScreensTests` ([BattleScreensTests.cs](../tests/Oxce.CompatibilityTests/BattleScreensTests.cs))
+- `BattleSightCoverageTests` ([BattleSightCoverageTests.cs](../tests/Oxce.CompatibilityTests/BattleSightCoverageTests.cs))
+- `BattleSightTests` ([BattleSightTests.cs](../tests/Oxce.CompatibilityTests/BattleSightTests.cs))
 - `BattleStartTests` ([BattleStartTests.cs](../tests/Oxce.CompatibilityTests/BattleStartTests.cs))
 - `BattleTerrainLoaderTests` ([BattleTerrainLoaderTests.cs](../tests/Oxce.CompatibilityTests/BattleTerrainLoaderTests.cs))
+- `BattleTurnKneelTests` ([BattleTurnKneelTests.cs](../tests/Oxce.CompatibilityTests/BattleTurnKneelTests.cs))
 - `BattleViewTests` ([BattleViewTests.cs](../tests/Oxce.CompatibilityTests/BattleViewTests.cs))
+- `BattleWalkTests` ([BattleWalkTests.cs](../tests/Oxce.CompatibilityTests/BattleWalkTests.cs))
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
 - `CampaignSaveRegressionFixtureTests` ([CampaignSaveRegressionFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignSaveRegressionFixtureTests.cs))
@@ -1832,16 +1874,28 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 Shared sources compiled into several projects, and non-test types that tests reuse.
 Prefer these over local copies (see AGENTS.md, *Test conventions*).
 
+### [tests/Oxce.CompatibilityTests/BattleAcceptanceDriver.cs](../tests/Oxce.CompatibilityTests/BattleAcceptanceDriver.cs)
+
+- `BattleAcceptanceDriver` (class) - Phase 7 branch 4 S11: the scripted soldier of the acceptance battles.
+- `BattleAcceptanceDriver.Outcome` (record) - What a battle's scripted turn did; `Refusal` is the named reason when a command was refused.
+- `BattleAcceptanceDriver.Timing` (record) - The cost of the queries and the field of view on one battle, in microseconds (medians) of a Debug build.
+- members: `Walk`, `Record`, `Measure`, `AssertSameSight`, `RequireLaterBranch`, `OpenDoor`
+
 ### [tests/Oxce.CompatibilityTests/BattleSaveConformance.cs](../tests/Oxce.CompatibilityTests/BattleSaveConformance.cs)
 
 - `BattleSaveConformance` (class) - The conformance reader (Phase 7 plan, branch 2 decisions): applies the reading rules of the reference's `SavedBattleGame::load` (`src/Sav...
 - members: `CheckSave`, `Check`
 
+### [tests/Oxce.CompatibilityTests/BattleTestSupport.cs](../tests/Oxce.CompatibilityTests/BattleTestSupport.cs)
+
+- `BattleTestSupport` (class) - Helpers the battle movement tests share: rule text edits, command results, the walk's last event and a loaded gun.
+- members: `Replaced`, `Refusal`, `Events`, `End`, `GunFor`
+
 ### [tests/Oxce.CompatibilityTests/BattleTestTerrain.cs](../tests/Oxce.CompatibilityTests/BattleTestTerrain.cs)
 
 - `BattleTestTerrain` (class) - Synthetic terrain files for battle tests: MCD records, MAP blocks and an in-memory file port.
 - `BattleTestTerrain.Files` (class) - Terrain files by virtual path; counts reads so tests can check caching.
-- members: `Reads`, `Read`, `Record`, `Map`, `RouteNode`, `RequiredFiles`
+- members: `Reads`, `Read`, `Record`, `Map`, `Loftemps`, `RouteNode`, `RequiredFiles`
 
 ### [tests/Oxce.CompatibilityTests/ContentStateDump.cs](../tests/Oxce.CompatibilityTests/ContentStateDump.cs)
 

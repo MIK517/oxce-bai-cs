@@ -33,11 +33,17 @@ internal static class BattleFlowReasons
     internal static readonly CampaignReason ReinforcementsUnsupported = new("battle.reinforcements-unsupported",
         "A reinforcement wave of the deployment could deploy at the start; deploying reinforcements arrives with turn processing (Phase 7 branch 6).");
 
-    internal static readonly CampaignReason SpawnNeedsGravity = new("battle.spawn-gravity-unsupported",
-        "A primed spawn item lies near a tile without a floor, where its spawn would fall; gravity arrives with the tile engine (Phase 7 branch 4).");
+    internal static readonly CampaignReason FlareBonusUnsupported = new("battle.flare-power-bonus-unsupported",
+        "A flare's glow range is its power plus the damage bonus of its rule; evaluating a damage bonus script arrives with Phase 7 branch 8.");
 
     internal static readonly CampaignReason SpawnContentInvalid = new("battle.generation-failed",
         "A primed spawn item spawns a unit, but the mod lists no ten alien item levels for the battle's month.");
+
+    internal static readonly CampaignReason VisibilityScriptUnsupported = new("battle.visibility-script-unsupported",
+        "The battle's rules bind a visibility script (visibilityUnit), which changes whether a unit is seen; script bindings in battle arrive with Phase 7 branch 8.");
+
+    internal static readonly CampaignReason LineOfFireDataInvalid = new("battle.line-of-fire-data-invalid",
+        "A unit's armor or a map object refers to a line of fire template that LOFTEMPS.DAT lacks, where the reference's sight would throw.");
 
     internal static readonly CampaignReason NewTurnScriptUnsupported = new("battle.new-turn-script-unsupported",
         "The battle's rules bind a new-turn script (newTurnUnit or newTurnItem); script bindings in battle arrive with Phase 7 branch 8.");
@@ -146,64 +152,6 @@ internal sealed partial class BattleState
         return result;
     }
 
-    /// <summary>
-    /// Whether <c>applyGravity</c> (branch 4's) would move anything the spawns make. It acts on the tile a spawned unit takes
-    /// (the unit falls when every tile of it has no floor, and the tile's items drop while it is above level 0 and has no floor)
-    /// and on a spawned item's tile (it drops above level 0 without a floor). A unit takes the first position
-    /// <see cref="BattlePlacement.ValidForUnit"/> finds around its item that the units spawned before it have not taken (those
-    /// spawns are followed in order; one that may not happen, a chance under 100, leaves every position it could have taken
-    /// open, and all of those are checked).
-    /// </summary>
-    internal bool SpawnNeedsGravity(RuntimeRuleCatalog rules)
-    {
-        var taken = new HashSet<BattlePosition>();
-        var uncertain = new List<BattlePosition>();
-        ReadOnlySpan<int> xs = [0, 1, 1, 1, 0, -1, -1, -1];
-        ReadOnlySpan<int> ys = [-1, -1, 0, 1, 1, 1, 0, -1];
-        foreach (var item in PrimedSpawnItems(rules))
-        {
-            var at = item.Tile!.Value;
-            var rule = rules.Battle.Equipment.Items[item.ItemType];
-            if (rule.SpawnItem.Length != 0 && at.Z > 0 && Map.HasNoFloor(at)) return true;
-            if (rule.SpawnUnit.Length == 0 || rule.SpawnUnitChance <= 0) continue;
-            var (unitRule, armor) = UnitRule(rules, rule.SpawnUnit);
-            var unit = TempUnit(rules, (_units.Count == 0 ? -1 : _units[^1].Id) + 1, BattleFaction.Hostile, BattleController.Ai, rule.SpawnUnit, unitRule, armor);
-            var size = unit.ArmorSize;
-            var candidates = new List<BattlePosition> { at };
-            for (var direction = 0; direction < 8; direction++)
-                candidates.Add(new BattlePosition(at.X + xs[direction] * size, at.Y + ys[direction] * size, at.Z));
-            var open = new List<BattlePosition>();
-            foreach (var candidate in candidates)
-            {
-                if (BattlePlacement.ValidForUnit(Map, unit, candidate, surrounding: false, startDirection: 0) is not { } valid) continue;
-                var covered = Enumerable.Range(0, size * size).Select(index => valid with { X = valid.X + index % size, Y = valid.Y + index / size }).ToArray();
-                if (!covered.Any(taken.Contains)) open.Add(valid);
-            }
-            if (open.Count == 0) continue;
-            // An earlier spawn that may not happen could have left any of these taken or not: the first open one is no longer certain.
-            var undecided = uncertain.Any(other => Math.Abs(other.X - at.X) <= 2 * size && Math.Abs(other.Y - at.Y) <= 2 * size && other.Z == at.Z);
-            if (undecided ? open.Any(position => FallsAt(unit, position)) : FallsAt(unit, open[0])) return true;
-            if (rule.SpawnUnitChance >= 100)
-                foreach (var tile in Enumerable.Range(0, size * size).Select(index => open[0] with { X = open[0].X + index % size, Y = open[0].Y + index / size }))
-                    taken.Add(tile);
-            else uncertain.Add(at);
-        }
-        return false;
-    }
-
-    // applyGravity on a spawned unit's tile: the unit has no floor under all of its tiles, or the tile's items would drop.
-    private bool FallsAt(BattleUnit unit, BattlePosition position)
-    {
-        if (position.Z > 0 && Map.HasNoFloor(position)) return true;
-        for (var x = 0; x < unit.ArmorSize; x++)
-            for (var y = 0; y < unit.ArmorSize; y++)
-            {
-                var tile = position with { X = position.X + x, Y = position.Y + y };
-                if (!Contains(tile) || !Map.HasNoFloor(tile)) return false;
-            }
-        return true;
-    }
-
     /// <summary>Whether a primed item spawns a unit while the mod lists no ten alien item levels for the month (the reference throws).</summary>
     internal bool SpawnLacksItemLevels(RuntimeRuleCatalog rules)
     {
@@ -290,12 +238,14 @@ internal sealed partial class BattleState
         }
         var itemLevel = equipment.DrawItemLevel();
         unit.Position = position;
-        unit.Direction = direction;
+        unit.SetDirection(direction);
         unit.TimeUnits = 0;
         unit.PreviousOwnerId = owner?.Id;
         AddUnit(unit);
         SetSpotted(unit, BattleFaction.Player, faction == BattleFaction.Player);
         equipment.InitUnit(unit, unitRule, "", itemLevel);
+        // applyGravity on the unit's tile: it falls with the first turn's falls, or its tile's items drop.
+        ApplyGravity(unit.Position);
         return true;
     }
 
@@ -305,6 +255,7 @@ internal sealed partial class BattleState
         var owner = OwnerOf(item);
         var created = equipment.CreateItemForTile(rule.SpawnItem, item.Tile);
         created.PreviousOwnerUnitId = owner?.Id;
+        ApplyGravity(created.Tile);
         return true;
     }
 
@@ -358,6 +309,12 @@ internal sealed partial class BattleState
             if (owner?.Status == BattleUnitStatus.IgnoreMe) continue;
             if (HasRuleScript(content, "items", item.ItemType, "newTurnItem")) return BattleFlowReasons.NewTurnScriptUnsupported;
         }
+        if (VisibilityScriptRefusal(content) is { } visibility) return visibility;
+        if (VoxelDataFault(content.RuntimeRules) is not null) return BattleFlowReasons.LineOfFireDataInvalid;
+        foreach (var item in _items)
+            if (item.ItemType is var type && content.RuntimeRules.Items.TryGet(type, out var handle) && content.RuntimeRules.Items[handle].Value.BattleType == FlareBattleType &&
+                (content.RuntimeRules.Battle.Equipment.Items[type].StrengthApplied || HasRuleScript(content, "items", type, "damageBonusBonusStats") || HasEventPlan(content, "damageBonusBonusStats")))
+                return BattleFlowReasons.FlareBonusUnsupported;
         var rules = content.RuntimeRules;
         foreach (var unit in _units)
         {
@@ -384,6 +341,18 @@ internal sealed partial class BattleState
         return null;
     }
 
+    /// <summary>
+    /// The armor's <c>visibilityUnit</c> script (or a global event of that name) changes whether a unit is seen, in <c>TileEngine::visible</c>;
+    /// battle scripts are branch 8's, so a battle whose units wear such an armor, or whose mods bind the event, stops.
+    /// </summary>
+    internal CampaignReason? VisibilityScriptRefusal(RuntimeContent content)
+    {
+        if (HasEventPlan(content, "visibilityUnit")) return BattleFlowReasons.VisibilityScriptUnsupported;
+        foreach (var unit in _units)
+            if (HasRuleScript(content, "armors", unit.ArmorId, "visibilityUnit")) return BattleFlowReasons.VisibilityScriptUnsupported;
+        return null;
+    }
+
     private static bool HasRuleScript(RuntimeContent content, string section, string id, string parser) =>
         content.Scripts.Any(artifact => artifact.OwnerSection == section && artifact.OwnerId == id && artifact.ParserName == parser);
 
@@ -397,10 +366,11 @@ internal sealed partial class BattleState
     /// (<see cref="FirstTurnRefusal"/>). Without a selected unit on the map (a null dereference in the reference) the
     /// inventory-tile steps are skipped (ADR 0039).
     /// </summary>
-    internal void StartFirstTurn(RuntimeContent content, IRandomSource random)
+    internal CampaignReason? StartFirstTurn(RuntimeContent content, IRandomSource random)
     {
+        Random = random;
         var equipment = new UnitEquipment(this, content.RuntimeRules, Seedless);
-        var selected = SelectedUnitId is { } id ? _units.Find(unit => unit.Id == id) : null;
+        var selected = SelectedUnitId is { } id ? UnitById(id) : null;
         var inventoryTile = selected is null ? null : TileOf(selected);
         if (inventoryTile is { } tile) RandomizeItemLocations(tile, random);
         ResetUnitTiles();
@@ -409,7 +379,22 @@ internal sealed partial class BattleState
             if (unit.OriginalFaction == BattleFaction.Player && !unit.IsOut) PrepareNewTurn(unit, equipment);
         Turn = 1;
         Phase = BattlePhase.InProgress;
-        Revision++;
+        // The falls the spawns and the inventory's gravity started run when the battlescape first thinks.
+        var rules = content.RuntimeRules;
+        RequeueFallingUnits();
+        CloseInventory(rules);
+        return ResolveFalls(rules);
+    }
+
+    /// <summary>
+    /// InventoryState's destructor, as the inventory closes: gravity on the selected unit's tile, the items' light (a flare dropped or picked
+    /// up), then everyone's field of view. The falls that gravity queues are the caller's to resolve.
+    /// </summary>
+    internal void CloseInventory(RuntimeRuleCatalog rules)
+    {
+        ApplyGravity(SelectedUnitId is { } chosen ? UnitById(chosen)?.Position : null);
+        CalculateLighting(rules, BattleLightLayer.Items);
+        RecalculateFov();
     }
 
     /// <summary>
@@ -433,9 +418,14 @@ internal sealed partial class BattleState
         {
             unit.InventoryTile = null;
             if (!unit.IsOut && unit.Position is { } position)
+            {
                 foreach (var covered in BattleMap.Footprint(position, unit.ArmorSize)) Map.SetUnitAt(Map.TileIndex(covered), unit.Id);
+                // setTile ends with updateTileFloorState.
+                UpdateTileFloorState(unit);
+            }
             if (unit.Faction == BattleFaction.Player) unit.SetSpottedBy(BattleFaction.Player, true);
         }
+        IsBeforeGame = false;
     }
 
     /// <summary>
@@ -447,6 +437,7 @@ internal sealed partial class BattleState
     {
         if (unit.Status == BattleUnitStatus.IgnoreMe) return;
         unit.IsSurrendering = false;
+        unit.UnitsSpottedThisTurn.Clear();
         unit.MeleeAttackedBy.Clear();
         unit.DontReselect = false;
         unit.AiMedikitUsed = false;

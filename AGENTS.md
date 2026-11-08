@@ -148,7 +148,8 @@ Multiplayer later adds only a wire protocol and remote clients. Keep new code co
   `docs/implementation-plan.md` keeps phase-level status; both link to those records.
 - Phase 7 battle work: `docs/phase-7-plan.md` keeps branch scope and decisions; each branch's slices, audits and
   evidence belong in its status record (`docs/battle-generation-status.md` for branch 1,
-  `docs/battle-save-status.md` for branch 2).
+  `docs/battle-save-status.md` for branch 2, `docs/battle-session-ui-status.md` for branch 3,
+  `docs/battle-movement-status.md` for branch 4).
 
 ## Completion standard
 

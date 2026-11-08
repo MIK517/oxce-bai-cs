@@ -383,13 +383,13 @@ internal sealed class XcomDeployment
             {
                 unit.Position = _placement.TryPosition(unit, node.Position);
                 _battle.CraftInventoryTile ??= node.Position;
-                unit.Direction = _random.NextInclusive(0, 7);
+                unit.SetDirection(_random.NextInclusive(0, 7));
                 return true;
             }
             if (_battle.MissionType != "STR_BASE_DEFENSE" && _placement.PlaceNearFriend(unit))
             {
                 _battle.CraftInventoryTile ??= unit.Position;
-                unit.Direction = _random.NextInclusive(0, 7);
+                unit.SetDirection(_random.NextInclusive(0, 7));
                 return true;
             }
             return false;
@@ -412,7 +412,7 @@ internal sealed class XcomDeployment
                 if (BattleMap.Footprint(position, unit.ArmorSize).All(CanPlaceXcomUnit) && _placement.TryPosition(unit, position) is { } placed)
                 {
                     unit.Position = placed;
-                    unit.Direction = CustomDirection(point[3]);
+                    unit.SetDirection(CustomDirection(point[3]));
                     return true;
                 }
             }
@@ -462,7 +462,7 @@ internal sealed class XcomDeployment
         if (!BattleMap.Footprint(position, unit.ArmorSize).All(CanPlaceXcomUnit) || _placement.TryPosition(unit, position) is not { } placed)
             return false;
         unit.Position = placed;
-        unit.Direction = CustomDirection(point.Direction);
+        unit.SetDirection(CustomDirection(point.Direction));
         return true;
     }
 

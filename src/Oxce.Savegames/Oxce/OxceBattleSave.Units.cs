@@ -282,6 +282,31 @@ public static partial class OxceBattleSave
     }
 
     /// <summary>
+    /// <c>oxcePortBattle</c>'s <c>discovery</c>: the tile parts the hostile and neutral factions have discovered (<c>tile</c>, <c>hostile</c>
+    /// and <c>neutral</c> as one bit per part). The reference ignores it.
+    /// </summary>
+    private static ReadOnlyCollection<BattleFactionDiscovery> PortDiscovery(YamlMappingNode battle)
+    {
+        var result = new List<BattleFactionDiscovery>();
+        if (!battle.TryGet(PortKey, out var port)) return result.AsReadOnly();
+        var map = port as YamlMappingNode ?? throw new InvalidDataException($"Battle save '{PortKey}' must be a mapping.");
+        var seen = new HashSet<int>();
+        foreach (var node in Children(map, "discovery"))
+        {
+            var entry = node as YamlMappingNode ?? throw new InvalidDataException($"Battle save '{PortKey}' discovery must be mappings.");
+            var tile = entry.TryGet("tile", out var tileNode) ? Value(tileNode!, PortKey, YamlValueReader.ReadInt32)
+                : throw new InvalidDataException($"Battle save '{PortKey}' discovery 'tile' is missing.");
+            var hostile = Int(entry, "hostile", 0);
+            var neutral = Int(entry, "neutral", 0);
+            if (hostile is < 0 or > 15 || neutral is < 0 or > 15)
+                throw new InvalidDataException($"Battle save '{PortKey}' discovery of tile {tile} has flags outside 0-15.");
+            if (!seen.Add(tile)) throw new InvalidDataException($"Battle save '{PortKey}' names the discovery of tile {tile} twice.");
+            result.Add(new BattleFactionDiscovery(tile, hostile, neutral));
+        }
+        return result.AsReadOnly();
+    }
+
+    /// <summary>
     /// <c>oxcePortBattle</c>'s units by ID: the controller (<c>controller: ai</c> or <c>player</c> with <c>playerSlot</c>)
     /// and the factions other than the player's that have spotted the unit (<c>spottedBy</c>). The reference ignores it.
     /// </summary>
@@ -316,7 +341,7 @@ public static partial class OxceBattleSave
     /// <c>oxcePortBattle</c> for the units whose controller or spotting a reference save would not give them; no node when
     /// every unit has the defaults.
     /// </summary>
-    private static YamlMappingNode? WritePort(IReadOnlyList<BattleUnitSnapshot> units, YamlMappingNode? source)
+    private static YamlMappingNode? WritePort(IReadOnlyList<BattleUnitSnapshot> units, IReadOnlyList<BattleFactionDiscovery> discovery, YamlMappingNode? source)
     {
         var entries = new List<YamlNode>();
         foreach (var unit in units)
@@ -335,7 +360,17 @@ public static partial class OxceBattleSave
             ]));
         }
         var existing = source is not null && source.TryGet(PortKey, out var node) ? node as YamlMappingNode : null;
-        var written = Overlay(existing, [Pair("units", entries.Count != 0 ? Sequence(entries) : null)]);
+        var discovered = discovery.Select(static tile => (YamlNode)Overlay(null,
+        [
+            Pair("tile", Integer(tile.Tile)),
+            Pair("hostile", tile.HostileFlags != 0 ? Integer(tile.HostileFlags) : null),
+            Pair("neutral", tile.NeutralFlags != 0 ? Integer(tile.NeutralFlags) : null),
+        ])).ToList();
+        var written = Overlay(existing,
+        [
+            Pair("units", entries.Count != 0 ? Sequence(entries) : null),
+            Pair("discovery", discovered.Count != 0 ? Sequence(discovered) : null),
+        ]);
         return written.Entries.Count == 0 ? null : written;
     }
 

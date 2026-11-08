@@ -458,6 +458,13 @@ public sealed record RuntimeSoldierBonusRule(int ListOrder, IReadOnlyDictionary<
 {
     /// <summary>RuleSoldierBonus's side armor in UnitSide order (front, left = side + leftArmorDiff, right, rear, under).</summary>
     public IReadOnlyList<int> Sides { get; init; } = [0, 0, 0, 0, 0];
+
+    /// <summary>RuleSoldierBonus's <c>visibilityAtDark</c>, <c>visibilityAtDay</c>, <c>psiVision</c>, <c>heatVision</c> and <c>visibilityThroughFire</c>.</summary>
+    public int VisibilityAtDark { get; init; }
+    public int VisibilityAtDay { get; init; }
+    public int PsiVision { get; init; }
+    public int VisibilityThroughSmoke { get; init; }
+    public int VisibilityThroughFire { get; init; }
 }
 public sealed record RuntimeSoldierTransformationRule(
     IReadOnlyDictionary<string, string> Strings,
@@ -558,6 +565,18 @@ public sealed record RuntimeCampaignSettings(
     public bool ExtendedForceSpawn { get; init; }
     public bool ExtendedInventorySlotSorting { get; init; }
     public bool ExtendedItemReloadCost { get; init; }
+    /// <summary>Mod::EXTENDED_RUNNING_COST and EXTENDED_MOVEMENT_COST_ROUNDING (0 truncate, 1 round, 2 round up).</summary>
+    public bool ExtendedRunningCost { get; init; }
+    public int ExtendedMovementCostRounding { get; init; }
+
+    /// <summary>Mod::EXTENDED_MELEE_REACTIONS (<c>extendedMeleeReactions</c>): 0 none, 1 melee reactions in reach, 2 also when attacked from any side.</summary>
+    public int ExtendedMeleeReactions { get; init; }
+
+    /// <summary>Mod::getTooMuchSmokeThreshold, getMaxStaticLightDistance, getMaxDynamicLightDistance and getEnhancedLighting.</summary>
+    public int TooMuchSmokeThreshold { get; init; } = 10;
+    public int MaximumStaticLightDistance { get; init; } = 16;
+    public int MaximumDynamicLightDistance { get; init; } = 24;
+    public int EnhancedLighting { get; init; }
 
     /// <summary>Mod::getShareAmmoCategories: a firearm also has the categories of the craft's primary ammo.</summary>
     public bool ShareAmmoCategories { get; init; }

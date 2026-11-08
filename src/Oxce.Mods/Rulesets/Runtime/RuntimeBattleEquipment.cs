@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Oxce.Mods.Rulesets.Items;
 using Oxce.Mods.Rulesets.Phase3;
 
 namespace Oxce.Mods.Rulesets.Runtime;
@@ -42,6 +43,9 @@ public sealed class RuntimeBattleEquipment
     /// <summary>RuleSoldier::getSpecialWeapon, by soldier type (only soldiers that have one).</summary>
     public IReadOnlyDictionary<string, string> SoldierSpecialWeapons { get; }
 
+    /// <summary>RuleSoldier::getStandHeight, getKneelHeight and getFloatHeight, by soldier type.</summary>
+    public IReadOnlyDictionary<string, RuntimeUnitHeights> SoldierHeights { get; private init; } = Map(new Dictionary<string, RuntimeUnitHeights>());
+
     /// <summary>RuleItemCategory::getInvOrder, by category (only categories that have one).</summary>
     public IReadOnlyDictionary<string, IReadOnlyList<string>> CategoryInventoryOrders { get; }
 
@@ -83,6 +87,7 @@ public sealed class RuntimeBattleEquipment
             {
                 BigSprite = rule.Value.ResourceIndexes["bigSprite"].Index,
                 IgnoreInBaseDefense = values.Boolean("ignoreInBaseDefense"),
+                StrengthApplied = values.Boolean("strengthApplied"),
                 IgnoreInCraftEquip = values.Boolean("ignoreInCraftEquip"),
                 InventoryMoveCostPercent = values.GetInteger("inventoryMoveCostPercent"),
                 SpawnUnit = values.NullableName("spawnUnit") ?? "",
@@ -90,8 +95,9 @@ public sealed class RuntimeBattleEquipment
                 SpawnUnitFaction = values.GetInteger("spawnUnitFaction"),
                 SpawnUnitChance = values.GetInteger("spawnUnitChance") == -1 ? values.GetInteger("specialChance") : values.GetInteger("spawnUnitChance"),
                 SpawnItemChance = values.GetInteger("spawnItemChance") == -1 ? values.GetInteger("specialChance") : values.GetInteger("spawnItemChance"),
+                ActionCosts = ActionCostsOf(rule.Value),
                 FuseTrigger = new RuntimeFuseTrigger(rule.Value.FuseTriggers.DefaultBehavior, rule.Value.FuseTriggers.ThrowTrigger,
-                    rule.Value.FuseTriggers.ProximityTrigger),
+                    rule.Value.FuseTriggers.ProximityTrigger, rule.Value.FuseTriggers.ProximityExplode),
             };
         }, StringComparer.Ordinal);
         var armors = personnel.Armors.Rules.ToDictionary(static rule => rule.Id, static rule => new RuntimeBattleArmor(
@@ -102,6 +108,34 @@ public sealed class RuntimeBattleEquipment
                 rule.Value.Integers["sideArmor"], rule.Value.Integers["rearArmor"], rule.Value.Integers["underArmor"]]),
             MoveCosts = new RuntimeArmorMoveCosts(Cost(rule.Value, "basePercent"), Cost(rule.Value, "baseFlyPercent"),
                 Cost(rule.Value, "baseClimbPercent"), Cost(rule.Value, "baseNormalPercent")),
+            StepCosts = new RuntimeArmorStepCosts(Cost(rule.Value, "walkPercent"), Cost(rule.Value, "runPercent"), Cost(rule.Value, "strafePercent"),
+                Cost(rule.Value, "sneakPercent"), Cost(rule.Value, "flyWalkPercent"), Cost(rule.Value, "flyRunPercent"),
+                Cost(rule.Value, "flyStrafePercent"), Cost(rule.Value, "flyUpPercent"), Cost(rule.Value, "flyDownPercent"),
+                Cost(rule.Value, "climbUpPercent"), Cost(rule.Value, "climbDownPercent"), Cost(rule.Value, "gravLiftPercent")),
+            StandHeight = rule.Value.Integers["standHeight"],
+            KneelHeight = rule.Value.Integers["kneelHeight"],
+            FloatHeight = rule.Value.Integers["floatHeight"],
+            TurnCost = rule.Value.Integers["turnCost"],
+            SpecialAbility = rule.Value.Integers["specab"],
+            AlwaysVisible = rule.Value.Booleans["alwaysVisible"],
+            Loftemps = List(rule.Value.Loftemps),
+            VisibilityAtDark = rule.Value.Integers["visibilityAtDark"],
+            VisibilityAtDay = rule.Value.Integers["visibilityAtDay"],
+            CamouflageAtDark = rule.Value.Integers["camouflageAtDark"],
+            CamouflageAtDay = rule.Value.Integers["camouflageAtDay"],
+            AntiCamouflageAtDark = rule.Value.Integers["antiCamouflageAtDark"],
+            AntiCamouflageAtDay = rule.Value.Integers["antiCamouflageAtDay"],
+            PsiVision = rule.Value.Integers["psiVision"],
+            PsiCamouflage = rule.Value.Integers["psiCamouflage"],
+            VisibilityThroughSmoke = rule.Value.Integers["heatVision"],
+            VisibilityThroughFire = rule.Value.Integers["visibilityThroughFire"],
+            FearImmune = rule.Value.NullableBooleans["fearImmune"],
+            TurnBeforeFirstStep = rule.Value.Booleans["turnBeforeFirstStep"],
+            AllowsMoving = rule.Value.NullableBooleans["allowsMoving"] ?? true,
+            AllowsRunning = rule.Value.NullableBooleans["allowsRunning"],
+            AllowsStrafing = rule.Value.NullableBooleans["allowsStrafing"],
+            AllowsSneaking = rule.Value.NullableBooleans["allowsSneaking"],
+            AllowsKneeling = rule.Value.NullableBooleans["allowsKneeling"],
             FaceColorGroup = rule.Value.Integers["spriteFaceGroup"],
             HairColorGroup = rule.Value.Integers["spriteHairGroup"],
             UtileColorGroup = rule.Value.Integers["spriteUtileGroup"],
@@ -124,6 +158,13 @@ public sealed class RuntimeBattleEquipment
             IsVip = rule.Value.Booleans["vip"],
             PickUpWeaponsMoreActively = rule.Value.Integers["pickUpWeaponsMoreActively"],
             EnergyRecovery = rule.Value.Integers["energyRecovery"],
+            SpecialAbility = rule.Value.Integers["specab"],
+            AvoidsFire = rule.Value.AvoidsFire,
+            IsBrutal = rule.Value.Booleans["isBrutal"],
+            IsNotBrutal = rule.Value.Booleans["isNotBrutal"],
+            IgnoredByAi = rule.Value.Booleans["ignoredByAI"],
+            SpotterDuration = rule.Value.Integers["spotter"] == -1 ? rule.Value.Integers["intelligence"] : rule.Value.Integers["spotter"],
+            Heights = HeightsOf(rule.Value.Integers),
         },
             StringComparer.Ordinal);
         var soldierWeapons = personnel.Soldiers.Rules.Where(static rule => rule.Value.Strings["specialWeapon"].Length != 0)
@@ -132,8 +173,63 @@ public sealed class RuntimeBattleEquipment
             .ToDictionary(static rule => rule.Id, static rule => (IReadOnlyList<string>)List(rule.Value.InventoryOrder), StringComparer.Ordinal);
         var weaponSets = content.EquipmentProduction.WeaponSets.Rules
             .ToDictionary(static rule => rule.Id, static rule => (IReadOnlyList<string>)List(rule.Value.Weapons), StringComparer.Ordinal);
-        return new(List(inventories), Map(items), Map(armors), Map(units), Map(soldierWeapons), Map(categories), Map(weaponSets));
+        var soldierHeights = personnel.Soldiers.Rules.ToDictionary(static rule => rule.Id, static rule => HeightsOf(rule.Value.Integers), StringComparer.Ordinal);
+        return new(List(inventories), Map(items), Map(armors), Map(units), Map(soldierWeapons), Map(categories), Map(weaponSets))
+        {
+            SoldierHeights = Map(soldierHeights),
+        };
     }
+
+    /// <summary>
+    /// RuleItem::getCostAimed and the other getCost* with their getFlat* (getDefault: the first value the chain sets), per
+    /// <see cref="RuntimeItemActionCosts"/> key. Use is zero for a psi amp without <c>psiAttackName</c> and Prime for an item without
+    /// <c>primeActionName</c>; mind control and panic fall back to the use cost, with the use flat.
+    /// </summary>
+    private static RuntimeItemActionCosts ActionCostsOf(ItemRule rule)
+    {
+        const int psiAmp = 9;
+        var aimed = rule.Actions["Aimed"];
+        var auto = rule.Actions["Auto"];
+        var snap = rule.Actions["Snap"];
+        var melee = rule.Actions["Melee"];
+        var use = rule.UseCosts["Use"];
+        var useFlat = rule.UseFlats["Use"];
+        var zero = RuntimeUseCost.Zero;
+        var costs = new Dictionary<string, (RuntimeUseCost, RuntimeUseFlat)>(StringComparer.Ordinal)
+        {
+            [RuntimeItemActionCosts.Aimed] = (Coalesce(aimed.Cost), Coalesce(aimed.Flat, useFlat)),
+            [RuntimeItemActionCosts.Auto] = (Coalesce(auto.Cost, aimed.Cost), Coalesce(auto.Flat, aimed.Flat, useFlat)),
+            [RuntimeItemActionCosts.Snap] = (Coalesce(snap.Cost, aimed.Cost), Coalesce(snap.Flat, aimed.Flat, useFlat)),
+            [RuntimeItemActionCosts.Melee] = (Coalesce(melee.Cost), Coalesce(melee.Flat, useFlat)),
+            [RuntimeItemActionCosts.Use] = (rule.Values.GetInteger("battleType") != psiAmp || rule.Values.GetString("psiAttackName").Length != 0
+                ? Coalesce(use) : zero, Coalesce(useFlat)),
+            [RuntimeItemActionCosts.MindControl] = (Coalesce(rule.UseCosts["MindControl"], use), Coalesce(useFlat)),
+            [RuntimeItemActionCosts.Panic] = (Coalesce(rule.UseCosts["Panic"], use), Coalesce(useFlat)),
+            [RuntimeItemActionCosts.Throw] = (Coalesce(rule.UseCosts["Throw"]), Coalesce(rule.UseFlats["Throw"])),
+            [RuntimeItemActionCosts.Prime] = (rule.Values.GetString("primeActionName").Length != 0 ? Coalesce(rule.UseCosts["Prime"]) : zero,
+                Coalesce(rule.UseFlats["Prime"])),
+            [RuntimeItemActionCosts.Unprime] = (Coalesce(rule.UseCosts["Unprime"]), Coalesce(rule.UseFlats["Unprime"])),
+        };
+        return new RuntimeItemActionCosts(Map(costs));
+    }
+
+    private static RuntimeUseCost Coalesce(params ItemUseValues<int?>[] chain)
+    {
+        int Pick(Func<ItemUseValues<int?>, int?> field) => chain.Select(field).FirstOrDefault(static value => value is not null) ?? 0;
+        return new RuntimeUseCost(Pick(static v => v.Time), Pick(static v => v.Energy), Pick(static v => v.Morale), Pick(static v => v.Health),
+            Pick(static v => v.Stun), Pick(static v => v.Mana));
+    }
+
+    private static RuntimeUseFlat Coalesce(params ItemUseValues<bool?>[] chain)
+    {
+        bool Pick(Func<ItemUseValues<bool?>, bool?> field) => chain.Select(field).FirstOrDefault(static value => value is not null) ?? false;
+        return new RuntimeUseFlat(Pick(static v => v.Time), Pick(static v => v.Energy), Pick(static v => v.Morale), Pick(static v => v.Health),
+            Pick(static v => v.Stun), Pick(static v => v.Mana));
+    }
+
+    /// <summary>The <c>standHeight</c>, <c>kneelHeight</c> and <c>floatHeight</c> of a unit or soldier rule.</summary>
+    private static RuntimeUnitHeights HeightsOf(IReadOnlyDictionary<string, int> integers) =>
+        new(integers["standHeight"], integers["kneelHeight"], integers["floatHeight"]);
 
     private static ReadOnlyCollection<T> List<T>(IEnumerable<T> source) => Array.AsReadOnly(source.ToArray());
 
@@ -187,6 +283,9 @@ public sealed record RuntimeBattleItem(
 
     /// <summary>RuleItem's <c>ignoreInBaseDefense</c> (canBeEquippedBeforeBaseDefense) and <c>ignoreInCraftEquip</c>.</summary>
     public bool IgnoreInBaseDefense { get; init; }
+
+    /// <summary>RuleItem's <c>strengthApplied</c>: the power gets the owner's strength bonus (<c>getPowerBonus</c>).</summary>
+    public bool StrengthApplied { get; init; }
     public bool IgnoreInCraftEquip { get; init; } = true;
 
     /// <summary>RuleItem::isInventoryItem.</summary>
@@ -194,6 +293,9 @@ public sealed record RuntimeBattleItem(
 
     /// <summary>RuleItem::getInventoryMoveCostPercent (<c>inventoryMoveCost: {basePercent}</c>).</summary>
     public int InventoryMoveCostPercent { get; init; } = 100;
+
+    /// <summary>RuleItem::getCost* and getFlat*, resolved (see <see cref="RuntimeItemActionCosts"/>).</summary>
+    public RuntimeItemActionCosts ActionCosts { get; init; } = RuntimeItemActionCosts.Default;
 
     /// <summary>RuleItem::getFuseTriggerEvent's fields BattleItem::setFuseTimer reads.</summary>
     public RuntimeFuseTrigger FuseTrigger { get; init; } = RuntimeFuseTrigger.Default;
@@ -206,8 +308,44 @@ public sealed record RuntimeBattleItem(
     public int SpawnItemChance { get; init; } = 100;
 }
 
-/// <summary>RuleItemFuseTrigger's <c>defaultBehavior</c>, <c>throwTrigger</c> and <c>proximityTrigger</c>.</summary>
-public sealed record RuntimeFuseTrigger(bool DefaultBehavior, bool ThrowTrigger, bool ProximityTrigger)
+/// <summary>RuleItemUseCost: the time units, energy, morale, health, stun and mana an action costs (percent unless flat).</summary>
+public sealed record RuntimeUseCost(int Time, int Energy, int Morale, int Health, int Stun, int Mana)
+{
+    public static RuntimeUseCost Zero { get; } = new(0, 0, 0, 0, 0, 0);
+}
+
+/// <summary>RuleItemUseFlat: for each resource of a <see cref="RuntimeUseCost"/>, whether it is a flat value instead of a percentage.</summary>
+public sealed record RuntimeUseFlat(bool Time, bool Energy, bool Morale, bool Health, bool Stun, bool Mana);
+
+/// <summary>
+/// An item's action costs as <c>BattleUnit::getActionTUs(RuleItem)</c> reads them, with the reference's fallbacks applied
+/// (an unset auto or snap cost takes the aimed one, an unset flag the use one), by the action's key.
+/// </summary>
+public sealed record RuntimeItemActionCosts(IReadOnlyDictionary<string, (RuntimeUseCost Cost, RuntimeUseFlat Flat)> Actions)
+{
+    public const string Aimed = "Aimed";
+    public const string Auto = "Auto";
+    public const string Snap = "Snap";
+    public const string Melee = "Melee";
+    public const string Use = "Use";
+    public const string MindControl = "MindControl";
+    public const string Panic = "Panic";
+    public const string Throw = "Throw";
+    public const string Prime = "Prime";
+    public const string Unprime = "Unprime";
+
+    private static readonly (RuntimeUseCost, RuntimeUseFlat) None = (RuntimeUseCost.Zero,
+        new RuntimeUseFlat(false, true, true, true, true, true));
+
+    public static RuntimeItemActionCosts Default { get; } = new(new ReadOnlyDictionary<string, (RuntimeUseCost, RuntimeUseFlat)>(
+        new Dictionary<string, (RuntimeUseCost, RuntimeUseFlat)>()));
+
+    /// <summary>The cost and flags of an action key; zero cost for a key the item does not define.</summary>
+    public (RuntimeUseCost Cost, RuntimeUseFlat Flat) Of(string action) => Actions.TryGetValue(action, out var value) ? value : None;
+}
+
+/// <summary>RuleItemFuseTrigger's <c>defaultBehavior</c>, <c>throwTrigger</c>, <c>proximityTrigger</c> and <c>proximityExplode</c>.</summary>
+public sealed record RuntimeFuseTrigger(bool DefaultBehavior, bool ThrowTrigger, bool ProximityTrigger, bool ProximityExplode = false)
 {
     public static RuntimeFuseTrigger Default { get; } = new(true, false, false);
 }
@@ -227,6 +365,59 @@ public sealed record RuntimeBattleArmor(
     /// <summary>Armor's <c>moveCost</c> base percentages (basePercent, baseFlyPercent, baseClimbPercent, baseNormalPercent).</summary>
     public RuntimeArmorMoveCosts MoveCosts { get; init; } = RuntimeArmorMoveCosts.Default;
 
+    /// <summary>Armor's <c>moveCost</c> percentages per kind of step (Armor::getMoveCostWalk and the others).</summary>
+    public RuntimeArmorStepCosts StepCosts { get; init; } = RuntimeArmorStepCosts.Default;
+
+    /// <summary>Armor::getStandHeight, getKneelHeight and getFloatHeight (-1 for the unit's or soldier's own).</summary>
+    public int StandHeight { get; init; } = -1;
+    public int KneelHeight { get; init; } = -1;
+    public int FloatHeight { get; init; } = -1;
+
+    /// <summary>Armor::getTurnCost (<c>turnCost</c>, the time units of a turn of one eighth) and getTurnBeforeFirstStep.</summary>
+    public int TurnCost { get; init; } = 1;
+    public bool TurnBeforeFirstStep { get; init; }
+
+    /// <summary>Armor::isAlwaysVisible (<c>alwaysVisible</c>): units in it are visible to the player whether spotted or not.</summary>
+    public bool AlwaysVisible { get; init; }
+
+    /// <summary>Armor::getLoftempsSet (<c>loftempsSet</c>): the line of fire template of each tile the unit covers; the first is also its radius.</summary>
+    public IReadOnlyList<int> Loftemps { get; init; } = [0];
+
+    /// <summary>Armor::getVisibilityAtDark and getVisibilityAtDay (0 for the unit's own default), and the camouflage and anti-camouflage of each.</summary>
+    public int VisibilityAtDark { get; init; }
+    public int VisibilityAtDay { get; init; }
+    public int CamouflageAtDark { get; init; }
+    public int CamouflageAtDay { get; init; }
+    public int AntiCamouflageAtDark { get; init; }
+    public int AntiCamouflageAtDay { get; init; }
+
+    /// <summary>Armor::getPsiVision, getPsiCamouflage, getVisibilityThroughSmoke (<c>heatVision</c>) and getVisibilityThroughFire.</summary>
+    public int PsiVision { get; init; }
+    public int PsiCamouflage { get; init; }
+    public int VisibilityThroughSmoke { get; init; }
+    public int VisibilityThroughFire { get; init; } = 100;
+
+    /// <summary>Armor::getFearImmune's nullable <c>fearImmune</c>; null takes the caller's default (false).</summary>
+    public bool? FearImmune { get; init; }
+
+    /// <summary>Armor::getSpecialAbility (<c>specab</c>), which a soldier's unit takes as its own (SPECAB_BURNFLOOR is 2).</summary>
+    public int SpecialAbility { get; init; }
+
+    /// <summary>Armor::allowsMoving (<c>allowsMoving</c>, default true).</summary>
+    public bool AllowsMoving { get; init; } = true;
+
+    /// <summary>
+    /// The nullable <c>allowsRunning</c>, <c>allowsStrafing</c>, <c>allowsSneaking</c> and <c>allowsKneeling</c> (useBoolNullable):
+    /// null takes the caller's default (<see cref="Allows"/>).
+    /// </summary>
+    public bool? AllowsRunning { get; init; }
+    public bool? AllowsStrafing { get; init; }
+    public bool? AllowsSneaking { get; init; }
+    public bool? AllowsKneeling { get; init; }
+
+    /// <summary>useBoolNullable: the armor's value, else the default.</summary>
+    public static bool Allows(bool? value, bool @default) => value ?? @default;
+
     /// <summary>Armor's recolor groups (<c>spriteFaceGroup</c> and the others, 0 for none) and colors (<c>spriteFaceColor</c> and the others).</summary>
     public int FaceColorGroup { get; init; }
     public int HairColorGroup { get; init; }
@@ -243,6 +434,16 @@ public sealed record RuntimeArmorMoveCosts((int Time, int Energy) Base, (int Tim
     (int Time, int Energy) Normal)
 {
     public static RuntimeArmorMoveCosts Default { get; } = new((100, 100), (100, 100), (100, 100), (100, 100));
+}
+
+/// <summary>Armor's per-step <c>moveCost</c> percentages: (time percent, energy percent) of each kind of step.</summary>
+public sealed record RuntimeArmorStepCosts((int Time, int Energy) Walk, (int Time, int Energy) Run, (int Time, int Energy) Strafe,
+    (int Time, int Energy) Sneak, (int Time, int Energy) FlyWalk, (int Time, int Energy) FlyRun, (int Time, int Energy) FlyStrafe,
+    (int Time, int Energy) FlyUp, (int Time, int Energy) FlyDown, (int Time, int Energy) ClimbUp, (int Time, int Energy) ClimbDown,
+    (int Time, int Energy) GravLift)
+{
+    public static RuntimeArmorStepCosts Default { get; } = new((100, 50), (75, 75), (100, 50), (100, 50), (100, 50), (75, 75), (100, 50),
+        (100, 0), (100, 0), (100, 50), (100, 50), (100, 0));
 }
 
 /// <summary>Unit's battle fields: statistics, built-in weapon sets (plain and weighted), melee and psi weapons, living weapon, race.</summary>
@@ -262,6 +463,29 @@ public sealed record RuntimeBattleUnitRule(
     public bool IsVip { get; init; }
     public int PickUpWeaponsMoreActively { get; init; } = -1;
 
+    /// <summary>Unit::getStandHeight, getKneelHeight and getFloatHeight.</summary>
+    public RuntimeUnitHeights Heights { get; init; } = new(0, 0, 0);
+
     /// <summary>Unit's <c>energyRecovery</c> (basicEnergyRegeneration for a unit that is no soldier).</summary>
     public int EnergyRecovery { get; init; }
+
+    /// <summary>Unit's <c>specab</c> (SPECAB_NONE 0, explode on death 1, burn floor 2, burn and explode 3).</summary>
+    public int SpecialAbility { get; init; }
+
+    /// <summary>Unit's nullable <c>avoidsFire</c> (<c>Unit::avoidsFire</c>: null takes <c>specab &lt; SPECAB_BURNFLOOR</c>).</summary>
+    public bool? AvoidsFire { get; init; }
+
+    /// <summary>Unit's <c>isBrutal</c> and <c>isNotBrutal</c>, which override the options' choice of brutal AI.</summary>
+    public bool IsBrutal { get; init; }
+    public bool IsNotBrutal { get; init; }
+
+    /// <summary>Unit's <c>ignoredByAI</c> (BattleUnit::isIgnoredByAI) and Unit::getSpotterDuration (<c>spotter</c>, or <c>intelligence</c> for -1).</summary>
+    public bool IgnoredByAi { get; init; }
+    public int SpotterDuration { get; init; }
+
+    /// <summary>Unit::avoidsFire.</summary>
+    public bool AvoidsFireOrDefault => AvoidsFire ?? SpecialAbility < 2;
 }
+
+/// <summary>The voxel heights of a unit standing, kneeling and floating (the unit rule's or soldier's, unless the armor sets its own).</summary>
+public sealed record RuntimeUnitHeights(int Stand, int Kneel, int Floating);
