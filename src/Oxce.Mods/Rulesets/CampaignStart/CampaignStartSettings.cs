@@ -95,6 +95,7 @@ public sealed class CampaignStartSettings
         FixedUserOptions = Sorted(builder.FixedUserOptions);
         Interception = builder.Interception.Build();
         Monthly = builder.Monthly.Build();
+        Combat = builder.Combat;
     }
 
     [System.Text.Json.Serialization.JsonConstructor]
@@ -304,6 +305,9 @@ public sealed class CampaignStartSettings
     /// <summary>Global rules read by interception, landing and base defense.</summary>
     public CampaignInterceptionSettings Interception { get; }
 
+    /// <summary>The combat globals (<c>Mod::loadFile</c>): accuracy, close quarters, hit chances, reaction fire, AI use delays.</summary>
+    public CampaignCombatSettings Combat { get; init; } = CampaignCombatSettings.Default;
+
     /// <summary>Global rules read by the month rollover and the monthly report.</summary>
     public CampaignMonthlySettings Monthly { get; }
 
@@ -398,6 +402,7 @@ internal sealed class CampaignStartSettingsBuilder
     public List<string> OperationNamesLast { get; } = [];
     public Dictionary<string, string> FixedUserOptions { get; } = new(StringComparer.Ordinal);
     public CampaignInterceptionSettingsBuilder Interception { get; } = new();
+    public CampaignCombatSettings Combat { get; set; } = CampaignCombatSettings.Default;
     public CampaignMonthlySettingsBuilder Monthly { get; } = new();
 }
 

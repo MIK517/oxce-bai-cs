@@ -36,7 +36,7 @@ internal sealed class ItemRuleLoader : TypedRuleFamilyLoader<ItemRuleBuilder, It
         ApplyBattleType(builder, reader);
         ApplyDamage(builder.Damage, reader, "damageType", "blastRadius", "damageAlter");
         ApplyDamage(builder.MeleeDamage, reader, "meleeType", null, "meleeAlter");
-        reader.Defer("skillApplied", "stat-bonus compilation belongs to Phase 4");
+        ApplySkillAndStrength(builder, reader);
 
         if (reader.TryGet("flatRate", out var flatRate))
             GetUseFlat(builder, "Use").Time = YamlValueReader.ReadBoolean(flatRate!);
@@ -47,6 +47,7 @@ internal sealed class ItemRuleLoader : TypedRuleFamilyLoader<ItemRuleBuilder, It
         ApplyScalarValues(builder, reader);
         ApplyLegacyAliases(builder, reader);
 
+        ApplyStatBonuses(builder, reader);
         foreach (var key in ScriptKeys)
             reader.Defer(key, "item script compilation belongs to Phase 4");
         reader.DeferRemaining("dynamic item script values require Phase 4 registration");
@@ -89,7 +90,50 @@ internal sealed class ItemRuleLoader : TypedRuleFamilyLoader<ItemRuleBuilder, It
                 builder.FuseTriggers.ThrowExplode, builder.FuseTriggers.ProximityTrigger,
                 builder.FuseTriggers.ProximityExplode),
             FreezeDamage(builder.Damage),
-            FreezeDamage(builder.MeleeDamage));
+            FreezeDamage(builder.MeleeDamage),
+            new ItemStatBonusRules(builder.DamageBonus.Freeze(), builder.MeleeBonus.Freeze(), builder.AccuracyMultiplier.Freeze(),
+                builder.MeleeMultiplier.Freeze(), builder.ThrowMultiplier.Freeze(), builder.CloseQuartersMultiplier.Freeze()));
+    }
+
+    /// <summary>
+    /// RuleItem::load's <c>skillApplied</c> (true: the melee multiplier is the melee statistic; false: a flat 100, marked modded) and
+    /// <c>strengthApplied</c> (the damage bonus is the strength, marked modded), which run before the bonuses' own keys.
+    /// </summary>
+    private static void ApplySkillAndStrength(ItemRuleBuilder builder, RulePropertyReader reader)
+    {
+        if (reader.TryGet("skillApplied", out var skill))
+        {
+            if (YamlValueReader.ReadBoolean(skill!))
+            {
+                builder.MeleeMultiplier.Set(RuleStatBonus.MeleeSkill);
+            }
+            else
+            {
+                builder.MeleeMultiplier.Set(RuleStatBonus.FlatHundred);
+                builder.MeleeMultiplier.SetModded(true);
+            }
+        }
+        if (reader.TryGet("strengthApplied", out var strength) && YamlValueReader.ReadBoolean(strength!))
+        {
+            builder.DamageBonus.Set(RuleStatBonus.Strength);
+            builder.DamageBonus.SetModded(true);
+        }
+    }
+
+    /// <summary>RuleStatBonus::load of the six keys, in RuleItem::load's order.</summary>
+    private static void ApplyStatBonuses(ItemRuleBuilder builder, RulePropertyReader reader)
+    {
+        LoadBonus(reader, "damageBonus", builder.DamageBonus);
+        LoadBonus(reader, "meleeBonus", builder.MeleeBonus);
+        LoadBonus(reader, "accuracyMultiplier", builder.AccuracyMultiplier);
+        LoadBonus(reader, "meleeMultiplier", builder.MeleeMultiplier);
+        LoadBonus(reader, "throwMultiplier", builder.ThrowMultiplier);
+        LoadBonus(reader, "closeQuartersMultiplier", builder.CloseQuartersMultiplier);
+    }
+
+    private static void LoadBonus(RulePropertyReader reader, string key, StatBonusBuilder bonus)
+    {
+        if (reader.TryGet(key, out var node)) bonus.Load(node!);
     }
 
     private static void ApplyStrings(ItemRuleBuilder builder, RulePropertyReader reader)
@@ -112,6 +156,7 @@ internal sealed class ItemRuleLoader : TypedRuleFamilyLoader<ItemRuleBuilder, It
         if (battleType == 9)
         {
             builder.Booleans["psiRequired"] = true;
+            builder.AccuracyMultiplier.Set(RuleStatBonus.PsiAttack);
             builder.Integers["dropoff"] = 1;
             builder.Actions["Aimed"].Range = 0;
             builder.Integers["targetMatrix"] = 6;

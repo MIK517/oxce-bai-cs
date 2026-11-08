@@ -19,33 +19,17 @@ internal static class BattleFireReasons
 }
 
 /// <summary>
-/// The parts of a <c>RuleDamageType</c> the tile part of <c>TileEngine::hit</c> reads: the fire and smoke thresholds and the damage a tile takes.
-/// Only the random type <c>DRT_FIRE</c> (the base damage type <c>DT_IN</c>, which a walk burns floors with) is ported: branch 5 builds the others from
-/// the item rules and extends <see cref="RandomDamage"/>.
+/// The base damage types of <c>Mod::Mod</c> the battle uses on its own (a walk burns floors with <c>DT_IN</c>), and the tile damage of
+/// <c>TileEngine::hit</c>: <c>getTileFinalDamage(getRandomDamageForTile(power, damage))</c>.
 /// </summary>
-internal sealed record BattleTileDamageType(int FireThreshold, int SmokeThreshold, double ToTile, bool RandomTile, int TileDamageMethod, int TileDamageLimit,
-    bool FireRandom = true)
+internal static class BattleDamageTypes
 {
-    /// <summary>The base <c>DT_IN</c> of <c>Mod::Mod</c>: <c>FireThreshold</c> 0, <c>ToTile</c> 0, <c>TileDamageMethod</c> 2, damage rolled in the fire damage range.</summary>
-    public static BattleTileDamageType Fire { get; } = new(0, 1000, 0.0, false, 2, -1);
-
-    /// <summary>RuleDamageType::getRandomDamage for <c>DRT_FIRE</c>: a roll in <c>Mod::FIRE_DAMAGE_RANGE</c> (the power is not read).</summary>
-    public int RandomDamage(RuntimeRuleCatalog rules, IRandomSource random)
-    {
-        if (!FireRandom) throw new NotSupportedException("Only the fire random type is ported (Phase 7 branch 5).");
-        var range = rules.Campaign.Interception.FireDamageRange;
-        return random.NextInclusive(range[0], range[1]);
-    }
+    /// <summary>The base <c>DT_IN</c>: <c>FireThreshold</c> 0, <c>ToTile</c> 0, <c>TileDamageMethod</c> 2, damage rolled in the fire damage range.</summary>
+    public static RuntimeItemDamageRule Fire { get; } = RuntimeItemDamageRule.Predefined(RuntimeItemDamageRule.DamageIncendiary);
 
     /// <summary>getTileFinalDamage(getRandomDamageForTile(power, damage)).</summary>
-    public int TileFinalDamage(IRandomSource random, int power, int damage)
-    {
-        var forTile = TileDamageMethod == 1 ? random.NextInclusive(power / 2, 3 * power / 2) : damage;
-        var result = 0;
-        if (forTile > 0)
-            result = (int)Math.Round((RandomTile ? random.NextInclusive(0, forTile) : forTile) * ToTile, MidpointRounding.AwayFromZero);
-        return TileDamageLimit >= 0 && result > TileDamageLimit ? TileDamageLimit : result;
-    }
+    public static int TileDamage(RuntimeItemDamageRule type, IRandomSource random, int power, int damage) =>
+        type.TileFinalDamage(type.RandomDamageForTile(power, damage, random), random);
 }
 
 /// <summary>
@@ -165,7 +149,7 @@ internal sealed partial class BattleState
     /// TileEngine::hitTile: whether the tile caught smoke (1) or fire (2) from a hit of this damage, or neither (0). Smoke from a damage at the
     /// type's smoke threshold replaces any fire; fire needs a tile that is not void with a floor or an object and no fire yet.
     /// </summary>
-    internal int HitTile(RuntimeRuleCatalog rules, int tile, int damage, BattleTileDamageType type)
+    internal int HitTile(RuntimeRuleCatalog rules, int tile, int damage, RuntimeItemDamageRule type)
     {
         if (damage >= type.SmokeThreshold)
         {
@@ -201,7 +185,7 @@ internal sealed partial class BattleState
     /// layer it changes and the field of view around it are updated. Refused before any change when the hit would reach a unit or start an
     /// explosion; <paramref name="dryRun"/> only asks that.
     /// </summary>
-    internal CampaignReason? HitTerrain(RuntimeRuleCatalog rules, BattleUnit? attacker, BattlePosition voxel, int power, BattleTileDamageType type,
+    internal CampaignReason? HitTerrain(RuntimeRuleCatalog rules, BattleUnit? attacker, BattlePosition voxel, int power, RuntimeItemDamageRule type,
         bool dryRun = false)
     {
         ArgumentNullException.ThrowIfNull(rules);
@@ -212,8 +196,8 @@ internal sealed partial class BattleState
         var sight = Sight();
         var part = sight.VoxelCheck(voxel, attacker);
         // A dry run rolls nothing: the damage of the fire type does not decide a refusal.
-        var damage = dryRun ? 0 : type.RandomDamage(rules, Random);
-        var finalDamage = dryRun ? 0 : type.TileFinalDamage(Random, power, damage);
+        var damage = dryRun ? 0 : type.RandomDamage(power, rules.Campaign.Interception, Random);
+        var finalDamage = dryRun ? 0 : BattleDamageTypes.TileDamage(type, Random, power, damage);
         var terrainChanged = false;
         var effect = 0;
         if (part is >= BattleVoxelType.Floor and <= BattleVoxelType.Object)
@@ -278,10 +262,10 @@ internal sealed partial class BattleState
         var tile = Map.TileIndex(position);
         var voxel = new BattlePosition(position.X * 16 + 8, position.Y * 16 + 8, position.Z * 24 - Map.TerrainLevel(tile));
         // The hit's refusals are asked first, so a refusal leaves the tile as it was (the ignite is the first change).
-        var refusal = HitTerrain(rules, unit, voxel, unit.Stats.Strength, BattleTileDamageType.Fire, dryRun: true);
+        var refusal = HitTerrain(rules, unit, voxel, unit.Stats.Strength, BattleDamageTypes.Fire, dryRun: true);
         if (refusal is not null || dryRun) return refusal;
         Ignite(tile, 1);
-        return HitTerrain(rules, unit, voxel, unit.Stats.Strength, BattleTileDamageType.Fire);
+        return HitTerrain(rules, unit, voxel, unit.Stats.Strength, BattleDamageTypes.Fire);
     }
 
     /// <summary>Tile::prepareNewTurn without the environment's damage: smoke added this turn is averaged over its overlaps.</summary>

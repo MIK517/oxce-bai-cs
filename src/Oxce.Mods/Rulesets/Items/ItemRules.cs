@@ -81,6 +81,26 @@ public sealed record ItemDamageRule(
     IReadOnlyDictionary<string, double> Reals,
     IReadOnlyDictionary<string, bool> Booleans);
 
+/// <summary>
+/// RuleItem's six <c>RuleStatBonus</c> fields: <c>damageBonus</c> (<c>getPowerBonus</c>, over the power), <c>meleeBonus</c> (over the melee
+/// power), <c>accuracyMultiplier</c>, <c>meleeMultiplier</c>, <c>throwMultiplier</c> and <c>closeQuartersMultiplier</c>.
+/// </summary>
+public sealed record ItemStatBonusRules(
+    RuleStatBonus Damage,
+    RuleStatBonus Melee,
+    RuleStatBonus Accuracy,
+    RuleStatBonus MeleeMultiplier,
+    RuleStatBonus Throw,
+    RuleStatBonus CloseQuarters)
+{
+    /// <summary>The bonuses a freshly created RuleItem has (its constructor's <c>setFiring</c>, <c>setMelee</c>, <c>setThrowing</c> and <c>setCloseQuarters</c>).</summary>
+    public static ItemStatBonusRules Default { get; } = new(RuleStatBonus.Empty, RuleStatBonus.Empty, RuleStatBonus.Firing,
+        RuleStatBonus.MeleeSkill, RuleStatBonus.Throwing, RuleStatBonus.CloseQuarters);
+
+    /// <summary>Whether any of the six is written as script code.</summary>
+    public bool AnyScript => Damage.IsScript || Melee.IsScript || Accuracy.IsScript || MeleeMultiplier.IsScript || Throw.IsScript || CloseQuarters.IsScript;
+}
+
 public sealed record ItemRule(
     ItemScalarValues Values,
     IReadOnlyList<string> Requirements,
@@ -103,7 +123,8 @@ public sealed record ItemRule(
     IReadOnlyDictionary<string, ItemUseValues<bool?>> UseFlats,
     ItemFuseTriggerRule FuseTriggers,
     ItemDamageRule Damage,
-    ItemDamageRule MeleeDamage)
+    ItemDamageRule MeleeDamage,
+    ItemStatBonusRules StatBonuses)
 {
     public int EffectiveLoadOrder => Values.GetInteger("loadOrder") <= 0
         ? Values.GetInteger("listOrder")
@@ -172,6 +193,12 @@ internal sealed class ItemRuleBuilder
     public ItemFuseTriggerBuilder FuseTriggers { get; } = new();
     public ItemDamageBuilder Damage { get; } = new();
     public ItemDamageBuilder MeleeDamage { get; } = new();
+    public StatBonusBuilder DamageBonus { get; } = new(RuleStatBonus.Empty);
+    public StatBonusBuilder MeleeBonus { get; } = new(RuleStatBonus.Empty);
+    public StatBonusBuilder AccuracyMultiplier { get; } = new(RuleStatBonus.Firing);
+    public StatBonusBuilder MeleeMultiplier { get; } = new(RuleStatBonus.MeleeSkill);
+    public StatBonusBuilder ThrowMultiplier { get; } = new(RuleStatBonus.Throwing);
+    public StatBonusBuilder CloseQuartersMultiplier { get; } = new(RuleStatBonus.CloseQuarters);
 }
 
 internal sealed class ItemActionBuilder

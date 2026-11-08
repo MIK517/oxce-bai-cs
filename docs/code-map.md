@@ -18,16 +18,16 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 249 | Core, Mods, Scripting |
-| [Oxce.Mods](#oxcemods) | 100 | Core, Formats, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 250 | Core, Mods, Scripting |
+| [Oxce.Mods](#oxcemods) | 103 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 8 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 350 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 351 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
-| [Oxce.UnitTests](#oxceunittests) | 112 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
+| [Oxce.UnitTests](#oxceunittests) | 114 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
 | [Oxce.FixtureTool](#oxcefixturetool) | 1 | FixtureSupport, Formats, Mods, Savegames |
 | [Oxce.ResourceBrowser](#oxceresourcebrowser) | 2 | Formats, Mods, Platform.Sdl, Rendering, Resources |
@@ -352,7 +352,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 249 files.
+`src/Oxce.Gameplay` - 250 files.
 
 ### `Oxce.Gameplay`
 
@@ -760,7 +760,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Mods
 
-`src/Oxce.Mods` - 100 files.
+`src/Oxce.Mods` - 103 files.
 
 ### `Oxce.Mods`
 
@@ -849,6 +849,10 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `SpecialRuleSectionBehavior` (enum) [RuleSectionRegistry.cs](../src/Oxce.Mods/Rulesets/RuleSectionRegistry.cs)
 - `SpecialRuleSectionDefinition` (record) [RuleSectionRegistry.cs](../src/Oxce.Mods/Rulesets/RuleSectionRegistry.cs)
 - `RuleSectionRegistry` (class) [RuleSectionRegistry.cs](../src/Oxce.Mods/Rulesets/RuleSectionRegistry.cs)
+- `StatBonusBaseStat` (enum) [RuleStatBonus.cs](../src/Oxce.Mods/Rulesets/RuleStatBonus.cs) - The base statistics a stat bonus term can read (`UnitStats` fields).
+- `IStatBonusUnit` (interface) [RuleStatBonus.cs](../src/Oxce.Mods/Rulesets/RuleStatBonus.cs) - What a stat bonus reads of a unit (the functions of `statDataMap` in `RuleStatBonus.cpp` take a `BattleUnit`): its base statistics, curre...
+- `StatBonusTerm` (record) [RuleStatBonus.cs](../src/Oxce.Mods/Rulesets/RuleStatBonus.cs) - One term of a stat bonus: a statistic of `statDataMap` and the coefficients of its polynomial (the first four, as the reference reads them).
+- `RuleStatBonus` (record) [RuleStatBonus.cs](../src/Oxce.Mods/Rulesets/RuleStatBonus.cs) - `RuleStatBonus` (`RuleStatBonus.cpp`): a polynomial of unit statistics.
 - `RuleValidationIssue` (record) [RuleValidation.cs](../src/Oxce.Mods/Rulesets/RuleValidation.cs) - A broken relationship between typed rules: the rule, its property, the related ID when one is named, and why.
 - `RuleValidation` (record) [RuleValidation.cs](../src/Oxce.Mods/Rulesets/RuleValidation.cs) - The relationship issues a rule-family group found; valid when there are none.
 - `RulesetCatalogNormalizationOptions` (record) [RulesetCatalogNormalizationOptions.cs](../src/Oxce.Mods/Rulesets/RulesetCatalogNormalizationOptions.cs)
@@ -871,6 +875,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ### `Oxce.Mods.Rulesets.CampaignStart`
 
+- `CampaignCombatSettings` (record) [CampaignCombatSettings.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignCombatSettings.cs) - Global rules the battle's combat reads (`Mod::loadFile`), with the `Mod::Mod` defaults: the accuracy globals, close quarters combat, the...
 - `CampaignInterceptionSettings` (record) [CampaignInterceptionSettings.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignInterceptionSettings.cs) - Global rules read by interception, landing and base defense (`Mod::loadFile`), with the `Mod::Mod` defaults.
 - `CampaignMonthlySettings` (record) [CampaignMonthlySettings.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignMonthlySettings.cs) - Global rules read by the month rollover and the monthly report (`Mod::loadFile`), with the `Mod::Mod` defaults.
 - `CampaignMonthlyRating` (record) [CampaignMonthlySettings.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignMonthlySettings.cs) - One `monthlyRatings` entry: the rating text shown from `Score` upwards.
@@ -925,6 +930,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `ItemActionRule` (record) [ItemRules.cs](../src/Oxce.Mods/Rulesets/Items/ItemRules.cs)
 - `ItemFuseTriggerRule` (record) [ItemRules.cs](../src/Oxce.Mods/Rulesets/Items/ItemRules.cs)
 - `ItemDamageRule` (record) [ItemRules.cs](../src/Oxce.Mods/Rulesets/Items/ItemRules.cs)
+- `ItemStatBonusRules` (record) [ItemRules.cs](../src/Oxce.Mods/Rulesets/Items/ItemRules.cs) - RuleItem's six `RuleStatBonus` fields: `damageBonus` (`getPowerBonus`, over the power), `meleeBonus` (over the melee power), `accuracyMul...
 - `ItemRule` (record) [ItemRules.cs](../src/Oxce.Mods/Rulesets/Items/ItemRules.cs)
 
 ### `Oxce.Mods.Rulesets.MissionEvents`
@@ -949,6 +955,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `InventorySlotRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs)
 - `InventoryRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs)
 - `ArmorMoveCostRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs)
+- `ArmorStatBonusRules` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs) - Armor's two combat `RuleStatBonus` fields: `psiDefence` (default the psi defense) and `meleeDodge` (default none).
 - `ArmorRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs)
 - `SkillRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs)
 - `SoldierRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs)
@@ -1051,7 +1058,10 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RuntimeGlobe` (record) [RuntimeGlobe.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeGlobe.cs)
 - `RuntimeGlobePolyline` (record) [RuntimeGlobe.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeGlobe.cs)
 - `RuntimeGlobeColors` (record) [RuntimeGlobe.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeGlobe.cs) - Globe palette indices.
-- `RuntimeItemDamageRule` (record) [RuntimeItemDamageRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeItemDamageRules.cs) - Float fields owned by each RuleItem damage copy; script queries do not apply tactical damage.
+- `RuntimeItemAction` (record) [RuntimeItemCombat.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeItemCombat.cs) - RuleItemAction as the battle reads it (`getConfigAimed` and the others): the action's range, the shots it fires and the ammunition each s...
+- `RuntimeItemCombat` (record) [RuntimeItemCombat.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeItemCombat.cs) - are those of an item under the default mod, apart from the melee action's ammo slot and the action names, which the reference sets when i...
+- `RuntimeItemDamageRule` (record) [RuntimeItemDamageRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeItemDamageRules.cs) - The projection of a `RuleDamageType` (`RuleDamageType.cpp`, the predefined types of `Mod::Mod` and an item's `damageType`, `blastRadius`...
+- `RuntimeItemDamageRule.IDamageRoll` (interface) [RuntimeItemDamageRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeItemDamageRules.cs) - A way to pick the number between two bounds: a draw, the lowest, or the highest.
 - `RuntimeDamageConversions` (record) [RuntimeItemDamageRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeItemDamageRules.cs)
 - `RuntimeBlockPosition` (record) [RuntimeMapBlockItems.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapBlockItems.cs) - A map block position (Position: three Sint16 values).
 - `RuntimeMapBlockItem` (record) [RuntimeMapBlockItems.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeMapBlockItems.cs) - MapBlock `items`: an item type and the positions it lies on.
@@ -1344,7 +1354,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 350 files.
+`tests/Oxce.CompatibilityTests` - 351 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1356,12 +1366,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>343 test classes</summary>
+<details><summary>344 test classes</summary>
 
 - `BaseDefenseDeploymentTests` ([BaseDefenseDeploymentTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseDeploymentTests.cs))
 - `BaseDefenseMapTests` ([BaseDefenseMapTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseMapTests.cs))
 - `BattleCampaignSaveTests` ([BattleCampaignSaveTests.cs](../tests/Oxce.CompatibilityTests/BattleCampaignSaveTests.cs))
 - `BattleClientMovementTests` ([BattleClientMovementTests.cs](../tests/Oxce.CompatibilityTests/BattleClientMovementTests.cs))
+- `BattleCombatGroundworkTests` ([BattleCombatGroundworkTests.cs](../tests/Oxce.CompatibilityTests/BattleCombatGroundworkTests.cs))
 - `BattleDoorTests` ([BattleDoorTests.cs](../tests/Oxce.CompatibilityTests/BattleDoorTests.cs))
 - `BattleEntryPointTests` ([BattleEntryPointTests.cs](../tests/Oxce.CompatibilityTests/BattleEntryPointTests.cs))
 - `BattleFireTests` ([BattleFireTests.cs](../tests/Oxce.CompatibilityTests/BattleFireTests.cs))
@@ -1715,13 +1726,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.UnitTests
 
-`tests/Oxce.UnitTests` - 112 files.
+`tests/Oxce.UnitTests` - 114 files.
 
 ### `Oxce.UnitTests`
 
 - `AllocationMeasurement` (class) [AllocationMeasurement.cs](../tests/Oxce.UnitTests/AllocationMeasurement.cs)
 
-<details><summary>111 test classes</summary>
+<details><summary>113 test classes</summary>
 
 - `ProjectDependencyTests` ([ProjectDependencyTests.cs](../tests/Oxce.UnitTests/Architecture/ProjectDependencyTests.cs))
 - `DiagnosticTests` ([DiagnosticTests.cs](../tests/Oxce.UnitTests/Core/DiagnosticTests.cs))
@@ -1808,9 +1819,11 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `PresentationRuleCatalogTests` ([PresentationRuleCatalogTests.cs](../tests/Oxce.UnitTests/Mods/PresentationRuleCatalogTests.cs))
 - `ResourceDescriptorResolverTests` ([ResourceDescriptorResolverTests.cs](../tests/Oxce.UnitTests/Mods/ResourceDescriptorResolverTests.cs))
 - `RuleSectionRegistryTests` ([RuleSectionRegistryTests.cs](../tests/Oxce.UnitTests/Mods/RuleSectionRegistryTests.cs))
+- `RuleStatBonusTests` ([RuleStatBonusTests.cs](../tests/Oxce.UnitTests/Mods/RuleStatBonusTests.cs))
 - `RulesetCatalogNormalizerTests` ([RulesetCatalogNormalizerTests.cs](../tests/Oxce.UnitTests/Mods/RulesetCatalogNormalizerTests.cs))
 - `RulesetComposerTests` ([RulesetComposerTests.cs](../tests/Oxce.UnitTests/Mods/RulesetComposerTests.cs))
 - `RuntimeGlobeProjectionTests` ([RuntimeGlobeProjectionTests.cs](../tests/Oxce.UnitTests/Mods/RuntimeGlobeProjectionTests.cs))
+- `RuntimeItemDamageRuleTests` ([RuntimeItemDamageRuleTests.cs](../tests/Oxce.UnitTests/Mods/RuntimeItemDamageRuleTests.cs))
 - `RuntimeRuleLinkerTests` ([RuntimeRuleLinkerTests.cs](../tests/Oxce.UnitTests/Mods/RuntimeRuleLinkerTests.cs))
 - `RuntimeStartingConditionTests` ([RuntimeStartingConditionTests.cs](../tests/Oxce.UnitTests/Mods/RuntimeStartingConditionTests.cs))
 - `RuntimeTerrainCriterionTests` ([RuntimeTerrainCriterionTests.cs](../tests/Oxce.UnitTests/Mods/RuntimeTerrainCriterionTests.cs))
@@ -1929,6 +1942,11 @@ Prefer these over local copies (see AGENTS.md, *Test conventions*).
 - `GameplayVerification` (class) - Turns on the gameplay self-checks that only tests run.
 - members: `Enable`
 
+### [tests/Shared/ScriptedDraws.cs](../tests/Shared/ScriptedDraws.cs) - linked into Oxce.CompatibilityTests, Oxce.UnitTests
+
+- `ScriptedDraws` (class) - A random source whose inclusive draws return the scripted numbers in order (kept inside the asked range; zero once the script runs out),...
+- members: `Calls`, `NextInclusive`, `NextExclusive`, `NextUnit`
+
 ### [tests/Shared/TestFixtures.cs](../tests/Shared/TestFixtures.cs) - linked into Oxce.CompatibilityTests, Oxce.UnitTests
 
 - `TestFixtures` (class)
@@ -1960,6 +1978,7 @@ Prefer these over local copies (see AGENTS.md, *Test conventions*).
 - `InstallationContentLoaderTests.TemporaryInstallation` (private class) [InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs)
 - `ModDiscoveryTests.TemporaryModDirectory` (private class) [ModDiscoveryTests.cs](../tests/Oxce.UnitTests/Mods/ModDiscoveryTests.cs)
 - `ResourceDescriptorResolverTests.ResourceModFixture` (private class) [ResourceDescriptorResolverTests.cs](../tests/Oxce.UnitTests/Mods/ResourceDescriptorResolverTests.cs)
+- `RuleStatBonusTests.FakeUnit` (private class) [RuleStatBonusTests.cs](../tests/Oxce.UnitTests/Mods/RuleStatBonusTests.cs)
 - `TypedRuleFamilyLoaderTests.ProbeBuilder` (private class) [TypedRuleFamilyLoaderTests.cs](../tests/Oxce.UnitTests/Mods/TypedRuleFamilyLoaderTests.cs)
 - `VirtualFileCatalogTests.TemporaryDirectory` (private class) [VirtualFileCatalogTests.cs](../tests/Oxce.UnitTests/Mods/VirtualFileCatalogTests.cs)
 - `ResourceRuntimeTests.ResourceFixture` (private class) [ResourceRuntimeTests.cs](../tests/Oxce.UnitTests/Resources/ResourceRuntimeTests.cs)

@@ -633,6 +633,9 @@ public sealed record RuntimeCampaignSettings(
     public double PerformanceBonusFactor { get; init; }
     /// <summary>Global rules read by interception, landing and base defense.</summary>
     public CampaignInterceptionSettings Interception { get; init; } = CampaignInterceptionSettings.Default;
+
+    /// <summary>The combat globals: accuracy, close quarters, hit chances, reaction fire, AI use delays and the extended options.</summary>
+    public CampaignCombatSettings Combat { get; init; } = CampaignCombatSettings.Default;
     /// <summary>Global rules read by the month rollover and the monthly report.</summary>
     public CampaignMonthlySettings Monthly { get; init; } = CampaignMonthlySettings.Default;
     /// <summary>Mod::getDefeatScore: the monthly rating threshold before the difficulty term.</summary>

@@ -221,7 +221,7 @@ internal sealed partial class BattleState
 
     /// <summary>
     /// TileEngine::calculateTerrainItems: the glow of flares lying on the ground and the fire of burning units lying as items. A
-    /// flare's glow range is its power (<c>getPowerBonus</c> without the owner's stat bonuses, which are Phase 4's).
+    /// flare's glow range is its power bonus (<see cref="GlowRange"/>).
     /// </summary>
     private void CalculateTerrainItems(BattleMapSubset area, RuntimeRuleCatalog rules)
     {
@@ -243,17 +243,23 @@ internal sealed partial class BattleState
     }
 
     /// <summary>
-    /// BattleItem::getGlow and getGlowRange: a flare glows while it has no fuse to wait for or its fuse is running; its range is its power.
+    /// BattleItem::getGlow and getGlowRange: a flare glows while it has no fuse to wait for or its fuse is running; its range is its power
+    /// bonus (<c>getPowerBonus</c>: the item's damage bonus over its power) as the unit the item is the body of, else the unit that carried it
+    /// last, would get it. A damage bonus written as code is not run (the briefing refuses such a battle, Phase 7 branch 8): the power stands.
     /// Null when the item does not glow.
     /// </summary>
-    private static int? GlowRange(RuntimeRuleCatalog rules, BattleItem item)
+    private int? GlowRange(RuntimeRuleCatalog rules, BattleItem item)
     {
         if (!rules.Items.TryGet(item.ItemType, out var handle)) return null;
         var rule = rules.Items[handle].Value;
         if (rule.BattleType != FlareBattleType) return null;
         var equipment = rules.Battle.Equipment.Items[item.ItemType];
         var glows = equipment.FuseTrigger.DefaultBehavior && equipment.FuseType == NoFuseType || item.FuseEnabled && item.FuseTimer >= 0;
-        return glows ? rule.Power : null;
+        if (!glows) return null;
+        var bonus = equipment.Combat.StatBonuses.Damage;
+        if (bonus.IsScript) return rule.Power;
+        var owner = item.CorpseUnitId ?? item.PreviousOwnerUnitId;
+        return bonus.Evaluate(owner is { } id ? UnitById(id) : null, rule.Power);
     }
 
     /// <summary>The item is the body of a unit that burns (a stunned unit lying as an item).</summary>

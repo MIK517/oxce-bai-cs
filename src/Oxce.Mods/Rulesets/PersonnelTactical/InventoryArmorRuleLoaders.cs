@@ -90,6 +90,8 @@ internal sealed class ArmorRuleLoader : TypedRuleFamilyLoader<ArmorBuilder, Armo
         ApplySizeBooleans(builder, reader);
         ApplyColors(builder, reader);
 
+        if (reader.TryGet("psiDefence", out var psiDefence)) builder.PsiDefence.Load(psiDefence!);
+        if (reader.TryGet("meleeDodge", out var meleeDodge)) builder.MeleeDodge.Load(meleeDodge!);
         foreach (var key in DeferredKeys)
             reader.Defer(key, "stat-bonus and tactical script compilation belongs to Phase 4");
         reader.DeferRemaining("dynamic armor script values require Phase 4 registration");
@@ -125,7 +127,8 @@ internal sealed class ArmorRuleLoader : TypedRuleFamilyLoader<ArmorBuilder, Armo
             new ReadOnlyDictionary<string, IReadOnlyList<int>>(spriteColors),
             new ReadOnlyDictionary<int, string>(new Dictionary<int, string>(builder.LayerSpecificPrefixes)),
             new ReadOnlyDictionary<string, IReadOnlyList<string>>(builder.LayerDefinitions.ToDictionary(
-                pair => pair.Key, pair => (IReadOnlyList<string>)pair.Value.AsReadOnly(), StringComparer.Ordinal)));
+                pair => pair.Key, pair => (IReadOnlyList<string>)pair.Value.AsReadOnly(), StringComparer.Ordinal)),
+            new ArmorStatBonusRules(builder.PsiDefence.Freeze(), builder.MeleeDodge.Freeze()));
     }
 
     private static void ApplyCorpse(ArmorBuilder builder, RulePropertyReader reader)

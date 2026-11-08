@@ -2,6 +2,7 @@ using Oxce.Core.Random;
 using Oxce.Gameplay.Battles;
 using Oxce.Gameplay.Battles.Terrain;
 using Oxce.Gameplay.Campaigns;
+using Oxce.Mods.Rulesets.Runtime;
 using Xunit;
 using static Oxce.CompatibilityTests.BattleMovementGroundworkTests;
 using static Oxce.CompatibilityTests.BattleSightTests;
@@ -41,8 +42,8 @@ public sealed class BattleFireTests
             for (var y = y0; y <= y1; y++) arena.Put(x, y, z, BattleTilePart.Floor, id);
     }
 
-    private static CampaignReason? Hit(Arena arena, int x, int y, int z = 0, BattleUnit? attacker = null, int power = 30, BattleTileDamageType? type = null) =>
-        arena.Battle.HitTerrain(arena.Rules, attacker, Voxel(x, y, z), power, type ?? BattleTileDamageType.Fire);
+    private static CampaignReason? Hit(Arena arena, int x, int y, int z = 0, BattleUnit? attacker = null, int power = 30, RuntimeItemDamageRule? type = null) =>
+        arena.Battle.HitTerrain(arena.Rules, attacker, Voxel(x, y, z), power, type ?? BattleDamageTypes.Fire);
 
     /// <summary>The terrain, fire, smoke, items and falling units of the map, to compare a refused command with what it found.</summary>
     private static string State(Arena arena) =>
@@ -139,12 +140,12 @@ public sealed class BattleFireTests
         arena.Put(12, 10, 0, BattleTilePart.Floor, BurnFloor);
         arena.Put(14, 10, 0, BattleTilePart.Floor, BurnFloor);
         // Fire type (a fire threshold of 0): fuel 3 + 1 turns, and smoke of min(15 - 1, 12).
-        Assert.Equal(2, arena.Battle.HitTile(rules, floor, 7, BattleTileDamageType.Fire));
+        Assert.Equal(2, arena.Battle.HitTile(rules, floor, 7, BattleDamageTypes.Fire));
         Assert.Equal((4, 12), (arena.Map.Fire(floor), arena.Map.Smoke(floor)));
         // A tile that is void, or already burns, produces nothing.
-        Assert.Equal(0, arena.Battle.HitTile(rules, empty, 7, BattleTileDamageType.Fire));
+        Assert.Equal(0, arena.Battle.HitTile(rules, empty, 7, BattleDamageTypes.Fire));
         arena.Map.SetFire(burning, 1);
-        Assert.Equal(0, arena.Battle.HitTile(rules, burning, 7, BattleTileDamageType.Fire));
+        Assert.Equal(0, arena.Battle.HitTile(rules, burning, 7, BattleDamageTypes.Fire));
         Assert.Equal(1, arena.Map.Fire(burning));
     }
 
@@ -155,16 +156,16 @@ public sealed class BattleFireTests
         var rules = arena.Rules;
         var (low, high, smoky) = (arena.Tile(12, 10), arena.Tile(13, 10), arena.Tile(14, 10));
         foreach (var x in ThreeTiles) arena.Put(x, 10, 0, BattleTilePart.Floor, BurnFloor);
-        var type = new BattleTileDamageType(10, 1000, 0.0, false, 2, -1);
+        var type = BattleDamageTypes.Fire with { FireThreshold = 10, SmokeThreshold = 1000 };
         // Fuel 3, damage 12 over a threshold of 10: 3 * 2 / 10 + 1 = 1 turn; damage 25 (twice the threshold or more): 4.
         Assert.Equal(2, arena.Battle.HitTile(rules, low, 12, type));
         Assert.Equal(1, arena.Map.Fire(low));
         Assert.Equal(2, arena.Battle.HitTile(rules, high, 25, type));
         Assert.Equal(4, arena.Map.Fire(high));
         // A smoke type (threshold 0) puts the fire out and sets 7 to 15 smoke; a tile with too much smoke already takes none.
-        var smoke = new BattleTileDamageType(1000, 0, 0.0, false, 2, -1);
+        var smoke = BattleDamageTypes.Fire with { FireThreshold = 1000, SmokeThreshold = 0 };
         // (Below twice the threshold the smoke is a roll of 7 to 15 times the excess over the threshold, over the threshold.)
-        var thin = new BattleTileDamageType(1000, 10, 0.0, false, 2, -1);
+        var thin = BattleDamageTypes.Fire with { FireThreshold = 1000, SmokeThreshold = 10 };
         Assert.Equal(1, arena.Battle.HitTile(rules, arena.Tile(15, 10), 15, thin));
         Assert.InRange(arena.Map.Smoke(arena.Tile(15, 10)), 3, 7);
         arena.Map.SetFire(smoky, 5);
@@ -180,13 +181,13 @@ public sealed class BattleFireTests
     public void ATileDamageTypeTakesItsFractionOfTheDamageWithTheLimit()
     {
         var random = new SplitMix64RandomSource(3);
-        Assert.Equal(0, BattleTileDamageType.Fire.TileFinalDamage(random, 30, 8));
-        var half = new BattleTileDamageType(1000, 1000, 0.5, false, 2, -1);
-        Assert.Equal(5, half.TileFinalDamage(random, 30, 9)); // round(4.5) rounds away from zero
-        Assert.Equal(0, half.TileFinalDamage(random, 30, 0));
-        Assert.Equal(3, (half with { TileDamageLimit = 3 }).TileFinalDamage(random, 30, 20));
+        Assert.Equal(0, BattleDamageTypes.TileDamage(BattleDamageTypes.Fire, random, 30, 8));
+        var half = BattleDamageTypes.Fire with { FireThreshold = 1000, Conversions = BattleDamageTypes.Fire.Conversions with { Tile = 0.5f } };
+        Assert.Equal(5, BattleDamageTypes.TileDamage(half, random, 30, 9)); // round(4.5) rounds away from zero
+        Assert.Equal(0, BattleDamageTypes.TileDamage(half, random, 30, 0));
+        Assert.Equal(3, BattleDamageTypes.TileDamage(half with { TileDamageLimit = 3 }, random, 30, 20));
         // Method 1 draws the damage the tile takes between half and one and a half times the power.
-        Assert.InRange((half with { TileDamageMethod = 1 }).TileFinalDamage(random, 30, 0), 8, 23);
+        Assert.InRange(BattleDamageTypes.TileDamage(half with { TileDamageMethod = 1 }, random, 30, 0), 8, 23);
     }
 
     // ---- TileEngine::hit ----
@@ -347,10 +348,10 @@ public sealed class BattleFireTests
         open.Put(14, 12, 0, BattleTilePart.Floor, Floor);
         var before = State(open);
         var voxel = new BattlePosition(14 * 16 + 8, 12 * 16 + 8, 6);
-        Assert.Equal("battle.hit-unit-unsupported", open.Battle.HitTerrain(open.Rules, open.Soldier, voxel, 30, BattleTileDamageType.Fire)!.Code);
+        Assert.Equal("battle.hit-unit-unsupported", open.Battle.HitTerrain(open.Rules, open.Soldier, voxel, 30, BattleDamageTypes.Fire)!.Code);
         Assert.Equal(before, State(open));
         // The attacker itself is not in the way.
-        Assert.Null(open.Battle.HitTerrain(open.Rules, open.Alien, voxel, 30, BattleTileDamageType.Fire));
+        Assert.Null(open.Battle.HitTerrain(open.Rules, open.Alien, voxel, 30, BattleDamageTypes.Fire));
     }
 
     [Fact]
@@ -377,8 +378,8 @@ public sealed class BattleFireTests
         var used = new SplitMix64RandomSource(9);
         arena.Battle.Random = used;
         var state = State(arena);
-        Assert.Null(arena.Battle.HitTerrain(arena.Rules, null, Voxel(12, 12), 30, BattleTileDamageType.Fire, dryRun: true));
-        Assert.Equal("battle.terrain-explosion-unsupported", arena.Battle.HitTerrain(arena.Rules, null, Voxel(14, 12), 30, BattleTileDamageType.Fire, dryRun: true)!.Code);
+        Assert.Null(arena.Battle.HitTerrain(arena.Rules, null, Voxel(12, 12), 30, BattleDamageTypes.Fire, dryRun: true));
+        Assert.Equal("battle.terrain-explosion-unsupported", arena.Battle.HitTerrain(arena.Rules, null, Voxel(14, 12), 30, BattleDamageTypes.Fire, dryRun: true)!.Code);
         Assert.Equal((state, 9UL), (State(arena), used.State));
     }
 
@@ -733,8 +734,8 @@ public sealed class BattleFireTests
     public void ARandomTileDamageRollsUpToTheDamageBeforeTheFraction()
     {
         var random = new SplitMix64RandomSource(11);
-        var type = new BattleTileDamageType(1000, 1000, 1.0, true, 2, -1);
-        for (var draw = 0; draw < 20; draw++) Assert.InRange(type.TileFinalDamage(random, 30, 10), 0, 10);
+        var type = BattleDamageTypes.Fire with { FireThreshold = 1000, RandomTile = true, Conversions = BattleDamageTypes.Fire.Conversions with { Tile = 1f } };
+        for (var draw = 0; draw < 20; draw++) Assert.InRange(BattleDamageTypes.TileDamage(type, random, 30, 10), 0, 10);
     }
 
     [Fact]

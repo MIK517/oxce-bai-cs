@@ -638,9 +638,9 @@ public sealed class BattleLightingTests
     }
 
     [Fact]
-    public void AFlareWithADamageBonusIsRefusedAtTheFirstTurn()
+    public void AFlareWithADamageBonusWrittenAsCodeIsRefusedAtTheFirstTurn()
     {
-        var rules = Replaced(WithFlares(Rules), "power: 8", "power: 8" + "\n    damageBonus:\n      flatHundred: 0.5");
+        var rules = Replaced(WithFlares(Rules), "power: 8", "power: 8" + "\n    damageBonus: return bonus;");
         var (campaign, _) = Requested(rules, "UFO_SUITED");
         campaign.BattleTerrainFiles = TerrainFiles(Terrain);
         Started(campaign);
@@ -649,23 +649,38 @@ public sealed class BattleLightingTests
         var battle = Battle(campaign);
         battle.AddItemOnTile(BattleState.ConstructItem(campaign.Content.RuntimeRules, battle.TakeItemId(), "FLARE"), new BattlePosition(0, 0, 0));
         var blocked = Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(new StartFirstTurn()).Events));
-        Assert.Equal(BattleFlowReasons.FlareBonusUnsupported.Text, blocked.Reason);
+        Assert.Equal(BattleFlowReasons.StatBonusScriptUnsupported.Text, blocked.Reason);
     }
 
     [Fact]
-    public void AFlareWithStrengthAppliedIsRefusedAtTheFirstTurn()
+    public void AFlareGlowsByItsPowerPlusTheDamageBonusOfTheUnitThatCarriedItLast()
     {
-        var rules = Replaced(WithFlares(Rules), "power: 8", "power: 8" + "\n    strengthApplied: true");
-        var (campaign, _) = Requested(rules, "UFO_SUITED");
-        campaign.BattleTerrainFiles = TerrainFiles(Terrain);
-        Started(campaign);
-        campaign.Execute(new BeginBriefing("T", "C"));
-        campaign.Execute(new ConfirmBriefing());
-        var battle = Battle(campaign);
-        battle.AddItemOnTile(BattleState.ConstructItem(campaign.Content.RuntimeRules, battle.TakeItemId(), "FLARE"), new BattlePosition(0, 0, 0));
-        Assert.True(campaign.Content.RuntimeRules.Battle.Equipment.Items["FLARE"].StrengthApplied);
-        var blocked = Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(new StartFirstTurn()).Events));
-        Assert.Equal(BattleFlowReasons.FlareBonusUnsupported.Text, blocked.Reason);
+        // getGlowRange is getPowerBonus with the item's unit, else its previous owner, as the attacker: strength 4 adds 4 to the power of 8, and a
+        // flat hundred at 5 percent adds 5. A flare nobody carried (no unit to read) keeps its power.
+        var strength = Flat(flares: false, edit: static rules => Replaced(WithFlares(rules), "power: 8", "power: 8\n    strengthApplied: true"));
+        strength.Soldier.Stats = strength.Soldier.Stats with { Strength = 4 };
+        Assert.True(strength.Rules.Battle.Equipment.Items["FLARE"].StrengthApplied);
+        Assert.Equal([("strength", 1f)], strength.Rules.Battle.Equipment.Items["FLARE"].Combat.StatBonuses.Damage.Terms.Select(static term => (term.Stat, term.Coefficients.Single())));
+        var carried = strength.Drop("FLARE", 5, 5);
+        carried.PreviousOwnerUnitId = strength.Soldier.Id;
+        strength.Drop("FLARE", 15, 15);
+        strength.Relight();
+        Assert.Equal((3, 7), (strength.Shade(5, 5), strength.Shade(15, 15)));
+
+        var flat = Flat(flares: false, edit: static rules => Replaced(WithFlares(rules), "power: 8", "power: 8\n    damageBonus:\n      flatHundred: 0.05"));
+        var dropped = flat.Drop("FLARE", 5, 5);
+        dropped.PreviousOwnerUnitId = flat.Soldier.Id;
+        flat.Relight();
+        Assert.Equal(2, flat.Shade(5, 5));
+
+        // The unit a corpse item is wins over the last owner: a body of a unit with strength 6 glows 6 more than the power.
+        var body = Flat(flares: false, edit: static rules => Replaced(WithFlares(rules), "power: 8", "power: 8\n    strengthApplied: true"));
+        body.Soldier.Stats = body.Soldier.Stats with { Strength = 6 };
+        var flare = body.Drop("FLARE", 5, 5);
+        flare.CorpseUnitId = body.Soldier.Id;
+        flare.PreviousOwnerUnitId = body.Battle.Units.First(unit => unit != body.Soldier).Id;
+        body.Relight();
+        Assert.Equal(1, body.Shade(5, 5));
     }
 
     [Fact]

@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using Oxce.Mods.Rulesets.CampaignStart;
 using Oxce.Mods.Rulesets.Items;
+using Oxce.Mods.Rulesets.PersonnelTactical;
 using Oxce.Mods.Rulesets.Phase3;
 
 namespace Oxce.Mods.Rulesets.Runtime;
@@ -45,6 +47,9 @@ public sealed class RuntimeBattleEquipment
 
     /// <summary>RuleSoldier::getStandHeight, getKneelHeight and getFloatHeight, by soldier type.</summary>
     public IReadOnlyDictionary<string, RuntimeUnitHeights> SoldierHeights { get; private init; } = Map(new Dictionary<string, RuntimeUnitHeights>());
+
+    /// <summary>RuleSoldier::getMoraleLossWhenKilled (<c>moraleLossWhenKilled</c>, 100 unless set), by soldier type.</summary>
+    public IReadOnlyDictionary<string, int> SoldierMoraleLossWhenKilled { get; private init; } = Map(new Dictionary<string, int>());
 
     /// <summary>RuleItemCategory::getInvOrder, by category (only categories that have one).</summary>
     public IReadOnlyDictionary<string, IReadOnlyList<string>> CategoryInventoryOrders { get; }
@@ -98,6 +103,7 @@ public sealed class RuntimeBattleEquipment
                 ActionCosts = ActionCostsOf(rule.Value),
                 FuseTrigger = new RuntimeFuseTrigger(rule.Value.FuseTriggers.DefaultBehavior, rule.Value.FuseTriggers.ThrowTrigger,
                     rule.Value.FuseTriggers.ProximityTrigger, rule.Value.FuseTriggers.ProximityExplode),
+                Combat = CombatOf(rule.Value, content.CampaignStart.Settings.Combat),
             };
         }, StringComparer.Ordinal);
         var armors = personnel.Armors.Rules.ToDictionary(static rule => rule.Id, static rule => new RuntimeBattleArmor(
@@ -130,6 +136,17 @@ public sealed class RuntimeBattleEquipment
             VisibilityThroughSmoke = rule.Value.Integers["heatVision"],
             VisibilityThroughFire = rule.Value.Integers["visibilityThroughFire"],
             FearImmune = rule.Value.NullableBooleans["fearImmune"],
+            DamageModifiers = List(rule.Value.DamageModifiers.Select(static value => (float)value)),
+            PainImmune = rule.Value.NullableBooleans["painImmune"],
+            BleedImmune = rule.Value.NullableBooleans["bleedImmune"],
+            ZombieImmune = rule.Value.NullableBooleans["zombiImmune"],
+            IgnoresMeleeThreat = rule.Value.NullableBooleans["ignoresMeleeThreat"],
+            CreatesMeleeThreat = rule.Value.NullableBooleans["createsMeleeThreat"],
+            OverKill = (float)rule.Value.Reals["overKill"],
+            MeleeDodgeBackPenalty = (float)rule.Value.Reals["meleeDodgeBackPenalty"],
+            MeleeOriginVoxelVerticalOffset = rule.Value.Integers["meleeOriginVoxelVerticalOffset"],
+            InstantWoundRecovery = rule.Value.Booleans["instantWoundRecovery"],
+            StatBonuses = rule.Value.StatBonuses,
             TurnBeforeFirstStep = rule.Value.Booleans["turnBeforeFirstStep"],
             AllowsMoving = rule.Value.NullableBooleans["allowsMoving"] ?? true,
             AllowsRunning = rule.Value.NullableBooleans["allowsRunning"],
@@ -163,6 +180,8 @@ public sealed class RuntimeBattleEquipment
             IsBrutal = rule.Value.Booleans["isBrutal"],
             IsNotBrutal = rule.Value.Booleans["isNotBrutal"],
             IgnoredByAi = rule.Value.Booleans["ignoredByAI"],
+            Capturable = rule.Value.Booleans["capturable"],
+            MoraleLossWhenKilled = rule.Value.Integers["moraleLossWhenKilled"],
             SpotterDuration = rule.Value.Integers["spotter"] == -1 ? rule.Value.Integers["intelligence"] : rule.Value.Integers["spotter"],
             Heights = HeightsOf(rule.Value.Integers),
         },
@@ -174,11 +193,92 @@ public sealed class RuntimeBattleEquipment
         var weaponSets = content.EquipmentProduction.WeaponSets.Rules
             .ToDictionary(static rule => rule.Id, static rule => (IReadOnlyList<string>)List(rule.Value.Weapons), StringComparer.Ordinal);
         var soldierHeights = personnel.Soldiers.Rules.ToDictionary(static rule => rule.Id, static rule => HeightsOf(rule.Value.Integers), StringComparer.Ordinal);
+        var soldierMorale = personnel.Soldiers.Rules.ToDictionary(static rule => rule.Id, static rule => rule.Value.Integers["moraleLossWhenKilled"], StringComparer.Ordinal);
         return new(List(inventories), Map(items), Map(armors), Map(units), Map(soldierWeapons), Map(categories), Map(weaponSets))
         {
             SoldierHeights = Map(soldierHeights),
+            SoldierMoraleLossWhenKilled = Map(soldierMorale),
         };
     }
+
+    /// <summary>
+    /// The combat fields of RuleItem with the mod's globals applied where the item leaves its own at -1 (getKneelBonus, getOneHandedPenalty,
+    /// getNoLOSAccuracyPenalty, getAccuracyCloseQuarters, getExplodeInventory) or its AI use delay at -1 (getAIUseDelay by battle type).
+    /// </summary>
+    private static RuntimeItemCombat CombatOf(ItemRule rule, CampaignCombatSettings mod)
+    {
+        var values = rule.Values;
+        var battleType = values.GetInteger("battleType");
+        var aiUseDelay = values.GetInteger("aiUseDelay");
+        if (aiUseDelay < 0)
+            aiUseDelay = battleType switch
+            {
+                RuntimeBattleItem.FirearmBattleType => values.GetInteger("waypoints") != 0 ? mod.AiUseDelayBlaster : mod.AiUseDelayFirearm,
+                RuntimeBattleItem.MeleeBattleType => mod.AiUseDelayMelee,
+                RuntimeBattleItem.GrenadeBattleType => mod.AiUseDelayGrenade,
+                RuntimeBattleItem.ProximityGrenadeBattleType => mod.AiUseDelayProxy,
+                RuntimeBattleItem.PsiAmpBattleType => mod.AiUseDelayPsionic,
+                RuntimeBattleItem.MedikitBattleType => mod.AiUseDelayMedikit,
+                _ => aiUseDelay,
+            };
+        var explodeInventory = values.GetInteger("explodeInventory");
+        var zombieChance = values.GetInteger("zombieUnitChance");
+        return new RuntimeItemCombat
+        {
+            Aimed = ActionOf(rule.Actions["Aimed"]),
+            Auto = ActionOf(rule.Actions["Auto"]),
+            Snap = ActionOf(rule.Actions["Snap"]),
+            Melee = ActionOf(rule.Actions["Melee"]),
+            IgnoreAmmoPower = values.Boolean("ignoreAmmoPower"),
+            PowerRangeReduction = (float)values.Real("powerRangeReduction"),
+            PowerRangeThreshold = (float)values.Real("powerRangeThreshold"),
+            MaxRange = values.GetInteger("maxRange"),
+            MinRange = values.GetInteger("minRange"),
+            Dropoff = values.GetInteger("dropoff"),
+            ThrowRange = values.GetInteger("throwRange"),
+            UnderwaterThrowRange = values.GetInteger("underwaterThrowRange"),
+            ThrowDropoffRange = values.GetInteger("throwDropoffRange"),
+            UnderwaterThrowDropoffRange = values.GetInteger("underwaterThrowDropoffRange"),
+            ThrowDropoff = values.GetInteger("throwDropoff"),
+            AccuracyCloseQuarters = values.GetInteger("accuracyCloseQuarters") != -1 ? values.GetInteger("accuracyCloseQuarters") : mod.CloseQuartersAccuracyGlobal,
+            NoLosAccuracyPenalty = values.GetInteger("noLOSAccuracyPenalty") != -1 ? values.GetInteger("noLOSAccuracyPenalty") : mod.NoLosAccuracyPenaltyGlobal,
+            KneelBonus = values.GetInteger("kneelBonus") != -1 ? values.GetInteger("kneelBonus") : mod.KneelBonusGlobal,
+            OneHandedPenalty = values.GetInteger("oneHandedPenalty") != -1 ? values.GetInteger("oneHandedPenalty") : mod.OneHandedPenaltyGlobal,
+            ExplodeInventory = explodeInventory != -1 ? explodeInventory : battleType == RuntimeBattleItem.GrenadeBattleType ? mod.ExplodeInventoryGlobal : 0,
+            ArcingShot = values.Boolean("arcingShot"),
+            SprayWaypoints = values.GetInteger("sprayWaypoints"),
+            ShotgunPellets = values.GetInteger("shotgunPellets"),
+            ShotgunBehavior = values.GetInteger("shotgunBehavior"),
+            ShotgunSpread = values.GetInteger("shotgunSpread"),
+            ShotgunChoke = values.GetInteger("shotgunChoke"),
+            CompatibleAmmo = List(rule.CompatibleAmmo.Select(static names => (IReadOnlyList<string>)List(names))),
+            TimeUnitsToLoad = List(rule.TimeUnitsToLoad),
+            TimeUnitsToUnload = List(rule.TimeUnitsToUnload),
+            LosRequired = values.Boolean("LOSRequired"),
+            LandOnly = values.Boolean("landOnly"),
+            SpecialUseEmptyHand = values.Boolean("specialUseEmptyHand"),
+            SpecialUseEmptyHandShow = values.Boolean("specialUseEmptyHandShow"),
+            IsFireExtinguisher = values.Boolean("isFireExtinguisher"),
+            ConvertToCivilian = values.Boolean("convertToCivilian"),
+            TargetMatrix = values.GetInteger("targetMatrix"),
+            SpecialType = values.GetInteger("specialType"),
+            AiUseDelay = aiUseDelay,
+            AiMeleeHitCount = values.GetInteger("aiMeleeHitCount"),
+            ExperienceTrainingMode = values.GetInteger("experienceTrainingMode"),
+            ManaExperience = values.GetInteger("manaExperience"),
+            ZombieUnit = values.NullableName("zombieUnit") ?? "",
+            ZombieUnitFaction = values.GetInteger("zombieUnitFaction"),
+            ZombieUnitChance = zombieChance == -1 ? values.GetInteger("specialChance") : zombieChance,
+            ZombieUnitsByMaleArmor = Map(rule.ZombieUnitsByMaleArmor.ToDictionary(static pair => pair.Key, static pair => pair.Value, StringComparer.Ordinal)),
+            ZombieUnitsByFemaleArmor = Map(rule.ZombieUnitsByFemaleArmor.ToDictionary(static pair => pair.Key, static pair => pair.Value, StringComparer.Ordinal)),
+            ZombieUnitsByType = Map(rule.ZombieUnitsByType.ToDictionary(static pair => pair.Key, static pair => pair.Value, StringComparer.Ordinal)),
+            StatBonuses = rule.StatBonuses,
+        };
+    }
+
+    private static RuntimeItemAction ActionOf(ItemActionRule action) => new(action.Range, action.Shots, action.SpendPerShot, action.FollowProjectiles,
+        action.AmmoSlot, action.AmmoZombieUnitChanceOverride, action.AmmoSpawnUnitChanceOverride, action.AmmoSpawnItemChanceOverride, action.Arcing,
+        action.Name, action.ShortName);
 
     /// <summary>
     /// RuleItem::getCostAimed and the other getCost* with their getFlat* (getDefault: the first value the chain sets), per
@@ -297,6 +397,22 @@ public sealed record RuntimeBattleItem(
     /// <summary>RuleItem::getCost* and getFlat*, resolved (see <see cref="RuntimeItemActionCosts"/>).</summary>
     public RuntimeItemActionCosts ActionCosts { get; init; } = RuntimeItemActionCosts.Default;
 
+    /// <summary>The <c>BattleType</c> values the combat rules test (<c>RuleItem.h</c>).</summary>
+    public const int FirearmBattleType = 1;
+    public const int AmmoBattleType = 2;
+    public const int MeleeBattleType = 3;
+    public const int GrenadeBattleType = 4;
+    public const int ProximityGrenadeBattleType = 5;
+    public const int MedikitBattleType = 6;
+    public const int PsiAmpBattleType = 9;
+
+    /// <summary>
+    /// The combat fields of the item rule: actions, ranges, accuracy globals resolved, shotgun, ammo, throwing, the stat bonuses. The power, the
+    /// damage types, the accuracy of each action, the clip size, the research and the depth flags are the strategic projection's
+    /// (<see cref="RuntimeItemRule"/>), which the battle reads through the item's handle.
+    /// </summary>
+    public RuntimeItemCombat Combat { get; init; } = RuntimeItemCombat.Default;
+
     /// <summary>RuleItem::getFuseTriggerEvent's fields BattleItem::setFuseTimer reads.</summary>
     public RuntimeFuseTrigger FuseTrigger { get; init; } = RuntimeFuseTrigger.Default;
 
@@ -400,6 +516,27 @@ public sealed record RuntimeBattleArmor(
     /// <summary>Armor::getFearImmune's nullable <c>fearImmune</c>; null takes the caller's default (false).</summary>
     public bool? FearImmune { get; init; }
 
+    /// <summary>
+    /// Armor::getDamageModifier for each of the 20 <c>ItemDamageType</c>s (1 unless the rule's <c>damageModifier</c> sets it), and the nullable
+    /// <c>painImmune</c>, <c>bleedImmune</c>, <c>zombiImmune</c>, <c>ignoresMeleeThreat</c> and <c>createsMeleeThreat</c> (null takes the
+    /// caller's default, <see cref="Allows"/>); a size other than 1 sets all five (and the fear immunity), after which the rule's own <c>zombiImmune</c> key is not read.
+    /// </summary>
+    public IReadOnlyList<float> DamageModifiers { get; init; } = Enumerable.Repeat(1f, 20).ToArray();
+    public bool? PainImmune { get; init; }
+    public bool? BleedImmune { get; init; }
+    public bool? ZombieImmune { get; init; }
+    public bool? IgnoresMeleeThreat { get; init; }
+    public bool? CreatesMeleeThreat { get; init; }
+
+    /// <summary>Armor::getOverKill (<c>overKill</c>, 0.5) and getMeleeDodgeBackPenalty, getMeleeOriginVoxelVerticalOffset and isInstantWoundRecovery.</summary>
+    public float OverKill { get; init; } = 0.5f;
+    public float MeleeDodgeBackPenalty { get; init; }
+    public int MeleeOriginVoxelVerticalOffset { get; init; }
+    public bool InstantWoundRecovery { get; init; }
+
+    /// <summary>Armor's <c>psiDefence</c> and <c>meleeDodge</c> stat bonuses.</summary>
+    public ArmorStatBonusRules StatBonuses { get; init; } = ArmorStatBonusRules.Default;
+
     /// <summary>Armor::getSpecialAbility (<c>specab</c>), which a soldier's unit takes as its own (SPECAB_BURNFLOOR is 2).</summary>
     public int SpecialAbility { get; init; }
 
@@ -482,6 +619,10 @@ public sealed record RuntimeBattleUnitRule(
     /// <summary>Unit's <c>ignoredByAI</c> (BattleUnit::isIgnoredByAI) and Unit::getSpotterDuration (<c>spotter</c>, or <c>intelligence</c> for -1).</summary>
     public bool IgnoredByAi { get; init; }
     public int SpotterDuration { get; init; }
+
+    /// <summary>Unit::isCapturable (<c>capturable</c>) and getMoraleLossWhenKilled (<c>moraleLossWhenKilled</c>, 100).</summary>
+    public bool Capturable { get; init; } = true;
+    public int MoraleLossWhenKilled { get; init; } = 100;
 
     /// <summary>Unit::avoidsFire.</summary>
     public bool AvoidsFireOrDefault => AvoidsFire ?? SpecialAbility < 2;

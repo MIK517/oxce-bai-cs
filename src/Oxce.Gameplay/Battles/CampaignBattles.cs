@@ -87,6 +87,8 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
             if (_battle is not { Phase: BattlePhase.InProgress } running) return null;
             // Sight runs the armors' visibility scripts, which battle scripts (branch 8) will; until then such a battle's commands are refused.
             if (command is IBattleCommand && running.VisibilityScriptRefusal(campaign.Content) is { } visibility) return Blocked(visibility);
+            // The combat hooks and the stat bonuses written as code are branch 8's too.
+            if (command is IBattleCommand && running.CombatScriptRefusal(campaign.Content) is { } combat) return Blocked(combat);
             // The same constructor queues the units that have no floor to fall; the port queues them at the first turn only, so a loaded
             // battle with one refuses (S7).
             return running.HasUncheckedCasualty() || running.HasFloorlessWalker() ? Blocked(BattleFlowReasons.CasualtiesUnsupported) : null;

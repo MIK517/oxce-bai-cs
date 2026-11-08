@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Oxce.Mods.Loading;
@@ -157,6 +158,92 @@ internal static class CampaignStartSettingsComposer
             CampaignStartYaml.ApplyEditableNameMap(b.FixedUserOptions, fixedOptions!, "fixedUserOptions");
         ApplyInterception(root, b.Interception);
         ApplyMonthly(root, b.Monthly);
+        b.Combat = ApplyCombat(root, b.Combat);
+        // Mod::loadFile: the constants section, a mapping or (the backward compatible form) a sequence of mappings.
+        if (root.TryGet("constants", out var constants))
+            foreach (var node in constants is YamlSequenceNode list ? list.Items : [constants!])
+                if (node is YamlMappingNode mapping) ApplyConstants(mapping, b);
+    }
+
+    // Mod::loadConstants: only the keys of the constants section that the battle reads.
+    private static void ApplyConstants(YamlMappingNode constants, CampaignStartSettingsBuilder b)
+    {
+        b.Interception.DamageRange = Read(constants, "damageRange", b.Interception.DamageRange);
+        b.Interception.ExplosiveDamageRange = Read(constants, "explosiveDamageRange", b.Interception.ExplosiveDamageRange);
+        ApplyCoefficients(constants, "fireDamageRange", b.Interception.FireDamageRange);
+        b.Combat = b.Combat with
+        {
+            ExtendedExperienceAwardSystem = Read(constants, "extendedExperienceAwardSystem", b.Combat.ExtendedExperienceAwardSystem),
+            ExtendedSpotOnHitForSniping = Read(constants, "extendedSpotOnHitForSniping", b.Combat.ExtendedSpotOnHitForSniping),
+            ExtendedTerrainMelee = Read(constants, "extendedTerrainMelee", b.Combat.ExtendedTerrainMelee),
+            ExtendedUnderwaterThrowFactor = Read(constants, "extendedUnderwaterThrowFactor", b.Combat.ExtendedUnderwaterThrowFactor),
+        };
+    }
+
+    // Mod::loadFile's combat globals. The legacy turnAIUseGrenade and turnAIUseBlaster come before the ai section, which wins.
+    private static CampaignCombatSettings ApplyCombat(YamlMappingNode root, CampaignCombatSettings current)
+    {
+        var combat = current with
+        {
+            AiUseDelayGrenade = Read(root, "turnAIUseGrenade", current.AiUseDelayGrenade),
+            AiUseDelayBlaster = Read(root, "turnAIUseBlaster", current.AiUseDelayBlaster),
+        };
+        if (root.TryGet("ai", out var ai) && ai is YamlMappingNode aiSettings)
+        {
+            combat = combat with
+            {
+                AiUseDelayBlaster = Read(aiSettings, "useDelayBlaster", combat.AiUseDelayBlaster),
+                AiUseDelayFirearm = Read(aiSettings, "useDelayFirearm", combat.AiUseDelayFirearm),
+                AiUseDelayGrenade = Read(aiSettings, "useDelayGrenade", combat.AiUseDelayGrenade),
+                AiUseDelayProxy = Read(aiSettings, "aiUseDelayProxy", combat.AiUseDelayProxy),
+                AiUseDelayMelee = Read(aiSettings, "useDelayMelee", combat.AiUseDelayMelee),
+                AiUseDelayPsionic = Read(aiSettings, "useDelayPsionic", combat.AiUseDelayPsionic),
+                AiUseDelayMedikit = Read(aiSettings, "useDelayMedikit", combat.AiUseDelayMedikit),
+                ReactionFireThreshold = Read(aiSettings, "reactionFireThreshold", combat.ReactionFireThreshold),
+                ReactionFireThresholdCivilians = Read(aiSettings, "reactionFireThresholdCiv", combat.ReactionFireThresholdCivilians),
+            };
+        }
+        combat = combat with
+        {
+            KneelBonusGlobal = Read(root, "kneelBonusGlobal", combat.KneelBonusGlobal),
+            OneHandedPenaltyGlobal = Read(root, "oneHandedPenaltyGlobal", combat.OneHandedPenaltyGlobal),
+            EnableCloseQuartersCombat = Read(root, "enableCloseQuartersCombat", combat.EnableCloseQuartersCombat),
+            CloseQuartersAccuracyGlobal = Read(root, "closeQuartersAccuracyGlobal", combat.CloseQuartersAccuracyGlobal),
+            CloseQuartersTuCostGlobal = Read(root, "closeQuartersTuCostGlobal", combat.CloseQuartersTuCostGlobal),
+            CloseQuartersEnergyCostGlobal = Read(root, "closeQuartersEnergyCostGlobal", combat.CloseQuartersEnergyCostGlobal),
+            CloseQuartersSneakUpGlobal = Read(root, "closeQuartersSneakUpGlobal", combat.CloseQuartersSneakUpGlobal),
+            NoLosAccuracyPenaltyGlobal = Read(root, "noLOSAccuracyPenaltyGlobal", combat.NoLosAccuracyPenaltyGlobal),
+            ExplodeInventoryGlobal = Read(root, "explodeInventoryGlobal", combat.ExplodeInventoryGlobal),
+            StunningImprovesMorale = Read(root, "stunningImprovesMorale", combat.StunningImprovesMorale),
+            StatisticalBulletConservation = Read(root, "statisticalBulletConservation", combat.StatisticalBulletConservation),
+            TuRecoveryWakeUpNewTurn = Read(root, "tuRecoveryWakeUpNewTurn", combat.TuRecoveryWakeUpNewTurn),
+        };
+        return root.TryGet("hitChancesTable", out var table) ? combat with { HitChancesTable = ReadHitChances(table!) } : combat;
+    }
+
+    private const int HitChanceTableSize = 40 * 61;
+
+    // Mod::loadFile: the table is cleared, then each entry with a unitSize and exactly 40 rows of 61 values is kept.
+    private static ReadOnlyDictionary<int, IReadOnlyList<int>> ReadHitChances(YamlNode node)
+    {
+        var tables = new Dictionary<int, IReadOnlyList<int>>();
+        var entries = node switch
+        {
+            YamlSequenceNode sequence => sequence.Items,
+            YamlMappingNode mapping => [.. mapping.Entries.Select(static entry => entry.Value)],
+            _ => [],
+        };
+        foreach (var entry in entries)
+        {
+            if (entry is not YamlMappingNode table || !table.TryGet("unitSize", out var sizeNode) ||
+                !YamlValueReader.TryReadInt32(sizeNode!, out var size)) continue;
+            var values = new List<int>();
+            if (table.TryGet("distances", out var distances) && distances is YamlMappingNode rows)
+                foreach (var row in rows.Entries)
+                    values.AddRange(row.Value is YamlSequenceNode items ? items.Items.Select(YamlValueReader.ReadInt32) : [YamlValueReader.ReadInt32(row.Value)]);
+            if (values.Count == HitChanceTableSize) tables[size] = Array.AsReadOnly(values.ToArray());
+        }
+        return new ReadOnlyDictionary<int, IReadOnlyList<int>>(tables);
     }
 
     // Mod::loadFile order and defaults; see CampaignInterceptionSettings.
@@ -178,9 +265,6 @@ internal static class CampaignStartSettingsComposer
         b.ShowDogfightDistanceInKm = Read(root, "showDogfightDistanceInKm", b.ShowDogfightDistanceInKm);
         ApplyCoefficients(root, "difficultyCoefficient", b.DifficultyCoefficients);
         ApplyCoefficients(root, "difficultyBasedRetaliationDelay", b.DifficultyBasedRetaliationDelay);
-        b.DamageRange = Read(root, "damageRange", b.DamageRange);
-        b.ExplosiveDamageRange = Read(root, "explosiveDamageRange", b.ExplosiveDamageRange);
-        ApplyCoefficients(root, "fireDamageRange", b.FireDamageRange);
         if (!root.TryGet("difficultyCoefficientOverrides", out var node)) return;
         if (node is not YamlMappingNode overrides)
             throw new YamlFormatException("Global rule 'difficultyCoefficientOverrides' must be a mapping.", node!.Span);

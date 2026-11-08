@@ -386,6 +386,7 @@ public static class RuntimeRuleLinker
             AiPickUpWeaponsMoreActively = content.CampaignStart.Settings.AiPickUpWeaponsMoreActively,
             AiPickUpWeaponsMoreActivelyCivilians = content.CampaignStart.Settings.AiPickUpWeaponsMoreActivelyCivilians,
             Interception = content.CampaignStart.Settings.Interception,
+            Combat = content.CampaignStart.Settings.Combat,
             Monthly = content.CampaignStart.Settings.Monthly,
             DefeatScore = content.CampaignStart.Settings.DefeatScore,
             DefeatFunds = content.CampaignStart.Settings.DefeatFunds,

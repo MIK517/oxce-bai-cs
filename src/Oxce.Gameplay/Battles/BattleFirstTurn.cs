@@ -33,8 +33,11 @@ internal static class BattleFlowReasons
     internal static readonly CampaignReason ReinforcementsUnsupported = new("battle.reinforcements-unsupported",
         "A reinforcement wave of the deployment could deploy at the start; deploying reinforcements arrives with turn processing (Phase 7 branch 6).");
 
-    internal static readonly CampaignReason FlareBonusUnsupported = new("battle.flare-power-bonus-unsupported",
-        "A flare's glow range is its power plus the damage bonus of its rule; evaluating a damage bonus script arrives with Phase 7 branch 8.");
+    internal static readonly CampaignReason StatBonusScriptUnsupported = new("battle.stat-bonus-script-unsupported",
+        "An item or armor in the battle writes a stat bonus (a damage bonus, melee bonus, accuracy or melee or throw or close quarters multiplier, psi defence or melee dodge) as script code, or the rules bind a global event for one; script bindings in battle arrive with Phase 7 branch 8.");
+
+    internal static readonly CampaignReason CombatScriptUnsupported = new("battle.combat-script-unsupported",
+        "The battle's rules bind a combat script (hitUnit, damageUnit, damageSpecialUnit or their ammunition forms, tryMeleeAttack, reactionWeaponAction, reactionUnitAction, reactionUnitReaction or awardExperience); script bindings in battle arrive with Phase 7 branch 8.");
 
     internal static readonly CampaignReason SpawnContentInvalid = new("battle.generation-failed",
         "A primed spawn item spawns a unit, but the mod lists no ten alien item levels for the battle's month.");
@@ -311,10 +314,7 @@ internal sealed partial class BattleState
         }
         if (VisibilityScriptRefusal(content) is { } visibility) return visibility;
         if (VoxelDataFault(content.RuntimeRules) is not null) return BattleFlowReasons.LineOfFireDataInvalid;
-        foreach (var item in _items)
-            if (item.ItemType is var type && content.RuntimeRules.Items.TryGet(type, out var handle) && content.RuntimeRules.Items[handle].Value.BattleType == FlareBattleType &&
-                (content.RuntimeRules.Battle.Equipment.Items[type].StrengthApplied || HasRuleScript(content, "items", type, "damageBonusBonusStats") || HasEventPlan(content, "damageBonusBonusStats")))
-                return BattleFlowReasons.FlareBonusUnsupported;
+        if (CombatScriptRefusal(content) is { } combat) return combat;
         var rules = content.RuntimeRules;
         foreach (var unit in _units)
         {
@@ -353,10 +353,10 @@ internal sealed partial class BattleState
         return null;
     }
 
-    private static bool HasRuleScript(RuntimeContent content, string section, string id, string parser) =>
+    internal static bool HasRuleScript(RuntimeContent content, string section, string id, string parser) =>
         content.Scripts.Any(artifact => artifact.OwnerSection == section && artifact.OwnerId == id && artifact.ParserName == parser);
 
-    private static bool HasEventPlan(RuntimeContent content, string parser) =>
+    internal static bool HasEventPlan(RuntimeContent content, string parser) =>
         content.EventPlans.Any(plan => plan.ParserName == parser && plan.Plan.Count != 0);
 
     /// <summary>

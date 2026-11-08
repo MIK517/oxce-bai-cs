@@ -12,7 +12,7 @@ combat intentional differences) is created by the first slice that needs it.
 | Slice | State |
 |---|---|
 | S0 planning | Done and audited (2026-11-08) |
-| S1 combat groundwork: item, armor and damage rules, stat bonuses, combat constants, script refusals | Not started |
+| S1 combat groundwork: item, armor and damage rules, stat bonuses, combat constants, script refusals | Implemented (2026-11-08), audit pending |
 | S2 line of fire and accuracy | Not started |
 | S3 damage to units | Not started |
 | S4 casualties | Not started |
@@ -76,8 +76,7 @@ Reference studied:
     defaults to off but mods set it.
   - **The hit log is not saved.** `appendToHitLog` is runtime text for the next turn's screen.
 - Not yet checked against the reference, left to the owning slice: the detailed rules of `explode`'s spread, `detonate`,
-  `hitUnit`'s body items, `Projectile::applyAccuracy`, `validateThrow` and `MeleeAttackBState`; the `statDataMap` stat
-  functions; where the battlescape constructor's casualty check runs in the port's flow (S4).
+  `hitUnit`'s body items, `Projectile::applyAccuracy`, `validateThrow` and `MeleeAttackBState`; where the battlescape constructor's casualty check runs in the port's flow (S4).
 
 ### Refusals this branch inherits, and the slice that retires each
 
@@ -133,35 +132,86 @@ An independent audit found 1 High, 7 Medium and 8 Low findings; all are fixed in
     melee, and the inventory prime before the battle only.
   - Branch 4's "## Next" now says the branch is merged.
 
+## S1 — Combat groundwork (2026-11-08)
+
+Reference: `RuleItem.cpp` (`load`, the getters with the mod's globals, `getAIUseDelay`, `getPowerRangeReduction`), `RuleDamageType.cpp` and the base
+types of `Mod::Mod`, `RuleStatBonus.cpp` (`load`, the `set*` defaults, `getBonus` through the generated script and `statDataMap`), `Armor.cpp`
+(`load`, the damage modifiers and immunities), `Unit.cpp`, `RuleSoldier.cpp` and the combat constants of `Mod::loadFile`.
+
+- **Damage types.** `RuntimeItemDamageRule` (the strategic side's projection) is now the whole `RuleDamageType`: every field, the 20 base types
+  (`Predefined`), the keys over them (`Create`), `getRandomDamage` for each random type (the dice types draw once per die, the default type follows
+  `ResistType`, the fire type ignores the power; modes 1 and 2 give the lowest and highest), `getRandomDamageForTile` and every `get*FinalDamage`
+  with its random form and the wounds (vanilla and spread). It replaces `BattleTileDamageType` (`BattleFire.cs` keeps `BattleDamageTypes.Fire` and the
+  tile damage helper), so there is one projection per key and `HitTerrain` takes any type. The item's damage and melee types are read through its
+  handle (`rules.Items[handle].Value.Damage` and `MeleeDamage`), as are the power, melee power, accuracy per action, clip size, requirements,
+  `twoHanded`, `blockBothHands` and `underwaterOnly`; the new `RuntimeBattleItem.Combat` holds the rest.
+- **Item combat fields** (`RuntimeItemCombat`): the four action configs (range, shots, ammo per shot, follow, ammo slot and chance overrides, arcing,
+  names), ranges and dropoffs, throw ranges, `powerRangeReduction` with `PowerRangeReductionAt`, `ignoreAmmoPower`, shotgun fields, arcing, spray
+  waypoints, compatible ammo by name and load and unload costs by slot, `LOSRequired`, `landOnly`, `specialUseEmptyHand`, the fire extinguisher,
+  `convertToCivilian`, the target matrix, `specialType`, the experience mode, the zombie fields, and the values the mod's globals stand in for
+  (`kneelBonus`, `oneHandedPenalty`, `noLOSAccuracyPenalty`, `accuracyCloseQuarters`, `explodeInventory`, the AI use delay by battle type).
+- **Stat bonuses.** `RuleStatBonus` (`Oxce.Mods/Rulesets/RuleStatBonus.cs`) holds the terms (in `statDataMap` order, unknown names dropped, four
+  coefficients each) or script code, and evaluates the generated script's arithmetic natively: coefficients scaled twice by 1000 in single precision,
+  each term added as a whole number of thousandths, rounded to the nearest and divided by 1000, nothing added for a missing unit. `ItemRuleLoader`
+  follows `RuleItem::load`'s order (the psi amp default when `battleType` is read, `skillApplied` and `strengthApplied`, then the six keys);
+  `ArmorRuleLoader` reads `psiDefence` (default psi defense) and `meleeDodge`. `IStatBonusUnit` is what a bonus reads of a unit; `BattleUnit` implements it.
+  The recovery bonuses stay deferred (branch 6).
+- **Flares.** A flare's glow range is now its power bonus with the unit that is its body or its last owner (`BattleItem::getGlowRange`), so a damage bonus
+  written as coefficients, and `strengthApplied`, work; `battle.flare-power-bonus-unsupported` is gone.
+- **Armor and unit rules** (`RuntimeBattleArmor`, `RuntimeBattleUnitRule`): the 20 damage modifiers, the nullable pain, bleed, zombie, melee threat
+  immunities (the size rules of `Armor::load` were already applied by the rule loader), `overKill`, `meleeDodgeBackPenalty`,
+  `meleeOriginVoxelVerticalOffset`, `instantWoundRecovery`, the two bonuses; `capturable`, `moraleLossWhenKilled` (and the soldiers', by type). Corpses and
+  the side armor stay the strategic projection's (`Script.CorpseBattle`, `Script.Sides`).
+- **Constants** (`CampaignCombatSettings`, `RuntimeCampaignSettings.Combat`): the accuracy globals, close quarters, the hit chance tables (a table
+  without 40 rows of 61 values, or without `unitSize`, is skipped; the reference logs it), the reaction fire thresholds, the AI use delays (with the
+  legacy `turnAIUse*` keys and the `ai` section's `aiUseDelayProxy` spelling), `tuRecoveryWakeUpNewTurn`, the extended options and
+  `stunningImprovesMorale`, `statisticalBulletConservation`. The extended options and the damage ranges (`Interception`) are read from the `constants`
+  section only, as `Mod::loadConstants` does (a mapping or a sequence of them); the damage ranges were read from the root before S1, which ignored
+  TFTD_Damage's `constants: - damageRange: 50`.
+- **Refusals.** `battle.combat-script-unsupported` (the hit, damage, melee, reaction and experience hooks, owned by armors or, in their ammunition and
+  item forms, by items, or bound as global events) and `battle.stat-bonus-script-unsupported` (an item or armor in the battle with a bonus written as code,
+  or a global event for one) join the visibility check: `BattleState.CombatScriptRefusal` in `FirstTurnRefusal` (the briefing and the first turn) and in
+  `CampaignBattles`' gate for every command of a running battle. A loaded battle still loads. Only the units' armors and the items the battle holds
+  are looked at.
+- **Left for the later slices.** `HitTerrain` gets no weapon parameter: its first reader is `hitUnit` (S3), which adds it. No command exists yet, so S1
+  adds no interim refusal. `Options::ignoreDelay` and the realistic accuracy configuration stay at their defaults. `ContentSnapshot`'s generated script
+  scales a coefficient with one multiplication by 1,000,000 where the reference multiplies twice by 1000 (both in single precision): the native evaluator
+  follows the reference; branch 8's script bindings should compare the two.
+- **Tests.** `RuleStatBonusTests` (defaults, mapping, rounding at a half, polynomial and truncation, the current and normalized terms, unknown terms and
+  code, the setters' order, the armor's defaults), `RuntimeItemDamageRuleTests` (every random type and the default's resist table, the mod's ranges,
+  the draws, the 20 base types, conversions with rounding, the random forms, wounds, tile damage), `BattleCombatGroundworkTests` (the constants, the hit
+  chance table, the item's defaults and keys with the globals, the AI delay by type, the damage types and alter keys, the armor and unit fields, every hook
+  and bonus refusal at the briefing, a global event, items out of the battle, coefficients not refused, a running and a loaded battle),
+  `BattleLightingTests` (a flare's bonus from its last owner; code refused), `BattleFireTests` (the full type in place of the old subset). `ScriptedDraws`
+  in `tests/Shared` forces the draws of the later slices.
+
 ## Next
 
-S1, combat groundwork (plan row S1). Notes for the worker:
+S2, line of fire and accuracy (plan row S2). Notes for the worker:
 
-- **Where the rules live.**
-  - `src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs`: `RuntimeBattleItem` holds the equipment fields only
-    (no power, damage type, accuracy or range yet). `RuntimeBattleArmor` has `Sides` but no damage modifiers or
-    corpses.
-  - `RuntimeItemDamageRules.cs`: `RuntimeItemDamageRule` is the strategic side's projection of an item's damage type,
-    which the script queries read. It covers the predefined types, `FixRadius`, `RandomType`, `ResistType`,
-    `ArmorIgnore`, `ArmorEffectiveness` and the `To*` conversions; the random flags, thresholds and `Ignore*` fields
-    are missing. Extend it or build the battle's `RuleDamageType` beside it, but keep one projection of each key.
-  - `BattleFire.cs`: `BattleTileDamageType` is branch 4 S9's subset for fire. S1's full type replaces it, and
-    `HitTerrain` gets the weapon branch 4 S9 left out.
-- **Stat bonuses.** `ContentSnapshot.CompileStatBonuses` and `GenerateStatBonus` turn a coefficient mapping into script
-  source, so the runtime only sees compiled scripts. `BattleFirstTurn`'s flare check (`HasRuleScript(..., "damageBonusBonusStats")`)
-  therefore cannot tell a mapping from code. S1 needs the coefficients (or a parse of the generated source) and the
-  defaults of `RuleItem::load` (`setFiring`, `setMelee`, `setThrowing`, `setCloseQuarters`, `setStrength` with
-  `_modded` for `strengthApplied`, and `setFlatHundred` and `setPsiAttack` for the psi amp's cases).
-- **Script refusal pattern.** `BattleFirstTurn.VisibilityScriptRefusal`, `HasRuleScript` and `HasEventPlan` with the
-  gate in `CampaignBattles` (briefing, first turn, every command of a running battle). The combat hooks join the same
-  checks, and a load still accepts such a battle.
+- **What S1 left to read.** An item's rules for an attack are the strategic `RuntimeItemRule` (`rules.Items[handle].Value`: `Power`, `MeleePower`,
+  `Damage`, `MeleeDamage`, `Accuracy`, `ClipSize`, `Requirements`, `WaterOnly`, `TwoHanded`, `BlockingBothHands`, `Waypoints`) and
+  `rules.Battle.Equipment.Items[type].Combat` (ranges, dropoffs, `PowerRangeReductionAt`, kneel and one-handed percentages with the globals applied,
+  `AiUseDelay`, `LosRequired`, `LandOnly`, `ArcingShot` and the action configs' `Arcing`, `Auto.Shots`). `rules.Campaign.Combat` has `HitChances(unitSize)`,
+  the close quarters globals, the reaction fire thresholds and the extended options (`ExtendedUnderwaterThrowFactor` for `getMaxThrowDistance`).
+  `RuntimeItemDamageRule.RandomDamage(power, rules.Campaign.Interception, random or mode)` gives the damage a shot rolls (mode 1 and 2 for the cursor's
+  range).
+- **Stat bonuses.** `Combat.StatBonuses.Accuracy.Evaluate(unit)` is `getAccuracyMultiplier` (the unit is a `BattleUnit`; the second argument is the external
+  bonus, 0 for the multipliers and the power for `Damage`). A missing attacker adds nothing. The multipliers already refuse as code
+  (`battle.stat-bonus-script-unsupported`), so S2 never meets a script.
+- **`canUseWeapon`.** Every field it reads is projected: requirements (`Requirements` through the campaign's research), `Combat.AiUseDelay` (already
+  resolved with the mod's delays; `Options::ignoreDelay` is off), `PsiRequired` and `ManaRequired` (`RuntimeBattleItem`), `WaterOnly` and `LandOnly` for
+  the depth, `BlockingBothHands`. Not projected: the mana gate's settings (`mana.enabled`, `mana.unlockResearch` and the campaign's unlocked state), which S2 reads
+  for `canUseWeapon` of a mana weapon. The armor's `getSelfDestructItem` falls back to the geoscape corpse when the power is above 0 (`Armor.h`); the raw
+  `SelfDestructItem` and `Script`'s `CorpseGeoscape` are projected and S5 combines them.
+- **Tests.** `ScriptedDraws` (`tests/Shared`) returns scripted numbers inside each drawn range and records the calls; use it to force an accuracy roll.
+  The hooks and the code-form bonuses are refused at the briefing, so test items carry coefficient bonuses only.
+- **Script refusal pattern.** `BattleState.CombatScriptRefusal` (`BattleCombatScripts.cs`) holds the parser names; a new hook name is added there.
 - **Reason strings to update when their refusal changes owner or retires.** `BattleFirstTurn.cs` (`CasualtiesUnsupported`,
   `TurnOneReviveUnsupported`) and `BattleGravity.cs` (the fall knock-out) say branch 6 until S4 retires them; S4 also
   removes them from the refusal inventory.
-- **Random sources.** Several compatibility tests define their own scripted `IRandomSource`. If the attack slices
-  force outcomes, put one shared helper in `tests/Shared` (AGENTS.md test conventions).
 - **Branch 4's notes still apply.** Commands run on a trial copy first (`CampaignBattles.TrialRefusal`), which needs
   terrain files. Branch 4's gotchas (`docs/battle-movement-status.md` "## Next") also apply: the post-edit hook
   reformats C# files, so read a file again before a second edit; add string literals with a backslash-n through the
   Edit tool; write test files with LF; run tests with `dotnet test --project <proj> --filter-class <full name>`; a
-  test that adds units by hand needs a `SoldierId` or a unit rule.
+  test that adds units by hand needs a `SoldierId` or a unit rule. Record equality of a rule compares its lists by reference: compare their elements.
