@@ -700,15 +700,26 @@ public sealed class BattleWalkTests
     }
 
     [Fact]
-    public void AnUpButtonWithAUnitAboveIsRefusedAndTheNoPathEndOfMoveUpDownIsNotReachable()
+    public void AnUpButtonWithAKnownUnitHoveringAboveEndsTheMoveWithoutAPath()
     {
-        // validateUpDown already refuses a tile above that holds a unit, and no arena that passes it was found where the path is missing, so the
-        // path-less end of moveUpDown (postPathProcedures alone) cannot be reached through the command; the walk's own dir == -1 branch is
-        // the same code that ends every walk and is run by each test.
+        // validateUpDown never looks for units: a flier goes up when the tile above has no floor. The destination is then blocked by the unit
+        // it knows, calculate leaves no path, and moveUpDown's walk ends where it started (UnitWalkBState with no path: postPathProcedures alone).
         var arena = Make(flying: true);
-        var friend = arena.Alien;
+        var hoverer = arena.Alien;
+        hoverer.MovementType = 1; // a hovering flier: a walker without a floor under it would refuse every command
+        arena.Battle.SetTile(hoverer, At(10, 10, 1));
+        arena.See();
+        var units = arena.Soldier.TimeUnits;
+        var events = Events(arena.Campaign.Execute(new MoveUnitUpDown(arena.Soldier.Id, true)));
+        Assert.Equal(new UnitWalkEnded(arena.Soldier.Id, BattleWalkStop.Arrived, 0, 0, 0, At(10, 10)), End(events));
+        Assert.Equal((units, At(10, 10)), (arena.Soldier.TimeUnits, arena.Soldier.Position!.Value));
+    }
+
+    [Fact]
+    public void AnUpButtonWithARoofAboveIsRefused()
+    {
+        var arena = Make(flying: true);
         arena.Put(10, 10, 1, BattleTilePart.Floor, Floor);
-        arena.Battle.SetTile(friend, At(10, 10, 1));
         arena.See();
         var state = State(arena);
         Assert.Equal("battle.up-down-impossible", Refusal(arena.Campaign.Execute(new MoveUnitUpDown(arena.Soldier.Id, true))));

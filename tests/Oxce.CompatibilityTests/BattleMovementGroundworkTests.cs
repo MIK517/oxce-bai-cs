@@ -1,3 +1,4 @@
+using Oxce.Core.Random;
 using Oxce.Gameplay.Battles;
 using Oxce.Gameplay.Battles.Terrain;
 using Oxce.Gameplay.Campaigns;
@@ -690,6 +691,13 @@ public sealed class BattleMovementGroundworkTests
         Assert.Equal(gunRight, battle.MainHandWeapon(set, alien, quickest: false));
         gunRight.Slot = "";
         cheapLeft.Slot = "";
+        // Two blasters at equal cost: the cost rule would pick the left for a hostile unit, the blaster priority takes the right first (the blaster
+        // priority is the only thing that separates the two here).
+        var blasterRight = Hold(battle, alien, "GUN", "STR_RIGHT_HAND");
+        var blasterLeft = Hold(battle, alien, "GUN", "STR_LEFT_HAND");
+        Assert.Equal(blasterRight, battle.MainHandWeapon(set, alien, quickest: false));
+        blasterRight.Slot = "";
+        blasterLeft.Slot = "";
         // Without waypoints the cost decides: the left is cheaper, so a hostile unit takes the right.
         var (_, plainBattle, _, plainSet) = Open(TwoGuns("tuSnap: 30"));
         var plainAlien = plainBattle.Units.First(static unit => unit.Faction == BattleFaction.Hostile);
@@ -752,5 +760,19 @@ public sealed class BattleMovementGroundworkTests
         Assert.All(battle.Units, unit => Assert.Equal((unit.Direction, unit.Direction), (unit.DirectionTurret, unit.ToDirection)));
         Assert.All(battle.Units, unit => Assert.Equal(unit.DirectionTurret, unit.ToDirectionTurret));
         Assert.NotNull(soldier);
+    }
+
+    [Fact]
+    public void ARestoredUnitTurnsToTheDirectionsItWasSavedFacing()
+    {
+        // BattleUnit::load sets _toDirection and _toDirectionTurret from the loaded directions: a unit whose turret faces another way than its body
+        // does not start a turn when it is next moved.
+        var (campaign, _, soldier, _) = Open();
+        soldier.Direction = 2;
+        soldier.DirectionTurret = 5;
+        var restored = CampaignState.Restore(campaign.Capture(), campaign.Content, new SplitMix64RandomSource(3), TerrainFiles());
+        var loaded = Battle(restored).Units.Single(unit => unit.Id == soldier.Id);
+        Assert.Equal((2, 5, 2, 5), (loaded.Direction, loaded.DirectionTurret, loaded.ToDirection, loaded.ToDirectionTurret));
+        Assert.All(Battle(restored).Units, unit => Assert.Equal((unit.Direction, unit.DirectionTurret), (unit.ToDirection, unit.ToDirectionTurret)));
     }
 }

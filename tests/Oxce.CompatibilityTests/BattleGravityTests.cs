@@ -230,6 +230,49 @@ public sealed class BattleGravityTests
     }
 
     [Fact]
+    public void TwoUnitsBelowCannotEscapeOntoTheSameTile()
+    {
+        // UnitFallBState's escapeTiles: the tile one unit below escapes onto is taken for the next one, which then looks for another.
+        var arena = Tall(walkingSoldier: true);
+        var others = new List<BattleUnit>();
+        foreach (var id in new[] { 920, 921 })
+        {
+            var copy = new BattleUnit(id, BattleFaction.Hostile, BattleController.Ai)
+            {
+                Stats = arena.Alien.Stats,
+                ArmorId = arena.Alien.ArmorId,
+                UnitType = arena.Alien.UnitType,
+                Health = arena.Alien.Health,
+                Position = At(25 + others.Count, 25, 0),
+            };
+            arena.Battle.AddUnit(copy);
+            others.Add(copy);
+        }
+        var (below1, below2, faller1, faller2) = (arena.Soldier, arena.Alien, others[0], others[1]);
+        arena.Stand(below1, 12, 12, 2);
+        arena.Stand(below2, 12, 10, 2);
+        // Both stand where their only neighbour with a floor is (12, 11).
+        foreach (var (cx, cy) in new[] { (12, 12), (12, 10) })
+            foreach (var (dx, dy) in new[] { (0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1) })
+                if ((cx + dx, cy + dy) != (12, 11)) arena.Clear(cx + dx, cy + dy, 0, BattleTilePart.Floor);
+        Raise(arena, faller1, 12, 12, 2);
+        Raise(arena, faller2, 12, 10, 2);
+        arena.Battle.ApplyGravity(faller1.Position);
+        arena.Battle.ApplyGravity(faller2.Position);
+        Assert.Equal(2, arena.Battle.FallingUnits.Count);
+        var before = State(arena);
+        Assert.Equal("battle.fall-knockout-unsupported", arena.Battle.FallsRefusal(arena.Rules)!.Code);
+        Assert.Equal(before, State(arena));
+        // The list runs the unit queued last first: the unit at (12, 10) takes (12, 11). Open a second way for the other one (east of it):
+        // it takes that instead of the tile already taken.
+        arena.Put(13, 12, 0, BattleTilePart.Floor, Floor);
+        Assert.Null(arena.Battle.FallsRefusal(arena.Rules));
+        Assert.Null(arena.Battle.ResolveFalls(arena.Rules));
+        Assert.Equal((At(13, 12, 0), At(12, 11, 0)), (below1.Position, below2.Position));
+        Assert.Equal((At(12, 12, 0), At(12, 10, 0)), (faller1.Position, faller2.Position));
+    }
+
+    [Fact]
     public void ALandingThatAnArmedReactorCouldAnswerIsRefusedAndAnUnarmedOneSpots()
     {
         var arena = Tall(walkingSoldier: true, reactive: true);

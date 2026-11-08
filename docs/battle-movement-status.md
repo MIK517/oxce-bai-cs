@@ -11,18 +11,18 @@ Phase 7 branch 4 (`claude/battle-movement`), from `main` after PR #80 (branch 3 
 | Slice | State |
 |---|---|
 | S0 planning | Done (2026-11-01) |
-| S1 movement groundwork: constants, action costs, reserved TUs, unit primitives | Done, awaiting audit (2026-11-01) |
-| S2 pathfinding | Done, awaiting audit (2026-11-01) |
-| S3 lighting | Done, awaiting audit (2026-11-01) |
-| S4 field of view and per-faction visibility | Done, awaiting audit (2026-11-01) |
-| S5 turning and kneeling | Done, awaiting audit (2026-11-07) |
-| S6 doors | Done, awaiting audit (2026-11-07) |
-| S7 gravity and falling | Done, awaiting audit (2026-11-07) |
-| S8 walking and flying | Done, awaiting audit (2026-11-07) |
-| S9 fire, smoke and terrain destruction | Done, awaiting audit (2026-11-07) |
-| S10 battlescape client | Done, awaiting audit (2026-11-07) |
-| S11 acceptance | Done, awaiting audit (2026-11-08) |
-| Branch audit | Planned |
+| S1 movement groundwork: constants, action costs, reserved TUs, unit primitives | Done and audited (2026-11-01) |
+| S2 pathfinding | Done and audited (2026-11-01) |
+| S3 lighting | Done and audited (2026-11-01) |
+| S4 field of view and per-faction visibility | Done and audited (2026-11-01) |
+| S5 turning and kneeling | Done and audited (2026-11-07) |
+| S6 doors | Done and audited (2026-11-07) |
+| S7 gravity and falling | Done and audited (2026-11-07) |
+| S8 walking and flying | Done and audited (2026-11-07) |
+| S9 fire, smoke and terrain destruction | Done and audited (2026-11-07) |
+| S10 battlescape client | Done and audited (2026-11-07) |
+| S11 acceptance | Done and audited (2026-11-08) |
+| Branch audit | Fixes done and audited, awaiting merge (2026-11-08) |
 
 ## S0 — Planning (2026-11-01)
 
@@ -448,7 +448,7 @@ the fall state's push at `think`), `InventoryState.cpp` (the destructor), `Battl
   a flier (it escapes north and turns), a walker below taking north east when north has no floor, a big unit falling onto four tiles and the escape avoiding
   them, a big unit with a floor under one tile, a fall with no escape refused with the state untouched and then run with a side opened, an armed reactor refused
   and an unarmed one spotting, a landing of the side not on turn, a floor-burning unit, proximity (a lit proximity-explode fuse, a plain lit grenade, a
-  `proximityTrigger` item, out of reach), the requeue order, a turning, panicking or berserk faller, a queued unit past the out threshold, a flier escaping onto a floorless tile, a big unit below moving aside, a lit proximity grenade, a unit rule's `specab`, the reactor refusal from the real run. Not tested: the `alreadyTaken` conflict between two escapes, the death-trap branch, the round limit. `BattleFirstTurnTests`: a spawn on a floorless tile queued and landed at the first turn, a spawned item
+  `proximityTrigger` item, out of reach), the requeue order, a turning, panicking or berserk faller, a queued unit past the out threshold, a flier escaping onto a floorless tile, a big unit below moving aside, a lit proximity grenade, a unit rule's `specab`, the reactor refusal from the real run. Not tested: the round limit (an invariant guard, unreachable). The `alreadyTaken` conflict between two escapes and the death-trap branch were tested by the branch audit's fixes and S8's audit. `BattleFirstTurnTests`: a spawn on a floorless tile queued and landed at the first turn, a spawned item
   dropping, an alien in the air falling at the first turn and a refused first turn (burn floor) that changes nothing. `BattleInventoryTests`: an item put
   down by a hovering unit drops; a floorless walker's commands are refused by the gate (so `Moved`'s own pre-move refusal can only matter once S8 can leave a walker queued) and its fall runs. The briefing refuses a spawn that could not land. (The spawn tests that asked for `SpawnNeedsGravity` are replaced.)
 
@@ -508,8 +508,7 @@ Reference: `UnitWalkBState.cpp` (`init`, `think`, `postPathProcedures`), `Battle
   known and an unknown unit in the way, a swinging door, a UFO door (and the refusal when the door and step cannot be paid), a ramp up a level, a ladder with the jump onto the ledge, flying up and down,
   a flier over a hole, a walk off a ledge, a fall onto a unit that moves aside and the knock-out refusal (called on the battle itself), the reaction and proximity refusals (and S9's burn-floor refusal, since retired) with the state compared before and
   after, the hostile faction's spotting by a weaponless unit, the personal light, and the selection kept. Also: an undefined move type, the flag clearing, a kneeling unit with the up and down buttons (and with an armor that cannot move). Also: the kneel's reaction refusal inside a walk (called on the battle, state unchanged), a unit poking up from below a hole (a first-step refusal and a stop after one step), the `proximityTrigger` and death-trap cases of the proximity refusal,
-  the light that moves with the walker (the two tiles trade shades) and the sight that grows with it (a stop on a unit seen in the dark). Not reachable, so not tested: the hostile reserve refusal (the selection rules refuse every command of the hostile side first, `battle.selection-unavailable`), `MoveUpDown` with no path
-  (`validateUpDown` refuses a tile above that holds a unit and no arena that passes it lacks a path), the `Incapacitated` stop (nothing in a player's walk puts the walker out: damage is branch 5's). Not tested: a big unit's walk, the ladder jump cancelled midway (`falling` set by `cancelCurentMove`), the AI's stops.
+  the light that moves with the walker (the two tiles trade shades) and the sight that grows with it (a stop on a unit seen in the dark). Not reachable, so not tested: the hostile reserve refusal (the selection rules refuse every command of the hostile side first, `battle.selection-unavailable`), the `Incapacitated` stop (nothing in a player's walk puts the walker out: damage is branch 5's). Not tested: a big unit's walk, the ladder jump cancelled midway (`falling` set by `cancelCurentMove`), the AI's stops.
 
 ## S9 — Fire, smoke and terrain destruction (2026-11-07)
 
@@ -624,9 +623,23 @@ Reference: the whole movement stack; no new rules except one refusal (below).
 - **Tests.** `PrivateBattleGenerationTests` (the six played battles, the reload comparison, the other viewers), `PrivateBattleSaveTests` (the saves), and the walk-status refusal in `BattleWalkTests`. Not tested: a walk of
   the Rosigma battles (refused at the briefing), and the hostile viewer's own walk (no client of another side).
 
+## Branch audit fixes (2026-11-08)
+
+The branch audit (`git diff main...HEAD`, report in `.agent-tmp/audit13-findings.md`) found no High finding. Fixed:
+
+- **M1.** `MoveUpDown` with no path is reachable: `validateUpDown` never looks for units, so a flier goes up when the tile above has no floor, and a known unit hovering there blocks the destination, `Calculate` leaves no path and the move ends where it
+  started (`UnitWalkEnded(Arrived, 0 steps)`). Test `AnUpButtonWithAKnownUnitHoveringAboveEndsTheMoveWithoutAPath`; the old test (which only showed a roof refusing) is now `AnUpButtonWithARoofAboveIsRefused`. The status doc no longer calls the case unreachable.
+- **M2.** `TheMainHandPickCoversUnloadedSpecialBlasterAndFactionCases`: two blasters at equal cost for a hostile non-quickest pick (the cost rule says left, the blaster priority right), which fails without the blaster block.
+- **M3.** `ARestoredUnitTurnsToTheDirectionsItWasSavedFacing`: a unit saved with its turret facing another way than its body is restored with `ToDirection` and `ToDirectionTurret` equal to the loaded directions.
+- **M4.** `AStepIntoABigWallAddsTheWallFromItsFarSideForDamageAndSmokeOnly` (new TESTSET record 16, a west big wall with a high explosive block of 50): the end tile's big wall in `horizontalBlockage`'s tail, for damage and smoke, from both sides.
+- **M5.** `ABlockageBetweenLevelsMeasuresDamageAndSmokeByTheFloorArmorAndSmokeDimsEnhancedLightAcrossLevels`: `VerticalBlockage` for damage and smoke (up and down, an armored floor), and smoke on the upper level dimming enhanced light there and not below.
+- **M6.** `TwoUnitsBelowCannotEscapeOntoTheSameTile`: two units below with one shared escape tile (refused with `battle.fall-knockout-unsupported`, state untouched), and with a second way open (each takes its own).
+- **M7-M10, L2, L4.** Status Progress table, the plan's refusal names and trial-copy wording (`docs/phase-7-plan.md`), the implementation plan's branch 4 line, the performance doc's "not per walk" claim (the trial copy's restore costs a full lighting and field of view per walk command, unmeasured), `AGENTS.md`'s list of status records, the stale "Not tested" line, and "## Next"'s refusal list.
+- **Not changed.** L1: the two loop-limit throws (`BattleGravity`, `BattleWalk`) are invariant guards and stay untested. L3: the death-trap refusal stays broader than the reference (any `STR_DEATH_TRAP_<n>` rule), as documented in S7; branch 5 narrows it with the real proximity check.
+
 ## Next
 
-Only the branch audit remains (`git diff main...HEAD`, per `AGENTS.md`). Notes for its worker:
+The branch audit's findings are fixed (section above); the branch awaits its re-audit and merge. Notes for branch 5 and later workers:
 
 - **What S11 added.** `tests/Oxce.CompatibilityTests/BattleAcceptanceDriver.cs` (`Walk`, `OpenDoor`, `Measure`, `Record`, `AssertSameSight`); the refusal `battle.walk-unit-busy-unsupported`; the acceptance records
   `artifacts/private-battle-acceptance-walks.json` and `artifacts/private-battle-acceptance-timings.json` (not committed, like the other artifacts).
@@ -638,6 +651,10 @@ Only the branch audit remains (`git diff main...HEAD`, per `AGENTS.md`). Notes f
   walks (`battle.walk-unit-busy-unsupported`) and `checkForReactivation` (branch 6). `SpreadFireAndSmoke` and `CloseUfoDoors` are routines for branch 6's end of turn, called by nothing yet.
 - **S9's notes still apply.** Commands that can meet fire refuse with `battle.hit-unit-unsupported` or `battle.terrain-explosion-unsupported` (branch 5) before any change; the walk commands run on a trial copy first
   (`CampaignBattles.TrialRefusal`, not available without terrain files).
+- **Refusals this branch added or touched and still leaves in place, and their owners.** Branch 5: `battle.reaction-fire-unsupported`, `battle.proximity-unsupported`, `battle.hit-unit-unsupported`, `battle.terrain-explosion-unsupported`, `battle.module-map-unsupported`. Branch 6: `battle.hostile-reserve-unsupported`,
+  `battle.fall-knockout-unsupported`, `battle.casualties-unsupported`, `battle.walk-unit-busy-unsupported`. Branch 8: `battle.new-turn-script-unsupported`, `battle.flare-power-bonus-unsupported`, `battle.visibility-script-unsupported`. Refusals from earlier branches (`battle.casualties-unsupported` and the other branch 3 codes: turn recovery script, turn one revive, reinforcements, preview) stay with their owners in the plan. The S10 client's
+  `battle.cancel-walk-unsupported`, `battle.wounded-indicators-unsupported` and `battle.visible-unit-carried-unsupported` wait for the branch that owns the feature (see S10's section).
+- **Performance.** A walk or up and down command on a battle with terrain files restores a trial copy (a full lighting and field of view); the command's total cost is not measured (the performance doc says so).
 - **Gotchas.** A post-edit hook reformats edited C# files, so read a file again before a second edit. A backslash-n written through a script or heredoc reaches a C# file as a real newline: add string literals that
   carry one with the Edit or Write tool (a Python script that needs a backslash-n builds it with `chr(92) + 'n'`; a heredoc that holds an apostrophe can also break the shell call: write scripts with the Write tool). The
   armor key for the special ability is `specab`; an armor's run, strafe and walk costs are `moveCost: {runPercent: [time, energy]}`. A test that adds `BattleUnit`s by hand needs a `SoldierId` or a unit rule, and a

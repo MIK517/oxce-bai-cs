@@ -34,11 +34,12 @@ public sealed class BattleLightingTests
     private const int HighBlocker = 13; // terrain level -24, impassable
     private const int ArmoredFloor = 14; // armor 20
     private const int Brazier = 15; // light source 3, in a floor
+    private const int BigWallPane = 16; // a west big wall with high explosive block 50 (vision block 0)
 
     private static void Terrain(Dictionary<string, byte[]> files) => files["TERRAIN/TESTSET.MCD"] = Mcd(Record((42, 2)), Record((42, 3)),
         Record((42, 4), (59, 2)), Record((39, 4), (40, 4), (41, 4)), Record((32, 1)), Record((58, 10)), Record((58, 20)), Record((31, 1)),
         Record((43, 50)), Record((30, 1), (31, 1)), Record((33, 4), (31, 1)), Record((33, 2), (31, 1)), Record((48, 248)),
-        Record((48, 232), (39, 255)), Record((42, 20)), Record((58, 3)));
+        Record((48, 232), (39, 255)), Record((42, 20)), Record((58, 3)), Record((33, 4), (43, 50)));
 
     private sealed record Arena(CampaignState Campaign, BattleState Battle, BattleUnit Soldier, RuntimeRuleCatalog Rules)
     {
@@ -544,6 +545,58 @@ public sealed class BattleLightingTests
         arena.Put(26, 5, 0, BattleTilePart.ObjectPart, BigWallNesw);
         Assert.Equal(255, BattleBlockage.HorizontalBlockage(arena.Map, arena.Tile(26, 5), arena.Tile(27, 5), BattleBlockType.None, skipObject: true));
         Assert.Equal(0, BattleBlockage.HorizontalBlockage(arena.Map, arena.Tile(26, 8), arena.Tile(27, 8), BattleBlockType.None, skipObject: true));
+    }
+
+    [Fact]
+    public void AStepIntoABigWallAddsTheWallFromItsFarSideForDamageAndSmokeOnly()
+    {
+        // horizontalBlockage's tail (type != DT_NONE): the end tile's big wall is measured from the opposite direction, from its own tile.
+        var arena = Flat();
+        arena.Put(7, 7, 0, BattleTilePart.ObjectPart, BigWallPane);
+        var wall = arena.Tile(7, 7);
+        var west = arena.Tile(6, 7); // a step east into the wall: the wall is measured in the reversed direction, west, which it faces
+        var east = arena.Tile(8, 7); // a step west into it: the way into a west big wall's other side is skipped
+        Assert.Equal(50, BattleBlockage.HorizontalBlockage(arena.Map, west, wall, BattleBlockType.Damage));
+        Assert.Equal(256, BattleBlockage.HorizontalBlockage(arena.Map, west, wall, BattleBlockType.Smoke));
+        // Sight is not stopped by this wall (vision block 0), so the step is not the revealed -1 of a stopping big wall.
+        Assert.Equal(0, BattleBlockage.HorizontalBlockage(arena.Map, west, wall, BattleBlockType.None));
+        Assert.Equal(0, BattleBlockage.HorizontalBlockage(arena.Map, east, wall, BattleBlockType.Damage));
+        Assert.Equal(0, BattleBlockage.HorizontalBlockage(arena.Map, east, wall, BattleBlockType.Smoke));
+        // A plain tile at the end adds nothing.
+        Assert.Equal(0, BattleBlockage.HorizontalBlockage(arena.Map, arena.Tile(6, 9), arena.Tile(7, 9), BattleBlockType.Damage));
+    }
+
+    [Fact]
+    public void ABlockageBetweenLevelsMeasuresDamageAndSmokeByTheFloorArmorAndSmokeDimsEnhancedLightAcrossLevels()
+    {
+        var arena = Flat();
+        var below = arena.Tile(5, 5);
+        var above = arena.Tile(5, 5, 1);
+        arena.Put(5, 5, 1, BattleTilePart.Floor, ArmoredFloor);
+        Assert.Equal(256, BattleBlockage.VerticalBlockage(arena.Map, below, above, BattleBlockType.None));
+        Assert.Equal(20, BattleBlockage.VerticalBlockage(arena.Map, below, above, BattleBlockType.Damage));
+        Assert.Equal(256, BattleBlockage.VerticalBlockage(arena.Map, below, above, BattleBlockType.Smoke));
+        // Going down the start tile's own floor counts.
+        Assert.Equal(20, BattleBlockage.VerticalBlockage(arena.Map, above, below, BattleBlockType.Damage));
+        Assert.Equal(256, BattleBlockage.VerticalBlockage(arena.Map, above, below, BattleBlockType.Smoke));
+
+        // Smoke on a tile of the upper level takes a level off the light that crosses it (from the third tile on), as on one level.
+        const string enhanced = "\nlighting: {enhanced: 1}\n";
+        Arena Level(bool smoke)
+        {
+            var level = Flat(extraRules: enhanced);
+            for (var x = 0; x < 30; x++) level.Put(x, 10, 1, BattleTilePart.Floor, Hole);
+            level.Put(10, 10, 0, BattleTilePart.ObjectPart, Lamp);
+            if (smoke) level.Map.SetSmoke(level.Tile(12, 10, 1), 2);
+            level.Relight();
+            return level;
+        }
+        var clear = Level(false);
+        var smoky = Level(true);
+        // The smoky tile itself is lit as before, the tiles past it on its level are one darker, the level below is not touched.
+        Assert.Equal(clear.Shade(12, 10, 1), smoky.Shade(12, 10, 1));
+        Assert.Equal((1, 1), (smoky.Shade(13, 10, 1) - clear.Shade(13, 10, 1), smoky.Shade(14, 10, 1) - clear.Shade(14, 10, 1)));
+        Assert.Equal(Enumerable.Range(8, 9).Select(x => clear.Shade(x, 10)), Enumerable.Range(8, 9).Select(x => smoky.Shade(x, 10)));
     }
 
     [Fact]

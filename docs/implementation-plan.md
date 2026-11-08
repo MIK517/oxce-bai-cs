@@ -295,7 +295,7 @@ The [Phase 7 delivery plan](phase-7-plan.md) splits the phase into eight branche
 [ADR 0038](decisions/0038-battle-aggregate.md). Branch 1 (battle generation) is complete
 and merged: [battle generation status](battle-generation-status.md). Branch 2 (battle saves) is complete
 and merged: [battle save status](battle-save-status.md). Branch 3 (session layer and battlescape UI) is complete and
-merged: [battle session and UI status](battle-session-ui-status.md). Branch 4 (battle movement) is planned:
+merged: [battle session and UI status](battle-session-ui-status.md). Branch 4 (battle movement) is implemented and audited, awaiting merge:
 [battle movement status](battle-movement-status.md).
 
 Phase 7 inherits the Phase 6 named restrictions: every string in the
