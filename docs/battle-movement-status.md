@@ -657,7 +657,8 @@ A review of `git diff main...HEAD` for repeated code. Behaviour is unchanged exc
 
 ## Next
 
-The branch audit's findings are fixed (section above); the branch awaits its re-audit and merge. Notes for branch 5 and later workers:
+The branch audit's findings are fixed (section above), and the branch is merged (PR #81). Branch 5 continues in
+[battle combat status](battle-combat-status.md). Notes for branch 5 and later workers:
 
 - **What S11 added.** `tests/Oxce.CompatibilityTests/BattleAcceptanceDriver.cs` (`Walk`, `OpenDoor`, `Measure`, `Record`, `AssertSameSight`); the refusal `battle.walk-unit-busy-unsupported`; the acceptance records
   `artifacts/private-battle-acceptance-walks.json` and `artifacts/private-battle-acceptance-timings.json` (not committed, like the other artifacts).

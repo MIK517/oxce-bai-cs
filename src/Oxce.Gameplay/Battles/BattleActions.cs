@@ -74,7 +74,7 @@ internal enum BattleActionShortfall
 
 /// <summary>
 /// BattleActionCost: the cost of an action by a unit with a weapon (<c>updateTU</c>), and whether the unit can pay it
-/// (<c>haveTU</c>). The skill form (<c>skillRules</c>) belongs to the skill actions of Phase 7 branch 5.
+/// (<c>haveTU</c>). The skill form (<c>skillRules</c>) belongs to the skill actions of Phase 7 branch 6.
 /// </summary>
 internal sealed class BattleActionCost(BattleUnit? actor = null)
 {

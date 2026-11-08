@@ -5,8 +5,9 @@ Plan date: 2026-10-18. Baseline: `main` at `2b0c81fb` (audit cleanup, PR #77). R
 Status: branch 1 (`claude/battle-generation`) is complete and merged (PR #78); its slices, audits and evidence are
 recorded in [battle generation status](battle-generation-status.md). Branch 2 (`claude/battle-save`) is complete and merged (PR #79):
 [battle save status](battle-save-status.md). Branch 3 (`claude/battle-session-ui`) is complete and merged (PR #80):
-[battle session and UI status](battle-session-ui-status.md). Branch 4 (`claude/battle-movement`) is implemented and audited, awaiting merge:
-[battle movement status](battle-movement-status.md).
+[battle session and UI status](battle-session-ui-status.md). Branch 4 (`claude/battle-movement`) is complete and merged (PR #81):
+[battle movement status](battle-movement-status.md). Branch 5 (`claude/battle-combat`) is in progress:
+[battle combat status](battle-combat-status.md).
 
 ## Goal and scope
 
@@ -75,8 +76,8 @@ saves and UI actions integrated for what it adds; headless acceptance comes befo
 | 2 | `claude/battle-save` | `battleGame` loads into `BattleState` and is written back; the reference loads written saves (checked by a conformance reader, [below](#branch-decisions)); the opaque preservation retires and the "saving during a battle" restriction narrows to saving before the first turn |
 | 3 | `claude/battle-session-ui` | Session layer (player identity, event broadcast, host clock and pause policy, per-actor quotes), screen stack, briefing and the first turn (`startFirstTurn`), battlescape view: camera, levels, selection, inventory, legal-action display |
 | 4 | `claude/battle-movement` | Pathfinding, walking, flying, kneeling, turning, doors, falling, per-faction visibility, light, fire and smoke spread, terrain destruction from movement |
-| 5 | `claude/battle-combat` | Line of fire and voxel tests, accuracy, projectiles, explosions, armor and damage, wounds, death and unconsciousness, reaction fire |
-| 6 | `claude/battle-turns-ai` | Turn and phase processing, morale and panic, melee, psi, special abilities, environmental conditions, AI controller |
+| 5 | `claude/battle-combat` | Line of fire and voxel tests, accuracy, projectiles, explosions, armor and damage, wounds, death and unconsciousness, melee, reaction fire |
+| 6 | `claude/battle-turns-ai` | Turn and phase processing, morale and panic, psi, item uses (medikit, scanner, mind probe), skills, special abilities, environmental conditions, AI controller |
 | 7 | `claude/battle-outcome` | Objectives, abort and end of mission, recovery, debriefing and its campaign effects, final-mission victory; the [first acceptance scenario](phase-6-status.md#first-phase-7-acceptance-scenario) closes |
 | 8 | `claude/battle-scripts-corpus` | Remaining tactical script hooks and bindings, representative deployments (UFO, terror, base defense, alien base, final, underwater, custom), named restriction retirement, Phase 7 closure |
 
@@ -265,8 +266,8 @@ battlescape), `Game` (the state stack), `GeoscapeState` (the pause policy the ho
   `NewTurnItem` callbacks refuse by name until branch 8's bindings (a battle whose rules bind them cannot start);
   `reviveUnconsciousUnits` and `convertInfected` are branch 6's and are guarded by a validated precondition (none can
   apply to a generated battle at turn 1). Refusal names: `battle.new-turn-script-unsupported` (branch 8),
-  `battle.turn-one-revive-unsupported` (branch 6), `battle.no-live-aliens` (the `AliensCrashState` exit, branch 7),
-  `battle.preview-unsupported` and `battle.reinforcements-unsupported` (above), `battle.casualties-unsupported` (branch 6: a unit `checkForCasualties` would take out; refused at the briefing and for the commands of a running battle, a loaded one included), `battle.turn-recovery-script-unsupported` (branch 8: a scripted time unit or energy recovery), `battle.spawn-gravity-unsupported` (branch 4, retired by S7: its falls are ported). Completing this retires `battle.save-before-first-turn`, the restriction branch 2 handed over.
+  `battle.turn-one-revive-unsupported` (branch 6; reassigned to branch 5 S4), `battle.no-live-aliens` (the `AliensCrashState` exit, branch 7),
+  `battle.preview-unsupported` and `battle.reinforcements-unsupported` (above), `battle.casualties-unsupported` (branch 6, reassigned to branch 5 S4: a unit `checkForCasualties` would take out; refused at the briefing and for the commands of a running battle, a loaded one included), `battle.turn-recovery-script-unsupported` (branch 8: a scripted time unit or energy recovery), `battle.spawn-gravity-unsupported` (branch 4, retired by S7: its falls are ported). Completing this retires `battle.save-before-first-turn`, the restriction branch 2 handed over.
 - **The pre-battle inventory is the reference's `InventoryState(false, ...)`.** Items move between slots under the
   `RuleInventory` slot rules at no TU cost before the first turn and at the reference's cost during battle; moves are
   commands on stable unit and item IDs with total validation. Closing the pre-battle inventory also runs `saveEquipmentLayout`, which
@@ -359,7 +360,7 @@ kneel and personal-light fields, `allowsMoving`, `allowsKneeling`).
   path is the reference's for a given map and unit. `calculate` skips the Bresenham shortcut for a brutal unit
   (`BattleUnit::isBrutal`: hostile units by `brutalAI`, default on; neutral units by `brutalCivilians`, default off;
   player units when AI-controlled; the unit rule's `isBrutal` and `isNotBrutal` override), so S2 projects the unit
-  rule's two flags and takes the options' defaults. `BAM_MISSILE` (guided missiles) is branch 5's and is not
+  rule's two flags and takes the options' defaults. `BAM_MISSILE` (guided missiles) is branch 5's (reassigned to branch 6 by branch 5's plan: only the AI uses it) and is not
   reachable from a branch 4 command. The `sneak` flag (the `sneakyAI` option and brutal AI) is a parameter that
   branch 6's AI sets; the player's moves pass it off. Paths and reachable tiles are queries (the legal-action display
   and the path preview read them).
@@ -435,7 +436,7 @@ kneel and personal-light fields, `allowsMoving`, `allowsKneeling`).
   `convertUnit` for a unit with a `spawnUnit`), and `checkForCasualties` pushes `UnitDieBState` next, so the unit
   becomes unconscious within the same action, before a walk that fell resumes its path. Both are branch 6's. A
   command (a walk, and the first turn's spawn falls) whose planned fall lands on a unit is therefore refused before
-  its first change with `battle.fall-knockout-unsupported` (branch 6) unless `UnitFallBState`'s escape rule, applied to
+  its first change with `battle.fall-knockout-unsupported` (branch 6; reassigned to branch 5 S4) unless `UnitFallBState`'s escape rule, applied to
   the state before the command with the mover's planned positions counted as occupied, finds that unit an escape
   tile; a fall whose escape exists runs, the unit below moving out of the way. S9 applies the same rule to the falls
   a burnt floor starts.
@@ -490,6 +491,239 @@ spotting, and the battle still validates. Each private active-battle save loads 
 computed, and a player unit that is free to move walks (or the walk is refused by a named reason of a later branch).
 A viewer of another faction sees only that faction's discoveries and spotted units. Pathfinding and field-of-view
 costs on the largest acceptance map are recorded in the performance baselines.
+
+## Branch 5 — Battle combat
+
+Reference: `BattlescapeGame` (`primaryAction`'s targeting part, `handleNonTargetAction`, `checkForCasualties`,
+`convertUnit`, `convertInfected`, `dropItem`, `spawnNewUnit` and `spawnNewItem` after an explosion, `setTUReserved`,
+`setKneelReserved`, `checkForProximityGrenades`, `autoEndBattle`, `kneel`'s reaction check), `ActionMenuState` (the
+actions a weapon offers and their checks), `PrimeGrenadeState`, `UnitTurnBState` (the targeting form),
+`ProjectileFlyBState`, `Projectile` (`calculateTrajectory`, `calculateThrow`, `applyAccuracy`), `ExplosionBState`,
+`MeleeAttackBState`, `UnitDieBState`, `UnitWalkBState` and `UnitFallBState` (their reaction checks), `TileEngine` (line
+of fire: the firing forms of `canTargetUnit` and `canTargetTile` with `rememberObstacles`,
+`adjustTargetVoxelFromTileType`, `getOriginVoxel` for every action, `calculateLineVoxel` with its trajectory,
+`calculateParabolaVoxel`, `validateThrow`; damage: `hit` (its unit part), `hitUnit`, `explode`, `detonate`,
+`checkForTerrainExplosions`, `awardExperience`; melee: `meleeAttack`, `meleeAttackCalculate`, `validMeleeRange`,
+`validTerrainMeleeRange`; reaction fire: `checkReactionFire`, `getReactor`, `determineReactionType`, `tryReaction`;
+`itemDrop`, `itemDropInventory`, `getArcDirection`), `AIModule` (the reaction form of `brutalScoreFiringMode`,
+`explosiveEfficacy`, `brutalExplosiveEfficacy`, `validateArcingShot`, `getSideFacingToPosition`,
+`shouldAvoidMeleeRange`), `BattleUnit` (`damage`, `getFiringAccuracy`, `getAccuracyModifier`, `knockOut`, `instaKill`,
+`moraleChange`, `reduceByBravery`, `setFatalWound`, `getOverKillDamage`, `isWoundable`, the experience adders with
+`rememberXP` and `nerfXP`, `getWeaponForReactions`, `getUtilityWeapon`, `getSpecialWeapon`, `aim`, `killedBy`,
+`getHitState`), `BattleItem` (`getAmmoForAction`, `spendAmmoForAction`, `haveNextShotsForAction`, `fuseThrowEvent`,
+`fuseProximityEvent`, `setFuseTimer`, `convertToCorpse`, `getArcingShot`, `getActionConf`), `SavedBattleGame`
+(`canUseWeapon`, `reviveUnconsciousUnits`, `removeUnconsciousBodyItem`, `placeUnitNearPosition`, `convertUnit`, the
+morale modifiers, `createItemForTile`), `SavedGame::killSoldier`, `Inventory` (`unload`, loading a weapon, priming),
+`RuleItem` (battle type, power and its bonuses, the damage and melee types with `damageAlter` and `meleeAlter`,
+accuracy and ranges, the action configs, clip and ammo slots, explosion radius, the shotgun and arcing fields,
+waypoints, the `RuleStatBonus` fields), `RuleDamageType`, `RuleStatBonus`, `Armor` (side armor, damage modifiers,
+corpses, the melee dodge and threat fields, `selfDestructItem`, pain and zombie immunity), `Unit` (`spawnUnit`,
+`capturable`), `Mod` (the combat constants), `Options` (the defaults below).
+
+### Branch decisions
+
+- **Attacks are commands; each resolves whole (D3).** `Attack` (unit, weapon item, action type: aimed, snap, auto,
+  throw, launch or hit; target position; the launch and spray waypoints; Ctrl's force fire), priming and unpriming,
+  the inventory's ammo loading and unloading, and the reserve buttons are commands on stable IDs, authorized by the
+  session as branch 3's are. One command runs the reference's state chain to its end. The reference's `statePushFront`,
+  `statePushNext` and `statePushBack` become one ordered queue in the rules, so explosions, deaths and reactions happen
+  in the reference's order. The chain covers the targeting turn, each shot of the action, each projectile's impact,
+  the explosions and the terrain explosions they set off, the hits, the casualty checks and deaths, conversions and
+  revivals, and the reaction fire the action draws with the reactions' own shots, until the queue is empty. The
+  command returns ordered events (a turn, a shot with its trajectory voxels, an impact, an explosion with its center and radius, a
+  unit hit, a unit dead or unconscious, an item created or removed, a terrain part destroyed, a reaction) that clients
+  replay. Events carry IDs and positions, and a client draws a unit only as its query shows it (branch 4's rule).
+  Animation time collapses (the projectile's flight, `ExplosionBState`'s frames, the dying unit's fall); where that
+  changes a rule outcome, ADR 0041 (battle combat intentional differences) records it, created by the first slice that
+  needs it. A dying unit ends facing direction 3 (`UnitDieBState`: its constructor sets it for non-direct damage or an
+  unconscious unit, `think` turns it there under direct damage); that is a saved outcome and is ported.
+- **Interim refusals between slices.** A slice that ports part of the chain refuses by name, before any change, what
+  a later slice of this branch ports, so every completed command stays the reference's (D4, as branch 4 did):
+  - from S3 until S4: a hit that would take a unit out (health to 0, or stun reaching health) or set it to respawn
+    (infection, for `convertInfected`) keeps `battle.casualties-unsupported`;
+  - from S3 until S5: a hit that would push the self-destruct explosion keeps `battle.terrain-explosion-unsupported`
+    (or a new interim name the slice chooses and S5 retires);
+  - from S6 until S9: the reaction check after a melee attack, and from S7 and S8 until S9 the one after an action's
+    last projectile, keep `battle.reaction-fire-unsupported` (`HasPossibleReactor`), as walks and kneels do.
+
+  Each slice's status section names the interim refusals it leaves, and the slice that retires them checks none is
+  left. A check that depends on the hit's random draws runs the command on the trial copy first (ADR 0040).
+- **A refusal before the turn, a stop after it.** The checks `ActionMenuState::handleAction` makes before an action
+  starts are refusals before any change. They differ by action:
+  - aimed, snap and auto shots: the weapon offers the action, its research (`getRequirements`) and `canUseWeapon`;
+    no time unit or ammo check;
+  - a throw: none of these (the action menu lists it);
+  - a launch: research, `canUseWeapon`, `haveTU` and ammo for `BA_LAUNCH`, then the waypoint count in `primaryAction`;
+  - a melee hit: research, `canUseWeapon`, `haveTU`, and a target in `validMeleeRange` in the facing direction or
+    `validTerrainMeleeRange` (`STR_THERE_IS_NO_ONE_THERE`); there is no targeting turn (below);
+  - priming: research and `canUseWeapon`, then the fuse (`PrimeGrenadeState` for a settable one).
+
+  For shots, throws and launches, `primaryAction` then pushes the targeting turn (`UnitTurnBState`, which pays each
+  eighth and does not check the reserve) with no further check. Only then does `ProjectileFlyBState::init` check time
+  units (`haveTU`), ammo (`getAmmoForAction`: `STR_NO_AMMUNITION_LOADED`), range and throw range, and
+  `createNewProjectile` the line of fire. A check that fails after the turn ends the command with its reason as an
+  event (`STR_NOT_ENOUGH_TIME_UNITS`, `STR_NO_AMMUNITION_LOADED`, `STR_OUT_OF_RANGE`, `STR_NO_LINE_OF_FIRE`,
+  `STR_UNABLE_TO_THROW_HERE`), as a walk's later stop does (ADR 0040). Only when the shooter already faces the target,
+  so the turn changes nothing, is such a failure a refusal. The line-of-sight rule of a targeted unit (`isLOSRequired`)
+  belongs to the psi amp and the mind probe, which are branch 6's.
+- **Accuracy, damage and randomness (D7).** Accuracy (`getFiringAccuracy`, `getAccuracyModifier`, the kneel bonus, the
+  one-handed penalty, `applyAccuracy`'s classic form), damage rolls (`RuleDamageType::getRandomDamage` for every random
+  type), the side and body part hit, catching fire and the infection chance draw from the battle's stream in the
+  reference's call order; exact streams stay a non-goal. Tests force hits and misses with a scripted random source and
+  pin structure (which voxel, unit and tiles are hit) under fixed draws.
+- **Stat bonuses.** `RuleStatBonus` (`damageBonus`, `meleeBonus`, `accuracyMultiplier`, `meleeMultiplier`,
+  `throwMultiplier`, `closeQuartersMultiplier`, with the defaults `setFiring`, `setMelee`, `setThrowing`, `setStrength`,
+  `setFlatHundred` and `setCloseQuarters`) is a polynomial of unit statistics that the reference compiles into a script.
+  The port evaluates the coefficient form natively: the defaults and a YAML mapping, with the `statDataMap` stat
+  functions, the four coefficients and the generated script's scaling by 1000 and rounding. A bonus written as script
+  code is a tactical script binding (branch 8): a battle whose items or armors bind one is refused at the briefing and
+  for its commands with `battle.stat-bonus-script-unsupported` (branch 8). Branch 4's
+  `battle.flare-power-bonus-unsupported` narrows to that case and merges into the new name (S1).
+- **Combat script hooks are branch 8's.** `hitUnit`, `damageUnit` and `damageSpecialUnit` (with their ammo forms),
+  `tryMeleeAttack` (item and unit), `reactionWeaponAction`, `reactionUnitAction`, `reactionUnitReaction` and
+  `awardExperience` run on every hit, reaction and experience award. A battle whose rules bind one is refused at the
+  briefing and for its commands with `battle.combat-script-unsupported` (branch 8), checked where
+  `battle.visibility-script-unsupported` is (`CampaignBattles`' gate). The corpses and converted units this branch
+  creates follow the generator's handling of `createItem` and `createUnit` (`UnitEquipment`, branch 8). The
+  `vaporParticle*`, `recolor*` and `select*Sprite` hooks are presentation (Phase 8).
+- **Death and unconsciousness belong here (plan change).** A hit takes units out, and the reference handles that within
+  the same action through `checkForCasualties` and `UnitDieBState`. So this branch ports the whole casualty path:
+  - the kill statistics and the murderer;
+  - the morale changes a death or a stun brings (the numbers only; panic and berserk are branch 6's turn processing);
+  - `killSoldier`: the soldier goes to the memorial with its `SoldierDeath` during the battle;
+  - corpses from the armor's `corpseBattle`, `itemDropInventory` (`weaponSelfDestruction` off), the unconscious body
+    item and its removal, and `instaKill` of a unit that falls unconscious and cannot be captured;
+  - the spotting resets, `convertUnit` (`spawnUnit`), `convertInfected`, `reviveUnconsciousUnits` and `knockOut`;
+  - the saved side effects of `UnitDieBState`: its constructor marks every node that is not a dummy within a squared
+    distance of 4 of a dying hostile unit `TYPE_DANGEROUS` (a saved node type), and `clearUnitSelection` clears the
+    saved `selectedUnit` and `undoUnit` when they name the unit.
+
+  This retires three refusals that branches 3 and 4 gave to branch 6:
+  - `battle.casualties-unsupported`, with the `HasUncheckedCasualty` and floorless-walker gates: the battlescape
+    constructor's `checkForCasualties` runs where the reference opens the battlescape;
+  - `battle.fall-knockout-unsupported`: a fall with no escape knocks the unit below out;
+  - `battle.turn-one-revive-unsupported`: `startFirstTurn`'s `reviveUnconsciousUnits(false)` and `convertInfected`,
+    with the time unit and energy recovery (`updateUnitStats(true, false)`) that branch 3 ports for `prepareNewTurn`.
+
+  Bleeding, stun recovery and burning at the start of a turn stay branch 6's. `autoEndBattle` does nothing with
+  `battleAutoEnd` off (its default), so a death ends no battle; ending the battle stays branch 7's.
+- **Melee joins this branch (plan change).** `determineReactionType` tries a player's preferred weapon, then the melee
+  utility weapon, then the main weapon, each with `BA_HIT` before `BA_SNAPSHOT`; `brutalScoreFiringMode`
+  scores melee reactions, and close-quarters combat (`enableCloseQuartersCombat`, off by default but set by mods) rolls
+  `meleeAttack` before a shot. Melee therefore moves from branch 6 to this branch: `MeleeAttackBState`, `meleeAttack`,
+  `meleeAttackCalculate`, `validMeleeRange`, `validTerrainMeleeRange`, the melee dodge, and a firearm's butt
+  (`meleeType`). These stay branch 6's: psi (`PsiAttackBState` and the psi amp's actions), the item uses (medikit,
+  scanner, mind probe), skills, and the special abilities other than burning floors (branch 4) and exploding on death (`SPECAB_EXPLODEONDEATH`,
+`SPECAB_BURN_AND_EXPLODE`, this branch's self-destruct). The delivery table above
+  is updated.
+- **Explosions and the destruction branch 4 left.** `explode` (the radius spread over the blockage branch 4 ported,
+  `RadiusReduction` and `RadiusEffectiveness`, `battleExplosionHeight` 0), `detonate`, `checkForTerrainExplosions` and
+  the chain of terrain explosions, items on tiles (`ToItem`), the unit part of `hit` and `hitUnit`, self-destruct
+  (`selfDestructItem`), and the units and items `ExplosionBState::explode` spawns (branch 3's spawn code). This retires
+  `battle.hit-unit-unsupported` and `battle.terrain-explosion-unsupported` (branch 4), and branch 1's two generation
+  refusals: a crashed UFO's power sources (`explodePowerSources`, a hidden explosion with its casualty check) and map
+  grenades primed at -2 (`explodeOtherJunk`). `battle.module-map-unsupported` also retires. A module destroyed in a
+  block that a saved module map lacks indexes past a `std::vector` (TileEngine.cpp:3715 and 4061), which is
+  undefined. ADR 0039 says branches 5–7 must refuse such a block; for the destruction this plan changes that, as
+  AGENTS.md allows for undefined behaviour: the port skips that count, S5 records it in ADR 0041 and amends ADR 0039's
+  line to point there. The AI (branch 6) and the debriefing (branch 7) keep ADR 0039's rule.
+- **Throwing, priming, launching and proximity.** This branch ports:
+  - `BA_THROW`: `validThrowRange`, `getMaxThrowDistance`, `validateThrow`, `calculateThrow`, and the landing item
+    through `itemDrop` (gravity, light) and `fuseThrowEvent`;
+  - `BA_PRIME` and `BA_UNPRIME` (`PrimeGrenadeState`, fuse timers);
+  - `BA_LAUNCH` with waypoints (`getCurrentWaypoints`; the missile flies from waypoint to waypoint);
+  - all of `checkForProximityGrenades`: the explosion, enabling fuses, removing `proximityExplode` items, the flare's
+    glow, death traps.
+
+  This retires `battle.proximity-unsupported` and narrows branch 4's death-trap test (any `STR_DEATH_TRAP_<n>`) to
+  the reference's. `BAM_MISSILE` is the AI's search for a blaster launcher's waypoints (`AIModule` only), so it moves
+  to branch 6 (a plan change from branch 4's note); the player places the waypoints. Grenades exploding at the end of
+  a turn (`fuseTimerEvent`) are branch 6's. The inventory's loading, unloading and quick swap (`Inventory::unload`
+  with `quickUnload`, a load with its cost, the Shift swap of Inventory.cpp:1029–1067, each with its battle and
+  pre-battle rules) retire `battle.inventory-ammo-unsupported`. Priming and unpriming from the inventory (a right
+  click) exist only in an inventory without time units, the pre-battle one (`Inventory.cpp:1135`, `!_tu`; a base's
+  inventory only with `includePrimeStateInSavedLayout`, off by default); in battle the action menu primes. They
+  retire `battle.inventory-prime-unsupported`. `battle.inventory-throw-unsupported` names no reference feature (the inventory
+  screen does not throw) and is removed.
+- **Reaction fire is real; the leak ends.** `checkReactionFire` runs where the reference calls it: after each walk
+  step, after a kneel (`BattlescapeGame::kneel` and the AI's turn-then-kneel), after a landing, after a melee attack,
+  and when a shooting or throwing action's last projectile is done. It runs:
+  - the reactor list of `getSpottingUnits`, whose spotting branch 4 ported: `determineReactionType` per spotter and,
+    with a reaction fire threshold above 0, the accuracy filter (`calculateLimits`' dropoff, `getHitChance`, out of
+    range);
+  - `getReactor`;
+  - `determineReactionType`: the preferred weapon, `reactionsDisabled*`, the melee priority, and `canUseWeapon` whole
+    (research, AI use delay, depth, two-handed, mana);
+  - `tryReaction`: the hostile reactor's `explosiveEfficacy`, the reaction form of `brutalScoreFiringMode` (with the AI
+    module `tryReaction` creates for a unit that has none), and the reaction chance and its draw.
+
+  The reaction's shot or melee hit resolves within the same command, and a walk that drew a reaction stops
+  (`UnitWalkBState`). Hits set `BattleUnit.HitState` and `resetUnitHitStates` clears it where the reference does.
+  `HasPossibleReactor` and `battle.reaction-fire-unsupported` retire, which ends the refusal that told the player an
+  unseen unit was near. The acceptance driver's `WithOpponentsSpent` goes. The trial copies (ADR 0040) exist to catch
+  refusals met after a change. When the last of those refusals retires, S11 removes the trial copies, or records which
+  refusal still needs one.
+- **User options at their defaults** (added to branch 4's list):
+  - `battleUFOExtenderAccuracy` off;
+  - `battleRealisticAccuracy` and `oxceEnableOffCentreShooting` off: the non-realistic `applyAccuracy` and
+    `canTargetUnit`, no `checkVoxelExposure`;
+  - `shootingSpreadMode` 1, not vanilla's 0: `applyAccuracy`'s uniform spread (`xyShift` scaled by 0.839) and its
+    redraws, which S2 ports as the default form;
+  - `useChanceToHit` on: the accuracy the cursor shows (`Map`) and the reaction threshold filter of
+    `getSpottingUnits` go through `Projectile::getHitChance` with the mod's hit chance tables;
+  - `diagTerrainMelee` off (`validTerrainMeleeRange`);
+  - `forceFire` on: the command's force-fire flag, which the client sets with Ctrl;
+  - `battleConfirmFireMode` off (the desktop default), `battleExplosionHeight` 0, `battleInstantGrenade` off,
+    `weaponSelfDestruction` off, `battleAutoEnd` off, `battleNotifyDeath` off (a notice only).
+
+  The combat constants are rule data: `damageRange`, `explosiveDamageRange` and `fireDamageRange`,
+  `kneelBonusGlobal`, `oneHandedPenaltyGlobal`, `noLOSAccuracyPenaltyGlobal`, the close-quarters fields, the hit
+  chance tables, `ai.reactionFireThreshold` and `reactionFireThresholdCiv` (`getReactionFireThreshold`, read by
+  `getSpottingUnits`), `tuRecoveryWakeUpNewTurn` (`reviveUnconsciousUnits`), `extendedExperienceAwardSystem`,
+  `extendedSpotOnHitForSniping`, `stunningImprovesMorale`, and the morale loss modifiers.
+- **Hidden information.** The attack queries take the viewer. These are the action menu's actions with their costs, and
+  the accuracy for a target (`ActionMenuState`, the cursor). They answer only for a unit of the viewer's side on its
+  turn, aiming at a tile the viewer has discovered. A refusal or stop reason never names a unit the viewer has not
+  spotted. Events of a shot by a shooter the viewer has not spotted carry the trajectory (the reference draws the
+  projectile), and the client does not draw the shooter.
+- **Saved state.** What this branch changes is typed battle state since branch 2: health, stun, wounds per body part,
+  armor per side, morale, fire, the murderer and fatal-shot fields, statistics, experience, the AI's `wasHitBy`, ammo
+  quantities, fuses, and corpses with their units. A battle reloaded after combat equals the live one in its saved and
+  derived state; the reload comparisons check this. The hit log (`appendToHitLog`) is runtime text that the next turn's
+  screen shows; it is not saved and is left to branch 6's end of turn and Phase 8.
+- **Out of scope.** Turn processing and its effects: fuses at the end of a turn, bleeding, stun and morale recovery,
+  burning units, panic, smoke and fire damage (branch 6). Also branch 6's: psi, item uses, skills, and the AI's own
+  turns. The end of the battle and the debriefing are branch 7's, script bindings branch 8's. Sounds, sprites and
+  the projectile and explosion animations are Phase 8 presentation.
+
+### Slices
+
+| Slice | Scope | Tests beyond the corpus |
+|---|---|---|
+| S0 | This plan and the [battle combat status](battle-combat-status.md) record | none |
+| S1 | Combat groundwork: the item rules' combat fields (battle type, power, the damage and melee types with `damageAlter` and `meleeAlter` as a full `RuleDamageType`, accuracy per action, ranges and dropoff, the action configs with shots and ammo slots, clip size and compatible ammo, explosion radius, shotgun, arcing, `ignoreAmmoPower`, power range reduction, waypoints, `LOSRequired`, two-handed, `specialUseEmptyHand`, fire extinguisher, zombie unit, and the research and depth fields `canUseWeapon` reads); `RuleStatBonus`'s coefficient form; the armor's damage modifiers, corpses, dodge and threat, self-destruct, pain and zombie immunity; the unit rule's capturable and spawn fields; the combat constants; `RuleDamageType::getRandomDamage` for every random type and the `get*FinalDamage` conversions; `battle.combat-script-unsupported` and `battle.stat-bonus-script-unsupported` | each projected item, armor and unit rule field at its default and read from a mod (the action configs' fallbacks, `damageAlter` over the item's type); each combat constant at its default and read; each random type's range; each conversion; a stat bonus mapping, a default, and the rounding at a half; a scripted bonus and a bound combat hook refused at the briefing and for a loaded battle's commands |
+| S2 | Line of fire and accuracy: `getOriginVoxel` for each action, the firing forms of `canTargetUnit` and `canTargetTile` with `rememberObstacles`, `adjustTargetVoxelFromTileType`, `calculateLineVoxel` storing the trajectory, `calculateParabolaVoxel`, `validateThrow`, `validThrowRange`, `getMaxThrowDistance`, `getFiringAccuracy`, `getAccuracyModifier`, `Projectile::calculateTrajectory`, `calculateThrow` and the classic `applyAccuracy`, `isOutOfRange`, the whole `canUseWeapon`; the viewer-scoped aim queries (actions, costs, accuracy for a target) | a target behind a wall without a line of fire; a unit half in cover hit on an exposed voxel; a kneeling and a wounded shooter's accuracy; the one-handed penalty; range limits and the dropoff; the uniform spread of `shootingSpreadMode` 1; `getHitChance` with the hit chance tables; a throw over a low wall and one blocked by a ceiling; an arcing shot; the target voxel's order (unit, object, wall, floor); each `canUseWeapon` refusal (research, AI use delay, depth, `STR_MUST_USE_BOTH_HANDS`, mana, psi skill); the aim queries refused for another side's unit, off its side's turn and at an undiscovered tile |
+| S3 | Damage to units: `hitUnit`, the unit part of `hit`, `BattleUnit::damage` (resistance, side and body part, armor and `ArmorIgnore`, every conversion, overkill, pain immunity, wounds, morale loss, fire and the extinguisher, infection, `wasHitBy` and the spotting of the attacker, sniper spotting), the armor's own damage, body items on the hit tile, experience (`awardExperience` and the adders, the extended system off), statistics; `battle.hit-unit-unsupported` retires | each side and body part; armor reducing and ignored; stun damage on pain-immune armor; a wound and its morale; a unit catching fire and the extinguisher; the infection chance and the larger-armor case; experience awarded for a hit (and none for a friend); the statistics counters; `wasHitBy` and the attacker's spotting turns; sniper spotting under `extendedSpotOnHitForSniping`; a burning floor hitting a unit (branch 4's refused case now runs); the interim refusals of a hit that takes a unit out or self-destructs |
+| S4 | Casualties: `checkForCasualties`, `UnitDieBState` collapsed (corpses, inventory to the ground, body items, `instaKill`, spotting resets, light and sight), `killSoldier`, `knockOut`, `convertUnit`, `convertInfected`, `reviveUnconsciousUnits` with `placeUnitNearPosition`, `removeUnconsciousBodyItem`, the dangerous nodes around a dying hostile unit, `clearUnitSelection`; the battlescape constructor's check; `battle.casualties-unsupported`, `battle.fall-knockout-unsupported` and `battle.turn-one-revive-unsupported` retire | a death with its kill statistics and morale (enemy, friendly fire, civilian); a stun with `stunningImprovesMorale`; a soldier to the memorial; a 2x2 corpse; a carried unconscious unit dying; a zombie conversion; a revival next to a big unit; a fall knocking out a unit with no escape; a loaded battle with a unit at 0 health; a dying alien's nodes marked dangerous and saved; the selected and undo units cleared; the facing direction 3 of a dying unit |
+| S5 | Explosions: `ExplosionBState` (power, radius, damage type, `hit` or `explode`), `explode`, `detonate`, `checkForTerrainExplosions` and its chain, items on tiles, self-destruct, the explosion's spawns, `itemDrop`; the two generation refusals, `battle.terrain-explosion-unsupported` and `battle.module-map-unsupported` retire (ADR 0041) | a radius stopped by a wall and passing a door; the damage falloff; a chain of terrain explosions; a crashed UFO battle generated with its power sources exploded and their casualties; a map grenade primed at -2 exploding at generation (`explodeOtherJunk`); an item destroyed by `ToItem`; a unit self-destructing on death and its explosion; an explosion's spawned unit and item; a base module lost, and one in a block the saved map lacks |
+| S6 | Melee and the attack command: `Attack` with `BA_HIT` (`MeleeAttackBState`: the player strikes in its facing direction with no targeting turn, and only a reaction turns, for free, in `init`; the cost, the to-hit roll, the dodge and its back penalty, a firearm's butt, terrain melee, a burn-floor attacker), `meleeAttack`, `meleeAttackCalculate`, `validMeleeRange` (big units, other levels), `validTerrainMeleeRange`; the command's events, refusals and stops; the reaction check after it stays `battle.reaction-fire-unsupported` until S9 | a hit and a miss; a dodge from behind; a big unit's reach; a rifle butt; a wall struck by terrain melee; refused when not adjacent or without time units |
+| S7 | Shooting: aimed, snap and auto (all of `ProjectileFlyBState`: the targeting turn with a turret turning alone, the checks and stops, each shot, ammo spent, shotgun pellets, explosive ammo exploding two voxels back, `projectileHitUnit`, statistics, the auto-shot loop, spray waypoints, force fire), close-quarters combat, `updateEnemyKnowledge` | a hit and a miss on a unit; a shot destroying an object; the out-of-range, no-line-of-fire, no-ammo and time-unit stops after a turn, and the same checks as refusals when the shooter already faces the target; an auto shot of three; spray waypoints (the shots spread between them, a waypoint past the range moved to it); force fire at a tile with a unit on it; a shotgun; explosive ammo; a turret; close-quarters on and off |
+| S8 | Throwing, priming, launching and proximity: `BA_THROW`, `BA_PRIME` and `BA_UNPRIME`, `BA_LAUNCH` with waypoints, the landing item (`itemDrop`, gravity, light), `fuseThrowEvent`, all of `checkForProximityGrenades`; the inventory's load, unload, quick swap, and the pre-battle prime and unprime; `battle.proximity-unsupported`, `battle.inventory-ammo-unsupported` and `battle.inventory-prime-unsupported` retire and `battle.inventory-throw-unsupported` goes | a throw landing and one out of range; a hot grenade; a primed fuse; a proximity grenade set off by a walk; a death trap; a thrown flare lighting the floor; a launch with three waypoints; loading, unloading and the Shift quick swap with their costs, in battle and before it; priming and unpriming in the pre-battle inventory |
+| S9 | Reaction fire: `checkReactionFire`, the reactor list of `getSpottingUnits` with the reaction fire threshold, `getReactor`, `determineReactionType`, `tryReaction`, the AI's reaction scoring; reactions after walk steps, kneels, landings and attacks; the walk's stop; `HitState` and its reset; `HasPossibleReactor` and `battle.reaction-fire-unsupported` retire; the trial copies reviewed | a walk drawing a snap shot and stopping; a reactor out of range; a reactor below the reaction fire threshold (`getHitChance`); the score order and its reduction per reaction; a melee reaction; a preferred and a disabled hand; a hostile reactor holding an explosive shot that would hit its own side; a kneel drawing a reaction; an attack whose reaction kills the attacker |
+| S10 | Battlescape client: the action menu from the hand and special-weapon buttons with costs and accuracy; targeting with the cursor's accuracy, Ctrl for force fire, the launch waypoints and launch button; priming and throwing; the reserve buttons as commands (the saved `TUReserved` and `kneelReserved`, written by the side-owning slot as `SelectUnit` is); the replay of shots, impacts, explosions and deaths; the carried unit's visible-unit button; health and wounds in the panel. This branch's later-button refusals are replaced (`battle.shooting-unsupported`, the hand buttons, `battle.launch-unsupported`, the special-weapon button, the reserve buttons, `battle.visible-unit-carried-unsupported`). The action menu still lists the branch 6 actions of the items it shows (`ActionMenuState`): the medikit, scanner and mind probe refuse with a new `battle.item-use-unsupported` and the psi amp's actions with `battle.psi-unsupported`, both owned by branch 6; the psi and skills buttons are relabelled to branch 6 | scripted loop tests: an aimed shot, a throw, a melee hit, a refused shot showing its reason, a reaction during a walk replayed, a reserve set and saved, a medikit and a psi amp action refused with branch 6's names |
+| S11 | Acceptance on branch 1's battles and the private active-battle saves (below); attack and explosion timings in the performance baselines | none beyond acceptance |
+| — | Branch audit (`git diff main...HEAD`) | — |
+
+Acceptance: this covers each acceptance battle of branch 1 that starts (the three Rosigma battles stay refused at the
+briefing by branch 8's `battle.new-turn-script-unsupported`). After the first turn, and without branch 4's
+opponents-spent setup, a soldier walks out and draws reaction fire wherever the rules say (or no reaction). A soldier
+fires an aimed shot at a spotted unit, or at a discovered tile when none is spotted. It throws a grenade where the
+battle has one, and strikes in melee where a unit can reach another. Damage, deaths, corpses and destroyed terrain
+follow the rules. The battle validates, then saves and reloads with equal saved, derived and sight state, and each
+viewer still sees only its own side's spotted units. A crashed-UFO deployment generates with its power sources
+exploded; S11 stages one from the corpus if none of branch 1's battles is one. Each private active-battle save loads,
+and a player unit with a weapon attacks, or the attack is refused for a named reason of a later branch. Attack and
+explosion costs on the largest acceptance map are recorded in the performance baselines.
 
 ## Inherited refusals
 

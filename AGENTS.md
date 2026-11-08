@@ -149,7 +149,7 @@ Multiplayer later adds only a wire protocol and remote clients. Keep new code co
 - Phase 7 battle work: `docs/phase-7-plan.md` keeps branch scope and decisions; each branch's slices, audits and
   evidence belong in its status record (`docs/battle-generation-status.md` for branch 1,
   `docs/battle-save-status.md` for branch 2, `docs/battle-session-ui-status.md` for branch 3,
-  `docs/battle-movement-status.md` for branch 4).
+  `docs/battle-movement-status.md` for branch 4, `docs/battle-combat-status.md` for branch 5).
 
 ## Completion standard
 
