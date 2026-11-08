@@ -218,6 +218,14 @@ internal static class CampaignStartSettingsComposer
             StatisticalBulletConservation = Read(root, "statisticalBulletConservation", combat.StatisticalBulletConservation),
             TuRecoveryWakeUpNewTurn = Read(root, "tuRecoveryWakeUpNewTurn", combat.TuRecoveryWakeUpNewTurn),
         };
+        if (root.TryGet("mana", out var mana) && mana is YamlMappingNode manaSettings)
+        {
+            combat = combat with
+            {
+                ManaEnabled = Read(manaSettings, "enabled", combat.ManaEnabled),
+                ManaUnlockResearch = Read(manaSettings, "unlockResearch", combat.ManaUnlockResearch),
+            };
+        }
         return root.TryGet("hitChancesTable", out var table) ? combat with { HitChancesTable = ReadHitChances(table!) } : combat;
     }
 

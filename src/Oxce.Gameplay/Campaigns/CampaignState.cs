@@ -86,6 +86,9 @@ public sealed partial class CampaignState : Sessions.IActorCommandTarget, ICampa
     public CampaignIdentity Identity { get; private set; }
     public CampaignOptions Options { get; internal init; } = new();
 
+    /// <summary>SavedGame::_debug: every research counts as done for what a battle asks (<c>isResearched</c>).</summary>
+    internal bool DebugModeEnabled => _debugMode;
+
     /// <summary>Optional time-advance diagnostics (<see cref="CampaignTimeProfile"/>); null by default. It
     /// never changes gameplay and is not saved.</summary>
     public CampaignTimeProfile? TimeProfile

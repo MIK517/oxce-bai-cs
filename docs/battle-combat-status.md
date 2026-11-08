@@ -4,8 +4,8 @@ Phase 7 branch 5 (`claude/battle-combat`), from `main` after PR #81 (branch 4 me
 [Phase 7 branch 5](phase-7-plan.md#branch-5--battle-combat); decisions:
 [ADR 0037](decisions/0037-host-authoritative-session.md), [ADR 0038](decisions/0038-battle-aggregate.md),
 [ADR 0039](decisions/0039-battle-save-intentional-differences.md),
-[ADR 0040](decisions/0040-battle-movement-intentional-differences.md) and the plan's branch decisions. ADR 0041 (battle
-combat intentional differences) is created by the first slice that needs it.
+[ADR 0040](decisions/0040-battle-movement-intentional-differences.md), [ADR 0041](decisions/0041-battle-combat-intentional-differences.md)
+(battle combat intentional differences; S2 created it, later slices add entries) and the plan's branch decisions.
 
 ## Progress
 
@@ -13,7 +13,7 @@ combat intentional differences) is created by the first slice that needs it.
 |---|---|
 | S0 planning | Done and audited (2026-11-08) |
 | S1 combat groundwork: item, armor and damage rules, stat bonuses, combat constants, script refusals | Implemented (2026-11-08), audit pending |
-| S2 line of fire and accuracy | Not started |
+| S2 line of fire and accuracy | Implemented (2026-11-09), audit pending |
 | S3 damage to units | Not started |
 | S4 casualties | Not started |
 | S5 explosions | Not started |
@@ -185,27 +185,71 @@ types of `Mod::Mod`, `RuleStatBonus.cpp` (`load`, the `set*` defaults, `getBonus
   `BattleLightingTests` (a flare's bonus from its last owner; code refused), `BattleFireTests` (the full type in place of the old subset). `ScriptedDraws`
   in `tests/Shared` forces the draws of the later slices.
 
+## S2 — Line of fire and accuracy (2026-11-09)
+
+Reference: `TileEngine.cpp` (`getOriginVoxel`, `canTargetUnit` with `rememberObstacles`, `canTargetTile`, `adjustTargetVoxelFromTileType`,
+`calculateParabolaVoxel` and its helper, `validateThrow`, `isTileInLOS`), `ProjectileFlyBState.cpp` (`init`'s range checks and target voxel,
+`createNewProjectile`, `validThrowRange`, `getMaxThrowDistance`), `Projectile.cpp` (`calculateTrajectory`, `calculateThrow`, the classic `applyAccuracy`,
+`getHitChance`, `getPositionFromEnd`), `BattleUnit.cpp` (`getFiringAccuracy`, `getAccuracyModifier`, `distance3dToPositionSq`),
+`SavedBattleGame::canUseWeapon`, `RuleItem` (`isOutOfRange`, `isOutOfThrowRange`, `calculateLimits`), `BattleItem` (`getTotalWeight`, `getArcingShot`,
+`getAmmoForAction`), `ActionMenuState` (the menu) and `Map::drawTerrain` (the classic accuracy of the cursor).
+
+- **Origins and tile parts** (`BattleSight.Fire.cs`, the firing half of `BattleSight`). `OriginVoxel(BattleAimAction, tile)` is `getOriginVoxel` for every
+  action (throw, launch from a waypoint, left and right origins; the realistic form is off). `CanTargetTile`, `AdjustTargetVoxelFromTileType` (object,
+  north wall, west wall, floor, dummy), `CanTargetUnit` with the obstacle list (`BattleObstacle`, the part that stopped each line, for the player's scan only),
+  `IsTileInLos` (the no line of sight penalty's `isTileInLOS`, with the secondary line of fire check and the smoke and fire quality of `visible`).
+  `VisibleDistanceMaxVoxel` takes no target for it. A floor has no line of fire template in the tests' terrain, so aiming at one falls back to `(8, 8, 2)`.
+- **Throwing.** `CalculateParabolaVoxel` (a chain of straight lines), `ValidateThrow` (up to nine curves from `max(0.48, 1.73 / sqrt(sqrt(strength / weight)))`,
+  +0.1 kneeling; arcing shots use a fixed 70 and 10), `ValidThrowRange`, `MaxThrowDistance`, the object block on the target tile (an object with a walking cost of 255
+  that is not a big wall of kind 4 or more), the underwater throw factor. `BattleState.TotalWeight`, `IsOutOfThrowRange`.
+- **The projectile** (`BattleProjectile`): `CalculateTrajectory` (the first-shot line check as `LineOfFireBlocked`, which draws nothing; the launch's fixed accuracy
+  and line extension), `CalculateThrow` (split in `FindArc`, which draws nothing, and the arc with deviation, up to 100 tries), `ApplyAccuracy` (the classic form with
+  `shootingSpreadMode` 1: the uniform shift scaled by 0.839 and truncated, the deviation from a 0 to 100 draw, the circle redraws with 0.85 after the first, the
+  vertical shift, the line extended 1000 tiles; the dropoff, the no line of sight penalty and the 46 voxel line of a hit). The draws come from `BattleState.Random` in the
+  reference's order. Realistic accuracy and `battleAltGrenades` are off.
+- **Accuracy and use** (`BattleWeaponUse.cs`). `FiringAccuracy`, `AccuracyModifier` (health and the wounds of the head and of the arm or arms that hold the weapon),
+  `CalculateLimits` (the aimed range for every shot while `battleUFOExtenderAccuracy` is off), `IsOutOfRange` (a range of 1 or 2 reaches one diagonal), `HitChance`
+  (the table lookup, odd accuracies averaged), `ArcingShot`, `AmmoForActionType`, and the whole `CanUseWeapon`: research (`BattleResearchGate`, handed over by the campaign:
+  `ArcResearch` and the debug mode), the AI use delay, psi skill, the mana feature (`mana.enabled` and `mana.unlockResearch`, now in `CampaignCombatSettings`),
+  water and land equipment by the weapon's and the action's ammunition, `STR_MUST_USE_BOTH_HANDS`.
+- **The target voxel of a shot** (`BattleState.ChooseTargetVoxel`, `BattleAimQueries.cs`): `ProjectileFlyBState::init`'s choice for a shot that is not forced: the seen
+  unit's `canTargetUnit` voxel, the shooter's own tile (the floor under it), a tile without a seen unit through `adjustTargetVoxelFromTileType`; a forced shot, a launch and a
+  panicked unit's shot at the tile's middle (`targetFloor` for two waypoints on one tile); an arcing shot left to its arc. Off-centre shooting (`oxceEnableOffCentreShooting`)
+  is off. S7 calls it from the shooting command.
+- **Viewer queries** (`IBattleViewQuery.QueryAimMenu`, `QueryAim`; `BattleAimContracts.cs`). The menu lists what `ActionMenuState` offers for aiming (a throw for an item that
+  is not fixed, the auto, snap and aimed shots or the launch, the hit) with the accuracy and the time units of each, and why the weapon cannot be used. The aim view gives what the
+  cursor and the checks of `ProjectileFlyBState` show for a shot or a throw at a tile: whether the weapon is usable, the cost and what the unit lacks, the range, whether a line of
+  fire exists (without drawing), the accuracy as the cursor works it out (dropoff, no line of sight penalty, 0 out of range) and the hit chance by the mod's tables. Both answer only for a
+  unit of the viewer's side on its turn holding the item, and the aim view only for a tile the viewer has discovered; a launch and a hit are refused (their waypoints and range
+  belong to S8 and S6).
+- **Decisions** (ADR 0041, created here): a throw by a unit of no strength counts a strength of 1; a throw target off the map cannot land.
+- **Left for the later slices.** The aim view lifts a throw's target one level above a tile with a terrain level of -24 (`ProjectileFlyBState::init`); S8's command must do the same before `calculateThrow`. The priming, medikit, scanner, psi amp and mind probe lines of the action menu (S8, branch 6). Close quarters combat, which `ProjectileFlyBState::init` runs
+  before the target voxel (S7), and the time unit, ammunition and range checks that follow the turn (S7). `checkVoxelExposure` and the realistic accuracy stay off.
+- **Tests.** `BattleLineOfFireTests`: the origins for each action, a wall between and a clear line, a unit half in cover, the obstacles remembered by the player's scan only,
+  the target voxel order (unit, object, north and west wall, floor, the shooter's own tile), forced shots and launches, a throw over a low wall and a full wall (the curve) and under a
+  ceiling, the blocking object on the target tile, an arcing shot, the parabola, the accuracy of a kneeling, wounded, two-handed and half-health shooter, the range limits and dropoff
+  and the diagonal allowance of short ranges, the no line of sight penalty, the hit chance tables (function and mod), the uniform spread with scripted draws (and the redraw), the
+  extended line, the first-shot line check, `canUseWeapon` for each refusal (the depth ones set the depth by reflection, as it is init-only), the menu and the aim view, and the query refusals (another side, off turn, undiscovered tile, item not held).
+
 ## Next
 
-S2, line of fire and accuracy (plan row S2). Notes for the worker:
+S3, damage to units (plan row S3). Notes for the worker:
 
-- **What S1 left to read.** An item's rules for an attack are the strategic `RuntimeItemRule` (`rules.Items[handle].Value`: `Power`, `MeleePower`,
-  `Damage`, `MeleeDamage`, `Accuracy`, `ClipSize`, `Requirements`, `WaterOnly`, `TwoHanded`, `BlockingBothHands`, `Waypoints`) and
-  `rules.Battle.Equipment.Items[type].Combat` (ranges, dropoffs, `PowerRangeReductionAt`, kneel and one-handed percentages with the globals applied,
-  `AiUseDelay`, `LosRequired`, `LandOnly`, `ArcingShot` and the action configs' `Arcing`, `Auto.Shots`). `rules.Campaign.Combat` has `HitChances(unitSize)`,
-  the close quarters globals, the reaction fire thresholds and the extended options (`ExtendedUnderwaterThrowFactor` for `getMaxThrowDistance`).
-  `RuntimeItemDamageRule.RandomDamage(power, rules.Campaign.Interception, random or mode)` gives the damage a shot rolls (mode 1 and 2 for the cursor's
-  range).
-- **Stat bonuses.** `Combat.StatBonuses.Accuracy.Evaluate(unit)` is `getAccuracyMultiplier` (the unit is a `BattleUnit`; the second argument is the external
-  bonus, 0 for the multipliers and the power for `Damage`). A missing attacker adds nothing. The multipliers already refuse as code
-  (`battle.stat-bonus-script-unsupported`), so S2 never meets a script.
-- **`canUseWeapon`.** Every field it reads is projected: requirements (`Requirements` through the campaign's research), `Combat.AiUseDelay` (already
-  resolved with the mod's delays; `Options::ignoreDelay` is off), `PsiRequired` and `ManaRequired` (`RuntimeBattleItem`), `WaterOnly` and `LandOnly` for
-  the depth, `BlockingBothHands`. Not projected: the mana gate's settings (`mana.enabled`, `mana.unlockResearch` and the campaign's unlocked state), which S2 reads
-  for `canUseWeapon` of a mana weapon. The armor's `getSelfDestructItem` falls back to the geoscape corpse when the power is above 0 (`Armor.h`); the raw
-  `SelfDestructItem` and `Script`'s `CorpseGeoscape` are projected and S5 combines them.
-- **Tests.** `ScriptedDraws` (`tests/Shared`) returns scripted numbers inside each drawn range and records the calls; use it to force an accuracy roll.
-  The hooks and the code-form bonuses are refused at the briefing, so test items carry coefficient bonuses only.
+- **What S2 left to build on.** `BattleState.FiringAccuracy`, `AccuracyModifier`, `CanUseWeapon(rules, BattleResearchGate, weapon, unit, berserking, type)`, `HitChance`,
+  `IsOutOfRange`/`IsOutOfThrowRange`, `CalculateLimits`, `TotalWeight`, `ArcingShot` and `AmmoForActionType` (all in `BattleWeaponUse.cs`); `BattleAimAction` (the parts of `BattleAction` the
+  line of fire reads, `BattleAim.cs`); `BattleProjectile` (`CalculateTrajectory`, `CalculateThrow`, `ApplyAccuracy`, `LineOfFireBlocked`, `FindArc`; it takes `BattleState.Random`);
+  `BattleState.ChooseTargetVoxel` (`ProjectileFlyBState::init`'s target voxel, S7 calls it); `BattleSight.Fire.cs` (`OriginVoxel`, `CanTargetTile`, `AdjustTargetVoxelFromTileType`,
+  `CalculateParabolaVoxel`, `ValidateThrow`, `ValidThrowRange`, `MaxThrowDistance`, `IsTileInLos`). `CanTargetUnit` and `ValidateThrow` take an optional `List<BattleObstacle>` for the no line of fire
+  indicator. The hit's voxel and the part of the unit it landed on are still to come: `hitUnit` (S3) reads `relative` from the trajectory's last voxel (`Projectile::getPosition`,
+  `BattleSight.PositionFromEnd`/`PositionFromStart` return a trajectory voxel).
+- **Research and the campaign.** A battle has no campaign of its own: `CanUseWeapon` and the queries take a `BattleResearchGate` (`CampaignBattles.ResearchGate()` builds it from
+  `ArcResearch` and `CampaignState.DebugModeEnabled`). A command that checks `canUseWeapon` (S6, S7, S8, S9) gets it the same way.
+- **Stat bonuses.** `Combat.StatBonuses.Damage/Melee.Evaluate(unit, externalBonus)` (the power for `Damage`) are the power bonuses; `StrengthApplied` adds the owner's strength bonus (S1). The
+  code forms are refused at the briefing (`battle.stat-bonus-script-unsupported`), so S3 never meets a script. `RuntimeItemDamageRule.RandomDamage(power, rules.Campaign.Interception, random)` and the
+  `get*FinalDamage` conversions are S1's.
+- **Tests.** `ScriptedDraws` (`tests/Shared`) returns scripted numbers inside each drawn range and records the calls. `BattleLineOfFireTests.Armed` builds the flat sight arena with a GUN and a
+  GRENADE in the soldier's hands (`Edit(gun:, grenade:, global:, clip:)` adds item keys and root rules); `BattleSightTests.Flat` takes a `terrain:` action for extra MCD records. Item costs are
+  percentages of the unit's statistics (`tuAimed: 30` is 30% of the time units).
 - **Script refusal pattern.** `BattleState.CombatScriptRefusal` (`BattleCombatScripts.cs`) holds the parser names; a new hook name is added there.
 - **Reason strings to update when their refusal changes owner or retires.** `BattleFirstTurn.cs` (`CasualtiesUnsupported`,
   `TurnOneReviveUnsupported`) and `BattleGravity.cs` (the fall knock-out) say branch 6 until S4 retires them; S4 also

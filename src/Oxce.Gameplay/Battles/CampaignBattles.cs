@@ -549,6 +549,15 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
     public BattleReachableView? QueryReachable(BattleViewer viewer, int unitId) =>
         campaign.Read(() => _battle?.ReachableView(campaign.Content.RuntimeRules, viewer, unitId));
 
+    public BattleAimMenuView? QueryAimMenu(BattleViewer viewer, int unitId, int itemId) =>
+        campaign.Read(() => _battle?.AimMenu(campaign.Content.RuntimeRules, ResearchGate(), viewer, unitId, itemId));
+
+    public BattleAimView? QueryAim(BattleViewer viewer, int unitId, int itemId, BattleAimKind kind, BattlePosition target, bool forceFire = false) =>
+        campaign.Read(() => _battle?.AimView(campaign.Content.RuntimeRules, ResearchGate(), viewer, unitId, itemId, kind, target, forceFire));
+
+    /// <summary>What the battle asks of the saved game about research (<c>isResearched</c>, true in the debug mode).</summary>
+    private BattleResearchGate ResearchGate() => new(campaign.ArcResearch.IsResearched, campaign.DebugModeEnabled);
+
     public BattleInventoryView? QueryInventory(BattleViewer viewer, int unitId) =>
         campaign.Read(() => _battle?.InventoryView(campaign.Content.RuntimeRules, viewer, unitId));
 

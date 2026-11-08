@@ -187,6 +187,19 @@ public interface IBattleViewQuery
 
     /// <summary>The discovered tiles the unit can reach (<c>Pathfinding::findReachable</c>), or null for a unit that is not the viewer's side's live unit on turn.</summary>
     BattleReachableView? QueryReachable(BattleViewer viewer, int unitId);
+
+    /// <summary>
+    /// The aiming actions the weapon in a hand of the viewer's unit offers (<c>ActionMenuState</c>), with the accuracy and time units of each, or null
+    /// when the unit is not the viewer's side's live unit on turn or does not hold the item.
+    /// </summary>
+    BattleAimMenuView? QueryAimMenu(BattleViewer viewer, int unitId, int itemId);
+
+    /// <summary>
+    /// What aiming a shot or a throw at a tile shows (the cursor and the checks of <c>ProjectileFlyBState</c>), or null when the unit is not the viewer's
+    /// side's live unit on turn, does not hold the item, the action is a launch or a hit, or the viewer has not discovered the tile.
+    /// <paramref name="forceFire"/> is Ctrl: the line of fire is not checked.
+    /// </summary>
+    BattleAimView? QueryAim(BattleViewer viewer, int unitId, int itemId, BattleAimKind kind, BattlePosition target, bool forceFire = false);
 }
 
 /// <summary>The reasons selection refuses.</summary>

@@ -3,6 +3,9 @@ using Oxce.Mods.Rulesets.Runtime;
 
 namespace Oxce.Gameplay.Battles;
 
+/// <summary>A tile part that stopped a line of fire (<c>Tile::setObstacle</c>), for the no line of fire indicator: the part's voxel type (-1 for none).</summary>
+internal readonly record struct BattleObstacle(int Tile, BattleVoxelType Type);
+
 /// <summary>TileEngine's <c>VoxelType</c>: what a voxel holds.</summary>
 internal enum BattleVoxelType
 {
@@ -24,7 +27,7 @@ internal enum BattleVoxelType
 /// (off), so the turret-direction, off-centre and cheating branches are not ported. One instance serves one operation, as it keeps the event
 /// sector the reference keeps in the engine.
 /// </summary>
-internal sealed class BattleSight
+internal sealed partial class BattleSight
 {
     private const int TileXy = BattleGeometry.VoxelsPerTile;
     private const int TileZ = BattleGeometry.VoxelsPerLevel;
@@ -193,7 +196,8 @@ internal sealed class BattleSight
     /// stood there). A human player's unit scans slices of the target finely; the artificial intelligence's scans five columns at four heights.
     /// <paramref name="scanVoxel"/> is the voxel the scan ended at.
     /// </summary>
-    public bool CanTargetUnit(BattlePosition originVoxel, int tile, out BattlePosition scanVoxel, BattleUnit? excludeUnit, BattleUnit? potentialUnit = null)
+    public bool CanTargetUnit(BattlePosition originVoxel, int tile, out BattlePosition scanVoxel, BattleUnit? excludeUnit, BattleUnit? potentialUnit = null,
+        List<BattleObstacle>? obstacles = null)
     {
         scanVoxel = default;
         var hypothetical = potentialUnit is not null;
@@ -229,17 +233,24 @@ internal sealed class BattleSight
         var trajectory = new List<BattlePosition>(1);
 
         // The voxel of the hit must be inside the scanned box.
-        bool Hits(BattlePosition from, BattlePosition to)
+        bool Hits(BattlePosition from, BattlePosition to, bool remember)
         {
             trajectory.Clear();
             var test = CalculateLineVoxel(from, to, false, trajectory, excludeUnit);
             if (test == BattleVoxelType.Unit)
             {
                 var impact = trajectory[0];
-                return impact.X >= minX && impact.X <= maxX && impact.Y >= minY && impact.Y <= maxY &&
-                    impact.Z >= targetMinHeight + 1 && impact.Z <= targetMaxHeight;
+                if (impact.X >= minX && impact.X <= maxX && impact.Y >= minY && impact.Y <= maxY &&
+                    impact.Z >= targetMinHeight + 1 && impact.Z <= targetMaxHeight) return true;
             }
-            return test == BattleVoxelType.Empty && hypothetical && trajectory.Count != 0;
+            else if (test == BattleVoxelType.Empty && hypothetical && trajectory.Count != 0) return true;
+            // rememberObstacles (the player's scan only): the tile of the first voxel that stopped the line keeps the part for the no line of fire indicator.
+            if (remember && obstacles is not null && trajectory.Count > 0)
+            {
+                var stopped = _map.TileAt(trajectory[0].X / TileXy, trajectory[0].Y / TileXy, trajectory[0].Z / TileZ);
+                if (stopped >= 0) obstacles.Add(new BattleObstacle(stopped, test));
+            }
+            return false;
         }
 
         if (isPlayer && !isUnderAiControl)
@@ -300,7 +311,7 @@ internal sealed class BattleSight
                     var checkTopBottom = (aimFromAbove || aimFromBelow) && vertical >= pointsCount - 2;
                     if (checkTopBottom && z > targetMinHeight + 2 && z < targetMaxHeight) continue;
                     scanVoxel = new BattlePosition(targetVoxel.X + slices[vertical * 2], targetVoxel.Y + slices[vertical * 2 + 1], z);
-                    if (Hits(originVoxel, scanVoxel)) return true;
+                    if (Hits(originVoxel, scanVoxel, true)) return true;
                 }
             }
             return false;
@@ -331,7 +342,7 @@ internal sealed class BattleSight
                     // Scan front and back slices only on the top and bottom planes.
                     if (horizontal < 2 && vertical > 2) break;
                     scanVoxel = new BattlePosition(targetVoxel.X + verticalSlices[vertical * 2], targetVoxel.Y + verticalSlices[vertical * 2 + 1], z);
-                    if (Hits(originVoxel, scanVoxel)) return true;
+                    if (Hits(originVoxel, scanVoxel, false)) return true;
                 }
             }
             return false;
@@ -425,11 +436,11 @@ internal sealed class BattleSight
     /// camouflage and its own anti-camouflage; a burning target has none and is never dark), the tile's darkness deciding, and a quarter tile of
     /// buffer.
     /// </summary>
-    private int VisibleDistanceMaxVoxel(int tile, BattleUnit current, BattleUnit target)
+    internal int VisibleDistanceMaxVoxel(int tile, BattleUnit current, BattleUnit? target)
     {
         var targetIsDark = _map.Shade(tile) > _maxDarknessToSeeUnits;
         BattleUnit? seen = target;
-        if (target.Fire > 0)
+        if (target is { Fire: > 0 })
         {
             // Fire cancels the target's camouflage.
             seen = null;
@@ -454,7 +465,7 @@ internal sealed class BattleSight
     /// getTrajectoryDataHelper: the line from the origin to the scan voxel with the smoke and fire density along it, in single precision:
     /// the distance, the smoke, the fire (a tile on fire counts its smoke as fire density), and the smoke and fire within two tiles of the unit.
     /// </summary>
-    private (int Distance, int Smoke, int Fire, int SmokeNear, int FireNear) TrajectoryData(BattleUnit current, BattlePosition origin, BattlePosition scan)
+    internal (int Distance, int Smoke, int Fire, int SmokeNear, int FireNear) TrajectoryData(BattleUnit current, BattlePosition origin, BattlePosition scan)
     {
         var trajectory = new List<BattlePosition>(Math.Max(Math.Max(Math.Abs(origin.X - scan.X), Math.Abs(origin.Y - scan.Y)), Math.Abs(origin.Z - scan.Z)) + 1);
         CalculateLineVoxel(origin, scan, true, trajectory, current);

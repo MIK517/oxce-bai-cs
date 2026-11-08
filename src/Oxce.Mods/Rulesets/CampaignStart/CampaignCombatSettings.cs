@@ -70,6 +70,13 @@ public sealed record CampaignCombatSettings
     public int ExtendedTerrainMelee { get; init; }
     public int ExtendedUnderwaterThrowFactor { get; init; }
 
+    /// <summary>
+    /// Mod::isManaFeatureEnabled and getManaUnlockResearch (<c>mana.enabled</c>, off, and <c>mana.unlockResearch</c>, none): a mana weapon is usable by X-COM's
+    /// units only when the feature is on and its research, if any, is done.
+    /// </summary>
+    public bool ManaEnabled { get; init; }
+    public string ManaUnlockResearch { get; init; } = "";
+
     /// <summary>The hit chance table of a unit size, or null.</summary>
     public IReadOnlyList<int>? HitChances(int unitSize) => HitChancesTable.GetValueOrDefault(unitSize);
 }

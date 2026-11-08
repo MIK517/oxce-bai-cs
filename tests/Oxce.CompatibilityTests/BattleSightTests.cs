@@ -177,12 +177,13 @@ public sealed class BattleSightTests
 
     /// <summary>A flat arena: a floor over the whole ground level, the soldier at (10, 10) facing east and the alien at (10 + distance, 10) facing west.</summary>
     internal static Arena Flat(int shade = 0, int distance = 5, string soldierExtra = "", string alienExtra = "", string? unitExtra = null,
-        bool personalLight = false, bool bigAlien = false, bool soldierAtWest = false, int soldierHeight = 22, Func<string, string>? edit = null)
+        bool personalLight = false, bool bigAlien = false, bool soldierAtWest = false, int soldierHeight = 22, Func<string, string>? edit = null,
+        Action<Dictionary<string, byte[]>>? terrain = null)
     {
         var rules = SightRules(shade, soldierExtra, alienExtra, unitExtra, soldierHeight);
         if (edit is not null) rules = edit(rules);
         if (bigAlien) rules = Replaced(rules, "  - type: ALIEN\n    armor: SMALL_VEHICLE_ARMOR\n", "  - type: ALIEN\n    armor: VEHICLE_ARMOR\n");
-        var (campaign, battle, soldier, set) = Open(rules, Terrain);
+        var (campaign, battle, soldier, set) = Open(rules, terrain ?? Terrain);
         var map = battle.Map;
         for (var tile = 0; tile < map.TileCount; tile++)
             foreach (var part in Enum.GetValues<BattleTilePart>()) map.SetPart(tile, part, -1, -1);

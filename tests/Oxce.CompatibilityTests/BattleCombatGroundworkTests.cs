@@ -51,6 +51,7 @@ public sealed class BattleCombatGroundworkTests
         Assert.Equal((100, false, false, false, 0, 0, 0), (defaults.TuRecoveryWakeUpNewTurn, defaults.StunningImprovesMorale, defaults.StatisticalBulletConservation,
             defaults.ExtendedExperienceAwardSystem, defaults.ExtendedSpotOnHitForSniping, defaults.ExtendedTerrainMelee, defaults.ExtendedUnderwaterThrowFactor));
         Assert.Empty(defaults.HitChancesTable);
+        Assert.Equal((false, ""), (defaults.ManaEnabled, defaults.ManaUnlockResearch));
         var ranges = Open(Rules).Campaign.Interception;
         Assert.Equal((100, 50, 5, 10), (ranges.DamageRange, ranges.ExplosiveDamageRange, ranges.FireDamageRange[0], ranges.FireDamageRange[1]));
 
