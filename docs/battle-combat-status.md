@@ -14,7 +14,7 @@ Phase 7 branch 5 (`claude/battle-combat`), from `main` after PR #81 (branch 4 me
 | S0 planning | Done and audited (2026-11-08) |
 | S1 combat groundwork: item, armor and damage rules, stat bonuses, combat constants, script refusals | Implemented (2026-11-08), audit pending |
 | S2 line of fire and accuracy | Implemented (2026-11-09), audit pending |
-| S3 damage to units | Not started |
+| S3 damage to units | Implemented (2026-11-09), audit pending |
 | S4 casualties | Not started |
 | S5 explosions | Not started |
 | S6 melee and the attack command | Not started |
@@ -83,7 +83,7 @@ Reference studied:
 | Refusal | From | Retired by |
 |---|---|---|
 | A crashed UFO's power sources (`BattleGenerator.CrashedPowerSources`) and map grenades primed at -2 (`PrimedJunk`), generation errors | branch 1 | S5 |
-| `battle.hit-unit-unsupported`, `battle.terrain-explosion-unsupported`, `battle.module-map-unsupported` | branch 4 S9 | S3, S5, S5 (ADR 0041) |
+| `battle.hit-unit-unsupported` (retired by S3), `battle.terrain-explosion-unsupported`, `battle.module-map-unsupported` | branch 4 S9 | S3 (done), S5, S5 (ADR 0041) |
 | `battle.proximity-unsupported` (and the broad death-trap test, branch 4 audit L3) | branch 4 S7 | S8 |
 | `battle.reaction-fire-unsupported` (`HasPossibleReactor`, the named leak) and the acceptance's `WithOpponentsSpent` | branch 4 (S5, S7, S8, S11) | S9 |
 | `battle.casualties-unsupported` (`HasUncheckedCasualty`, the floorless-walker gate) | branch 3 S3, branch 4 S7 (owner was branch 6) | S4 |
@@ -231,31 +231,68 @@ Reference: `TileEngine.cpp` (`getOriginVoxel`, `canTargetUnit` with `rememberObs
   and the diagonal allowance of short ranges, the no line of sight penalty, the hit chance tables (function and mod), the uniform spread with scripted draws (and the redraw), the
   extended line, the first-shot line check, `canUseWeapon` for each refusal (the depth ones set the depth by reflection, as it is init-only), the menu and the aim view, and the query refusals (another side, off turn, undiscovered tile, item not held).
 
+## S3 — Damage to units (2026-11-09)
+
+Reference: `BattleUnit.cpp` (`damage`, `reduceByResistance`, `reduceByBravery`, `moraleChange`, `isWoundable`, `isOutThresholdExceed`, `getOverKillDamage`, `setFire`, the
+experience adders, the murderer fields), `TileEngine.cpp` (`hitUnit`, `hit`, `awardExperience`), `SavedBattleGame::getFactionMoraleModifier`,
+`getHighestRankedXCom`, `AIModule::setWasHitBy`, `RuleItem::getZombieUnit`, `Armor` (the immunity getters and `getOverKill`).
+
+- **`BattleAttack`** (`BattleActionAttack` without the skill rule, which branch 6 ports): the action type, the attacker, the weapon and the item whose damage it is.
+- **`DamageUnit`** (`BattleDamage.cs`, `BattleUnit::damage`). The side from the hit's position against the facing (`IgnoreDirection`; a diagonal rolls between two sides; a hit from
+  below or at the feet is the side under), the body part from the height against the unit's standing or kneeling height (head, arm of the side, or a leg with a roll for the front and
+  rear), the armor's resistance (rounded down) and overkill floor (`IgnoreOverKill`), then, for a positive damage: the armor's pre damage, the armor of the side less `ArmorIgnore`
+  at `ArmorEffectiveness` (truncated from a float), and the conversions to stun, morale (reduced by bravery), time, health, mana, energy, wounds and armor in the reference's draw order. Stun
+  needs a unit that feels pain or a type that ignores it, wounds a woundable unit (bleed immune by default unless it is a soldier), and the wounds cost morale. The hit stores the
+  fatal shot's side and part. Then the special effects: the morale loss from the health damage (the player's units over the highest ranked living X-COM unit's modifier), the fire the
+  damage lights (`FireThreshold`, rolled up to five times the armor's modifier, kept if longer, put out by a weapon or ammunition that is a fire extinguisher, ignored by units that burn
+  floors), the ammunition's infection (`getZombieUnit` by armor and gender, then type; the chance, its action override, none for a hostile victim of a hostile attacker, the size check of
+  the unit it becomes; `Respawn`, `SpawnUnit` and `SpawnUnitFaction`), the self-destruct, and the AI direct hit tracking: the attacker's turns since spotted by the victim's faction (0
+  after a direct shot of another side), the AI's `wasHitBy`, and the sniper turns under `extendedSpotOnHitForSniping` (1 only if the victim stays up, 2 always) as the victim's spotter
+  duration. `BattleUnit.HitState` is set; a unit with no health takes nothing.
+- **`HitUnit`** (`hitUnit`). Damage, then experience for an X-COM attacker, then the murderer (id, weapon and ammunition names, `STR_WEAPON_UNKNOWN`), kept when the hit did no harm to a
+  victim that burns or has wounds. **`AwardExperience`**: the mana experience first, the weapon's `experienceTrainingMode` (1 to 32; the psi modes need a soldier with psi skill above 0, from
+  `BattleUnit.SoldierPsiSkill`), or by kind: grenades and proximity grenades (firing, throwing in the extended system), melee, medikits (nothing), a gun butt (melee), a firearm (firing,
+  or in the extended system arcing: throwing, by range: firing above 10, throwing above 1, melee at 1). Only hostile units by birth train (and hostile now in the extended system).
+- **`Hit`** (`TileEngine::hit`, `BattleFire.cs`; `HitTerrain` is the no-weapon form). A floor or an object hit passes to the bodies on the tile (unconscious units' items), the first one
+  alive takes it at relative `(0, 0, 0)` and spares the terrain (a glowing body makes the effect 2); a unit in the voxel is hit at the voxel against its bottom center (the center of its
+  size, its float height and the hit tile's terrain level, 24 voxels lower when it stands on the tile below); fire left on the unit makes the effect 2, which updates gravity, light and sight.
+  A dry run still asks the terrain's refusals only: a live body on the tile answers `null` at once, since the hit goes to it.
+- **Interim refusals** (plan, "Interim refusals between slices"). The unit has taken the hit when a refusal comes back, so a command runs on the trial copy first (ADR 0040, as walks do):
+  a hit that leaves a unit past the out threshold (health to 0, or stun reaching it) or sets it to respawn is `battle.casualties-unsupported` (S4), one that would push the self-destruct
+  explosion is `battle.terrain-explosion-unsupported` (S5; `AlreadyExploded` is set). `battle.hit-unit-unsupported` is gone. A walk or fall over a floor whose burn reaches a unit now runs
+  and refuses only if the burn takes it out (the old dry run refused any live body). Callers with no trial copy (the inventory's falls through `FallsRefusal`) still refuse a burn that would reach a live unit, with `battle.casualties-unsupported` (`HitWouldReachUnit`), since the damage rolled decides. A body that stays unconscious with its health is no casualty (`NeedsCasualtyCheck`).
+- **Not ported here.** The hit log (`appendToHitLog`) is runtime text for the next turn's screen. The statistics counters (`hitCounter`, `shotsLandedCounter`, `shotByFriendlyCounter`...) belong
+  to `ProjectileFlyBState::projectileHitUnit` (S7). The armor and soldier health recovery bonuses that `hasNegativeHealthRegen` reads (the murderer rule's third term) are branch 6's with the
+  other recovery bonuses; it counts as false. The combat hooks (`hitUnit`, `damageUnit`, `damageSpecialUnit`, `awardExperience`) are refused at the briefing (S1).
+- **Decisions** (ADR 0041): the reference draws the leg roll, burn time and the infection and self-destruct percents from a sub-sequence of the game generator (`subSequence()`, one global draw per
+  hit on a living unit), and the side rolls from the global one; the port uses the battle's generator for all, since stream parity is out of scope. Armor and soldier recovery bonuses (a negative health
+  recovery changes the murderer rule) are not read at all yet, so such a mod differs there. `Options::alienBleeding` is fixed off. A zombie unit that does not exist, or whose armor is bigger than the victim's, converts nothing (the reference logs the second and
+  would dereference a missing unit rule on the first).
+- **Left for the later slices.** `terrainMeleeTilePart` of `hit` (S6). `BattleUnit.Gender` and `SoldierPsiSkill` are set for soldiers only (`SoldierUnit`) and are not saved (a load takes them
+  from the campaign soldier). `hitUnit`'s `relative` is each caller's: S5's `explode` passes `(0,0,0)`, `(0,0,-1)` or the direction to the explosion; S7's `projectileHitUnit` calls `Hit`.
+- **Tests.** `BattleDamageTests` (44): the side and body part for each facing, hit direction and height, the diagonal and leg rolls, `IgnoreDirection` and the environment's overrides, kneeling;
+  armor reduction, `ArmorIgnore`, effectiveness, the floor at zero, the pre damage and the maximum; the resistance table; every conversion and the random draw order; a spent shot; pain immunity
+  and the stun cap; overkill and `IgnoreOverKill`; wounds (the unit that bleeds, the random types) and morale (bravery, the leader's modifier ladder, `IgnoreNormalMoraleLose`, fear immunity,
+  the morale conversion); fire (threshold, longer fire kept, resistance, modifier two, the extinguisher in weapon and ammunition, burners); infection (chance, the action override, immune armors,
+  hostile on hostile, an existing spawn unit, the size check, by armor and gender and by type, the faction); the attacker's spotting (direct shots only, throws, own side, explosive shells),
+  `wasHitBy`, the three sniper options; the self-destruct and casualty refusals; `HitUnit` and the murderer; experience (kinds, the extended system, friends, modes, fractions, either-or
+  draws, psi and mana); `Hit` on a unit in the voxel, a big unit, a unit on the tile below, a body on the floor (alive, dead, dry run), a lethal hit and a flame. `BattleFireTests` follow the
+  new behaviour for a live body, a unit in the voxel and the walk, fall and burner cases.
+
 ## Next
 
-S3, damage to units (plan row S3). Notes for the worker:
+S4, casualties (plan row S4). Notes for the worker:
 
-- **What S2 left to build on.** `BattleState.FiringAccuracy`, `AccuracyModifier`, `CanUseWeapon(rules, BattleResearchGate, weapon, unit, berserking, type)`, `HitChance`,
-  `IsOutOfRange`/`IsOutOfThrowRange`, `CalculateLimits`, `TotalWeight`, `ArcingShot` and `AmmoForActionType` (all in `BattleWeaponUse.cs`); `BattleAimAction` (the parts of `BattleAction` the
-  line of fire reads, `BattleAim.cs`); `BattleProjectile` (`CalculateTrajectory`, `CalculateThrow`, `ApplyAccuracy`, `LineOfFireBlocked`, `FindArc`; it takes `BattleState.Random`);
-  `BattleState.ChooseTargetVoxel` (`ProjectileFlyBState::init`'s target voxel, S7 calls it); `BattleSight.Fire.cs` (`OriginVoxel`, `CanTargetTile`, `AdjustTargetVoxelFromTileType`,
-  `CalculateParabolaVoxel`, `ValidateThrow`, `ValidThrowRange`, `MaxThrowDistance`, `IsTileInLos`). `CanTargetUnit` and `ValidateThrow` take an optional `List<BattleObstacle>` for the no line of fire
-  indicator. The hit's voxel and the part of the unit it landed on are still to come: `hitUnit` (S3) reads `relative` from the trajectory's last voxel (`Projectile::getPosition`,
-  `BattleSight.PositionFromEnd`/`PositionFromStart` return a trajectory voxel).
-- **Research and the campaign.** A battle has no campaign of its own: `CanUseWeapon` and the queries take a `BattleResearchGate` (`CampaignBattles.ResearchGate()` builds it from
-  `ArcResearch` and `CampaignState.DebugModeEnabled`). A command that checks `canUseWeapon` (S6, S7, S8, S9) gets it the same way.
-- **Stat bonuses.** `Combat.StatBonuses.Damage/Melee.Evaluate(unit, externalBonus)` (the power for `Damage`) are the power bonuses; `StrengthApplied` adds the owner's strength bonus (S1). The
-  code forms are refused at the briefing (`battle.stat-bonus-script-unsupported`), so S3 never meets a script. `RuntimeItemDamageRule.RandomDamage(power, rules.Campaign.Interception, random)` and the
-  `get*FinalDamage` conversions are S1's.
-- **Tests.** `ScriptedDraws` (`tests/Shared`) returns scripted numbers inside each drawn range and records the calls. `BattleLineOfFireTests.Armed` builds the flat sight arena with a GUN and a
-  GRENADE in the soldier's hands (`Edit(gun:, grenade:, global:, clip:)` adds item keys and root rules); `BattleSightTests.Flat` takes a `terrain:` action for extra MCD records. Item costs are
-  percentages of the unit's statistics (`tuAimed: 30` is 30% of the time units).
-- **Script refusal pattern.** `BattleState.CombatScriptRefusal` (`BattleCombatScripts.cs`) holds the parser names; a new hook name is added there.
-- **Reason strings to update when their refusal changes owner or retires.** `BattleFirstTurn.cs` (`CasualtiesUnsupported`,
-  `TurnOneReviveUnsupported`) and `BattleGravity.cs` (the fall knock-out) say branch 6 until S4 retires them; S4 also
-  removes them from the refusal inventory.
-- **Branch 4's notes still apply.** Commands run on a trial copy first (`CampaignBattles.TrialRefusal`), which needs
-  terrain files. Branch 4's gotchas (`docs/battle-movement-status.md` "## Next") also apply: the post-edit hook
-  reformats C# files, so read a file again before a second edit; add string literals with a backslash-n through the
-  Edit tool; write test files with LF; run tests with `dotnet test --project <proj> --filter-class <full name>`; a
-  test that adds units by hand needs a `SoldierId` or a unit rule. Record equality of a rule compares its lists by reference: compare their elements.
+- **What S3 left to build on.** `BattleState.DamageUnit`, `HitUnit` (with `BattleAttack`), `AwardExperience`, `Hit` and `HitTerrain` (`BattleDamage.cs`, `BattleFire.cs`). A hit that leaves a unit past the out
+  threshold returns `battle.casualties-unsupported` (and a self-destruct `battle.terrain-explosion-unsupported`) after the unit has taken the hit; S4 retires the first (check every `CasualtiesUnsupported` use:
+  `HasUncheckedCasualty` in `CampaignBattles`, `BattleFirstTurn.cs`, and the hit refusal in `BattleDamage.cs`), including the respawn flag an infection sets (`Respawn`, `SpawnUnit`,
+  `SpawnUnitFaction`). `BattleUnit.MurdererId`, `MurdererWeapon`, `MurdererWeaponAmmo`, `FatalShotSide` and `FatalShotBodyPart` are set by every hit; `IsOutThresholdExceeded` and `OverKillDamage` are static helpers.
+- **Armor recovery.** `hasNegativeHealthRegen` is counted false (the recovery bonuses are branch 6's); `HitUnit`'s murderer rule notes it.
+- **Reason strings.** `BattleFirstTurn.CasualtiesUnsupported` now says branch 5; `BattleGravity.cs` (the fall knock-out) and `TurnOneReviveUnsupported` still say branch 6 until S4 retires them (and removes them from the
+  refusal inventory).
+- **Existing tests that rely on the interim refusal.** `BattleFireTests` (the walk, fall and burner cases with an alien body of one health) expect `battle.casualties-unsupported`; S4 turns them into kills.
+- **Tests.** `BattleDamageTests.Duel` builds the flat arena with the alien at 100 health; `Plain` is a deterministic armor piercing type; `ScriptedDraws` orders the rolls (the percent rolls at the end of every damage
+  are the zombie chance then the self-destruct chance; experience percents follow). Item keys go through `Duel(gun:, clip:, grenade:, global:, more:)`, armor keys through `alienExtra`/`soldierExtra`, unit keys through
+  `unitExtra`.
+- **Branch 4's gotchas and the trial copy** (the post-edit hook reformats C# files, so read a file again before a second edit; add string literals with a backslash-n through the Edit tool;
+  write test files with LF; run tests with `dotnet test --project <proj> --filter-class <full name>`; a test that adds units by hand needs a `SoldierId` or a unit rule; record equality compares lists by reference) still apply.

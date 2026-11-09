@@ -18,3 +18,13 @@ does the same, guarding `Math.Max` against the NaN.
 **A target that lies off the map (S2).** `validThrowRange` dereferences the target tile of a throw (`getTerrainLevel`) after the item's throw-range check;
 a target outside the map would crash. The commands refuse a target outside the map before it gets there, and the port's `validateThrow` treats
 a missing tile as a throw that cannot land (for a shot as well, which the reference does not look at there).
+
+**The generator behind a hit's rolls (S3).** `BattleUnit::damage` takes one draw of the game generator to make a sub-sequence on every hit on a living unit, and draws the leg, the burn time
+and the infection and self-destruct percents from it; the side rolls use the game generator. The port draws everything from the battle's generator in the same order, without the extra draw;
+exact streams are out of scope.
+
+**Recovery bonuses in the murderer rule (S3).** `hasNegativeHealthRegen` reads the armor's and the soldier bonuses' `recovery: health`, which the port does not read yet (branch 6). It counts as false, so a
+mod with a negative health recovery records a different murderer for a harmless hit on a burning or wounded victim. `Options::alienBleeding` is fixed off.
+
+**A unit it cannot turn into (S3).** An infecting hit looks the unit it would spawn up with `Mod::getUnit`, whose result `damage` dereferences, and refuses (logs) one with a bigger armor than the
+victim's. The port converts nothing for both a missing unit and a bigger armor.

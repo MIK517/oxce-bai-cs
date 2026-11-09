@@ -103,6 +103,7 @@ internal sealed partial class BattleState
         unit.Vision = BattleUnitVision.ForUnit(rules, battleArmor, faction);
         unit.MoveCosts = unit.ArmorMoveCosts = battleArmor.MoveCosts;
         sides.CopyTo(unit.CurrentArmor, 0);
+        sides.CopyTo(unit.MaxArmor, 0);
         unit.Aggression = rule.Aggression;
         unit.SpawnUnit = rule.SpawnUnit;
         unit.EnergyRegeneration = rule.EnergyRecovery;
@@ -180,6 +181,9 @@ internal sealed partial class BattleState
             foreach (var bonus in bonuses) value = unchecked(value + rules.SoldierBonuses[bonus].Value.Sides[side]);
             unit.CurrentArmor[side] = Math.Max(0, value);
         }
+        unit.CurrentArmor.CopyTo(unit.MaxArmor, 0);
+        unit.Gender = personal.Gender;
+        unit.SoldierPsiSkill = personal.CurrentStats.GetValueOrDefault("psiSkill");
         var look = personal.Gender + 2 * personal.Look + 8 * personal.LookVariant;
         SetRecolor(unit, battleArmor, look, look, unit.RankIntUnified);
         if (startingCondition) unit.BannedInNextStage = BannedInNextStage(rules, armorId);

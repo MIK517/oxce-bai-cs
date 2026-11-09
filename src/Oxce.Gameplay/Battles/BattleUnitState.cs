@@ -35,6 +35,23 @@ internal sealed partial class BattleUnit
     /// <summary>BattleUnit's <c>_currentArmor</c> per UnitSide; the four diagonal sides are kept as saved and 0 otherwise.</summary>
     public int[] CurrentArmor { get; } = new int[ArmorSides];
 
+    /// <summary>BattleUnit's <c>_maxArmor</c> per UnitSide: the armor's sides as the constructor set them (the difficulty's adjustment and a soldier's bonuses included).</summary>
+    public int[] MaxArmor { get; } = new int[ArmorSides];
+
+    /// <summary>UnitSide's values, and UnitBodyPart's (BODYPART_HEAD to BODYPART_LEFTLEG).</summary>
+    public const int SideFront = 0, SideLeft = 1, SideRight = 2, SideRear = 3, SideUnder = 4;
+
+    public const int BodyPartHead = 0, BodyPartTorso = 1, BodyPartRightArm = 2, BodyPartLeftArm = 3, BodyPartRightLeg = 4, BodyPartLeftLeg = 5;
+
+    /// <summary>BattleUnit::hasAlreadyExploded: the self-destruct explosion was pushed. Runtime state, not saved.</summary>
+    public bool AlreadyExploded { get; set; }
+
+    /// <summary>BattleUnit::getGender (GENDER_MALE 0, GENDER_FEMALE 1): a soldier's, else male.</summary>
+    public int Gender { get; set; }
+
+    /// <summary>The geoscape soldier's current psi skill (<c>getCurrentStats()->psiSkill</c>, without the armor's bonus), 0 for a unit that is no soldier.</summary>
+    public int SoldierPsiSkill { get; set; }
+
     public int[] FatalWounds { get; } = new int[BodyParts];
     public int Fire { get; set; }
 

@@ -327,17 +327,19 @@ public sealed class BattleFireTests
     }
 
     [Fact]
-    public void AHitThatWouldReachAUnitOrABodyOnTheTileIsRefusedBeforeAnyChange()
+    public void AHitReachesABodyOnTheTileOrAUnitInTheVoxelAndSparesTheTerrainItHit()
     {
         var arena = Make();
         arena.Put(12, 12, 0, BattleTilePart.Floor, BurnFloor);
         arena.Put(14, 12, 0, BattleTilePart.Floor, BurnFloor);
-        // A live body (an unconscious unit's corpse item) on a floor tile.
+        arena.Alien.Stats = arena.Alien.Stats with { Health = 50 };
+        arena.Alien.Health = 50;
+        // A live body (an unconscious unit's corpse item) on a floor tile takes the hit, and the floor neither burns nor breaks (the damage is S3's).
         arena.Battle.AddItemOnTile(new BattleItem(arena.Battle.TakeItemId(), "CORPSE") { CorpseUnitId = arena.Alien.Id }, At(12, 12));
-        var state = State(arena);
-        Assert.Equal("battle.hit-unit-unsupported", Hit(arena, 12, 12)!.Code);
-        Assert.Equal(state, State(arena));
-        // A dead body is not hit (the reference's hitUnit stops at no health).
+        Assert.Null(Hit(arena, 12, 12, attacker: arena.Soldier));
+        Assert.True(arena.Alien.Health < 50);
+        Assert.Equal(0, arena.Map.Fire(arena.Tile(12, 12)));
+        // A dead body is not hit (the reference's hitUnit stops at no health): the floor burns.
         arena.Alien.Health = 0;
         Assert.Null(Hit(arena, 12, 12));
         Assert.Equal(4, arena.Map.Fire(arena.Tile(12, 12)));
@@ -346,12 +348,15 @@ public sealed class BattleFireTests
         open.Soldier.SetDirection(0);
         open.Battle.SetTile(open.Alien, At(14, 12));
         open.Put(14, 12, 0, BattleTilePart.Floor, Floor);
-        var before = State(open);
+        open.Alien.Stats = open.Alien.Stats with { Health = 50 };
+        open.Alien.Health = 50;
         var voxel = new BattlePosition(14 * 16 + 8, 12 * 16 + 8, 6);
-        Assert.Equal("battle.hit-unit-unsupported", open.Battle.HitTerrain(open.Rules, open.Soldier, voxel, 30, BattleDamageTypes.Fire)!.Code);
-        Assert.Equal(before, State(open));
+        Assert.Null(open.Battle.HitTerrain(open.Rules, open.Soldier, voxel, 30, BattleDamageTypes.Fire));
+        Assert.True(open.Alien.Health < 50);
         // The attacker itself is not in the way.
+        var own = open.Alien.Health;
         Assert.Null(open.Battle.HitTerrain(open.Rules, open.Alien, voxel, 30, BattleDamageTypes.Fire));
+        Assert.Equal(own, open.Alien.Health);
     }
 
     [Fact]
@@ -469,13 +474,14 @@ public sealed class BattleFireTests
     }
 
     [Fact]
-    public void AWalkOverAHitThatReachesABodyOrAnExplosionIsRefusedBeforeAnyChange()
+    public void AWalkOverAHitThatKillsABodyOrStartsAnExplosionIsRefusedBeforeAnyChange()
     {
         var arena = Burner();
         Cover(arena, BurnFloor, 9, 15, 9, 11);
         arena.Battle.AddItemOnTile(new BattleItem(arena.Battle.TakeItemId(), "CORPSE") { CorpseUnitId = arena.Alien.Id }, At(12, 10));
         var (state, random) = (State(arena), arena.Campaign.Random.State);
-        Assert.Equal("battle.hit-unit-unsupported", Refusal(arena.Campaign.Execute(new WalkUnit(arena.Soldier.Id, At(13, 10)))));
+        // The alien's body has one health: the burn would take it out (the casualty work is S4's), which the trial copy finds.
+        Assert.Equal("battle.casualties-unsupported", Refusal(arena.Campaign.Execute(new WalkUnit(arena.Soldier.Id, At(13, 10)))));
         Assert.Equal((state, random), (State(arena), arena.Campaign.Random.State));
 
         var blast = Burner();
@@ -529,7 +535,7 @@ public sealed class BattleFireTests
     }
 
     [Fact]
-    public void AFallWhoseLandingBurnWouldReachABodyIsRefusedBeforeAnyChange()
+    public void AFallWhoseLandingBurnReachesABodyHurtsItAndRefusesTheKill()
     {
         var arena = Burner();
         Cover(arena, BurnFloor, 12, 12, 12, 12);
@@ -537,8 +543,12 @@ public sealed class BattleFireTests
         arena.Battle.SetTile(arena.Soldier, At(12, 12, 3));
         arena.Battle.ApplyGravity(arena.Soldier.Position);
         var state = State(arena);
-        Assert.Equal("battle.hit-unit-unsupported", arena.Battle.FallsRefusal(arena.Rules)!.Code);
+        // What a hit does to a unit depends on the damage rolled; callers without a trial copy refuse any live body the burn would reach.
+        Assert.Equal("battle.casualties-unsupported", arena.Battle.FallsRefusal(arena.Rules)!.Code);
         Assert.Equal(state, State(arena));
+        arena.Battle.Random = new SplitMix64RandomSource(4);
+        Assert.Equal("battle.casualties-unsupported", arena.Battle.ResolveFalls(arena.Rules)!.Code);
+        Assert.Equal(0, arena.Alien.Health);
         Assert.Equal(0, arena.Map.Fire(arena.Tile(12, 12)));
     }
 
@@ -787,17 +797,16 @@ public sealed class BattleFireTests
     }
 
     [Fact]
-    public void ABurnerWhoseHitIsRefusedLeavesItsTileUnignited()
+    public void ABurnerWhoseHitReachesALiveBodyIsRefusedByTheDryRunAndTheKillByTheFall()
     {
         var arena = Burner();
         Cover(arena, BurnFloor, 9, 15, 9, 11);
         arena.Battle.AddItemOnTile(new BattleItem(arena.Battle.TakeItemId(), "CORPSE") { CorpseUnitId = arena.Alien.Id }, At(11, 10));
         arena.Battle.SetTile(arena.Soldier, At(11, 10));
         arena.Battle.Random = new SplitMix64RandomSource(4);
-        Assert.Equal("battle.hit-unit-unsupported", arena.Battle.FallsRefusal(arena.Rules, arena.Soldier)?.Code ?? "battle.hit-unit-unsupported");
         arena.Battle.AddFallingUnit(arena.Soldier);
         arena.Soldier.HaveNoFloorBelow = false;
-        Assert.Equal("battle.hit-unit-unsupported", arena.Battle.ResolveFalls(arena.Rules)!.Code);
-        Assert.Equal((0, 0), (arena.Map.Fire(arena.Tile(11, 10)), arena.Map.Overlaps(arena.Tile(11, 10))));
+        Assert.Equal("battle.casualties-unsupported", arena.Battle.ResolveFalls(arena.Rules)!.Code);
+        Assert.Equal(0, arena.Alien.Health);
     }
 }

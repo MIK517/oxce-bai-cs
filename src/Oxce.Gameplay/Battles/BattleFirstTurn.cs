@@ -25,7 +25,7 @@ internal static class BattleFlowReasons
         "The battle has no live aliens once its primed items have spawned; the reference then ends in the aliens' crash screen, and the battle outcome arrives with Phase 7 branch 7.");
 
     internal static readonly CampaignReason CasualtiesUnsupported = new("battle.casualties-unsupported",
-        "A unit is past the out threshold but not yet out; the casualty check the battlescape runs when it opens arrives with turn processing (Phase 7 branch 6).");
+        "A unit is past the out threshold (or set to respawn) but not yet out; the casualty check that kills, stuns or converts it arrives with the casualty work (Phase 7 branch 5).");
 
     internal static readonly CampaignReason NoLiveSoldiers = new("battle.no-live-soldiers",
         "A battle with no live X-COM soldiers ends the battle, which arrives with the battle outcome (Phase 7 branch 7).");

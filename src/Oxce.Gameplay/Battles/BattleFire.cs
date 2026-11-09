@@ -8,14 +8,11 @@ namespace Oxce.Gameplay.Battles;
 /// <summary>The reasons the tile part of a hit refuses before any change (Phase 7 branch 4 S9).</summary>
 internal static class BattleFireReasons
 {
-    internal static readonly CampaignReason HitUnitUnsupported = new("battle.hit-unit-unsupported",
-        "The hit would damage a unit (a unit in the voxel, or the body of a unit lying on the tile); damage to units arrives with the attack work (Phase 7 branch 5).");
-
     internal static readonly CampaignReason ModuleMapUnsupported = new("battle.module-map-unsupported",
         "The hit would destroy a base module in a block the saved module map does not hold (a save keeps its map as written; ADR 0039); destroying modules of such a base arrives with the attack work (Phase 7 branch 5).");
 
     internal static readonly CampaignReason TerrainExplosionUnsupported = new("battle.terrain-explosion-unsupported",
-        "The hit or the fire would destroy a terrain part that explodes (a high explosive strength); explosions arrive with the attack work (Phase 7 branch 5).");
+        "The hit or the fire would destroy a terrain part that explodes (a high explosive strength), or a unit would blow itself up as it dies; explosions arrive with the attack work (Phase 7 branch 5).");
 }
 
 /// <summary>
@@ -35,8 +32,8 @@ internal static class BattleDamageTypes
 /// <summary>
 /// Fire, smoke and terrain destruction (Phase 7 branch 4 S9): <c>Tile::ignite</c>, <c>addSmoke</c>, <c>setFire</c>, <c>setSmoke</c>, <c>damage</c> and
 /// <c>destroy</c>, the tile part of <c>TileEngine::hit</c> and <c>hitTile</c> (the code branch 5's explosions call), the burning of floors by a unit,
-/// and <c>SavedBattleGame::prepareNewTurn</c>'s spread of fire and smoke as a routine for branch 6's end of turn. What reaches a unit (the hit's
-/// <c>hitUnit</c>, the environment's damage) and what starts an explosion (<c>setExplosive</c>'s chain) is branch 5's and 6's, refused by name.
+/// and <c>SavedBattleGame::prepareNewTurn</c>'s spread of fire and smoke as a routine for branch 6's end of turn. The hit's
+/// <c>hitUnit</c> is <c>BattleDamage.cs</c>'s (S3). The environment's damage to units is branch 6's, and what starts an explosion (<c>setExplosive</c>'s chain) is S5's, refused by name.
 /// The animation offsets the reference draws for the fire and smoke sprites are presentation and draw nothing here.
 /// </summary>
 internal sealed partial class BattleState
@@ -179,14 +176,24 @@ internal sealed partial class BattleState
     }
 
     /// <summary>
-    /// The tile part of <c>TileEngine::hit</c> at a voxel (a hit of terrain with no weapon: the attacker only stays out of the voxel check). What
-    /// the voxel holds decides: a floor, wall or object takes <see cref="HitTile"/>'s fire or smoke and the damage to the part (the base defense's
-    /// module count and the objective count follow); then, when the terrain changed or fire or smoke appeared, gravity on the tile, the light of the
-    /// layer it changes and the field of view around it are updated. Refused before any change when the hit would reach a unit or start an
-    /// explosion; <paramref name="dryRun"/> only asks that.
+    /// <c>TileEngine::hit</c> at a voxel, for a hit of terrain with no weapon: the attacker only stays out of the voxel check
+    /// (<see cref="Hit"/> with an attack of no action, weapon or ammunition).
     /// </summary>
     internal CampaignReason? HitTerrain(RuntimeRuleCatalog rules, BattleUnit? attacker, BattlePosition voxel, int power, RuntimeItemDamageRule type,
-        bool dryRun = false)
+        bool dryRun = false) =>
+        Hit(rules, new BattleAttack(BattleActionType.None, attacker), voxel, power, type, false, dryRun);
+
+    /// <summary>
+    /// <c>TileEngine::hit</c> at a voxel. What the voxel holds decides: a floor or an object first passes the hit to a body lying on the tile (an
+    /// unconscious unit's item) that is still alive, else, like a wall, takes <see cref="HitTile"/>'s fire or smoke and the damage to the part (the
+    /// base defense's module count and the objective count follow); a unit in the voxel takes the hit (<see cref="HitUnit"/>). Then, when the terrain
+    /// changed or fire or smoke appeared, gravity on the tile, the light of the layer it changes and the field of view around it are updated. Refused
+    /// when the hit would start an explosion or a base module past the saved map; a hit that takes a unit out or sets it to respawn, or makes one
+    /// self-destruct, is refused after the unit has taken it (a later slice's work; commands run on a trial copy first). A dry run asks the terrain's
+    /// refusals only, as the unit's outcome depends on the damage rolled. Terrain melee (the melee part of the voxel given) is S6's.
+    /// </summary>
+    internal CampaignReason? Hit(RuntimeRuleCatalog rules, in BattleAttack attack, BattlePosition voxel, int power, RuntimeItemDamageRule type,
+        bool rangeAttack, bool dryRun = false)
     {
         ArgumentNullException.ThrowIfNull(rules);
         ArgumentNullException.ThrowIfNull(type);
@@ -194,37 +201,46 @@ internal sealed partial class BattleState
         if (!Contains(tilePosition) || power <= 0) return null;
         var tile = Map.TileIndex(tilePosition);
         var sight = Sight();
-        var part = sight.VoxelCheck(voxel, attacker);
+        var part = sight.VoxelCheck(voxel, attack.Attacker);
         // A dry run rolls nothing: the damage of the fire type does not decide a refusal.
         var damage = dryRun ? 0 : type.RandomDamage(power, rules.Campaign.Interception, Random);
         var finalDamage = dryRun ? 0 : BattleDamageTypes.TileDamage(type, Random, power, damage);
         var terrainChanged = false;
         var effect = 0;
+        CampaignReason? unitRefusal = null;
         if (part is >= BattleVoxelType.Floor and <= BattleVoxelType.Object)
         {
             var tilePart = (BattleTilePart)(int)part;
+            var bodyHit = false;
             if (part is BattleVoxelType.Floor or BattleVoxelType.Object)
-                foreach (var item in ItemsOnTile(tilePosition))
-                    if (item.CorpseUnitId is { } corpse && UnitById(corpse) is { Health: > 0 }) return BattleFireReasons.HitUnitUnsupported;
-            var data = Map.MapData(tile, tilePart)!;
-            terrainChanged = finalDamage >= data.Armor;
-            if (terrainChanged && !data.IsGravLift && data.Explosive != 0) return BattleFireReasons.TerrainExplosionUnsupported;
-            var module = part == BattleVoxelType.Object && MissionType == BaseDefenseMissionType && finalDamage >= data.Armor && data.IsBaseModule;
-            if (module && !(tilePosition.X / 10 < BaseModules.Length && tilePosition.Y / 10 < BaseModules[tilePosition.X / 10].Length))
-                return BattleFireReasons.ModuleMapUnsupported;
-            if (dryRun) return null;
-            effect = HitTile(rules, tile, damage, type);
-            if (module)
             {
-                var counted = BaseModules[tilePosition.X / 10][tilePosition.Y / 10];
-                BaseModules[tilePosition.X / 10][tilePosition.Y / 10] = counted with { Remaining = counted.Remaining - 1 };
+                // A body that is still alive takes the hit, and the terrain is spared (a dry run only asks the terrain's refusals).
+                if (dryRun) bodyHit = ItemsOnTile(tilePosition).Any(item => item.CorpseUnitId is { } corpse && UnitById(corpse) is { Health: > 0 });
+                else (bodyHit, effect, unitRefusal) = HitUnitsInVoxel(rules, attack, voxel, part, tile, tilePosition, damage, type, rangeAttack);
+                if (dryRun && bodyHit) return null;
             }
-            if (DamagePart(tile, tilePart, finalDamage, ObjectiveType)) AddDestroyedObjective();
+            if (!bodyHit)
+            {
+                var data = Map.MapData(tile, tilePart)!;
+                terrainChanged = finalDamage >= data.Armor;
+                if (terrainChanged && !data.IsGravLift && data.Explosive != 0) return BattleFireReasons.TerrainExplosionUnsupported;
+                var module = part == BattleVoxelType.Object && MissionType == BaseDefenseMissionType && finalDamage >= data.Armor && data.IsBaseModule;
+                if (module && !(tilePosition.X / 10 < BaseModules.Length && tilePosition.Y / 10 < BaseModules[tilePosition.X / 10].Length))
+                    return BattleFireReasons.ModuleMapUnsupported;
+                if (dryRun) return null;
+                effect = HitTile(rules, tile, damage, type);
+                if (module)
+                {
+                    var counted = BaseModules[tilePosition.X / 10][tilePosition.Y / 10];
+                    BaseModules[tilePosition.X / 10][tilePosition.Y / 10] = counted with { Remaining = counted.Remaining - 1 };
+                }
+                if (DamagePart(tile, tilePart, finalDamage, ObjectiveType)) AddDestroyedObjective();
+            }
         }
         else if (part == BattleVoxelType.Unit)
         {
-            if (OverlappingUnit(rules, tile) is { Health: > 0 }) return BattleFireReasons.HitUnitUnsupported;
             if (dryRun) return null;
+            (_, effect, unitRefusal) = HitUnitsInVoxel(rules, attack, voxel, part, tile, tilePosition, damage, type, rangeAttack);
         }
         else if (dryRun)
         {
@@ -243,7 +259,22 @@ internal sealed partial class BattleState
         {
             sight.CalculateFov(tilePosition, 1, false);
         }
-        return null;
+        return unitRefusal;
+    }
+
+    /// <summary>
+    /// Whether a hit at the voxel would reach a living unit (a live body on the tile of a floor or object hit, or a unit in the voxel). A dry run cannot say
+    /// what the damage does to it, so the callers that have no trial copy to run on refuse conservatively (<see cref="BattleFlowReasons.CasualtiesUnsupported"/>).
+    /// </summary>
+    internal bool HitWouldReachUnit(BattleUnit? attacker, BattlePosition voxel, RuntimeRuleCatalog rules)
+    {
+        var tilePosition = BattleGeometry.TileOfVoxel(voxel);
+        if (!Contains(tilePosition)) return false;
+        var tile = Map.TileIndex(tilePosition);
+        var part = Sight().VoxelCheck(voxel, attacker);
+        if (part is BattleVoxelType.Floor or BattleVoxelType.Object)
+            return ItemsOnTile(tilePosition).Any(item => item.CorpseUnitId is { } corpse && UnitById(corpse) is { Health: > 0 });
+        return part == BattleVoxelType.Unit && OverlappingUnit(rules, tile) is { Health: > 0 };
     }
 
     private const string BaseDefenseMissionType = "STR_BASE_DEFENSE";
@@ -263,7 +294,9 @@ internal sealed partial class BattleState
         var voxel = new BattlePosition(position.X * 16 + 8, position.Y * 16 + 8, position.Z * 24 - Map.TerrainLevel(tile));
         // The hit's refusals are asked first, so a refusal leaves the tile as it was (the ignite is the first change).
         var refusal = HitTerrain(rules, unit, voxel, unit.Stats.Strength, BattleDamageTypes.Fire, dryRun: true);
-        if (refusal is not null || dryRun) return refusal;
+        if (refusal is not null) return refusal;
+        // What the hit does to a unit depends on the damage rolled: callers without a trial copy (the inventory's falls) refuse any live unit it would reach.
+        if (dryRun) return HitWouldReachUnit(unit, voxel, rules) ? BattleFlowReasons.CasualtiesUnsupported : null;
         Ignite(tile, 1);
         return HitTerrain(rules, unit, voxel, unit.Stats.Strength, BattleDamageTypes.Fire);
     }
