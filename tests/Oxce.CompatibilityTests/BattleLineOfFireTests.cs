@@ -860,4 +860,64 @@ public sealed class BattleLineOfFireTests
         arena.Put(17, 10, 0, Oxce.Gameplay.Battles.Terrain.BattleTilePart.WestWall, Wall);
         Assert.True(Blocked(new BattlePosition(17 * 16 + 4, 10 * 16 + 8, 12)));
     }
+
+    [Fact]
+    public void AFirstShotThatHitsATallUnitInTheTileAboveItCountsTheTileBelow()
+    {
+        // The alien is 30 voxels tall, so its head pokes into the level above; a shot at that part hits a unit that no unit stands under in that tile.
+        var (arena, gun, _) = Armed(more: static rules =>
+        {
+            var at = rules.IndexOf("- type: SMALL_VEHICLE_ARMOR", StringComparison.Ordinal);
+            var height = rules.IndexOf("standHeight: 22", at, StringComparison.Ordinal);
+            return rules[..height] + "standHeight: 30" + rules[(height + "standHeight: 22".Length)..];
+        });
+        var action = new BattleAimAction(arena.Soldier, BattleActionType.AimedShot, gun, new BattlePosition(15, 10, 0)) { AutoShotCounter = 1 };
+        var origin = arena.Battle.Sight().OriginVoxel(action);
+        var projectile = new BattleProjectile(arena.Battle, arena.Rules, action, arena.Soldier.RequiredPosition, new BattlePosition(15 * 16 + 8, 10 * 16 + 8, 27));
+        Assert.False(projectile.LineOfFireBlocked(origin));
+        Assert.Equal(1, projectile.Trajectory[0].Z / 24);
+        // Aimed at another tile the same hit is a unit that is not the target's.
+        var other = new BattleAimAction(arena.Soldier, BattleActionType.AimedShot, gun, new BattlePosition(14, 10, 0)) { AutoShotCounter = 1 };
+        Assert.True(new BattleProjectile(arena.Battle, arena.Rules, other, arena.Soldier.RequiredPosition, new BattlePosition(15 * 16 + 8, 10 * 16 + 8, 27)).LineOfFireBlocked(origin));
+    }
+
+    [Fact]
+    public void ATileIsInSightWhenItsLineOfFireAndTheSmokeAllowAndForceFireAimsAtItsMiddle()
+    {
+        var (arena, gun, _) = Armed();
+        arena.Battle.SetTile(arena.Alien, new BattlePosition(27, 0, 0));
+        arena.See();
+        var sight = arena.Battle.Sight();
+        var target = new BattlePosition(15, 10, 0);
+        var tile = arena.Tile(15, 10);
+        var plain = new BattleAimAction(arena.Soldier, BattleActionType.AimedShot, gun, target);
+        var forced = new BattleAimAction(arena.Soldier, BattleActionType.AimedShot, gun, target) { ForceFire = true };
+        Assert.True(sight.IsTileInLos(plain, tile, false));
+        Assert.True(sight.IsTileInLos(forced, tile, false));
+        Assert.False(sight.IsTileInLos(plain, -1, false));
+        // Past the view distance nothing is seen.
+        Assert.False(sight.IsTileInLos(plain, arena.Tile(29, 29), false));
+        // Smoke along the way cuts the quality of the view below zero.
+        for (var x = 11; x <= 14; x++) arena.Battle.SetTileSmoke(arena.Tile(x, 10), 255);
+        Assert.False(sight.IsTileInLos(plain, tile, false));
+        for (var x = 11; x <= 14; x++) arena.Battle.SetTileSmoke(arena.Tile(x, 10), 0);
+        Assert.True(sight.IsTileInLos(plain, tile, false));
+        // A wall, a north wall, a west wall or a unit on the way stops a line that does not end on the tile: the forced one at the middle too.
+        arena.Put(12, 10, 0, Oxce.Gameplay.Battles.Terrain.BattleTilePart.ObjectPart, Wall);
+        Assert.False(sight.IsTileInLos(plain, tile, false));
+        Assert.False(sight.IsTileInLos(forced, tile, false));
+        arena.Clear(12, 10, 0, Oxce.Gameplay.Battles.Terrain.BattleTilePart.ObjectPart);
+        arena.Put(14, 10, 0, Oxce.Gameplay.Battles.Terrain.BattleTilePart.WestWall, Wall);
+        Assert.False(sight.IsTileInLos(plain, tile, false));
+        arena.Clear(14, 10, 0, Oxce.Gameplay.Battles.Terrain.BattleTilePart.WestWall);
+        arena.Put(13, 10, 0, Oxce.Gameplay.Battles.Terrain.BattleTilePart.NorthWall, Wall);
+        Assert.False(sight.IsTileInLos(plain, tile, false));
+        arena.Clear(13, 10, 0, Oxce.Gameplay.Battles.Terrain.BattleTilePart.NorthWall);
+        arena.Battle.SetTile(arena.Alien, new BattlePosition(13, 10, 0));
+        Assert.False(sight.IsTileInLos(plain, tile, false));
+        // A unit on the tile itself is the one the line hits.
+        arena.Battle.SetTile(arena.Alien, new BattlePosition(15, 10, 0));
+        Assert.True(sight.IsTileInLos(plain, tile, true));
+        Assert.True(sight.IsTileInLos(plain, tile, false));
+    }
 }
