@@ -409,52 +409,53 @@ public sealed class BattleFirstTurnTests
     }
 
     [Fact]
-    public void AUnitPastTheOutThresholdIsACasualtyTheBattleDoesNotProcessYet()
+    public void TheBriefingsConfirmationTakesOutTheUnitsPastTheOutThreshold()
     {
-        // checkForCasualties takes out a unit that is not dead with no health, or not unconscious with the stun at its health,
-        // whatever its spawn unit; an unconscious unit with no health left is still one.
-        foreach (var make in new Action<BattleUnit>[]
+        // The battlescape's constructor runs checkForCasualties before the briefing's spawn (a hidden explosion): a unit with no health is dead, one whose
+        // stun reaches its health is unconscious, and one with a spawn unit turns into it, whatever its status was.
+        foreach (var (make, status) in new (Action<BattleUnit>, BattleUnitStatus)[]
         {
-            static unit => unit.Health = 0,
-            static unit => unit.StunLevel = unit.Health,
-            static unit => { unit.Status = BattleUnitStatus.Unconscious; unit.Health = 0; },
-            static unit => { unit.SpawnUnit = "ALIEN"; unit.Health = 0; },
+            (static unit => unit.Health = 0, BattleUnitStatus.Dead),
+            (static unit => unit.StunLevel = unit.Health, BattleUnitStatus.Unconscious),
+            (static unit => { unit.Status = BattleUnitStatus.Unconscious; unit.Health = 0; }, BattleUnitStatus.Dead),
         })
         {
             var (campaign, battle) = Begun();
-            Assert.False(battle.HasUncheckedCasualty());
-            make(battle.Units.First(static unit => unit.OriginalFaction == BattleFaction.Hostile));
-            Assert.True(battle.HasUncheckedCasualty());
-            Assert.Equal("battle.casualties-unsupported", Refusal(campaign, new ConfirmBriefing()));
+            var alien = battle.Units.First(static unit => unit.OriginalFaction == BattleFaction.Hostile);
+            make(alien);
+            var others = battle.Units.Count(unit => unit != alien && unit.OriginalFaction == BattleFaction.Hostile && !unit.IsOut);
+            var result = campaign.Execute(new ConfirmBriefing()).Events.Single();
+            // A battle whose only alien fell has none left to fight.
+            if (others == 0) Assert.Equal("battle.no-live-aliens", Assert.IsType<CampaignActionBlocked>(result).Code);
+            else Assert.IsType<BriefingConfirmed>(result);
+            Assert.Equal(status, alien.Status);
+            Assert.Null(alien.Position);
         }
         // A unit that is out already (dead, or unconscious with the stun over its health) and a removed unit are not casualties.
         var (second, other) = Begun();
         var victim = other.Units.First(static unit => unit.OriginalFaction == BattleFaction.Hostile);
-        victim.Health = 0;
-        victim.Status = BattleUnitStatus.Dead;
-        Assert.False(other.HasUncheckedCasualty());
-        victim.Status = BattleUnitStatus.IgnoreMe;
-        Assert.False(other.HasUncheckedCasualty());
         victim.Health = 10;
         victim.StunLevel = 12;
         victim.Status = BattleUnitStatus.Unconscious;
-        Assert.False(other.HasUncheckedCasualty());
-        Assert.IsType<BriefingConfirmed>(Assert.Single(second.Execute(new ConfirmBriefing()).Events));
+        Assert.Empty(other.OpenBattlescape(second.Content.RuntimeRules));
+        victim.Status = BattleUnitStatus.IgnoreMe;
+        Assert.Empty(other.OpenBattlescape(second.Content.RuntimeRules));
     }
 
     [Fact]
-    public void ARunningBattleOpenedWithACasualtyRefusesItsCommandsByName()
+    public void ARunningBattleOpenedWithACasualtyTakesItOutWhenItIsLoaded()
     {
-        // The battlescape's constructor runs checkForCasualties for a loaded battle too; branch 6 ports it, so until then the
-        // battle's own commands refuse by name and nothing changes.
+        // The battlescape's constructor runs checkForCasualties for a loaded battle too.
         var campaign = ToInventory();
         Event<BattleFirstTurnStarted>(campaign, new StartFirstTurn());
         var battle = Battle(campaign);
         Assert.Null(campaign.Execute(new SelectNextUnit(battle.SelectedUnitId!.Value, false)).Events.OfType<CampaignActionBlocked>().FirstOrDefault());
-        battle.Units.First(static unit => unit.OriginalFaction == BattleFaction.Hostile).Health = 0;
-        var before = campaign.Random.State;
-        Assert.Equal("battle.casualties-unsupported", Refusal(campaign, new SelectNextUnit(battle.SelectedUnitId!.Value, false)));
-        Assert.Equal(before, campaign.Random.State);
+        var alien = battle.Units.First(static unit => unit.OriginalFaction == BattleFaction.Hostile);
+        alien.Health = 0;
+        var restored = CampaignState.Restore(campaign.Capture(), campaign.Content, new SplitMix64RandomSource(3), TerrainFiles());
+        var loaded = Battle(restored).UnitById(alien.Id)!;
+        Assert.Equal(BattleUnitStatus.Dead, loaded.Status);
+        Assert.Null(restored.Execute(new SelectNextUnit(Battle(restored).SelectedUnitId!.Value, false)).Events.OfType<CampaignActionBlocked>().FirstOrDefault());
     }
 
     [Fact]
@@ -806,21 +807,33 @@ public sealed class BattleFirstTurnTests
     }
 
     [Fact]
-    public void AnUnconsciousUnitThatWouldWakeOrAnInfectedUnitRefusesTheFirstTurn()
+    public void AnUnconsciousUnitThatWouldWakeOrAnInfectedUnitIsDealtWithByTheFirstTurn()
     {
+        // newTurnUpdateScripts: reviveUnconsciousUnits(false) and convertInfected.
         var campaign = ToInventory();
         var battle = Battle(campaign);
         var alien = battle.Units.First(static unit => unit.OriginalFaction == BattleFaction.Hostile);
-        alien.Respawn = true;
-        Assert.Equal("battle.turn-one-revive-unsupported", Refusal(campaign, new StartFirstTurn()));
-        alien.Respawn = false;
         alien.Status = BattleUnitStatus.Unconscious;
         alien.Health = 10;
         alien.StunLevel = 3;
-        Assert.Equal("battle.turn-one-revive-unsupported", Refusal(campaign, new StartFirstTurn()));
-        // Still stunned out: it stays unconscious and the turn starts.
-        alien.StunLevel = 10;
+        var position = alien.Position;
+        alien.Position = null;
+        alien.SavedPosition = position!.Value;
+        battle.Map.SetUnitAt(battle.Map.TileIndex(position.Value), null);
         Event<BattleFirstTurnStarted>(campaign, new StartFirstTurn());
+        Assert.Equal((BattleUnitStatus.Standing, position, true), (alien.Status, alien.Position, alien.TimeUnits > 0));
+
+        // Still stunned out: it stays unconscious and the turn starts.
+        campaign = ToInventory();
+        battle = Battle(campaign);
+        alien = battle.Units.First(static unit => unit.OriginalFaction == BattleFaction.Hostile);
+        alien.Status = BattleUnitStatus.Unconscious;
+        alien.Health = 10;
+        alien.StunLevel = 10;
+        battle.Map.SetUnitAt(battle.Map.TileIndex(alien.Position!.Value), null);
+        alien.Position = null;
+        Event<BattleFirstTurnStarted>(campaign, new StartFirstTurn());
+        Assert.Equal(BattleUnitStatus.Unconscious, alien.Status);
     }
 
     [Fact]
@@ -911,15 +924,16 @@ public sealed class BattleFirstTurnTests
     }
 
     [Fact]
-    public void AUnitPastTheOutThresholdButNotOutRefusesTheConfirmation()
+    public void AUnitPastTheOutThresholdButNotOutIsTakenOutByTheConfirmation()
     {
         var (campaign, battle) = Begun();
         var alien = battle.Units.First(static unit => unit.OriginalFaction == BattleFaction.Hostile);
+        var spare = battle.Units.Count(unit => unit != alien && unit.OriginalFaction == BattleFaction.Hostile && !unit.IsOut);
         alien.Health = 0;
-        Assert.Equal("battle.casualties-unsupported", Refusal(campaign, new ConfirmBriefing()));
-        Assert.Equal(BattlePhase.Briefing, battle.Phase);
-        alien.Status = BattleUnitStatus.Dead;
-        Event<BriefingConfirmed>(campaign, new ConfirmBriefing());
+        var result = campaign.Execute(new ConfirmBriefing()).Events.Single();
+        Assert.Equal(BattleUnitStatus.Dead, alien.Status);
+        if (spare == 0) Assert.Equal("battle.no-live-aliens", Assert.IsType<CampaignActionBlocked>(result).Code);
+        else Assert.IsType<BriefingConfirmed>(result);
     }
 
     [Fact]

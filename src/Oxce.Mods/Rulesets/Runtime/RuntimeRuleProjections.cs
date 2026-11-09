@@ -441,6 +441,8 @@ public sealed record RuntimeSoldierRule(
     RuleHandleList<RuntimeScriptFamily> Scripts)
 {
     public RuntimePurchaseRequirements Purchase { get; init; } = new(0, "", "", [], []);
+    /// <summary>RuleSoldier::getRankStrings (<c>rankStrings</c>), which name a soldier's rank.</summary>
+    public IReadOnlyList<string> RankStrings { get; init; } = [];
     public IReadOnlyDictionary<string, short> MinimumStats { get; init; } = new ReadOnlyDictionary<string, short>(new Dictionary<string, short>());
     public IReadOnlyDictionary<string, short> MaximumStats { get; init; } = new ReadOnlyDictionary<string, short>(new Dictionary<string, short>());
     public int FemaleFrequency { get; init; } = 50;

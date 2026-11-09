@@ -461,7 +461,7 @@ public sealed class BattleWalkTests
     }
 
     [Fact]
-    public void AFallOntoAUnitThatCanMoveAsideWorksAndOneThatCannotIsRefusedBeforeAnyChange()
+    public void AFallOntoAUnitThatCanMoveAsideWorksAndOneThatCannotKnocksItOut()
     {
         var arena = Make();
         var soldier = arena.Soldier;
@@ -480,7 +480,7 @@ public sealed class BattleWalkTests
         Assert.NotEqual(At(11, 10, 0), arena.Alien.Position);
         Assert.Empty(arena.Battle.FallingUnits);
 
-        // Boxed in by tiles without a floor, the unit below cannot move out of the way: the walk is refused.
+        // Boxed in by tiles without a floor, the unit below cannot move out of the way: the fall knocks it out.
         var boxed = Make();
         boxed.Put(10, 10, 1, BattleTilePart.Floor, Floor);
         boxed.Battle.SetTile(boxed.Soldier, At(10, 10, 1));
@@ -492,7 +492,9 @@ public sealed class BattleWalkTests
         boxed.Battle.SetSpotted(boxed.Alien, BattleFaction.Player, false);
         // (The trial copy sees what the soldier would see, so the walk is run on the battle itself here.)
         var late = boxed.Battle.Walk(boxed.Rules, boxed.Soldier.Id, At(12, 10, 0), BattleMoveType.Normal, false, []);
-        Assert.Equal("battle.fall-knockout-unsupported", late?.Code);
+        Assert.Null(late);
+        Assert.Equal(BattleUnitStatus.Unconscious, boxed.Alien.Status);
+        Assert.Equal(At(12, 10, 0), boxed.Soldier.Position);
     }
 
     // ---- what is refused by name ----

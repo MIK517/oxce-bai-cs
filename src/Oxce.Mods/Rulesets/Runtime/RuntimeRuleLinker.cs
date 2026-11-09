@@ -359,6 +359,7 @@ public static class RuntimeRuleLinker
                 NamePools = options.SoldierNamePools.GetValueOrDefault(rule.Id) ?? [],
                 SpawnedTemplate = RuntimeSoldierTemplateLoader.Read(rule.Value.SpawnedSoldierTemplate),
                 RankCount = rule.Value.RankStrings.Count,
+                RankStrings = rule.Value.RankStrings,
                 Salaries = Array.AsReadOnly(new[] { rule.Value.Integers["costSalary"], rule.Value.Integers["costSalarySquaddie"],
                     rule.Value.Integers["costSalarySergeant"], rule.Value.Integers["costSalaryCaptain"],
                     rule.Value.Integers["costSalaryColonel"], rule.Value.Integers["costSalaryCommander"] }),

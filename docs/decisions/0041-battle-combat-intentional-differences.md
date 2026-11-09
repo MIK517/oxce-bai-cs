@@ -28,3 +28,22 @@ mod with a negative health recovery records a different murderer for a harmless 
 
 **A unit it cannot turn into (S3).** An infecting hit looks the unit it would spawn up with `Mod::getUnit`, whose result `damage` dereferences, and refuses (logs) one with a bigger armor than the
 victim's. The port converts nothing for both a missing unit and a bigger armor.
+
+**A corpse the armor does not list (S4).** `UnitDieBState::convertUnitToCorpse` reads `getCorpseBattlescape()[i]` for each tile part of the body, which is
+undefined when the armor lists fewer corpses than its size squared (and a null item is dereferenced when one entry names no item). The port leaves no corpse for a part
+the armor lacks (the rule loader requires a corpse per tile part, so this guard is defensive).
+
+**A spawn unit the mod lacks or that does not fit (S4).** `convertUnit` creates the unit from `unit->getSpawnUnit()` without a check, and sets the new unit's tiles
+whatever stands there. The port treats a unit whose spawn unit names no unit of the mod as having none (it dies and leaves a corpse), and spawns nothing when the new unit's
+footprint would cover a tile off the map or a tile another unit stands on (the old unit is dead and its things lie on the ground).
+
+**The memorial's cause and the dead soldier's armor (S4).** `SavedGame::killSoldier(false, ...)` keeps the soldier's geoscape armor during the battle, and the death's cause is
+the murderer's statistics with the victim's side and body part. `DeadSoldierSnapshot.Cause` carries it and the save adapter writes `death.cause` for a death in battle; a loaded death keeps its node.
+The `KIA` flag of the victim's statistics is not saved by the reference and not kept here.
+
+**A unit that is out stands on no tile (S4).** The reference keeps a dead or unconscious unit's `_pos` but clears its tile; the port keeps the position in `SavedPosition`
+(the save writes it) and `Position` is the tile link, null once the unit is out, so a unit that is out and lies on the map has no tile. Its body items (and the unit it carries) name it.
+
+**A stun before the game starts (S4).** The reference converts a unit before the game only through the state constructor's instant path (explosions, units already unconscious); a stunned standing unit's state waits until the battlescape runs, after the pre-battle inventory and the first turn's preparation. The port runs the state at the briefing's confirmation, so a unit stunned out at that point is unconscious before the inventory opens.
+
+**Tile links and the danger zone (S4).** A dropped primed grenade's danger zone (`setDangerZone`) is AI state that branch 6 ports; `ItemDrop` omits it.

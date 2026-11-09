@@ -82,16 +82,14 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         {
             if (_battle is null) return null;
             if (command is not (AdvanceCampaignTime or IBattleCommand)) return Blocked(BattleInProgress);
-            // The battlescape's constructor runs checkForCasualties on every battle it opens, a loaded one included; that is turn
-            // processing's (branch 6), so a running battle with a unit the check would take out refuses its commands by name.
             if (_battle is not { Phase: BattlePhase.InProgress } running) return null;
             // Sight runs the armors' visibility scripts, which battle scripts (branch 8) will; until then such a battle's commands are refused.
             if (command is IBattleCommand && running.VisibilityScriptRefusal(campaign.Content) is { } visibility) return Blocked(visibility);
             // The combat hooks and the stat bonuses written as code are branch 8's too.
             if (command is IBattleCommand && running.CombatScriptRefusal(campaign.Content) is { } combat) return Blocked(combat);
-            // The same constructor queues the units that have no floor to fall; the port queues them at the first turn only, so a loaded
-            // battle with one refuses (S7).
-            return running.HasUncheckedCasualty() || running.HasFloorlessWalker() ? Blocked(BattleFlowReasons.CasualtiesUnsupported) : null;
+            // The battlescape's constructor ran checkForCasualties when a loaded battle opened and queued the units that have no floor to fall;
+            // they fall at once, unless a landing needs a later branch's work (a reaction, a proximity explosion): then the battle waits.
+            return running.FallingUnits.Count != 0 && running.FallsRefusal(campaign.Content.RuntimeRules) is { } fall ? Blocked(fall) : null;
         });
         registry.Capture(snapshot => _battle is null ? snapshot : snapshot with { Battle = _battle.Capture() });
         registry.Restore(Restore);
@@ -108,6 +106,8 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         var files = campaign.BattleTerrainFiles ?? throw new InvalidDataException(RestoreNeedsTerrainFiles);
         var ufo = campaign.Handlers.Operation<ICampaignDeploymentHandOver>().UfoInBattlescape;
         _battle = BattleState.Restore(saved, campaign.Content, Loader(files), ufo, BattleRestoreCampaign.From(campaign));
+        _battle.CampaignLink = new BattleLink(campaign);
+        if (_battle.Phase == BattlePhase.InProgress) OpenLoadedBattlescape(_battle);
         // A battle before its first turn is briefed again: the briefing's craft or base is the one the campaign flags in the battlescape.
         // A save keeps the lines the briefing set (not that it ran): lines present mean the briefing already named the mission, so
         // a client that opens the briefing after the load cannot name it twice or draw a second operation name.
@@ -124,6 +124,18 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
                 }
                 if (owner.InBattlescape) _battle.BriefingBaseId = owner.Id;
             }
+    }
+
+    /// <summary>
+    /// The battlescape's constructor for a loaded battle that is under way: <c>checkForCasualties</c> (a unit past the out threshold dies, is stunned or
+    /// converts) and the falls it queues. A fall that needs a later branch's work stays queued, and the battle's commands wait (the gate).
+    /// </summary>
+    private void OpenLoadedBattlescape(BattleState battle)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        battle.Random = campaign.Random;
+        battle.OpenBattlescape(rules);
+        if (battle.FallsRefusal(rules) is null) battle.ResolveFalls(rules);
     }
 
     private BattleTerrainLoader Loader(IBattleTerrainFiles files)
@@ -173,6 +185,7 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         ChangeArmor(owner, battle.SoldierArmors);
         EnterBattlescape(owner, request, handOver);
         handOver.ConsumeDeploymentRequest();
+        battle.CampaignLink = new BattleLink(campaign);
         _battle = battle;
         return new CampaignCommandResult([new BattleStarted(battle.MissionType, battle.DeploymentId)]);
     }
@@ -248,7 +261,8 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
 
     /// <summary>
     /// BriefingState::btnOkClick and NextTurnState's turn-0 work. Everything that can refuse is checked first, so a refusal
-    /// changes nothing: no live aliens (the aliens' crash screen), a wave that could deploy at the start (branch 6), a script or a revive
+    /// changes nothing, except that the battlescape's casualty check (which the reference runs first, and which a second run repeats without
+    /// change) comes before the refusals that read its result (no live aliens, the trial spawn): no live aliens (the aliens' crash screen), a wave that could deploy at the start (branch 6), a script or a revive
     /// the first turn cannot do yet, before and after the spawn, and a fall of the first turn that cannot run (so that the pre-battle
     /// inventory always leads to a first turn). Then primed spawn items spawn, and bug hunt mode is checked.
     /// </summary>
@@ -257,15 +271,18 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         if (_battle is not { Phase: BattlePhase.Briefing } battle) return Blocked(BattleFlowReasons.NotInBriefing);
         var content = campaign.Content;
         var rules = content.RuntimeRules;
-        // The battlescape's constructor runs checkForCasualties before the spawn; it is turn processing's.
-        if (battle.HasUncheckedCasualty()) return Blocked(BattleFlowReasons.CasualtiesUnsupported);
+        // What the port refuses for its scripts and waves is asked first, before the battle changes.
+        if (ReinforcementsRefusal(battle, rules) is { } reinforcements) return Blocked(reinforcements);
+        if (battle.SpawnLacksItemLevels(rules)) return Blocked(BattleFlowReasons.SpawnContentInvalid);
+        if (battle.FirstTurnRefusal(content, BattleRestoreCampaign.From(campaign)) is { } later) return Blocked(later);
+        // The battlescape's constructor runs checkForCasualties before the spawn. It changes nothing a second time, so the refusals
+        // that need its result (no live aliens, the trial spawn) leave the battle as the reference has it.
+        battle.Random = campaign.Random;
+        battle.OpenBattlescape(rules);
         // The reference spawns first and tallies after: aliens that only the primed items bring count. Without any alien now, a
         // battle is refused here when no spawn could add one, and otherwise once a trial spawn on a copy shows none arriving.
         var noAliensYet = battle.Tally().LiveAliens == 0;
         if (noAliensYet && !battle.PrimedSpawnsMayAddAliens(rules)) return Blocked(BattleFlowReasons.NoLiveAliens);
-        if (ReinforcementsRefusal(battle, rules) is { } reinforcements) return Blocked(reinforcements);
-        if (battle.SpawnLacksItemLevels(rules)) return Blocked(BattleFlowReasons.SpawnContentInvalid);
-        if (battle.FirstTurnRefusal(content, BattleRestoreCampaign.From(campaign)) is { } later) return Blocked(later);
         if (TrialSpawnRefusal(battle, content, noAliensYet) is { } spawned) return Blocked(spawned);
         var (units, items) = battle.SpawnFromPrimedItems(content, (int)campaign.Difficulty, campaign.Random);
         battle.CheckBugHuntMode(rules);
@@ -570,4 +587,35 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
 
     private static CampaignCommandResult Blocked(CampaignReason reason) =>
         new([CampaignActionBlocked.From(reason)]);
+
+    /// <summary>What the battle asks of the campaign (<see cref="IBattleCampaignLink"/>): the mission count, the difficulty, the soldiers' names and the memorial.</summary>
+    private sealed class BattleLink(CampaignState campaign) : IBattleCampaignLink
+    {
+        private static readonly string[] DefaultRanks = ["STR_ROOKIE", "STR_SQUADDIE", "STR_SERGEANT", "STR_CAPTAIN", "STR_COLONEL", "STR_COMMANDER"];
+
+        public int MissionCount => campaign.MissionStatistics.Count;
+
+        public int Difficulty => (int)campaign.Difficulty;
+
+        public BattleSoldierDescription? DescribeSoldier(int soldierId)
+        {
+            if (campaign.BattleSoldier(soldierId) is not { } soldier) return null;
+            return new(soldier.Personal.Name, RankString(soldier));
+        }
+
+        /// <summary>Soldier::getRankString: the soldier type's own rank names, or the defaults.</summary>
+        private string RankString(BattleSoldier soldier)
+        {
+            var rules = campaign.Content.RuntimeRules;
+            if (!rules.Soldiers.TryGet(soldier.SoldierType, out var handle)) return DefaultRanks[0];
+            var rule = rules.Soldiers[handle].Value;
+            var names = rule.RankStrings;
+            if (!rule.AllowPromotion && names.Count == 0) return "STR_RANK_NONE";
+            var rank = soldier.Personal.Rank;
+            if ((uint)rank >= (uint)DefaultRanks.Length) return "";
+            return names.Count > rank ? names[rank] : DefaultRanks[rank];
+        }
+
+        public void KillSoldier(int soldierId, BattleUnitKillSnapshot cause) => campaign.KillSoldierInBattle(soldierId, cause);
+    }
 }

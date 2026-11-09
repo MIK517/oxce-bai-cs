@@ -194,7 +194,7 @@ public sealed class BattleGravityTests
     }
 
     [Fact]
-    public void AFallWithNoEscapeForTheUnitBelowIsRefusedBeforeAnythingChanges()
+    public void AFallWithNoEscapeForTheUnitBelowKnocksItOut()
     {
         var arena = Tall(walkingSoldier: true);
         arena.Stand(arena.Soldier, 12, 12, 2);
@@ -203,18 +203,35 @@ public sealed class BattleGravityTests
             arena.Clear(12 + dx, 12 + dy, 0, BattleTilePart.Floor);
         arena.Battle.ApplyGravity(arena.Alien.Position);
         var before = State(arena);
-        Assert.Equal("battle.fall-knockout-unsupported", arena.Battle.FallsRefusal(arena.Rules)!.Code);
-        Assert.Equal(before, State(arena));
-        // Give one side its floor back, and the unit below escapes that way (east is the first direction with a floor).
-        arena.Put(13, 12, 0, BattleTilePart.Floor, Floor);
+        // The knock-out refuses nothing: the trial finds no reason to stop and changes nothing.
         Assert.Null(arena.Battle.FallsRefusal(arena.Rules));
         Assert.Equal(before, State(arena));
+        // Give one side its floor back, and the unit below escapes that way (east is the first direction with a floor).
+        var escape = Tall(walkingSoldier: true);
+        escape.Stand(escape.Soldier, 12, 12, 2);
+        Raise(escape, escape.Alien, 12, 12, 2);
+        foreach (var (dx, dy) in new[] { (0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1) })
+            escape.Clear(12 + dx, 12 + dy, 0, BattleTilePart.Floor);
+        escape.Put(13, 12, 0, BattleTilePart.Floor, Floor);
+        escape.Battle.ApplyGravity(escape.Alien.Position);
+        Assert.Null(escape.Battle.ResolveFalls(escape.Rules));
+        Assert.Equal((At(13, 12, 0), At(12, 12, 0)), (escape.Soldier.Position, escape.Alien.Position));
+        Assert.Equal(BattleUnitStatus.Standing, escape.Soldier.Status);
+
+        // Without one the unit below is stomped: its stun reaches its health, the casualty check follows, and the unit lies unconscious as a body
+        // on the tile it was on while the faller stands there.
+        var soldier = arena.Soldier;
         Assert.Null(arena.Battle.ResolveFalls(arena.Rules));
-        Assert.Equal((At(13, 12, 0), At(12, 12, 0)), (arena.Soldier.Position, arena.Alien.Position));
+        Assert.Equal((BattleUnitStatus.Unconscious, null, soldier.Health, At(12, 12, 0)), (soldier.Status, soldier.Position, soldier.StunLevel, arena.Alien.Position));
+        Assert.Equal(At(12, 12, 0), soldier.SavedPosition);
+        Assert.Equal(arena.Alien.Id, arena.Map.UnitAt(arena.Tile(12, 12, 0)));
+        var body = Assert.Single(arena.Battle.Items, item => item.CorpseUnitId == soldier.Id);
+        Assert.Equal(At(12, 12, 0), body.Tile);
+        Assert.Empty(arena.Battle.FallingUnits);
     }
 
     [Fact]
-    public void TwoUnitsBelowCannotEscapeOntoTheSameTile()
+    public void TwoUnitsBelowCannotEscapeOntoTheSameTileAndOneWithNoEscapeIsKnockedOut()
     {
         // UnitFallBState's escapeTiles: the tile one unit below escapes onto is taken for the next one, which then looks for another.
         var arena = Tall(walkingSoldier: true);
@@ -245,7 +262,7 @@ public sealed class BattleGravityTests
         arena.Battle.ApplyGravity(faller2.Position);
         Assert.Equal(2, arena.Battle.FallingUnits.Count);
         var before = State(arena);
-        Assert.Equal("battle.fall-knockout-unsupported", arena.Battle.FallsRefusal(arena.Rules)!.Code);
+        Assert.Null(arena.Battle.FallsRefusal(arena.Rules));
         Assert.Equal(before, State(arena));
         // The list runs the unit queued last first: the unit at (12, 10) takes (12, 11). Open a second way for the other one (east of it):
         // it takes that instead of the tile already taken.

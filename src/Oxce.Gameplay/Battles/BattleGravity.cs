@@ -6,18 +6,15 @@ namespace Oxce.Gameplay.Battles;
 /// <summary>The reasons gravity and falling refuse before any change (Phase 7 branch 4 S7).</summary>
 internal static class BattleGravityReasons
 {
-    internal static readonly CampaignReason FallKnockOutUnsupported = new("battle.fall-knockout-unsupported",
-        "A falling unit would land on a unit that cannot move out of the way and knock it out; the knock-out and the casualty check that follows arrive with turn processing (Phase 7 branch 6).");
-
     internal static readonly CampaignReason ProximityUnsupported = new("battle.proximity-unsupported",
         "A unit would land next to an item whose fuse reacts to nearby units, or on a death trap tile; proximity explosions arrive with the attack work (Phase 7 branch 5).");
 }
 
 /// <summary>
 /// Gravity and falling (Phase 7 branch 4 S7): <c>TileEngine::applyGravity</c> and the fall routine of <c>UnitFallBState</c>. The animation
-/// is collapsed: each cycle every falling unit that stands still either takes its next step down, or has landed. A fall that would knock
-/// out the unit it lands on (no escape) is refused before any change, as are a landing the reaction fire (branch 5) or a proximity
-/// explosion (branch 5) could follow.
+/// is collapsed: each cycle every falling unit that stands still either takes its next step down, or has landed. A fall onto a unit that finds no
+/// escape knocks it out, and the casualty check that follows takes it out; a landing the reaction fire (branch 5) or a proximity
+/// explosion (branch 5) could follow is refused before any change.
 /// </summary>
 internal sealed partial class BattleState
 {
@@ -87,11 +84,11 @@ internal sealed partial class BattleState
         while (landing.Z > 0 && Map.HasNoFloor(landing)) landing = landing with { Z = landing.Z - 1 };
         foreach (var item in items)
         {
-            if (item.CorpseUnitId is { } corpse && UnitById(corpse) is { } body && body.Position == tile)
+            if (item.CorpseUnitId is { } corpse && UnitById(corpse) is { } body && (body.Position ?? body.SavedPosition) == tile)
             {
-                // setPosition(rt) sets the last position too.
-                body.LastPosition = body.Position;
-                body.Position = landing;
+                // setPosition(rt) sets the last position too. A body off the map (out) keeps its place in the saved position.
+                body.LastPosition = body.Position ?? body.SavedPosition;
+                SetLyingPosition(body, landing);
             }
             if (landing != tile) AddToTile(item, landing);
         }
@@ -101,7 +98,8 @@ internal sealed partial class BattleState
 
     /// <summary>
     /// What stops <see cref="ResolveFalls"/> for the units now falling, and for <paramref name="extra"/> when it is not null and has no
-    /// floor (the occupant <see cref="ApplyGravity"/> would add), before anything changes: null when the falls can run.
+    /// floor (the occupant <see cref="ApplyGravity"/> would add), before anything changes: null when the falls can run. The knock-outs of a fall
+    /// are not tried (they refuse nothing).
     /// </summary>
     internal CampaignReason? FallsRefusal(RuntimeRuleCatalog rules, BattleUnit? extra = null)
     {
@@ -170,7 +168,10 @@ internal sealed partial class BattleState
         var unitsToMove = new List<BattleUnit>();
         BattlePathfinder? pathfinder = null;
         var limit = 4 * (Map.Height + 2) * (_units.Count + 1);
-        for (var round = 0; _fallingUnits.Count != 0; round++)
+        // The deaths the knock-outs push run when the fall state is done (statePushNext puts them behind it).
+        var deaths = new List<PendingDeath>();
+        CampaignReason? stop = null;
+        for (var round = 0; _fallingUnits.Count != 0 && stop is null; round++)
         {
             if (round > limit) throw new InvalidOperationException("The falling units do not come to rest.");
             var steps = new List<(BattleUnit Unit, int Direction, BattlePosition Destination)>();
@@ -199,28 +200,45 @@ internal sealed partial class BattleState
                 }
                 else if (unit.Status == BattleUnitStatus.Standing)
                 {
-                    if (Land(rules, unit, dryRun) is { } refusal) return refusal;
+                    if (Land(rules, unit, dryRun) is { } refusal)
+                    {
+                        stop = refusal;
+                        break;
+                    }
                     _fallingUnits.Remove(unit);
                 }
             }
 
+            if (stop is not null) break;
+
             // Find somewhere to move the units in danger of being squashed.
             var escapeTiles = new List<int>();
+            var hadUnitsToMove = unitsToMove.Count != 0;
             while (unitsToMove.Count != 0)
             {
                 var below = unitsToMove[0];
                 unitsToMove.RemoveAt(0);
                 pathfinder ??= new BattlePathfinder(this, rules);
-                if (FindEscape(pathfinder, below, tilesToFallInto, escapeTiles) is not { } escape) return BattleGravityReasons.FallKnockOutUnsupported;
+                if (FindEscape(pathfinder, below, tilesToFallInto, escapeTiles) is not { } escape)
+                {
+                    // STOMP THAT GOOMBA!
+                    if (!dryRun) KnockOut(rules, below);
+                    continue;
+                }
                 AddFallingUnit(below);
                 steps.Add((below, escape.Direction, escape.Destination));
             }
+            // statePushNext puts every push right behind the running fall state, so a later round's deaths run before an earlier round's.
+            if (hadUnitsToMove && !dryRun) deaths.InsertRange(0, QueueCasualties(rules, null, default, statesQueued: true));
 
             // The steps complete: the units that moved aside are ahead of those that fall, as the list orders them.
             foreach (var (unit, direction, destination) in steps.OrderBy(step => _fallingUnits.IndexOf(step.Unit)))
                 WalkStep(rules, unit, direction, destination);
         }
-        return null;
+        if (dryRun) return stop;
+        RunDeaths(rules, deaths);
+        // The falls the deaths start (a converted unit, a corpse over a hole) are a fall state of their own.
+        return stop ?? (_fallingUnits.Count != 0 ? RunFalls(rules, dryRun: false) : null);
     }
 
     private (int Direction, BattlePosition Destination)? FindEscape(BattlePathfinder pathfinder, BattleUnit unitBelow, List<int> tilesToFallInto,

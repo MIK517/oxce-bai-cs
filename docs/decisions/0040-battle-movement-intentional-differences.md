@@ -50,7 +50,7 @@ sight update against another unit's mid-step differs. The reference keeps `tiles
 cycles, and the port does too; the tiles it reserves for a big unit's escape (`escapeTiles`) are taken from the *last* section's tile
 (a tile offset by one from the unit's real footprint), as the reference does. The falling list is runtime state a save does not keep, so
 `StartFirstTurn` queues the units that have no floor again (the reference's `BattlescapeGame` constructor queues them through `checkForCasualties`, and the spawns queue theirs at the briefing). A fall that would knock out a unit
-below (no escape) is refused before it starts (`battle.fall-knockout-unsupported`, branch 6's casualty work), as are a landing that a reaction
+below (no escape) was refused before it started (`battle.fall-knockout-unsupported`; branch 5 S4 retired it and runs the knock-out), as are a landing that a reaction
 fire or a proximity explosion could follow (a floor-burning unit burns the floor it lands on since S9).
 
 **Walking (S8).** `UnitWalkBState::think` calls `unitOpensDoor` and, when a UFO door starts to open (result 1), returns to wait for the animation; the port opens

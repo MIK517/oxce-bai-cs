@@ -15,7 +15,7 @@ Phase 7 branch 5 (`claude/battle-combat`), from `main` after PR #81 (branch 4 me
 | S1 combat groundwork: item, armor and damage rules, stat bonuses, combat constants, script refusals | Implemented (2026-11-08), audit pending |
 | S2 line of fire and accuracy | Implemented (2026-11-09), audit pending |
 | S3 damage to units | Implemented (2026-11-09), audit pending |
-| S4 casualties | Not started |
+| S4 casualties | Implemented (2026-11-09), audit pending |
 | S5 explosions | Not started |
 | S6 melee and the attack command | Not started |
 | S7 shooting | Not started |
@@ -86,9 +86,9 @@ Reference studied:
 | `battle.hit-unit-unsupported` (retired by S3), `battle.terrain-explosion-unsupported`, `battle.module-map-unsupported` | branch 4 S9 | S3 (done), S5, S5 (ADR 0041) |
 | `battle.proximity-unsupported` (and the broad death-trap test, branch 4 audit L3) | branch 4 S7 | S8 |
 | `battle.reaction-fire-unsupported` (`HasPossibleReactor`, the named leak) and the acceptance's `WithOpponentsSpent` | branch 4 (S5, S7, S8, S11) | S9 |
-| `battle.casualties-unsupported` (`HasUncheckedCasualty`, the floorless-walker gate) | branch 3 S3, branch 4 S7 (owner was branch 6) | S4 |
-| `battle.fall-knockout-unsupported` | branch 4 S7 (owner was branch 6) | S4 |
-| `battle.turn-one-revive-unsupported` | branch 3 S3 (owner was branch 6) | S4 |
+| `battle.casualties-unsupported` (`HasUncheckedCasualty`, the floorless-walker gate) | branch 3 S3, branch 4 S7 (owner was branch 6) | S4 (done) |
+| `battle.fall-knockout-unsupported` | branch 4 S7 (owner was branch 6) | S4 (done) |
+| `battle.turn-one-revive-unsupported` | branch 3 S3 (owner was branch 6) | S4 (done) |
 | `battle.flare-power-bonus-unsupported` (branch 8) | branch 4 S3 | S1 narrows it into `battle.stat-bonus-script-unsupported` (still branch 8) |
 | `BattleTileDamageType.RandomDamage`'s "Only the fire random type is ported (Phase 7 branch 5)" (`BattleFire.cs`) | branch 4 S9 | S1 |
 | `battle.inventory-ammo-unsupported`, `battle.inventory-prime-unsupported`; `battle.inventory-throw-unsupported` removed | branch 3 S4 | S8 |
@@ -105,7 +105,7 @@ Kept by their owners: `battle.hostile-reserve-unsupported`, `battle.walk-unit-bu
 and `-rename-unsupported` name no owner ("not ported yet", `BattleInventoryContracts.cs`); they are not this branch's.
 
 Interim refusals this branch adds between its own slices (plan, "Interim refusals between slices"): from S3 until S4
-a hit that takes a unit out or infects it keeps `battle.casualties-unsupported`; from S3 until S5 a self-destruct
+a hit that takes a unit out or infects it kept `battle.casualties-unsupported` (S4 retired it); from S3 until S5 a self-destruct
 keeps `battle.terrain-explosion-unsupported`; from S6, S7 and S8 until S9 the attack's reaction check keeps
 `battle.reaction-fire-unsupported`.
 
@@ -279,20 +279,59 @@ experience adders, the murderer fields), `TileEngine.cpp` (`hitUnit`, `hit`, `aw
   draws, psi and mana); `Hit` on a unit in the voxel, a big unit, a unit on the tile below, a body on the floor (alive, dead, dry run), a lethal hit and a flame. `BattleFireTests` follow the
   new behaviour for a live body, a unit in the voxel and the walk, fall and burner cases.
 
+## S4 — Casualties (2026-11-09)
+
+Reference: `BattlescapeGame.cpp` (`checkForCasualties`, `convertUnit`, `convertInfected`, `dropItem`), `UnitDieBState.cpp` (constructor, `init`, `think`,
+`convertUnitToCorpse`), `SavedBattleGame.cpp` (`convertUnit`, `reviveUnconsciousUnits`, `removeUnconsciousBodyItem`, `placeUnitNearPosition`, `setUnitPosition`,
+`clearUnitSelection`, `startFirstTurn`, `newTurnUpdateScripts`, `getFactionMoraleModifier`, `getUnitMoraleModifier`, `getMoraleLossModifierWhenKilled`, `createItemForTile`),
+`BattleUnit.cpp` (`knockOut`, `instaKill`, `instaFalling`, `startFalling`, `keepFalling`, `setTile`), `BattleItem::convertToCorpse`, `BattleUnitStatistics.h`
+(`BattleUnitKills`), `TileEngine.cpp` (`itemDrop`, `itemDropInventory`, `applyGravity`), `SavedGame::killSoldier`, `Soldier::die`, `UnitFallBState.cpp` (the stomp).
+
+- **`CheckForCasualties`** (`BattleCasualties.cs`, `BattlescapeGame::checkForCasualties`; `QueueCasualties` is its loop). For each unit that is not ignored: a kill statistic (the victim's name or type, rank and race
+  as `BattleUnitKills::setUnitStats` names them, the mission count, the turn `turn * 3 + side`, the victim's original faction, fatal side and body part, the weapon and ammunition: the attack's, `"__GUNBUTT"` for a firearm's butt,
+  `STR_WEAPON_UNKNOWN`, or the victim's recorded murderer weapon when the attack names no attacker and the explosion is no terrain explosion); the murderer (the attacker, or the one who killed an exploding attacker, or
+  the last unit to hit); the credit (a mind controlled unit's goes to its controller with `slaveKills`; not for a cosmetic victim; never twice for the same victim and status); then for a unit with no health the murderer's kill count and
+  `killedBy`, the morale (+20 for killing the other side, -2000 / modifier for friendly fire, -1000 for X-COM killing a civilian or +10 otherwise, the losing squad's loss by the unit modifier, the killed unit's `moraleLossWhenKilled` and bravery,
+  the winners' +10, and the murderer exposed to the aliens), the state (below) and the soldier's memorial; for a stunned unit the `stunningImprovesMorale` bonus (once: `wasUnconcious`) and a state; for any other a unit without floor
+  queues to fall. The states run in the queue's order: into an empty queue the first runs first and the rest go behind it last first, behind a running state (`statesQueued`: an explosion, a fall) last first.
+- **`UnitDieBState`** collapsed to its outcome (`BeginDeath` and `RunDeath`). The constructor: a unit hit by a type that is not direct, or already unconscious, faces direction 3 and is dead or unconscious at once (`InstaFalling`);
+  before the game starts it becomes its corpse there and then and nothing else runs; its sight is cleared and its AI target node freed (`freePatrolTarget`); a dying hostile marks the route nodes within a squared distance under 4 of the unit's position (tile or not) `TYPE_DANGEROUS` (saved). The think: a unit hit directly turns to direction 3, falls to dead (no health)
+  or unconscious; an unconscious unit that cannot be captured is `instaKill`ed; the spotting turns, tiles last spotted and sniper turns reset; a unit with a spawn unit that did not respawn is converted (nothing if it respawned already; overkill
+  converts nothing), else it becomes its corpse; the selected and undo units are cleared; light and sight update at the place; an X-COM unit's notice (`NotificationShown` 2 for a death by wounds with no spawn unit, 1 for unconscious).
+  `init` skips a unit that is on no tile (any side but X-COM's, and an X-COM unit with its notice at 2). The sounds, the infoboxes and `autoEndBattle` (off) are not ported.
+- **Corpses.** `ConvertToCorpse`: the body item of a unit that lies on the map is removed, the inventory goes to the ground (`ItemDropInventory`: fixed items stay, a fixed item is deleted with `deleteFixedItems` after its ammunition is
+  dropped; special weapons go with it), the unit leaves its tile (`SavedPosition` keeps where, `Position` is the tile link), one corpse item per tile part is dropped through `ItemDrop` (`itemDrop`: whoever stands there learns the tile, the item lies on the
+  ground, gravity, light and sight of the tile and the item's glow range), or with overkill only gravity runs; a carried unit's body item takes the corpse of the armor, or leaves with overkill. `BattleItem.ItemType` and `BattleNode.Type` became settable.
+- **Soldiers.** `IBattleCampaignLink` (set by `CampaignBattles` on the live battle only, not on trial copies) gives the battle the mission count, the difficulty, a soldier's name and rank string and the memorial. `SavedGame::killSoldier(false, ...)`:
+  `CampaignState.KillSoldierInBattle` moves the soldier to the memorial with `DeadSoldierSnapshot.Cause` and the armor it fought in; the save adapter writes and reads `death.cause`. The cause is the murderer's description with the victim's side, body part and id.
+  `RuntimeSoldierRule.RankStrings` and `RuntimeBattleUnitRule.Cosmetic` are new projections.
+- **Conversion.** `ConvertUnit` (`SavedBattleGame::convertUnit`): the unit respawns once, its body item goes, it is `InstaKill`ed, its inventory (fixed items too) goes to the ground, and a unit of its spawn type and `spawnUnitFaction` takes the place, facing as it did, no time units,
+  visible as the old one was, with its equipment (`InitUnit`), field of view recalculated, gravity, `DontReselect`; nothing for a carried unit or a place another unit holds. `KnockOut` (a unit with a spawn unit converts first, the new unit's spawn unit is cleared and it is stunned; else the stun
+  reaches the health), `ConvertInfected` (live units with the respawn flag convert). `ReviveUnconsciousUnits` (small units, over the out threshold no more: placed where they lie, or by `PlaceUnitNearPosition` around the place, a large friend on the tile pushes the ring out to 2, a flier may take the tile above;
+  they stand, lose their time units or recover as a new turn does, cut by `tuRecoveryWakeUpNewTurn`; the body item goes).
+- **Where it runs.** `OpenBattlescape` (`BattlescapeGame` constructor, hidden explosion): at the briefing's confirmation before anything else, and when a loaded battle under way is restored (then the falls it queues run if the dry run finds nothing to refuse;
+  else the units stay queued and the commands wait with the dry run's refusal). `StartFirstTurn` revives and converts after the turn becomes 1 (`newTurnUpdateScripts`). A fall that finds no escape for the unit below knocks it out (`KnockOut`) and the casualty check follows the round
+  (`UnitFallBState`: after the units to move are dealt with, non-dry runs only), its states run when the falls are done. No walk or burn checks casualties by itself (the reference does not): a unit the burn takes to 0 health stays standing until the next check.
+- **Retired.** `battle.casualties-unsupported` (`HasUncheckedCasualty`, the floorless-walker gate, the hit refusal, the dry run's `HitWouldReachUnit` which now refuses with `battle.terrain-explosion-unsupported` only for a reached unit that blows up with its death),
+  `battle.fall-knockout-unsupported` and `battle.turn-one-revive-unsupported`. `FirstTurnRefusal` now also counts a waking unit's recovery scripts. Interim refusals left: `battle.terrain-explosion-unsupported` (S5), `battle.reaction-fire-unsupported` and `battle.proximity-unsupported`.
+- **Decisions** (ADR 0041): a corpse the armor does not list, a spawn unit the mod lacks or that does not fit, the memorial's cause and armor, and the position of a unit that is out.
+- **Left for the later slices.** `lastSelectedUnit` (the port keeps no such state). `battleNotifyDeath` and the sounds and infoboxes. `itemDrop`'s danger zone for a primed grenade (AI state, branch 6);
+  a flare's glow range for an unlit flare (S8). `appendToHitLog`. The explosion of a unit that blows up with its death (S5). The reaction fire after a death (S9). Casualty checks after walks that burn or after the end of a turn (branch 6). The kill statistics' `KIA` is not saved (the debriefing, branch 7, reads it).
+- **Tests.** `BattleCasualtyTests` (33): the kill record, the murderer and the morale for an enemy, a friend and a civilian, a leader's modifier, a stun with and without `stunningImprovesMorale`, a murderer from the last hit, the weapon names and a mind controlled
+  unit's kill, a cosmetic victim, the fall to direction 3 with the inventory, notices and selection, a death by explosion, a unit that cannot be captured, a 2x2 corpse and overkill, a corpse falling through a hole, a carried unit dying, the dangerous nodes (and saved), the memorial and its
+  reload through the save adapter, an infected unit's conversion (once, faction, a missing unit), `ConvertInfected` and `KnockOut`, revival (in place, around a large friend, with recovery, still stunned, no floor), the battlescape's constructor before the game and for a loaded battle, the queue order and the falls a check queues.
+  The knock-out of a fall is tested in `BattleGravityTests` and `BattleWalkTests`; `BattleFirstTurnTests` cover the briefing, the first turn's revival and the loaded battle; `BattleDamageTests` and `BattleFireTests` follow the retired refusals.
+
 ## Next
 
-S4, casualties (plan row S4). Notes for the worker:
+S5, explosions (plan row S5). Notes for the worker:
 
-- **What S3 left to build on.** `BattleState.DamageUnit`, `HitUnit` (with `BattleAttack`), `AwardExperience`, `Hit` and `HitTerrain` (`BattleDamage.cs`, `BattleFire.cs`). A hit that leaves a unit past the out
-  threshold returns `battle.casualties-unsupported` (and a self-destruct `battle.terrain-explosion-unsupported`) after the unit has taken the hit; S4 retires the first (check every `CasualtiesUnsupported` use:
-  `HasUncheckedCasualty` in `CampaignBattles`, `BattleFirstTurn.cs`, and the hit refusal in `BattleDamage.cs`), including the respawn flag an infection sets (`Respawn`, `SpawnUnit`,
-  `SpawnUnitFaction`). `BattleUnit.MurdererId`, `MurdererWeapon`, `MurdererWeaponAmmo`, `FatalShotSide` and `FatalShotBodyPart` are set by every hit; `IsOutThresholdExceeded` and `OverKillDamage` are static helpers.
-- **Armor recovery.** `hasNegativeHealthRegen` is counted false (the recovery bonuses are branch 6's); `HitUnit`'s murderer rule notes it.
-- **Reason strings.** `BattleFirstTurn.CasualtiesUnsupported` now says branch 5; `BattleGravity.cs` (the fall knock-out) and `TurnOneReviveUnsupported` still say branch 6 until S4 retires them (and removes them from the
-  refusal inventory).
-- **Existing tests that rely on the interim refusal.** `BattleFireTests` (the walk, fall and burner cases with an alien body of one health) expect `battle.casualties-unsupported`; S4 turns them into kills.
-- **Tests.** `BattleDamageTests.Duel` builds the flat arena with the alien at 100 health; `Plain` is a deterministic armor piercing type; `ScriptedDraws` orders the rolls (the percent rolls at the end of every damage
-  are the zombie chance then the self-destruct chance; experience percents follow). Item keys go through `Duel(gun:, clip:, grenade:, global:, more:)`, armor keys through `alienExtra`/`soldierExtra`, unit keys through
-  `unitExtra`.
+- **What S4 left to build on.** `BattleState.CheckForCasualties(rules, damageType, attack, hiddenExplosion, terrainExplosion, statesQueued)` (call it with `terrainExplosion: true` after a chain of terrain explosions, with the explosion's damage type and attack after `ExplosionBState`,
+  `statesQueued: true` behind a running state), `QueueCasualties` and `RunDeaths` for a caller that must run the deaths later, `ItemDrop` and `ItemDropInventory`, `ConvertUnit`, `ConvertInfected`, `ReviveUnconsciousUnits(rules, noTU: true)` (`ExplosionBState` calls it, then `convertInfected`, after the casualty check; the melee and the shot call `convertInfected` only),
+  `KnockOut`, `OpenBattlescape`. `BattleDamageResult.Refusal` is only the self-destruct now: `battle.terrain-explosion-unsupported` (S5 retires it with the explosion of a dying unit, and the dry run in `HitWouldReachUnit`).
+- **A unit that is out has no tile.** `Position` null, `SavedPosition` where it lies; use `RestingPosition(unit)` and `IsCarried(unit)`. `SetLyingPosition` moves a body.
+- **Existing refusals to retire in S5.** `BattleGenerator.CrashedPowerSources` and `PrimedJunk`: the power sources' hidden explosion is `CheckForCasualties(..., hiddenExplosion: true)` while `IsBeforeGame`, where a dying unit becomes its corpse in the constructor.
+- **`ItemDrop`** omits the danger zone a primed grenade dropped where a unit stands sets (AI state, branch 6; ADR 0041).
+- **Tests.** `BattleCasualtyTests.Extra`, `Lie` and `Murder` build extra units, bodies and murderers on the `Duel` arena; `BattleDamageTests.Duel` is internal now. A unit the test makes out by hand needs `Position = null` and its `SavedPosition`.
 - **Branch 4's gotchas and the trial copy** (the post-edit hook reformats C# files, so read a file again before a second edit; add string literals with a backslash-n through the Edit tool;
   write test files with LF; run tests with `dotnet test --project <proj> --filter-class <full name>`; a test that adds units by hand needs a `SoldierId` or a unit rule; record equality compares lists by reference) still apply.

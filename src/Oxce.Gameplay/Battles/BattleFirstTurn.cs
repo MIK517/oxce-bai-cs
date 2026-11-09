@@ -24,9 +24,6 @@ internal static class BattleFlowReasons
     internal static readonly CampaignReason NoLiveAliens = new("battle.no-live-aliens",
         "The battle has no live aliens once its primed items have spawned; the reference then ends in the aliens' crash screen, and the battle outcome arrives with Phase 7 branch 7.");
 
-    internal static readonly CampaignReason CasualtiesUnsupported = new("battle.casualties-unsupported",
-        "A unit is past the out threshold (or set to respawn) but not yet out; the casualty check that kills, stuns or converts it arrives with the casualty work (Phase 7 branch 5).");
-
     internal static readonly CampaignReason NoLiveSoldiers = new("battle.no-live-soldiers",
         "A battle with no live X-COM soldiers ends the battle, which arrives with the battle outcome (Phase 7 branch 7).");
 
@@ -53,9 +50,6 @@ internal static class BattleFlowReasons
 
     internal static readonly CampaignReason TurnRecoveryScriptUnsupported = new("battle.turn-recovery-script-unsupported",
         "A unit's time unit or energy recovery is scripted or comes from soldier bonuses; recovery scripts arrive with Phase 7 branch 8.");
-
-    internal static readonly CampaignReason TurnOneReviveUnsupported = new("battle.turn-one-revive-unsupported",
-        "An unconscious unit that would wake up or an infected unit that would turn at the first turn needs turn processing (Phase 7 branch 6).");
 }
 
 /// <summary>BattlescapeGame::tallyUnits' live counts: aliens (units of the aliens' side) and X-COM soldiers.</summary>
@@ -106,14 +100,15 @@ internal sealed partial class BattleState
     }
 
     /// <summary>
-    /// <c>BattlescapeGame::checkForCasualties</c>'s victims, which the battlescape's constructor runs for every battle it opens
-    /// (<c>hiddenExplosion</c>): a unit that is not dead and has no health left, or that is not unconscious and whose stun reaches
-    /// its health, whatever its spawn unit. The reference kills, stuns or converts them; turn processing (Phase 7 branch 6) does,
-    /// so the briefing and the running battle refuse by name while one exists.
+    /// What the battlescape's constructor does for every battle it opens, a loaded one included (<c>BattlescapeGame.cpp:194</c>):
+    /// <c>checkForCasualties</c> as a hidden explosion kills, stuns or converts the units past the out threshold, and queues the units that
+    /// have no floor to fall. The falls are the caller's to resolve (<see cref="FallsRefusal"/>, <see cref="ResolveFalls(RuntimeRuleCatalog)"/>).
     /// </summary>
-    internal bool HasUncheckedCasualty() =>
-        _units.Any(static unit => unit.Status != BattleUnitStatus.IgnoreMe && unit.Status != BattleUnitStatus.Dead &&
-            (unit.Health <= 0 || unit.StunLevel >= unit.Health && unit.Status != BattleUnitStatus.Unconscious));
+    internal IReadOnlyList<BattleCasualty> OpenBattlescape(RuntimeRuleCatalog rules)
+    {
+        ArgumentNullException.ThrowIfNull(rules);
+        return CheckForCasualties(rules, null, default, hiddenExplosion: true);
+    }
 
     /// <summary>BattlescapeGame::tallyUnits for the counts the briefing and the first turn read: units that are not out (or are over
     /// the out threshold but turn into another unit), by original faction. Surrender mode, captured units and the exit areas
@@ -295,8 +290,7 @@ internal sealed partial class BattleState
 
     /// <summary>
     /// What stops <see cref="StartFirstTurn"/> before it changes anything: a new-turn or recovery script the rules bind (the
-    /// reference runs them; script bindings in battle are branch 8's), and an unconscious unit that would wake up or an
-    /// infected unit that would turn (branch 6's turn processing).
+    /// reference runs them; script bindings in battle are branch 8's).
     /// </summary>
     internal CampaignReason? FirstTurnRefusal(RuntimeContent content, BattleRestoreCampaign campaign)
     {
@@ -318,7 +312,10 @@ internal sealed partial class BattleState
         var rules = content.RuntimeRules;
         foreach (var unit in _units)
         {
-            if (unit.OriginalFaction != BattleFaction.Player || unit.IsOut) continue;
+            // reviveUnconsciousUnits(false) recovers the time units of a small unconscious unit that wakes up, as a unit of the new turn does.
+            var wakes = unit.ArmorSize == 1 && unit.Status == BattleUnitStatus.Unconscious && !unit.IsOutThresholdExceeded;
+            // (Any side's unit wakes up; only X-COM's live units prepare their first turn.)
+            if (!wakes && (unit.OriginalFaction != BattleFaction.Player || unit.IsOut)) continue;
             if (HasEventPlan(content, "timeRecoveryBonusStats") || HasEventPlan(content, "energyRecoveryBonusStats") ||
                 HasRuleScript(content, "armors", unit.ArmorId, "timeRecoveryBonusStats") ||
                 HasRuleScript(content, "armors", unit.ArmorId, "energyRecoveryBonusStats"))
@@ -332,12 +329,6 @@ internal sealed partial class BattleState
                         return BattleFlowReasons.TurnRecoveryScriptUnsupported;
                 }
         }
-        // reviveUnconsciousUnits(false) wakes a small unconscious unit that is over the out threshold no more; convertInfected
-        // turns a unit with the respawn flag.
-        foreach (var unit in _units)
-            if (unit.ArmorSize == 1 && unit.Status == BattleUnitStatus.Unconscious && !unit.IsOutThresholdExceeded ||
-                !unit.IsOutThresholdExceeded && unit.Respawn)
-                return BattleFlowReasons.TurnOneReviveUnsupported;
         return null;
     }
 
@@ -362,8 +353,8 @@ internal sealed partial class BattleState
     /// <summary>
     /// SavedBattleGame::startFirstTurn: the ground items of the selected unit's tile (the craft inventory tile, <see cref="TileOf"/>)
     /// go to random storage tiles (a base defense), the units are put back on their tiles, the unit standing on that tile is selected, every live X-COM
-    /// unit prepares its first turn, and the turn is 1. The new-turn scripts, reviving and converting are refused beforehand
-    /// (<see cref="FirstTurnRefusal"/>). Without a selected unit on the map (a null dereference in the reference) the
+    /// unit prepares its first turn, the turn is 1, and the unconscious that wake up revive and the infected turn into their spawn units. The
+    /// new-turn scripts are refused beforehand (<see cref="FirstTurnRefusal"/>). Without a selected unit on the map (a null dereference in the reference) the
     /// inventory-tile steps are skipped (ADR 0039).
     /// </summary>
     internal CampaignReason? StartFirstTurn(RuntimeContent content, IRandomSource random)
@@ -379,8 +370,11 @@ internal sealed partial class BattleState
             if (unit.OriginalFaction == BattleFaction.Player && !unit.IsOut) PrepareNewTurn(unit, equipment);
         Turn = 1;
         Phase = BattlePhase.InProgress;
-        // The falls the spawns and the inventory's gravity started run when the battlescape first thinks.
+        // newTurnUpdateScripts (the scripts themselves are refused beforehand): the unconscious that wake up, and the infected that turn.
         var rules = content.RuntimeRules;
+        ReviveUnconsciousUnits(rules, noTU: false);
+        ConvertInfected(rules);
+        // The falls the spawns and the inventory's gravity started run when the battlescape first thinks.
         RequeueFallingUnits();
         CloseInventory(rules);
         return ResolveFalls(rules);

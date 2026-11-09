@@ -11,7 +11,8 @@ internal readonly record struct BattleAttack(BattleActionType Type, BattleUnit? 
 
 /// <summary>
 /// What <see cref="BattleState.DamageUnit"/> did: the damage to the unit's health, and the refusal when the hit needs work of a later slice (a
-/// self-destruct explosion, S5; a unit taken out or set to respawn, S4). The unit has taken the hit either way: a command runs on a trial copy first.
+/// self-destruct explosion, S5). The unit has taken the hit either way: a command runs on a trial copy first. A unit the hit takes out, or sets
+/// to respawn, is left for <see cref="BattleState.CheckForCasualties"/>, which the reference also runs later (an explosion, a fall, a turn's end).
 /// </summary>
 internal readonly record struct BattleDamageResult(int Damage, CampaignReason? Refusal = null);
 
@@ -58,14 +59,6 @@ internal sealed partial class BattleState
 
     /// <summary>BattleUnit::isOutThresholdExceed: no health, or the stun reaches the health.</summary>
     internal static bool IsOutThresholdExceeded(BattleUnit unit) => unit.Health <= 0 || unit.Health <= unit.StunLevel;
-
-    /// <summary>
-    /// What <c>checkForCasualties</c> would act on: a unit that is not dead and has no health, or that is not unconscious and whose stun reaches its
-    /// health. An unconscious body that keeps its health stays as it is.
-    /// </summary>
-    internal static bool NeedsCasualtyCheck(BattleUnit unit) =>
-        unit.Status != BattleUnitStatus.Dead && unit.Status != BattleUnitStatus.IgnoreMe &&
-        (unit.Health <= 0 || unit.StunLevel >= unit.Health && unit.Status != BattleUnitStatus.Unconscious);
 
     /// <summary>BattleUnit::getOverKillDamage: the damage past the health and the armor's overkill share of the maximum health.</summary>
     internal static int OverKillDamage(RuntimeRuleCatalog rules, BattleUnit unit) =>
@@ -290,7 +283,6 @@ internal sealed partial class BattleState
         SetUnitFire(rules, unit, fire);
 
         // check if this unit turns others into zombies
-        var respawnSet = false;
         if (RandomPercent(transformChance) && transforms && unit.SpawnUnit.Length == 0)
         {
             if (SpawnArmorSize(rules, transformUnit) is { } spawnSize && spawnSize <= unit.ArmorSize)
@@ -301,7 +293,6 @@ internal sealed partial class BattleState
                 unit.Respawn = true;
                 unit.SpawnUnitFaction = spawnFaction;
                 unit.SpawnUnit = transformUnit;
-                respawnSet = true;
             }
             // else: the reference logs that the bigger armor does not fit; nothing changes.
         }
@@ -316,11 +307,8 @@ internal sealed partial class BattleState
             spotter.TurnsLeftSpottedForSnipers[(int)unit.Faction] = (byte)Bound(attackerTurnsLeftSpottedForSnipers, 0, 255);
         }
 
-        // The explosion of a unit that blows up with its death, and the casualty checks, are later slices of this branch: refused by name.
-        CampaignReason? refusal = null;
-        if (explodes) refusal = BattleFireReasons.TerrainExplosionUnsupported;
-        else if (respawnSet || NeedsCasualtyCheck(unit)) refusal = BattleFlowReasons.CasualtiesUnsupported;
-        return new(damage, refusal);
+        // The explosion of a unit that blows up with its death is S5's: refused by name. A unit taken out or set to respawn waits for the casualty check.
+        return new(damage, explodes ? BattleFireReasons.TerrainExplosionUnsupported : null);
     }
 
     private bool RandomPercent(int chance) => RandomChance.Percent(Random, chance);

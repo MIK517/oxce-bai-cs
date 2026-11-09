@@ -24,7 +24,7 @@ public sealed class BattleDamageTests
     private static readonly BattlePosition Front = new(-6, 0, 10);
 
     /// <summary>The base armor piercing type: health from the damage, a quarter to stun, a tenth to armor, no random stun or wounds.</summary>
-    private static RuntimeItemDamageRule Plain { get; } = RuntimeItemDamageRule.Predefined(1) with
+    internal static RuntimeItemDamageRule Plain { get; } = RuntimeItemDamageRule.Predefined(1) with
     {
         RandomStun = false,
         RandomWound = false,
@@ -37,7 +37,7 @@ public sealed class BattleDamageTests
     private static RuntimeItemDamageRule WithConversions(Func<RuntimeDamageConversions, RuntimeDamageConversions> change) =>
         Plain with { Conversions = change(Plain.Conversions) };
 
-    private static Arena Duel(string gun = "", string clip = "", string grenade = "", string global = "", string alienExtra = "", string soldierExtra = "",
+    internal static Arena Duel(string gun = "", string clip = "", string grenade = "", string global = "", string alienExtra = "", string soldierExtra = "",
         string unitExtra = "", Func<string, string>? more = null)
     {
         var arena = Flat(alienExtra: alienExtra, soldierExtra: soldierExtra, unitExtra: unitExtra.Length == 0 ? null : unitExtra, edit: rules =>
@@ -61,7 +61,7 @@ public sealed class BattleDamageTests
         return arena;
     }
 
-    private static (BattleAttack Attack, BattleItem Gun, BattleItem Clip) Shot(Arena arena, BattleUnit? attacker = null, BattleActionType type = BattleActionType.AimedShot)
+    internal static (BattleAttack Attack, BattleItem Gun, BattleItem Clip) Shot(Arena arena, BattleUnit? attacker = null, BattleActionType type = BattleActionType.AimedShot)
     {
         var owner = attacker ?? arena.Soldier;
         foreach (var item in arena.Battle.InventoryOf(owner).ToList()) arena.Battle.RemoveItem(item);
@@ -70,7 +70,7 @@ public sealed class BattleDamageTests
         return (new BattleAttack(type, owner, gun, clip), gun, clip);
     }
 
-    private static BattleDamageResult Hurt(Arena arena, int damage, RuntimeItemDamageRule type, BattlePosition? relative = null, BattleAttack? attack = null,
+    internal static BattleDamageResult Hurt(Arena arena, int damage, RuntimeItemDamageRule type, BattlePosition? relative = null, BattleAttack? attack = null,
         BattleUnit? victim = null, int side = -1, int part = -1) =>
         arena.Battle.DamageUnit(arena.Rules, victim ?? arena.Alien, relative ?? Front, damage, type, attack ?? new BattleAttack(BattleActionType.None), side, part);
 
@@ -290,8 +290,8 @@ public sealed class BattleDamageTests
     {
         var arena = Duel();
         var refusal = Hurt(arena, 1000, With(static type => type with { IgnoreOverKill = false })).Refusal;
-        // Four times the maximum health below zero is the floor; the unit is past the threshold, which a later slice (S4) resolves.
-        Assert.Equal((-400, "battle.casualties-unsupported"), (arena.Alien.Health, refusal!.Code));
+        // Four times the maximum health below zero is the floor; the unit is past the threshold, which the casualty check (S4) resolves.
+        Assert.Equal((-400, null), (arena.Alien.Health, refusal?.Code));
         Assert.Equal(350, BattleState.OverKillDamage(arena.Rules, arena.Alien));
         arena = Duel();
         Hurt(arena, 1000, Plain);
@@ -437,7 +437,7 @@ public sealed class BattleDamageTests
     // ---- infection ----
 
     [Fact]
-    public void AmmunitionThatInfectsSetsTheVictimToRespawnWithTheItsChanceAndRefusesThePendingCasualty()
+    public void AmmunitionThatInfectsSetsTheVictimToRespawnWithTheItsChance()
     {
         var arena = Duel(clip: "zombieUnit: ALIEN\nzombieUnitChance: 50", global: "");
         var (attack, _, _) = Shot(arena, arena.Alien);
@@ -448,8 +448,8 @@ public sealed class BattleDamageTests
         Assert.Null(result.Refusal);
         arena.Battle.Random = new ScriptedDraws(10);
         result = Hurt(arena, 10, Plain, attack: attack, victim: arena.Soldier);
-        Assert.Equal((true, "ALIEN", (int)BattleFaction.Hostile, "battle.casualties-unsupported"),
-            (arena.Soldier.Respawn, arena.Soldier.SpawnUnit, arena.Soldier.SpawnUnitFaction, result.Refusal!.Code));
+        Assert.Equal((true, "ALIEN", (int)BattleFaction.Hostile, null),
+            (arena.Soldier.Respawn, arena.Soldier.SpawnUnit, arena.Soldier.SpawnUnitFaction, result.Refusal?.Code));
         // A victim that already has a unit to spawn is not given another.
         var again = Duel(clip: "zombieUnit: ALIEN\nzombieUnitChance: 100");
         var (second, _, _) = Shot(again, again.Alien);
@@ -576,25 +576,25 @@ public sealed class BattleDamageTests
         // Lethal: the explosion would be pushed.
         Assert.Equal("battle.terrain-explosion-unsupported", Hurt(arena, 500, Plain).Refusal!.Code);
         Assert.True(arena.Alien.AlreadyExploded);
-        // A type that ignores self-destruct, or a unit that exploded already, goes on to the casualty.
+        // A type that ignores self-destruct, or a unit that exploded already, goes on to the casualty check.
         var ignoring = Duel(alienExtra: "    selfDestructItem: GRENADE\n", unitExtra: "    specab: 1\n");
-        Assert.Equal("battle.casualties-unsupported", Hurt(ignoring, 500, With(static type => type with { IgnoreSelfDestruct = true })).Refusal!.Code);
+        Assert.Null(Hurt(ignoring, 500, With(static type => type with { IgnoreSelfDestruct = true })).Refusal);
         var done = Duel(alienExtra: "    selfDestructItem: GRENADE\n", unitExtra: "    specab: 1\n");
         done.Alien.AlreadyExploded = true;
-        Assert.Equal("battle.casualties-unsupported", Hurt(done, 500, Plain).Refusal!.Code);
+        Assert.Null(Hurt(done, 500, Plain).Refusal);
         // A unit with the ability but no such special weapon does not explode either.
         var bare = Duel(unitExtra: "    specab: 1\n");
-        Assert.Equal("battle.casualties-unsupported", Hurt(bare, 500, Plain).Refusal!.Code);
+        Assert.Null(Hurt(bare, 500, Plain).Refusal);
     }
 
     [Fact]
-    public void AHitThatTakesAUnitOutByHealthOrStunIsRefusedAfterItIsApplied()
+    public void AHitThatTakesAUnitOutByHealthOrStunLeavesItToTheCasualtyCheck()
     {
         var arena = Duel();
         Assert.Null(Hurt(arena, 10, Plain).Refusal);
         // Stun reaching the health.
         var stun = WithConversions(static conversions => conversions with { Stun = 1, Health = 0 });
-        Assert.Equal("battle.casualties-unsupported", Hurt(arena, 200, stun).Refusal!.Code);
+        Assert.Null(Hurt(arena, 200, stun).Refusal);
         Assert.Equal(90, arena.Alien.Health);
         Assert.True(BattleState.IsOutThresholdExceeded(arena.Alien));
         // A hit on a unit with no health left changes nothing but the hit flag.
@@ -608,14 +608,16 @@ public sealed class BattleDamageTests
     // ---- hitUnit, murderer ----
 
     [Fact]
-    public void AnUnconsciousBodyThatKeepsItsHealthIsNotACasualtyButOneThatLosesAllIsAndTheStunAlreadyReachesIt()
+    public void AnUnconsciousBodyThatKeepsItsHealthIsNotACasualtyButOneThatLosesAllIs()
     {
         var arena = Duel();
         arena.Alien.Status = BattleUnitStatus.Unconscious;
         arena.Alien.StunLevel = 100;
         Assert.Null(Hurt(arena, 10, Plain).Refusal);
         Assert.Equal(90, arena.Alien.Health);
-        Assert.Equal("battle.casualties-unsupported", Hurt(arena, 500, Plain).Refusal!.Code);
+        Assert.Empty(arena.Battle.CheckForCasualties(arena.Rules, null, default));
+        Hurt(arena, 500, Plain);
+        Assert.Equal(BattleUnitStatus.Dead, Assert.Single(arena.Battle.CheckForCasualties(arena.Rules, null, default)).Status);
     }
 
     [Fact]
@@ -952,15 +954,15 @@ public sealed class BattleDamageTests
     }
 
     [Fact]
-    public void AHitThatTakesTheUnitOutIsRefusedAfterTheDamageAndADryRunLeavesTheUnitAlone()
+    public void AHitThatTakesTheUnitOutLeavesItToTheCasualtyCheckAndADryRunLeavesTheUnitAlone()
     {
         var arena = Duel();
         var (attack, _, _) = Shot(arena);
         var voxel = new BattlePosition(15 * 16 + 6, 10 * 16 + 8, 6);
         Assert.Null(arena.Battle.Hit(arena.Rules, attack, voxel, 30, Flat100, true, dryRun: true));
         Assert.Equal(100, arena.Alien.Health);
-        Assert.Equal("battle.casualties-unsupported", arena.Battle.Hit(arena.Rules, attack, voxel, 500, Flat100, true)!.Code);
-        Assert.Equal(0, arena.Alien.Health);
+        Assert.Null(arena.Battle.Hit(arena.Rules, attack, voxel, 500, Flat100, true));
+        Assert.Equal((0, BattleUnitStatus.Standing), (arena.Alien.Health, arena.Alien.Status));
     }
 
     [Fact]

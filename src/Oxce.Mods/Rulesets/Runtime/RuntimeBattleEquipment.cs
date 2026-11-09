@@ -181,6 +181,7 @@ public sealed class RuntimeBattleEquipment
             IsNotBrutal = rule.Value.Booleans["isNotBrutal"],
             IgnoredByAi = rule.Value.Booleans["ignoredByAI"],
             Capturable = rule.Value.Booleans["capturable"],
+            Cosmetic = rule.Value.Booleans["cosmetic"],
             MoraleLossWhenKilled = rule.Value.Integers["moraleLossWhenKilled"],
             SpotterDuration = rule.Value.Integers["spotter"] == -1 ? rule.Value.Integers["intelligence"] : rule.Value.Integers["spotter"],
             Heights = HeightsOf(rule.Value.Integers),
@@ -622,6 +623,9 @@ public sealed record RuntimeBattleUnitRule(
 
     /// <summary>Unit::isCapturable (<c>capturable</c>) and getMoraleLossWhenKilled (<c>moraleLossWhenKilled</c>, 100).</summary>
     public bool Capturable { get; init; } = true;
+
+    /// <summary>Unit::isCosmetic (<c>cosmetic</c>): a unit whose kills and deaths the statistics do not count.</summary>
+    public bool Cosmetic { get; init; }
     public int MoraleLossWhenKilled { get; init; } = 100;
 
     /// <summary>Unit::avoidsFire.</summary>

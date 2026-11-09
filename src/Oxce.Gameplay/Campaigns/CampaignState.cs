@@ -296,16 +296,17 @@ public sealed partial class CampaignState : Sessions.IActorCommandTarget, ICampa
     /// SavedGame::killSoldier with resetArmor and Soldier::die: the soldier leaves its base for the memorial in
     /// its rule's default armor, without craft, training, wounds or recovery, dated now.
     /// </summary>
-    internal void KillSoldier(BaseState owner, SoldierState soldier)
+    internal void KillSoldier(BaseState owner, SoldierState soldier, bool resetArmor = true, Battles.BattleUnitKillSnapshot? cause = null)
     {
         if (!owner.Soldiers.Remove(soldier)) throw new InvalidOperationException("The soldier is not at that base.");
         var rules = _content.RuntimeRules;
         var rule = rules.Soldiers[soldier.Rule].Value;
+        // killSoldier(resetArmor: false), a death in battle, leaves the geoscape armor alone: the battle's armor would reset to it on a reload.
         var personal = soldier.Personal is not { } alive ? null : alive with
         {
-            Armor = rules.Armors.GetExternalId(rule.Armor),
-            ReplacedArmor = "",
-            TransformedArmor = "",
+            Armor = resetArmor ? rules.Armors.GetExternalId(rule.Armor) : alive.Armor,
+            ReplacedArmor = resetArmor ? "" : alive.ReplacedArmor,
+            TransformedArmor = resetArmor ? "" : alive.TransformedArmor,
             CraftType = "",
             CraftId = 0,
             PsiTraining = false,
@@ -317,7 +318,24 @@ public sealed partial class CampaignState : Sessions.IActorCommandTarget, ICampa
         };
         _deadSoldiers.Add(new DeadSoldierSnapshot(
             new SoldierSnapshot(rules.Soldiers.GetExternalId(soldier.Rule), soldier.Id) { PreservationKey = soldier.PreservationKey, Personal = personal },
-            Time));
+            Time)
+        { Cause = cause });
+    }
+
+    /// <summary>
+    /// SavedGame::killSoldier(false, soldier, cause) for a soldier who died in battle: the soldier leaves its base for the memorial
+    /// with the cause of death and keeps the armor it wore. Returns false for a soldier no base holds.
+    /// </summary>
+    internal bool KillSoldierInBattle(int soldierId, Battles.BattleUnitKillSnapshot cause)
+    {
+        foreach (var owner in _bases)
+            foreach (var soldier in owner.Soldiers)
+                if (soldier.Id == soldierId)
+                {
+                    KillSoldier(owner, soldier, resetArmor: false, cause);
+                    return true;
+                }
+        return false;
     }
 
     /// <summary>

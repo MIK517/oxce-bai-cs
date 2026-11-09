@@ -95,8 +95,7 @@ public sealed class BattleInventoryTests
     {
         var (campaign, battle, soldier, ground) = WalkerInTheAir();
         Assert.True(soldier.HaveNoFloorBelow);
-        // A loaded battle with a floorless walker refuses its commands (the constructor queues the fall, which the port does at the first turn only).
-        Assert.Equal("battle.casualties-unsupported", Refusal(campaign, new MoveInventoryItem(soldier.Id, Gun, "STR_GROUND", 0, 0)));
+        // (A battle loaded with a floorless walker lets it fall as it opens; here the walker is put in the air after the battle opened.)
         // Standing in the air only because a script changed its movement type is the same: nothing falls until a gravity call, so test the close itself.
         Assert.Null(battle.FallsRefusal(campaign.Content.RuntimeRules, soldier));
         battle.ApplyGravity(soldier.Position);

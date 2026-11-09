@@ -263,8 +263,9 @@ internal sealed partial class BattleState
     }
 
     /// <summary>
-    /// Whether a hit at the voxel would reach a living unit (a live body on the tile of a floor or object hit, or a unit in the voxel). A dry run cannot say
-    /// what the damage does to it, so the callers that have no trial copy to run on refuse conservatively (<see cref="BattleFlowReasons.CasualtiesUnsupported"/>).
+    /// Whether a hit at the voxel would reach a living unit that blows up with its death (a live body on the tile of a floor or object hit, or a
+    /// unit in the voxel, whose special ability explodes on death). A dry run cannot say what the damage does to it, so the callers that have no
+    /// trial copy to run on refuse conservatively (<see cref="BattleFireReasons.TerrainExplosionUnsupported"/>, S5's).
     /// </summary>
     internal bool HitWouldReachUnit(BattleUnit? attacker, BattlePosition voxel, RuntimeRuleCatalog rules)
     {
@@ -272,9 +273,11 @@ internal sealed partial class BattleState
         if (!Contains(tilePosition)) return false;
         var tile = Map.TileIndex(tilePosition);
         var part = Sight().VoxelCheck(voxel, attacker);
+        static bool Explodes(RuntimeRuleCatalog rules, BattleUnit? unit) =>
+            unit is { Health: > 0 } && SpecialAbilityOf(rules, unit) is 1 or 3 && ArmorOf(rules, unit).SelfDestructItem.Length != 0;
         if (part is BattleVoxelType.Floor or BattleVoxelType.Object)
-            return ItemsOnTile(tilePosition).Any(item => item.CorpseUnitId is { } corpse && UnitById(corpse) is { Health: > 0 });
-        return part == BattleVoxelType.Unit && OverlappingUnit(rules, tile) is { Health: > 0 };
+            return ItemsOnTile(tilePosition).Any(item => item.CorpseUnitId is { } corpse && Explodes(rules, UnitById(corpse)));
+        return part == BattleVoxelType.Unit && Explodes(rules, OverlappingUnit(rules, tile));
     }
 
     private const string BaseDefenseMissionType = "STR_BASE_DEFENSE";
@@ -295,8 +298,8 @@ internal sealed partial class BattleState
         // The hit's refusals are asked first, so a refusal leaves the tile as it was (the ignite is the first change).
         var refusal = HitTerrain(rules, unit, voxel, unit.Stats.Strength, BattleDamageTypes.Fire, dryRun: true);
         if (refusal is not null) return refusal;
-        // What the hit does to a unit depends on the damage rolled: callers without a trial copy (the inventory's falls) refuse any live unit it would reach.
-        if (dryRun) return HitWouldReachUnit(unit, voxel, rules) ? BattleFlowReasons.CasualtiesUnsupported : null;
+        // What the hit does to a unit depends on the damage rolled: callers without a trial copy (the inventory's falls) refuse a unit it would reach that blows up with its death.
+        if (dryRun) return HitWouldReachUnit(unit, voxel, rules) ? BattleFireReasons.TerrainExplosionUnsupported : null;
         Ignite(tile, 1);
         return HitTerrain(rules, unit, voxel, unit.Stats.Strength, BattleDamageTypes.Fire);
     }
