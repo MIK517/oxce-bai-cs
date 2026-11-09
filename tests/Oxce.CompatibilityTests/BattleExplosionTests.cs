@@ -496,6 +496,142 @@ public sealed class BattleExplosionTests
         Assert.True(near.Health < 100);
     }
 
+
+    // ---- the branches the first audit found untested ----
+
+    [Fact]
+    public void AnExplosionQueuedDuringAWalkRunsBeforeTheFallsItCauses()
+    {
+        var arena = Duel();
+        arena.Put(20, 20, 1, BattleTilePart.Floor, Floor);
+        var standing = Extra(arena, 970, 20, 20);
+        arena.Battle.SetTile(standing, At(20, 20, 1));
+        arena.Battle.UpdateTileFloorState(standing);
+        Assert.False(standing.HaveNoFloorBelow);
+        // A blast is on the list when the walk ends; its think sets off the strength left on the tile below the unit, which breaks the floor under it.
+        arena.Map.SetExplosive(arena.Tile(20, 20), 40, 0);
+        arena.Battle.PushExplosion(arena.Rules, default, Center(5, 25));
+        var events = new List<Oxce.Gameplay.Campaigns.ICampaignEvent>();
+        Assert.Null(arena.Battle.Walk(arena.Rules, arena.Soldier.Id, At(11, 10), BattleMoveType.Normal, false, events));
+        // The walk resolved the list first and the fall afterwards: the unit is down and no fall is left.
+        Assert.Equal(At(20, 20), standing.Position);
+        Assert.Empty(arena.Battle.FallingUnits);
+    }
+
+    [Fact]
+    public void ADiagonalBigWallLetsTheBlastOutOnTheSideTheCenterIsOn()
+    {
+        int Lost(int offset)
+        {
+            var arena = Duel();
+            arena.Put(20, 20, 0, BattleTilePart.ObjectPart, DiagWall);
+            var northWest = Extra(arena, 970, 18, 18);
+            arena.Battle.Explode(arena.Rules, default, new BattlePosition(20 * 16 + offset, 20 * 16 + offset, 12), 100, Blast, 6, true);
+            return 100 - northWest.Health;
+        }
+
+        // Centered on the north-west side of the wall the rays going north-west skip it; from the south-east side the wall is in their way.
+        Assert.True(Lost(2) > Lost(14), $"{Lost(2)} > {Lost(14)}");
+    }
+
+    [Fact]
+    public void TheBlockTypeFollowsTheResistTypeOfTheDamage()
+    {
+        // A wall of high explosive block 40 stops a blast of the high explosive type, but not smoke (its own block) and not a blast of no type (the vision block).
+        int Lost(RuntimeItemDamageRule type)
+        {
+            var arena = Duel();
+            for (var y = 12; y <= 28; y++) arena.Put(22, y, 0, BattleTilePart.WestWall, BlastWall);
+            var behind = Extra(arena, 970, 23, 20);
+            arena.Battle.Explode(arena.Rules, default, Center(20, 20), 60, type, 6, true);
+            return 100 - behind.Health;
+        }
+
+        var none = Blast with { ResistType = RuntimeItemDamageRule.DamageNone };
+        Assert.True(Lost(none) > Lost(Blast), $"{Lost(none)} > {Lost(Blast)}");
+        var smoke = Duel();
+        for (var y = 12; y <= 28; y++) smoke.Put(22, y, 0, BattleTilePart.WestWall, BlastWall);
+        smoke.Battle.Explode(smoke.Rules, default, Center(20, 20), 60, RuntimeItemDamageRule.Predefined(RuntimeItemDamageRule.DamageSmoke), 6, true);
+        // Smoke is stopped by any wall part whatever its blast block (the smoke branch of the blockage), and goes through open ground.
+        Assert.Equal(0, smoke.Map.Smoke(smoke.Tile(23, 20)));
+        var open = Duel();
+        open.Battle.Explode(open.Rules, default, Center(20, 20), 60, RuntimeItemDamageRule.Predefined(RuntimeItemDamageRule.DamageSmoke), 6, true);
+        Assert.True(open.Map.Smoke(open.Tile(23, 20)) > 0);
+    }
+
+    [Fact]
+    public void AUnitKilledWithOverkillLosesWhatItCarriesToTheBlast()
+    {
+        var arena = Duel();
+        var (_, gun, clip) = Shot(arena);
+        arena.Battle.Explode(arena.Rules, default, Center(10, 10), 400, Blast with { IgnoreOverKill = false }, 2, true);
+        // The overkill (health far below zero) is the damage to its items: the gun and the clip in it are over their armor of 20.
+        Assert.DoesNotContain(gun, arena.Battle.Items);
+        Assert.DoesNotContain(clip, arena.Battle.Items);
+    }
+
+    [Fact]
+    public void ASpawnedTankIsArmedAndAnAttackerlessSpawnFollowsTheItemsOwner()
+    {
+        var arena = Duel(grenade: "spawnUnit: ALIEN\nspawnUnitChance: 100",
+            more: rules => Replaced(rules, "  - type: GRENADE\n", "  - type: ALIEN\n    battleType: 1\n    fixedWeapon: true\n    clipSize: -1\n    weight: 1\n  - type: GRENADE\n"));
+        var grenade = Grenade(arena, At(22, 22));
+        grenade.PreviousOwnerUnitId = arena.Soldier.Id;
+        // No attacker: the owner is the item's previous owner (an X-COM soldier, so the faction -1 follows it), and the facing is the second draw.
+        arena.Battle.Random = new ScriptedDraws(0, 5);
+        Assert.True(arena.Battle.SpawnNewUnit(arena.Rules, new BattleAttack(BattleActionType.None, null, grenade, grenade), At(22, 22)));
+        var spawned = arena.Battle.Units[^1];
+        Assert.Equal((BattleFaction.Player, 5, arena.Soldier.Id), (spawned.Faction, spawned.Direction, spawned.PreviousOwnerId));
+        Assert.True(arena.Battle.Items.Any(item => item.ItemType == "ALIEN" && item.OwnerUnitId == spawned.Id),
+            string.Join(";", arena.Battle.Items.Select(item => $"{item.ItemType}/{item.OwnerUnitId}/{item.Slot}")) + " unit " + spawned.Id + " " + spawned.UnitType);
+    }
+
+    [Fact]
+    public void ASpawnedGlowingItemLightsItsTile()
+    {
+        var arena = Flat(shade: 15, edit: rules => Replaced(rules, "- type: GRENADE\n    battleType: 4\n    weight: 1",
+            "- type: FLARE\n    battleType: 10\n    weight: 1\n    power: 9\n  - type: GRENADE\n    battleType: 4\n    weight: 1\n    spawnItem: FLARE\n    spawnItemChance: 100"));
+        arena.Battle.CalculateLighting(arena.Rules, BattleLightLayer.Ambient, null, 0, true);
+        var grenade = Grenade(arena, At(22, 22));
+        var before = arena.Battle.TileShade(At(22, 22));
+        Assert.True(arena.Battle.SpawnNewItem(arena.Rules, new BattleAttack(BattleActionType.Throw, arena.Soldier, grenade, grenade), At(22, 22)));
+        Assert.True(arena.Battle.TileShade(At(22, 22)) < before);
+    }
+
+    [Fact]
+    public void TheGeneratorsLeftoverTerrainBlastsUseTheirOwnTypes()
+    {
+        // A strength of 30 of the stun kind: the power sources' routine blasts every leftover as high explosive, the junk routine by the kind.
+        var sources = Duel();
+        var hurt = Extra(sources, 970, 20, 20);
+        sources.Map.SetExplosive(sources.Tile(20, 20), 30, 6);
+        sources.Battle.ExplodePowerSources(sources.Rules);
+        Assert.True(hurt.Health < 100);
+        var junk = Duel();
+        var other = Extra(junk, 970, 20, 20);
+        junk.Map.SetExplosive(junk.Tile(20, 20), 30, 6);
+        junk.Battle.ExplodeOtherJunk(junk.Rules);
+        Assert.Equal((100, true), (other.Health, other.StunLevel > 0));
+    }
+
+    [Fact]
+    public void ABombersExplosionWaitsBehindTheRunningBlastAndItsDeath()
+    {
+        var arena = Duel(alienExtra: "    selfDestructItem: GRENADE\n", unitExtra: "    specab: 1\n",
+            grenade: "damageType: 3\ndamageAlter: {RandomType: 3, IgnoreSelfDestruct: false}\npower: 60");
+        arena.Alien.Health = 30;
+        var grenade = Grenade(arena, At(15, 10));
+        // The blast kills the bomber in its init: the bomber's own explosion is pushed behind the running state and is not started yet.
+        arena.Battle.PushExplosion(arena.Rules, new BattleAttack(BattleActionType.Throw, arena.Soldier, grenade, grenade), Center(15, 10));
+        Assert.Single(arena.Battle.ExplosionLog);
+        Assert.True(arena.Alien.AlreadyExploded);
+        Assert.Equal(BattleUnitStatus.Standing, arena.Alien.Status);
+        arena.Battle.RunStates();
+        // Then the blast's think queued the bomber's death in front of it, and the bomber's explosion went off last.
+        Assert.Equal(2, arena.Battle.ExplosionLog.Count);
+        Assert.Equal((BattleUnitStatus.Dead, false), (arena.Alien.Status, arena.Alien.AlreadyExploded));
+    }
+
     // ---- spawns ----
 
     [Fact]

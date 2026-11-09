@@ -80,6 +80,7 @@ public sealed class BattleSightTests
     internal const int BlastWall = 35; // a west wall of armor 255 that blocks 40 of a blast and breaks under nothing
     internal const int BlastDoor = 36; // a UFO door on a west wall of armor 255 that blocks 40 of a blast until it is open
     internal const int ThinWall = 37; // a west wall of armor 30 that blocks 40 of a blast and breaks under an explosive of 30
+    internal const int DiagWall = 39; // an object of armor 255 on a diagonal big wall (2, north-east to south-west) that blocks 40 of a blast
     internal const int Powder = 38; // like the barrel (armor 0, flammable 10, fuel 2, explosive 20) but of explosive type 0: a high explosive one
 
     private static readonly byte[][] FireRecords =
@@ -101,6 +102,7 @@ public sealed class BattleSightTests
         Record((30, 1), (42, 255), (43, 40), (53, 1)),
         Record((42, 30), (43, 40), (45, 255), (53, 1)),
         Record([.. Enumerable.Range(8, 12).Select(offset => (offset, (byte)1)), (39, (byte)4), (42, (byte)0), (45, (byte)10), (53, (byte)3), (54, (byte)0), (55, (byte)20), (57, (byte)2)]),
+        Record((33, 2), (42, 255), (43, 40), (53, 3)),
     ];
 
     private static readonly byte[][] DoorRecords =

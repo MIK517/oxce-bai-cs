@@ -360,7 +360,10 @@ internal sealed partial class BattleState
         for (var cycle = 0; !Think(); cycle++)
             if (cycle > limit) throw new InvalidOperationException($"The walk of battle unit {unit.Id} does not end.");
 
-        // BattlescapeGame::think pushes the fall state once the walk is over: a unit a burnt floor dropped falls now.
+        // The states the walk pushed (the explosion of a unit that blew itself up) run behind the walk state, and BattlescapeGame::think pushes the
+        // fall state only once the list is empty: a unit a burnt floor or a blast dropped falls after them.
+        RunStates();
+        refusal ??= TakeExplosionRefusal();
         if (refusal is null && _fallingUnits.Count != 0)
         {
             refusal = ResolveFalls(rules, events, out var fell);

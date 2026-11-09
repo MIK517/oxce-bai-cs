@@ -331,7 +331,7 @@ Reference: `ExplosionBState.cpp` (`init`, `think`, `explode`), `TileEngine.cpp` 
 
 - **The list of states.** The reference's `_states` (`statePushFront`, `statePushNext`, `popState`) is one ordered list in `BattleExplosions.cs` (`QueuedState`, `PushFront`, `PushNext`, `PopState`), with the animations
   collapsed: a state's `init` runs when it is pushed to the front, pushed into an empty list, or becomes the front; its `think` when `RunStates` reaches it, and it pops itself. `RunStates` returns the casualties of the deaths that ran and does
-  nothing when called from inside a running state. The list is empty between commands and is not saved. The commands that can push a state run it at their end: `Walk` and `MoveUpDown` (after `RunWalk`) and the falls (after their deaths).
+  nothing when called from inside a running state. The list is empty between commands and is not saved. The commands that can push a state run it at their end: `Walk` and `MoveUpDown` (inside `RunWalk`, before its falls) and the falls (after their deaths).
   `QueueCasualties` takes a `pushNext` callback, so the deaths of an explosion go into this list one by one (`DeathState`: `UnitDieBState`, whose `init` may skip the unit and whose `think` is `RunDeath`).
 - **`ExplosionBState`** (`ExplosionState`). `PushExplosion(rules, attack, center, before, lowerWeapon, range)` is the `statePushFront` the shots, throws and hits will use. `init`: the power
   (the weapon's when it ignores the ammunition's power, else the damage item's; plus the damage bonus of the attacker; less `PowerRangeReductionAt(range)` in single precision), the radius (`getExplosionRadius`: the type's fixed one, or from the
@@ -364,7 +364,7 @@ Reference: `ExplosionBState.cpp` (`init`, `think`, `explode`), `TileEngine.cpp` 
   detonation order is the tile index.
 - **Left for the later slices.** The melee and psi `ExplosionBState` (`_hit`, `BT_MELEE`, `BT_PSIAMP`; `ExplosionState.Init` throws for them; S6 and branch 6). `terrainMeleeTilePart` (S6). The reaction check after an explosion (S9). The end of a turn's call of `RunTerrainExplosions`,
   after `SpreadFireAndSmoke` (branch 6). Events for the blasts (`ExplosionLog` feeds them; the commands arrive with S6 to S8). `fuseTimeEvent` grenades exploding at the end of a turn (branch 6).
-- **Tests.** `BattleExplosionTests` (31): the falloff and the radius, the radius reduction, a fire blast, a wall stopping the blast and a door (closed, open), a blast off the map or without power, items destroyed by `ToItem`, a body on the ground, a grenade's power, radius,
+- **Tests.** `BattleExplosionTests` (39): the falloff and the radius, the radius reduction, a fire blast, a wall stopping the blast and a door (closed, open), a blast off the map or without power, items destroyed by `ToItem`, a body on the ground, a grenade's power, radius,
   kills and removal, a blast with no power, a bullet hit and the shooter's gun put down, a weapon's power with the range reduction, a missing bullet, a chain of three terrain explosions, the explosive types, a terrain blast's casualties, walls broken
   by the explosive, an objective and smoke, a dead form and fire, a base module (counted, and in a block the map lacks), a unit that blows itself up (power, radius, chance, a melee item, a blast that kills it), spawns (unit and item, chance and override), the power sources, the opening check, and map junk.
   The retired refusals' tests in `BattleFireTests`, `BattleDamageTests`, `BattleCasualtyTests` and `BattleStartTests` follow the new behaviour. Terrain records 35 to 38 (`BlastWall`, `BlastDoor`, `ThinWall`, `Powder`) join the sight tests' set.
@@ -373,8 +373,8 @@ Reference: `ExplosionBState.cpp` (`init`, `think`, `explode`), `TileEngine.cpp` 
 
 S6, melee and the attack command (plan row S6). Notes for the worker:
 
-- **Falls after the list.** The reference pushes `UnitFallBState` once the list is empty (`BattlescapeGame::think`), so a command ends with `RunStates()` and only then `ResolveFalls`. `Walk` still resolves its falls inside `RunWalk` before `RunStates` (the reverse order; only reachable when a blast
-  queues a fall during a walk). New commands must call `RunStates()`, then `TakeExplosionRefusal()`, then `ResolveFalls`.
+- **Falls after the list.** The reference pushes `UnitFallBState` once the list is empty (`BattlescapeGame::think`), so a command ends with `RunStates()` and only then `ResolveFalls`. `Walk` and `MoveUpDown` now do (`RunWalk` runs the list, takes `ExplosionRefusal`, then resolves the falls);
+  new commands must call `RunStates()`, then `TakeExplosionRefusal()`, then `ResolveFalls`.
 - **Open refusal.** `battle.self-destruct-item-unsupported` (a melee weapon as a unit's self-destruct item; S6 retires it when `ExplosionState` handles `BT_MELEE`).
 - **What S5 left to build on.** `BattleState.PushExplosion(rules, attack, centerVoxel, beforeVoxel, lowerWeapon, range)` plus `RunStates()` run an `ExplosionBState` (S6 needs the melee form: `_hit`, `BT_MELEE`, `meleeAttack`/`meleeAttackCalculate` in `ExplosionState.Init`/`Think`, now a `NotSupportedException`; the power is `getMeleeBonus` and the damage type the item's `MeleeDamage`; `_radius` 0,
   `terrainMeleeTilePart` goes to `Hit`, which has no such parameter yet; `explode()`'s `_hit` part lowers the attacker and pops when the power is 0). `ExplosionLog` collects the blasts for the command's events (clear it at the start of a command). `RunTerrainExplosions(rules)` is what `endTurn` calls (branch 6).
