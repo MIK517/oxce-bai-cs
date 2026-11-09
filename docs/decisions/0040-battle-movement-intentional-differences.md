@@ -67,6 +67,5 @@ is refused where the reference falls back to a normal walk; the player's client 
 presentation and draw nothing, so a burn or spread draws fewer numbers than the reference (the stream is not compared). A `dieMCD` past the data set
 (the reference throws) leaves the destroyed part empty, and a ground floor destroyed when the first data set has no second object (scorched earth, which the port takes from set 0 as the generator's fill does, where the reference
 takes BLANKS' tile) is left empty. A unit that burns a hole in the floor stays standing, as the reference's call leaves its status; the fall runs after the walk, and a landing burner is taken off the falling list while it
-hangs over its own hole (`addFallingUnit` refuses the duplicate and `erase` follows). A hit that would destroy a base module in a block a restored save's module map lacks is refused (`battle.module-map-unsupported`, branch 5), as ADR 0039 requires.
-The dry run of a landing (`FallsRefusal`, used by the inventory move, which has no trial copy) asks the hit's refusals but does not apply the burn, so a single fall of several burners over the same tiles could meet a refusal the dry run did not:
-this one under-approximation is accepted (a walk always runs on a trial copy).
+hangs over its own hole (`addFallingUnit` refuses the duplicate and `erase` follows). A hit that destroys a base module in a block a restored save's module map lacks destroys it without the count (Phase 7 branch 5 S5, ADR 0041; this replaced the refusal `battle.module-map-unsupported`).
+The dry run of a landing (`FallsRefusal`, used by the inventory move, which has no trial copy) does not apply the burn (the hit has no refusals left since S5, apart from a melee or psi self-destruct item).

@@ -16,7 +16,7 @@ Phase 7 branch 5 (`claude/battle-combat`), from `main` after PR #81 (branch 4 me
 | S2 line of fire and accuracy | Implemented (2026-11-09), audit pending |
 | S3 damage to units | Implemented (2026-11-09), audit pending |
 | S4 casualties | Implemented (2026-11-09), audit pending |
-| S5 explosions | Not started |
+| S5 explosions | Implemented (2026-11-09), audit pending |
 | S6 melee and the attack command | Not started |
 | S7 shooting | Not started |
 | S8 throwing, priming, launching and proximity | Not started |
@@ -82,8 +82,8 @@ Reference studied:
 
 | Refusal | From | Retired by |
 |---|---|---|
-| A crashed UFO's power sources (`BattleGenerator.CrashedPowerSources`) and map grenades primed at -2 (`PrimedJunk`), generation errors | branch 1 | S5 |
-| `battle.hit-unit-unsupported` (retired by S3), `battle.terrain-explosion-unsupported`, `battle.module-map-unsupported` | branch 4 S9 | S3 (done), S5, S5 (ADR 0041) |
+| A crashed UFO's power sources (`BattleGenerator.CrashedPowerSources`) and map grenades primed at -2 (`PrimedJunk`), generation errors | branch 1 | S5 (done) |
+| `battle.hit-unit-unsupported` (retired by S3), `battle.terrain-explosion-unsupported`, `battle.module-map-unsupported` | branch 4 S9 | S3 (done), S5 (done), S5 (done; ADR 0041) |
 | `battle.proximity-unsupported` (and the broad death-trap test, branch 4 audit L3) | branch 4 S7 | S8 |
 | `battle.reaction-fire-unsupported` (`HasPossibleReactor`, the named leak) and the acceptance's `WithOpponentsSpent` | branch 4 (S5, S7, S8, S11) | S9 |
 | `battle.casualties-unsupported` (`HasUncheckedCasualty`, the floorless-walker gate) | branch 3 S3, branch 4 S7 (owner was branch 6) | S4 (done) |
@@ -104,9 +104,11 @@ Kept by their owners: `battle.hostile-reserve-unsupported`, `battle.walk-unit-bu
 `battle.inventory-layout-screens-unsupported`, `-clear-unsupported`, `-autoequip-unsupported`, `-template-unsupported`
 and `-rename-unsupported` name no owner ("not ported yet", `BattleInventoryContracts.cs`); they are not this branch's.
 
+`battle.self-destruct-item-unsupported` (S5; a melee weapon as a self-destruct item; retired by S6) is the one refusal S5 adds.
+
 Interim refusals this branch adds between its own slices (plan, "Interim refusals between slices"): from S3 until S4
 a hit that takes a unit out or infects it kept `battle.casualties-unsupported` (S4 retired it); from S3 until S5 a self-destruct
-keeps `battle.terrain-explosion-unsupported`; from S6, S7 and S8 until S9 the attack's reaction check keeps
+kept `battle.terrain-explosion-unsupported` (S5 retired it); from S6, S7 and S8 until S9 the attack's reaction check keeps
 `battle.reaction-fire-unsupported`.
 
 ### Audit of this plan (2026-11-08)
@@ -322,16 +324,66 @@ Reference: `BattlescapeGame.cpp` (`checkForCasualties`, `convertUnit`, `convertI
   reload through the save adapter, an infected unit's conversion (once, faction, a missing unit), `ConvertInfected` and `KnockOut`, revival (in place, around a large friend, with recovery, still stunned, no floor), the battlescape's constructor before the game and for a loaded battle, the queue order and the falls a check queues.
   The knock-out of a fall is tested in `BattleGravityTests` and `BattleWalkTests`; `BattleFirstTurnTests` cover the briefing, the first turn's revival and the loaded battle; `BattleDamageTests` and `BattleFireTests` follow the retired refusals.
 
+## S5 — Explosions (2026-11-09)
+
+Reference: `ExplosionBState.cpp` (`init`, `think`, `explode`), `TileEngine.cpp` (`explode`, `detonate`, `checkForTerrainExplosions`, `hit`), `BattlescapeGame.cpp` (`statePushFront`, `statePushNext`,
+`popState`, `spawnNewUnit`, `spawnNewItem`), `BattleUnit.cpp` (the self-destruct in `damage`), `BattlescapeGenerator.cpp` (`explodePowerSources`, `explodeOtherJunk`), `RuleItem.cpp` (`getExplosionRadius`, `getPowerBonus`).
+
+- **The list of states.** The reference's `_states` (`statePushFront`, `statePushNext`, `popState`) is one ordered list in `BattleExplosions.cs` (`QueuedState`, `PushFront`, `PushNext`, `PopState`), with the animations
+  collapsed: a state's `init` runs when it is pushed to the front, pushed into an empty list, or becomes the front; its `think` when `RunStates` reaches it, and it pops itself. `RunStates` returns the casualties of the deaths that ran and does
+  nothing when called from inside a running state. The list is empty between commands and is not saved. The commands that can push a state run it at their end: `Walk` and `MoveUpDown` (after `RunWalk`) and the falls (after their deaths).
+  `QueueCasualties` takes a `pushNext` callback, so the deaths of an explosion go into this list one by one (`DeathState`: `UnitDieBState`, whose `init` may skip the unit and whose `think` is `RunDeath`).
+- **`ExplosionBState`** (`ExplosionState`). `PushExplosion(rules, attack, center, before, lowerWeapon, range)` is the `statePushFront` the shots, throws and hits will use. `init`: the power
+  (the weapon's when it ignores the ammunition's power, else the damage item's; plus the damage bonus of the attacker; less `PowerRangeReductionAt(range)` in single precision), the radius (`getExplosionRadius`: the type's fixed one, or from the
+  power bonus times the radius effectiveness, plus one for a fire blast, kept in 1 to 11), the damage type; a self-destruct draws `specialChance` and sets the power to 0 on failure; a firearm item with no power misses; a terrain explosion takes the tile's strength and
+  clears it, with the damage type its explosive type names (0 high explosive, 5 incendiary, 6 stun, anything else smoke) and a radius of a tenth of it; with neither an item nor a tile the blast is 120 high explosive. An area blast with a power runs `Explode`; one with none pops at
+  once; anything else is a bullet hit (`Hit` at the center, with the weapon's psi test for the `rangeAttack` flag). A self-destruct clears the attacker's `AlreadyExploded` at the end of `init`, as the reference does (so with an empty list the flag is clear again at once).
+  `think` is `explode()`: the casualty check (`terrainExplosion` for a tile blast or one with no item), `ReviveUnconsciousUnits(noTU)`, `ConvertInfected`, the attacker puts the gun down (`aim(false)`: status standing) when `lowerWeapon`, a grenade or proximity grenade item leaves the game,
+  the state pops, `checkForTerrainExplosions` pushes the next terrain blast at the front (counter + 1; its attack keeps the attacker), and the item's unit and item spawn at the tile before the impact.
+  The animation, sound and camera work, `getPowerForAnimation` and the animation draws are presentation and draw nothing. `ExplosionLog` (not saved) records each blast's center, power, radius and whether a tile set it off, for the commands' events.
+- **`Explode`** (`TileEngine::explode`). Rays every 5 degrees of elevation and 3 of azimuth lose the type's radius reduction per tile (single precision), a flat vertical decrement of 1000 (`battleExplosionHeight` 0), half a reduction more for a
+  fire blast's diagonal, and twice the vertical and horizontal blockage between tiles (the damage block value for the high explosive and the like, the smoke one for smoke, the vision one for `DT_NONE`; the bigwall deflection of the first tile). A tile takes its damage
+  roll the first time any ray reaches it: the unit on it (direct at the center, ground zero within a squared distance under 4 on the same level or from above, else from the side), what it carries (items destroyed by the item damage over their armor, bodies hit),
+  the items on the ground, then `HitTile`'s fire or smoke; it keeps the highest tile damage of any ray. Types with `ToTile` above 0 then `Detonate` each tile reached, in tile index order (the reference's map orders by tile pointer), with gravity on the tile and the one above;
+  lighting and sight are updated around the center and, for an attacker away from the blast, around the center once more.
+- **`Detonate`** (`TileEngine::detonate`): the nine parts (the ceiling floor, the east and south neighbours' walls, the tile's own floor, walls and object, the north and west neighbours' bigwalls) lose their armor from the explosive in the reference's order and with its bigwall flags;
+  a destroyed part with a dead form carries on through the form; a base module destroyed counts against its block (`CountModuleLost`); what power is left over a flammable tile sets it alight; a destroyed part makes smoke (1 to volume / 2 + 3 plus volume / 2, kept when it beats the tile's).
+  `DestroyPart` already left the explosive of an exploding part on the tile (`Tile::setExplosive`): that is what `CheckForTerrainExplosions` finds and `RunTerrainExplosions` (the end of a turn: branch 6) and `ExplosionState.Think` start.
+- **Self-destruct.** `DamageUnit` no longer refuses: a unit that explodes sets `AlreadyExploded` and pushes an `ExplosionState` (the special weapon, at the corner voxel of its tile) with `PushNext`; into an empty list it starts at once. Only a self-destruct item that is a melee weapon or a psi amplifier is refused
+  (`battle.self-destruct-item-unsupported`, S6), after the hit; the refusal is also left in `ExplosionRefusal` (`TakeExplosionRefusal`), which `Walk`, `MoveUpDown`, the falls and the generator return or throw. A psi amplifier as the item is a plain hit (area test false), as the reference.
+  The refusal is not in the visibility check: it needs a melee self-destruct item, which no mod in the corpus has.
+- **Spawns.** `SpawnNewUnit` and `SpawnNewItem` (`spawnNewUnit(attack, position)` and `spawnNewItem(attack, position)`): the chance (the weapon's action `ammoSpawn*ChanceOverride` first), the owner (attacker, else item owner, else previous owner), the faction, a free place
+  (checked from the attacker's opposite direction), the attacker's facing or a random one, the tank's weapon, equipment, gravity and a full recalculation of sight for the unit; the item lies on the tile with its previous owner, falls, and a glowing one lights its surroundings. The first turn's `SpawnNewUnit`
+  (a primed item before the game) stays as it was: it also calls the unit's sight in the reference but nothing is seen before the first turn.
+- **Generation.** `ExplodePowerSources` (each power source of a crashed UFO at 75 percent: a 180 to 250 high explosive of radius 10; then each terrain blast as a high explosive of the strength it holds) and `ExplodeOtherJunk` (grenades on the map with fuse -2 that spawn nothing, are not X-COM's and are not special weapons; the owner-ignored test is not ported are removed and explode at their power and type;
+  then each terrain blast by the type its explosive names) run after the lighting of the finished map, as the reference's `run` ends. The casualties are the battlescape's opening check (`OpenBattlescape`), except those of a bomber's explosion, whose `init` goes off nested in the ray loop and whose deaths run at the end of the routine. The battle's random source is set to the campaign's for them.
+  `BattleGenerator.CrashedPowerSources` and `PrimedJunk` are gone.
+- **Retired.** `battle.terrain-explosion-unsupported` (the hit, the burn of a floor by a walker or a faller, the fire's spread and the self-destruct) and `battle.module-map-unsupported`. `HitWouldReachUnit`, `FireSpreadRefusal` and the `dryRun` of `Hit` and `BurnFloor` are gone; `SpreadFireAndSmoke` is void.
+  A burn or hit that destroys an exploding part leaves its explosive on the tile: the reference starts the blast from `ExplosionBState` or the end of a turn only, so a walk's burn leaves it until then.
+- **Decisions** (ADR 0041): a module destroyed in a block the saved module map lacks is destroyed without the count (and ADR 0039's must-refuse line now says so for destruction); the generator's explosions run their self-destruct and death states at the end of each routine (the reference would use a battlescape that does not exist yet); terrain
+  detonation order is the tile index.
+- **Left for the later slices.** The melee and psi `ExplosionBState` (`_hit`, `BT_MELEE`, `BT_PSIAMP`; `ExplosionState.Init` throws for them; S6 and branch 6). `terrainMeleeTilePart` (S6). The reaction check after an explosion (S9). The end of a turn's call of `RunTerrainExplosions`,
+  after `SpreadFireAndSmoke` (branch 6). Events for the blasts (`ExplosionLog` feeds them; the commands arrive with S6 to S8). `fuseTimeEvent` grenades exploding at the end of a turn (branch 6).
+- **Tests.** `BattleExplosionTests` (31): the falloff and the radius, the radius reduction, a fire blast, a wall stopping the blast and a door (closed, open), a blast off the map or without power, items destroyed by `ToItem`, a body on the ground, a grenade's power, radius,
+  kills and removal, a blast with no power, a bullet hit and the shooter's gun put down, a weapon's power with the range reduction, a missing bullet, a chain of three terrain explosions, the explosive types, a terrain blast's casualties, walls broken
+  by the explosive, an objective and smoke, a dead form and fire, a base module (counted, and in a block the map lacks), a unit that blows itself up (power, radius, chance, a melee item, a blast that kills it), spawns (unit and item, chance and override), the power sources, the opening check, and map junk.
+  The retired refusals' tests in `BattleFireTests`, `BattleDamageTests`, `BattleCasualtyTests` and `BattleStartTests` follow the new behaviour. Terrain records 35 to 38 (`BlastWall`, `BlastDoor`, `ThinWall`, `Powder`) join the sight tests' set.
+
 ## Next
 
-S5, explosions (plan row S5). Notes for the worker:
+S6, melee and the attack command (plan row S6). Notes for the worker:
 
-- **What S4 left to build on.** `BattleState.CheckForCasualties(rules, damageType, attack, hiddenExplosion, terrainExplosion, statesQueued)` (call it with `terrainExplosion: true` after a chain of terrain explosions, with the explosion's damage type and attack after `ExplosionBState`,
-  `statesQueued: true` behind a running state), `QueueCasualties` and `RunDeaths` for a caller that must run the deaths later, `ItemDrop` and `ItemDropInventory`, `ConvertUnit`, `ConvertInfected`, `ReviveUnconsciousUnits(rules, noTU: true)` (`ExplosionBState` calls it, then `convertInfected`, after the casualty check; the melee and the shot call `convertInfected` only),
-  `KnockOut`, `OpenBattlescape`. `BattleDamageResult.Refusal` is only the self-destruct now: `battle.terrain-explosion-unsupported` (S5 retires it with the explosion of a dying unit, and the dry run in `HitWouldReachUnit`).
+- **Falls after the list.** The reference pushes `UnitFallBState` once the list is empty (`BattlescapeGame::think`), so a command ends with `RunStates()` and only then `ResolveFalls`. `Walk` still resolves its falls inside `RunWalk` before `RunStates` (the reverse order; only reachable when a blast
+  queues a fall during a walk). New commands must call `RunStates()`, then `TakeExplosionRefusal()`, then `ResolveFalls`.
+- **Open refusal.** `battle.self-destruct-item-unsupported` (a melee weapon as a unit's self-destruct item; S6 retires it when `ExplosionState` handles `BT_MELEE`).
+- **What S5 left to build on.** `BattleState.PushExplosion(rules, attack, centerVoxel, beforeVoxel, lowerWeapon, range)` plus `RunStates()` run an `ExplosionBState` (S6 needs the melee form: `_hit`, `BT_MELEE`, `meleeAttack`/`meleeAttackCalculate` in `ExplosionState.Init`/`Think`, now a `NotSupportedException`; the power is `getMeleeBonus` and the damage type the item's `MeleeDamage`; `_radius` 0,
+  `terrainMeleeTilePart` goes to `Hit`, which has no such parameter yet; `explode()`'s `_hit` part lowers the attacker and pops when the power is 0). `ExplosionLog` collects the blasts for the command's events (clear it at the start of a command). `RunTerrainExplosions(rules)` is what `endTurn` calls (branch 6).
+  `DamageUnit` returns a refusal only for a self-destruct item that is a melee weapon or psi amplifier: when `ExplosionState` handles melee (S6 and branch 6), retire `battle.self-destruct-item-unsupported`.
+- **The list of states is the commands' to run.** A command that can push a state (a hit with a unit that blows itself up, a blast) ends with `RunStates()`. `Walk`, `MoveUpDown` and the falls already do. The reaction fire after an attack stays `battle.reaction-fire-unsupported` until S9.
+- **Spawns and the first turn.** `SpawnNewUnit(rules, attack, position)` and `SpawnNewItem` are the attack forms; the first turn's `BattleFirstTurn.SpawnNewUnit` is the item form without sight recalculation, and could be folded into them.
 - **A unit that is out has no tile.** `Position` null, `SavedPosition` where it lies; use `RestingPosition(unit)` and `IsCarried(unit)`. `SetLyingPosition` moves a body.
-- **Existing refusals to retire in S5.** `BattleGenerator.CrashedPowerSources` and `PrimedJunk`: the power sources' hidden explosion is `CheckForCasualties(..., hiddenExplosion: true)` while `IsBeforeGame`, where a dying unit becomes its corpse in the constructor.
 - **`ItemDrop`** omits the danger zone a primed grenade dropped where a unit stands sets (AI state, branch 6; ADR 0041).
-- **Tests.** `BattleCasualtyTests.Extra`, `Lie` and `Murder` build extra units, bodies and murderers on the `Duel` arena; `BattleDamageTests.Duel` is internal now. A unit the test makes out by hand needs `Position = null` and its `SavedPosition`.
+- **Tests.** `BattleExplosionTests` has `Extra` (an extra unit), `Grenade` and `Armed` (a grenade of power 80 with a flat HE type); `BattleDamageTests.Duel` is internal and `Shot` builds an attack with the soldier's loaded gun; `BattleCasualtyTests.Extra`, `Lie` and `Murder` build units, bodies and murderers.
+  A unit the test makes out by hand needs `Position = null` and its `SavedPosition`.
 - **Branch 4's gotchas and the trial copy** (the post-edit hook reformats C# files, so read a file again before a second edit; add string literals with a backslash-n through the Edit tool;
   write test files with LF; run tests with `dotnet test --project <proj> --filter-class <full name>`; a test that adds units by hand needs a `SoldierId` or a unit rule; record equality compares lists by reference) still apply.

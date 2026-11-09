@@ -46,4 +46,15 @@ The `KIA` flag of the victim's statistics is not saved by the reference and not 
 
 **A stun before the game starts (S4).** The reference converts a unit before the game only through the state constructor's instant path (explosions, units already unconscious); a stunned standing unit's state waits until the battlescape runs, after the pre-battle inventory and the first turn's preparation. The port runs the state at the briefing's confirmation, so a unit stunned out at that point is unconscious before the inventory opens.
 
+**A module destroyed in a block the saved module map lacks (S5).** `TileEngine::hit` and `detonate` decrement `getModuleMap()[x / 10][y / 10].second` of a base defense without a check, which indexes past
+the vector when a restored save's map lacks the block (undefined behaviour). The port destroys the part and skips the count (`CountModuleLost`). ADR 0039 asked branches 5 to 7 to refuse such a block; for the destruction this
+replaces that (AGENTS.md allows it for undefined behaviour), while the AI (branch 6) and the debriefing (branch 7) keep ADR 0039's rule.
+
+**Explosions before the battlescape exists (S5).** `explodePowerSources` and `explodeOtherJunk` run in the generator, where a unit that blows itself up would `statePushNext` on a battlescape game that does not exist yet (a null dereference). The port
+runs the pushed explosion with the battle's own list of states: into the empty list its `init` goes off at once (inside the ray loop that hit the bomber), and its `think` and the deaths wait for the end of the routine. The units
+taken out are then ordinary deaths of that check, before the briefing's hidden one. A self-destruct item that is a melee weapon, which the port cannot run yet, fails the generation by name (`battle.self-destruct-item-unsupported`).
+
+**The order of detonation (S5).** `explode` keeps the tiles it reached in a `std::map` keyed by tile pointer, so the detonation order is the allocation order of the tiles. The port detonates in tile index order. The animation's draws
+(`RNG::generate` for each explosion sprite and the camera) are presentation and draw nothing.
+
 **Tile links and the danger zone (S4).** A dropped primed grenade's danger zone (`setDangerZone`) is AI state that branch 6 ports; `ItemDrop` omits it.

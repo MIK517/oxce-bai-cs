@@ -184,9 +184,10 @@ internal sealed partial class BattleState
     /// <summary>
     /// The loop of <c>checkForCasualties</c>: kill statistics, the murderer, morale, the memorial, and each death's state, constructed (so its
     /// constructor's effects are done) and returned in the order the queue will run them. Units that fall without a floor queue to fall.
+    /// With <paramref name="pushNext"/> each death is handed to that caller in the order the reference pushed it, and nothing is returned.
     /// </summary>
     internal List<PendingDeath> QueueCasualties(RuntimeRuleCatalog rules, RuntimeItemDamageRule? damageType, in BattleAttack attack,
-        bool hiddenExplosion = false, bool terrainExplosion = false, bool statesQueued = false)
+        bool hiddenExplosion = false, bool terrainExplosion = false, bool statesQueued = false, Action<PendingDeath>? pushNext = null)
     {
         ArgumentNullException.ThrowIfNull(rules);
         var original = attack.Attacker;
@@ -270,6 +271,14 @@ internal sealed partial class BattleState
                     AddFallingUnit(victim);
                 }
             }
+        }
+
+        // A caller with a real state queue (the explosions, S5) takes each death in the order the reference pushed it and pushes it itself.
+        if (pushNext is not null)
+        {
+            foreach (var death in pushed) pushNext(death);
+            Revision++;
+            return [];
         }
 
         // statePushNext: the first push into an empty queue runs first; every other push goes right behind the running state.

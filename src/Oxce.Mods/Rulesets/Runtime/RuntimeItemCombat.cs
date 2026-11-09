@@ -99,6 +99,9 @@ public sealed record RuntimeItemCombat
     public int AiUseDelay { get; init; } = -1;
     public int AiMeleeHitCount { get; init; } = 25;
 
+    /// <summary>RuleItem::getSpecialChance: the chance a self-destruct explosion goes off (<c>specialChance</c>, 100 by default).</summary>
+    public int SpecialChance { get; init; } = 100;
+
     /// <summary>RuleItem::getExperienceTrainingMode and getManaExperience.</summary>
     public int ExperienceTrainingMode { get; init; }
     public int ManaExperience { get; init; }

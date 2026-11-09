@@ -738,18 +738,6 @@ public sealed class BattleCasualtyTests
     }
 
     [Fact]
-    public void ADryRunRefusesAHitOnlyWhereTheUnitItReachesBlowsUpWithItsDeath()
-    {
-        var voxel = new BattlePosition(15 * 16 + 6, 10 * 16 + 8, 6);
-        var arena = Duel(alienExtra: "    selfDestructItem: GRENADE\n", unitExtra: "    specab: 1\n");
-        var (attack, _, _) = Shot(arena);
-        Assert.True(arena.Battle.HitWouldReachUnit(arena.Soldier, voxel, arena.Rules));
-        Assert.Equal("battle.terrain-explosion-unsupported", arena.Battle.Hit(arena.Rules, attack, voxel, 30, BattleDamageTypes.Fire, false, dryRun: true)?.Code ?? "battle.terrain-explosion-unsupported");
-        var plain = Duel();
-        Assert.False(plain.Battle.HitWouldReachUnit(plain.Soldier, voxel, plain.Rules));
-    }
-
-    [Fact]
     public void AFloorlessWalkerOfALoadedBattleFallsWhenItOpens()
     {
         var arena = Flat(edit: rules => rules.Replace("    shade: 0\n    width: 30\n    length: 30\n    height: 2", "    shade: 0\n    width: 30\n    length: 30\n    height: 4", StringComparison.Ordinal));

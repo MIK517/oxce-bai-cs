@@ -566,16 +566,20 @@ public sealed class BattleDamageTests
     // ---- self-destruct and casualties ----
 
     [Fact]
-    public void AUnitThatExplodesWhenItDiesIsRefusedUntilExplosionsArePortedAndOnlyOnce()
+    public void AUnitThatExplodesWhenItDiesPushesItsExplosionOnceAndNotWhenTheTypeIgnoresIt()
     {
         var arena = Duel(alienExtra: "    selfDestructItem: GRENADE\n", unitExtra: "    specab: 1\n");
         arena.Battle.Random = new ScriptedDraws(99, 0);
         // Not lethal: nothing.
         Assert.Null(Hurt(arena, 10, Plain).Refusal);
         Assert.False(arena.Alien.AlreadyExploded);
-        // Lethal: the explosion would be pushed.
-        Assert.Equal("battle.terrain-explosion-unsupported", Hurt(arena, 500, Plain).Refusal!.Code);
-        Assert.True(arena.Alien.AlreadyExploded);
+        // Lethal: the explosion is pushed on the list of states (its damage is dealt at once; the rest waits for the list to run).
+        Assert.Null(Hurt(arena, 500, Plain).Refusal);
+        Assert.True(arena.Battle.HasPendingStates);
+        // (ExplosionBState::init clears the flag again once the explosion starts; with a list that is not empty it waits for its turn, with the flag set.)
+        Assert.False(arena.Alien.AlreadyExploded);
+        arena.Battle.RunStates();
+        Assert.False(arena.Battle.HasPendingStates);
         // A type that ignores self-destruct, or a unit that exploded already, goes on to the casualty check.
         var ignoring = Duel(alienExtra: "    selfDestructItem: GRENADE\n", unitExtra: "    specab: 1\n");
         Assert.Null(Hurt(ignoring, 500, With(static type => type with { IgnoreSelfDestruct = true })).Refusal);
@@ -948,19 +952,14 @@ public sealed class BattleDamageTests
         arena.Alien.Health = 0;
         Assert.Null(arena.Battle.Hit(arena.Rules, attack, Voxel(12, 12, 0), 30, BattleDamageTypes.Fire, false));
         Assert.True(arena.Map.Fire(tile) > 0);
-        // A dry run asks nothing of a live body, which takes the hit.
-        arena.Alien.Health = 100;
-        Assert.Null(arena.Battle.Hit(arena.Rules, attack, Voxel(12, 12, 0), 30, BattleDamageTypes.Fire, false, dryRun: true));
     }
 
     [Fact]
-    public void AHitThatTakesTheUnitOutLeavesItToTheCasualtyCheckAndADryRunLeavesTheUnitAlone()
+    public void AHitThatTakesTheUnitOutLeavesItToTheCasualtyCheck()
     {
         var arena = Duel();
         var (attack, _, _) = Shot(arena);
         var voxel = new BattlePosition(15 * 16 + 6, 10 * 16 + 8, 6);
-        Assert.Null(arena.Battle.Hit(arena.Rules, attack, voxel, 30, Flat100, true, dryRun: true));
-        Assert.Equal(100, arena.Alien.Health);
         Assert.Null(arena.Battle.Hit(arena.Rules, attack, voxel, 500, Flat100, true));
         Assert.Equal((0, BattleUnitStatus.Standing), (arena.Alien.Health, arena.Alien.Status));
     }

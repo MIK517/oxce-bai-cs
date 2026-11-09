@@ -360,32 +360,20 @@ public sealed class BattleFireTests
     }
 
     [Fact]
-    public void AHitThatWouldBreakAnExplodingPartIsRefusedBeforeAnyChange()
+    public void AHitThatBreaksAnExplodingPartLeavesItsExplosiveOnTheTileForTheChain()
     {
         var arena = Make();
         arena.Put(12, 12, 0, BattleTilePart.Floor, Floor);
         arena.Put(12, 12, 0, BattleTilePart.ObjectPart, Barrel);
-        var state = State(arena);
-        Assert.Equal("battle.terrain-explosion-unsupported", Hit(arena, 12, 12)!.Code);
-        Assert.Equal(state, State(arena));
-        // With no tile damage the reference's armor test still holds: only a part the damage reaches explodes. A barrel of armor 100 is safe.
-        arena.Map.SetPart(arena.Tile(12, 12), BattleTilePart.ObjectPart, Crate, Set(arena.Battle, "TESTSET"));
         Assert.Null(Hit(arena, 12, 12));
-    }
-
-    [Fact]
-    public void ADryRunAsksTheRefusalsAndChangesNothing()
-    {
-        var arena = Make();
-        arena.Put(12, 12, 0, BattleTilePart.Floor, BurnFloor);
+        // The barrel is gone and its strength of 20 waits on the tile; nothing blew up yet.
+        Assert.Null(arena.Map.MapData(arena.Tile(12, 12), BattleTilePart.ObjectPart));
+        Assert.Equal(20, arena.Map.Explosive(arena.Tile(12, 12)));
+        // With no tile damage the reference's armor test still holds: only a part the damage reaches explodes. A crate of armor 100 is safe.
         arena.Put(14, 12, 0, BattleTilePart.Floor, Floor);
-        arena.Put(14, 12, 0, BattleTilePart.ObjectPart, Barrel);
-        var used = new SplitMix64RandomSource(9);
-        arena.Battle.Random = used;
-        var state = State(arena);
-        Assert.Null(arena.Battle.HitTerrain(arena.Rules, null, Voxel(12, 12), 30, BattleDamageTypes.Fire, dryRun: true));
-        Assert.Equal("battle.terrain-explosion-unsupported", arena.Battle.HitTerrain(arena.Rules, null, Voxel(14, 12), 30, BattleDamageTypes.Fire, dryRun: true)!.Code);
-        Assert.Equal((state, 9UL), (State(arena), used.State));
+        arena.Put(14, 12, 0, BattleTilePart.ObjectPart, Crate);
+        Assert.Null(Hit(arena, 14, 12));
+        Assert.Equal(0, arena.Map.Explosive(arena.Tile(14, 12)));
     }
 
     [Fact]
@@ -474,7 +462,7 @@ public sealed class BattleFireTests
     }
 
     [Fact]
-    public void AWalkOverAHitThatReachesABodyHurtsItAndOneThatStartsAnExplosionIsRefusedBeforeAnyChange()
+    public void AWalkOverAHitThatReachesABodyHurtsItAndOneThatBreaksAnExplodingPartLeavesItsExplosive()
     {
         var arena = Burner();
         Cover(arena, BurnFloor, 9, 15, 9, 11);
@@ -487,9 +475,9 @@ public sealed class BattleFireTests
         var blast = Burner();
         blast.Put(12, 10, 0, BattleTilePart.Floor, Floor);
         blast.Put(12, 10, 0, BattleTilePart.ObjectPart, Barrel);
-        var (before, draws) = (State(blast), blast.Campaign.Random.State);
-        Assert.Equal("battle.terrain-explosion-unsupported", Refusal(blast.Campaign.Execute(new WalkUnit(blast.Soldier.Id, At(12, 10)))));
-        Assert.Equal((before, draws), (State(blast), blast.Campaign.Random.State));
+        Assert.NotEmpty(Events(blast.Campaign.Execute(new WalkUnit(blast.Soldier.Id, At(12, 10)))).OfType<UnitWalkEnded>());
+        // The walk burnt the barrel away; its explosive stays on the tile until an explosion or the end of the turn (UnitWalkBState pushes none).
+        Assert.Equal(20, blast.Map.Explosive(blast.Tile(12, 10)));
     }
 
     [Fact]
@@ -568,7 +556,7 @@ public sealed class BattleFireTests
         // A wall between the fire and its east neighbour (the west wall of (11, 10)) and none elsewhere.
         arena.Put(11, 10, 0, BattleTilePart.WestWall, Brick);
         Burn(arena, 10, 10, 3, 100);
-        Assert.Null(arena.Battle.SpreadFireAndSmoke());
+        arena.Battle.SpreadFireAndSmoke();
         var fire = (int x, int y) => arena.Map.Fire(arena.Tile(x, y));
         Assert.Equal(2, fire(10, 10));
         // The smoke of 100 is a chance of 100 - 1 + 15: certain. West, north and south catch (fuel 3: 4 turns); east is shielded.
@@ -585,7 +573,7 @@ public sealed class BattleFireTests
         var tile = arena.Tile(10, 10);
         arena.Battle.Ignite(tile, 100);
         Assert.Equal((4, 1), (arena.Map.Fire(tile), arena.Map.Overlaps(tile)));
-        Assert.Null(arena.Battle.SpreadFireAndSmoke());
+        arena.Battle.SpreadFireAndSmoke();
         // Still 4 turns: it was set alight this turn. Its smoke (a fire's) is not averaged, and the overlap resets for a tile that smokes.
         Assert.Equal((4, 14, 0), (arena.Map.Fire(tile), arena.Map.Smoke(tile), arena.Map.Overlaps(tile)));
     }
@@ -601,7 +589,7 @@ public sealed class BattleFireTests
         var item = arena.Battle.AddItemOnTile(new BattleItem(arena.Battle.TakeItemId(), "CLIP"), At(12, 12, 2));
         var tile = arena.Tile(12, 12, 2);
         Burn(arena, 12, 12, 1, 9, 2);
-        Assert.Null(arena.Battle.SpreadFireAndSmoke());
+        arena.Battle.SpreadFireAndSmoke();
         Assert.Equal((0, 0), (arena.Map.Fire(tile), arena.Map.Smoke(tile)));
         // The crate wore to its dead form, the floor is gone, and the unit above the hole is queued while the item dropped to the ground.
         Assert.Equal((Rubble, (-1, -1)), (arena.Map.Part(tile, BattleTilePart.ObjectPart).Id, arena.Map.Part(tile, BattleTilePart.Floor)));
@@ -621,7 +609,7 @@ public sealed class BattleFireTests
         Burn(arena, 10, 10, 1, 5, 2);
         Burn(arena, 12, 10, 1, 5, 2);
         Burn(arena, 14, 10, 1, 5, 2);
-        Assert.Null(arena.Battle.SpreadFireAndSmoke());
+        arena.Battle.SpreadFireAndSmoke();
         Assert.Equal((-1, -1), arena.Map.Part(arena.Tile(10, 10, 2), BattleTilePart.Floor));
         Assert.Equal(Sturdy, arena.Map.Part(arena.Tile(12, 10, 2), BattleTilePart.Floor).Id);
         Assert.Equal((BurnFloor, Rubble), (arena.Map.Part(arena.Tile(14, 10, 2), BattleTilePart.Floor).Id, arena.Map.Part(arena.Tile(14, 10, 2), BattleTilePart.ObjectPart).Id));
@@ -636,27 +624,29 @@ public sealed class BattleFireTests
         arena.Put(12, 12, 0, BattleTilePart.Floor, Floor);
         arena.Put(12, 12, 0, BattleTilePart.ObjectPart, Objective);
         Burn(arena, 12, 12, 1, 6);
-        Assert.Null(arena.Battle.SpreadFireAndSmoke());
+        arena.Battle.SpreadFireAndSmoke();
         Assert.Equal(1, arena.Battle.ObjectivesDestroyed);
         // The floor beneath it is destroyed too and becomes scorched earth on the ground level; it is not the objective.
         Assert.Equal((1, 0), arena.Map.Part(arena.Tile(12, 12), BattleTilePart.Floor));
     }
 
     [Fact]
-    public void AFireThatWouldBurnAnExplodingObjectRefusesBeforeAnyChange()
+    public void AFireThatBurnsAnExplodingObjectLeavesItsExplosiveOnTheTile()
     {
         var arena = Make();
         Cover(arena, BurnFloor, 9, 15, 9, 11);
         arena.Put(12, 10, 0, BattleTilePart.ObjectPart, Barrel);
         Burn(arena, 12, 10, 1, 6);
         Burn(arena, 10, 10, 3, 100);
-        var state = State(arena);
-        Assert.Equal("battle.terrain-explosion-unsupported", arena.Battle.FireSpreadRefusal()!.Code);
-        Assert.Equal("battle.terrain-explosion-unsupported", arena.Battle.SpreadFireAndSmoke()!.Code);
-        Assert.Equal(state, State(arena));
+        arena.Battle.SpreadFireAndSmoke();
+        Assert.Equal((0, 20), (arena.Map.Fire(arena.Tile(12, 10)), arena.Map.Explosive(arena.Tile(12, 10))));
         // A fire that burns on for another turn does not reach the barrel yet.
-        arena.Map.SetFire(arena.Tile(12, 10), 2);
-        Assert.Null(arena.Battle.FireSpreadRefusal());
+        var other = Make();
+        Cover(other, BurnFloor, 9, 15, 9, 11);
+        other.Put(12, 10, 0, BattleTilePart.ObjectPart, Barrel);
+        Burn(other, 12, 10, 2, 6);
+        other.Battle.SpreadFireAndSmoke();
+        Assert.Equal(0, other.Map.Explosive(other.Tile(12, 10)));
     }
 
     [Fact]
@@ -667,7 +657,7 @@ public sealed class BattleFireTests
         Burn(arena, 10, 10, 0, 5);
         Burn(arena, 12, 10, 0, 5);
         var count = 0;
-        Assert.Null(arena.Battle.SpreadFireAndSmoke(_ => count++));
+        arena.Battle.SpreadFireAndSmoke(_ => count++);
         var smoke = (int x, int y) => arena.Map.Smoke(arena.Tile(x, y));
         // Each source smokes one turn less (4) and gives 4 to each neighbour; the middle one gets 4 + 4 = 8 over 2 overlaps: 8 / 2 - 1 = 3.
         Assert.Equal((4, 4, 3), (smoke(10, 10), smoke(12, 10), smoke(11, 10)));
@@ -686,7 +676,7 @@ public sealed class BattleFireTests
         arena.Put(11, 10, 0, BattleTilePart.WestWall, Brick);
         Burn(arena, 10, 10, 0, 5);
         Burn(arena, 20, 20, 0, 1);
-        Assert.Null(arena.Battle.SpreadFireAndSmoke());
+        arena.Battle.SpreadFireAndSmoke();
         // The smoke wall on (11, 10)'s west side keeps the smoke from the east; a smoke of 1 is gone and gave nothing.
         Assert.Equal((3, 0), (arena.Map.Smoke(arena.Tile(9, 10)), arena.Map.Smoke(arena.Tile(11, 10))));
         Assert.Equal((0, 0, 0), (arena.Map.Smoke(arena.Tile(20, 20)), arena.Map.Smoke(arena.Tile(21, 20)), arena.Map.Smoke(arena.Tile(20, 21))));
@@ -701,7 +691,7 @@ public sealed class BattleFireTests
         arena.Put(12, 10, 1, BattleTilePart.Floor, Floor);
         Burn(arena, 10, 10, 5, 12);
         Burn(arena, 12, 10, 5, 12);
-        Assert.Null(arena.Battle.SpreadFireAndSmoke());
+        arena.Battle.SpreadFireAndSmoke();
         var smoke = (int x, int y, int z) => arena.Map.Smoke(arena.Tile(x, y, z));
         Assert.Equal((4, 4), (arena.Map.Fire(arena.Tile(10, 10)), arena.Map.Fire(arena.Tile(12, 10))));
         // Half of 12 is 6 to the floorless tile above and to each open side; the tile between the fires took 6 twice (12 over 2 overlaps).
@@ -716,10 +706,10 @@ public sealed class BattleFireTests
     {
         var arena = Make();
         var revision = arena.Battle.Revision;
-        Assert.Null(arena.Battle.SpreadFireAndSmoke());
+        arena.Battle.SpreadFireAndSmoke();
         Assert.Equal(revision, arena.Battle.Revision);
         Burn(arena, 10, 10, 0, 3);
-        Assert.Null(arena.Battle.SpreadFireAndSmoke());
+        arena.Battle.SpreadFireAndSmoke();
         Assert.NotEqual(revision, arena.Battle.Revision);
     }
 
@@ -760,40 +750,37 @@ public sealed class BattleFireTests
     }
 
     [Fact]
-    public void AFireThatWouldBurnAnExplodingFloorOrADeadFormThatExplodesRefusesBeforeAnyChange()
+    public void AFireThatBurnsAnExplodingFloorOrADeadFormThatExplodesLeavesItsExplosive()
     {
         var arena = Make();
         // A bare exploding floor.
         arena.Put(12, 10, 0, BattleTilePart.Floor, PowderFloor);
         Burn(arena, 12, 10, 1, 6);
-        var state = State(arena);
-        Assert.Equal("battle.terrain-explosion-unsupported", arena.Battle.SpreadFireAndSmoke()!.Code);
-        Assert.Equal(state, State(arena));
+        arena.Battle.SpreadFireAndSmoke();
+        Assert.Equal(20, arena.Map.Explosive(arena.Tile(12, 10)));
         // An exploding floor under a burnable object (it is destroyed after the object).
-        arena.Map.SetFire(arena.Tile(12, 10), 0);
         arena.Put(14, 10, 0, BattleTilePart.Floor, PowderFloor);
         arena.Put(14, 10, 0, BattleTilePart.ObjectPart, Crate);
         Burn(arena, 14, 10, 1, 6);
-        Assert.Equal("battle.terrain-explosion-unsupported", arena.Battle.FireSpreadRefusal()!.Code);
         // An object whose dead form is a floor that explodes: the dead form takes the floor's place and is destroyed next.
-        arena.Map.SetFire(arena.Tile(14, 10), 0);
         arena.Put(16, 10, 0, BattleTilePart.Floor, Floor);
         arena.Put(16, 10, 0, BattleTilePart.ObjectPart, Fuse);
         Burn(arena, 16, 10, 1, 6);
-        Assert.Equal("battle.terrain-explosion-unsupported", arena.Battle.FireSpreadRefusal()!.Code);
+        arena.Battle.SpreadFireAndSmoke();
+        Assert.Equal((20, 20), (arena.Map.Explosive(arena.Tile(14, 10)), arena.Map.Explosive(arena.Tile(16, 10))));
     }
 
     [Fact]
-    public void ABaseModuleHitInABlockTheSavedModuleMapLacksIsRefusedBeforeAnyChange()
+    public void ABaseModuleHitInABlockTheSavedModuleMapLacksIsDestroyedWithoutTheCount()
     {
         var arena = Make();
         typeof(BattleState).GetField("<MissionType>k__BackingField", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
             .SetValue(arena.Battle, "STR_BASE_DEFENSE");
         arena.Put(12, 12, 0, BattleTilePart.Floor, Floor);
         arena.Put(12, 12, 0, BattleTilePart.ObjectPart, BaseModule);
-        var state = State(arena);
-        Assert.Equal("battle.module-map-unsupported", Hit(arena, 12, 12)!.Code);
-        Assert.Equal(state, State(arena));
+        Assert.Null(Hit(arena, 12, 12));
+        // The part is destroyed; the reference would index past the saved module map, the port skips the count (ADR 0041).
+        Assert.Null(arena.Map.MapData(arena.Tile(12, 12), BattleTilePart.ObjectPart));
     }
 
     [Fact]

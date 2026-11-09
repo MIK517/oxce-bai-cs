@@ -823,10 +823,31 @@ public sealed class BattleStartTests
     }
 
     [Fact]
-    public void MapGrenadesPrimedToExplodeAtTheStartRefuseUntilExplosionsExist()
+    public void ACrashedUfosPowerSourcesExplodeWhenTheBattleIsGenerated()
+    {
+        var (campaign, _) = Requested(Rules, "UFO_POWER", adjust: snapshot => snapshot with
+        {
+            World = snapshot.World with { Ufos = [snapshot.World.Ufos[0] with { Status = UfoStatus.Crashed }] },
+        });
+        Started(campaign);
+        var battle = Battle(campaign);
+        // explodePowerSources: each of the two sources goes off at 75 percent with 180 to 250 and a radius of 10 (this seed lets at least one).
+        Assert.NotEmpty(battle.ExplosionLog);
+        Assert.All(battle.ExplosionLog, static explosion => Assert.True(explosion.Power is >= 180 and <= 250 && explosion.Radius == 10 && !explosion.Terrain));
+        Assert.False(battle.HasPendingStates);
+    }
+
+    [Fact]
+    public void MapGrenadesPrimedToExplodeAtTheStartGoOffWhenTheBattleIsGenerated()
     {
         var (campaign, _) = Requested(Rules, "UFO_JUNK");
-        Assert.Equal(BattleGenerator.PrimedJunk, Refusal(campaign, new StartBattle()));
+        Started(campaign);
+        var battle = Battle(campaign);
+        // explodeOtherJunk: the map's grenades primed at -2 are removed and exploded where they lay (the power of the base grenade, a radius from it).
+        Assert.DoesNotContain(battle.Items, static item => item.ItemType == "GRENADE" && item.FuseTimer == -2);
+        Assert.NotEmpty(battle.ExplosionLog);
+        Assert.All(battle.ExplosionLog, static explosion => Assert.False(explosion.Terrain));
+        Assert.False(battle.HasPendingStates);
     }
 
     [Fact]

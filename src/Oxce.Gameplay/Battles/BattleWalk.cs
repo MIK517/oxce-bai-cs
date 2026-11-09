@@ -8,7 +8,7 @@ namespace Oxce.Gameplay.Battles;
 /// their end. The reference's <c>think</c> is called once per animation tick: the port runs it as one loop whose cycles are the reference's
 /// (a step starts in one cycle and is finished, with everything that follows it, at the start of the next; a turn eighth is one cycle), a step
 /// collapsed into <see cref="WalkStep"/>. What the reference hands to later work is refused by name: the reaction fire after a step
-/// (<see cref="HasPossibleReactor"/>), proximity explosions, a burning floor whose hit reaches a unit or an explosion, and a fall that finds no escape. The command checks them on a trial
+/// (<see cref="HasPossibleReactor"/>), proximity explosions and a fall that finds no escape. The command checks them on a trial
 /// copy of the battle first, so a refusal changes nothing.
 /// </summary>
 internal sealed partial class BattleState
@@ -59,7 +59,10 @@ internal sealed partial class BattleState
         if (pathfinder.StartDirection == -1) return BattleMovementReasons.WalkNoPath;
         // if running or shifting, ignore spotted enemies (i.e. don't stop)
         var ignore = ignoreSpottedEnemies || move == BattleMoveType.Run && rules.Campaign.ExtendedRunningCost;
-        return RunWalk(rules, unit, pathfinder, bam, move == BattleMoveType.Strafe, ignore, events);
+        var refusal = RunWalk(rules, unit, pathfinder, bam, move == BattleMoveType.Strafe, ignore, events);
+        // The explosions a unit that blows itself up pushed run behind the walk state.
+        RunStates();
+        return refusal ?? TakeExplosionRefusal();
     }
 
     /// <summary>
@@ -96,7 +99,9 @@ internal sealed partial class BattleState
             return null;
         }
         pathfinder.Calculate(unit, target, BattleActionMove.Normal);
-        return RunWalk(rules, unit, pathfinder, BattleActionMove.Normal, false, false, events, kneeled, kneelSpent);
+        var refusal = RunWalk(rules, unit, pathfinder, BattleActionMove.Normal, false, false, events, kneeled, kneelSpent);
+        RunStates();
+        return refusal ?? TakeExplosionRefusal();
     }
 
     /// <summary>
@@ -191,7 +196,7 @@ internal sealed partial class BattleState
                 // if the unit burns floor tiles, burn floor tiles as long as we're not falling
                 if (!falling && BurnsFloor(rules, unit))
                 {
-                    if (BurnFloor(rules, unit, dryRun: false) is { } burnRefusal)
+                    if (BurnFloor(rules, unit) is { } burnRefusal)
                     {
                         refusal = burnRefusal;
                         return true;

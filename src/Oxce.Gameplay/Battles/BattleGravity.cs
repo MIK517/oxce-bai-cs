@@ -237,6 +237,9 @@ internal sealed partial class BattleState
         }
         if (dryRun) return stop;
         RunDeaths(rules, deaths);
+        // The explosions a unit that blows itself up pushed run behind the fall state.
+        RunStates();
+        if (TakeExplosionRefusal() is { } explosionRefusal) return explosionRefusal;
         // The falls the deaths start (a converted unit, a corpse over a hole) are a fall state of their own.
         return stop ?? (_fallingUnits.Count != 0 ? RunFalls(rules, dryRun: false) : null);
     }
@@ -293,7 +296,7 @@ internal sealed partial class BattleState
     {
         var position = unit.Position!.Value;
         // If the unit burns floor tiles, burn floor tiles (a hole it burns leaves it standing: gravity queued it, and it leaves the list below).
-        if (BurnsFloor(rules, unit) && BurnFloor(rules, unit, dryRun) is { } burnRefusal) return burnRefusal;
+        if (BurnsFloor(rules, unit) && !dryRun && BurnFloor(rules, unit) is { } burnRefusal) return burnRefusal;
         if (ProximityEffects(rules, unit)) return BattleGravityReasons.ProximityUnsupported;
         var reacts = unit.Faction == Side;
         // The trial copies of the first turn run this too (not a dry run), so the reactor test is part of both.

@@ -269,6 +269,7 @@ public sealed class RuntimeBattleEquipment
             ManaExperience = values.GetInteger("manaExperience"),
             ZombieUnit = values.NullableName("zombieUnit") ?? "",
             ZombieUnitFaction = values.GetInteger("zombieUnitFaction"),
+            SpecialChance = values.GetInteger("specialChance"),
             ZombieUnitChance = zombieChance == -1 ? values.GetInteger("specialChance") : zombieChance,
             ZombieUnitsByMaleArmor = Map(rule.ZombieUnitsByMaleArmor.ToDictionary(static pair => pair.Key, static pair => pair.Value, StringComparer.Ordinal)),
             ZombieUnitsByFemaleArmor = Map(rule.ZombieUnitsByFemaleArmor.ToDictionary(static pair => pair.Key, static pair => pair.Value, StringComparer.Ordinal)),
