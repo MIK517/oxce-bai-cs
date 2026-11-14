@@ -416,8 +416,8 @@ public sealed class BattleShootingTests
         Assert.Equal((70, 11), (arena.Soldier.TimeUnits, clip.AmmoQuantity));
         Assert.True(runtime.Revision > 0);
 
-        // The launch is S8's.
-        Assert.Equal("battle.attack-kind-unsupported", Refusal(runtime.Execute(new Attack(arena.Soldier.Id, gun.Id, BattleAimKind.Launch, Target: new BattlePosition(15, 10, 0)))));
+        // The launch is a command of its own: this gun is no launcher, and a launch needs waypoints.
+        Assert.Equal("battle.attack-action-not-offered", Refusal(runtime.Execute(new Attack(arena.Soldier.Id, gun.Id, BattleAimKind.Launch, Waypoints: [new BattlePosition(15, 10, 0)]))));
         // A refused shot returns its reason alone and changes nothing.
         arena.Soldier.TimeUnits = 5;
         var revision = runtime.Revision;

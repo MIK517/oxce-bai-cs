@@ -11,6 +11,9 @@ internal static class BattleShotReasons
     internal static readonly CampaignReason ShotNotOffered = new("battle.attack-action-not-offered",
         "The weapon does not offer this shot to this unit (it is no firearm, it has no cost for the shot, a launcher offers no aimed shot, or the unit lacks the psi skill or the mana feature the weapon needs).");
 
+    internal static readonly CampaignReason WaypointsInvalid = new("battle.attack-waypoints-invalid",
+        "A launch needs at least one waypoint, and no more than the weapon (or its ammunition) allows.");
+
     internal static readonly CampaignReason SprayNotOffered = new("battle.attack-spray-not-offered",
         "A spray needs an auto shot with a weapon that has spray waypoints, and no more waypoints than the weapon allows.");
 }
@@ -111,6 +114,38 @@ internal sealed partial class BattleState
         if (battleRule.Fixed || battleRule.ActionCosts.Of(RuntimeItemActionCosts.Throw).Cost.Time <= 0) return BattleShotReasons.ShotNotOffered;
         if (!Contains(target)) return BattleShotReasons.TargetOutside;
         return RunProjectileAction(unit, weapon, BattleAimKind.Throw, new BattleAimAction(unit, BattleActionType.Throw, weapon, target) { ForceFire = forceFire });
+    }
+
+    /// <summary>
+    /// A launch with a weapon in the hand of a unit of the side on turn (<c>ActionMenuState::handleAction</c>, <c>primaryAction</c>'s waypoint placing and
+    /// <c>BattlescapeGame::launchAction</c>): the menu offers the launch, the unit may use the weapon (research, depth, hands), and the waypoints are tiles on the map, no more than
+    /// <c>getCurrentWaypoints</c> allows (-1 is any number); the time units and the ammunition are checked before anything else (the unit does not turn for a launch it cannot
+    /// pay). The unit turns to the first waypoint; the missile flies from the unit to it, and from each waypoint to the next
+    /// (<c>ProjectileFlyBState</c>'s waypoint cascade) until the last one, where it explodes. The time units are paid once, by the first leg; the ammunition is spent at the end.
+    /// </summary>
+    internal CampaignReason? LaunchAction(BattleResearchGate research, int unitId, int itemId, IReadOnlyList<BattlePosition>? waypoints)
+    {
+        ArgumentNullException.ThrowIfNull(research);
+        if (SelectionUnit(unitId, out var found) is { } closed) return closed;
+        var unit = found!;
+        if (unit.Position is null) return BattleSelectionReasons.UnitUnknown;
+        if (WeaponOf(unit, itemId) is not { } weapon) return BattleAttackReasons.WeaponUnavailable;
+        if (!WeaponOffersShot(research, unit, weapon, BattleAimKind.Launch)) return BattleShotReasons.ShotNotOffered;
+        var usable = CanUseWeapon(research, weapon, unit, false, BattleActionType.Launch);
+        if (!usable.Usable) return BattleAttackReasons.ForMessage(usable.Message);
+        // The menu checks the launch beforehand (before the unit turns): the time units, then the ammunition.
+        var launchCost = BattleActionCost.For(RequiredRules, BattleActionType.Launch, unit, weapon);
+        if (launchCost.Shortfall() is var shortfall && shortfall != BattleActionShortfall.None)
+            return shortfall == BattleActionShortfall.NoAction ? BattleAttackReasons.ActionNotOffered : BattleAttackReasons.ForMessage(ShortfallMessage(shortfall));
+        if (AmmoForActionWithMessage(weapon, ActionIndex(BattleActionType.Launch)!.Value, out var ammoMessage, out _) is null)
+            return BattleAttackReasons.ForMessage(ammoMessage);
+        var allowed = CurrentWaypoints(weapon);
+        if (waypoints is not { Count: > 0 } || allowed != -1 && waypoints.Count > allowed) return BattleShotReasons.WaypointsInvalid;
+        if (waypoints.Any(waypoint => !Contains(waypoint))) return BattleShotReasons.TargetOutside;
+
+        var action = new BattleAimAction(unit, BattleActionType.Launch, weapon, waypoints[0]);
+        action.Waypoints.AddRange(waypoints);
+        return RunProjectileAction(unit, weapon, BattleAimKind.Launch, action);
     }
 
     /// <summary>
@@ -236,10 +271,12 @@ internal sealed partial class BattleState
     /// voxel (<see cref="ChooseTargetVoxel"/>) and creates the first projectile; <c>think</c> lets the projectile land (an <see cref="ExplosionState"/> goes in front, then the
     /// hit's statistics, the shotgun's pellets), creates the next shot of the burst, and at the end checks for reactions and turns the unit back.
     /// </summary>
-    private sealed class ProjectileFlyState(BattleState battle, BattleAimAction action, BattleActionCost cost, int range = 0) : QueuedState
+    private sealed class ProjectileFlyState(BattleState battle, BattleAimAction action, BattleActionCost cost, int range = 0, BattlePosition? originTile = null) : QueuedState
     {
         private readonly BattleUnit _unit = action.Actor;
-        private readonly BattlePosition _origin = action.Actor.RequiredPosition;
+
+        /// <summary>The tile the projectile starts from: the unit's, or for a later leg of a launch the waypoint it left.</summary>
+        private readonly BattlePosition _origin = originTile ?? action.Actor.RequiredPosition;
         private BattleItem? _ammo;
         private BattlePosition? _targetVoxel;
         private BattlePosition? _originVoxel;
@@ -249,6 +286,9 @@ internal sealed partial class BattleState
 
         /// <summary>Whether a shot left the weapon.</summary>
         public bool Fired { get; private set; }
+
+        /// <summary><c>targetFloor</c>: a launch leg whose waypoint is the tile it starts from aims at the floor.</summary>
+        public bool TargetFloor { get; init; }
 
         /// <summary>Whether the state changed the battle before it stopped (close quarters combat's result).</summary>
         public bool Touched { get; private set; }
@@ -323,10 +363,11 @@ internal sealed partial class BattleState
 
             var isPlayer = battle.Side == BattleFaction.Player;
             // (A throw's arc is found from the action's target: it has no target voxel.)
-            if (!throwing && (action.ForceFire && isPlayer || !action.PanicHandled))
+            if (!throwing && (action.Type == BattleActionType.Launch || action.ForceFire && isPlayer || !action.PanicHandled))
             {
-                // target nothing, targets the middle of the tile
-                var choice = battle.ChooseTargetVoxel(action, _origin);
+                // target nothing, targets the middle of the tile (a launch: a little above it, or the floor); the origin voxel is the unit's, or the middle of the waypoint's tile
+                // (the reference sets the origin voxel of a later leg from the last flight's end, and init then overwrites it with this one).
+                var choice = battle.ChooseTargetVoxel(action, _origin, TargetFloor);
                 _targetVoxel = choice.Voxel;
                 _originVoxel = choice.OriginVoxel;
             }
@@ -460,7 +501,8 @@ internal sealed partial class BattleState
                 // (No target voxel is no line of fire: the reference's invalid voxel ends in nothing, whatever the deviation.)
                 impact = _targetVoxel is null ? BattleVoxelType.Empty
                     : _originVoxel is { } originVoxel ? projectile.CalculateTrajectory(accuracy, originVoxel, false) : projectile.CalculateTrajectory(accuracy);
-                lineOfFire = _targetVoxel is not null && impact != BattleVoxelType.Empty;
+                // (A launch needs no hit: its waypoints are in the air.)
+                lineOfFire = _targetVoxel is not null && (impact != BattleVoxelType.Empty || action.Type == BattleActionType.Launch);
             }
 
             if (!lineOfFire)
@@ -476,8 +518,12 @@ internal sealed partial class BattleState
             _impact = impact;
             // set the soldier in an aiming position, and we have a lift-off
             _unit.Status = BattleUnitStatus.Aiming;
-            battle.SpendAmmoForAction(weapon, ConfigIndex);
-            _unit.Statistics = _unit.Statistics with { ShotsFiredCounter = _unit.Statistics.ShotsFiredCounter + 1 };
+            // (A launch spends its ammunition at the last impact, and is no shot for the statistics.)
+            if (action.Type != BattleActionType.Launch)
+            {
+                battle.SpendAmmoForAction(weapon, ConfigIndex);
+                _unit.Statistics = _unit.Statistics with { ShotsFiredCounter = _unit.Statistics.ShotsFiredCounter + 1 };
+            }
             Fired = true;
             battle.Events.Add(new UnitFired(_unit.Id, weapon.Id, _ammo!.Id, KindOf(action.Type), [.. projectile.Trajectory], (int)impact));
             return true;
@@ -559,6 +605,7 @@ internal sealed partial class BattleState
             BattleActionType.AutoShot => BattleAimKind.AutoShot,
             BattleActionType.SnapShot => BattleAimKind.SnapShot,
             BattleActionType.AimedShot => BattleAimKind.AimedShot,
+            BattleActionType.Launch => BattleAimKind.Launch,
             _ => throw new InvalidOperationException("The action is not a shot."),
         };
 
@@ -637,8 +684,19 @@ internal sealed partial class BattleState
             var distance = DistanceOf(trajectory);
             _projectile = null;
 
+            if (action.Type == BattleActionType.Launch && action.Waypoints.Count > 1 && _impact == BattleVoxelType.Empty)
+            {
+                // launch the next projectile in the waypoint cascade: from the waypoint it reached to the next one, with the range flown so far (the leg pays nothing and spends nothing)
+                var origin = action.Waypoints[0];
+                action.Waypoints.RemoveAt(0);
+                action.Target = action.Waypoints[0];
+                battle.PushNext(new ProjectileFlyState(battle, action, cost, (int)(range + distance), origin) { TargetFloor = origin == action.Target });
+                return;
+            }
+
             if (battle.UnitOnTile(battle.Map.TileIndex(action.Target)) is { } aimedAt && aimedAt != _unit)
                 aimedAt.Statistics = aimedAt.Statistics with { ShotAtCounter = aimedAt.Statistics.ShotAtCounter + 1 };
+            if (action.Type == BattleActionType.Launch) battle.SpendAmmoForAction(weapon, ConfigIndex);
 
             if (_impact != BattleVoxelType.OutOfBounds)
             {

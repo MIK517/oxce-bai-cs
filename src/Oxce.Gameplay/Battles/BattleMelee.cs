@@ -15,7 +15,7 @@ internal static class BattleAttackReasons
         "The weapon does not offer this action to this unit (a hit costs no time units, or the weapon needs a psi skill or the mana feature the unit lacks).");
 
     internal static readonly CampaignReason KindUnsupported = new("battle.attack-kind-unsupported",
-        "In the battle only the hit, the throw and the aimed, snap and auto shots are attack commands so far; the launch arrives with Phase 7 branch 5 S8's next part.");
+        "The attack kind is not one the battle knows (the hit, the throw, the shots and the launch are attacks; priming has its own commands).");
 
     internal static readonly CampaignReason PrimeIsItsOwnCommand = new("battle.attack-kind-is-prime-command",
         "Priming and unpriming are the PrimeItem and UnprimeItem commands, not attacks.");

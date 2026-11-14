@@ -266,6 +266,7 @@ internal sealed class BattleRuntime
                 RunOnTrialCopy(battle => battle.ShootAction(research, command.UnitId, command.ItemId, command.Kind, command.Target, command.ForceFire, command.SprayWaypoints)),
             BattleAimKind.Prime or BattleAimKind.Unprime => Blocked(BattleAttackReasons.PrimeIsItsOwnCommand),
             BattleAimKind.Throw => RunOnTrialCopy(battle => battle.ThrowAction(command.UnitId, command.ItemId, command.Target, command.ForceFire)),
+            BattleAimKind.Launch => RunOnTrialCopy(battle => battle.LaunchAction(research, command.UnitId, command.ItemId, command.Waypoints)),
             _ => Blocked(BattleAttackReasons.KindUnsupported),
         };
     }

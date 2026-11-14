@@ -45,10 +45,11 @@ public sealed record BattleAimView(int UnitId, int ItemId, BattleAimKind Kind, B
 /// <see cref="Target"/> (each eighth costs time units), then fires the weapon's shots one after the other at that tile; <see cref="ForceFire"/> is Ctrl (the shot aims at the
 /// middle of the tile, whatever stands there). <see cref="SprayWaypoints"/> are the tiles of the spray auto shot (a weapon with <c>sprayWaypoints</c>, Ctrl and Shift): the
 /// first is the target (<see cref="Target"/> is ignored), and the weapon's shots are spaced along them. A throw (S8) turns the unit to <see cref="Target"/> and throws the item;
-/// the launch is the rest of S8.
+/// a launch (S8) turns it to the first of <see cref="Waypoints"/> (tiles; <see cref="Target"/> is ignored), and the missile flies through them in order and explodes at the last; the
+/// weapon (or its ammunition) limits their number.
 /// </summary>
 public sealed record Attack(int UnitId, int ItemId, BattleAimKind Kind, bool AltPressed = false, BattlePosition Target = default, bool ForceFire = false,
-    IReadOnlyList<BattlePosition>? SprayWaypoints = null)
+    IReadOnlyList<BattlePosition>? SprayWaypoints = null, IReadOnlyList<BattlePosition>? Waypoints = null)
     : IBattleCommand, IUnitCommand;
 
 /// <summary>

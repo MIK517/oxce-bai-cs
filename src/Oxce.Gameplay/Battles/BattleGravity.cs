@@ -3,18 +3,11 @@ using Oxce.Mods.Rulesets.Runtime;
 
 namespace Oxce.Gameplay.Battles;
 
-/// <summary>The reasons gravity and falling refuse before any change (Phase 7 branch 4 S7).</summary>
-internal static class BattleGravityReasons
-{
-    internal static readonly CampaignReason ProximityUnsupported = new("battle.proximity-unsupported",
-        "A unit would land next to an item whose fuse reacts to nearby units, or on a death trap tile; proximity explosions arrive with the attack work (Phase 7 branch 5).");
-}
-
 /// <summary>
 /// Gravity and falling (Phase 7 branch 4 S7): <c>TileEngine::applyGravity</c> and the fall routine of <c>UnitFallBState</c>. The animation
 /// is collapsed: each cycle every falling unit that stands still either takes its next step down, or has landed. A fall onto a unit that finds no
-/// escape knocks it out, and the casualty check that follows takes it out; a landing the reaction fire (branch 5) or a proximity
-/// explosion (branch 5) could follow is refused before any change.
+/// escape knocks it out, and the casualty check that follows takes it out; a landing the reaction fire (S9) could follow is refused before any change.
+/// A landed unit's proximity check (S8, <c>BattleProximity.cs</c>) may start an explosion.
 /// </summary>
 internal sealed partial class BattleState
 {
@@ -166,8 +159,9 @@ internal sealed partial class BattleState
         var unitsToMove = new List<BattleUnit>();
         BattlePathfinder? pathfinder = null;
         var limit = 4 * (Map.Height + 2) * (_units.Count + 1);
-        // The deaths the knock-outs push run when the fall state is done (statePushNext puts them behind it).
-        var deaths = new List<PendingDeath>();
+        // What the fall pushes behind itself (statePushNext), in the order it pushes: a landed unit's proximity explosions, then each round's knock-out deaths. The list runs the last
+        // push first when the fall state is done.
+        var pushes = new List<QueuedState>();
         CampaignReason? stop = null;
         for (var round = 0; _fallingUnits.Count != 0 && stop is null; round++)
         {
@@ -198,7 +192,7 @@ internal sealed partial class BattleState
                 }
                 else if (unit.Status == BattleUnitStatus.Standing)
                 {
-                    if (Land(unit, dryRun) is { } refusal)
+                    if (Land(unit, dryRun, pushes) is { } refusal)
                     {
                         stop = refusal;
                         break;
@@ -226,16 +220,16 @@ internal sealed partial class BattleState
                 AddFallingUnit(below);
                 steps.Add((below, escape.Direction, escape.Destination));
             }
-            // statePushNext puts every push right behind the running fall state, so a later round's deaths run before an earlier round's.
-            if (hadUnitsToMove && !dryRun) deaths.InsertRange(0, QueueCasualties(null, default, statesQueued: true));
+            // statePushNext puts every push right behind the running fall state, so a later push (a later round's death or landing) runs before an earlier one.
+            if (hadUnitsToMove && !dryRun) QueueCasualties(null, default, pushNext: death => pushes.Add(new DeathState(this, death)));
 
             // The steps complete: the units that moved aside are ahead of those that fall, as the list orders them.
             foreach (var (unit, direction, destination) in steps.OrderBy(step => _fallingUnits.IndexOf(step.Unit)))
                 WalkStep(unit, direction, destination);
         }
         if (dryRun) return stop;
-        RunDeaths(deaths);
-        // The explosions a unit that blows itself up pushed run behind the fall state.
+        // The deaths and the proximity explosions run behind the fall state; the explosions a unit that blows itself up, or a proximity grenade, push run in turn.
+        PushBehindRunning(pushes);
         RunStates();
         if (TakeExplosionRefusal() is { } explosionRefusal) return explosionRefusal;
         // The falls the deaths start (a converted unit, a corpse over a hole) are a fall state of their own.
@@ -286,57 +280,31 @@ internal sealed partial class BattleState
     }
 
     /// <summary>
-    /// A unit that has stopped falling (<c>UnitFallBState::think</c>'s else branch): a floor-burning unit burns the floor under it (a hit that reaches a unit or starts an explosion refuses), and a proximity explosion
-    /// refuse; otherwise its light moves with it, everyone's sight of the area is updated, its own tiles are, and what
+    /// A unit that has stopped falling (<c>UnitFallBState::think</c>'s else branch): a floor-burning unit burns the floor under it (a hit that reaches a unit or starts an explosion refuses),
+    /// <see cref="CheckForProximityGrenades"/> runs (its explosions are collected in <paramref name="explosions"/> for the fall to push behind itself; a dry run does not run it, as it
+    /// draws and changes items, but refuses a landing that could start one); then its light moves with it (the items' layer when the check changed anything), everyone's sight of the area is updated, its own tiles are, and what
     /// <c>checkReactionFire</c> spots happens (a reactor refuses).
     /// </summary>
-    private CampaignReason? Land(BattleUnit unit, bool dryRun)
+    private CampaignReason? Land(BattleUnit unit, bool dryRun, List<QueuedState> explosions)
     {
         var position = unit.Position!.Value;
         // If the unit burns floor tiles, burn floor tiles (a hole it burns leaves it standing: gravity queued it, and it leaves the list below).
         if (BurnsFloor(unit) && !dryRun && BurnFloor(unit) is { } burnRefusal) return burnRefusal;
-        if (ProximityEffects(unit)) return BattleGravityReasons.ProximityUnsupported;
+        // The dry run is for the callers that act on the live battle (an inventory move, a loaded battle, the commands' gate): the check draws and changes items, and the explosion it
+        // starts has knock-on effects that can refuse after changes, so a landing that could start one is refused before any (the commands that run on a trial copy meet it there).
+        if (dryRun && ProximityMayExplode(unit)) return BattleMovementReasons.ProximityExplosionOnFallUnsupported;
+        var change = dryRun ? 0 : CheckForProximityGrenades(unit, explosions);
         var reacts = unit.Faction == Side;
         // The trial copies of the first turn run this too (not a dry run), so the reactor test is part of both.
         if (reacts && HasPossibleReactor(unit)) return BattleMovementReasons.ReactionFireUnsupported;
         if (dryRun) return null;
 
-        // checkForProximityGrenades returned 0, so the units' light is what changes.
-        CalculateLighting(BattleLightLayer.Units, position, 2);
+        CalculateLighting(change != 0 ? BattleLightLayer.Items : BattleLightLayer.Units, position, 2);
         var sight = Sight();
         sight.CalculateFov(position, 2, updateTiles: false);
         sight.CalculateFov(unit, true, false);
         if (reacts) SpotMover(sight, unit);
         return null;
-    }
-
-    /// <summary>
-    /// Whether <c>BattlescapeGame::checkForProximityGrenades</c> could change anything for the unit on its tile: a death trap floor under it
-    /// whose item rule exists, or an item on a tile around it whose fuse nearby units trigger (<c>proximityTrigger</c>), or that is lit and explodes or is removed near units (a
-    /// proximity grenade, <c>proximityExplode</c>)
-    /// (<c>fuseProximityEvent</c> enables the fuse, may explode, or removes the item). Over-approximates: no chance is rolled.
-    /// </summary>
-    private bool ProximityEffects(BattleUnit unit)
-    {
-        var position = unit.Position!.Value;
-        foreach (var covered in BattleMap.Footprint(position, unit.ArmorSize))
-            if (Contains(covered) && Map.FloorSpecialType(Map.TileIndex(covered)) is var special && special >= DeathTraps &&
-                RequiredRules.Items.TryGet($"STR_DEATH_TRAP_{special}", out _))
-                return true;
-        for (var x = -1; x <= unit.ArmorSize; x++)
-            for (var y = -1; y <= unit.ArmorSize; y++)
-            {
-                var around = new BattlePosition(position.X + x, position.Y + y, position.Z);
-                if (!Contains(around)) continue;
-                foreach (var item in ItemsOnTile(around))
-                {
-                    var trigger = RequiredRules.Battle.Equipment.Items[item.ItemType].FuseTrigger;
-                    if (trigger.ProximityTrigger || item.FuseEnabled && item.FuseTimer >= 0 &&
-                        (trigger.ProximityExplode || trigger.DefaultBehavior && ItemRuleOf(item.ItemType).BattleType == ProximityGrenadeBattleType))
-                        return true;
-                }
-            }
-        return false;
     }
 
     /// <summary>The unit and map state a fall changes, taken before a trial run and put back after it.</summary>

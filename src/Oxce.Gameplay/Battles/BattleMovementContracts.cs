@@ -64,6 +64,9 @@ public enum BattleWalkStop
 
     /// <summary>The unit is out of action.</summary>
     Incapacitated,
+
+    /// <summary>A step set off a proximity grenade or a death trap next to the unit, and the walk ended there (Phase 7 branch 5 S8).</summary>
+    ProximityExplosion,
 }
 
 /// <summary>One step of a walk: a tile in a direction (0-7, 8 up, 9 down), what it cost and where the unit stands afterwards (a step down stairs or off an edge differs from the neighbour tile).</summary>
@@ -81,7 +84,10 @@ public sealed record UnitFell(int UnitId, BattlePosition From, BattlePosition To
 /// <summary>The units a walker saw for the first time this turn (the walk stopped there unless it ignores them).</summary>
 public sealed record UnitsSpotted(int UnitId, IReadOnlyList<int> Spotted) : ICampaignEvent;
 
-/// <summary>A walk ended: why, how many steps it took and what it cost in all (the kneel, the doors, the turns before the first step and the steps).</summary>
+/// <summary>
+/// A walk ended: why, how many steps it took and what it cost in all (the kneel, the doors, the turns before the first step and the steps). <c>Position</c> is the tile the unit stands on, or lies
+/// on when it is out (a <see cref="BattleWalkStop.ProximityExplosion"/> can take the unit out); it is (-1, -1, -1) only for a unit that has no tile at all to report.
+/// </summary>
 public sealed record UnitWalkEnded(int UnitId, BattleWalkStop Stop, int Steps, int TimeUnitsSpent, int EnergySpent, BattlePosition Position) : ICampaignEvent;
 
 /// <summary>Why a turn ended.</summary>
@@ -170,6 +176,10 @@ internal static class BattleMovementReasons
 
     internal static readonly CampaignReason UpDownImpossible = new("battle.up-down-impossible",
         "The unit cannot move up or down from where it is.");
+
+    internal static readonly CampaignReason ProximityExplosionOnFallUnsupported = new("battle.fall-proximity-explosion-unsupported",
+        "A unit that falls would land next to an item that its proximity sets off, or on a death trap, and the explosion cannot be tried first where the fall starts (an inventory move, a loaded battle): " +
+        "the unit's own commands (a walk, an attack) run it.");
 
     internal static readonly CampaignReason ReactionFireUnsupported = new("battle.reaction-fire-unsupported",
         "An opposing unit near the unit could react with a weapon, and reaction fire arrives with the reaction fire slice (Phase 7 branch 5 S9); the unit near may be one the player has not seen.");

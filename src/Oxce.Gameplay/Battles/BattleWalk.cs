@@ -124,6 +124,8 @@ internal sealed partial class BattleState
         var stop = BattleWalkStop.Arrived;
         CampaignReason? refusal = null;
         var size = unit.ArmorSize;
+        // The explosions the proximity check starts: statePushNext puts them behind the walk state, which pops when it finds one.
+        var proximity = new List<QueuedState>();
 
         // cancelCurentMove: a unit that stopped without a floor keeps falling first; otherwise the path is dropped and the state pops.
         bool Cancel(BattleWalkStop why)
@@ -207,14 +209,16 @@ internal sealed partial class BattleState
                 }
                 foreach (var faction in Enum.GetValues<BattleFaction>())
                     if (faction != unit.Faction) SetSpotted(unit, faction, false);
-                if (ProximityEffects(unit))
+                var change = CheckForProximityGrenades(unit, proximity);
+                // Move our personal lighting with us, and update the unit visibility of everyone who can see the last and the present position.
+                CalculateLighting(change != 0 ? BattleLightLayer.Items : BattleLightLayer.Units, position, 2);
+                sight.CalculateFov(position, 2, updateTiles: false);
+                if (change > 1)
                 {
-                    refusal = BattleGravityReasons.ProximityUnsupported;
+                    // popState: the walk is over; the explosion the check pushed runs behind it.
+                    stop = BattleWalkStop.ProximityExplosion;
                     return true;
                 }
-                // Move our personal lighting with us, and update the unit visibility of everyone who can see the last and the present position.
-                CalculateLighting(BattleLightLayer.Units, position, 2);
-                sight.CalculateFov(position, 2, updateTiles: false);
                 // (The brutal units of the side wake up through checkForReactivation when a unit is spotted: the AI's, branch 6.)
                 if (Spotted()) return Cancel(BattleWalkStop.SpottedUnits);
                 if (!falling && !fallingWhenStopped)
@@ -359,6 +363,7 @@ internal sealed partial class BattleState
 
         // The states the walk pushed (the explosion of a unit that blew itself up) run behind the walk state, and BattlescapeGame::think pushes the
         // fall state only once the list is empty: a unit a burnt floor or a blast dropped falls after them.
+        PushBehindRunning(proximity);
         RunStates();
         refusal ??= TakeExplosionRefusal();
         if (refusal is null && _fallingUnits.Count != 0)
@@ -383,7 +388,8 @@ internal sealed partial class BattleState
         }
         if (stop == BattleWalkStop.SpottedUnits)
             events.Add(new UnitsSpotted(unit.Id, [.. unit.UnitsSpottedThisTurn.Skip(numUnitsSpotted)]));
-        events.Add(new UnitWalkEnded(unit.Id, stop, steps, timeUnitsSpent, energySpent, unit.Position!.Value));
+        // (A unit a proximity blast took out has no tile: the walk ended where it lies.)
+        events.Add(new UnitWalkEnded(unit.Id, stop, steps, timeUnitsSpent, energySpent, RestingPosition(unit) ?? new BattlePosition(-1, -1, -1)));
         MarkChanged();
         return null;
     }

@@ -1,5 +1,6 @@
 using Oxce.Gameplay.Battles;
 using Oxce.Gameplay.Battles.Terrain;
+using Oxce.TestSupport;
 using Xunit;
 using static Oxce.CompatibilityTests.BattleSightTests;
 using static Oxce.CompatibilityTests.BattleTestSupport;
@@ -15,7 +16,8 @@ public sealed class BattleGravityTests
 {
     private const string GunText = "- type: GUN\n    battleType: 1\n    compatibleAmmo: [CLIP]\n    weight: 1";
 
-    private static Arena Tall(bool walkingSoldier = false, string suitExtra = "", bool reactive = false, bool bigAlien = false, string grenadeEvents = "", bool proximityGrenade = false) =>
+    private static Arena Tall(bool walkingSoldier = false, string suitExtra = "", bool reactive = false, bool bigAlien = false, string grenadeEvents = "", bool proximityGrenade = false,
+        Func<string, string>? more = null) =>
         Flat(bigAlien: bigAlien, edit: rules =>
         {
             rules = Replaced(rules, "    shade: 0\n    width: 30\n    length: 30\n    height: 2", "    shade: 0\n    width: 30\n    length: 30\n    height: 4");
@@ -29,7 +31,7 @@ public sealed class BattleGravityTests
             if (grenadeEvents.Length != 0)
                 rules = Replaced(rules, "- type: GRENADE\n    battleType: 4\n    weight: 1", "- type: GRENADE\n    battleType: 4\n    weight: 1\n    fuseTriggerEvents: " + grenadeEvents);
             if (proximityGrenade) rules = Replaced(rules, "- type: GRENADE\n    battleType: 4", "- type: GRENADE\n    battleType: 5");
-            return rules;
+            return more is null ? rules : more(rules);
         });
 
     private static BattlePosition At(int x, int y, int z) => new(x, y, z);
@@ -325,22 +327,40 @@ public sealed class BattleGravityTests
     }
 
     [Fact]
-    public void ALandingBesideAProximityFuseIsRefusedAndOtherItemsNearItAreNot()
+    public void ALandingBesideALitProximityExplodeFuseSetsItOffAndOtherItemsNearItAreLeftAlone()
     {
+        // Unlit: nothing happens (proximityExplode needs a lit fuse).
+        var unlit = Tall(walkingSoldier: true, grenadeEvents: "{proximityExplode: true}");
+        Raise(unlit, unlit.Soldier, 10, 10, 2);
+        unlit.Battle.ApplyGravity(unlit.Soldier.Position);
+        var idle = Drop(unlit, "GRENADE", At(11, 11, 0));
+        Assert.Null(unlit.Battle.FallsRefusal());
+        Assert.Null(unlit.Battle.ResolveFalls());
+        Assert.Contains(idle, unlit.Battle.Items);
+
+        // Lit and next to the landing: the grenade explodes (the fall's states run behind it).
         var arena = Tall(walkingSoldier: true, grenadeEvents: "{proximityExplode: true}");
         Raise(arena, arena.Soldier, 10, 10, 2);
         arena.Battle.ApplyGravity(arena.Soldier.Position);
         var grenade = Drop(arena, "GRENADE", At(11, 11, 0));
-        // Unlit: nothing happens (proximityExplode needs a lit fuse).
-        Assert.Null(arena.Battle.FallsRefusal());
         grenade.FuseTimer = 0;
         grenade.FuseEnabled = true;
+        // A dry run draws and changes nothing, and refuses a landing that would set the item off (its explosion cannot be tried first on the live battle).
         var before = State(arena);
-        Assert.Equal("battle.proximity-unsupported", arena.Battle.FallsRefusal()!.Code);
+        Assert.Equal("battle.fall-proximity-explosion-unsupported", arena.Battle.FallsRefusal()?.Code);
         Assert.Equal(before, State(arena));
+        Assert.Null(arena.Battle.ResolveFalls());
+        Assert.DoesNotContain(grenade, arena.Battle.Items);
+
         // Two tiles away it is out of reach.
-        grenade.Tile = At(12, 10, 0);
-        Assert.Null(arena.Battle.FallsRefusal());
+        var far = Tall(walkingSoldier: true, grenadeEvents: "{proximityExplode: true}");
+        Raise(far, far.Soldier, 10, 10, 2);
+        far.Battle.ApplyGravity(far.Soldier.Position);
+        var distant = Drop(far, "GRENADE", At(12, 10, 0));
+        distant.FuseTimer = 0;
+        distant.FuseEnabled = true;
+        Assert.Null(far.Battle.ResolveFalls());
+        Assert.Contains(distant, far.Battle.Items);
     }
 
     [Fact]
@@ -354,16 +374,203 @@ public sealed class BattleGravityTests
         grenade.FuseTimer = 0;
         grenade.FuseEnabled = true;
         Assert.Null(arena.Battle.FallsRefusal());
+        Assert.Null(arena.Battle.ResolveFalls());
+        Assert.Contains(grenade, arena.Battle.Items);
     }
 
     [Fact]
-    public void AnItemWhoseFuseNearbyUnitsTriggerIsRefusedWhetherLitOrNot()
+    public void AnItemWhoseFuseNearbyUnitsTriggerStartsItsFuseWhenAUnitLandsNextToIt()
     {
         var arena = Tall(walkingSoldier: true, grenadeEvents: "{proximityTrigger: true}");
         Raise(arena, arena.Soldier, 10, 10, 2);
         arena.Battle.ApplyGravity(arena.Soldier.Position);
-        Drop(arena, "GRENADE", At(9, 11, 0));
-        Assert.Equal("battle.proximity-unsupported", arena.Battle.FallsRefusal()!.Code);
+        var grenade = Drop(arena, "GRENADE", At(9, 11, 0));
+        grenade.FuseTimer = 2;
+        Assert.Null(arena.Battle.ResolveFalls());
+        Assert.Equal((true, 2), (grenade.FuseEnabled, grenade.FuseTimer));
+    }
+
+    // ---- the proximity check at a landing (S8) ----
+
+    private const string PlainGrenade = "- type: GRENADE\n    battleType: 4\n    weight: 1";
+    private const string TrapMelee = "\n  - type: STR_DEATH_TRAP_200\n    battleType: 3\n    weight: 1\n    power: 40\n    damageType: 1\n    damageAlter: {RandomType: 3}\n    clipSize: -1\n    confMelee: {ammoSlot: -1}";
+    private const string TrapProximity = "\n  - type: STR_DEATH_TRAP_200\n    battleType: 5\n    weight: 1\n    power: 40\n    damageType: 3\n    damageAlter: {RandomType: 3}\n    fuseType: 0";
+    private const string Dark = "    shade: 15\n    width: 30";
+
+    /// <summary>The grenade is a proximity grenade of power 40 (a high explosive, flat damage) that its blast destroys; <paramref name="extra"/> adds lines to its rule.</summary>
+    private static Func<string, string> Armed(string extra = "") => rules =>
+        Replaced(rules, PlainGrenade, "- type: GRENADE\n    battleType: 5\n    weight: 1\n    armor: 0\n    power: 40\n    damageType: 3\n    damageAlter: {RandomType: 3}" + extra);
+
+    private static BattleItem Lit(Arena arena, BattlePosition tile)
+    {
+        var grenade = Drop(arena, "GRENADE", tile);
+        grenade.FuseTimer = 0;
+        grenade.FuseEnabled = true;
+        return grenade;
+    }
+
+    [Fact]
+    public void AnExplosionAtALaterLandingRunsBeforeAnEarlierRoundsKnockOutDeath()
+    {
+        // The soldier below cannot move aside and is knocked out when the alien reaches it (round 2); the alien lands the round after, next to a lit grenade. statePushNext puts
+        // each push right behind the fall, so the later one, the blast, runs first: what the soldier carries has not dropped to the tile when it goes off, and survives it.
+        var arena = Tall(walkingSoldier: true, more: Armed());
+        arena.Stand(arena.Soldier, 12, 12, 2);
+        arena.Soldier.Stats = arena.Soldier.Stats with { Health = 100 };
+        arena.Soldier.Health = 100;
+        Raise(arena, arena.Alien, 12, 12, 2);
+        foreach (var (dx, dy) in new[] { (0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1) })
+            arena.Clear(12 + dx, 12 + dy, 0, BattleTilePart.Floor);
+        arena.Battle.ApplyGravity(arena.Alien.Position);
+        var lit = Lit(arena, At(13, 12, 0));
+        var carried = new BattleItem(arena.Battle.TakeItemId(), "GRENADE") { OwnerUnitId = arena.Soldier.Id, Slot = "STR_RIGHT_HAND" };
+        arena.Battle.AddItem(carried);
+        Assert.Null(arena.Battle.ResolveFalls());
+        Assert.Contains(arena.Battle.Events.Drain(), static @event => @event is BattleExploded);
+        Assert.DoesNotContain(lit, arena.Battle.Items);
+        Assert.Equal(BattleUnitStatus.Unconscious, arena.Soldier.Status);
+        // Dropped by the death after the blast: still there, on the tile the soldier lay on.
+        Assert.Contains(carried, arena.Battle.Items);
+        Assert.Equal(At(12, 12, 0), carried.Tile);
+    }
+
+    [Fact]
+    public void ALitItemThatIsNoGrenadeIsRemovedByItsProximityEventAndNothingExplodes()
+    {
+        var arena = Tall(walkingSoldier: true, more: rules => Replaced(rules, "- type: CLIP\n    battleType: 2\n    clipSize: 12\n    weight: 1",
+            "- type: CLIP\n    battleType: 2\n    clipSize: 12\n    weight: 1\n    fuseTriggerEvents: {proximityExplode: true}"));
+        Raise(arena, arena.Soldier, 10, 10, 2);
+        arena.Battle.ApplyGravity(arena.Soldier.Position);
+        var clip = Drop(arena, "CLIP", At(11, 11, 0));
+        clip.FuseTimer = 0;
+        clip.FuseEnabled = true;
+        Assert.Null(arena.Battle.ResolveFalls());
+        Assert.DoesNotContain(clip, arena.Battle.Items);
+        Assert.DoesNotContain(arena.Battle.Events.Drain(), static @event => @event is BattleExploded);
+    }
+
+    [Fact]
+    public void AMissedSpecialChanceLeavesTheLitGrenadeAndItsFuseAsTheyAreAfterOneDraw()
+    {
+        var arena = Tall(walkingSoldier: true, more: Armed("\n    specialChance: 0"));
+        Raise(arena, arena.Soldier, 10, 10, 2);
+        arena.Battle.ApplyGravity(arena.Soldier.Position);
+        var grenade = Lit(arena, At(11, 11, 0));
+        var draws = new ScriptedDraws(99);
+        arena.Battle.Random = draws;
+        Assert.Null(arena.Battle.ResolveFalls());
+        Assert.Contains(grenade, arena.Battle.Items);
+        Assert.Equal((true, 0), (grenade.FuseEnabled, grenade.FuseTimer));
+        Assert.Single(draws.Calls);
+        Assert.DoesNotContain(arena.Battle.Events.Drain(), static @event => @event is BattleExploded);
+    }
+
+    [Fact]
+    public void SeveralExplosionsOfOneCheckRunTheLastTileFirst()
+    {
+        // The check visits the tiles around the landing in order (x, then y); each explosion goes right behind the fall, so the last one runs first.
+        var arena = Tall(walkingSoldier: true, more: Armed());
+        Raise(arena, arena.Soldier, 10, 10, 2);
+        arena.Battle.ApplyGravity(arena.Soldier.Position);
+        Lit(arena, At(9, 9, 0));
+        Lit(arena, At(11, 11, 0));
+        Assert.Null(arena.Battle.ResolveFalls());
+        var centers = arena.Battle.Events.Drain().OfType<BattleExploded>().Select(static blast => (blast.Center.X / 16, blast.Center.Y / 16)).ToArray();
+        Assert.Equal([(11, 11), (9, 9)], centers);
+    }
+
+    [Fact]
+    public void ADeathTrapItemAlreadyOnTheTileIsReusedAndTheMeleeTrapHitsWithTheItemAsItsWeapon()
+    {
+        var arena = Tall(walkingSoldier: true, more: rules => Replaced(rules, PlainGrenade, PlainGrenade + TrapMelee));
+        arena.Put(12, 12, 0, BattleTilePart.Floor, DeathTrapFloor);
+        Raise(arena, arena.Soldier, 12, 12, 2);
+        arena.Battle.ApplyGravity(arena.Soldier.Position);
+        var trap = Drop(arena, "STR_DEATH_TRAP_200", At(12, 12, 0));
+        Assert.Null(arena.Battle.ResolveFalls());
+        // No second trap item was made (the one on the tile may be gone with the blow it struck).
+        Assert.DoesNotContain(arena.Battle.Items, item => item.ItemType == "STR_DEATH_TRAP_200" && item != trap);
+        // No attacker, and the trap's own item is the weapon of the hit.
+        var all = arena.Battle.Events.Drain();
+        var hit = Assert.Single(all.OfType<UnitMeleeAttacked>());
+        Assert.DoesNotContain(all, static @event => @event is BattleExploded);
+        Assert.Equal((-1, trap.Id), (hit.UnitId, hit.ItemId));
+    }
+
+    [Fact]
+    public void ABigUnitTriggersTheDeathTrapOfAnyOfItsTilesAndTheItemsAroundAllOfThem()
+    {
+        var trapped = Tall(walkingSoldier: true, bigAlien: true, more: rules => Replaced(rules, PlainGrenade, PlainGrenade + TrapProximity));
+        trapped.Put(13, 13, 0, BattleTilePart.Floor, DeathTrapFloor);
+        Raise(trapped, trapped.Alien, 12, 12, 1);
+        trapped.Battle.ApplyGravity(trapped.Alien.Position);
+        Assert.Null(trapped.Battle.ResolveFalls());
+        var blast = Assert.Single(trapped.Battle.Events.Drain().OfType<BattleExploded>());
+        Assert.Equal((13, 13), (blast.Center.X / 16, blast.Center.Y / 16));
+
+        // The big unit at (12, 12) reaches the tiles from (11, 11) to (14, 14).
+        var near = Tall(walkingSoldier: true, bigAlien: true, more: Armed());
+        Raise(near, near.Alien, 12, 12, 1);
+        near.Battle.ApplyGravity(near.Alien.Position);
+        Lit(near, At(14, 14, 0));
+        Lit(near, At(15, 15, 0));
+        Assert.Null(near.Battle.ResolveFalls());
+        // Only the grenade within reach of a tile of the unit was set off (the other one may be gone with its blast, but did not explode itself).
+        var set = Assert.Single(near.Battle.Events.Drain().OfType<BattleExploded>());
+        Assert.Equal((14, 14), (set.Center.X / 16, set.Center.Y / 16));
+    }
+
+    [Fact]
+    public void ALitFlareRemovedByAProximityEventTakesItsLightWithItAtOnce()
+    {
+        var arena = Tall(walkingSoldier: true, more: rules => Replaced(Replaced(rules, "    shade: 0\n    width: 30", Dark), PlainGrenade,
+            PlainGrenade + "\n  - type: FLARE_FUSED\n    battleType: 10\n    power: 8\n    fuseType: 0\n    fuseTriggerEvents: {proximityExplode: true}"));
+        Raise(arena, arena.Soldier, 10, 10, 2);
+        arena.Battle.ApplyGravity(arena.Soldier.Position);
+        var flare = Drop(arena, "FLARE_FUSED", At(11, 11, 0));
+        flare.FuseTimer = 2;
+        flare.FuseEnabled = true;
+        arena.Relight();
+        var lit = arena.Battle.TileShade(At(11, 11, 0));
+        Assert.True(lit < 15, $"{lit}");
+        Assert.Null(arena.Battle.ResolveFalls());
+        Assert.DoesNotContain(flare, arena.Battle.Items);
+        Assert.Equal(15, arena.Battle.TileShade(At(11, 11, 0)));
+    }
+
+    [Fact]
+    public void AFlareWhoseProximityTriggerSwitchesItOnLightsItsTileAtOnce()
+    {
+        var arena = Tall(walkingSoldier: true, more: rules => Replaced(Replaced(rules, "    shade: 0\n    width: 30", Dark), PlainGrenade,
+            PlainGrenade + "\n  - type: FLARE_TRIGGERED\n    battleType: 10\n    power: 8\n    fuseTriggerEvents: {defaultBehavior: false, proximityTrigger: true}"));
+        Raise(arena, arena.Soldier, 10, 10, 2);
+        arena.Battle.ApplyGravity(arena.Soldier.Position);
+        var flare = Drop(arena, "FLARE_TRIGGERED", At(11, 11, 0));
+        arena.Relight();
+        Assert.Equal(15, arena.Battle.TileShade(At(11, 11, 0)));
+        Assert.Null(arena.Battle.ResolveFalls());
+        Assert.Contains(flare, arena.Battle.Items);
+        Assert.True(flare.FuseEnabled);
+        Assert.True(arena.Battle.TileShade(At(11, 11, 0)) < 15);
+    }
+
+    [Fact]
+    public void ALandingThatCouldSetOffADeathTrapOrAnItemIsRefusedByTheDryRunAndChangesNothing()
+    {
+        var arena = Tall(walkingSoldier: true, more: rules => Replaced(rules, PlainGrenade, PlainGrenade + TrapMelee));
+        arena.Put(12, 12, 0, BattleTilePart.Floor, DeathTrapFloor);
+        Raise(arena, arena.Soldier, 12, 12, 2);
+        arena.Battle.ApplyGravity(arena.Soldier.Position);
+        var before = State(arena);
+        Assert.Equal("battle.fall-proximity-explosion-unsupported", arena.Battle.FallsRefusal()?.Code);
+        Assert.Equal(before, State(arena));
+
+        // The same landing with an item the check leaves alone is no reason to wait.
+        var quiet = Tall(walkingSoldier: true, more: Armed());
+        Raise(quiet, quiet.Soldier, 10, 10, 2);
+        quiet.Battle.ApplyGravity(quiet.Soldier.Position);
+        Drop(quiet, "GRENADE", At(11, 11, 0));
+        Assert.Null(quiet.Battle.FallsRefusal());
     }
 
     [Fact]
@@ -450,7 +657,8 @@ public sealed class BattleGravityTests
         var grenade = Drop(arena, "GRENADE", At(10, 11, 0));
         grenade.FuseTimer = 0;
         grenade.FuseEnabled = true;
-        Assert.Equal("battle.proximity-unsupported", arena.Battle.FallsRefusal()!.Code);
+        Assert.Null(arena.Battle.ResolveFalls());
+        Assert.DoesNotContain(grenade, arena.Battle.Items);
     }
 
     [Fact]
