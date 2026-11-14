@@ -491,7 +491,7 @@ public sealed class BattleWalkTests
         boxed.See();
         boxed.Battle.SetSpotted(boxed.Alien, BattleFaction.Player, false);
         // (The trial copy sees what the soldier would see, so the walk is run on the battle itself here.)
-        var late = boxed.Battle.Walk(boxed.Rules, boxed.Soldier.Id, At(12, 10, 0), BattleMoveType.Normal, false, []);
+        var late = boxed.Battle.Walk(boxed.Rules, boxed.Soldier.Id, At(12, 10, 0), BattleMoveType.Normal, false);
         Assert.Null(late);
         Assert.Equal(BattleUnitStatus.Unconscious, boxed.Alien.Status);
         Assert.Equal(At(12, 10, 0), boxed.Soldier.Position);
@@ -578,7 +578,7 @@ public sealed class BattleWalkTests
         // CheckReservedTimeUnits' hostile answer (battle.hostile-reserve-unsupported) cannot reach the walk through the command or the method.
         var arena = Make();
         arena.Battle.Side = BattleFaction.Hostile;
-        Assert.Equal("battle.selection-unavailable", arena.Battle.Walk(arena.Rules, arena.Alien.Id, At(17, 10), BattleMoveType.Normal, false, [])?.Code);
+        Assert.Equal("battle.selection-unavailable", arena.Battle.Walk(arena.Rules, arena.Alien.Id, At(17, 10), BattleMoveType.Normal, false)?.Code);
     }
 
     [Fact]
@@ -589,7 +589,7 @@ public sealed class BattleWalkTests
         arena.Soldier.Kneeled = true;
         var state = State(arena);
         // Called on the battle itself: a refusal after a step would leave the walk done, a refusal of the kneel leaves nothing.
-        Assert.Equal("battle.reaction-fire-unsupported", arena.Battle.Walk(arena.Rules, arena.Soldier.Id, At(12, 10), BattleMoveType.Normal, false, [])?.Code);
+        Assert.Equal("battle.reaction-fire-unsupported", arena.Battle.Walk(arena.Rules, arena.Soldier.Id, At(12, 10), BattleMoveType.Normal, false)?.Code);
         Assert.Equal(state, State(arena));
         Assert.Equal("battle.reaction-fire-unsupported", Refusal(arena.Campaign.Execute(new WalkUnit(arena.Soldier.Id, At(12, 10)))));
     }
@@ -637,7 +637,7 @@ public sealed class BattleWalkTests
         arena.Stand(arena.Alien, 11, 10, 6);
         arena.See();
         arena.Battle.SetSpotted(arena.Alien, BattleFaction.Player, false);
-        var late = arena.Battle.Walk(arena.Rules, arena.Soldier.Id, At(11, 10, 1), BattleMoveType.Normal, false, new List<ICampaignEvent>());
+        var late = arena.Battle.Walk(arena.Rules, arena.Soldier.Id, At(11, 10, 1), BattleMoveType.Normal, false);
         Assert.Equal("battle.walk-unit-in-the-way", late?.Code);
     }
 

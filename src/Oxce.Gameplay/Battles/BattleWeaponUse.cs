@@ -144,25 +144,25 @@ internal sealed partial class BattleState
         switch (type)
         {
             case BattleActionType.SnapShot:
-                result = combat.StatBonuses.Accuracy.Evaluate(attacker) * rule.Accuracy.Snap / 100;
+                result = Hooks.StatBonus(BattleStatBonusKind.Accuracy, attacker, weapon, combat.StatBonuses.Accuracy.Evaluate(attacker)) * rule.Accuracy.Snap / 100;
                 break;
             case BattleActionType.AimedShot or BattleActionType.Launch:
-                result = combat.StatBonuses.Accuracy.Evaluate(attacker) * rule.Accuracy.Aimed / 100;
+                result = Hooks.StatBonus(BattleStatBonusKind.Accuracy, attacker, weapon, combat.StatBonuses.Accuracy.Evaluate(attacker)) * rule.Accuracy.Aimed / 100;
                 break;
             case BattleActionType.AutoShot:
-                result = combat.StatBonuses.Accuracy.Evaluate(attacker) * rule.Accuracy.Auto / 100;
+                result = Hooks.StatBonus(BattleStatBonusKind.Accuracy, attacker, weapon, combat.StatBonuses.Accuracy.Evaluate(attacker)) * rule.Accuracy.Auto / 100;
                 break;
             case BattleActionType.Hit:
                 kneeled = false;
-                result = combat.StatBonuses.MeleeMultiplier.Evaluate(attacker) * rule.Accuracy.Melee / 100;
+                result = Hooks.StatBonus(BattleStatBonusKind.MeleeMultiplier, attacker, weapon, combat.StatBonuses.MeleeMultiplier.Evaluate(attacker)) * rule.Accuracy.Melee / 100;
                 break;
             case BattleActionType.Throw:
                 kneeled = false;
-                result = combat.StatBonuses.Throw.Evaluate(attacker) * rule.Accuracy.Throw / 100;
+                result = Hooks.StatBonus(BattleStatBonusKind.Throw, attacker, weapon, combat.StatBonuses.Throw.Evaluate(attacker)) * rule.Accuracy.Throw / 100;
                 break;
             case BattleActionType.CloseQuarters:
                 kneeled = false;
-                result = combat.StatBonuses.CloseQuarters.Evaluate(attacker) * combat.AccuracyCloseQuarters / 100;
+                result = Hooks.StatBonus(BattleStatBonusKind.CloseQuarters, attacker, weapon, combat.StatBonuses.CloseQuarters.Evaluate(attacker)) * combat.AccuracyCloseQuarters / 100;
                 break;
         }
         if (kneeled) result = result * combat.KneelBonus / 100;

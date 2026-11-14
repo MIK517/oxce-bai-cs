@@ -41,7 +41,7 @@ internal readonly record struct BattleCasualty(int UnitId, BattleUnitStatus Stat
 /// </summary>
 internal sealed partial class BattleState
 {
-    /// <summary>What the campaign gives the battle (see <see cref="IBattleCampaignLink"/>); null for a battle built by hand and for trial copies.</summary>
+    /// <summary>What the campaign gives the battle (see <see cref="IBattleCampaignLink"/>); null for a battle built by hand. The <see cref="BattleRuntime"/> sets it once; a trial copy has the same values with the memorial left alone.</summary>
     internal IBattleCampaignLink? CampaignLink { get; set; }
 
     /// <summary><c>Mod::getDamageType(DT_HE)</c> and <c>DT_NONE</c>, which <c>checkForCasualties</c> hands the dying unit when no weapon did.</summary>
@@ -264,6 +264,7 @@ internal sealed partial class BattleState
                     }
                     victim.Statistics = victim.Statistics with { WasUnconscious = true };
                     pushed.Add(BeginDeath(rules, victim, NoDamageType, noSound: true));
+                    Events.Add(new UnitKnockedOut(victim.Id, murderer?.Id ?? -1));
                 }
                 else if (victim.HaveNoFloorBelow && victim.MovementType != MovementTypeFly)
                 {
@@ -432,6 +433,7 @@ internal sealed partial class BattleState
         else if (terrainExplosion) type = HighExplosiveType;
         else type = NoDamageType; // no murderer and no terrain explosion: a fatal wound
         var death = BeginDeath(rules, victim, type, noSound);
+        Events.Add(new UnitDied(victim.Id, murderer?.Id ?? -1));
 
         // One of our own died: the memorial records the murderer in the cause.
         if (victim.SoldierId is { } soldierId)
@@ -820,6 +822,7 @@ internal sealed partial class BattleState
         ApplyGravity(tile);
         created.DontReselect = true;
         Revision++;
+        Events.Add(new UnitConverted(unit.Id, created.Id));
         return created;
     }
 

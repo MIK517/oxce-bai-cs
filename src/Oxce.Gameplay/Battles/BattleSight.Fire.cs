@@ -432,7 +432,7 @@ internal sealed partial class BattleSight
     /// TileEngine::isTileInLOS: whether the actor sees the tile, a tile that may hold no unit (the no line of sight accuracy penalty asks): its line
     /// of fire reaches a voxel of the tile (the first of the object, walls and floor, or the tile's middle), with a hit that is not on the tile
     /// itself checked as <c>Projectile::calculateTrajectory</c> does, and the sight origin sees it through the smoke and fire within the actor's
-    /// view distance. (The armor's <c>visibilityUnit</c> script is refused, not run.) <paramref name="drawing"/> asks as the cursor does: the tile's
+    /// view distance. (The armor's <c>visibilityUnit</c> script runs through <see cref="IBattleHooks"/>; a battle that binds one is refused until branch 8.) <paramref name="drawing"/> asks as the cursor does: the tile's
     /// own unit, not the one overlapping it.
     /// </summary>
     public bool IsTileInLos(BattleAimAction action, int tile, bool drawing)
@@ -508,7 +508,7 @@ internal sealed partial class BattleSight
             var (distance, smoke, fire, smokeNear, fireNear) = TrajectoryData(actor, originVoxel, scan);
             var quality = unchecked(maxVoxel - distance -
                 ((smoke - smokeNear / 2) * smokeFactor + (fire - fireNear / 2) * fireFactor) * maxVoxel / (3 * 20 * 100 * 16));
-            seen = 0 < quality;
+            seen = 0 < _battle.Hooks.VisibilityUnit(actor, null, tile, quality);
         }
         return seen;
     }

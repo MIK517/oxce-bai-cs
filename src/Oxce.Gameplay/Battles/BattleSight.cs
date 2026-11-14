@@ -497,7 +497,7 @@ internal sealed partial class BattleSight
     /// <summary>
     /// TileEngine::visible: whether the unit sees the unit on a tile. Friends are always seen; nobody sees beyond the maximum view distance;
     /// psi vision senses a unit through anything; otherwise the unit's eye must reach the target (<see cref="CanTargetUnit"/>) with enough
-    /// visibility quality left after the distance, smoke and fire. (The armor's <c>visibilityUnit</c> script is refused, not run.)
+    /// visibility quality left after the distance, smoke and fire. (The armor's <c>visibilityUnit</c> script runs through <see cref="IBattleHooks"/>; a battle that binds one is refused until branch 8.)
     /// </summary>
     public bool Visible(BattleUnit current, int tile)
     {
@@ -535,7 +535,7 @@ internal sealed partial class BattleSight
             // 16 the voxel scale; a larger maximum view distance from the ruleset keeps the smoke's effect.
             var quality = unchecked(maxVoxel - distance -
                 ((smoke - smokeNear / 2) * smokeFactor + (fire - fireNear / 2) * fireFactor) * maxVoxel / (3 * 20 * 100 * 16));
-            seen = 0 < quality;
+            seen = 0 < _battle.Hooks.VisibilityUnit(current, target, tile, quality);
         }
         return seen;
     }

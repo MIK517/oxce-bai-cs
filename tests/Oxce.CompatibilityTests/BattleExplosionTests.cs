@@ -222,7 +222,7 @@ public sealed class BattleExplosionTests
         var casualties = arena.Battle.RunStates();
         Assert.False(arena.Battle.HasPendingStates);
         // A power of 80 and a radius of 80 * 0.05 = 4.
-        Assert.Equal([new BattleExplosionRecord(Center(20, 20), 80, 4, false)], arena.Battle.ExplosionLog);
+        Assert.Equal([new BattleExploded(Center(20, 20), 80, 4, false)], arena.Battle.Events.Of<BattleExploded>());
         Assert.Equal((BattleUnitStatus.Dead, victim.Id), (victim.Status, Assert.Single(casualties).UnitId));
         Assert.DoesNotContain(grenade, arena.Battle.Items);
         // The grenade's thrower is the murderer.
@@ -238,7 +238,7 @@ public sealed class BattleExplosionTests
         arena.Battle.PushExplosion(arena.Rules, new BattleAttack(BattleActionType.Throw, arena.Soldier, grenade, grenade), Center(20, 20));
         // ExplosionBState::init pops a blast with nothing to give: no casualty check, no removal of the grenade.
         Assert.False(arena.Battle.HasPendingStates);
-        Assert.Empty(arena.Battle.ExplosionLog);
+        Assert.Empty(arena.Battle.Events.Of<BattleExploded>());
         Assert.Contains(grenade, arena.Battle.Items);
     }
 
@@ -254,7 +254,7 @@ public sealed class BattleExplosionTests
         Assert.Equal(BattleUnitStatus.Dead, Assert.Single(casualties).Status);
         // The shooter puts the gun down, and nothing exploded.
         Assert.Equal(BattleUnitStatus.Standing, arena.Soldier.Status);
-        Assert.Empty(arena.Battle.ExplosionLog);
+        Assert.Empty(arena.Battle.Events.Of<BattleExploded>());
     }
 
     [Fact]
@@ -265,7 +265,7 @@ public sealed class BattleExplosionTests
         // A range of 48 voxels is 3 tiles, 2 past the threshold: 70 - 8 * 2 = 54. The radius is the ammunition's (10 * 0.05 is under 1, so 1).
         arena.Battle.PushExplosion(arena.Rules, attack, Center(20, 20), range: 48);
         arena.Battle.RunStates();
-        Assert.Equal(new BattleExplosionRecord(Center(20, 20), 54, 1, false), Assert.Single(arena.Battle.ExplosionLog));
+        Assert.Equal(new BattleExploded(Center(20, 20), 54, 1, false), Assert.Single(arena.Battle.Events.Of<BattleExploded>()));
     }
 
     [Fact]
@@ -277,7 +277,7 @@ public sealed class BattleExplosionTests
         arena.Battle.PushExplosion(arena.Rules, attack, Center(15, 10));
         Assert.Equal(100, arena.Alien.Health);
         arena.Battle.RunStates();
-        Assert.Empty(arena.Battle.ExplosionLog);
+        Assert.Empty(arena.Battle.Events.Of<BattleExploded>());
     }
 
     // ---- the chain of terrain explosions ----
@@ -294,9 +294,9 @@ public sealed class BattleExplosionTests
         arena.Battle.RunStates();
         // The grenade reaches the barrel four tiles away (radius 4); each barrel's strength of 20 is a power of 20 and a radius of 2, which reaches the next barrel.
         Assert.Equal([false, true, true, true],
-            arena.Battle.ExplosionLog.Select(static explosion => explosion.Terrain).Take(4));
+            arena.Battle.Events.Of<BattleExploded>().Select(static explosion => explosion.Terrain).Take(4));
         Assert.Equal([Center(20, 20), new BattlePosition(24 * 16 + 8, 20 * 16 + 8, 0), new BattlePosition(25 * 16 + 8, 20 * 16 + 8, 0), new BattlePosition(26 * 16 + 8, 20 * 16 + 8, 0)],
-            arena.Battle.ExplosionLog.Select(static explosion => explosion.Center));
+            arena.Battle.Events.Of<BattleExploded>().Select(static explosion => explosion.Center));
         Assert.All(ChainColumns, x => Assert.Null(arena.Map.MapData(arena.Tile(x, 20), BattleTilePart.ObjectPart)));
         Assert.NotNull(arena.Map.MapData(arena.Tile(28, 20), BattleTilePart.ObjectPart));
         Assert.Null(arena.Battle.CheckForTerrainExplosions());
@@ -314,7 +314,7 @@ public sealed class BattleExplosionTests
             var tile = arena.Tile(20, 20);
             arena.Map.SetExplosive(tile, 30, kind);
             arena.Battle.RunTerrainExplosions(arena.Rules);
-            Assert.Equal(new BattleExplosionRecord(new(20 * 16, 20 * 16, 0), 30, 3, true), Assert.Single(arena.Battle.ExplosionLog));
+            Assert.Equal(new BattleExploded(new(20 * 16, 20 * 16, 0), 30, 3, true), Assert.Single(arena.Battle.Events.Of<BattleExploded>()));
             Assert.Equal(0, arena.Map.Explosive(tile));
             switch (kind)
             {
@@ -440,7 +440,7 @@ public sealed class BattleExplosionTests
         Assert.True(arena.Battle.HasPendingStates);
         var casualties = arena.Battle.RunStates();
         // The special weapon is the grenade: a power of 60 and a radius of 3 around the corner of the unit's tile.
-        Assert.Equal([new BattleExplosionRecord(new(15 * 16, 10 * 16, 0), 60, 3, false)], arena.Battle.ExplosionLog);
+        Assert.Equal([new BattleExploded(new(15 * 16, 10 * 16, 0), 60, 3, false)], arena.Battle.Events.Of<BattleExploded>());
         Assert.Contains(casualties, casualty => casualty.UnitId == arena.Alien.Id && casualty.Status == BattleUnitStatus.Dead);
         Assert.True(near.Health < 100);
         Assert.Equal(100, far.Health);
@@ -460,7 +460,7 @@ public sealed class BattleExplosionTests
         Assert.Null(Hurt(psi, 500, Plain).Refusal);
         psi.Battle.RunStates();
         // The amplifier's explosion is a hit at the unit's corner voxel, not an area blast.
-        Assert.Empty(psi.Battle.ExplosionLog);
+        Assert.Empty(psi.Battle.Events.Of<BattleExploded>());
         Assert.Equal(100, near.Health);
         Assert.Null(psi.Battle.TakeExplosionRefusal());
     }
@@ -471,7 +471,7 @@ public sealed class BattleExplosionTests
         var arena = Bomber(grenadeExtra: "specialChance: 0");
         Hurt(arena, 500, Plain);
         arena.Battle.RunStates();
-        Assert.DoesNotContain(arena.Battle.ExplosionLog, static explosion => explosion.Power > 0);
+        Assert.DoesNotContain(arena.Battle.Events.Of<BattleExploded>(), static explosion => explosion.Power > 0);
     }
 
     [Fact]
@@ -492,7 +492,7 @@ public sealed class BattleExplosionTests
         Assert.True(arena.Battle.HasPendingStates);
         arena.Battle.RunStates();
         Assert.False(arena.Battle.HasPendingStates);
-        Assert.Single(arena.Battle.ExplosionLog);
+        Assert.Single(arena.Battle.Events.Of<BattleExploded>());
         Assert.True(near.Health < 100);
     }
 
@@ -511,8 +511,7 @@ public sealed class BattleExplosionTests
         // A blast is on the list when the walk ends; its think sets off the strength left on the tile below the unit, which breaks the floor under it.
         arena.Map.SetExplosive(arena.Tile(20, 20), 40, 0);
         arena.Battle.PushExplosion(arena.Rules, default, Center(5, 25));
-        var events = new List<Oxce.Gameplay.Campaigns.ICampaignEvent>();
-        Assert.Null(arena.Battle.Walk(arena.Rules, arena.Soldier.Id, At(11, 10), BattleMoveType.Normal, false, events));
+        Assert.Null(arena.Battle.Walk(arena.Rules, arena.Soldier.Id, At(11, 10), BattleMoveType.Normal, false));
         // The walk resolved the list first and the fall afterwards: the unit is down and no fall is left.
         Assert.Equal(At(20, 20), standing.Position);
         Assert.Empty(arena.Battle.FallingUnits);
@@ -623,12 +622,12 @@ public sealed class BattleExplosionTests
         var grenade = Grenade(arena, At(15, 10));
         // The blast kills the bomber in its init: the bomber's own explosion is pushed behind the running state and is not started yet.
         arena.Battle.PushExplosion(arena.Rules, new BattleAttack(BattleActionType.Throw, arena.Soldier, grenade, grenade), Center(15, 10));
-        Assert.Single(arena.Battle.ExplosionLog);
+        Assert.Single(arena.Battle.Events.Of<BattleExploded>());
         Assert.True(arena.Alien.AlreadyExploded);
         Assert.Equal(BattleUnitStatus.Standing, arena.Alien.Status);
         arena.Battle.RunStates();
         // Then the blast's think queued the bomber's death in front of it, and the bomber's explosion went off last.
-        Assert.Equal(2, arena.Battle.ExplosionLog.Count);
+        Assert.Equal(2, arena.Battle.Events.Of<BattleExploded>().Count);
         Assert.Equal((BattleUnitStatus.Dead, false), (arena.Alien.Status, arena.Alien.AlreadyExploded));
     }
 
@@ -681,8 +680,8 @@ public sealed class BattleExplosionTests
         arena.Battle.Random = new ScriptedDraws(0, 0, 99);
         arena.Battle.ExplodePowerSources(arena.Rules);
         // The sources go off in tile order, each at a power of 180 to 250 at the middle of the tile's height with the radius of 10.
-        Assert.Equal([new BattleExplosionRecord(new(2 * 16, 2 * 16, 12), 180, 10, false)], arena.Battle.ExplosionLog.Take(1));
-        Assert.Equal(2, arena.Battle.ExplosionLog.Count);
+        Assert.Equal([new BattleExploded(new(2 * 16, 2 * 16, 12), 180, 10, false)], arena.Battle.Events.Of<BattleExploded>().Take(1));
+        Assert.Equal(2, arena.Battle.Events.Of<BattleExploded>().Count);
         // The source objects (armor 4) are blown away, and the alien next to the second one is hurt (its death is the battlescape's opening check).
         Assert.Null(arena.Map.MapData(arena.Tile(2, 2), BattleTilePart.ObjectPart));
         Assert.Null(arena.Map.MapData(arena.Tile(16, 10), BattleTilePart.ObjectPart));
@@ -712,7 +711,7 @@ public sealed class BattleExplosionTests
         arena.Battle.ExplodeOtherJunk(arena.Rules);
         Assert.DoesNotContain(junk, arena.Battle.Items);
         Assert.Contains(kept, arena.Battle.Items);
-        Assert.Equal([new BattleExplosionRecord(new(20 * 16 + 8, 20 * 16 + 8, 0), 80, 4, false)], arena.Battle.ExplosionLog);
+        Assert.Equal([new BattleExploded(new(20 * 16 + 8, 20 * 16 + 8, 0), 80, 4, false)], arena.Battle.Events.Of<BattleExploded>());
         Assert.True(victim.Health < 100);
         Assert.False(arena.Battle.HasPendingStates);
     }
@@ -725,7 +724,7 @@ public sealed class BattleExplosionTests
         junk.FuseTimer = -2;
         arena.Battle.ExplodeOtherJunk(arena.Rules);
         Assert.Contains(junk, arena.Battle.Items);
-        Assert.Empty(arena.Battle.ExplosionLog);
+        Assert.Empty(arena.Battle.Events.Of<BattleExploded>());
         var xcom = Armed();
         var own = Grenade(xcom, At(20, 20));
         own.FuseTimer = -2;

@@ -47,6 +47,15 @@ internal sealed partial class BattleState
 
     private const ulong RestoredRandomSeed = 0x5EED_F1AE_0000_0002UL;
 
+    /// <summary>
+    /// The ordered events the rules raise where an outcome happens (hits, deaths, blasts, fire, steps and falls). A battle in play has the
+    /// <see cref="BattleRuntime"/>'s command empty it; every state, a trial copy included, has a sink of its own.
+    /// </summary>
+    internal BattleEventSink Events { get; } = new();
+
+    /// <summary>The tactical script hooks the rules call; the default does nothing (see <see cref="IBattleHooks"/>).</summary>
+    internal IBattleHooks Hooks { get; set; } = DefaultBattleHooks.Instance;
+
     /// <summary>BattleUnit::deriveHostileRank: the alien ranks whose index is a hostile unit's unified rank.</summary>
     private static readonly string[] HostileRanks =
     [

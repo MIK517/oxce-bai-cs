@@ -5,9 +5,6 @@ using Oxce.Mods.Rulesets.Runtime;
 
 namespace Oxce.Gameplay.Battles;
 
-/// <summary>What one explosion did: the center voxel, the power and radius it was fired with, and whether a destroyed terrain part set it off.</summary>
-internal readonly record struct BattleExplosionRecord(BattlePosition Center, int Power, int Radius, bool Terrain);
-
 /// <summary>
 /// Explosions (Phase 7 branch 5 S5): <c>ExplosionBState</c> (its <c>init</c>, <c>explode</c> and the chain of terrain explosions it starts),
 /// <c>TileEngine::explode</c>, <c>detonate</c> and <c>checkForTerrainExplosions</c>, the units and items an explosion spawns, the self-destruct
@@ -28,9 +25,6 @@ internal sealed partial class BattleState
 
     /// <summary><c>Options::battleExplosionHeight</c> is 0 (a flat explosion) by default: the vertical decrement of a ray is 1000.</summary>
     private const int FlatExplosionDecrement = 1000;
-
-    /// <summary>The explosions run since the log was last cleared, in order (the commands' events are made from it; not saved).</summary>
-    internal List<BattleExplosionRecord> ExplosionLog { get; } = [];
 
     private readonly List<QueuedState> _states = [];
     private readonly List<BattleCasualty> _stateCasualties = [];
@@ -196,15 +190,15 @@ internal sealed partial class BattleState
                 _power = 0;
                 if (_attack.Weapon is { } weapon && _rules.Battle.Equipment.Items[weapon.ItemType].Combat.IgnoreAmmoPower)
                 {
-                    _power += PowerBonus(_rules, weapon, _attack);
+                    _power += _battle.PowerBonus(_rules, weapon, _attack);
                     _power = (int)(_power - _rules.Battle.Equipment.Items[weapon.ItemType].Combat.PowerRangeReductionAt(_range));
                 }
                 else
                 {
-                    _power += PowerBonus(_rules, damageItem, _attack);
+                    _power += _battle.PowerBonus(_rules, damageItem, _attack);
                     _power = (int)(_power - _rules.Battle.Equipment.Items[damageItem.ItemType].Combat.PowerRangeReductionAt(_range));
                 }
-                _radius = ExplosionRadius(_rules, damageItem, _attack);
+                _radius = _battle.ExplosionRadius(_rules, damageItem, _attack);
                 _damageType = itemRule.Damage;
 
                 var miss = false;
@@ -246,7 +240,7 @@ internal sealed partial class BattleState
             {
                 if (_power > 0)
                 {
-                    _battle.ExplosionLog.Add(new(_center, _power, _radius, _tile is not null));
+                    _battle.Events.Add(new BattleExploded(_center, _power, _radius, _tile is not null));
                     _battle.Explode(_rules, _attack, _center, _power, _damageType, _radius, rangeAttack);
                 }
                 else
@@ -304,18 +298,19 @@ internal sealed partial class BattleState
     }
 
     /// <summary>RuleItem::getPowerBonus(attack): the item's damage bonus over its power, for the unit that attacks (a bonus written as code is refused at the briefing).</summary>
-    private static int PowerBonus(RuntimeRuleCatalog rules, BattleItem item, in BattleAttack attack)
+    private int PowerBonus(RuntimeRuleCatalog rules, BattleItem item, in BattleAttack attack)
     {
         var rule = ItemRuleOf(rules, item.ItemType);
         var bonus = rules.Battle.Equipment.Items[item.ItemType].Combat.StatBonuses.Damage;
-        return bonus.IsScript ? rule.Power : bonus.Evaluate(attack.Attacker, rule.Power);
+        var power = bonus.IsScript ? rule.Power : bonus.Evaluate(attack.Attacker, rule.Power);
+        return Hooks.StatBonus(BattleStatBonusKind.Damage, attack.Attacker, item, power);
     }
 
     /// <summary>
     /// RuleItem::getExplosionRadius(attack): the damage type's fixed radius, or from the power bonus times the type's radius effectiveness (a fire
     /// blast adds one), kept between 1 and 11.
     /// </summary>
-    private static int ExplosionRadius(RuntimeRuleCatalog rules, BattleItem item, in BattleAttack attack)
+    private int ExplosionRadius(RuntimeRuleCatalog rules, BattleItem item, in BattleAttack attack)
     {
         var type = ItemRuleOf(rules, item.ItemType).Damage;
         if (type.FixedRadius != -1) return type.FixedRadius;
@@ -726,7 +721,7 @@ internal sealed partial class BattleState
             if (fireProof < remainingPower &&
                 (Map.MapData(tiles[i], BattleTilePart.Floor) is not null || Map.MapData(tiles[i], BattleTilePart.ObjectPart) is not null))
             {
-                SetTileFire(tiles[i], fuel);
+                SetTileAlight(tiles[i], fuel);
                 SetTileSmoke(tiles[i], Math.Clamp(15 - fireProof / 10, 1, 12));
             }
             // add some smoke if tile was destroyed and not set on fire
@@ -767,17 +762,32 @@ internal sealed partial class BattleState
     internal void ExplodePowerSources(RuntimeRuleCatalog rules)
     {
         ArgumentNullException.ThrowIfNull(rules);
-        for (var tile = 0; tile < Map.TileCount; tile++)
+        Generating = true;
+        try
         {
-            if (Map.MapData(tile, BattleTilePart.ObjectPart)?.SpecialType != UfoPowerSourceSpecialType || !RandomChance.Percent(Random, 75)) continue;
-            var position = Map.PositionOf(tile);
-            var voxel = new BattlePosition(position.X * 16, position.Y * 16, position.Z * 24 + 12);
-            var power = 180 + Random.NextInclusive(0, 70);
-            ExplosionLog.Add(new(voxel, power, 10, false));
-            Explode(rules, default, voxel, power, HighExplosiveType, 10, true);
+            for (var tile = 0; tile < Map.TileCount; tile++)
+            {
+                if (Map.MapData(tile, BattleTilePart.ObjectPart)?.SpecialType != UfoPowerSourceSpecialType || !RandomChance.Percent(Random, 75)) continue;
+                var position = Map.PositionOf(tile);
+                var voxel = new BattlePosition(position.X * 16, position.Y * 16, position.Z * 24 + 12);
+                var power = 180 + Random.NextInclusive(0, 70);
+                Events.Add(new BattleExploded(voxel, power, 10, false));
+                Explode(rules, default, voxel, power, HighExplosiveType, 10, true);
+            }
+            ExplodeLeftoverTerrain(rules, tileDamageTypeFromExplosive: false);
         }
-        ExplodeLeftoverTerrain(rules, tileDamageTypeFromExplosive: false);
+        finally
+        {
+            Generating = false;
+        }
     }
+
+    /// <summary>
+    /// True while the generator's explosions run. The reference has no <c>BattlescapeState</c> then (<c>SavedBattleGame::getBattleState()</c> is null until
+    /// the briefing opens the battlescape), and <c>BattleUnit::damage</c> skips its special effects (morale loss, fire, conversion, self-destruct, the
+    /// attacker's spotting and the special damage scripts) without one.
+    /// </summary>
+    internal bool Generating { get; private set; }
 
     /// <summary>
     /// BattlescapeGenerator::explodeOtherJunk: the grenades on the map primed for the start (fuse timer -2) that spawn nothing and belong to no unit are
@@ -787,6 +797,19 @@ internal sealed partial class BattleState
     internal void ExplodeOtherJunk(RuntimeRuleCatalog rules)
     {
         ArgumentNullException.ThrowIfNull(rules);
+        Generating = true;
+        try
+        {
+            ExplodeJunk(rules);
+        }
+        finally
+        {
+            Generating = false;
+        }
+    }
+
+    private void ExplodeJunk(RuntimeRuleCatalog rules)
+    {
         var goBoom = new List<(BattlePosition Tile, BattleItem Item)>();
         foreach (var item in _items)
         {
@@ -801,7 +824,7 @@ internal sealed partial class BattleState
             var rule = ItemRuleOf(rules, item.ItemType);
             var voxel = new BattlePosition(tile.X * 16 + 8, tile.Y * 16 + 8, tile.Z * 24 - Map.TerrainLevel(Map.TileIndex(tile)));
             var radius = ExplosionRadius(rules, item, default);
-            ExplosionLog.Add(new(voxel, rule.Power, radius, false));
+            Events.Add(new BattleExploded(voxel, rule.Power, radius, false));
             Explode(rules, default, voxel, rule.Power, rule.Damage, radius, true);
         }
         ExplodeLeftoverTerrain(rules, tileDamageTypeFromExplosive: true);
@@ -825,7 +848,7 @@ internal sealed partial class BattleState
             Map.SetExplosive(tile, 0, 0, force: true);
             var position = Map.PositionOf(tile);
             var voxel = new BattlePosition(position.X * 16 + 8, position.Y * 16 + 8, position.Z * 24);
-            ExplosionLog.Add(new(voxel, power, power / 10, true));
+            Events.Add(new BattleExploded(voxel, power, power / 10, true));
             Explode(rules, default, voxel, power, RuntimeItemDamageRule.Predefined(damageType), power / 10, true);
         }
         // A unit that blew itself up in these explosions is the battlescape's to finish: the reference has no battlescape yet and would fail; the port runs it.

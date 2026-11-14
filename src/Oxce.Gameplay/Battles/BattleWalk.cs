@@ -38,13 +38,12 @@ internal sealed partial class BattleState
     /// <summary>
     /// The walk command (<c>primaryAction</c>): the path to <paramref name="target"/> for the move type, then <see cref="RunWalk"/>. Refused, before
     /// any change, when the armor does not allow moving (or the move type), there is no path, or the first step cannot be taken. Ordered events are
-    /// added to <paramref name="events"/>.
+    /// raised through <see cref="Events"/>.
     /// </summary>
-    internal CampaignReason? Walk(RuntimeRuleCatalog rules, int unitId, BattlePosition target, BattleMoveType move, bool ignoreSpottedEnemies,
-        List<ICampaignEvent> events)
+    internal CampaignReason? Walk(RuntimeRuleCatalog rules, int unitId, BattlePosition target, BattleMoveType move, bool ignoreSpottedEnemies)
     {
         ArgumentNullException.ThrowIfNull(rules);
-        ArgumentNullException.ThrowIfNull(events);
+        var events = Events;
         if (SelectionUnit(unitId, out var found) is { } closed) return closed;
         var unit = found!;
         if (unit.Position is null) return BattleSelectionReasons.UnitUnknown;
@@ -69,10 +68,10 @@ internal sealed partial class BattleState
     /// <c>BattlescapeGame::moveUpDown</c> behind the unit up and down buttons (<c>validateUpDown</c> first): a kneeling unit stands up, the path to
     /// the tile a level above or below is calculated, and the unit walks it. A path that is not there is a walk that ends where it started.
     /// </summary>
-    internal CampaignReason? MoveUpDown(RuntimeRuleCatalog rules, int unitId, bool up, List<ICampaignEvent> events)
+    internal CampaignReason? MoveUpDown(RuntimeRuleCatalog rules, int unitId, bool up)
     {
         ArgumentNullException.ThrowIfNull(rules);
-        ArgumentNullException.ThrowIfNull(events);
+        var events = Events;
         if (SelectionUnit(unitId, out var found) is { } closed) return closed;
         var unit = found!;
         if (unit.Position is not { } position) return BattleSelectionReasons.UnitUnknown;
@@ -109,7 +108,7 @@ internal sealed partial class BattleState
     /// it met something unsupported (the command checks on a trial copy first). A kneeling unit first stands up (<c>BattlescapeGame::kneel</c>).
     /// </summary>
     private CampaignReason? RunWalk(RuntimeRuleCatalog rules, BattleUnit unit, BattlePathfinder pathfinder, BattleActionMove bam, bool strafeAction,
-        bool ignoreSpotted, List<ICampaignEvent> events, bool kneeled = false, int kneelSpent = 0)
+        bool ignoreSpotted, BattleEventSink events, bool kneeled = false, int kneelSpent = 0)
     {
         var sight = Sight();
         var armor = ArmorOf(rules, unit);
@@ -188,7 +187,7 @@ internal sealed partial class BattleState
                             fallingWhenStopped = false;
                             pathfinder.DequeuePath();
                             AddFallingUnit(unit);
-                            refusal = ResolveFalls(rules, events, out _);
+                            refusal = ResolveFalls(rules, out _);
                             return refusal is not null;
                         }
                 }
@@ -366,7 +365,7 @@ internal sealed partial class BattleState
         refusal ??= TakeExplosionRefusal();
         if (refusal is null && _fallingUnits.Count != 0)
         {
-            refusal = ResolveFalls(rules, events, out var fell);
+            refusal = ResolveFalls(rules, out var fell);
             changed |= fell;
         }
         if (refusal is not null) return refusal;

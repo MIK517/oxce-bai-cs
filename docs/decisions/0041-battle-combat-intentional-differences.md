@@ -50,9 +50,14 @@ The `KIA` flag of the victim's statistics is not saved by the reference and not 
 the vector when a restored save's map lacks the block (undefined behaviour). The port destroys the part and skips the count (`CountModuleLost`). ADR 0039 asked branches 5 to 7 to refuse such a block; for the destruction this
 replaces that (AGENTS.md allows it for undefined behaviour), while the AI (branch 6) and the debriefing (branch 7) keep ADR 0039's rule.
 
-**Explosions before the battlescape exists (S5).** `explodePowerSources` and `explodeOtherJunk` run in the generator, where a unit that blows itself up would `statePushNext` on a battlescape game that does not exist yet (a null dereference). The port
-runs the pushed explosion with the battle's own list of states: into the empty list its `init` goes off at once (inside the ray loop that hit the bomber), and its `think` and the deaths wait for the end of the routine. The units
-taken out are then ordinary deaths of that check, before the briefing's hidden one. A self-destruct item that is a melee weapon, which the port cannot run yet, fails the generation by name (`battle.self-destruct-item-unsupported`).
+**Explosions before the battlescape exists (S5, corrected in S5b).** `explodePowerSources` and `explodeOtherJunk` run in the generator, before `BriefingState` creates the battlescape and calls `setBattleState`. `BattleUnit::damage` wraps its special effects
+(morale loss, the burn roll, zombie conversion, self-destruct, the attacker's spotting and the `DamageSpecialUnit*` scripts) in `if (save->getBattleState())`, so none of them happens in those explosions: a unit does not blow itself up, lose morale or catch fire from a power source or
+a map grenade. The port does the same (`BattleState.Generating` is true while the two routines run), and so the pushed self-destruct of the earlier S5 text never arises there. The units taken out are ordinary deaths of the battlescape's opening check, before the briefing's
+hidden one. (The first S5 text of this entry assumed the reference would push a self-destruct on a battlescape game that does not exist; that was wrong.) A self-destruct item that is a melee weapon, which the port cannot run yet, fails by name
+(`battle.self-destruct-item-unsupported`) when the battlescape runs.
+
+**The hit script's side (S5b).** `ModScript::HitUnit` may write a side; the reference resets a side at `SIDE_MAX` (9, the sides of a unit that can have more than the five of the port) to the front. The port's armor values have five sides (front, left, right, rear, under), so
+it resets a side of 5 or more to the front. The two differ only for a script that answers a side of 5 to 8, which the port's five-sided armor arrays cannot index; branch 8 revisits this if a mod's script does.
 
 **The order of detonation (S5).** `explode` keeps the tiles it reached in a `std::map` keyed by tile pointer, so the detonation order is the allocation order of the tiles. The port detonates in tile index order. The animation's draws
 (`RNG::generate` for each explosion sprite and the camera) are presentation and draw nothing.

@@ -50,8 +50,27 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
     internal const string GenerationFailedCode = "battle.generation-failed";
 
     private BattleState? _battle;
+    private BattleRuntime? _runtime;
+    private readonly BattleLink _link = new(campaign);
     private BattleTerrainLoader? _loader;
     private IBattleTerrainFiles? _loaderFiles;
+
+    /// <summary>
+    /// The battle the campaign holds, and the runtime that owns what its commands need (the campaign's stream, its link and the hooks), set once
+    /// here when the battle is generated or restored; null for no battle.
+    /// </summary>
+    private void SetBattle(BattleState? battle)
+    {
+        _battle = battle;
+        _runtime = battle is null ? null : new BattleRuntime(battle, campaign.Content.RuntimeRules, campaign.Random, _link, TrialRefusal);
+    }
+
+    /// <summary>Hands a battle command to the battle's runtime; with no battle it is refused with <paramref name="unavailable"/>.</summary>
+    private CampaignCommandResult Forward(IBattleCommand command, CampaignReason unavailable) =>
+        _runtime is { } runtime ? runtime.Execute(command) : Blocked(unavailable);
+
+    /// <summary>A step of the pre-battle flow, run with the runtime's fault path: a faulted battle refuses it, and an exception faults the battle.</summary>
+    private CampaignCommandResult Guarded(Func<CampaignCommandResult> run) => _runtime is { } runtime ? runtime.Guard(run, returnRaised: false) : run();
 
     public void Register(CampaignCapabilityRegistry registry)
     {
@@ -60,22 +79,25 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         registry.Query<IBattleInventoryQuery>(this);
         registry.Query<IBattleViewQuery>(this);
         registry.Command<StartBattle>(command => Start(command));
-        registry.Command<BeginBriefing>(BeginBriefing);
-        registry.Command<ConfirmBriefing>(_ => ConfirmBriefing());
-        registry.Command<StartFirstTurn>(_ => StartFirstTurn());
-        registry.Command<MoveInventoryItem>(MoveInventory);
-        registry.Command<AutoPlaceInventoryItem>(AutoPlaceInventory);
-        registry.Command<SelectUnit>(SelectUnit);
-        registry.Command<SelectNextUnit>(SelectNextUnit);
-        registry.Command<SkipUnit>(SkipUnit);
-        registry.Command<ReselectSkippedUnit>(ReselectSkippedUnit);
-        registry.Command<SelectSpotter>(SelectSpotter);
-        registry.Command<TurnUnit>(TurnUnit);
-        registry.Command<KneelUnit>(KneelUnit);
-        registry.Command<WalkUnit>(WalkUnit);
-        registry.Command<MoveUnitUpDown>(MoveUnitUpDown);
-        registry.Command<UseInventoryFeature>(command =>
-            Blocked(_battle is null or { Phase: BattlePhase.Briefing } ? BattleInventoryReasons.Unavailable : BattleInventoryReasons.For(command.Feature)));
+        // The pre-battle flow needs the campaign's storage, layouts and trial, so its handlers stay here; they run through the runtime's fault path.
+        registry.Command<BeginBriefing>(command => Guarded(() => BeginBriefing(command)));
+        registry.Command<ConfirmBriefing>(_ => Guarded(ConfirmBriefing));
+        registry.Command<StartFirstTurn>(_ => Guarded(StartFirstTurn));
+        // The battle's own commands run in its runtime (one forward each).
+        registry.Command<MoveInventoryItem>(command => Forward(command, BattleInventoryReasons.Unavailable));
+        registry.Command<AutoPlaceInventoryItem>(command => Forward(command, BattleInventoryReasons.Unavailable));
+        registry.Command<SelectUnit>(command => Forward(command, BattleSelectionReasons.Unavailable));
+        registry.Command<SelectNextUnit>(command => Forward(command, BattleSelectionReasons.Unavailable));
+        registry.Command<SkipUnit>(command => Forward(command, BattleSelectionReasons.Unavailable));
+        registry.Command<ReselectSkippedUnit>(command => Forward(command, BattleSelectionReasons.Unavailable));
+        registry.Command<SelectSpotter>(command => Forward(command, BattleSelectionReasons.Unavailable));
+        registry.Command<TurnUnit>(command => Forward(command, BattleSelectionReasons.Unavailable));
+        registry.Command<KneelUnit>(command => Forward(command, BattleSelectionReasons.Unavailable));
+        registry.Command<WalkUnit>(command => Forward(command, BattleSelectionReasons.Unavailable));
+        registry.Command<MoveUnitUpDown>(command => Forward(command, BattleSelectionReasons.Unavailable));
+        registry.Command<UseInventoryFeature>(command => Forward(command, BattleInventoryReasons.Unavailable));
+        // A faulted battle is not saved over the last good save (ADR 0038).
+        registry.SaveGate(() => _runtime?.Fault is null ? null : BattleRuntime.Faulted.Text);
         // The geoscape is frozen during a battle: time stops in the preflight, every other command here.
         registry.Preflight(CampaignPreflightOrder.Battle, "battle", (_, _) => _battle is not null ? BattleInProgress.Text : null);
         registry.CommandGate(command =>
@@ -101,13 +123,12 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
     /// </summary>
     private void Restore(CampaignSnapshot snapshot)
     {
-        _battle = null;
+        SetBattle(null);
         if (snapshot.Battle is not { } saved) return;
         var files = campaign.BattleTerrainFiles ?? throw new InvalidDataException(RestoreNeedsTerrainFiles);
         var ufo = campaign.Handlers.Operation<ICampaignDeploymentHandOver>().UfoInBattlescape;
-        _battle = BattleState.Restore(saved, campaign.Content, Loader(files), ufo, BattleRestoreCampaign.From(campaign));
-        _battle.CampaignLink = new BattleLink(campaign);
-        if (_battle.Phase == BattlePhase.InProgress) OpenLoadedBattlescape(_battle);
+        SetBattle(BattleState.Restore(saved, campaign.Content, Loader(files), ufo, BattleRestoreCampaign.From(campaign)));
+        if (_battle!.Phase == BattlePhase.InProgress) OpenLoadedBattlescape(_battle);
         // A battle before its first turn is briefed again: the briefing's craft or base is the one the campaign flags in the battlescape.
         // A save keeps the lines the briefing set (not that it ran): lines present mean the briefing already named the mission, so
         // a client that opens the briefing after the load cannot name it twice or draw a second operation name.
@@ -133,7 +154,6 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
     private void OpenLoadedBattlescape(BattleState battle)
     {
         var rules = campaign.Content.RuntimeRules;
-        battle.Random = campaign.Random;
         battle.OpenBattlescape(rules);
         if (battle.FallsRefusal(rules) is null) battle.ResolveFalls(rules);
     }
@@ -149,6 +169,9 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
     }
 
     internal BattleState? Battle => _battle;
+
+    /// <summary>The runtime of the held battle, or null for none.</summary>
+    internal BattleRuntime? Runtime => _runtime;
 
     public BattleOverview? QueryBattle(BattleViewer viewer) => campaign.Read(() => _battle?.Overview(viewer));
 
@@ -185,8 +208,7 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         ChangeArmor(owner, battle.SoldierArmors);
         EnterBattlescape(owner, request, handOver);
         handOver.ConsumeDeploymentRequest();
-        battle.CampaignLink = new BattleLink(campaign);
-        _battle = battle;
+        SetBattle(battle);
         return new CampaignCommandResult([new BattleStarted(battle.MissionType, battle.DeploymentId)]);
     }
 
@@ -277,7 +299,6 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         if (battle.FirstTurnRefusal(content, BattleRestoreCampaign.From(campaign)) is { } later) return Blocked(later);
         // The battlescape's constructor runs checkForCasualties before the spawn. It changes nothing a second time, so the refusals
         // that need its result (no live aliens, the trial spawn) leave the battle as the reference has it.
-        battle.Random = campaign.Random;
         battle.OpenBattlescape(rules);
         // The reference spawns first and tallies after: aliens that only the primed items bring count. Without any alien now, a
         // battle is refused here when no spawn could add one, and otherwise once a trial spawn on a copy shows none arriving.
@@ -389,43 +410,6 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
     });
 
 
-    /// <summary>The pick-up and drop of <c>Inventory::mouseClick</c>; a refusal changes nothing.</summary>
-    private CampaignCommandResult MoveInventory(MoveInventoryItem command)
-    {
-        if (_battle is not { } battle) return Blocked(BattleInventoryReasons.Unavailable);
-        if (battle.PlanMove(campaign.Content.RuntimeRules, command.UnitId, command.ItemId, command.Slot ?? "", command.SlotX, command.SlotY, out var move) is { } refusal)
-            return Blocked(refusal);
-        battle.Random = campaign.Random;
-        return Moved(battle, move!, campaign.Content.RuntimeRules);
-    }
-
-    private CampaignCommandResult AutoPlaceInventory(AutoPlaceInventoryItem command)
-    {
-        if (_battle is not { } battle) return Blocked(BattleInventoryReasons.Unavailable);
-        if (battle.PlanAutoPlace(campaign.Content.RuntimeRules, command.UnitId, command.ItemId, command.Smart, out var move) is { } refusal)
-            return Blocked(refusal);
-        // Smart choice with no section that takes a ground item: the reference "moves" it to the ground it lies on, at no cost.
-        if (move is null)
-            return new CampaignCommandResult([new InventoryItemMoved(command.UnitId, command.ItemId, BattleState.GroundSlot, BattleState.GroundSlot, 0, 0, 0)]);
-        battle.Random = campaign.Random;
-        return Moved(battle, move, campaign.Content.RuntimeRules);
-    }
-
-    private static CampaignCommandResult Moved(BattleState battle, InventoryMove move, RuntimeRuleCatalog rules)
-    {
-        // InventoryState's destructor in a running battle starts with gravity on the selected unit's tile (a unit without a floor falls).
-        var selected = battle.Phase == BattlePhase.InProgress && battle.SelectedUnitId is { } chosen ? battle.UnitById(chosen) : null;
-        if (selected?.Position is not null && battle.FallsRefusal(rules, selected) is { } fall) return Blocked(fall);
-        battle.ApplyMove(move);
-        // The port has no close command, so each move closes the inventory (the fall it starts was checked above).
-        if (battle.Phase == BattlePhase.InProgress)
-        {
-            battle.CloseInventory(rules);
-            battle.ResolveFalls(rules);
-        }
-        return new CampaignCommandResult([new InventoryItemMoved(move.Unit.Id, move.Item.Id, move.From.Id, move.To.Id, move.X, move.Y, move.Cost)]);
-    }
-
     /// <summary>
     /// InventoryState::saveEquipmentLayout: every soldier of the battle gets the layout of its unit's inventory, in the campaign.
     /// Returns the number of soldiers whose layout was written.
@@ -445,66 +429,6 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         return written;
     }
 
-    private CampaignCommandResult SelectUnit(SelectUnit command)
-    {
-        if (_battle is not { } battle) return Blocked(BattleSelectionReasons.Unavailable);
-        if (battle.Select(command.UnitId, out var saved) is { } refusal) return Blocked(refusal);
-        return new CampaignCommandResult([new UnitSelected(command.UnitId, saved)]);
-    }
-
-    private CampaignCommandResult SelectNextUnit(SelectNextUnit command)
-    {
-        if (_battle is not { } battle) return Blocked(BattleSelectionReasons.Unavailable);
-        if (battle.SelectAdjacent(campaign.Content.RuntimeRules, command.UnitId, command.Backwards, command.InventoryOnly, out var result, out var saved) is { } refusal)
-            return Blocked(refusal);
-        // Nothing to select leaves the selection empty, as in the reference; the event names the unit, or -1.
-        return new CampaignCommandResult([new UnitSelected(result?.Id ?? -1, saved)]);
-    }
-
-    private CampaignCommandResult SkipUnit(SkipUnit command)
-    {
-        if (_battle is not { } battle) return Blocked(BattleSelectionReasons.Unavailable);
-        if (battle.Skip(campaign.Content.RuntimeRules, command.UnitId, command.ByDistance, out var result, out var saved) is { } refusal)
-            return Blocked(refusal);
-        return new CampaignCommandResult([new UnitSkipped(command.UnitId, result?.Id ?? -1, saved)]);
-    }
-
-    private CampaignCommandResult TurnUnit(TurnUnit command)
-    {
-        if (_battle is not { } battle) return Blocked(BattleSelectionReasons.Unavailable);
-        if (battle.TurnTowards(campaign.Content.RuntimeRules, command.UnitId, command.Target, out var turn) is { } refusal) return Blocked(refusal);
-        return new CampaignCommandResult([new UnitTurned(command.UnitId, turn.Direction, turn.Eighths, turn.TimeUnitsSpent, turn.Stop, turn.Door, turn.DoorsOpened, turn.DoorCentre)]);
-    }
-
-    private CampaignCommandResult KneelUnit(KneelUnit command)
-    {
-        if (_battle is not { } battle) return Blocked(BattleSelectionReasons.Unavailable);
-        if (battle.KneelUnit(campaign.Content.RuntimeRules, command.UnitId, out var kneeling, out var spent) is { } refusal) return Blocked(refusal);
-        return new CampaignCommandResult([new UnitKneeled(command.UnitId, kneeling, spent)]);
-    }
-
-    private CampaignCommandResult WalkUnit(WalkUnit command) => RunMovement((battle, rules, events) =>
-        battle.Walk(rules, command.UnitId, command.Target, command.Move, command.IgnoreSpottedEnemies, events));
-
-    private CampaignCommandResult MoveUnitUpDown(MoveUnitUpDown command) => RunMovement((battle, rules, events) =>
-        battle.MoveUpDown(rules, command.UnitId, command.Up, events));
-
-    /// <summary>
-    /// A movement that runs <c>UnitWalkBState</c>: first on a copy of the battle, so that what it meets that is not ported (the reaction fire after
-    /// a step, a proximity explosion, a burning floor, a fall that knocks a unit out) is refused before the real one changes anything; then on the
-    /// battle, drawing from the campaign's stream, with its events.
-    /// </summary>
-    private CampaignCommandResult RunMovement(Func<BattleState, RuntimeRuleCatalog, List<ICampaignEvent>, CampaignReason?> move)
-    {
-        if (_battle is not { } battle) return Blocked(BattleSelectionReasons.Unavailable);
-        var rules = campaign.Content.RuntimeRules;
-        if (TrialRefusal(battle, trial => move(trial, rules, [])) is { } trial) return Blocked(trial);
-        var events = new List<ICampaignEvent>();
-        battle.Random = campaign.Random;
-        if (move(battle, rules, events) is { } refusal) return Blocked(refusal);
-        return new CampaignCommandResult(events);
-    }
-
     /// <summary>
     /// Runs a command's rule on a copy of the battle (the reference's state machine can meet a refusal after it has changed things) and
     /// returns what it refused, or null. Without the attached terrain files there is no copy, and a later refusal leaves the walk half done.
@@ -522,8 +446,8 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
                 copy.UnitsSpottedThisTurn.AddRange(live.UnitsSpottedThisTurn);
                 foreach (var faction in Enum.GetValues<BattleFaction>()) copy.SetSpottedBy(faction, live.IsSpottedBy(faction));
             }
-        // The copy draws from the campaign's stream (a fire catching) and puts it back, so the live run draws the same numbers.
-        scratch.Random = campaign.Random;
+        // The copy has the live battle's stream, link and hooks; it draws (a fire catching) and puts the stream back, so the live run draws the same numbers.
+        (_runtime ?? throw new InvalidOperationException("A trial copy needs the battle's runtime.")).Adopt(scratch);
         var random = campaign.Random.State;
         try
         {
@@ -533,20 +457,6 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         {
             campaign.Random.Restore(random);
         }
-    }
-
-    private CampaignCommandResult SelectSpotter(SelectSpotter command)
-    {
-        if (_battle is not { } battle) return Blocked(BattleSelectionReasons.Unavailable);
-        if (battle.SelectSpotter(campaign.Content.RuntimeRules, command.UnitId, command.TargetUnitId, out var result, out var saved) is { } refusal) return Blocked(refusal);
-        return new CampaignCommandResult([new UnitSelected(result!.Id, saved)]);
-    }
-
-    private CampaignCommandResult ReselectSkippedUnit(ReselectSkippedUnit command)
-    {
-        if (_battle is not { } battle) return Blocked(BattleSelectionReasons.Unavailable);
-        if (battle.ReselectSkipped(campaign.Content.RuntimeRules, command.UnitId) is { } refusal) return Blocked(refusal);
-        return new CampaignCommandResult([new UnitSelected(command.UnitId, true)]);
     }
 
     public BattleSelectionView? QuerySelection(BattleViewer viewer) =>

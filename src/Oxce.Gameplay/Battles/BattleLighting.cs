@@ -257,9 +257,9 @@ internal sealed partial class BattleState
         var glows = equipment.FuseTrigger.DefaultBehavior && equipment.FuseType == NoFuseType || item.FuseEnabled && item.FuseTimer >= 0;
         if (!glows) return null;
         var bonus = equipment.Combat.StatBonuses.Damage;
-        if (bonus.IsScript) return rule.Power;
         var owner = item.CorpseUnitId ?? item.PreviousOwnerUnitId;
-        return bonus.Evaluate(owner is { } id ? UnitById(id) : null, rule.Power);
+        var holder = owner is { } id ? UnitById(id) : null;
+        return Hooks.StatBonus(BattleStatBonusKind.Damage, holder, item, bonus.IsScript ? rule.Power : bonus.Evaluate(holder, rule.Power));
     }
 
     /// <summary>The item is the body of a unit that burns (a stunned unit lying as an item).</summary>

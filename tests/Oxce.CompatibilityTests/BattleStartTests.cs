@@ -832,8 +832,8 @@ public sealed class BattleStartTests
         Started(campaign);
         var battle = Battle(campaign);
         // explodePowerSources: each of the two sources goes off at 75 percent with 180 to 250 and a radius of 10 (this seed lets at least one).
-        Assert.NotEmpty(battle.ExplosionLog);
-        Assert.All(battle.ExplosionLog, static explosion => Assert.True(explosion.Power is >= 180 and <= 250 && explosion.Radius == 10 && !explosion.Terrain));
+        Assert.NotEmpty(battle.Events.Of<BattleExploded>());
+        Assert.All(battle.Events.Of<BattleExploded>(), static explosion => Assert.True(explosion.Power is >= 180 and <= 250 && explosion.Radius == 10 && !explosion.Terrain));
         Assert.False(battle.HasPendingStates);
     }
 
@@ -845,8 +845,8 @@ public sealed class BattleStartTests
         var battle = Battle(campaign);
         // explodeOtherJunk: the map's grenades primed at -2 are removed and exploded where they lay (the power of the base grenade, a radius from it).
         Assert.DoesNotContain(battle.Items, static item => item.ItemType == "GRENADE" && item.FuseTimer == -2);
-        Assert.NotEmpty(battle.ExplosionLog);
-        Assert.All(battle.ExplosionLog, static explosion => Assert.False(explosion.Terrain));
+        Assert.NotEmpty(battle.Events.Of<BattleExploded>());
+        Assert.All(battle.Events.Of<BattleExploded>(), static explosion => Assert.False(explosion.Terrain));
         Assert.False(battle.HasPendingStates);
     }
 

@@ -160,7 +160,14 @@ internal sealed partial class BattleState
             }
         }
 
-        // The environment's overrides (the hit scripts, which would run here, are refused at the briefing).
+        // The hit script (the ammunition's, then the armor's) may change the damage, the body part and the side.
+        var originalDamage = damage;
+        var hit = Hooks.HitUnit(unit, attack, originalDamage, type, new(damage, bodyPart, side));
+        damage = hit.Damage;
+        bodyPart = (uint)hit.BodyPart >= BattleUnit.BodyParts ? BattleUnit.BodyPartHead : hit.BodyPart;
+        // (The reference resets a side at SIDE_MAX, 9; the port keeps five sides, so it resets at 5: ADR 0041, "The hit script's side".)
+        side = (uint)hit.Side >= BattleUnit.SideUnder + 1 ? BattleUnit.SideFront : hit.Side;
+        // The environment's overrides.
         if (sideOverride != -1) side = sideOverride;
         if (bodyPartOverride != -1) bodyPart = bodyPartOverride;
         var overKillMinimum = type.IgnoreOverKill ? 0 : -OverkillMultiplier * unit.Stats.Health;
@@ -209,6 +216,12 @@ internal sealed partial class BattleState
                 toArmor += type.ArmorFinalDamage(damage, Random);
             }
 
+            // The damage script (the ammunition's, then the armor's) may change what the hit takes.
+            var taken = Hooks.DamageUnit(unit, attack, damage, originalDamage, bodyPart, side, type,
+                new(toHealth, toArmor, toStun, toTime, toEnergy, toMorale, toWound, toTransform, toMana));
+            (toHealth, toArmor, toStun, toTime, toEnergy, toMorale, toWound, toTransform, toMana) =
+                (taken.Health, taken.Armor, taken.Stun, taken.Time, taken.Energy, taken.Morale, taken.Wound, taken.Transform, taken.Mana);
+
             if (!(armor.PainImmune ?? false) || type.IgnorePainImmunity) unit.StunLevel = Bound(unit.StunLevel + toStun, 0, StunMultiplier * unit.Stats.Health);
             MoraleChange(armor, unit, -ReduceByBravery(unit, toMorale));
             unit.TimeUnits = Bound(unit.TimeUnits - toTime, 0, unit.Stats.TimeUnits);
@@ -227,7 +240,8 @@ internal sealed partial class BattleState
             transformChance = toTransform;
         }
 
-        // special effects
+        // special effects: only with a battlescape (the generator's explosions have none)
+        if (Generating) return new(damage, null);
         var moraleLoss = 0;
         if (!type.IgnoreNormalMoraleLose)
         {
@@ -278,9 +292,20 @@ internal sealed partial class BattleState
             }
         }
 
+        // The special damage script (the ammunition's, then the armor's) may change the effects that follow the damage.
+        var special = Hooks.DamageSpecialUnit(unit, attack, damage, originalDamage, bodyPart, side, type,
+            new(transforms, transformChance, selfDestruct, selfDestructChance, moraleLoss, fire, attackerTurnsSinceSpotted, attackerTurnsLeftSpottedForSnipers));
+        // The script's Transform and SelfDestruct outputs are never read back (the reference gates the conversion on the ammunition's zombie unit and
+        // the self-destruct on its chance alone), so only the rest is taken.
+        (transformChance, selfDestructChance, moraleLoss, fire, attackerTurnsSinceSpotted, attackerTurnsLeftSpottedForSnipers) =
+            (special.TransformChance, special.SelfDestructChance, special.MoraleLoss, special.Fire,
+                special.AttackerTurnsSinceSpotted, special.AttackerTurnsLeftSpottedForSnipers);
+
         // update state
         MoraleChange(armor, unit, -moraleLoss);
+        var burningBefore = unit.Fire;
         SetUnitFire(rules, unit, fire);
+        if (unit.Fire > 0 && burningBefore == 0) Events.Add(new UnitIgnited(unit.Id, unit.Fire));
 
         // check if this unit turns others into zombies
         if (RandomPercent(transformChance) && transforms && unit.SpawnUnit.Length == 0)
@@ -358,6 +383,7 @@ internal sealed partial class BattleState
         var healthOrig = target.Health;
         var result = DamageUnit(rules, target, relative, damage, type, attack);
         var healthDamage = healthOrig - target.Health;
+        Events.Add(new UnitHit(target.Id, attack.Attacker?.Id ?? -1, healthDamage, target.Health));
 
         // single place for firing/throwing/melee experience training
         if (attack.Attacker is { OriginalFaction: BattleFaction.Player }) AwardExperience(rules, attack, target, rangeAttack);
@@ -476,6 +502,16 @@ internal sealed partial class BattleState
             // mind-controlled enemies don't count though!
             if (extended && target.Faction != BattleFaction.Hostile) multiply = 0;
         }
+
+        // The experience script (the target armor's) may change the multiplier; it reads the training mode the default branches chose.
+        var trainingMode = mode > ExperienceDefault ? mode : first switch
+        {
+            TrainingKind.Melee => 1,
+            TrainingKind.Firing => 4,
+            TrainingKind.Throwing => 7,
+            _ => mode,
+        };
+        multiply = Hooks.AwardExperience(unit, target, weapon, attack.Type, multiply, trainingMode);
 
         for (var i = multiply / 100; i > 0; i--)
         {

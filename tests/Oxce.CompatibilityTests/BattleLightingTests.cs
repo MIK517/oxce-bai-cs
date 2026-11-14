@@ -683,6 +683,24 @@ public sealed class BattleLightingTests
         Assert.Equal(1, body.Shade(5, 5));
     }
 
+    private sealed class BrighterFlares : IBattleHooks
+    {
+        public int StatBonus(BattleStatBonusKind kind, BattleUnit? unit, BattleItem? item, int value) => kind == BattleStatBonusKind.Damage ? value + 5 : value;
+    }
+
+    [Fact]
+    public void AFlaresGlowRangeIsTheDamageBonusHooksAnswer()
+    {
+        var plain = Flat();
+        plain.Drop("FLARE", 5, 5);
+        plain.Relight();
+        var scripted = Flat();
+        scripted.Battle.Hooks = new BrighterFlares();
+        scripted.Drop("FLARE", 5, 5);
+        scripted.Relight();
+        Assert.True(scripted.Shade(5, 5) < plain.Shade(5, 5));
+    }
+
     [Fact]
     public void EnhancedLightReachesTheLevelAboveWhenNothingIsInTheWay()
     {

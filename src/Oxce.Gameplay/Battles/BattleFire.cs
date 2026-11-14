@@ -62,6 +62,17 @@ internal sealed partial class BattleState
     /// <summary>Tile::setFire: the turns the tile burns, kept in 0 to 255.</summary>
     internal void SetTileFire(int tile, int fire) => Map.SetFire(tile, Math.Clamp(fire, 0, 255));
 
+    /// <summary>
+    /// Tile::setFire for a hit or a blast that sets the tile alight (<c>TileEngine::hitTile</c>, the fire part of <c>explode</c>): a tile that was not
+    /// burning and now is raises <see cref="TileIgnited"/>, as <see cref="Ignite"/> does.
+    /// </summary>
+    internal void SetTileAlight(int tile, int fire)
+    {
+        var burning = Map.Fire(tile) != 0;
+        SetTileFire(tile, fire);
+        if (!burning && Map.Fire(tile) != 0) Events.Add(new TileIgnited(Map.PositionOf(tile), Map.Fire(tile)));
+    }
+
     /// <summary>Tile::setSmoke: the turns the tile smokes, kept in 0 to 255.</summary>
     internal void SetTileSmoke(int tile, int smoke) => Map.SetSmoke(tile, Math.Clamp(smoke, 0, 255));
 
@@ -79,6 +90,7 @@ internal sealed partial class BattleState
         Map.SetSmoke(tile, 15 - Math.Clamp(flammability / 10, 1, 12));
         Map.SetOverlaps(tile, 1);
         Map.SetFire(tile, unchecked((byte)(Fuel(tile) + 1)));
+        Events.Add(new TileIgnited(Map.PositionOf(tile), Map.Fire(tile)));
     }
 
     /// <summary>
@@ -163,7 +175,7 @@ internal sealed partial class BattleState
             if (!TileIsVoid(tile) && Map.Fire(tile) == 0 &&
                 (Map.MapData(tile, BattleTilePart.Floor) is not null || Map.MapData(tile, BattleTilePart.ObjectPart) is not null))
             {
-                SetTileFire(tile, damage >= type.FireThreshold * 2
+                SetTileAlight(tile, damage >= type.FireThreshold * 2
                     ? Fuel(tile) + 1
                     : Fuel(tile) * (damage - type.FireThreshold) / type.FireThreshold + 1);
                 SetTileSmoke(tile, Math.Max(1, Math.Min(15 - Flammability(tile) / 10, 12)));

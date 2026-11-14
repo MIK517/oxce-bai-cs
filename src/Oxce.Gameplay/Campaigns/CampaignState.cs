@@ -146,8 +146,13 @@ public sealed partial class CampaignState : Sessions.IActorCommandTarget, ICampa
         if (restriction is not null) return new CampaignCommandResult([new CampaignActionBlocked(restriction.Feature)]);
         if (Ending != 0) return new CampaignCommandResult([new CampaignActionBlocked("This campaign has ended.")]);
         if (!_handlers.TryGetCommand(command.GetType(), out var handler))
+        {
+            // A battle command no handler takes is a refusal, as the battle's own registry answers it (ADR 0037 rule 2, ADR 0038).
+            if (command is Battles.IBattleCommand)
+                return new CampaignCommandResult([CampaignActionBlocked.From(Battles.BattleRuntime.UnknownCommand)]);
             throw new ArgumentException($"Unsupported campaign command '{command.GetType().Name}'.",
                 nameof(command));
+        }
         return _handlers.CommandGate(command) ?? handler(command);
     }
 

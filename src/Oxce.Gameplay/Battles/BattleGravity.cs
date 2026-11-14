@@ -135,8 +135,8 @@ internal sealed partial class BattleState
         return refusal;
     }
 
-    /// <summary><see cref="ResolveFalls(RuntimeRuleCatalog)"/>, adding a <see cref="UnitFell"/> for each unit that ended elsewhere; <paramref name="moved"/> when any did.</summary>
-    internal CampaignReason? ResolveFalls(RuntimeRuleCatalog rules, List<ICampaignEvent> events, out bool moved)
+    /// <summary><see cref="ResolveFalls(RuntimeRuleCatalog)"/>, raising a <see cref="UnitFell"/> for each unit that ended elsewhere; <paramref name="moved"/> when any did.</summary>
+    internal CampaignReason? ResolveFalls(RuntimeRuleCatalog rules, out bool moved)
     {
         var before = _units.Select(static unit => (unit, unit.Position)).ToArray();
         var refusal = ResolveFalls(rules);
@@ -144,7 +144,7 @@ internal sealed partial class BattleState
         foreach (var (unit, was) in before)
             if (unit.Position is { } now && was is { } from && now != from)
             {
-                events.Add(new UnitFell(unit.Id, from, now));
+                Events.Add(new UnitFell(unit.Id, from, now));
                 moved = true;
             }
         return refusal;
