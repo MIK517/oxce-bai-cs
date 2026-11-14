@@ -30,6 +30,29 @@ public sealed record TileIgnited(BattlePosition Position, int Turns) : ICampaign
 public sealed record UnitIgnited(int UnitId, int Turns) : ICampaignEvent;
 
 /// <summary>
+/// A shot left the weapon (<c>ProjectileFlyBState::createNewProjectile</c>, after the ammunition was spent): the unit, the weapon, the ammunition item it fired
+/// (the weapon itself for a self-fed one), the kind of shot, the voxels the projectile flew over (the last is where it ended) and what it ended in (the
+/// reference's <c>VoxelType</c>: -1 empty, 0 floor, 1 west wall, 2 north wall, 3 object, 4 unit, 5 out of the map). The impact follows as the blast or the hit.
+/// </summary>
+public sealed record UnitFired(int UnitId, int ItemId, int AmmoItemId, BattleAimKind Kind, IReadOnlyList<BattlePosition> Trajectory, int Impact) : ICampaignEvent;
+
+/// <summary>
+/// An attack that turned its unit stopped before it fired (<c>ProjectileFlyBState::init</c>'s checks, or the turn running out of time units): the reason is the
+/// reference's message key (<c>STR_NOT_ENOUGH_TIME_UNITS</c>, <c>STR_NO_AMMUNITION_LOADED</c>, <c>STR_OUT_OF_RANGE</c>, <c>STR_NO_LINE_OF_FIRE</c>, <c>STR_NO_TRAJECTORY</c>); empty when
+/// the reference gives none. An attack that stops before changing anything is a refusal instead. A shot that did fire raises it too after its last event when the action
+/// ended with a message (<c>popState</c> shows it whatever the outcome): <c>STR_FAILED_CQB_CHECK</c> after a failed close quarters check on the player's turn, or
+/// <c>STR_NO_LINE_OF_FIRE</c> / <c>STR_NO_TRAJECTORY</c> for a later shot of a burst.
+/// </summary>
+public sealed record UnitAttackStopped(int UnitId, int ItemId, BattleAimKind Kind, string Reason) : ICampaignEvent;
+
+/// <summary>
+/// A close quarters combat check failed before a shot (the mod's <c>enableCloseQuartersCombat</c>): the shooter, the neighbour who struck first, the tile the shot is
+/// turned to (the shooter's own, or one level up, when the roll said so), the direction the shooter now faces (its turret's for a turret unit; the turn is free) and the time units
+/// and energy the neighbour paid.
+/// </summary>
+public sealed record UnitCloseQuartersFailed(int UnitId, int DefenderId, BattlePosition Target, int Direction, int DefenderTimeUnitsSpent, int DefenderEnergySpent) : ICampaignEvent;
+
+/// <summary>
 /// The battle's ordered event stream. A rule raises its event where the outcome happens, in the order the reference reaches it; a command empties the
 /// sink when it starts and returns what it raised. Every state has a sink of its own: what a trial copy raises reaches nobody, and what is raised outside
 /// a runtime command (the generator's explosions, the battlescape's opening falls) stays in the sink until the next command empties it, so no

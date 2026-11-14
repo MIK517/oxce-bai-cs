@@ -58,6 +58,23 @@ internal sealed partial class BattleUnit
     /// <summary>BattleUnit::getExpStats (the eight saved fields).</summary>
     public BattleUnitStats Experience { get; set; }
 
+    /// <summary>BattleUnit::_expTmp: the experience <see cref="RememberExperience"/> took (runtime state, not saved).</summary>
+    private BattleUnitStats _rememberedExperience;
+
+    /// <summary>BattleUnit::rememberXP: remembers the experience, for <see cref="NerfExperience"/> to cut what extra shotgun pellets add.</summary>
+    internal void RememberExperience() => _rememberedExperience = Experience;
+
+    /// <summary>BattleUnit::nerfXP: each experience statistic gains at most one over the remembered value.</summary>
+    internal void NerfExperience()
+    {
+        var kept = _rememberedExperience;
+        static short Cut(short now, short before) => unchecked((short)Math.Min(now, before + 1));
+        Experience = new BattleUnitStats(Cut(Experience.TimeUnits, kept.TimeUnits), Cut(Experience.Stamina, kept.Stamina), Cut(Experience.Health, kept.Health),
+            Cut(Experience.Bravery, kept.Bravery), Cut(Experience.Reactions, kept.Reactions), Cut(Experience.Firing, kept.Firing),
+            Cut(Experience.Throwing, kept.Throwing), Cut(Experience.Strength, kept.Strength), Cut(Experience.PsiStrength, kept.PsiStrength),
+            Cut(Experience.PsiSkill, kept.PsiSkill), Cut(Experience.Melee, kept.Melee), Cut(Experience.Mana, kept.Mana));
+    }
+
     public byte[] TurnsSinceSpotted { get; } = [255, 255, 255];
     public byte[] TurnsLeftSpottedForSnipers { get; } = [0, 0, 0];
     public byte TurnsSinceStunned { get; set; } = 255;

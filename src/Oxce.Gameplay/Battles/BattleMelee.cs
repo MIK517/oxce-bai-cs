@@ -15,7 +15,7 @@ internal static class BattleAttackReasons
         "The weapon does not offer this action to this unit (a hit costs no time units, or the weapon needs a psi skill or the mana feature the unit lacks).");
 
     internal static readonly CampaignReason KindUnsupported = new("battle.attack-kind-unsupported",
-        "In the battle only the hit is an attack command so far; the shots arrive with Phase 7 branch 5 S7, the throw and the launch with S8.");
+        "In the battle only the hit and the aimed, snap and auto shots are attack commands so far; the throw and the launch arrive with Phase 7 branch 5 S8.");
 
     internal static readonly CampaignReason NotPerformed = new("battle.attack-not-performed",
         "The attack could not start: the unit cannot act, or the target tile is not on the map.");
@@ -280,12 +280,31 @@ internal sealed partial class BattleState
     /// BattleItem::getAmmoForAction(BA_HIT, &amp;message, &amp;spendPerShot): the item the hit feeds on (the weapon itself for a self-use slot), or null with the
     /// reason: no ammunition loaded, or fewer rounds than one hit spends.
     /// </summary>
-    private BattleItem? AmmoForHit(BattleItem weapon, out string message, out int spendPerShot)
+    private BattleItem? AmmoForHit(BattleItem weapon, out string message, out int spendPerShot) => AmmoForActionWithMessage(weapon, 3, out message, out spendPerShot);
+
+    /// <summary>BattleItem::spendAmmoForAction(BA_HIT): a round (or the hit's share of the battery) leaves the ammunition, and a spent clip leaves the battle and the weapon.</summary>
+    private void SpendAmmoForHit(BattleItem weapon) => SpendAmmoForAction(weapon, 3);
+
+    /// <summary>The config of an action by its index (0 aimed or launch, 1 auto, 2 snap, 3 melee): <c>getActionConf</c>.</summary>
+    internal RuntimeItemAction ActionConfig(BattleItem weapon, int action)
+    {
+        var combat = RequiredRules.Battle.Equipment.Items[weapon.ItemType].Combat;
+        return action switch { 0 => combat.Aimed, 1 => combat.Auto, 2 => combat.Snap, 3 => combat.Melee, _ => throw new ArgumentOutOfRangeException(nameof(action)) };
+    }
+
+    /// <summary>BattleItem::getAmmoQuantity: an item with no clip size (-1) never runs dry (255).</summary>
+    internal int AmmoQuantityOf(BattleItem item) => ItemRuleOf(item.ItemType).ClipSize == -1 ? 255 : item.AmmoQuantity;
+
+    /// <summary>
+    /// BattleItem::getAmmoForAction(action, &amp;message, &amp;spendPerShot) by the action's index: the item the action feeds on (the weapon itself for a self-use slot), or null
+    /// with the reason: no ammunition loaded, or fewer rounds than one use spends.
+    /// </summary>
+    internal BattleItem? AmmoForActionWithMessage(BattleItem weapon, int action, out string message, out int spendPerShot)
     {
         message = "";
         var battleRule = RequiredRules.Battle.Equipment.Items[weapon.ItemType];
-        spendPerShot = battleRule.Combat.Melee.SpendPerShot;
-        var slot = battleRule.ActionAmmoSlots[3];
+        spendPerShot = ActionConfig(weapon, action).SpendPerShot;
+        var slot = battleRule.ActionAmmoSlots[action];
         if (slot == -1) return weapon;
         if (slot < 0 || slot >= BattleItem.AmmoSlotCount) throw new InvalidOperationException($"Item {weapon.ItemType} names ammo slot {slot}.");
         if (weapon.AmmoSlots[slot] is not { } id)
@@ -294,7 +313,7 @@ internal sealed partial class BattleState
             return null;
         }
         var ammo = id == weapon.Id ? weapon : _items.First(candidate => candidate.Id == id);
-        if (ammo.AmmoQuantity < spendPerShot)
+        if (AmmoQuantityOf(ammo) < spendPerShot)
         {
             // no rounds left (or not enough energy left in the battery)
             message = "STR_NO_ROUNDS_LEFT";
@@ -303,11 +322,11 @@ internal sealed partial class BattleState
         return ammo;
     }
 
-    /// <summary>BattleItem::spendAmmoForAction(BA_HIT): a round (or the hit's share of the battery) leaves the ammunition, and a spent clip leaves the battle and the weapon.</summary>
-    private void SpendAmmoForHit(BattleItem weapon)
+    /// <summary>BattleItem::spendAmmoForAction: a round (or the action's share of the battery) leaves the ammunition, and a spent clip leaves the battle and the weapon.</summary>
+    internal void SpendAmmoForAction(BattleItem weapon, int action)
     {
-        if (RequiredRules.Battle.Equipment.Items[weapon.ItemType].ActionAmmoSlots[3] == -1) return;
-        if (AmmoForHit(weapon, out _, out var spendPerShot) is not { } ammo) return;
+        if (RequiredRules.Battle.Equipment.Items[weapon.ItemType].ActionAmmoSlots[action] == -1) return;
+        if (AmmoForActionWithMessage(weapon, action, out _, out var spendPerShot) is not { } ammo) return;
         var rule = ItemRuleOf(ammo.ItemType);
         if (rule.ClipSize <= 0) return;
         // BattleItem::spendBullet: false when nothing is left.

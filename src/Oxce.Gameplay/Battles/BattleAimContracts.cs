@@ -32,9 +32,14 @@ public sealed record BattleAimView(int UnitId, int ItemId, BattleAimKind Kind, B
     string ShortfallReason, bool InRange, bool HasLineOfFire, int Accuracy, int HitChance);
 
 /// <summary>
-/// An attack with a weapon in the hand of a unit of the side on turn (<c>ActionMenuState</c>'s choice and, for the hit, <c>BattlescapeGame::handleNonTargetAction</c>). Only
-/// <see cref="BattleAimKind.Hit"/> is a command so far: the unit strikes in the direction it faces (no turn) at the unit it can reach there, or at the part of the
-/// terrain the mod's <c>extendedTerrainMelee</c> lets it hit, for the weapon's melee time units. <see cref="AltPressed"/> is the Alt key of the terrain strike (on
-/// the upper part of stairs the target is one level up unless it is held).
+/// An attack with a weapon in the hand of a unit of the side on turn (<c>ActionMenuState</c>'s choice, then <c>BattlescapeGame::primaryAction</c> for a shot and
+/// <c>handleNonTargetAction</c> for the hit). The hit (<see cref="BattleAimKind.Hit"/>) has no turn: the unit strikes in the direction it faces at the unit it can reach
+/// there, or at the part of the terrain the mod's <c>extendedTerrainMelee</c> lets it hit, for the weapon's melee time units; <see cref="AltPressed"/> is the Alt key of the
+/// terrain strike (on the upper part of stairs the target is one level up unless it is held). An aimed, snap or auto shot (Phase 7 branch 5 S7) turns the unit to
+/// <see cref="Target"/> (each eighth costs time units), then fires the weapon's shots one after the other at that tile; <see cref="ForceFire"/> is Ctrl (the shot aims at the
+/// middle of the tile, whatever stands there). <see cref="SprayWaypoints"/> are the tiles of the spray auto shot (a weapon with <c>sprayWaypoints</c>, Ctrl and Shift): the
+/// first is the target (<see cref="Target"/> is ignored), and the weapon's shots are spaced along them. The throw and the launch are S8's.
 /// </summary>
-public sealed record Attack(int UnitId, int ItemId, BattleAimKind Kind, bool AltPressed = false) : IBattleCommand, IUnitCommand;
+public sealed record Attack(int UnitId, int ItemId, BattleAimKind Kind, bool AltPressed = false, BattlePosition Target = default, bool ForceFire = false,
+    IReadOnlyList<BattlePosition>? SprayWaypoints = null)
+    : IBattleCommand, IUnitCommand;

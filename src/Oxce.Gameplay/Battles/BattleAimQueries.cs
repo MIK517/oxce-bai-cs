@@ -118,14 +118,10 @@ internal sealed partial class BattleState
         {
             if (rule.BattleType == RuntimeBattleItem.FirearmBattleType)
             {
-                var launcher = CurrentWaypoints(weapon) != 0;
-                var slotLauncher = battleRule.ActionAmmoSlots[0];
-                var slotSnap = battleRule.ActionAmmoSlots[2];
-                var slotAuto = battleRule.ActionAmmoSlots[1];
-                if ((!launcher || slotLauncher != slotAuto) && costs.Of(RuntimeItemActionCosts.Auto).Cost.Time > 0) Add(BattleAimKind.AutoShot, battleRule.Combat.Auto.Name);
-                if ((!launcher || slotLauncher != slotSnap) && costs.Of(RuntimeItemActionCosts.Snap).Cost.Time > 0) Add(BattleAimKind.SnapShot, battleRule.Combat.Snap.Name);
-                if (launcher) Add(BattleAimKind.Launch, AimKindName(BattleAimKind.Launch));
-                else if (costs.Of(RuntimeItemActionCosts.Aimed).Cost.Time > 0) Add(BattleAimKind.AimedShot, battleRule.Combat.Aimed.Name);
+                if (FirearmOffers(weapon, BattleAimKind.AutoShot)) Add(BattleAimKind.AutoShot, battleRule.Combat.Auto.Name);
+                if (FirearmOffers(weapon, BattleAimKind.SnapShot)) Add(BattleAimKind.SnapShot, battleRule.Combat.Snap.Name);
+                if (FirearmOffers(weapon, BattleAimKind.Launch)) Add(BattleAimKind.Launch, AimKindName(BattleAimKind.Launch));
+                else if (FirearmOffers(weapon, BattleAimKind.AimedShot)) Add(BattleAimKind.AimedShot, battleRule.Combat.Aimed.Name);
             }
             if (costs.Of(RuntimeItemActionCosts.Melee).Cost.Time > 0)
             {

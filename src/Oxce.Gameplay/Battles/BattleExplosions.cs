@@ -76,6 +76,9 @@ internal sealed partial class BattleState
         }
     }
 
+    /// <summary>Whether the state is the front of the list (it thinks).</summary>
+    private bool IsFront(QueuedState state) => _states.Count != 0 && ReferenceEquals(_states[0], state);
+
     /// <summary>BattlescapeGame::popState: the running state leaves and the next one starts.</summary>
     private void PopState()
     {

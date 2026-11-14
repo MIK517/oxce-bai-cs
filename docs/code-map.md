@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 263 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 264 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 103 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 8 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 358 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 359 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 114 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -352,7 +352,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 263 files.
+`src/Oxce.Gameplay` - 264 files.
 
 ### `Oxce.Gameplay`
 
@@ -364,7 +364,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BattleAimMenuItem` (record) [BattleAimContracts.cs](../src/Oxce.Gameplay/Battles/BattleAimContracts.cs) - One line of a weapon's action menu (`ActionMenuState::addItem`): the action, its name key, the accuracy it shows and the time units it co...
 - `BattleAimMenuView` (record) [BattleAimContracts.cs](../src/Oxce.Gameplay/Battles/BattleAimContracts.cs) - The aiming actions a weapon in a viewer's unit's hand offers (`ActionMenuState`'s constructor): a throw for an item that is not fixed, th...
 - `BattleAimView` (record) [BattleAimContracts.cs](../src/Oxce.Gameplay/Battles/BattleAimContracts.cs) - What aiming a weapon at a tile shows (the cursor of `Map::drawTerrain` and the checks of `ProjectileFlyBState`): whether the unit may use...
-- `Attack` (record) [BattleAimContracts.cs](../src/Oxce.Gameplay/Battles/BattleAimContracts.cs) - An attack with a weapon in the hand of a unit of the side on turn (`ActionMenuState`'s choice and, for the hit, `BattlescapeGame::handleN...
+- `Attack` (record) [BattleAimContracts.cs](../src/Oxce.Gameplay/Battles/BattleAimContracts.cs) - An attack with a weapon in the hand of a unit of the side on turn (`ActionMenuState`'s choice, then `BattlescapeGame::primaryAction` for...
 - `BattleFaction` (enum) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - UnitFaction: the side a battle unit fights for.
 - `BattleControllerKind` (enum) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs)
 - `BattleController` (record struct) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - Who decides a unit's actions (ADR 0038): the AI, or the human in a player slot.
@@ -393,6 +393,9 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `UnitConverted` (record) [BattleEvents.cs](../src/Oxce.Gameplay/Battles/BattleEvents.cs) - A unit turned into another (`convertUnit`): the one that died and the one that stands where it was.
 - `TileIgnited` (record) [BattleEvents.cs](../src/Oxce.Gameplay/Battles/BattleEvents.cs) - A tile caught fire (`Tile::ignite`): where, and for how many turns it burns.
 - `UnitIgnited` (record) [BattleEvents.cs](../src/Oxce.Gameplay/Battles/BattleEvents.cs) - A unit started burning (`BattleUnit::damage` set its fire): the turns it burns for.
+- `UnitFired` (record) [BattleEvents.cs](../src/Oxce.Gameplay/Battles/BattleEvents.cs) - A shot left the weapon (`ProjectileFlyBState::createNewProjectile`, after the ammunition was spent): the unit, the weapon, the ammunition...
+- `UnitAttackStopped` (record) [BattleEvents.cs](../src/Oxce.Gameplay/Battles/BattleEvents.cs) - An attack that turned its unit stopped before it fired (`ProjectileFlyBState::init`'s checks, or the turn running out of time units): the...
+- `UnitCloseQuartersFailed` (record) [BattleEvents.cs](../src/Oxce.Gameplay/Battles/BattleEvents.cs) - A close quarters combat check failed before a shot (the mod's `enableCloseQuartersCombat`): the shooter, the neighbour who struck first,...
 - `UnitMeleeAttacked` (record) [BattleEvents.cs](../src/Oxce.Gameplay/Battles/BattleEvents.cs) - A melee hit was struck (`ExplosionBState` for `BA_HIT`, after the roll): the unit that struck (-1 for none), its weapon, the unit it stru...
 - `MoveInventoryItem` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - `Inventory::mouseClick`'s drop: a unit's item goes to a position of an inventory section (a hand, a grid slot, or the ground of the unit'...
 - `AutoPlaceInventoryItem` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - `Inventory::mouseClick`'s Ctrl click: a ground item goes to the best section that holds it (the cheapest to reach a hand when `Smart`, th...
@@ -1367,7 +1370,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 358 files.
+`tests/Oxce.CompatibilityTests` - 359 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1379,7 +1382,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>351 test classes</summary>
+<details><summary>352 test classes</summary>
 
 - `BaseDefenseDeploymentTests` ([BaseDefenseDeploymentTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseDeploymentTests.cs))
 - `BaseDefenseMapTests` ([BaseDefenseMapTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseMapTests.cs))
@@ -1407,6 +1410,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BattleSaveRootTests` ([BattleSaveRootTests.cs](../tests/Oxce.CompatibilityTests/BattleSaveRootTests.cs))
 - `BattleSaveUnitTests` ([BattleSaveUnitTests.cs](../tests/Oxce.CompatibilityTests/BattleSaveUnitTests.cs))
 - `BattleScreensTests` ([BattleScreensTests.cs](../tests/Oxce.CompatibilityTests/BattleScreensTests.cs))
+- `BattleShootingTests` ([BattleShootingTests.cs](../tests/Oxce.CompatibilityTests/BattleShootingTests.cs))
 - `BattleSightCoverageTests` ([BattleSightCoverageTests.cs](../tests/Oxce.CompatibilityTests/BattleSightCoverageTests.cs))
 - `BattleSightTests` ([BattleSightTests.cs](../tests/Oxce.CompatibilityTests/BattleSightTests.cs))
 - `BattleStartTests` ([BattleStartTests.cs](../tests/Oxce.CompatibilityTests/BattleStartTests.cs))

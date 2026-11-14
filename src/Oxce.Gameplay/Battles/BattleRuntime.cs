@@ -251,14 +251,19 @@ internal sealed class BattleRuntime
     }
 
     /// <summary>
-    /// The attack command (S6: the hit): run on a copy first like a walk, because the reaction fire after the hit is S9's and the real battle must not change
-    /// when a reactor could answer. The events are the rules' own, in order (the strike, then its hit, deaths and blasts).
+    /// The attack command (S6: the hit, S7: the aimed, snap and auto shots): run on a copy first like a walk, because the reaction fire after the attack is S9's and the
+    /// real battle must not change when a reactor could answer. The events are the rules' own, in order (the turn's, each shot, then its hit, deaths and blasts).
     /// </summary>
     private CampaignCommandResult Attack(Attack command)
     {
-        if (command.Kind != BattleAimKind.Hit) return Blocked(BattleAttackReasons.KindUnsupported);
         var research = Link?.Research ?? BattleResearchGate.Everything;
-        return RunOnTrialCopy(battle => battle.MeleeAttackAction(research, command.UnitId, command.ItemId, command.AltPressed));
+        return command.Kind switch
+        {
+            BattleAimKind.Hit => RunOnTrialCopy(battle => battle.MeleeAttackAction(research, command.UnitId, command.ItemId, command.AltPressed)),
+            BattleAimKind.AutoShot or BattleAimKind.SnapShot or BattleAimKind.AimedShot =>
+                RunOnTrialCopy(battle => battle.ShootAction(research, command.UnitId, command.ItemId, command.Kind, command.Target, command.ForceFire, command.SprayWaypoints)),
+            _ => Blocked(BattleAttackReasons.KindUnsupported),
+        };
     }
 
     /// <summary>

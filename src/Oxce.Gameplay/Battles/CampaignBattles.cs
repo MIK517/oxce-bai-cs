@@ -442,6 +442,10 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         foreach (var live in battle.Units)
             if (scratch.UnitById(live.Id) is { } copy)
             {
+                // The restore recalculates the visible units; the live lists are kept up to date step by step, and a rule that reads one before a draw (close quarters
+                // combat's sneak up) must see the live one. (Added first: adding a visible unit also joins it to the units spotted this turn, which are replaced below.)
+                copy.ClearVisibleUnits();
+                foreach (var visible in live.VisibleUnits) copy.AddToVisibleUnits(visible);
                 copy.UnitsSpottedThisTurn.Clear();
                 copy.UnitsSpottedThisTurn.AddRange(live.UnitsSpottedThisTurn);
                 foreach (var faction in Enum.GetValues<BattleFaction>()) copy.SetSpottedBy(faction, live.IsSpottedBy(faction));
