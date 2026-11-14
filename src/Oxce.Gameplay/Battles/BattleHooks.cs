@@ -13,7 +13,7 @@ internal readonly record struct BattleSpecialHookValues(bool Transform, int Tran
     int AttackerTurnsSinceSpotted, int AttackerTurnsLeftSpottedForSnipers);
 
 /// <summary>Where a stat bonus is read (<c>RuleItem</c>'s <c>*BonusStats</c> parsers); the scripted form of each is a hook in branch 8.</summary>
-internal enum BattleStatBonusKind { Damage, Accuracy, MeleeMultiplier, Throw, CloseQuarters }
+internal enum BattleStatBonusKind { Damage, Accuracy, MeleeMultiplier, Throw, CloseQuarters, MeleeBonus, MeleeDodge }
 
 /// <summary>
 /// Where the battle's rules would run a tactical script (<c>ModScript</c>), as one method per script. Each method gets what the script reads and the
@@ -40,6 +40,16 @@ internal interface IBattleHooks
 
     /// <summary><c>ModScript::VisibilityUnit</c> (<c>TileEngine::visible</c> and <c>isTileInLOS</c>): the visibility quality; the unit is seen above 0.</summary>
     int VisibilityUnit(BattleUnit viewer, BattleUnit? target, int tile, int quality) => quality;
+
+    /// <summary>
+    /// <c>ModScript::TryMeleeAttackItem</c> (<c>TileEngine::meleeAttackCalculate</c>, run on the weapon's rules): the success of a melee attack, which the default script
+    /// works out from the roll (0 to 99 drawn for it), the attacker's accuracy, the victim's dodge and its penalty for an attack from behind; a result above 0 hits.
+    /// <paramref name="arc"/> is the attacker's angle to the victim's facing (0 in front to 4 behind).
+    /// </summary>
+    int TryMeleeAttackItem(in BattleAttack attack, BattleUnit victim, int attackStrength, int defenseStrength, int roll, int arc, int defenseStrengthPenalty, int result) => result;
+
+    /// <summary><c>ModScript::TryMeleeAttackUnit</c> (the victim's armor, run on the result of the item's script).</summary>
+    int TryMeleeAttackUnit(in BattleAttack attack, BattleUnit victim, int attackStrength, int defenseStrength, int result) => result;
 
     /// <summary>A stat bonus (<c>damageBonusBonusStats</c> and the like): the bonus the unit and item give, as the coefficients computed it.</summary>
     int StatBonus(BattleStatBonusKind kind, BattleUnit? unit, BattleItem? item, int value) => value;

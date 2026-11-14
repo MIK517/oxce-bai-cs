@@ -39,7 +39,7 @@ internal sealed partial class BattleState
     }
 
     /// <summary>
-    /// The refusal a self-destruct item that is a melee weapon left behind (set by <c>DamageUnit</c>, deep inside a blast or a hit): the commands
+    /// The refusal a running state left behind (S6's melee state sets it where the reference would check for reaction fire, S9 retires that): the commands
     /// and the generator take it with <see cref="TakeExplosionRefusal"/> when their states have run, and refuse (the generator fails, a command's trial copy is dropped).
     /// </summary>
     internal CampaignReason? ExplosionRefusal { get; set; }
@@ -159,9 +159,11 @@ internal sealed partial class BattleState
         private int _radius = 6;
         private RuntimeItemDamageRule _damageType = HighExplosiveType;
         private bool _areaOfEffect;
+        private bool _hit;
+        private readonly int _terrainMeleeTilePart;
 
         public ExplosionState(BattleState battle, RuntimeRuleCatalog ruleCatalog, BattleAttack attack, BattlePosition center, BattlePosition before, int? tile,
-            bool lowerWeapon, int range, int explosionCounter)
+            bool lowerWeapon, int range, int explosionCounter, int terrainMeleeTilePart = 0)
         {
             _battle = battle;
             _rules = ruleCatalog;
@@ -172,6 +174,7 @@ internal sealed partial class BattleState
             _lowerWeapon = lowerWeapon;
             _range = range;
             _explosionCounter = explosionCounter;
+            _terrainMeleeTilePart = terrainMeleeTilePart;
         }
 
         /// <summary>ExplosionBState::init.</summary>
@@ -183,35 +186,63 @@ internal sealed partial class BattleState
                 var itemRule = _battle.ItemRuleOf(damageItem.ItemType);
                 var type = itemRule.BattleType;
                 var hit = _attack.Type == BattleActionType.Hit;
-                if (hit || type == MeleeBattleTypeOfItem || type == PsiAmpBattleTypeOfItem && _attack.Type != BattleActionType.SelfDestruct)
-                    throw new NotSupportedException("A melee hit or a psi attack is not an explosion of Phase 7 branch 5 S5 (S6 and branch 6).");
+                _hit = hit;
+                // A psi attack is branch 6's (a hit with a psi amplifier is a melee hit; a psi amplifier's self-destruct is a plain hit).
+                if (type == PsiAmpBattleTypeOfItem && !hit && _attack.Type != BattleActionType.SelfDestruct)
+                    throw new NotSupportedException("A psi attack is not an explosion of Phase 7 branch 5 (branch 6).");
 
                 _power = 0;
-                if (_attack.Weapon is { } weapon && _rules.Battle.Equipment.Items[weapon.ItemType].Combat.IgnoreAmmoPower)
+                if (hit && type != MeleeBattleTypeOfItem)
                 {
-                    _power += _battle.PowerBonus(weapon, _attack);
-                    _power = (int)(_power - _rules.Battle.Equipment.Items[weapon.ItemType].Combat.PowerRangeReductionAt(_range));
+                    // A hit with something that is not a melee weapon (a firearm's butt) uses the item's melee power and damage type.
+                    _power += _battle.MeleeBonus(damageItem, _attack);
+                    _radius = 0;
+                    _damageType = itemRule.MeleeDamage;
                 }
                 else
                 {
-                    _power += _battle.PowerBonus(damageItem, _attack);
-                    _power = (int)(_power - _rules.Battle.Equipment.Items[damageItem.ItemType].Combat.PowerRangeReductionAt(_range));
+                    if (_attack.Weapon is { } weapon && _rules.Battle.Equipment.Items[weapon.ItemType].Combat.IgnoreAmmoPower)
+                    {
+                        _power += _battle.PowerBonus(weapon, _attack);
+                        _power = (int)(_power - _rules.Battle.Equipment.Items[weapon.ItemType].Combat.PowerRangeReductionAt(_range));
+                    }
+                    else
+                    {
+                        _power += _battle.PowerBonus(damageItem, _attack);
+                        _power = (int)(_power - _rules.Battle.Equipment.Items[damageItem.ItemType].Combat.PowerRangeReductionAt(_range));
+                    }
+                    _radius = _battle.ExplosionRadius(damageItem, _attack);
+                    _damageType = itemRule.Damage;
                 }
-                _radius = _battle.ExplosionRadius(damageItem, _attack);
-                _damageType = itemRule.Damage;
+
+                // The unit a hit lands on: the one overlapping the tile of the hit voxel.
+                BattleUnit? struck = null;
+                if (hit && _battle.Contains(BattleGeometry.TileOfVoxel(_center)))
+                    struck = _battle.OverlappingUnit(_battle.Map.TileIndex(BattleGeometry.TileOfVoxel(_center)));
 
                 var miss = false;
                 if (_attack.Type == BattleActionType.SelfDestruct)
                 {
                     if (!RandomChance.Percent(_battle.Random, _rules.Battle.Equipment.Items[damageItem.ItemType].Combat.SpecialChance)) _power = 0;
                 }
+                else if (type == MeleeBattleTypeOfItem || hit)
+                {
+                    var success = _battle.MeleeAttack(_attack, struck, _terrainMeleeTilePart);
+                    if (!success)
+                    {
+                        _power = 0;
+                        miss = true;
+                    }
+                    _battle.Events.Add(new UnitMeleeAttacked(_attack.Attacker?.Id ?? -1, _attack.Weapon?.Id ?? -1, struck?.Id ?? -1, _center,
+                        _terrainMeleeTilePart, success));
+                }
                 else if (type == FirearmBattleTypeOfItem && _power <= 0)
                 {
                     miss = true;
                 }
                 // (A psi amplifier's self-destruct is a plain hit: its area test fails, and no psi attack runs for BA_SELF_DESTRUCT.)
-                _areaOfEffect = type != PsiAmpBattleTypeOfItem && _radius != 0 && !miss;
-                rangeAttack = !(_attack.Weapon is { } held && _battle.ItemRuleOf(held.ItemType).BattleType == PsiAmpBattleTypeOfItem);
+                _areaOfEffect = type != MeleeBattleTypeOfItem && type != PsiAmpBattleTypeOfItem && _radius != 0 && !hit && !miss;
+                rangeAttack = !(hit || _attack.Weapon is { } held && _battle.ItemRuleOf(held.ItemType).BattleType == PsiAmpBattleTypeOfItem);
             }
             else if (_tile is { } tile)
             {
@@ -250,7 +281,7 @@ internal sealed partial class BattleState
             else
             {
                 // A bullet hit.
-                _battle.Hit(_attack, _center, _power, _damageType, rangeAttack);
+                _battle.Hit(_attack, _center, _power, _damageType, rangeAttack, _terrainMeleeTilePart);
             }
 
             if (_attack.Type == BattleActionType.SelfDestruct) _attack.Attacker?.AlreadyExploded = false;
@@ -259,6 +290,17 @@ internal sealed partial class BattleState
         /// <summary>ExplosionBState::explode, which <c>think</c> runs when the animation is done.</summary>
         public override void Think()
         {
+            // last minute adjustment: a hit puts the weapon down, and one with no power ends here
+            if (_hit)
+            {
+                if (_attack.Attacker is { IsOut: false } hitter) hitter.Status = BattleUnitStatus.Standing;
+                if (_power <= 0)
+                {
+                    _battle.PopState();
+                    return;
+                }
+            }
+
             var terrainExplosion = _tile is not null || _attack.DamageItem is null;
 
             // now check for new casualties

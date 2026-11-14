@@ -112,13 +112,6 @@ internal static class CampaignStartSettingsComposer
         b.DefeatScore = Read(root, "defeatScore", b.DefeatScore);
         b.DefeatFunds = Read(root, "defeatFunds", b.DefeatFunds);
         b.DifficultyDemigod = Read(root, "difficultyDemigod", b.DifficultyDemigod);
-        b.ExtendedHwpLoadOrder = Read(root, "extendedHwpLoadOrder", b.ExtendedHwpLoadOrder);
-        b.ExtendedForceSpawn = Read(root, "extendedForceSpawn", b.ExtendedForceSpawn);
-        b.ExtendedInventorySlotSorting = Read(root, "extendedInventorySlotSorting", b.ExtendedInventorySlotSorting);
-        b.ExtendedItemReloadCost = Read(root, "extendedItemReloadCost", b.ExtendedItemReloadCost);
-        b.ExtendedRunningCost = Read(root, "extendedRunningCost", b.ExtendedRunningCost);
-        b.ExtendedMovementCostRounding = Read(root, "extendedMovementCostRounding", b.ExtendedMovementCostRounding);
-        b.ExtendedMeleeReactions = Read(root, "extendedMeleeReactions", b.ExtendedMeleeReactions);
         b.TooMuchSmokeThreshold = Read(root, "tooMuchSmokeThreshold", b.TooMuchSmokeThreshold);
         if (root.TryGet("lighting", out var lighting))
         {
@@ -171,6 +164,13 @@ internal static class CampaignStartSettingsComposer
         b.Interception.DamageRange = Read(constants, "damageRange", b.Interception.DamageRange);
         b.Interception.ExplosiveDamageRange = Read(constants, "explosiveDamageRange", b.Interception.ExplosiveDamageRange);
         ApplyCoefficients(constants, "fireDamageRange", b.Interception.FireDamageRange);
+        b.ExtendedHwpLoadOrder = Read(constants, "extendedHwpLoadOrder", b.ExtendedHwpLoadOrder);
+        b.ExtendedForceSpawn = Read(constants, "extendedForceSpawn", b.ExtendedForceSpawn);
+        b.ExtendedInventorySlotSorting = Read(constants, "extendedInventorySlotSorting", b.ExtendedInventorySlotSorting);
+        b.ExtendedItemReloadCost = Read(constants, "extendedItemReloadCost", b.ExtendedItemReloadCost);
+        b.ExtendedRunningCost = Read(constants, "extendedRunningCost", b.ExtendedRunningCost);
+        b.ExtendedMovementCostRounding = Read(constants, "extendedMovementCostRounding", b.ExtendedMovementCostRounding);
+        b.ExtendedMeleeReactions = Read(constants, "extendedMeleeReactions", b.ExtendedMeleeReactions);
         b.Combat = b.Combat with
         {
             ExtendedExperienceAwardSystem = Read(constants, "extendedExperienceAwardSystem", b.Combat.ExtendedExperienceAwardSystem),

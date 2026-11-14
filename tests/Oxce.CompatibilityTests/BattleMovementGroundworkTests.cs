@@ -54,7 +54,7 @@ public sealed class BattleMovementGroundworkTests
         Assert.Equal((16, 24, 0, 10, false, 0), (defaults.Campaign.MaximumStaticLightDistance, defaults.Campaign.MaximumDynamicLightDistance,
             defaults.Campaign.EnhancedLighting, defaults.Campaign.TooMuchSmokeThreshold, defaults.Campaign.ExtendedRunningCost,
             defaults.Campaign.ExtendedMovementCostRounding));
-        var rules = Rules + "\nlighting: {maxStatic: 12, maxDynamic: 20, enhanced: 1}\ntooMuchSmokeThreshold: 7\nextendedRunningCost: true\nextendedMovementCostRounding: 2\n";
+        var rules = Rules + "\nlighting: {maxStatic: 12, maxDynamic: 20, enhanced: 1}\ntooMuchSmokeThreshold: 7\nconstants:\n  - extendedRunningCost: true\n    extendedMovementCostRounding: 2\n";
         var (_, _, _, set) = Open(rules);
         Assert.Equal((12, 20, 1, 7, true, 2), (set.Campaign.MaximumStaticLightDistance, set.Campaign.MaximumDynamicLightDistance,
             set.Campaign.EnhancedLighting, set.Campaign.TooMuchSmokeThreshold, set.Campaign.ExtendedRunningCost,

@@ -65,3 +65,9 @@ internal sealed class BattleEventSink
         return taken;
     }
 }
+
+/// <summary>
+/// A melee hit was struck (<c>ExplosionBState</c> for <c>BA_HIT</c>, after the roll): the unit that struck (-1 for none), its weapon, the unit it struck at (-1 for terrain or
+/// nobody), the voxel of the strike, the tile part a terrain attack named (0 for a unit) and whether it hit. Raised before the damage of a hit.
+/// </summary>
+public sealed record UnitMeleeAttacked(int UnitId, int ItemId, int TargetUnitId, BattlePosition Voxel, int TerrainPart, bool Hit) : ICampaignEvent;

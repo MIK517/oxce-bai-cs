@@ -182,7 +182,7 @@ public sealed class BattleWalkTests
     {
         foreach (var extended in new[] { false, true })
         {
-            var arena = Make(suitExtra: "    allowsRunning: true\n", rulesExtra: extended ? "extendedRunningCost: true" : "");
+            var arena = Make(suitExtra: "    allowsRunning: true\n", rulesExtra: extended ? "constants:\n  - extendedRunningCost: true" : "");
             arena.Stand(arena.Alien, 14, 8, 6);
             arena.Put(12, 9, 0, BattleTilePart.ObjectPart, Wall);
             arena.See();

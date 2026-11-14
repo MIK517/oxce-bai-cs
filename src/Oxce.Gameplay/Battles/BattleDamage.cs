@@ -10,8 +10,8 @@ namespace Oxce.Gameplay.Battles;
 internal readonly record struct BattleAttack(BattleActionType Type, BattleUnit? Attacker = null, BattleItem? Weapon = null, BattleItem? DamageItem = null);
 
 /// <summary>
-/// What <see cref="BattleState.DamageUnit"/> did: the damage to the unit's health, and the refusal when the hit needs work of a later slice (a
-/// self-destruct item that is a melee weapon or a psi amplifier, S6 and branch 6). The unit has taken the hit either way: a command runs on a trial copy first. A unit the hit takes out, or sets
+/// What <see cref="BattleState.DamageUnit"/> did: the damage to the unit's health, and the refusal when the hit needs work of a later slice (none
+/// does since S6 ported the melee self-destruct; the field and the refusal plumbing of <c>HitUnit</c> and <c>Hit</c> go in S7 unless branch 6's psi work needs them). A unit the hit takes out, or sets
 /// to respawn, is left for <see cref="BattleState.CheckForCasualties"/>, which the reference also runs later (an explosion, a fall, a turn's end).
 /// </summary>
 internal readonly record struct BattleDamageResult(int Damage, CampaignReason? Refusal = null);
@@ -323,14 +323,10 @@ internal sealed partial class BattleState
 
         var selfDestructItem = armor.SelfDestructItem.Length == 0 ? null : SpecialWeaponNamed(unit, armor.SelfDestructItem);
         var explodes = RandomPercent(selfDestructChance) && !unit.AlreadyExploded && selfDestructItem is not null;
-        CampaignReason? refusal = null;
         if (explodes)
         {
             unit.AlreadyExploded = true;
-            if (ItemRuleOf(selfDestructItem!.ItemType).BattleType == MeleeBattleTypeOfItem)
-                ExplosionRefusal = refusal = BattleFireReasons.SelfDestructItemUnsupported;
-            else
-                PushSelfDestruct(unit, selfDestructItem);
+            PushSelfDestruct(unit, selfDestructItem!);
         }
 
         if (attack.Attacker is { } spotter)
@@ -340,7 +336,7 @@ internal sealed partial class BattleState
         }
 
         // A unit taken out or set to respawn waits for the casualty check; the explosion of a unit that blows up with its death waits on the list of states.
-        return new(damage, refusal);
+        return new(damage);
     }
 
     private bool RandomPercent(int chance) => RandomChance.Percent(Random, chance);

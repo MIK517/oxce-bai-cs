@@ -449,11 +449,16 @@ public sealed class BattleExplosionTests
     }
 
     [Fact]
-    public void AMeleeSelfDestructItemLeavesARefusalForTheCommandAndAPsiAmpOneIsAPlainHit()
+    public void AMeleeOrPsiAmpSelfDestructItemIsAPlainHitAtTheCornerNotABlastNorAMeleeAttack()
     {
         var melee = Bomber(more: rules => Replaced(rules, "- type: GRENADE\n    battleType: 4", "- type: GRENADE\n    clipSize: -1\n    battleType: 3"));
-        Hurt(melee, 500, Plain);
-        Assert.Equal("battle.self-destruct-item-unsupported", melee.Battle.TakeExplosionRefusal()!.Code);
+        var next = Extra(melee, 970, 16, 10);
+        Assert.Null(Hurt(melee, 500, Plain).Refusal);
+        melee.Battle.RunStates();
+        // The weapon is a melee one, but the attack is the explosion of a self-destruct, not a hit: no melee roll, no area.
+        Assert.Empty(melee.Battle.Events.Of<BattleExploded>());
+        Assert.Empty(melee.Battle.Events.Of<UnitMeleeAttacked>());
+        Assert.Equal(100, next.Health);
         Assert.Null(melee.Battle.TakeExplosionRefusal());
         var psi = Bomber(more: rules => Replaced(rules, "- type: GRENADE\n    battleType: 4", "- type: GRENADE\n    battleType: 9"));
         var near = Extra(psi, 970, 16, 10);
@@ -472,13 +477,6 @@ public sealed class BattleExplosionTests
         Hurt(arena, 500, Plain);
         arena.Battle.RunStates();
         Assert.DoesNotContain(arena.Battle.Events.Of<BattleExploded>(), static explosion => explosion.Power > 0);
-    }
-
-    [Fact]
-    public void ASelfDestructItemThatIsAMeleeWeaponIsRefusedByName()
-    {
-        var arena = Bomber(more: rules => Replaced(rules, "- type: GRENADE\n    battleType: 4", "- type: GRENADE\n    clipSize: -1\n    battleType: 3"));
-        Assert.Equal("battle.self-destruct-item-unsupported", Hurt(arena, 500, Plain).Refusal!.Code);
     }
 
     [Fact]

@@ -83,6 +83,8 @@ internal sealed class BattleRuntime
 
         public int Difficulty => live.Difficulty;
 
+        public BattleResearchGate Research => live.Research;
+
         public BattleSoldierDescription? DescribeSoldier(int soldierId) => live.DescribeSoldier(soldierId);
 
         public void KillSoldier(int soldierId, BattleUnitKillSnapshot cause)
@@ -164,8 +166,9 @@ internal sealed class BattleRuntime
         Register<SelectSpotter>(SelectSpotter);
         Register<TurnUnit>(TurnUnit);
         Register<KneelUnit>(KneelUnit);
-        Register<WalkUnit>(command => RunMovement(battle => battle.Walk(command.UnitId, command.Target, command.Move, command.IgnoreSpottedEnemies)));
-        Register<MoveUnitUpDown>(command => RunMovement(battle => battle.MoveUpDown(command.UnitId, command.Up)));
+        Register<WalkUnit>(command => RunOnTrialCopy(battle => battle.Walk(command.UnitId, command.Target, command.Move, command.IgnoreSpottedEnemies)));
+        Register<MoveUnitUpDown>(command => RunOnTrialCopy(battle => battle.MoveUpDown(command.UnitId, command.Up)));
+        Register<Attack>(Attack);
         Register<UseInventoryFeature>(command =>
             Blocked(State.Phase == BattlePhase.Briefing ? BattleInventoryReasons.Unavailable : BattleInventoryReasons.For(command.Feature)));
     }
@@ -248,11 +251,22 @@ internal sealed class BattleRuntime
     }
 
     /// <summary>
-    /// A movement that runs <c>UnitWalkBState</c>: first on a copy of the battle, so that what it meets that is not ported (the reaction fire after
+    /// The attack command (S6: the hit): run on a copy first like a walk, because the reaction fire after the hit is S9's and the real battle must not change
+    /// when a reactor could answer. The events are the rules' own, in order (the strike, then its hit, deaths and blasts).
+    /// </summary>
+    private CampaignCommandResult Attack(Attack command)
+    {
+        if (command.Kind != BattleAimKind.Hit) return Blocked(BattleAttackReasons.KindUnsupported);
+        var research = Link?.Research ?? BattleResearchGate.Everything;
+        return RunOnTrialCopy(battle => battle.MeleeAttackAction(research, command.UnitId, command.ItemId, command.AltPressed));
+    }
+
+    /// <summary>
+    /// A command that runs a state of the list (<c>UnitWalkBState</c>, <c>MeleeAttackBState</c>): first on a copy of the battle, so that what it meets that is not ported (the reaction fire after
     /// a step, a proximity explosion, a burning floor, a fall that knocks a unit out) is refused before the real one changes anything; then on the
     /// battle, with the events the rules raised.
     /// </summary>
-    private CampaignCommandResult RunMovement(Func<BattleState, CampaignReason?> move)
+    private CampaignCommandResult RunOnTrialCopy(Func<BattleState, CampaignReason?> move)
     {
         if (_trial(State, move) is { } trial) return Blocked(trial);
         Events.Clear();

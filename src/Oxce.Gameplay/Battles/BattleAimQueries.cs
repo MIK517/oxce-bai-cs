@@ -114,9 +114,7 @@ internal sealed partial class BattleState
         var usable = CanUseWeapon(research, weapon, unit, false, BattleActionType.None);
         if (!battleRule.Fixed && costs.Of(RuntimeItemActionCosts.Throw).Cost.Time > 0) Add(BattleAimKind.Throw, AimKindName(BattleAimKind.Throw));
         // A psi weapon needs psi skill, a mana weapon the unlocked feature: without them the menu lists the throw only.
-        var shoots = !(battleRule.PsiRequired && unit.Stats.PsiSkill <= 0) && !(battleRule.ManaRequired && unit.OriginalFaction == BattleFaction.Player &&
-            !(RequiredRules.Campaign.Combat.ManaEnabled && ManaUnlocked(research)));
-        if (shoots)
+        if (WeaponShoots(research, unit, weapon))
         {
             if (rule.BattleType == RuntimeBattleItem.FirearmBattleType)
             {

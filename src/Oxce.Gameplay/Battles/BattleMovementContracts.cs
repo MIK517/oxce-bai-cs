@@ -172,5 +172,5 @@ internal static class BattleMovementReasons
         "The unit cannot move up or down from where it is.");
 
     internal static readonly CampaignReason ReactionFireUnsupported = new("battle.reaction-fire-unsupported",
-        "An opposing unit near the unit could react with a weapon, and reaction fire arrives with the attack commands (Phase 7 branch 5); the unit near may be one the player has not seen.");
+        "An opposing unit near the unit could react with a weapon, and reaction fire arrives with the reaction fire slice (Phase 7 branch 5 S9); the unit near may be one the player has not seen.");
 }

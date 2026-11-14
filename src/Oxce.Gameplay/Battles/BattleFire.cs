@@ -5,13 +5,6 @@ using Oxce.Mods.Rulesets.Runtime;
 
 namespace Oxce.Gameplay.Battles;
 
-/// <summary>The reasons a hit refuses (Phase 7 branch 5 S5 retired the terrain explosion and module map ones).</summary>
-internal static class BattleFireReasons
-{
-    internal static readonly CampaignReason SelfDestructItemUnsupported = new("battle.self-destruct-item-unsupported",
-        "A unit would blow itself up as it dies with a melee weapon as its self-destruct item; the melee attack that explosion runs arrives with Phase 7 branch 5 S6.");
-}
-
 /// <summary>
 /// The base damage types of <c>Mod::Mod</c> the battle uses on its own (a walk burns floors with <c>DT_IN</c>), and the tile damage of
 /// <c>TileEngine::hit</c>: <c>getTileFinalDamage(getRandomDamageForTile(power, damage))</c>.
@@ -198,18 +191,19 @@ internal sealed partial class BattleState
     /// base defense's module count and the objective count follow); a unit in the voxel takes the hit (<see cref="HitUnit"/>). Then, when the terrain
     /// changed or fire or smoke appeared, gravity on the tile, the light of the layer it changes and the field of view around it are updated. A destroyed
     /// part that explodes leaves its explosive on the tile for <see cref="RunTerrainExplosions"/>; a unit that blows itself up as it dies pushes its
-    /// explosion on the list of states (<see cref="RunStates"/>). The result is the refusal of a self-destruct item that is a melee weapon or a psi amplifier
-    /// (S6 and branch 6), after the unit has taken the hit (commands run on a trial copy first). Terrain melee (the melee part of the voxel given) is S6's.
+    /// explosion on the list of states (<see cref="RunStates"/>). A terrain melee attack (<paramref name="terrainMeleeTilePart"/> above 0) strikes that part
+    /// of the tile without a voxel check and never a body lying on it. The result is a refusal a hit left behind; none sets one now.
     /// </summary>
     internal CampaignReason? Hit(in BattleAttack attack, BattlePosition voxel, int power, RuntimeItemDamageRule type,
-        bool rangeAttack)
+        bool rangeAttack, int terrainMeleeTilePart = 0)
     {
         ArgumentNullException.ThrowIfNull(type);
         var tilePosition = BattleGeometry.TileOfVoxel(voxel);
         if (!Contains(tilePosition) || power <= 0) return null;
         var tile = Map.TileIndex(tilePosition);
         var sight = Sight();
-        var part = sight.VoxelCheck(voxel, attack.Attacker);
+        // Terrain melee strikes the part it named; no voxel is checked.
+        var part = terrainMeleeTilePart > 0 ? (BattleVoxelType)terrainMeleeTilePart : sight.VoxelCheck(voxel, attack.Attacker);
         var damage = type.RandomDamage(power, RequiredRules.Campaign.Interception, Random);
         var finalDamage = BattleDamageTypes.TileDamage(type, Random, power, damage);
         var terrainChanged = false;
@@ -219,7 +213,7 @@ internal sealed partial class BattleState
         {
             var tilePart = (BattleTilePart)(int)part;
             var bodyHit = false;
-            if (part is BattleVoxelType.Floor or BattleVoxelType.Object)
+            if (terrainMeleeTilePart == 0 && part is BattleVoxelType.Floor or BattleVoxelType.Object)
             {
                 // A body that is still alive takes the hit, and the terrain is spared.
                 (bodyHit, effect, unitRefusal) = HitUnitsInVoxel(attack, voxel, part, tile, tilePosition, damage, type, rangeAttack);

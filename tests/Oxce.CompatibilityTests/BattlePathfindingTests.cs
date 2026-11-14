@@ -165,7 +165,7 @@ public sealed class BattlePathfindingTests
     [InlineData(2, 7, 4)]
     public void TheMovementCostRoundingModesRoundTheTimeAndEnergyPercentages(int mode, int time, int energy)
     {
-        var arena = Flat($"\nextendedMovementCostRounding: {mode}\n");
+        var arena = Flat($"\nconstants:\n  - extendedMovementCostRounding: {mode}\n");
         // A diagonal step is 6; at 125% the time is exactly 7.5 and the energy exactly 3.75.
         arena.Soldier.MoveCosts = RuntimeArmorMoveCosts.Default with { Base = (125, 125) };
         Assert.Equal((time, energy), TimeAndEnergy(arena.Finder().GetTuCost(At(5, 5), 3, arena.Soldier, BattleActionMove.Normal)));

@@ -43,7 +43,7 @@ public sealed class BattleSightTests
 
     internal static void Terrain(Dictionary<string, byte[]> files) => files["TERRAIN/TESTSET.MCD"] = Mcd([Record((42, 2)), Record((42, 3)),
         Record((42, 4), (59, 2)), Record((39, 4), (40, 4), (41, 4)), Solid(1, 12, true), Solid(1, 6, false), Solid(4, 12, false), Record((34, 1), (39, 4)), UfoDoorRecord(), Record((35, 1), (46, 0)), Record((34, 1), (39, 4), (48, unchecked((byte)-24))),
-        .. DoorRecords, .. FireRecords]);
+        .. DoorRecords, .. FireRecords, .. MeleeRecords]);
 
     internal const int SwingDoor = 9; // a swinging door (its alternative is the first record)
     internal const int StairFloor = 10; // a floor with a terrain level of -24
@@ -82,6 +82,28 @@ public sealed class BattleSightTests
     internal const int ThinWall = 37; // a west wall of armor 30 that blocks 40 of a blast and breaks under an explosive of 30
     internal const int DiagWall = 39; // an object of armor 255 on a diagonal big wall (2, north-east to south-west) that blocks 40 of a blast
     internal const int Powder = 38; // like the barrel (armor 0, flammable 10, fuel 2, explosive 20) but of explosive type 0: a high explosive one
+
+    // The terrain melee tests' records (S6): every one fills its tile for lines of fire (template 1 in every layer).
+    internal const int SolidWall = 40; // walking, sliding and flying through it cost 255
+    internal const int DoorWall = 41; // a door that costs nothing to walk through
+    internal const int BigNorth = 42; // an object on a big wall of the north kind
+    internal const int BigEast = 43;
+    internal const int BigSouth = 44;
+    internal const int BigWest = 45;
+    internal const int BigWestNorth = 46;
+
+    private static byte[] Filled(params (int Offset, byte Value)[] more) => Record([.. Enumerable.Range(8, 12).Select(offset => (offset, (byte)1)), .. more]);
+
+    private static readonly byte[][] MeleeRecords =
+    [
+        Filled((39, 255), (40, 255), (41, 255)),
+        Filled((35, 1)),
+        Filled((33, 5)),
+        Filled((33, 6)),
+        Filled((33, 7)),
+        Filled((33, 4)),
+        Filled((33, 9)),
+    ];
 
     private static readonly byte[][] FireRecords =
     [

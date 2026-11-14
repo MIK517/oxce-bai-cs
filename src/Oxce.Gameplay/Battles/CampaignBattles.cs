@@ -95,6 +95,7 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         registry.Command<KneelUnit>(command => Forward(command, BattleSelectionReasons.Unavailable));
         registry.Command<WalkUnit>(command => Forward(command, BattleSelectionReasons.Unavailable));
         registry.Command<MoveUnitUpDown>(command => Forward(command, BattleSelectionReasons.Unavailable));
+        registry.Command<Attack>(command => Forward(command, BattleSelectionReasons.Unavailable));
         registry.Command<UseInventoryFeature>(command => Forward(command, BattleInventoryReasons.Unavailable));
         // A faulted battle is not saved over the last good save (ADR 0038).
         registry.SaveGate(() => _runtime?.Fault is null ? null : BattleRuntime.Faulted.Text);
@@ -482,7 +483,7 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         campaign.Read(() => _battle?.AimView(ResearchGate(), viewer, unitId, itemId, kind, target, forceFire));
 
     /// <summary>What the battle asks of the saved game about research (<c>isResearched</c>, true in the debug mode).</summary>
-    private BattleResearchGate ResearchGate() => new(campaign.ArcResearch.IsResearched, campaign.DebugModeEnabled);
+    private BattleResearchGate ResearchGate() => new BattleLink(campaign).Research;
 
     public BattleInventoryView? QueryInventory(BattleViewer viewer, int unitId) =>
         campaign.Read(() => _battle?.InventoryView(viewer, unitId));
@@ -505,6 +506,8 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         public int MissionCount => campaign.MissionStatistics.Count;
 
         public int Difficulty => (int)campaign.Difficulty;
+
+        public BattleResearchGate Research => new(campaign.ArcResearch.IsResearched, campaign.DebugModeEnabled);
 
         public BattleSoldierDescription? DescribeSoldier(int soldierId)
         {

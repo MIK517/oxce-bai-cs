@@ -602,7 +602,7 @@ public sealed class BattleInventoryTests
         Moved(plain, new MoveInventoryItem(first.Id, Grenade, "STR_GROUND", 0, 0));
         Assert.Equal("STR_BACK_PACK", Moved(plain, new AutoPlaceInventoryItem(first.Id, Grenade, Smart: false)).ToSlot);
 
-        var rules = CostRules + "\nextendedInventorySlotSorting: true\n";
+        var rules = CostRules + "\nconstants:\n  - extendedInventorySlotSorting: true\n";
         var (campaign, battle, soldier) = Open(rules);
         Assert.True(battle.Rules!.Campaign.ExtendedInventorySlotSorting);
         Moved(campaign, new MoveInventoryItem(soldier.Id, Grenade, "STR_GROUND", 0, 0));

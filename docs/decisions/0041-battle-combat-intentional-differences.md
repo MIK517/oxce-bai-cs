@@ -53,8 +53,8 @@ replaces that (AGENTS.md allows it for undefined behaviour), while the AI (branc
 **Explosions before the battlescape exists (S5, corrected in S5b).** `explodePowerSources` and `explodeOtherJunk` run in the generator, before `BriefingState` creates the battlescape and calls `setBattleState`. `BattleUnit::damage` wraps its special effects
 (morale loss, the burn roll, zombie conversion, self-destruct, the attacker's spotting and the `DamageSpecialUnit*` scripts) in `if (save->getBattleState())`, so none of them happens in those explosions: a unit does not blow itself up, lose morale or catch fire from a power source or
 a map grenade. The port does the same (`BattleState.Generating` is true while the two routines run), and so the pushed self-destruct of the earlier S5 text never arises there. The units taken out are ordinary deaths of the battlescape's opening check, before the briefing's
-hidden one. (The first S5 text of this entry assumed the reference would push a self-destruct on a battlescape game that does not exist; that was wrong.) A self-destruct item that is a melee weapon, which the port cannot run yet, fails by name
-(`battle.self-destruct-item-unsupported`) when the battlescape runs.
+hidden one. (The first S5 text of this entry assumed the reference would push a self-destruct on a battlescape game that does not exist; that was wrong.) (A self-destruct item that is a melee weapon failed by name until S6, which retired
+`battle.self-destruct-item-unsupported`: the explosion state treats the weapon as the reference does, a plain hit with its power at the unit's corner.)
 
 **The hit script's side (S5b).** `ModScript::HitUnit` may write a side; the reference resets a side at `SIDE_MAX` (9, the sides of a unit that can have more than the five of the port) to the front. The port's armor values have five sides (front, left, right, rear, under), so
 it resets a side of 5 or more to the front. The two differ only for a script that answers a side of 5 to 8, which the port's five-sided armor arrays cannot index; branch 8 revisits this if a mod's script does.
@@ -63,3 +63,15 @@ it resets a side of 5 or more to the front. The two differ only for a script tha
 (`RNG::generate` for each explosion sprite and the camera) are presentation and draw nothing.
 
 **Tile links and the danger zone (S4).** A dropped primed grenade's danger zone (`setDangerZone`) is AI state that branch 6 ports; `ItemDrop` omits it.
+
+**The Alt key of a terrain strike, and no diagonal terrain strike (S6).** `validTerrainMeleeRange` asks `SavedBattleGame::isAltPressed(true)`, a keyboard state of the battlescape. The port takes it as the attack command's `AltPressed` flag (the client sets it, as it sets Ctrl for force fire), which only
+decides whether a unit on the high part of stairs aims one level up. With `diagTerrainMelee` off (its default, the plan's option list) a diagonal facing never reaches terrain, so the diagonal cases of the reference's switch and the big wall check for a diagonal are not ported; a client that makes the option available ports them.
+
+**Deferred to branch 6, not a difference: the AI's chosen target (S6).** `MeleeAttackBState::init` takes `AIModule::getTarget()` as the victim for a non-player unit on its own turn and the unit on the target tile for everyone else. Until the AI exists
+nothing calls `StrikeMelee` for a hostile unit, so the port takes the unit on the tile in both cases; branch 6 adds the AI's target where the module exists and this entry goes.
+
+**Two crashes of `MeleeAttackBState::init` (S6).** The reference throws an `Exception` when no unit stands on the target tile (after it paid the time units) and when the victim's voxel lies outside the map ("Melee attack animation overflow"; reachable for a victim on the top level standing on
+a high stair part, whose voxel height is half its height plus 16). The port picks a deterministic behaviour: with no unit nothing is struck and nothing is spent (the state ends, the command reports `battle.attack-not-performed`), and the voxel's height is cut to the map's top voxel so the strike goes on.
+
+**A hit log and a melee attacker's reaction (S6).** `meleeAttack` appends `HITLOG_NEW_SHOT` to the hit log (runtime text, not ported). `MeleeAttackBState::think` calls `checkReactionFire` after the hit: until S9 a command whose attacker could be answered is refused by name
+(`battle.reaction-fire-unsupported`, found on the command's trial copy), as a walk and a kneel are.

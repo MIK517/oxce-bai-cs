@@ -404,7 +404,7 @@ public sealed class BattleTurnKneelTests
         slow.Battle.SpotMover(slow.Battle.Sight(), slow.Soldier);
         Assert.Empty(slow.Alien.VisibleUnits);
         // The extended melee reaction rule 2 lets a unit that was melee attacked see its attacker from any side.
-        var melee = Make(rules => rules + "\nextendedMeleeReactions: 2\n");
+        var melee = Make(rules => rules + "\nconstants:\n  - extendedMeleeReactions: 2\n");
         melee.Alien.SetDirection(2);
         melee.Alien.Ai = null;
         melee.Forget();
@@ -424,7 +424,7 @@ public sealed class BattleTurnKneelTests
     public void TheExtendedMeleeReactionsRuleIsReadAndDefaultsToZero()
     {
         Assert.Equal(0, Make().Rules.Campaign.ExtendedMeleeReactions);
-        Assert.Equal(2, Make(rules => rules + "\nextendedMeleeReactions: 2\n").Rules.Campaign.ExtendedMeleeReactions);
+        Assert.Equal(2, Make(rules => rules + "\nconstants:\n  - extendedMeleeReactions: 2\n").Rules.Campaign.ExtendedMeleeReactions);
     }
 
     [Fact]

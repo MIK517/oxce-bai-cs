@@ -23,6 +23,9 @@ internal interface IBattleCampaignLink
 
     /// <summary><c>SavedGame::killSoldier(false, soldier, cause)</c>: the soldier goes to the memorial during the battle.</summary>
     void KillSoldier(int soldierId, BattleUnitKillSnapshot cause);
+
+    /// <summary>What the saved game knows that using a weapon asks about (<c>isResearched</c>, the debug mode); a battle without a link has every research done.</summary>
+    BattleResearchGate Research => BattleResearchGate.Everything;
 }
 
 /// <summary>A geoscape soldier's name and rank string, as the kill statistics name it.</summary>
