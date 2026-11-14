@@ -12,11 +12,11 @@ Phase 7 branch 5 (`claude/battle-combat`), from `main` after PR #81 (branch 4 me
 | Slice | State |
 |---|---|
 | S0 planning | Done and audited (2026-11-08) |
-| S1 combat groundwork: item, armor and damage rules, stat bonuses, combat constants, script refusals | Implemented (2026-11-08), audit pending |
-| S2 line of fire and accuracy | Implemented (2026-11-09), audit pending |
-| S3 damage to units | Implemented (2026-11-09), audit pending |
-| S4 casualties | Implemented (2026-11-09), audit pending |
-| S5 explosions | Implemented (2026-11-09), audit pending |
+| S1 combat groundwork: item, armor and damage rules, stat bonuses, combat constants, script refusals | Done and audited (2026-11-08; findings closed in 0fd385db) |
+| S2 line of fire and accuracy | Done and audited (2026-11-09; follow-up f5169fef) |
+| S3 damage to units | Done and audited (2026-11-09; findings closed in 6de5d650) |
+| S4 casualties | Done and audited (2026-11-09; follow-up cd111347) |
+| S5 explosions | Done and audited (2026-11-09; follow-up 0df0b099) |
 | S5b battle runtime (2026-11-14 audit follow-up) | Not started |
 | S6 melee and the attack command | Not started |
 | S7 shooting | Not started |
