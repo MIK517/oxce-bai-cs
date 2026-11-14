@@ -171,16 +171,32 @@ internal sealed class BattleRuntime
         Register<Attack>(Attack);
         Register<PrimeItem>(command => RunOnTrialCopy(battle => PrimeItem(battle, command.UnitId, command.ItemId, true, command.Turns)));
         Register<UnprimeItem>(command => RunOnTrialCopy(battle => PrimeItem(battle, command.UnitId, command.ItemId, false, 0)));
-        Register<UseInventoryFeature>(command =>
-            Blocked(State.Phase == BattlePhase.Briefing ? BattleInventoryReasons.Unavailable : BattleInventoryReasons.For(command.Feature)));
+        Register<UseInventoryFeature>(UseInventoryFeature);
     }
 
-    /// <summary>The pick-up and drop of <c>Inventory::mouseClick</c>; a refusal changes nothing.</summary>
+    /// <summary>The unload and the pre-battle priming of the inventory screen; the other features are refused by name.</summary>
+    private CampaignCommandResult UseInventoryFeature(UseInventoryFeature command)
+    {
+        Func<IReadOnlyList<ICampaignEvent>>? apply;
+        switch (command.Feature)
+        {
+            case InventoryFeature.UnloadAmmo:
+                if (State.PlanUnload(command.UnitId, command.ItemId, command.Shift, out apply) is { } unloadRefusal) return Blocked(unloadRefusal);
+                return Applied(apply!);
+            case InventoryFeature.Prime:
+                if (State.PlanInventoryPrime(command.UnitId, command.ItemId, command.Turns, out apply) is { } primeRefusal) return Blocked(primeRefusal);
+                return Applied(apply!);
+            default:
+                return Blocked(State.Phase == BattlePhase.Briefing ? BattleInventoryReasons.Unavailable : BattleInventoryReasons.For(command.Feature));
+        }
+    }
+
+    /// <summary>The pick-up and drop of <c>Inventory::mouseClick</c> (a drop on a weapon loads it); a refusal changes nothing.</summary>
     private CampaignCommandResult MoveInventory(MoveInventoryItem command)
     {
-        if (State.PlanMove(command.UnitId, command.ItemId, command.Slot ?? "", command.SlotX, command.SlotY, out var move) is { } refusal)
+        if (State.PlanMove(command.UnitId, command.ItemId, command.Slot ?? "", command.SlotX, command.SlotY, command.Shift, out var move, out var load) is { } refusal)
             return Blocked(refusal);
-        return Moved(move!);
+        return load is not null ? Applied(load) : Moved(move!);
     }
 
     private CampaignCommandResult AutoPlaceInventory(AutoPlaceInventoryItem command)
@@ -193,19 +209,26 @@ internal sealed class BattleRuntime
         return Moved(move);
     }
 
-    private CampaignCommandResult Moved(InventoryMove move)
+    private CampaignCommandResult Moved(InventoryMove move) => Applied(() =>
+    {
+        State.ApplyMove(move);
+        return [new InventoryItemMoved(move.Unit.Id, move.Item.Id, move.From.Id, move.To.Id, move.X, move.Y, move.Cost)];
+    });
+
+    /// <summary>An inventory change that is planned and checked: it runs, and in a running battle the inventory then closes.</summary>
+    private CampaignCommandResult Applied(Func<IReadOnlyList<ICampaignEvent>> apply)
     {
         // InventoryState's destructor in a running battle starts with gravity on the selected unit's tile (a unit without a floor falls).
         var selected = State.Phase == BattlePhase.InProgress && State.SelectedUnitId is { } chosen ? State.UnitById(chosen) : null;
         if (selected?.Position is not null && State.FallsRefusal(selected) is { } fall) return Blocked(fall);
-        State.ApplyMove(move);
-        // The port has no close command, so each move closes the inventory (the fall it starts was checked above).
+        var events = apply();
+        // The port has no close command, so each change closes the inventory (the fall it starts was checked above).
         if (State.Phase == BattlePhase.InProgress)
         {
             State.CloseInventory();
             State.ResolveFalls();
         }
-        return new CampaignCommandResult([new InventoryItemMoved(move.Unit.Id, move.Item.Id, move.From.Id, move.To.Id, move.X, move.Y, move.Cost)]);
+        return new CampaignCommandResult(events);
     }
 
     private CampaignCommandResult SelectUnit(SelectUnit command)

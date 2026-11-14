@@ -129,12 +129,21 @@ internal sealed partial class BattleState
     /// <summary>
     /// The pick-up and drop of <c>Inventory::mouseClick</c>, checked: the item must be the unit's or lie on its tile and not be
     /// fixed; the section must exist and take the item; a grid or hand position must be free and fit (an occupied position with a weapon
-    /// that takes ammo would load it: refused as unported); the move must be affordable in the battle; an enabled grenade's drop
+    /// that takes ammo is a load, see the overload with the Shift key); the move must be affordable in the battle; an enabled grenade's drop
     /// is refused for the danger zone it sets. The ground takes any item at once.
     /// </summary>
-    internal CampaignReason? PlanMove(int unitId, int itemId, string slotId, int x, int y, out InventoryMove? move)
+    internal CampaignReason? PlanMove(int unitId, int itemId, string slotId, int x, int y, out InventoryMove? move) =>
+        PlanMove(unitId, itemId, slotId, x, y, false, out move, out _);
+
+    /// <summary>
+    /// <see cref="PlanMove(int, int, string, int, int, out InventoryMove?)"/> with the Shift key, and the load a drop on a weapon that takes the item as ammunition makes
+    /// instead (<paramref name="load"/>: it applies the load and returns its events; <paramref name="move"/> is then null).
+    /// </summary>
+    internal CampaignReason? PlanMove(int unitId, int itemId, string slotId, int x, int y, bool shift, out InventoryMove? move,
+        out Func<IReadOnlyList<ICampaignEvent>>? load)
     {
         move = null;
+        load = null;
         if (InventoryAvailable(unitId, out var unit) is { } closed) return closed;
         var item = _items.Find(candidate => candidate.Id == itemId);
         if (item is null || !IsHeld(unit!, item) && !IsOnTileOf(unit!, item)) return BattleInventoryReasons.ItemUnknown;
@@ -151,7 +160,7 @@ internal sealed partial class BattleState
         {
             if (!CanBePlaced(itemRule, to)) return BattleInventoryReasons.SectionUnsupported;
             if (ItemAt(unit!, to, x, y) is { } target && target.Id != item.Id)
-                return target.IsWeaponWithAmmo ? BattleInventoryReasons.AmmoUnsupported : BattleInventoryReasons.NoRoom;
+                return target.IsWeaponWithAmmo ? PlanLoad(unit!, item, target, shift, out load) : BattleInventoryReasons.NoRoom;
             if (Overlaps(unit!, item, to, x, y) || !FitsInSlot(to, itemRule, x, y)) return BattleInventoryReasons.NoRoom;
         }
         // The cost is read only where it is charged (the reference's `!_tu || spendTimeUnits(...)`).
@@ -181,6 +190,13 @@ internal sealed partial class BattleState
     {
         var (unit, item, _, to, x, y, cost) = move;
         unit.TimeUnits -= cost;
+        Relocate(unit, item, to, x, y);
+        MarkChanged();
+    }
+
+    /// <summary><c>Inventory::moveItem</c> (<c>TileEngine::itemMoveInventory</c>): the item takes the section and position, leaving or joining the unit and its tile as the sections say. Nothing is charged.</summary>
+    private void Relocate(BattleUnit unit, BattleItem item, RuntimeBattleInventory to, int x, int y)
+    {
         if (to.Id != item.Slot)
         {
             if (to.Type == RuntimeBattleInventory.Ground)
@@ -206,7 +222,6 @@ internal sealed partial class BattleState
         item.Slot = to.Id;
         item.SlotX = x;
         item.SlotY = y;
-        MarkChanged();
     }
 
     private BattleItem? HandItem(BattleUnit unit, bool right) =>

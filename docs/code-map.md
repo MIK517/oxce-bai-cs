@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 266 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 267 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 103 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 8 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 361 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 362 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 114 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -352,7 +352,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 266 files.
+`src/Oxce.Gameplay` - 267 files.
 
 ### `Oxce.Gameplay`
 
@@ -403,9 +403,11 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `UnitMeleeAttacked` (record) [BattleEvents.cs](../src/Oxce.Gameplay/Battles/BattleEvents.cs) - A melee hit was struck (`ExplosionBState` for `BA_HIT`, after the roll): the unit that struck (-1 for none), its weapon, the unit it stru...
 - `MoveInventoryItem` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - `Inventory::mouseClick`'s drop: a unit's item goes to a position of an inventory section (a hand, a grid slot, or the ground of the unit'...
 - `AutoPlaceInventoryItem` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - `Inventory::mouseClick`'s Ctrl click: a ground item goes to the best section that holds it (the cheapest to reach a hand when `Smart`, th...
-- `InventoryFeature` (enum) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - What an inventory screen can ask for that is not ported yet; each is refused by its own name.
-- `UseInventoryFeature` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - A request for a feature of the inventory screen that arrives later; it is always refused by the feature's name.
+- `InventoryFeature` (enum) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - What an inventory screen can ask for beyond the moves: the unload and the pre-battle priming run, the others are refused by their own names.
+- `UseInventoryFeature` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - A feature of the inventory screen: the unload and the pre-battle priming run; the others arrive later and are always refused by the featu...
 - `InventoryItemMoved` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - An item moved between sections, or to or from the ground.
+- `InventoryAmmoLoaded` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - An ammunition item loaded into a weapon's slot.
+- `InventoryItemUnloaded` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - A weapon unloaded: its ammunition `AmmoId` went to the section `AmmoTo` and the weapon is in `WeaponSlot`.
 - `BattleInventoryItemView` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - An item as the inventory screen draws it: its section and position, size and what it holds.
 - `BattleInventoryCell` (record struct) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - A grid cell of a section.
 - `BattleInventorySlotView` (record) [BattleInventoryContracts.cs](../src/Oxce.Gameplay/Battles/BattleInventoryContracts.cs) - An inventory section: `Type` is 0 for a grid, 1 for a hand and 2 for the ground.
@@ -1374,7 +1376,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 361 files.
+`tests/Oxce.CompatibilityTests` - 362 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1386,7 +1388,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>354 test classes</summary>
+<details><summary>355 test classes</summary>
 
 - `BaseDefenseDeploymentTests` ([BaseDefenseDeploymentTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseDeploymentTests.cs))
 - `BaseDefenseMapTests` ([BaseDefenseMapTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseMapTests.cs))
@@ -1402,6 +1404,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BattleFireTests` ([BattleFireTests.cs](../tests/Oxce.CompatibilityTests/BattleFireTests.cs))
 - `BattleFirstTurnTests` ([BattleFirstTurnTests.cs](../tests/Oxce.CompatibilityTests/BattleFirstTurnTests.cs))
 - `BattleGravityTests` ([BattleGravityTests.cs](../tests/Oxce.CompatibilityTests/BattleGravityTests.cs))
+- `BattleInventoryAmmoTests` ([BattleInventoryAmmoTests.cs](../tests/Oxce.CompatibilityTests/BattleInventoryAmmoTests.cs))
 - `BattleInventoryTests` ([BattleInventoryTests.cs](../tests/Oxce.CompatibilityTests/BattleInventoryTests.cs))
 - `BattleLaunchTests` ([BattleLaunchTests.cs](../tests/Oxce.CompatibilityTests/BattleLaunchTests.cs))
 - `BattleLightingTests` ([BattleLightingTests.cs](../tests/Oxce.CompatibilityTests/BattleLightingTests.cs))

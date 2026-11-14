@@ -145,8 +145,6 @@ public sealed class BattleScreensTests
         Assert.Equal("battle.inventory-cost-unknown", screen.Message);
         Assert.Contains(screen.Inventory!.Ground, item => item.ItemId == carried.ItemId);
         // A feature of a later part is refused by the rules' name, and nothing changes.
-        Press(context.Screens, 'l');
-        Assert.Equal("battle.inventory-ammo-unsupported", screen.Message);
         Press(context.Screens, 'r');
         Assert.Equal("battle.inventory-rename-unsupported", screen.Message);
         Press(context.Screens, Tab, InputKeyModifiers.LeftShift);

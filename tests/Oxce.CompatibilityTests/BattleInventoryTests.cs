@@ -170,10 +170,10 @@ public sealed class BattleInventoryTests
             // The loaded clip is in no one's inventory.
             (new MoveInventoryItem(soldier.Id, 2, "STR_BELT", 0, 0), "battle.inventory-item-unknown"),
             (new MoveInventoryItem(soldier.Id, Grenade, "STR_NOWHERE", 0, 0), "battle.inventory-slot-unknown"),
-            // Belt (0, 0) holds a supply; (5, 5) is no slot; the right hand holds the gun, which would take the grenade as ammunition.
+            // Belt (0, 0) holds a supply; (5, 5) is no slot; the right hand holds the gun, which takes no grenade as ammunition.
             (new MoveInventoryItem(soldier.Id, GroundSupply, "STR_BELT", 0, 0), "battle.inventory-no-room"),
             (new MoveInventoryItem(soldier.Id, Grenade, "STR_BELT", 5, 5), "battle.inventory-no-room"),
-            (new MoveInventoryItem(soldier.Id, Grenade, "STR_RIGHT_HAND", 0, 0), "battle.inventory-ammo-unsupported"),
+            (new MoveInventoryItem(soldier.Id, Grenade, "STR_RIGHT_HAND", 0, 0), "battle.inventory-ammo-wrong"),
             (new MoveInventoryItem(soldier.Id, GroundSupply, "STR_BACK_PACK", 0, 0), "battle.inventory-no-room"),
         };
         foreach (var (command, code) in cases) Assert.Equal(code, Refusal(campaign, command));
@@ -409,9 +409,6 @@ public sealed class BattleInventoryTests
     }
 
     [Theory]
-    [InlineData(InventoryFeature.LoadAmmo, "battle.inventory-ammo-unsupported")]
-    [InlineData(InventoryFeature.UnloadAmmo, "battle.inventory-ammo-unsupported")]
-    [InlineData(InventoryFeature.Prime, "battle.inventory-prime-unsupported")]
     [InlineData(InventoryFeature.SaveLayout, "battle.inventory-layout-screens-unsupported")]
     [InlineData(InventoryFeature.LoadLayout, "battle.inventory-layout-screens-unsupported")]
     [InlineData(InventoryFeature.ClearInventory, "battle.inventory-clear-unsupported")]
