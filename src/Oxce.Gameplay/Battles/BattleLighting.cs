@@ -254,11 +254,23 @@ internal sealed partial class BattleState
         if (rule.BattleType != FlareBattleType) return null;
         var equipment = RequiredRules.Battle.Equipment.Items[item.ItemType];
         var glows = equipment.FuseTrigger.DefaultBehavior && equipment.FuseType == NoFuseType || item.FuseEnabled && item.FuseTimer >= 0;
-        if (!glows) return null;
+        return glows ? FlareRange(item, rule, equipment) : null;
+    }
+
+    private int FlareRange(BattleItem item, RuntimeItemRule rule, RuntimeBattleItem equipment)
+    {
         var bonus = equipment.Combat.StatBonuses.Damage;
         var owner = item.CorpseUnitId ?? item.PreviousOwnerUnitId;
         var holder = owner is { } id ? UnitById(id) : null;
         return Hooks.StatBonus(BattleStatBonusKind.Damage, holder, item, bonus.IsScript ? rule.Power : bonus.Evaluate(holder, rule.Power));
+    }
+
+    /// <summary>BattleItem::getVisibilityUpdateRange: a flare's glow range (whether or not it glows now), else 1.</summary>
+    private int VisibilityUpdateRange(BattleItem item)
+    {
+        if (!RequiredRules.Items.TryGet(item.ItemType, out var handle)) return 1;
+        var rule = RequiredRules.Items[handle].Value;
+        return rule.BattleType == FlareBattleType ? FlareRange(item, rule, RequiredRules.Battle.Equipment.Items[item.ItemType]) : 1;
     }
 
     /// <summary>The item is the body of a unit that burns (a stunned unit lying as an item).</summary>

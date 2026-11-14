@@ -11,6 +11,12 @@ public enum BattleAimKind
     AimedShot,
     Launch,
     Hit,
+
+    /// <summary>The menu's priming line (Phase 7 branch 5 S8): sent as <see cref="PrimeItem"/>, not as an <see cref="Attack"/>.</summary>
+    Prime,
+
+    /// <summary>The menu's unpriming line: sent as <see cref="UnprimeItem"/>.</summary>
+    Unprime,
 }
 
 /// <summary>One line of a weapon's action menu (<c>ActionMenuState::addItem</c>): the action, its name key, the accuracy it shows and the time units it costs.</summary>
@@ -38,8 +44,24 @@ public sealed record BattleAimView(int UnitId, int ItemId, BattleAimKind Kind, B
 /// terrain strike (on the upper part of stairs the target is one level up unless it is held). An aimed, snap or auto shot (Phase 7 branch 5 S7) turns the unit to
 /// <see cref="Target"/> (each eighth costs time units), then fires the weapon's shots one after the other at that tile; <see cref="ForceFire"/> is Ctrl (the shot aims at the
 /// middle of the tile, whatever stands there). <see cref="SprayWaypoints"/> are the tiles of the spray auto shot (a weapon with <c>sprayWaypoints</c>, Ctrl and Shift): the
-/// first is the target (<see cref="Target"/> is ignored), and the weapon's shots are spaced along them. The throw and the launch are S8's.
+/// first is the target (<see cref="Target"/> is ignored), and the weapon's shots are spaced along them. A throw (S8) turns the unit to <see cref="Target"/> and throws the item;
+/// the launch is the rest of S8.
 /// </summary>
 public sealed record Attack(int UnitId, int ItemId, BattleAimKind Kind, bool AltPressed = false, BattlePosition Target = default, bool ForceFire = false,
     IReadOnlyList<BattlePosition>? SprayWaypoints = null)
     : IBattleCommand, IUnitCommand;
+
+/// <summary>
+/// Primes the item in the unit's hand (<c>BA_PRIME</c> of the action menu, Phase 7 branch 5 S8): the time units are paid and the fuse is set. An item with a settable fuse
+/// takes <see cref="Turns"/> (0 to 23, the prime grenade menu's buttons); any other item takes its default fuse and ignores it.
+/// </summary>
+public sealed record PrimeItem(int UnitId, int ItemId, int Turns = 0) : IBattleCommand, IUnitCommand;
+
+/// <summary>Unprimes the item in the unit's hand (<c>BA_UNPRIME</c>): the time units are paid and the fuse is cleared.</summary>
+public sealed record UnprimeItem(int UnitId, int ItemId) : IBattleCommand, IUnitCommand;
+
+/// <summary>An item was primed: its fuse is <see cref="Turns"/> turns.</summary>
+public sealed record ItemPrimed(int UnitId, int ItemId, int Turns) : Campaigns.ICampaignEvent;
+
+/// <summary>An item was unprimed.</summary>
+public sealed record ItemUnprimed(int UnitId, int ItemId) : Campaigns.ICampaignEvent;

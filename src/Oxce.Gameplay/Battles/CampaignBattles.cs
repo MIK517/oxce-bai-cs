@@ -96,6 +96,8 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         registry.Command<WalkUnit>(command => Forward(command, BattleSelectionReasons.Unavailable));
         registry.Command<MoveUnitUpDown>(command => Forward(command, BattleSelectionReasons.Unavailable));
         registry.Command<Attack>(command => Forward(command, BattleSelectionReasons.Unavailable));
+        registry.Command<PrimeItem>(command => Forward(command, BattleSelectionReasons.Unavailable));
+        registry.Command<UnprimeItem>(command => Forward(command, BattleSelectionReasons.Unavailable));
         registry.Command<UseInventoryFeature>(command => Forward(command, BattleInventoryReasons.Unavailable));
         // A faulted battle is not saved over the last good save (ADR 0038).
         registry.SaveGate(() => _runtime?.Fault is null ? null : BattleRuntime.Faulted.Text);

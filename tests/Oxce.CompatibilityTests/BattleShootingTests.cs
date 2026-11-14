@@ -416,7 +416,7 @@ public sealed class BattleShootingTests
         Assert.Equal((70, 11), (arena.Soldier.TimeUnits, clip.AmmoQuantity));
         Assert.True(runtime.Revision > 0);
 
-        // The throw and the launch are S8's.
+        // The launch is S8's.
         Assert.Equal("battle.attack-kind-unsupported", Refusal(runtime.Execute(new Attack(arena.Soldier.Id, gun.Id, BattleAimKind.Launch, Target: new BattlePosition(15, 10, 0)))));
         // A refused shot returns its reason alone and changes nothing.
         arena.Soldier.TimeUnits = 5;

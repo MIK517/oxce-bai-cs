@@ -15,8 +15,7 @@ public sealed class BattleInventoryScreen : BattleScreenBase, IRevealedScreen
 {
     private static readonly (uint Key, InventoryFeature Feature, string Label)[] Features =
     [
-        ('l', InventoryFeature.LoadAmmo, "L load"), ('u', InventoryFeature.UnloadAmmo, "U unload"), ('t', InventoryFeature.Throw, "T throw"),
-        ('p', InventoryFeature.Prime, "P prime"), ('s', InventoryFeature.SaveLayout, "S save layout"), ('o', InventoryFeature.LoadLayout, "O load layout"),
+        ('l', InventoryFeature.LoadAmmo, "L load"), ('u', InventoryFeature.UnloadAmmo, "U unload"),        ('p', InventoryFeature.Prime, "P prime"), ('s', InventoryFeature.SaveLayout, "S save layout"), ('o', InventoryFeature.LoadLayout, "O load layout"),
         ('c', InventoryFeature.ClearInventory, "C clear"), ('a', InventoryFeature.AutoEquip, "A autoequip"), ('e', InventoryFeature.Template, "E template"),
         ('r', InventoryFeature.RenameSoldier, "R rename"),
     ];

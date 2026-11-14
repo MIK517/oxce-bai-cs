@@ -38,9 +38,9 @@ public sealed class BattleDamageTests
         Plain with { Conversions = change(Plain.Conversions) };
 
     internal static Arena Duel(string gun = "", string clip = "", string grenade = "", string global = "", string alienExtra = "", string soldierExtra = "",
-        string unitExtra = "", Func<string, string>? more = null)
+        string unitExtra = "", Func<string, string>? more = null, Action<Dictionary<string, byte[]>>? terrain = null)
     {
-        var arena = Flat(alienExtra: alienExtra, soldierExtra: soldierExtra, unitExtra: unitExtra.Length == 0 ? null : unitExtra, edit: rules =>
+        var arena = Flat(alienExtra: alienExtra, soldierExtra: soldierExtra, unitExtra: unitExtra.Length == 0 ? null : unitExtra, terrain: terrain, edit: rules =>
         {
             if (gun.Length > 0) rules = Replaced(rules, GunText, GunText + "\n    " + gun.Replace("\n", "\n    ", StringComparison.Ordinal));
             if (clip.Length > 0) rules = Replaced(rules, ClipText, ClipText + "\n    " + clip.Replace("\n", "\n    ", StringComparison.Ordinal));

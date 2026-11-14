@@ -25,9 +25,6 @@ public enum InventoryFeature
     /// <summary>Unloading a weapon (<c>Inventory::unload</c>).</summary>
     UnloadAmmo,
 
-    /// <summary>Throwing from the inventory screen.</summary>
-    Throw,
-
     /// <summary>Priming a grenade (<c>PrimeGrenadeState</c>) and unpriming it.</summary>
     Prime,
 
@@ -131,9 +128,6 @@ internal static class BattleInventoryReasons
     internal static readonly CampaignReason AmmoUnsupported = new("battle.inventory-ammo-unsupported",
         "Loading and unloading ammunition in the inventory is not ported yet.");
 
-    internal static readonly CampaignReason ThrowUnsupported = new("battle.inventory-throw-unsupported",
-        "Throwing from the inventory is not ported yet.");
-
     internal static readonly CampaignReason PrimeUnsupported = new("battle.inventory-prime-unsupported",
         "Priming and unpriming from the inventory is not ported yet.");
 
@@ -155,7 +149,6 @@ internal static class BattleInventoryReasons
     internal static CampaignReason For(InventoryFeature feature) => feature switch
     {
         InventoryFeature.LoadAmmo or InventoryFeature.UnloadAmmo => AmmoUnsupported,
-        InventoryFeature.Throw => ThrowUnsupported,
         InventoryFeature.Prime => PrimeUnsupported,
         InventoryFeature.ClearInventory => ClearUnsupported,
         InventoryFeature.AutoEquip => AutoEquipUnsupported,

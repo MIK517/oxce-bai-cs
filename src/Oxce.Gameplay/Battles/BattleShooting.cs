@@ -19,7 +19,7 @@ internal static class BattleShotReasons
 /// Shooting (Phase 7 branch 5 S7): <c>BattlescapeGame::primaryAction</c>'s targeting part for the aimed, snap and auto shots, <c>UnitTurnBState</c> in its targeting form,
 /// and <c>ProjectileFlyBState</c> for the shots (the checks of <c>init</c>, close quarters combat, the target voxel, <c>createNewProjectile</c> for a straight or an arcing
 /// shot, <c>think</c>'s impact, the shotgun's pellets, the statistics and the end of the action). The projectile's flight is collapsed: a shot flies and lands within one
-/// <c>think</c>, and the explosion of its impact is the next state of the list. The throw, the launch and the spray are S8's, the reaction shot S9's, the AI's shot branch 6's.
+/// <c>think</c>, and the explosion of its impact is the next state of the list. The throw is S8's first part (<see cref="ThrowAction"/> and the throw branches here), the launch the rest of S8, the reaction shot S9's, the AI's shot branch 6's.
 /// User options at their defaults: realistic accuracy and off-centre shooting are off.
 /// </summary>
 internal sealed partial class BattleState
@@ -92,7 +92,35 @@ internal sealed partial class BattleState
             action.SprayTargeting = true;
             action.Waypoints.AddRange(SprayVoxels(sprayWaypoints!, ActionConfig(weapon, ActionIndex(BattleActionType.AutoShot)!.Value).Shots));
         }
-        var cost = BattleActionCost.For(RequiredRules, type, unit, weapon);
+        return RunProjectileAction(unit, weapon, kind, action);
+    }
+
+    /// <summary>
+    /// A throw of an item in the hand of a unit of the side on turn: <c>ActionMenuState::handleAction</c> (a throw needs neither research nor <c>canUseWeapon</c>) and
+    /// <c>primaryAction</c>, which pushes the targeting turn and the projectile state with no further check, as for a shot. <c>ProjectileFlyBState</c> then checks the time
+    /// units and the throwing range (<c>validThrowRange</c>), finds the arc and lets the item leave the unit; the item lands, or its fuse blows it up where it lands.
+    /// </summary>
+    internal CampaignReason? ThrowAction(int unitId, int itemId, BattlePosition target, bool forceFire)
+    {
+        if (SelectionUnit(unitId, out var found) is { } closed) return closed;
+        var unit = found!;
+        if (unit.Position is null) return BattleSelectionReasons.UnitUnknown;
+        if (WeaponOf(unit, itemId) is not { } weapon) return BattleAttackReasons.WeaponUnavailable;
+        var battleRule = RequiredRules.Battle.Equipment.Items[weapon.ItemType];
+        // The menu's throw line: an item that is not fixed with a time cost for the throw.
+        if (battleRule.Fixed || battleRule.ActionCosts.Of(RuntimeItemActionCosts.Throw).Cost.Time <= 0) return BattleShotReasons.ShotNotOffered;
+        if (!Contains(target)) return BattleShotReasons.TargetOutside;
+        return RunProjectileAction(unit, weapon, BattleAimKind.Throw, new BattleAimAction(unit, BattleActionType.Throw, weapon, target) { ForceFire = forceFire });
+    }
+
+    /// <summary>
+    /// The states <c>primaryAction</c> pushes for a shot or a throw (the turn to the front, the projectile state to the back), their run, and the outcome of the command:
+    /// the events, a refusal when nothing changed, or <see cref="UnitAttackStopped"/> when the action stopped after something did.
+    /// </summary>
+    private CampaignReason? RunProjectileAction(BattleUnit unit, BattleItem weapon, BattleAimKind kind, BattleAimAction action)
+    {
+        var target = action.Target;
+        var cost = BattleActionCost.For(RequiredRules, action.Type, unit, weapon);
         var turn = new TargetTurnState(this, unit, target);
         var flight = new ProjectileFlyState(this, action, cost);
         // The projectile state goes to the back of the list, the targeting turn to its front (first of all turn towards the target).
@@ -252,12 +280,16 @@ internal sealed partial class BattleState
                 return;
             }
 
-            _ammo = battle.AmmoForActionWithMessage(weapon, ConfigIndex, out var message, out _);
-            if (_ammo is null)
+            var throwing = action.Type == BattleActionType.Throw;
+            if (!throwing)
             {
-                action.Result = message;
-                battle.PopState();
-                return;
+                _ammo = battle.AmmoForActionWithMessage(weapon, ConfigIndex, out var message, out _);
+                if (_ammo is null)
+                {
+                    action.Result = message;
+                    battle.PopState();
+                    return;
+                }
             }
 
             if (_unit.IsOut || _unit.IsOutThresholdExceeded)
@@ -267,8 +299,20 @@ internal sealed partial class BattleState
                 return;
             }
 
-            var distanceSquared = BattleSight.DistanceSquared(_unit, action.Target);
-            if (battle.IsOutOfRange(weapon, distanceSquared))
+            if (throwing)
+            {
+                var targetTile = battle.Map.TileIndex(action.Target);
+                if (!battle.Sight().ValidThrowRange(action, battle.Sight().OriginVoxel(action), targetTile, battle.Depth))
+                {
+                    action.Result = "STR_OUT_OF_RANGE";
+                    battle.PopState();
+                    return;
+                }
+                // An item thrown at a tile whose floor is 24 high (a full block) lands on the level above.
+                if (battle.Map.TerrainLevel(targetTile) == -24 && action.Target.Z + 1 < battle.Map.Height)
+                    action.Target = action.Target with { Z = action.Target.Z + 1 };
+            }
+            else if (battle.IsOutOfRange(weapon, BattleSight.DistanceSquared(_unit, action.Target)))
             {
                 action.Result = "STR_OUT_OF_RANGE";
                 battle.PopState();
@@ -278,7 +322,8 @@ internal sealed partial class BattleState
             CloseQuartersCombat();
 
             var isPlayer = battle.Side == BattleFaction.Player;
-            if (action.ForceFire && isPlayer || !action.PanicHandled)
+            // (A throw's arc is found from the action's target: it has no target voxel.)
+            if (!throwing && (action.ForceFire && isPlayer || !action.PanicHandled))
             {
                 // target nothing, targets the middle of the tile
                 var choice = battle.ChooseTargetVoxel(action, _origin);
@@ -401,6 +446,8 @@ internal sealed partial class BattleState
             var projectile = new BattleProjectile(battle, battle.RequiredRules, action, _origin, _targetVoxel ?? default);
             // berserking units are half as accurate
             var accuracy = battle.FiringAccuracy(_unit, weapon, action.Type) / (action.PanicHandled ? 100.0 : 200.0);
+            if (action.Type == BattleActionType.Throw) return Throw(projectile, accuracy);
+
             BattleVoxelType impact;
             bool lineOfFire;
             if (battle.ArcingShot(weapon, action.Type))
@@ -436,8 +483,79 @@ internal sealed partial class BattleState
             return true;
         }
 
+        /// <summary>
+        /// The throw part of <c>createNewProjectile</c>: the arc with the throwing accuracy; an item that finds a place to land leaves the unit's hands (a hostile unit's grenade is
+        /// primed with its default fuse, a flare's light moves out of the unit, vanilla gives throwing experience for any throw); one that does not stops the action with
+        /// <c>STR_UNABLE_TO_THROW_HERE</c> and no cost.
+        /// </summary>
+        private bool Throw(BattleProjectile projectile, double accuracy)
+        {
+            var weapon = action.Weapon;
+            var impact = projectile.CalculateThrow(accuracy);
+            if (impact == BattleVoxelType.OutOfBounds)
+            {
+                // unable to throw here
+                action.Result = "STR_UNABLE_TO_THROW_HERE";
+                cost.ClearTimeUnits();
+                battle.PopState();
+                return false;
+            }
+
+            var equipment = battle.RequiredRules.Battle.Equipment.Items[weapon.ItemType];
+            if (_unit.Faction != BattleFaction.Player && battle.ItemRuleOf(weapon.ItemType).BattleType is GrenadeBattleType or ProximityGrenadeBattleType)
+                weapon.SetFuseTimer(BattleState.FuseTimerDefault(equipment), equipment);
+            BattleState.MoveToOwner(weapon, null);
+            if (battle.GlowRange(weapon) is { } glow)
+            {
+                battle.CalculateLighting(BattleLightLayer.Units, _unit.RequiredPosition);
+                battle.Sight().CalculateFov(_unit.RequiredPosition, glow, updateTiles: false);
+            }
+            // vanilla compatibility (throwing anything anywhere gives throwing experience)
+            if (!battle.RequiredRules.Campaign.Combat.ExtendedExperienceAwardSystem) BattleState.AddExperience(_unit, TrainingKind.Throwing);
+
+            _projectile = projectile;
+            _impact = impact;
+            Fired = true;
+            battle.Events.Add(new UnitFired(_unit.Id, weapon.Id, weapon.Id, BattleAimKind.Throw, [.. projectile.Trajectory], (int)impact));
+            return true;
+        }
+
+        /// <summary>The impact of a throw: the item lands where it ends (its fuse may make it explode at once) and the light and the sight around it are updated.</summary>
+        private void ThrowImpact(BattleProjectile projectile)
+        {
+            var weapon = action.Weapon;
+            var trajectory = projectile.Trajectory;
+            _projectile = null;
+            var landing = BattleGeometry.TileOfVoxel(BattleSight.PositionFromEnd(trajectory, BattleSight.ItemDropVoxelOffset));
+            // The reference steps back from a tile just past the map's edge (ProjectileFlyBState.cpp:688-695, with its `>`); kept for parity, CalculateThrow reports OutOfBounds first.
+            if (landing.Y > battle.Map.Length) landing = landing with { Y = landing.Y - 1 };
+            if (landing.X > battle.Map.Width) landing = landing with { X = landing.X - 1 };
+
+            var rule = battle.ItemRuleOf(weapon.ItemType);
+            if (battle.FuseThrowEvent(weapon))
+            {
+                if (rule.BattleType is GrenadeBattleType or ProximityGrenadeBattleType)
+                {
+                    // it's a hot grenade to explode immediately
+                    battle.PushFront(new ExplosionState(battle, battle.RequiredRules, new BattleAttack(BattleActionType.Throw, _unit, weapon, weapon),
+                        BattleSight.PositionFromEnd(trajectory, BattleSight.ItemDropVoxelOffset), BattleSight.PositionFromEnd(trajectory, BattleSight.ItemDropVoxelOffset - 2),
+                        null, false, 0, 0));
+                }
+                else
+                {
+                    battle.RemoveItem(weapon);
+                }
+            }
+            else
+            {
+                // (The danger zone a thrown grenade sets for the AI's units is branch 6's.)
+                battle.ItemDrop(landing, weapon, updateLight: true);
+            }
+        }
+
         private static BattleAimKind KindOf(BattleActionType type) => type switch
         {
+            BattleActionType.Throw => BattleAimKind.Throw,
             BattleActionType.AutoShot => BattleAimKind.AutoShot,
             BattleActionType.SnapShot => BattleAimKind.SnapShot,
             BattleActionType.AimedShot => BattleAimKind.AimedShot,
@@ -445,7 +563,7 @@ internal sealed partial class BattleState
         };
 
         /// <summary>BattleItem::haveNextShotsForAction: the shots fired so far are fewer than the action's.</summary>
-        private bool HaveNextShots() => action.AutoShotCounter < battle.ActionConfig(action.Weapon, ConfigIndex).Shots;
+        private bool HaveNextShots() => action.Type != BattleActionType.Throw && action.AutoShotCounter < battle.ActionConfig(action.Weapon, ConfigIndex).Shots;
 
         /// <summary>The lambda <c>noMoreShotsToShoot</c> of think.</summary>
         private bool NoMoreShotsToShoot() => !HaveNextShots() || battle.AmmoForActionWithMessage(action.Weapon, ConfigIndex, out _, out _) is null;
@@ -506,6 +624,11 @@ internal sealed partial class BattleState
         /// <summary>The projectile ended its flight: the explosion of the impact goes in front of this state, with the statistics and the shotgun's extra pellets.</summary>
         private void Impact(BattleProjectile projectile)
         {
+            if (action.Type == BattleActionType.Throw)
+            {
+                ThrowImpact(projectile);
+                return;
+            }
             var rules = battle.RequiredRules;
             var weapon = action.Weapon;
             var ammo = _ammo!;

@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 264 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 265 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 103 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 8 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 359 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 360 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 114 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -352,7 +352,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 264 files.
+`src/Oxce.Gameplay` - 265 files.
 
 ### `Oxce.Gameplay`
 
@@ -365,6 +365,10 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BattleAimMenuView` (record) [BattleAimContracts.cs](../src/Oxce.Gameplay/Battles/BattleAimContracts.cs) - The aiming actions a weapon in a viewer's unit's hand offers (`ActionMenuState`'s constructor): a throw for an item that is not fixed, th...
 - `BattleAimView` (record) [BattleAimContracts.cs](../src/Oxce.Gameplay/Battles/BattleAimContracts.cs) - What aiming a weapon at a tile shows (the cursor of `Map::drawTerrain` and the checks of `ProjectileFlyBState`): whether the unit may use...
 - `Attack` (record) [BattleAimContracts.cs](../src/Oxce.Gameplay/Battles/BattleAimContracts.cs) - An attack with a weapon in the hand of a unit of the side on turn (`ActionMenuState`'s choice, then `BattlescapeGame::primaryAction` for...
+- `PrimeItem` (record) [BattleAimContracts.cs](../src/Oxce.Gameplay/Battles/BattleAimContracts.cs) - Primes the item in the unit's hand (`BA_PRIME` of the action menu, Phase 7 branch 5 S8): the time units are paid and the fuse is set.
+- `UnprimeItem` (record) [BattleAimContracts.cs](../src/Oxce.Gameplay/Battles/BattleAimContracts.cs) - Unprimes the item in the unit's hand (`BA_UNPRIME`): the time units are paid and the fuse is cleared.
+- `ItemPrimed` (record) [BattleAimContracts.cs](../src/Oxce.Gameplay/Battles/BattleAimContracts.cs) - An item was primed: its fuse is `Turns` turns.
+- `ItemUnprimed` (record) [BattleAimContracts.cs](../src/Oxce.Gameplay/Battles/BattleAimContracts.cs) - An item was unprimed.
 - `BattleFaction` (enum) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - UnitFaction: the side a battle unit fights for.
 - `BattleControllerKind` (enum) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs)
 - `BattleController` (record struct) [BattleContracts.cs](../src/Oxce.Gameplay/Battles/BattleContracts.cs) - Who decides a unit's actions (ADR 0038): the AI, or the human in a player slot.
@@ -1052,7 +1056,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RuntimeUseCost` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - RuleItemUseCost: the time units, energy, morale, health, stun and mana an action costs (percent unless flat).
 - `RuntimeUseFlat` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - RuleItemUseFlat: for each resource of a `RuntimeUseCost`, whether it is a flat value instead of a percentage.
 - `RuntimeItemActionCosts` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - An item's action costs as `BattleUnit::getActionTUs(RuleItem)` reads them, with the reference's fallbacks applied (an unset auto or snap...
-- `RuntimeFuseTrigger` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - RuleItemFuseTrigger's `defaultBehavior`, `throwTrigger`, `proximityTrigger` and `proximityExplode`.
+- `RuntimeFuseTrigger` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - RuleItemFuseTrigger's `defaultBehavior`, `throwTrigger`, `proximityTrigger`, `proximityExplode` and `throwExplode`.
 - `RuntimeBattleArmor` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - Armor's equipment fields: built-in weapons, special and self-destruct items, two main weapons, inventory, weight.
 - `RuntimeArmorMoveCosts` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - ArmorMoveCost of each base kind: (time percent, energy percent).
 - `RuntimeArmorStepCosts` (record) [RuntimeBattleEquipment.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeBattleEquipment.cs) - Armor's per-step `moveCost` percentages: (time percent, energy percent) of each kind of step.
@@ -1370,7 +1374,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 359 files.
+`tests/Oxce.CompatibilityTests` - 360 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1382,7 +1386,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>352 test classes</summary>
+<details><summary>353 test classes</summary>
 
 - `BaseDefenseDeploymentTests` ([BaseDefenseDeploymentTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseDeploymentTests.cs))
 - `BaseDefenseMapTests` ([BaseDefenseMapTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseMapTests.cs))
@@ -1415,6 +1419,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BattleSightTests` ([BattleSightTests.cs](../tests/Oxce.CompatibilityTests/BattleSightTests.cs))
 - `BattleStartTests` ([BattleStartTests.cs](../tests/Oxce.CompatibilityTests/BattleStartTests.cs))
 - `BattleTerrainLoaderTests` ([BattleTerrainLoaderTests.cs](../tests/Oxce.CompatibilityTests/BattleTerrainLoaderTests.cs))
+- `BattleThrowingTests` ([BattleThrowingTests.cs](../tests/Oxce.CompatibilityTests/BattleThrowingTests.cs))
 - `BattleTurnKneelTests` ([BattleTurnKneelTests.cs](../tests/Oxce.CompatibilityTests/BattleTurnKneelTests.cs))
 - `BattleViewTests` ([BattleViewTests.cs](../tests/Oxce.CompatibilityTests/BattleViewTests.cs))
 - `BattleWalkTests` ([BattleWalkTests.cs](../tests/Oxce.CompatibilityTests/BattleWalkTests.cs))

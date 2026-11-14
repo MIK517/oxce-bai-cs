@@ -411,7 +411,6 @@ public sealed class BattleInventoryTests
     [Theory]
     [InlineData(InventoryFeature.LoadAmmo, "battle.inventory-ammo-unsupported")]
     [InlineData(InventoryFeature.UnloadAmmo, "battle.inventory-ammo-unsupported")]
-    [InlineData(InventoryFeature.Throw, "battle.inventory-throw-unsupported")]
     [InlineData(InventoryFeature.Prime, "battle.inventory-prime-unsupported")]
     [InlineData(InventoryFeature.SaveLayout, "battle.inventory-layout-screens-unsupported")]
     [InlineData(InventoryFeature.LoadLayout, "battle.inventory-layout-screens-unsupported")]
@@ -591,7 +590,7 @@ public sealed class BattleInventoryTests
     {
         var (campaign, _) = Requested(CostRules, "UFO_SUITED");
         Started(campaign);
-        Assert.Equal("battle.inventory-unavailable", Refusal(campaign, new UseInventoryFeature(1, Gun, InventoryFeature.Throw)));
+        Assert.Equal("battle.inventory-unavailable", Refusal(campaign, new UseInventoryFeature(1, Gun, InventoryFeature.Prime)));
     }
 
     [Fact]

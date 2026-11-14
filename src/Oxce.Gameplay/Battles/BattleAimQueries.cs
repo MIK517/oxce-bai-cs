@@ -81,6 +81,8 @@ internal sealed partial class BattleState
         BattleAimKind.AimedShot => BattleActionType.AimedShot,
         BattleAimKind.Launch => BattleActionType.Launch,
         BattleAimKind.Hit => BattleActionType.Hit,
+        BattleAimKind.Prime => BattleActionType.Prime,
+        BattleAimKind.Unprime => BattleActionType.Unprime,
         _ => throw new ArgumentOutOfRangeException(nameof(kind)),
     };
 
@@ -116,6 +118,11 @@ internal sealed partial class BattleState
         // A psi weapon needs psi skill, a mana weapon the unlocked feature: without them the menu lists the throw only.
         if (WeaponShoots(research, unit, weapon))
         {
+            // The priming lines come before the shots; they show no accuracy.
+            if (WeaponOffersPrime(research, unit, weapon, true))
+                items.Add(new BattleAimMenuItem(BattleAimKind.Prime, battleRule.PrimeActionName, 0, unit.ActionCost(costs, BattleActionType.Prime).Time));
+            if (WeaponOffersPrime(research, unit, weapon, false))
+                items.Add(new BattleAimMenuItem(BattleAimKind.Unprime, battleRule.UnprimeActionName, 0, unit.ActionCost(costs, BattleActionType.Unprime).Time));
             if (rule.BattleType == RuntimeBattleItem.FirearmBattleType)
             {
                 if (FirearmOffers(weapon, BattleAimKind.AutoShot)) Add(BattleAimKind.AutoShot, battleRule.Combat.Auto.Name);
@@ -167,7 +174,7 @@ internal sealed partial class BattleState
         BattlePosition target, bool forceFire)
     {
         ArgumentNullException.ThrowIfNull(research);
-        if (kind is BattleAimKind.Launch or BattleAimKind.Hit) return null;
+        if (kind is BattleAimKind.Launch or BattleAimKind.Hit or BattleAimKind.Prime or BattleAimKind.Unprime) return null;
         if (ViewersUnitOnTurn(viewer, unitId) is not { } unit || WeaponOf(unit, itemId) is not { } weapon || !Contains(target)) return null;
         var targetTile = Map.TileIndex(target);
         if (!ViewerKnowsTile(viewer, targetTile)) return null;

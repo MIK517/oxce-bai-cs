@@ -736,8 +736,7 @@ internal sealed partial class BattleState
         if (updateLight)
         {
             CalculateLighting(BattleLightLayer.Items, tile);
-            // getVisibilityUpdateRange: a flare's glow range, else 1.
-            Sight().CalculateFov(tile, GlowRange(item) ?? 1, updateTiles: false);
+            Sight().CalculateFov(tile, VisibilityUpdateRange(item), updateTiles: false);
         }
         MarkChanged();
     }

@@ -95,6 +95,8 @@ public sealed class RuntimeBattleEquipment
                 StrengthApplied = values.Boolean("strengthApplied"),
                 IgnoreInCraftEquip = values.Boolean("ignoreInCraftEquip"),
                 InventoryMoveCostPercent = values.GetInteger("inventoryMoveCostPercent"),
+                PrimeActionName = values.GetString("primeActionName"),
+                UnprimeActionName = values.GetString("unprimeActionName"),
                 SpawnUnit = values.NullableName("spawnUnit") ?? "",
                 SpawnItem = values.NullableName("spawnItem") ?? "",
                 SpawnUnitFaction = values.GetInteger("spawnUnitFaction"),
@@ -102,7 +104,7 @@ public sealed class RuntimeBattleEquipment
                 SpawnItemChance = values.GetInteger("spawnItemChance") == -1 ? values.GetInteger("specialChance") : values.GetInteger("spawnItemChance"),
                 ActionCosts = ActionCostsOf(rule.Value),
                 FuseTrigger = new RuntimeFuseTrigger(rule.Value.FuseTriggers.DefaultBehavior, rule.Value.FuseTriggers.ThrowTrigger,
-                    rule.Value.FuseTriggers.ProximityTrigger, rule.Value.FuseTriggers.ProximityExplode),
+                    rule.Value.FuseTriggers.ProximityTrigger, rule.Value.FuseTriggers.ProximityExplode, rule.Value.FuseTriggers.ThrowExplode),
                 Combat = CombatOf(rule.Value, content.CampaignStart.Settings.Combat),
             };
         }, StringComparer.Ordinal);
@@ -285,7 +287,7 @@ public sealed class RuntimeBattleEquipment
     /// <summary>
     /// RuleItem::getCostAimed and the other getCost* with their getFlat* (getDefault: the first value the chain sets), per
     /// <see cref="RuntimeItemActionCosts"/> key. Use is zero for a psi amp without <c>psiAttackName</c> and Prime for an item without
-    /// <c>primeActionName</c>; mind control and panic fall back to the use cost, with the use flat.
+    /// <c>primeActionName</c> (the unprime cost has no name check: only the menu adds one); mind control and panic fall back to the use cost, with the use flat.
     /// </summary>
     private static RuntimeItemActionCosts ActionCostsOf(ItemRule rule)
     {
@@ -418,6 +420,10 @@ public sealed record RuntimeBattleItem(
     /// <summary>RuleItem::getFuseTriggerEvent's fields BattleItem::setFuseTimer reads.</summary>
     public RuntimeFuseTrigger FuseTrigger { get; init; } = RuntimeFuseTrigger.Default;
 
+    /// <summary>RuleItem::getPrimeActionName and getUnprimeActionName: the action menu's lines for priming and unpriming (the unprime name is empty by default).</summary>
+    public string PrimeActionName { get; init; } = "";
+    public string UnprimeActionName { get; init; } = "";
+
     /// <summary>RuleItem::getSpawnUnit and getSpawnItem ("" for none), getSpawnUnitFaction (-1 for the owner's) and the chances (getSpawnUnitChance, getSpawnItemChance: <c>specialChance</c> unless set).</summary>
     public string SpawnUnit { get; init; } = "";
     public string SpawnItem { get; init; } = "";
@@ -462,8 +468,8 @@ public sealed record RuntimeItemActionCosts(IReadOnlyDictionary<string, (Runtime
     public (RuntimeUseCost Cost, RuntimeUseFlat Flat) Of(string action) => Actions.TryGetValue(action, out var value) ? value : None;
 }
 
-/// <summary>RuleItemFuseTrigger's <c>defaultBehavior</c>, <c>throwTrigger</c>, <c>proximityTrigger</c> and <c>proximityExplode</c>.</summary>
-public sealed record RuntimeFuseTrigger(bool DefaultBehavior, bool ThrowTrigger, bool ProximityTrigger, bool ProximityExplode = false)
+/// <summary>RuleItemFuseTrigger's <c>defaultBehavior</c>, <c>throwTrigger</c>, <c>proximityTrigger</c>, <c>proximityExplode</c> and <c>throwExplode</c>.</summary>
+public sealed record RuntimeFuseTrigger(bool DefaultBehavior, bool ThrowTrigger, bool ProximityTrigger, bool ProximityExplode = false, bool ThrowExplode = false)
 {
     public static RuntimeFuseTrigger Default { get; } = new(true, false, false);
 }

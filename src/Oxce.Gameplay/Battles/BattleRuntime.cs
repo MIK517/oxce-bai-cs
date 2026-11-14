@@ -169,6 +169,8 @@ internal sealed class BattleRuntime
         Register<WalkUnit>(command => RunOnTrialCopy(battle => battle.Walk(command.UnitId, command.Target, command.Move, command.IgnoreSpottedEnemies)));
         Register<MoveUnitUpDown>(command => RunOnTrialCopy(battle => battle.MoveUpDown(command.UnitId, command.Up)));
         Register<Attack>(Attack);
+        Register<PrimeItem>(command => RunOnTrialCopy(battle => PrimeItem(battle, command.UnitId, command.ItemId, true, command.Turns)));
+        Register<UnprimeItem>(command => RunOnTrialCopy(battle => PrimeItem(battle, command.UnitId, command.ItemId, false, 0)));
         Register<UseInventoryFeature>(command =>
             Blocked(State.Phase == BattlePhase.Briefing ? BattleInventoryReasons.Unavailable : BattleInventoryReasons.For(command.Feature)));
     }
@@ -262,8 +264,19 @@ internal sealed class BattleRuntime
             BattleAimKind.Hit => RunOnTrialCopy(battle => battle.MeleeAttackAction(research, command.UnitId, command.ItemId, command.AltPressed)),
             BattleAimKind.AutoShot or BattleAimKind.SnapShot or BattleAimKind.AimedShot =>
                 RunOnTrialCopy(battle => battle.ShootAction(research, command.UnitId, command.ItemId, command.Kind, command.Target, command.ForceFire, command.SprayWaypoints)),
+            BattleAimKind.Prime or BattleAimKind.Unprime => Blocked(BattleAttackReasons.PrimeIsItsOwnCommand),
+            BattleAimKind.Throw => RunOnTrialCopy(battle => battle.ThrowAction(command.UnitId, command.ItemId, command.Target, command.ForceFire)),
             _ => Blocked(BattleAttackReasons.KindUnsupported),
         };
+    }
+
+    /// <summary>Priming or unpriming: the state's change and its event (the research is the saved game's, as for a shot).</summary>
+    private CampaignReason? PrimeItem(BattleState battle, int unitId, int itemId, bool prime, int turns)
+    {
+        var research = Link?.Research ?? BattleResearchGate.Everything;
+        if (battle.PrimeAction(research, unitId, itemId, prime, turns, out var fuse) is { } refusal) return refusal;
+        battle.Events.Add(prime ? new ItemPrimed(unitId, itemId, fuse) : new ItemUnprimed(unitId, itemId));
+        return null;
     }
 
     /// <summary>
