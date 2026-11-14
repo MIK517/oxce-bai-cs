@@ -17,6 +17,7 @@ Phase 7 branch 5 (`claude/battle-combat`), from `main` after PR #81 (branch 4 me
 | S3 damage to units | Implemented (2026-11-09), audit pending |
 | S4 casualties | Implemented (2026-11-09), audit pending |
 | S5 explosions | Implemented (2026-11-09), audit pending |
+| S5b battle runtime (2026-11-14 audit follow-up) | Not started |
 | S6 melee and the attack command | Not started |
 | S7 shooting | Not started |
 | S8 throwing, priming, launching and proximity | Not started |
@@ -371,7 +372,23 @@ Reference: `ExplosionBState.cpp` (`init`, `think`, `explode`), `TileEngine.cpp` 
 
 ## Next
 
-S6, melee and the attack command (plan row S6). Notes for the worker:
+S5b, the battle runtime (plan row S5b; scope and reasons in the plan's
+[audit follow-up](phase-7-plan.md#audit-follow-up-2026-11-14) and the branch decisions "The battle runtime", "Events come
+from the sink" and "Script hook call sites"). It changes no rule outcome, refusal text or save output: the existing
+battle tests and oracles pass unchanged. Notes for the worker:
+
+- **What moves.** The seven `battle.Random = campaign.Random` assignments, the `rules` parameters, the `Revision++`
+  sites, `CampaignLink` and `BattleOptions` go behind the runtime object. `CampaignBattles` keeps `Start`, `Restore`, the
+  hand-over and one forward.
+- **The trial copy** (`CampaignBattles.TrialRefusal`) stays until S11 but gets the campaign link, so a converted unit's
+  statistics in the copy are the live ones.
+- **Events.** `ExplosionLog` becomes sink events; hits, casualties and fire raise theirs. Walk and gravity already pass
+  a list: they use the sink.
+- **Hooks.** One method per script named in `BattleCombatScripts.cs`' lists and the visibility script, called where
+  S1–S5's code passes the reference's call; the default returns the unscripted values. The refusals stay.
+
+Then S6, melee and the attack command (plan row S6). S6–S9 raise their events through the sink and call the hook of each
+script the reference runs in the functions they port. Notes for the worker:
 
 - **Falls after the list.** The reference pushes `UnitFallBState` once the list is empty (`BattlescapeGame::think`), so a command ends with `RunStates()` and only then `ResolveFalls`. `Walk` and `MoveUpDown` now do (`RunWalk` runs the list, takes `ExplosionRefusal`, then resolves the falls);
   new commands must call `RunStates()`, then `TakeExplosionRefusal()`, then `ResolveFalls`.

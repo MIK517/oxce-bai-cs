@@ -2,6 +2,7 @@
 
 Plan date: 2026-10-18. Baseline: `main` at `2b0c81fb` (audit cleanup, PR #77). Reference:
 `../oxce-bai` (`4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`).
+The [2026-11-14 audit](project-audit-2026-11-14.md) added work to branches 5 and 6: [audit follow-up](#audit-follow-up-2026-11-14).
 Status: branch 1 (`claude/battle-generation`) is complete and merged (PR #78); its slices, audits and evidence are
 recorded in [battle generation status](battle-generation-status.md). Branch 2 (`claude/battle-save`) is complete and merged (PR #79):
 [battle save status](battle-save-status.md). Branch 3 (`claude/battle-session-ui`) is complete and merged (PR #80):
@@ -65,6 +66,25 @@ Recorded in [ADR 0038](decisions/0038-battle-aggregate.md); summarized here with
   reference call order so tests can pin structure (which blocks, which nodes) under fixed seeds; exact streams are a
   non-goal.
 
+## Audit follow-up (2026-11-14)
+
+The [2026-11-14 audit](project-audit-2026-11-14.md) compared the battle and session code with ADR 0037, ADR 0038 and
+D1–D7 above. No decision changes; the work below makes the code match them. Each finding has one owner.
+
+| Finding | Change | Owner |
+|---|---|---|
+| A1 no battle registry, A2 context threaded by hand | A battle runtime object owns the state, rules, random source, campaign link, options and revision, set once when a battle is generated or restored, with its own command registry; `CampaignBattles` keeps start, restore and one forward (later debriefing) | Branch 5 S5b |
+| A3 trial copy | S5b gives the copy the campaign link. S9 retires the last refusal that needs a copy, and S11 deletes `TrialRefusal`. A copy that must stay is listed in the branch 5 status record with its reason and its Release cost, and branch 6 does not add callers | Branch 5 S5b, S9, S11 |
+| A4 fault path | An exception in a battle command faults the battle (ADR 0038); an unknown command is a refusal, not an exception; `GeoscapeClient` stops deciding what a host failure means | Branch 5 S5b |
+| C1 combat events | An ordered event sink in the battle runtime; S3–S5's outcomes raise events through it, and S6–S9 raise theirs as they are ported | Branch 5 S5b, then each slice |
+| C2 script hooks | A hooks interface with no-op defaults, called where the reference runs a tactical script. S5b adds the call sites in S1–S5's code, and every later slice of branches 5–7 adds its own while it ports the function. Branch 6 carries one hook family end to end (bindings, a mod's script, the refusal for it retired). Branch 8 then binds the remaining hooks without moving rule code | Branch 5 S5b onward; branch 6 (one family); branch 8 (the rest) |
+| B1 queries, B2 events, B3 clock, B4 ownership | The session hands each player a query facade that fixes the viewer; the battle filters events per viewer and the session no longer sends one player's command to the others; clock requests are commands, and the host pumps the clock and the dogfight timer; unit ownership comes from the battle's controllers for every faction | Branch 6, first slice after its planning, before any AI action raises an event |
+| A5 rule references | Units and items hold their rule objects, resolved at creation and restore; one projection per family for items, armors and units | Branch 6, with the AI's rule reads |
+| B5 layering | Commands, events, views and reasons in a contracts namespace; a namespace-level architecture test; `Oxce.Engine` reads through the session, not `CampaignState` | Branch 6, with the session slice |
+
+Branch 6's planning slice schedules its rows above before its first rule slice and may split them into slices of its
+own.
+
 ## Delivery shape
 
 Sequential feature branches, each from the previous merged `main`. Every branch keeps commands, script providers,
@@ -77,9 +97,9 @@ saves and UI actions integrated for what it adds; headless acceptance comes befo
 | 3 | `claude/battle-session-ui` | Session layer (player identity, event broadcast, host clock and pause policy, per-actor quotes), screen stack, briefing and the first turn (`startFirstTurn`), battlescape view: camera, levels, selection, inventory, legal-action display |
 | 4 | `claude/battle-movement` | Pathfinding, walking, flying, kneeling, turning, doors, falling, per-faction visibility, light, fire and smoke spread, terrain destruction from movement |
 | 5 | `claude/battle-combat` | Line of fire and voxel tests, accuracy, projectiles, explosions, armor and damage, wounds, death and unconsciousness, melee, reaction fire |
-| 6 | `claude/battle-turns-ai` | Turn and phase processing, morale and panic, psi, item uses (medikit, scanner, mind probe), skills, special abilities, environmental conditions, AI controller |
+| 6 | `claude/battle-turns-ai` | The session boundary for queries, events and the clock, rule references and the contracts namespace ([audit follow-up](#audit-follow-up-2026-11-14)), then: turn and phase processing, morale and panic, psi, item uses (medikit, scanner, mind probe), skills, special abilities, environmental conditions, AI controller |
 | 7 | `claude/battle-outcome` | Objectives, abort and end of mission, recovery, debriefing and its campaign effects, final-mission victory; the [first acceptance scenario](phase-6-status.md#first-phase-7-acceptance-scenario) closes |
-| 8 | `claude/battle-scripts-corpus` | Remaining tactical script hooks and bindings, representative deployments (UFO, terror, base defense, alien base, final, underwater, custom), named restriction retirement, Phase 7 closure |
+| 8 | `claude/battle-scripts-corpus` | Remaining tactical script hooks and bindings (bound at the call sites branches 5–7 left), representative deployments (UFO, terror, base defense, alien base, final, underwater, custom), named restriction retirement, Phase 7 closure |
 
 Branch 8's strategic restriction work (shadow promotion) does not depend on the battle and may be scheduled earlier
 if the maintainer prefers.
@@ -661,8 +681,25 @@ corpses, the melee dodge and threat fields, `selfDestructItem`, pain and zombie 
   (`UnitWalkBState`). Hits set `BattleUnit.HitState` and `resetUnitHitStates` clears it where the reference does.
   `HasPossibleReactor` and `battle.reaction-fire-unsupported` retire, which ends the refusal that told the player an
   unseen unit was near. The acceptance driver's `WithOpponentsSpent` goes. The trial copies (ADR 0040) exist to catch
-  refusals met after a change. When the last of those refusals retires, S11 removes the trial copies, or records which
-  refusal still needs one.
+  refusals met after a change. When the last of those refusals retires, S11 deletes `TrialRefusal`. A copy that must
+  stay is listed in the status record with the refusal that needs it and its Release cost on the largest acceptance
+  map ([audit follow-up](#audit-follow-up-2026-11-14), A3).
+- **The battle runtime (S5b; audit A1, A2, A4, C1).** One object holds what a battle command needs: the state, the
+  rules, the random source, the campaign link, the options, the revision and an ordered event sink. It is set when a
+  battle is generated or restored, so no entry point assigns the random source and no rule method takes the rules as
+  a parameter it could get wrong. It has the battle's command registry; `CampaignBattles` forwards a battle command to
+  it once and keeps the campaign's side (start, restore, the hand-over). An exception in a battle command faults the
+  battle: later commands are refused and the host offers the last save (ADR 0038). An unknown command is a refusal.
+  The slice changes no rule outcome, refusal text or save output.
+- **Events come from the sink.** A rule raises its events where the outcome happens, in the reference's order; a
+  command returns what the sink collected. `ExplosionLog` becomes events of the sink. S6–S9 raise the events of the
+  attack chain as they port it, so S10 replays them without a second pass over the rules.
+- **Script hook call sites (audit C2).** The runtime carries a hooks interface with a method per tactical script the
+  reference runs (`hitUnit`, `damageUnit`, `tryMeleeAttack`, the reaction hooks, `awardExperience`, the visibility and
+  stat bonus scripts, and the rest as they are met). The default does nothing and returns the unscripted values. Each
+  slice calls the hook where the reference calls the script, with the values the script may change. The script
+  refusals stay until a hook is bound (branch 6 for the first family, branch 8 for the rest), so behaviour is
+  unchanged.
 - **User options at their defaults** (added to branch 4's list):
   - `battleUFOExtenderAccuracy` off;
   - `battleRealisticAccuracy` and `oxceEnableOffCentreShooting` off: the non-realistic `applyAccuracy` and
@@ -706,6 +743,7 @@ corpses, the melee dodge and threat fields, `selfDestructItem`, pain and zombie 
 | S3 | Damage to units: `hitUnit`, the unit part of `hit`, `BattleUnit::damage` (resistance, side and body part, armor and `ArmorIgnore`, every conversion, overkill, pain immunity, wounds, morale loss, fire and the extinguisher, infection, `wasHitBy` and the spotting of the attacker, sniper spotting), the armor's own damage, body items on the hit tile, experience (`awardExperience` and the adders, the extended system off), statistics; `battle.hit-unit-unsupported` retires | each side and body part; armor reducing and ignored; stun damage on pain-immune armor; a wound and its morale; a unit catching fire and the extinguisher; the infection chance and the larger-armor case; experience awarded for a hit (and none for a friend); the statistics counters; `wasHitBy` and the attacker's spotting turns; sniper spotting under `extendedSpotOnHitForSniping`; a burning floor hitting a unit (branch 4's refused case now runs); the interim refusals of a hit that takes a unit out or self-destructs |
 | S4 | Casualties: `checkForCasualties`, `UnitDieBState` collapsed (corpses, inventory to the ground, body items, `instaKill`, spotting resets, light and sight), `killSoldier`, `knockOut`, `convertUnit`, `convertInfected`, `reviveUnconsciousUnits` with `placeUnitNearPosition`, `removeUnconsciousBodyItem`, the dangerous nodes around a dying hostile unit, `clearUnitSelection`; the battlescape constructor's check; `battle.casualties-unsupported`, `battle.fall-knockout-unsupported` and `battle.turn-one-revive-unsupported` retire | a death with its kill statistics and morale (enemy, friendly fire, civilian); a stun with `stunningImprovesMorale`; a soldier to the memorial; a 2x2 corpse; a carried unconscious unit dying; a zombie conversion; a revival next to a big unit; a fall knocking out a unit with no escape; a loaded battle with a unit at 0 health; a dying alien's nodes marked dangerous and saved; the selected and undo units cleared; the facing direction 3 of a dying unit |
 | S5 | Explosions: `ExplosionBState` (power, radius, damage type, `hit` or `explode`), `explode`, `detonate`, `checkForTerrainExplosions` and its chain, items on tiles, self-destruct, the explosion's spawns, `itemDrop`; the two generation refusals, `battle.terrain-explosion-unsupported` and `battle.module-map-unsupported` retire (ADR 0041) | a radius stopped by a wall and passing a door; the damage falloff; a chain of terrain explosions; a crashed UFO battle generated with its power sources exploded and their casualties; a map grenade primed at -2 exploding at generation (`explodeOtherJunk`); an item destroyed by `ToItem`; a unit self-destructing on death and its explosion; an explosion's spawned unit and item; a base module lost, and one in a block the saved map lacks |
+| S5b | Battle runtime ([audit follow-up](#audit-follow-up-2026-11-14)): the runtime object and the battle's command registry, with `CampaignBattles` reduced to the campaign's side; the fault path and the refusal of an unknown command; the event sink, with S3–S5's outcomes (hits, casualties, blasts, fire) raised through it; the hooks interface and its call sites in S1–S5's code; the trial copy given the campaign link | a battle command draws from the campaign's stream without a per-command assignment; a handler that throws faults the battle and the next command is refused; an unknown command refused; a trial copy reads the campaign's difficulty; a hit, a death and a blast raise their events in the reference's order; each hook call site reached with the default hooks; existing battle tests and oracles unchanged |
 | S6 | Melee and the attack command: `Attack` with `BA_HIT` (`MeleeAttackBState`: the player strikes in its facing direction with no targeting turn, and only a reaction turns, for free, in `init`; the cost, the to-hit roll, the dodge and its back penalty, a firearm's butt, terrain melee, a burn-floor attacker), `meleeAttack`, `meleeAttackCalculate`, `validMeleeRange` (big units, other levels), `validTerrainMeleeRange`; the command's events, refusals and stops; the reaction check after it stays `battle.reaction-fire-unsupported` until S9 | a hit and a miss; a dodge from behind; a big unit's reach; a rifle butt; a wall struck by terrain melee; refused when not adjacent or without time units |
 | S7 | Shooting: aimed, snap and auto (all of `ProjectileFlyBState`: the targeting turn with a turret turning alone, the checks and stops, each shot, ammo spent, shotgun pellets, explosive ammo exploding two voxels back, `projectileHitUnit`, statistics, the auto-shot loop, spray waypoints, force fire), close-quarters combat, `updateEnemyKnowledge` | a hit and a miss on a unit; a shot destroying an object; the out-of-range, no-line-of-fire, no-ammo and time-unit stops after a turn, and the same checks as refusals when the shooter already faces the target; an auto shot of three; spray waypoints (the shots spread between them, a waypoint past the range moved to it); force fire at a tile with a unit on it; a shotgun; explosive ammo; a turret; close-quarters on and off |
 | S8 | Throwing, priming, launching and proximity: `BA_THROW`, `BA_PRIME` and `BA_UNPRIME`, `BA_LAUNCH` with waypoints, the landing item (`itemDrop`, gravity, light), `fuseThrowEvent`, all of `checkForProximityGrenades`; the inventory's load, unload, quick swap, and the pre-battle prime and unprime; `battle.proximity-unsupported`, `battle.inventory-ammo-unsupported` and `battle.inventory-prime-unsupported` retire and `battle.inventory-throw-unsupported` goes | a throw landing and one out of range; a hot grenade; a primed fuse; a proximity grenade set off by a walk; a death trap; a thrown flare lighting the floor; a launch with three waypoints; loading, unloading and the Shift quick swap with their costs, in battle and before it; priming and unpriming in the pre-battle inventory |

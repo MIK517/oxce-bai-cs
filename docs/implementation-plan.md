@@ -417,7 +417,9 @@ identity is deterministic across hosts, and managed-extension API `0.2` exposes
 separately versioned campaign query, command, and event capabilities.
 
 1. Implement [Phase 7 branch 5](phase-7-plan.md#branch-5--battle-combat) (line of fire, attacks, damage, casualties,
-   explosions, melee, reaction fire), then the
+   explosions, melee, reaction fire), starting with the battle runtime slice the
+   [2026-11-14 audit](project-audit-2026-11-14.md) added
+   ([audit follow-up](phase-7-plan.md#audit-follow-up-2026-11-14)), then the
    following branches of the [Phase 7 plan](phase-7-plan.md). Keep each branch integrated across commands,
    script providers, saves and UI actions.
 2. Continue adding focused executable C++ probes, compatibility matrix entries, and
