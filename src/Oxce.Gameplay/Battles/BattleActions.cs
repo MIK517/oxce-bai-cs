@@ -41,6 +41,9 @@ internal sealed record BattleOptions
     /// <summary><c>Options::forcedAbsoluteCosts</c>: converts every percentage action cost to its flat value (off).</summary>
     public bool ForcedAbsoluteCosts { get; init; }
 
+    /// <summary><c>Options::oxceReactionFireThreshold</c>: the hit chance X-COM's reactors must reach to react (0, off).</summary>
+    public int ReactionFireThreshold { get; init; }
+
     /// <summary>The options pathfinding reads, at their defaults.</summary>
     public BattlePathingOptions Pathing { get; init; } = new();
 }

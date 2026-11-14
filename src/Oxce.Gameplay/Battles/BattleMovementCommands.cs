@@ -195,12 +195,24 @@ internal sealed partial class BattleState
     /// The spotting of <c>TileEngine::getSpottingUnits</c> (what <c>checkReactionFire</c> runs first), for every opposing unit that passes
     /// the state filters, faces the mover (or was hit by it) and sees its tile from its snap shot origin: the player's spotter marks the mover
     /// seen by the player, and every spotter lists the mover among its visible units (the port's per-faction spotting, ADR 0039, marks the
-    /// mover spotted by a hostile or neutral spotter's faction). The reactors it finds are branch 5's; <see cref="HasPossibleReactor"/> refused
-    /// the command when there could be one.
+    /// mover spotted by a hostile or neutral spotter's faction). The reactors it lists (<see cref="SpottingUnits"/>) are acted on by S9's next part;
+    /// <see cref="HasPossibleReactor"/> refuses the command when there could be one.
     /// </summary>
     internal void SpotMover(BattleSight sight, BattleUnit mover)
     {
-        if (Side != mover.Faction || mover.Position is not { } position) return;
+        if (Side != mover.Faction) return;
+        SpottingUnits(sight, mover);
+    }
+
+    /// <summary>
+    /// <c>TileEngine::getSpottingUnits</c> whole: the spotting <see cref="SpotMover"/> describes, and for each spotter its <c>determineReactionType</c>; a spotter with
+    /// a reaction (and, with a reaction fire threshold of its faction above 0, a hit chance at that distance that reaches it, inside the weapon's range) is in the list
+    /// <c>checkReactionFire</c> goes through.
+    /// </summary>
+    internal List<BattleReaction> SpottingUnits(BattleSight sight, BattleUnit mover)
+    {
+        var spotters = new List<BattleReaction>();
+        if (mover.Position is not { } position) return spotters;
         var tile = Map.TileIndex(position);
         foreach (var other in _units)
         {
@@ -212,6 +224,40 @@ internal sealed partial class BattleState
             if (!(other.CheckViewSector(position) || gotHit) || !sight.CanTargetUnit(origin, tile, out _, other) || !sight.Visible(other, tile)) continue;
             SetSpotted(mover, other.Faction, true);
             other.AddToVisibleUnits(mover.Id);
+            var reaction = DetermineReactionType(other, mover);
+            if (reaction.AttackType == BattleActionType.None) continue;
+            if (ReactionFireThresholdOf(other.Faction) is var threshold && threshold > 0)
+            {
+                var weapon = reaction.Weapon!;
+                var accuracy = FiringAccuracy(other, weapon, reaction.AttackType);
+                var distanceSquared = DistanceSquaredBetween(mover.RequiredPosition, other.RequiredPosition);
+                var distance = (int)MathF.Ceiling(MathF.Sqrt(distanceSquared));
+                var dropoff = CalculateLimits(weapon, reaction.AttackType, out var upperLimit, out var lowerLimit);
+                if (distance > upperLimit) accuracy -= (distance - upperLimit) * dropoff;
+                else if (distance < lowerLimit) accuracy -= (lowerLimit - distance) * dropoff;
+                var outOfRange = IsOutOfRange(weapon, distanceSquared);
+                // Options::useChanceToHit is on, battleRealisticAccuracy off.
+                accuracy = HitChance(distance, accuracy, RequiredRules.Campaign.Combat.HitChances(mover.ArmorSize));
+                if (!(accuracy >= threshold && !outOfRange)) continue;
+            }
+            spotters.Add(reaction);
         }
+        return spotters;
+    }
+
+    /// <summary><c>Mod::getReactionFireThreshold</c>: X-COM's is the user option, the hostile and civilian ones the mod's.</summary>
+    private int ReactionFireThresholdOf(BattleFaction faction) => faction switch
+    {
+        BattleFaction.Player => Options.ReactionFireThreshold,
+        BattleFaction.Hostile => RequiredRules.Campaign.Combat.ReactionFireThreshold,
+        BattleFaction.Neutral => RequiredRules.Campaign.Combat.ReactionFireThresholdCivilians,
+        _ => 0,
+    };
+
+    /// <summary><c>Position::distanceSq</c>: the squared distance in tiles between two positions, level included.</summary>
+    private static int DistanceSquaredBetween(BattlePosition one, BattlePosition other)
+    {
+        int x = one.X - other.X, y = one.Y - other.Y, z = one.Z - other.Z;
+        return x * x + y * y + z * z;
     }
 }
