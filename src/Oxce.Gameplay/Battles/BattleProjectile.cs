@@ -119,7 +119,8 @@ internal sealed class BattleProjectile
     /// floor's) that <c>validateThrow</c> accepts, with the curvature of the arc and the voxel type it ends in (out of bounds when none does: no line
     /// of fire). It draws nothing, so a query can ask it.
     /// </summary>
-    public BattleVoxelType FindArc(List<BattleObstacle>? obstacles, out BattlePosition originVoxel, out BattlePosition targetVoxel, out double curvature, out bool forced)
+    public BattleVoxelType FindArc(List<BattleObstacle>? obstacles, out BattlePosition originVoxel, out BattlePosition targetVoxel, out double curvature, out bool forced,
+        bool visibleUnitsOnly = false)
     {
         var actor = _action.Actor;
         var targetTile = _map.TileIndex(_action.Target);
@@ -138,7 +139,7 @@ internal sealed class BattleProjectile
                 targets.Add(Offset(0, 0, 12));
                 forced = true;
             }
-            else if (unit is not null && (actor.Faction != BattleFaction.Player || unit.IsVisibleToPlayer(_rules)))
+            else if (unit is not null && ((actor.Faction != BattleFaction.Player && !visibleUnitsOnly) || unit.IsVisibleToPlayer(_rules)))
             {
                 var height = unit.HeightOf(_rules);
                 targetVoxel = targetVoxel with { Z = targetVoxel.Z + unit.FloatHeightOf(_rules) }; // ground level is the base

@@ -711,8 +711,7 @@ internal sealed partial class BattleState
 
     /// <summary>
     /// TileEngine::itemDrop: the item lies on the tile (whoever stands there learns the tile as a clue), gravity takes it down to a floor, and the
-    /// light and sight around it are updated. A fixed item is never dropped. The danger zone a dropped live grenade makes for the AI is branch 6's:
-    /// the callers of this slice drop corpses and ammunition only.
+    /// light and sight around it are updated. A fixed item is never dropped. A live grenade dropped where a unit stands sets the danger zone first.
     /// </summary>
     internal void ItemDrop(BattlePosition tile, BattleItem item, bool updateLight)
     {
@@ -720,7 +719,10 @@ internal sealed partial class BattleState
         if (RequiredRules.Battle.Equipment.Items[item.ItemType].Fixed) return;
         var index = Map.TileIndex(tile);
         var dropper = UnitOnTile(index);
-        // (A primed grenade dropped where a unit stands also sets the AI's danger zone, AI state that branch 6 ports.)
+        // A primed grenade dropped where a unit stands makes a danger zone (the AI keeps away from it for the turn).
+        var dropRule = ItemRuleOf(item.ItemType);
+        if (dropper is not null && dropRule.BattleType == GrenadeBattleType && item.FuseEnabled && dropRule.Damage.ResistType != RuntimeItemDamageRule.DamageNone)
+            SetDangerZone(tile, ExplosionRadius(item, new BattleAttack(BattleActionType.Throw, dropper, item, item)), dropper);
         if (Side != BattleFaction.Player) item.DroppedOnAlienTurn = true;
 
         // itemMoveInventory to the ground.

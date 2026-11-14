@@ -38,6 +38,9 @@ internal interface IBattleHooks
     /// <summary><c>ModScript::AwardExperience</c> (<c>TileEngine::awardExperience</c>): the experience multiplier, in percent, for the training mode.</summary>
     int AwardExperience(BattleUnit attacker, BattleUnit target, BattleItem weapon, BattleActionType type, int multiplier, int trainingMode) => multiplier;
 
+    /// <summary><c>ModScript::AiCalculateTargetWeight</c> (<c>AIModule::getTargetAttackWeight</c>, run on the armor of the unit that weighs): the weight of the target for the unit.</summary>
+    int AiCalculateTargetWeight(BattleUnit unit, BattleUnit target, int weight) => weight;
+
     /// <summary><c>ModScript::VisibilityUnit</c> (<c>TileEngine::visible</c> and <c>isTileInLOS</c>): the visibility quality; the unit is seen above 0.</summary>
     int VisibilityUnit(BattleUnit viewer, BattleUnit? target, int tile, int quality) => quality;
 

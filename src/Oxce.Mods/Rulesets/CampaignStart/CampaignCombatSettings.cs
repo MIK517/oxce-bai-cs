@@ -42,6 +42,12 @@ public sealed record CampaignCombatSettings
     public int ReactionFireThreshold { get; init; }
     public int ReactionFireThresholdCivilians { get; init; }
 
+    /// <summary>Mod::getAITargetWeightAsHostile, AsHostileCivilians, AsFriendly and AsNeutral (<c>ai.targetWeightAs*</c>): the weights an armor does not set.</summary>
+    public int AiTargetWeightAsHostile { get; init; } = 100;
+    public int AiTargetWeightAsHostileCivilians { get; init; } = 50;
+    public int AiTargetWeightAsFriendly { get; init; } = -200;
+    public int AiTargetWeightAsNeutral { get; init; } = -100;
+
     /// <summary>
     /// Mod::getAIUseDelayBlaster, Firearm, Grenade, Proxy, Melee, Psionic and Medikit (<c>ai.useDelay*</c>, the legacy <c>turnAIUseBlaster</c> and
     /// <c>turnAIUseGrenade</c>, and <c>ai.aiUseDelayProxy</c> as the reference spells it).

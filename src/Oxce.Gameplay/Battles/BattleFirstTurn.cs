@@ -34,7 +34,7 @@ internal static class BattleFlowReasons
         "An item or armor in the battle writes a stat bonus (a damage bonus, melee bonus, accuracy or melee or throw or close quarters multiplier, psi defence or melee dodge) as script code, or the rules bind a global event for one; script bindings in battle arrive with Phase 7 branch 8.");
 
     internal static readonly CampaignReason CombatScriptUnsupported = new("battle.combat-script-unsupported",
-        "The battle's rules bind a combat script (hitUnit, damageUnit, damageSpecialUnit or their ammunition forms, tryMeleeAttack, reactionWeaponAction, reactionUnitAction, reactionUnitReaction or awardExperience); script bindings in battle arrive with Phase 7 branch 8.");
+        "The battle's rules bind a combat script (hitUnit, damageUnit, damageSpecialUnit or their ammunition forms, tryMeleeAttack, reactionWeaponAction, reactionUnitAction, reactionUnitReaction, aiCalculateTargetWeight or awardExperience); script bindings in battle arrive with Phase 7 branch 8.");
 
     internal static readonly CampaignReason SpawnContentInvalid = new("battle.generation-failed",
         "A primed spawn item spawns a unit, but the mod lists no ten alien item levels for the battle's month.");

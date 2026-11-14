@@ -128,6 +128,32 @@ public sealed class BattleThrowingTests
     }
 
     [Fact]
+    public void APrimedGrenadeThatLandsWhereAUnitStandsMakesADangerZoneAndOneThatLandsOnEmptyGroundDoesNot()
+    {
+        static IEnumerable<int> Marked(Arena arena) => Enumerable.Range(0, arena.Map.TileCount).Where(arena.Map.Dangerous);
+
+        var (arena, grenade) = Load();
+        Fuse(arena, grenade, 3);
+        grenade.FuseEnabled = true;
+        Assert.Null(Throw(arena, grenade));
+        // The alien's tile and the ones its blast reaches.
+        Assert.Contains(arena.Tile(15, 10), Marked(arena));
+        Assert.Contains(arena.Tile(14, 10), Marked(arena));
+        Assert.DoesNotContain(arena.Tile(10, 10), Marked(arena));
+
+        var (empty, thrown) = Load();
+        Fuse(empty, thrown, 3);
+        thrown.FuseEnabled = true;
+        Assert.Null(Throw(empty, thrown, 15, 14));
+        Assert.Empty(Marked(empty));
+
+        // A grenade with no live fuse makes none either, wherever it lands.
+        var (cold, plain) = Load();
+        Assert.Null(Throw(cold, plain));
+        Assert.Empty(Marked(cold));
+    }
+
+    [Fact]
     public void AThrowTriggerWithoutAFuseTypeStartsTheFuseAndAnItemThatIsNoGrenadeIsRemoved()
     {
         // A non-grenade (battle type 0) with throwExplode and no fuse type: the throw starts its fuse at 0 and it vanishes, with no blast.

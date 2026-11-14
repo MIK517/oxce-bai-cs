@@ -594,7 +594,8 @@ internal sealed partial class BattleState
             }
             else
             {
-                // (The danger zone a thrown grenade sets for the AI's units is branch 6's.)
+                // (The reference also sets the danger zone for an AI unit's grenade here, whoever stands where it lands: the AI's throw, branch 6. ItemDrop sets it
+                // for a grenade that lands on a unit.)
                 battle.ItemDrop(landing, weapon, updateLight: true);
             }
         }

@@ -179,8 +179,12 @@ internal sealed class BattleAiState
     public BattleAiState(BattleFaction originalFaction, int fromNode = -1)
     {
         FromNode = fromNode;
-        TargetFaction = originalFaction is BattleFaction.Neutral or BattleFaction.Player ? (int)BattleFaction.Hostile : (int)BattleFaction.Player;
+        TargetFaction = (int)DefaultTargetFaction(originalFaction);
     }
+
+    /// <summary>AIModule::AIModule's target: the hostile faction for a unit that began on the neutral or player side, the player for the rest.</summary>
+    public static BattleFaction DefaultTargetFaction(BattleFaction originalFaction) =>
+        originalFaction is BattleFaction.Neutral or BattleFaction.Player ? BattleFaction.Hostile : BattleFaction.Player;
 
     public int FromNode { get; set; }
     public int ToNode { get; set; } = -1;

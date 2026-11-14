@@ -15,7 +15,7 @@ internal sealed partial class BattleState
     /// <summary>The unit-side combat hooks, owned by armors: <c>ModScript</c>'s hit, damage, melee, reaction and experience parsers.</summary>
     private static readonly string[] CombatUnitHooks =
     [
-        "hitUnit", "damageUnit", "damageSpecialUnit", "tryMeleeAttackUnit", "reactionUnitAction", "reactionUnitReaction", "awardExperience",
+        "hitUnit", "damageUnit", "damageSpecialUnit", "tryMeleeAttackUnit", "reactionUnitAction", "reactionUnitReaction", "aiCalculateTargetWeight", "awardExperience",
     ];
 
     /// <summary>The item-side combat hooks, owned by items: the ammunition forms of the hit and damage hooks, the melee attack and the reaction weapon.</summary>

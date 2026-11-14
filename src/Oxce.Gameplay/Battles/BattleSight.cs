@@ -420,7 +420,7 @@ internal sealed partial class BattleSight
     // ---- seeing ----
 
     /// <summary>BattleUnit::getMaxViewDistance: a camouflage sets or cuts the distance, an anti-camouflage gives some back, never above the base.</summary>
-    private static int MaxViewDistance(int baseVisibility, int camouflage, int antiCamouflage)
+    internal static int MaxViewDistance(int baseVisibility, int camouflage, int antiCamouflage)
     {
         var result = baseVisibility;
         if (camouflage > 0) result = camouflage; // fixed distance nerf

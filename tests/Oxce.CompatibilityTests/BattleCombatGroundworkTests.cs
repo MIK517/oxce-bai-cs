@@ -393,6 +393,7 @@ public sealed class BattleCombatGroundworkTests
     [InlineData("tryMeleeAttackUnit")]
     [InlineData("reactionUnitAction")]
     [InlineData("reactionUnitReaction")]
+    [InlineData("aiCalculateTargetWeight")]
     [InlineData("awardExperience")]
     public void AnArmorInTheBattleWithACombatHookIsRefusedAtTheBriefing(string parser) =>
         Assert.Equal("battle.combat-script-unsupported", Confirmed(WithArmorScript(parser)).Code);

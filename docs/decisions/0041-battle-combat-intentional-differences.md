@@ -62,7 +62,7 @@ it resets a side of 5 or more to the front. The two differ only for a script tha
 **The order of detonation (S5).** `explode` keeps the tiles it reached in a `std::map` keyed by tile pointer, so the detonation order is the allocation order of the tiles. The port detonates in tile index order. The animation's draws
 (`RNG::generate` for each explosion sprite and the camera) are presentation and draw nothing.
 
-**Tile links and the danger zone (S4).** A dropped primed grenade's danger zone (`setDangerZone`) is AI state that branch 6 ports; `ItemDrop` omits it.
+**Tile links and the danger zone (S4).** A dropped primed grenade's danger zone (`setDangerZone`) was omitted by `ItemDrop`; it is now kept (S9, second part: a tile flag on the map, which the AI's reaction score reads) and only its clearing at the end of a side's turn, and the AI's own throw, wait for branch 6.
 
 **The Alt key of a terrain strike, and no diagonal terrain strike (S6).** `validTerrainMeleeRange` asks `SavedBattleGame::isAltPressed(true)`, a keyboard state of the battlescape. The port takes it as the attack command's `AltPressed` flag (the client sets it, as it sets Ctrl for force fire), which only
 decides whether a unit on the high part of stairs aims one level up. With `diagTerrainMelee` off (its default, the plan's option list) a diagonal facing never reaches terrain, so the diagonal cases of the reference's switch and the big wall check for a diagonal are not ported; a client that makes the option available ports them.

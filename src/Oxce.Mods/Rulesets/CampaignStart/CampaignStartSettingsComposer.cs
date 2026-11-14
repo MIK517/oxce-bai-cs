@@ -201,6 +201,10 @@ internal static class CampaignStartSettingsComposer
                 AiUseDelayMedikit = Read(aiSettings, "useDelayMedikit", combat.AiUseDelayMedikit),
                 ReactionFireThreshold = Read(aiSettings, "reactionFireThreshold", combat.ReactionFireThreshold),
                 ReactionFireThresholdCivilians = Read(aiSettings, "reactionFireThresholdCiv", combat.ReactionFireThresholdCivilians),
+                AiTargetWeightAsHostile = Read(aiSettings, "targetWeightAsHostile", combat.AiTargetWeightAsHostile),
+                AiTargetWeightAsHostileCivilians = Read(aiSettings, "targetWeightAsHostileCivilians", combat.AiTargetWeightAsHostileCivilians),
+                AiTargetWeightAsFriendly = Read(aiSettings, "targetWeightAsFriendly", combat.AiTargetWeightAsFriendly),
+                AiTargetWeightAsNeutral = Read(aiSettings, "targetWeightAsNeutral", combat.AiTargetWeightAsNeutral),
             };
         }
         combat = combat with

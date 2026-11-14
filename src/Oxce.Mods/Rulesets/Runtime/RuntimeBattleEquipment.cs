@@ -148,6 +148,10 @@ public sealed class RuntimeBattleEquipment
             MeleeDodgeBackPenalty = (float)rule.Value.Reals["meleeDodgeBackPenalty"],
             MeleeOriginVoxelVerticalOffset = rule.Value.Integers["meleeOriginVoxelVerticalOffset"],
             InstantWoundRecovery = rule.Value.Booleans["instantWoundRecovery"],
+            AiTargetWeightAsHostile = rule.Value.NullableIntegers["targetWeightAsHostile"],
+            AiTargetWeightAsHostileCivilians = rule.Value.NullableIntegers["targetWeightAsHostileCivilians"],
+            AiTargetWeightAsFriendly = rule.Value.NullableIntegers["targetWeightAsFriendly"],
+            AiTargetWeightAsNeutral = rule.Value.NullableIntegers["targetWeightAsNeutral"],
             StatBonuses = rule.Value.StatBonuses,
             TurnBeforeFirstStep = rule.Value.Booleans["turnBeforeFirstStep"],
             AllowsMoving = rule.Value.NullableBooleans["allowsMoving"] ?? true,
@@ -182,6 +186,8 @@ public sealed class RuntimeBattleEquipment
             IsBrutal = rule.Value.Booleans["isBrutal"],
             IsNotBrutal = rule.Value.Booleans["isNotBrutal"],
             IgnoredByAi = rule.Value.Booleans["ignoredByAI"],
+            Intelligence = rule.Value.Integers["intelligence"],
+            SniperPercentage = rule.Value.Integers["sniper"],
             Capturable = rule.Value.Booleans["capturable"],
             Cosmetic = rule.Value.Booleans["cosmetic"],
             MoraleLossWhenKilled = rule.Value.Integers["moraleLossWhenKilled"],
@@ -542,6 +548,12 @@ public sealed record RuntimeBattleArmor(
     public int MeleeOriginVoxelVerticalOffset { get; init; }
     public bool InstantWoundRecovery { get; init; }
 
+    /// <summary>Armor::getAITargetWeightAsHostile, AsHostileCivilians, AsFriendly and AsNeutral (<c>ai.targetWeightAs*</c>): the weight the AI gives the unit as a target, null for the mod's.</summary>
+    public int? AiTargetWeightAsHostile { get; init; }
+    public int? AiTargetWeightAsHostileCivilians { get; init; }
+    public int? AiTargetWeightAsFriendly { get; init; }
+    public int? AiTargetWeightAsNeutral { get; init; }
+
     /// <summary>Armor's <c>psiDefence</c> and <c>meleeDodge</c> stat bonuses.</summary>
     public ArmorStatBonusRules StatBonuses { get; init; } = ArmorStatBonusRules.Default;
 
@@ -627,6 +639,10 @@ public sealed record RuntimeBattleUnitRule(
     /// <summary>Unit's <c>ignoredByAI</c> (BattleUnit::isIgnoredByAI) and Unit::getSpotterDuration (<c>spotter</c>, or <c>intelligence</c> for -1).</summary>
     public bool IgnoredByAi { get; init; }
     public int SpotterDuration { get; init; }
+
+    /// <summary>Unit::getIntelligence (<c>intelligence</c>: the turns the AI remembers a target) and getSniperPercentage (<c>sniper</c>; above 0 is BattleUnit::isSniper).</summary>
+    public int Intelligence { get; init; }
+    public int SniperPercentage { get; init; }
 
     /// <summary>Unit::isCapturable (<c>capturable</c>) and getMoraleLossWhenKilled (<c>moraleLossWhenKilled</c>, 100).</summary>
     public bool Capturable { get; init; } = true;

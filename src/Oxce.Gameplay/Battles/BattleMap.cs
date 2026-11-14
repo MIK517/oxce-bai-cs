@@ -23,6 +23,7 @@ internal sealed partial class BattleMap
     private byte[] _smoke = [];
     private byte[] _fire = [];
     private byte[] _overlaps = [];
+    private bool[] _dangerous = [];
     private short[] _explosive = [];
     private byte[] _explosiveType = [];
     private byte[] _doorFrames = [];
@@ -82,6 +83,7 @@ internal sealed partial class BattleMap
         _smoke = new byte[tiles];
         _fire = new byte[tiles];
         _overlaps = new byte[tiles];
+        _dangerous = new bool[tiles];
         _explosive = new short[tiles];
         _explosiveType = new byte[tiles];
         _doorFrames = new byte[tiles];
@@ -292,6 +294,14 @@ internal sealed partial class BattleMap
     /// <summary>Tile::getSmoke and getFire (Uint8).</summary>
     public int Smoke(int tile) => _smoke[tile];
     public int Fire(int tile) => _fire[tile];
+
+    /// <summary>
+    /// Tile::getDangerous and setDangerous: a grenade with a live fuse landed within reach of the tile this turn (the AI avoids it). Not saved, as the reference's
+    /// tile cache; the reference clears every flag at the end of each side's turn and in the environment's turn (turn processing, branch 6).
+    /// </summary>
+    public bool Dangerous(int tile) => _dangerous[tile];
+
+    public void SetDangerous(int tile, bool dangerous) => _dangerous[tile] = dangerous;
 
     public void SetSmoke(int tile, int smoke) => _smoke[tile] = checked((byte)smoke);
     public void SetFire(int tile, int fire) => _fire[tile] = checked((byte)fire);
