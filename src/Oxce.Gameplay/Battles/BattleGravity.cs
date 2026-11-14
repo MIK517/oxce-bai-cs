@@ -92,7 +92,7 @@ internal sealed partial class BattleState
             }
             if (landing != tile) AddToTile(item, landing);
         }
-        if (landing != tile || occupant is not null) Revision++;
+        if (landing != tile || occupant is not null) MarkChanged();
         return landing;
     }
 
@@ -131,7 +131,7 @@ internal sealed partial class BattleState
         ArgumentNullException.ThrowIfNull(rules);
         if (_fallingUnits.Count == 0) return null;
         var refusal = RunFalls(rules, dryRun: false);
-        Revision++;
+        MarkChanged();
         return refusal;
     }
 
@@ -346,7 +346,7 @@ internal sealed partial class BattleState
     {
         private readonly BattleUnit[] _falling;
         private readonly int[] _occupants;
-        private readonly long _revision;
+        private readonly (long Committed, bool Pending) _revision;
         private readonly (BattleUnit Unit, BattlePosition? Position, BattlePosition? Last, BattleUnitStatus Status, bool Floating, bool NoFloor, int Vertical,
             bool Kneeled, int Face, int Motion, int Direction)[] _units;
 
@@ -354,7 +354,7 @@ internal sealed partial class BattleState
         {
             _falling = [.. battle._fallingUnits];
             _occupants = battle.Map.CaptureUnits();
-            _revision = battle.Revision;
+            _revision = battle.CaptureRevision();
             _units = [.. battle._units.Select(static unit => (unit, unit.Position, unit.LastPosition, unit.Status, unit.Floating, unit.HaveNoFloorBelow,
                 unit.VerticalDirection, unit.Kneeled, unit.FaceDirection, unit.MotionPoints, unit.Direction))];
         }
@@ -364,7 +364,7 @@ internal sealed partial class BattleState
             battle._fallingUnits.Clear();
             battle._fallingUnits.AddRange(_falling);
             battle.Map.RestoreUnits(_occupants);
-            battle.Revision = _revision;
+            battle.RestoreRevision(_revision);
             foreach (var (unit, position, last, status, floating, noFloor, vertical, kneeled, face, motion, direction) in _units)
             {
                 unit.Position = position;

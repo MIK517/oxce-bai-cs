@@ -130,8 +130,56 @@ internal sealed partial class BattleState
     /// <summary>SavedBattleGame::_side: the faction whose turn it is.</summary>
     public BattleFaction Side { get; internal set; } = BattleFaction.Player;
 
-    /// <summary>Changes with every committed battle change, so clients know to refresh.</summary>
-    public long Revision { get; private set; }
+    private long _committedRevision;
+    private bool _changePending;
+    private int _commandDepth;
+    private BattleOptions _options = BattleOptions.Default;
+
+    /// <summary>
+    /// Changes with every committed battle change, so clients know to refresh. A rule that changes the battle marks it (<see cref="MarkChanged"/>);
+    /// the runtime commits the marks of a command as one bump when the command ends. A rule run outside a command (the generator, a test calling it
+    /// directly) bumps the revision at each mark, as before.
+    /// </summary>
+    public long Revision => _committedRevision + (_changePending ? 1 : 0);
+
+    /// <summary>The revision and the pending mark, for a trial run to put back; a rule never writes the revision itself (it marks the change).</summary>
+    internal (long Committed, bool Pending) CaptureRevision() => (_committedRevision, _changePending);
+
+    /// <summary>Puts back what <see cref="CaptureRevision"/> took, so a command's marks keep making one bump.</summary>
+    internal void RestoreRevision((long Committed, bool Pending) captured) => (_committedRevision, _changePending) = captured;
+
+    /// <summary>
+    /// Marks the battle as changed: inside a runtime command any number of marks make one bump of <see cref="Revision"/>, committed by
+    /// <see cref="EndCommand"/>; outside one each mark is a bump.
+    /// </summary>
+    internal void MarkChanged()
+    {
+        if (_commandDepth == 0) _committedRevision++;
+        else _changePending = true;
+    }
+
+    /// <summary>The runtime's command starts: the marks that follow are committed together by <see cref="EndCommand"/>.</summary>
+    internal void BeginCommand() => _commandDepth++;
+
+    /// <summary>The runtime's command ends: one bump of <see cref="Revision"/> if it marked the battle changed.</summary>
+    internal void EndCommand()
+    {
+        if (_commandDepth > 0) _commandDepth--;
+        if (_commandDepth != 0 || !_changePending) return;
+        _committedRevision++;
+        _changePending = false;
+    }
+
+    /// <summary>The user options the rules read; the runtime sets them once, and every unit the battle holds reads the same set.</summary>
+    internal BattleOptions Options
+    {
+        get => _options;
+        set
+        {
+            _options = value ?? throw new ArgumentNullException(nameof(value));
+            foreach (var unit in _units) unit.Options = value;
+        }
+    }
 
     public IReadOnlyList<BattleUnit> Units => _units;
 
@@ -205,7 +253,7 @@ internal sealed partial class BattleState
         _items.RemoveAll(items.Contains);
         _guaranteedRecovered.AddRange(items);
         _guaranteedRecovered.Sort(static (left, right) => left.Id.CompareTo(right.Id));
-        Revision++;
+        MarkChanged();
     }
 
     /// <summary>SavedBattleGame::getAlienItemLevel: the month row of Mod::getAlienItemLevels the aliens draw from.</summary>
@@ -234,7 +282,7 @@ internal sealed partial class BattleState
         ArgumentNullException.ThrowIfNull(item);
         if (item.Tile is { } position && !Contains(position)) throw new InvalidOperationException($"Item tile {position} is outside the map.");
         _items.Add(item);
-        Revision++;
+        MarkChanged();
     }
 
     /// <summary>SavedBattleGame::createItemForTile: the item on the ground of a tile (or nowhere when the tile is null).</summary>
@@ -277,9 +325,10 @@ internal sealed partial class BattleState
             foreach (var covered in BattleMap.Footprint(position, unit.ArmorSize)) Map.SetUnitAt(Map.TileIndex(covered), unit.Id);
         }
         _units.Add(unit);
+        unit.Options = _options;
         // setTile ends with updateTileFloorState (a unit on no tile has floor).
         UpdateTileFloorState(unit);
-        Revision++;
+        MarkChanged();
     }
 
     internal void SetSpotted(BattleUnit unit, BattleFaction faction, bool spotted)
@@ -288,7 +337,7 @@ internal sealed partial class BattleState
         if (!_units.Contains(unit)) throw new InvalidOperationException($"Battle unit {unit.Id} is not in this battle.");
         if (unit.IsSpottedBy(faction) == spotted) return;
         unit.SetSpottedBy(faction, spotted);
-        Revision++;
+        MarkChanged();
     }
 
     /// <summary>Whether a faction can see a unit: its own units always, others once spotted.</summary>

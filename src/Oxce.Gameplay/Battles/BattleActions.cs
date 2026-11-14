@@ -30,15 +30,19 @@ internal enum BattleActionType
 
 /// <summary>
 /// The user options the battle rules read, at their defaults (Phase 7 plan, "User options are at their defaults"); they
-/// become settings with Phase 8's options screen.
+/// become settings with Phase 8's options screen. The battle runtime holds the set and gives it to the state, so a rule reads
+/// <see cref="BattleState.Options"/> and a test chooses another set without a process-wide switch.
 /// </summary>
-internal static class BattleOptions
+internal sealed record BattleOptions
 {
+    /// <summary>The options at their defaults.</summary>
+    public static BattleOptions Default { get; } = new();
+
     /// <summary><c>Options::forcedAbsoluteCosts</c>: converts every percentage action cost to its flat value (off).</summary>
-    public static bool ForcedAbsoluteCosts => false;
+    public bool ForcedAbsoluteCosts { get; init; }
 
     /// <summary>The options pathfinding reads, at their defaults.</summary>
-    public static BattlePathingOptions Pathing { get; } = new();
+    public BattlePathingOptions Pathing { get; init; } = new();
 }
 
 /// <summary>
@@ -133,6 +137,9 @@ internal sealed class BattleActionCost(BattleUnit? actor = null)
 
 internal sealed partial class BattleUnit
 {
+    /// <summary>The options the unit's battle runs with: the battle gives them when it holds the unit (the defaults for a unit outside a battle). Only <see cref="BattleState"/> writes it (<c>AddUnit</c> and <c>Options</c>), so a unit and its battle read one set.</summary>
+    internal BattleOptions Options { get; set; } = BattleOptions.Default;
+
     /// <summary>
     /// BattleUnit::getActionTUs(type, item rule): the item's cost of the action (<c>getCostAimed</c> and the others, resolved in
     /// <see cref="RuntimeItemActionCosts"/>), its percentages applied to this unit's statistics. An action the item has no cost
@@ -163,7 +170,7 @@ internal sealed partial class BattleUnit
     /// <summary>BattleUnit::applyPercentages: a percentage cost becomes a share of the unit's statistic (at least 1), unless it is flat.</summary>
     private RuntimeUseCost ApplyPercentages(RuntimeUseCost cost, RuntimeUseFlat flat)
     {
-        if (BattleOptions.ForcedAbsoluteCosts) return cost;
+        if (Options.ForcedAbsoluteCosts) return cost;
         static int Share(int stat, int percent) => Math.Max(1, (int)MathF.Floor(stat * percent / 100.0f));
         return new RuntimeUseCost(
             !flat.Time && cost.Time != 0 ? Share(Stats.TimeUnits, cost.Time) : cost.Time,

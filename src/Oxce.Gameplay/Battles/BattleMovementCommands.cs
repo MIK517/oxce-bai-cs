@@ -36,7 +36,7 @@ internal sealed partial class BattleState
         {
             // init: a unit that is not turning tries the door in front of it (unitOpensDoor with the right click).
             if (UnitOpensDoor(rules, unit, true, -1, out var door) is { } unsupported) return unsupported;
-            if (door.Changed) Revision++;
+            if (door.Changed) MarkChanged();
             result = new BattleTurnResult(unit.Direction, 0, door.TimeUnitsSpent, BattleTurnStop.NoTurn, door.Result, door.DoorsOpened, door.Centre);
             return null;
         }
@@ -84,7 +84,7 @@ internal sealed partial class BattleState
                 break;
             }
         }
-        Revision++;
+        MarkChanged();
         result = new BattleTurnResult(unit.Direction, eighths, spent, stop);
         return null;
     }
@@ -125,7 +125,7 @@ internal sealed partial class BattleState
         sight.CalculateFov(position, 1, updateTiles: false);
         sight.CalculateFov(unit);
         SpotMover(rules, sight, unit);
-        Revision++;
+        MarkChanged();
         kneeling = unit.Kneeled;
         spent = cost;
         return null;

@@ -429,7 +429,7 @@ internal sealed partial class BattleState
         ApplyGravity(unit.Position);
         // This happens fairly rarely, so do a full recalculation of the units in range.
         Sight().CalculateFov(unit.Position!.Value);
-        Revision++;
+        MarkChanged();
         return true;
     }
 
@@ -455,7 +455,7 @@ internal sealed partial class BattleState
             CalculateLighting(rules, BattleLightLayer.Items, at);
             Sight().CalculateFov(at, range, updateTiles: false);
         }
-        Revision++;
+        MarkChanged();
         return true;
     }
 
@@ -588,7 +588,7 @@ internal sealed partial class BattleState
             // unit is away from blast but its visibility can be affected by scripts.
             sight.CalculateFov(centerTile, 1, false);
         }
-        Revision++;
+        MarkChanged();
     }
 
     /// <summary>The first time a ray reaches a tile: the damage roll hits its unit (and what it carries), the items on the ground, and the tile takes fire or smoke.</summary>

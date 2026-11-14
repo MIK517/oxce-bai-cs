@@ -350,10 +350,10 @@ internal sealed partial class BattleSight
     }
 
     /// <summary>BattleUnit::isAIControlled: any unit of another side, and a player's unit under auto combat.</summary>
-    private static bool IsAiControlled(BattleUnit unit)
+    internal static bool IsAiControlled(BattleUnit unit)
     {
         if (unit.Faction != BattleFaction.Player) return true;
-        var options = BattleOptions.Pathing;
+        var options = unit.Options.Pathing;
         return options.AutoCombat && (!options.AutoCombatControlPerUnit || unit.AllowAutoCombat);
     }
 

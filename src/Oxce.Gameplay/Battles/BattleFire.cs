@@ -391,6 +391,6 @@ internal sealed partial class BattleState
                 Map.SetOverlaps(tile, 0);
             }
         }
-        Revision++;
+        MarkChanged();
     }
 }

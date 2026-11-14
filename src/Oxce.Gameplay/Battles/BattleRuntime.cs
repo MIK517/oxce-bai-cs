@@ -28,7 +28,7 @@ internal sealed class BattleRuntime
     private readonly BattleTrial _trial;
 
     public BattleRuntime(BattleState state, RuntimeRuleCatalog rules, IRandomSource random, IBattleCampaignLink? link, BattleTrial trial,
-        IBattleHooks? hooks = null)
+        IBattleHooks? hooks = null, BattleOptions? options = null)
     {
         State = state ?? throw new ArgumentNullException(nameof(state));
         Rules = rules ?? throw new ArgumentNullException(nameof(rules));
@@ -39,8 +39,12 @@ internal sealed class BattleRuntime
         state.Random = random;
         state.CampaignLink = link;
         state.Hooks = hooks ?? DefaultBattleHooks.Instance;
+        state.Options = options ?? BattleOptions.Default;
         RegisterCommands();
     }
+
+    /// <summary>The user options the battle's rules read (<see cref="BattleState.Options"/> holds the same set).</summary>
+    public BattleOptions Options => State.Options;
 
     public BattleState State { get; }
 
@@ -68,6 +72,7 @@ internal sealed class BattleRuntime
         copy.Random = Random;
         copy.CampaignLink = Link is null ? null : new TrialLink(Link);
         copy.Hooks = State.Hooks;
+        copy.Options = State.Options;
     }
 
     /// <summary>The live link for a copy: the campaign's values, with the memorial left alone (a death in a trial must not reach the campaign).</summary>
@@ -113,6 +118,7 @@ internal sealed class BattleRuntime
     {
         if (Fault is not null) return Blocked(Faulted);
         Events.Clear();
+        State.BeginCommand();
         try
         {
             var result = run();
@@ -136,6 +142,11 @@ internal sealed class BattleRuntime
             Fault = $"{failure.GetType().Name}: {failure.Message}";
             Events.Clear();
             return Blocked(Faulted);
+        }
+        finally
+        {
+            // One bump of the revision for the command, whatever it changed (a refusal that changed nothing leaves it).
+            State.EndCommand();
         }
     }
 

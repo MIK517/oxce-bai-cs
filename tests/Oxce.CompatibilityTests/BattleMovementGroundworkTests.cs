@@ -162,10 +162,30 @@ public sealed class BattleMovementGroundworkTests
         var (_, battle, soldier, set) = Open(rules);
         Assert.Equal(37, BattleActionCost.For(set, BattleActionType.AimedShot, soldier, Gun(battle, soldier)).Time);
         // The default option converts nothing: a percentage is still a share of the statistic.
-        Assert.False(BattleOptions.ForcedAbsoluteCosts);
+        Assert.False(BattleOptions.Default.ForcedAbsoluteCosts);
         var grenade = battle.InventoryOf(soldier).Single(static item => item.ItemType == "GRENADE");
         Assert.Equal((int)Math.Floor(soldier.Stats.TimeUnits * 50 / 100f), BattleActionCost.For(set, BattleActionType.Prime, soldier, grenade).Time);
         Assert.Equal((int)Math.Floor(soldier.Stats.TimeUnits * 25 / 100f), BattleActionCost.For(set, BattleActionType.Throw, soldier, grenade).Time);
+    }
+
+    [Fact]
+    public void TheRuntimesOptionsReachTheBattleItsUnitsAndTheirActionCosts()
+    {
+        var rules = WithGun("tuAimed: 37\n    flatAimed: {time: true}");
+        var (_, battle, soldier, set) = Open(rules);
+        var grenade = battle.InventoryOf(soldier).Single(static item => item.ItemType == "GRENADE");
+        var options = new BattleOptions { ForcedAbsoluteCosts = true };
+        var runtime = new BattleRuntime(battle, set, new Oxce.Core.Random.SplitMix64RandomSource(1), null, static (live, run) => run(live), options: options);
+        Assert.Same(options, runtime.Options);
+        Assert.Same(options, battle.Options);
+        Assert.Same(options, soldier.Options);
+        // Forced absolute costs convert nothing: the grenade's percentage is the cost itself, not a share of the statistic.
+        Assert.Equal(50, BattleActionCost.For(set, BattleActionType.Prime, soldier, grenade).Time);
+        Assert.Equal(25, BattleActionCost.For(set, BattleActionType.Throw, soldier, grenade).Time);
+        // A unit the battle takes in later reads the same set.
+        var late = new BattleUnit(971, BattleFaction.Hostile, BattleController.Ai) { Stats = soldier.Stats, ArmorSize = 1 };
+        battle.AddUnit(late);
+        Assert.Same(options, late.Options);
     }
 
     [Fact]

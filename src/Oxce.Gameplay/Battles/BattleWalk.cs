@@ -94,7 +94,7 @@ internal sealed partial class BattleState
             // The walk state aborts silently in think, after moveUpDown's kneel.
             if (!kneeled) return BattleMovementReasons.WalkNotAllowed;
             events.Add(new UnitWalkEnded(unit.Id, BattleWalkStop.Arrived, 0, kneelSpent, 0, unit.Position!.Value));
-            Revision++;
+            MarkChanged();
             return null;
         }
         pathfinder.Calculate(unit, target, BattleActionMove.Normal);
@@ -283,7 +283,7 @@ internal sealed partial class BattleState
                     }
                     if (door.Changed)
                     {
-                        Revision++;
+                        MarkChanged();
                         changed = true;
                         timeUnitsSpent += door.TimeUnitsSpent;
                         events.Add(new UnitWalkOpenedDoor(unit.Id, door.Result, door.DoorsOpened, door.Centre, door.TimeUnitsSpent));
@@ -386,7 +386,7 @@ internal sealed partial class BattleState
         if (stop == BattleWalkStop.SpottedUnits)
             events.Add(new UnitsSpotted(unit.Id, [.. unit.UnitsSpottedThisTurn.Skip(numUnitsSpotted)]));
         events.Add(new UnitWalkEnded(unit.Id, stop, steps, timeUnitsSpent, energySpent, unit.Position!.Value));
-        Revision++;
+        MarkChanged();
         return null;
     }
 }

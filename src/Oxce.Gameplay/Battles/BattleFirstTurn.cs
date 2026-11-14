@@ -96,7 +96,7 @@ internal sealed partial class BattleState
             TargetName = name;
         }
         BriefingOpened = true;
-        Revision++;
+        MarkChanged();
     }
 
     /// <summary>
@@ -166,16 +166,20 @@ internal sealed partial class BattleState
         // the reference closes the inventory at once; the selection then stays and the client sends StartFirstTurn.
         if (SelectedUnitId is { } id && UnitById(id) is { } selected && !HasInventory(rules, selected))
             SelectedUnitId = SelectPlayerUnit(rules, selected, 1, checkReselect: false, setReselect: false, checkInventory: true)?.Id;
-        Revision++;
+        MarkChanged();
     }
 
     /// <summary>
     /// BattlescapeGame::spawnFromPrimedItems: for each primed item, spawnNewUnit, spawnNewItem, then the item leaves the game
     /// (removeItem), whether or not anything spawned.
     /// </summary>
-    internal (int Units, int Items) SpawnFromPrimedItems(RuntimeContent content, int difficulty, IRandomSource random)
+    internal (int Units, int Items) SpawnFromPrimedItems(RuntimeContent content)
     {
         var rules = content.RuntimeRules;
+        // The campaign's stream and difficulty are the runtime's: the state holds the stream, the link the difficulty.
+        var random = Random;
+        // A battle always has the campaign's link (SavedBattleGame::createTempUnit reads the geoscape save's difficulty): none is a wiring defect.
+        var difficulty = (CampaignLink ?? throw new InvalidOperationException("The battle has no campaign link to read the difficulty from.")).Difficulty;
         var equipment = new UnitEquipment(this, rules, random);
         var units = 0;
         var items = 0;
@@ -264,7 +268,7 @@ internal sealed partial class BattleState
         MoveToOwner(item, null);
         foreach (var slot in item.AmmoSlots)
             if (slot is { } id && id != item.Id) _items.RemoveAll(ammo => ammo.Id == id);
-        Revision++;
+        MarkChanged();
     }
 
     /// <summary>
@@ -357,9 +361,9 @@ internal sealed partial class BattleState
     /// new-turn scripts are refused beforehand (<see cref="FirstTurnRefusal"/>). Without a selected unit on the map (a null dereference in the reference) the
     /// inventory-tile steps are skipped (ADR 0039).
     /// </summary>
-    internal CampaignReason? StartFirstTurn(RuntimeContent content, IRandomSource random)
+    internal CampaignReason? StartFirstTurn(RuntimeContent content)
     {
-        Random = random;
+        var random = Random;
         var equipment = new UnitEquipment(this, content.RuntimeRules, Seedless);
         var selected = SelectedUnitId is { } id ? UnitById(id) : null;
         var inventoryTile = selected is null ? null : TileOf(selected);

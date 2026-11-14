@@ -291,7 +291,7 @@ internal sealed partial class BattleState
             unit.Floating = false;
         }
         else if (unit.Status == BattleUnitStatus.Unconscious) unit.Floating = unit.MovementType == MovementTypeFly && unit.HaveNoFloorBelow;
-        Revision++;
+        MarkChanged();
     }
 
     /// <summary>MovementType MT_FLY.</summary>
@@ -342,6 +342,6 @@ internal sealed partial class BattleState
         }
         // Motion points for the motion scanner blips: a big unit 30, a tall small one 4, else 3.
         unit.MotionPoints += unit.IsBigUnit ? 30 : HeightsOf(rules, unit).Stand > 16 ? 4 : 3;
-        Revision++;
+        MarkChanged();
     }
 }

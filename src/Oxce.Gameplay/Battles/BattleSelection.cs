@@ -135,7 +135,7 @@ internal sealed partial class BattleState
         if (unit!.Position is null) return BattleSelectionReasons.UnitUnknown;
         saved = WritesSavedSelection(unit);
         if (saved) SelectedUnitId = unit.Id;
-        Revision++;
+        MarkChanged();
         return null;
     }
 
@@ -148,7 +148,7 @@ internal sealed partial class BattleState
         saved = WritesSavedSelection(from!);
         result = SelectPlayerUnit(rules, from, backwards ? -1 : 1, checkReselect: !inventoryOnly, setReselect: false, checkInventory: inventoryOnly);
         if (saved) SelectedUnitId = result?.Id;
-        Revision++;
+        MarkChanged();
         return null;
     }
 
@@ -164,7 +164,7 @@ internal sealed partial class BattleState
             ? SelectPlayerUnitByDistance(rules, from, checkReselect: true, setReselect: true, checkInventory: false)
             : SelectPlayerUnit(rules, from, 1, checkReselect: true, setReselect: true, checkInventory: false);
         if (saved) SelectedUnitId = result?.Id;
-        Revision++;
+        MarkChanged();
         return null;
     }
 
@@ -199,7 +199,7 @@ internal sealed partial class BattleState
         candidate.DontReselect = false;
         SelectedUnitId = candidate.Id;
         UndoUnitId = null;
-        Revision++;
+        MarkChanged();
         return null;
     }
 

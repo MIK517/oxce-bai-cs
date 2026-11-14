@@ -191,6 +191,19 @@ public sealed class BattleFirstTurnTests
     }
 
     [Fact]
+    public void ASpawnedAlienHasTheStatisticsOfTheCampaignsDifficultyReadFromTheBattlesLink()
+    {
+        var (campaign, battle) = Begun(SpawnRules(), "UFO_ARMORY");
+        Assert.Equal(CampaignDifficulty.Veteran, campaign.Difficulty);
+        var nextUnit = battle.Units[^1].Id + 1;
+        Event<BriefingConfirmed>(campaign, new ConfirmBriefing());
+        // Veteran, as for an alien of the generator: 10% TU growth times coefficient 2 then +5 (50 to 65), firing halved (61 to 30). Beginner would leave 50 and 61.
+        var spawned = battle.Units.Where(unit => unit.Id >= nextUnit).ToArray();
+        Assert.NotEmpty(spawned);
+        Assert.All(spawned, unit => Assert.Equal((65, 30), (unit.Stats.TimeUnits, (int)unit.Stats.Firing)));
+    }
+
+    [Fact]
     public void PrimedSpawnItemsSpawnTheirUnitAndItemAndLeaveTheGameWhateverTheChance()
     {
         var (campaign, battle) = Begun(SpawnRules(), "UFO_ARMORY");

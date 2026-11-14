@@ -44,7 +44,7 @@ internal sealed partial class BattleState
     internal void RecalculateFov()
     {
         Sight().RecalculateFov();
-        Revision++;
+        MarkChanged();
     }
 
     /// <summary>

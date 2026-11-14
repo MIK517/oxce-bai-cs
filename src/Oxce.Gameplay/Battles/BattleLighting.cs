@@ -110,7 +110,7 @@ internal sealed partial class BattleState
         TogglePersonalLight = !TogglePersonalLight;
         CalculateLighting(rules, BattleLightLayer.Units);
         Sight().RecalculateFov();
-        Revision++;
+        MarkChanged();
     }
 
     /// <summary>

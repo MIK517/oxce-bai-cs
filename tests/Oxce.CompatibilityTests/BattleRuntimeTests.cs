@@ -559,6 +559,90 @@ public sealed class BattleRuntimeTests
         Assert.Null(runtime.Fault);
     }
 
+    [Fact]
+    public void ACommandBumpsTheRevisionOnceHoweverOftenItMarksTheBattleChangedAndNotAtAllWhenItChangesNothing()
+    {
+        var arena = Armed();
+        var runtime = RuntimeOf(arena);
+        runtime.Register<Stray>(command =>
+        {
+            arena.Battle.MarkChanged();
+            arena.Battle.MarkChanged();
+            arena.Battle.MarkChanged();
+            return new CampaignCommandResult([]);
+        });
+        runtime.Register<Detonate>(static _ => new CampaignCommandResult([]));
+        var revision = runtime.Revision;
+        runtime.Execute(new Stray());
+        Assert.Equal(revision + 1, runtime.Revision);
+        // The commit emptied the marks: a command that changes nothing leaves the revision, and the next one bumps it once more.
+        runtime.Execute(new Detonate());
+        Assert.Equal(revision + 1, runtime.Revision);
+        runtime.Execute(new Stray());
+        Assert.Equal(revision + 2, runtime.Revision);
+        // A rule that ran outside a command bumps the revision itself, at each mark.
+        arena.Battle.MarkChanged();
+        arena.Battle.MarkChanged();
+        Assert.Equal(revision + 4, runtime.Revision);
+        runtime.Execute(new Detonate());
+        Assert.Equal(revision + 4, runtime.Revision);
+    }
+
+    [Fact]
+    public void AFaultedOrRefusedCommandStillCommitsWhatItMarkedAsOneBump()
+    {
+        var arena = Armed();
+        var runtime = RuntimeOf(arena);
+        runtime.Register<Boom>(_ =>
+        {
+            arena.Battle.MarkChanged();
+            arena.Battle.MarkChanged();
+            throw new InvalidOperationException("broken rule");
+        });
+        runtime.Register<Stray>(_ =>
+        {
+            arena.Battle.MarkChanged();
+            arena.Battle.MarkChanged();
+            return BattleRuntime.Blocked(BattleRuntime.UnknownCommand);
+        });
+        var revision = runtime.Revision;
+        Assert.Equal(BattleRuntime.UnknownCommand.Code, Assert.Single(runtime.Execute(new Stray()).Events.OfType<CampaignActionBlocked>()).Code);
+        Assert.Equal(revision + 1, runtime.Revision);
+        Assert.Equal(BattleRuntime.Faulted.Code, Assert.Single(runtime.Execute(new Boom()).Events.OfType<CampaignActionBlocked>()).Code);
+        Assert.Equal(revision + 2, runtime.Revision);
+        // The depth is balanced after the fault: a refused command (the battle is faulted) changes nothing, and direct marks bump at once again.
+        runtime.Execute(new Stray());
+        arena.Battle.MarkChanged();
+        Assert.Equal(revision + 3, runtime.Revision);
+    }
+
+    [Fact]
+    public void TheBriefingAndTheFirstTurnAreOneBumpOfTheRevisionEach()
+    {
+        var (campaign, _) = BattleStartTests.Requested(BattleStartTests.Rules, "UFO_SCOUT");
+        BattleStartTests.Started(campaign);
+        var battle = BattleStartTests.Battle(campaign);
+        var revision = battle.Revision;
+        Assert.DoesNotContain(campaign.Execute(new ConfirmBriefing()).Events, static item => item is CampaignActionBlocked);
+        Assert.Equal(revision + 1, battle.Revision);
+        Assert.DoesNotContain(campaign.Execute(new StartFirstTurn()).Events, static item => item is CampaignActionBlocked);
+        Assert.Equal(revision + 2, battle.Revision);
+        // A refused one (not before the first turn any more) leaves it.
+        Assert.Equal("battle.not-before-first-turn", Assert.Single(campaign.Execute(new StartFirstTurn()).Events.OfType<CampaignActionBlocked>()).Code);
+        Assert.Equal(revision + 2, battle.Revision);
+    }
+
+    [Fact]
+    public void AWalkIsOneBumpOfTheRevisionForTheWholeCommand()
+    {
+        var arena = Duel();
+        var runtime = RuntimeOf(arena.Campaign);
+        var revision = arena.Battle.Revision;
+        Assert.Empty(arena.Campaign.Execute(new WalkUnit(arena.Soldier.Id, new BattlePosition(11, 10, 0))).Events.OfType<CampaignActionBlocked>());
+        Assert.Equal(revision + 1, arena.Battle.Revision);
+        Assert.Null(runtime.Fault);
+    }
+
     private sealed class ViewerRecorder(List<BattleUnit> viewers) : IBattleHooks
     {
         public int VisibilityUnit(BattleUnit viewer, BattleUnit? target, int tile, int quality)

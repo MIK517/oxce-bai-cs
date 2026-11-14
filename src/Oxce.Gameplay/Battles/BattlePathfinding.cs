@@ -98,7 +98,7 @@ internal sealed class BattlePathfinder
         _battle = battle;
         _map = battle.Map;
         _rules = rules;
-        _options = options ?? BattleOptions.Pathing;
+        _options = options ?? battle.Options.Pathing;
         _nodes = new Node[_map.TileCount];
         _layer = _map.Width * _map.Length;
     }

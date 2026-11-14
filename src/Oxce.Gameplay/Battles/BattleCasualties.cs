@@ -156,7 +156,7 @@ internal sealed partial class BattleState
         }
         unit.HaveNoFloorBelow = false;
         unit.Floating = false;
-        Revision++;
+        MarkChanged();
     }
 
     /// <summary>SavedBattleGame::clearUnitSelection: the selected and the undo unit are none when they are this unit.</summary>
@@ -278,7 +278,7 @@ internal sealed partial class BattleState
         if (pushNext is not null)
         {
             foreach (var death in pushed) pushNext(death);
-            Revision++;
+            MarkChanged();
             return [];
         }
 
@@ -301,7 +301,7 @@ internal sealed partial class BattleState
             }
             pushed = queue;
         }
-        Revision++;
+        MarkChanged();
         return pushed;
     }
 
@@ -567,7 +567,7 @@ internal sealed partial class BattleState
                 unit.NotificationShown = 1;
             }
         }
-        Revision++;
+        MarkChanged();
         return new(unit.Id, unit.Status, convertedTo);
     }
 
@@ -643,7 +643,7 @@ internal sealed partial class BattleState
             ItemRuleOf(rules, corpseType).BattleType != CorpseItemBattleType)
             return;
         item.ItemType = corpseType;
-        Revision++;
+        MarkChanged();
     }
 
     /// <summary>
@@ -704,7 +704,7 @@ internal sealed partial class BattleState
             }
             unit.SpecialWeaponIds.Clear();
         }
-        Revision++;
+        MarkChanged();
     }
 
     /// <summary>
@@ -737,7 +737,7 @@ internal sealed partial class BattleState
             // getVisibilityUpdateRange: a flare's glow range, else 1.
             Sight().CalculateFov(tile, GlowRange(rules, item) ?? 1, updateTiles: false);
         }
-        Revision++;
+        MarkChanged();
     }
 
     /// <summary>BattleUnit::setPosition for an unconscious body that comes to lie on a tile (the unit's tile link, if it has one, follows).</summary>
@@ -821,7 +821,7 @@ internal sealed partial class BattleState
         Sight().CalculateFov(tile);
         ApplyGravity(tile);
         created.DontReselect = true;
-        Revision++;
+        MarkChanged();
         Events.Add(new UnitConverted(unit.Id, created.Id));
         return created;
     }
@@ -840,7 +840,7 @@ internal sealed partial class BattleState
         }
         foreach (var unit in infected)
             if (HasSpawnUnit(rules, unit)) ConvertUnit(rules, unit);
-        if (infected.Count != 0) Revision++;
+        if (infected.Count != 0) MarkChanged();
         return infected.Count != 0;
     }
 
@@ -883,7 +883,7 @@ internal sealed partial class BattleState
                     unit.TimeUnits = unit.TimeUnits * rules.Campaign.Combat.TuRecoveryWakeUpNewTurn / 100;
             }
             RemoveUnconsciousBodyItem(unit);
-            Revision++;
+            MarkChanged();
         }
     }
 

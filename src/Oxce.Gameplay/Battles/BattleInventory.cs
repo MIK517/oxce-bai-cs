@@ -206,7 +206,7 @@ internal sealed partial class BattleState
         item.Slot = to.Id;
         item.SlotX = x;
         item.SlotY = y;
-        Revision++;
+        MarkChanged();
     }
 
     private BattleItem? HandItem(RuntimeRuleCatalog rules, BattleUnit unit, bool right) =>
