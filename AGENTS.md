@@ -19,6 +19,7 @@ or gameplay compatibility.
 ## Authoritative references
 
 - Reference engine: separate `oxce-bai` checkout, conventionally at `../oxce-bai`. Only for reference, no changes expected.
+- Where a reference area lives in this port: `docs/reference-map.md`
 - Compatibility definition: `docs/compatibility-contract.md`
 - Architecture and dependency direction: `docs/architecture.md`
 - Current roadmap: `docs/implementation-plan.md`
