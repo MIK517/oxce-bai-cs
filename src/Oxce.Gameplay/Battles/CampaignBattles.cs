@@ -111,7 +111,7 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
             if (command is IBattleCommand && running.CombatScriptRefusal(campaign.Content) is { } combat) return Blocked(combat);
             // The battlescape's constructor ran checkForCasualties when a loaded battle opened and queued the units that have no floor to fall;
             // they fall at once, unless a landing needs a later branch's work (a reaction, a proximity explosion): then the battle waits.
-            return running.FallingUnits.Count != 0 && running.FallsRefusal(campaign.Content.RuntimeRules) is { } fall ? Blocked(fall) : null;
+            return running.FallingUnits.Count != 0 && running.FallsRefusal() is { } fall ? Blocked(fall) : null;
         });
         registry.Capture(snapshot => _battle is null ? snapshot : snapshot with { Battle = _battle.Capture() });
         registry.Restore(Restore);
@@ -151,11 +151,10 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
     /// The battlescape's constructor for a loaded battle that is under way: <c>checkForCasualties</c> (a unit past the out threshold dies, is stunned or
     /// converts) and the falls it queues. A fall that needs a later branch's work stays queued, and the battle's commands wait (the gate).
     /// </summary>
-    private void OpenLoadedBattlescape(BattleState battle)
+    private static void OpenLoadedBattlescape(BattleState battle)
     {
-        var rules = campaign.Content.RuntimeRules;
-        battle.OpenBattlescape(rules);
-        if (battle.FallsRefusal(rules) is null) battle.ResolveFalls(rules);
+        battle.OpenBattlescape();
+        if (battle.FallsRefusal() is null) battle.ResolveFalls();
     }
 
     private BattleTerrainLoader Loader(IBattleTerrainFiles files)
@@ -273,7 +272,7 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
     {
         if (_battle is not { Phase: BattlePhase.Briefing } battle) return Blocked(BattleFlowReasons.NotInBriefing);
         if (battle.BriefingOpened) return Blocked(BattleFlowReasons.BriefingAlreadyOpen);
-        battle.NameMission(campaign.Content.RuntimeRules, command.TargetName ?? "", command.CraftOrBaseName ?? "");
+        battle.NameMission(command.TargetName ?? "", command.CraftOrBaseName ?? "");
         if (!battle.BriefingFromCraft && battle.MissionType == BaseDefenseMissionType && battle.BriefingBaseId >= 0)
             campaign.Handlers.Operation<ICampaignDeploymentHandOver>().BriefBaseDefense(battle.BriefingBaseId);
         return new CampaignCommandResult([new BriefingOpened(battle.TargetName, battle.CraftOrBaseName)]);
@@ -295,19 +294,19 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         var rules = content.RuntimeRules;
         // What the port refuses for its scripts and waves is asked first, before the battle changes.
         if (ReinforcementsRefusal(battle, rules) is { } reinforcements) return Blocked(reinforcements);
-        if (battle.SpawnLacksItemLevels(rules)) return Blocked(BattleFlowReasons.SpawnContentInvalid);
+        if (battle.SpawnLacksItemLevels()) return Blocked(BattleFlowReasons.SpawnContentInvalid);
         if (battle.FirstTurnRefusal(content, BattleRestoreCampaign.From(campaign)) is { } later) return Blocked(later);
         // The battlescape's constructor runs checkForCasualties before the spawn. It changes nothing a second time, so the refusals
         // that need its result (no live aliens, the trial spawn) leave the battle as the reference has it.
-        battle.OpenBattlescape(rules);
+        battle.OpenBattlescape();
         // The reference spawns first and tallies after: aliens that only the primed items bring count. Without any alien now, a
         // battle is refused here when no spawn could add one, and otherwise once a trial spawn on a copy shows none arriving.
         var noAliensYet = battle.Tally().LiveAliens == 0;
-        if (noAliensYet && !battle.PrimedSpawnsMayAddAliens(rules)) return Blocked(BattleFlowReasons.NoLiveAliens);
+        if (noAliensYet && !battle.PrimedSpawnsMayAddAliens()) return Blocked(BattleFlowReasons.NoLiveAliens);
         if (TrialSpawnRefusal(battle, content, noAliensYet) is { } spawned) return Blocked(spawned);
         var (units, items) = battle.SpawnFromPrimedItems(content);
-        battle.CheckBugHuntMode(rules);
-        battle.EnterInventory(rules);
+        battle.CheckBugHuntMode();
+        battle.EnterInventory();
         return new CampaignCommandResult([new BriefingConfirmed(units, items)]);
     }
 
@@ -318,7 +317,7 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
     /// </summary>
     private CampaignReason? TrialSpawnRefusal(BattleState battle, RuntimeContent content, bool noAliensYet)
     {
-        if (battle.PrimedSpawnItems(content.RuntimeRules).Count == 0) return null;
+        if (battle.PrimedSpawnItems().Count == 0) return null;
         return TrialRefusal(battle, scratch =>
         {
             scratch.SpawnFromPrimedItems(content);
@@ -326,7 +325,7 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
             if (scratch.FirstTurnRefusal(content, BattleRestoreCampaign.From(campaign)) is { } refusal) return refusal;
             // The units a spawn put in the air fall when the first turn starts: a fall that cannot run is refused now.
             if (!scratch.MayFall()) return null;
-            scratch.EnterInventory(content.RuntimeRules);
+            scratch.EnterInventory();
             return scratch.StartFirstTurn(content);
         });
     }
@@ -373,7 +372,7 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         if (battle.FirstTurnRefusal(content, BattleRestoreCampaign.From(campaign)) is { } refusal) return Blocked(refusal);
         if (TrialFirstTurnRefusal(battle, content) is { } fall) return Blocked(fall);
         // btnOkClick saves the layout first, unless the alternate craft equipment management keeps it with the base screens.
-        var saved = campaign.Options.AlternateCraftEquipmentManagement ? 0 : SaveEquipmentLayout(battle, content.RuntimeRules);
+        var saved = campaign.Options.AlternateCraftEquipmentManagement ? 0 : SaveEquipmentLayout(battle);
         // (Only a battle without terrain files has no trial copy, and a fall that stops then leaves the first turn half done.)
         if (battle.StartFirstTurn(content) is { } late) return Blocked(late);
         return new CampaignCommandResult([new BattleFirstTurnStarted(battle.SelectedUnitId ?? -1) { LayoutsSaved = saved }]);
@@ -414,9 +413,9 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
     /// InventoryState::saveEquipmentLayout: every soldier of the battle gets the layout of its unit's inventory, in the campaign.
     /// Returns the number of soldiers whose layout was written.
     /// </summary>
-    private int SaveEquipmentLayout(BattleState battle, RuntimeRuleCatalog rules)
+    private int SaveEquipmentLayout(BattleState battle)
     {
-        var layouts = battle.SaveEquipmentLayout(rules);
+        var layouts = battle.SaveEquipmentLayout();
         var written = 0;
         foreach (var owner in campaign.BaseStates)
             for (var index = 0; index < owner.Soldiers.Count; index++)
@@ -460,39 +459,39 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
     }
 
     public BattleSelectionView? QuerySelection(BattleViewer viewer) =>
-        campaign.Read(() => _battle?.SelectionView(campaign.Content.RuntimeRules, viewer));
+        campaign.Read(() => _battle?.SelectionView(viewer));
 
     public BattleLevelView? QueryLevel(BattleViewer viewer, int level) => campaign.Read(() => _battle?.LevelView(viewer, level));
 
     public BattleUnitInfo? QueryUnitInfo(BattleViewer viewer, int unitId) =>
-        campaign.Read(() => _battle?.UnitInfo(campaign.Content.RuntimeRules, viewer, unitId));
+        campaign.Read(() => _battle?.UnitInfo(viewer, unitId));
 
     public BattleLegalActions? QueryLegalActions(BattleViewer viewer, int unitId) =>
-        campaign.Read(() => _battle?.LegalActions(campaign.Content.RuntimeRules, viewer, unitId));
+        campaign.Read(() => _battle?.LegalActions(viewer, unitId));
 
     public BattlePathView? QueryPath(BattleViewer viewer, int unitId, BattlePosition target, BattleMoveType move) =>
-        campaign.Read(() => _battle?.PathView(campaign.Content.RuntimeRules, viewer, unitId, target, move));
+        campaign.Read(() => _battle?.PathView(viewer, unitId, target, move));
 
     public BattleReachableView? QueryReachable(BattleViewer viewer, int unitId) =>
-        campaign.Read(() => _battle?.ReachableView(campaign.Content.RuntimeRules, viewer, unitId));
+        campaign.Read(() => _battle?.ReachableView(viewer, unitId));
 
     public BattleAimMenuView? QueryAimMenu(BattleViewer viewer, int unitId, int itemId) =>
-        campaign.Read(() => _battle?.AimMenu(campaign.Content.RuntimeRules, ResearchGate(), viewer, unitId, itemId));
+        campaign.Read(() => _battle?.AimMenu(ResearchGate(), viewer, unitId, itemId));
 
     public BattleAimView? QueryAim(BattleViewer viewer, int unitId, int itemId, BattleAimKind kind, BattlePosition target, bool forceFire = false) =>
-        campaign.Read(() => _battle?.AimView(campaign.Content.RuntimeRules, ResearchGate(), viewer, unitId, itemId, kind, target, forceFire));
+        campaign.Read(() => _battle?.AimView(ResearchGate(), viewer, unitId, itemId, kind, target, forceFire));
 
     /// <summary>What the battle asks of the saved game about research (<c>isResearched</c>, true in the debug mode).</summary>
     private BattleResearchGate ResearchGate() => new(campaign.ArcResearch.IsResearched, campaign.DebugModeEnabled);
 
     public BattleInventoryView? QueryInventory(BattleViewer viewer, int unitId) =>
-        campaign.Read(() => _battle?.InventoryView(campaign.Content.RuntimeRules, viewer, unitId));
+        campaign.Read(() => _battle?.InventoryView(viewer, unitId));
 
     public string? CheckInventoryMove(BattleViewer viewer, int unitId, int itemId, string slot, int slotX, int slotY) => campaign.Read(() =>
     {
         if (_battle is not { } battle) return BattleInventoryReasons.Unavailable.Code;
         if (viewer.Faction != BattleFaction.Player) return BattleInventoryReasons.UnitUnavailable.Code;
-        return battle.PlanMove(campaign.Content.RuntimeRules, unitId, itemId, slot ?? "", slotX, slotY, out _)?.Code;
+        return battle.PlanMove(unitId, itemId, slot ?? "", slotX, slotY, out _)?.Code;
     });
 
     private static CampaignCommandResult Blocked(CampaignReason reason) =>

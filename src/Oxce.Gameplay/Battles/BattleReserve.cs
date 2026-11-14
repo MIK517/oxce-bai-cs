@@ -51,21 +51,26 @@ internal sealed partial class BattleState
     private const string RightHand = "STR_RIGHT_HAND";
     private const string LeftHand = "STR_LEFT_HAND";
 
-    internal static RuntimeBattleArmor ArmorOf(RuntimeRuleCatalog rules, BattleUnit unit) =>
-        rules.Battle.Equipment.Armors.TryGetValue(unit.ArmorId, out var armor) ? armor
+    /// <summary>The unit's armor in the given rules; a unit reads it without a battle (the battle's own form is <see cref="ArmorOf(BattleUnit)"/>).</summary>
+    internal static RuntimeBattleArmor ArmorOf(RuntimeRuleCatalog catalog, BattleUnit unit) =>
+        catalog.Battle.Equipment.Armors.TryGetValue(unit.ArmorId, out var armor) ? armor
             : throw new InvalidOperationException($"Battle unit {unit.Id} wears armor {unit.ArmorId}, which does not exist.");
 
-    private static RuntimeItemRule ItemRuleOf(RuntimeRuleCatalog rules, string itemType) =>
-        rules.Items.TryGet(itemType, out var handle) ? rules.Items[handle].Value
+    internal RuntimeBattleArmor ArmorOf(BattleUnit unit) => ArmorOf(RequiredRules, unit);
+
+    private RuntimeItemRule ItemRuleOf(string itemType) =>
+        RequiredRules.Items.TryGet(itemType, out var handle) ? RequiredRules.Items[handle].Value
             : throw new InvalidOperationException($"Item {itemType} does not exist.");
 
     /// <summary>Armor::allowsKneeling for the unit: the armor's choice, else whether the unit is a soldier (<c>getType() == "SOLDIER"</c>).</summary>
-    internal static bool AllowsKneeling(RuntimeRuleCatalog rules, BattleUnit unit) =>
-        RuntimeBattleArmor.Allows(ArmorOf(rules, unit).AllowsKneeling, unit.SoldierId is not null);
+    internal static bool AllowsKneeling(RuntimeRuleCatalog catalog, BattleUnit unit) =>
+        RuntimeBattleArmor.Allows(ArmorOf(catalog, unit).AllowsKneeling, unit.SoldierId is not null);
+
+    internal bool AllowsKneeling(BattleUnit unit) => AllowsKneeling(RequiredRules, unit);
 
     /// <summary>The time units kept for kneeling down: the kneel cost while kneeling is reserved and the unit stands and may kneel, else 0.</summary>
-    private int ReservedKneelCost(RuntimeRuleCatalog rules, BattleUnit unit) =>
-        KneelReserved && !unit.Kneeled && AllowsKneeling(rules, unit) ? BattleUnit.KneelDownCost : 0;
+    private int ReservedKneelCost(BattleUnit unit) =>
+        KneelReserved && !unit.Kneeled && AllowsKneeling(unit) ? BattleUnit.KneelDownCost : 0;
 
     /// <summary>BattleUnit::getSpecialWeapon's candidates: the unit's special weapons that are in the battle, in its order.</summary>
     private IEnumerable<BattleItem> SpecialWeapons(BattleUnit unit)
@@ -75,30 +80,30 @@ internal sealed partial class BattleState
     }
 
     /// <summary>BattleItem::getAmmoForAction (const): the item feeding an action (0 aimed or launch, 1 auto, 2 snap, 3 hit), null when unloaded or spent.</summary>
-    private BattleItem? AmmoForAction(RuntimeRuleCatalog rules, BattleItem item, int action)
+    private BattleItem? AmmoForAction(BattleItem item, int action)
     {
-        var slot = rules.Battle.Equipment.Items[item.ItemType].ActionAmmoSlots[action];
+        var slot = RequiredRules.Battle.Equipment.Items[item.ItemType].ActionAmmoSlots[action];
         if (slot == -1) return item;
         if (slot < 0 || slot >= BattleItem.AmmoSlotCount) throw new InvalidOperationException($"Item {item.ItemType} names ammo slot {slot}.");
         if (item.AmmoSlots[slot] is not { } id) return null;
         var ammo = id == item.Id ? item : _items.First(candidate => candidate.Id == id);
-        return ammo.AmmoQuantity == 0 && !rules.Battle.Equipment.Items[ammo.ItemType].AmmoRechargeable ? null : ammo;
+        return ammo.AmmoQuantity == 0 && !RequiredRules.Battle.Equipment.Items[ammo.ItemType].AmmoRechargeable ? null : ammo;
     }
 
     /// <summary>BattleItem::haveAnyAmmo: loaded (an empty clip counts) for its aimed, auto or snap shot, or its hit for melee.</summary>
-    internal bool HaveAnyAmmo(RuntimeRuleCatalog rules, BattleItem item)
+    internal bool HaveAnyAmmo(BattleItem item)
     {
         if (!item.IsWeaponWithAmmo) return true;
-        return ItemRuleOf(rules, item.ItemType).BattleType == BattleTypeMelee
-            ? AmmoForAction(rules, item, 3) is not null
-            : AmmoForAction(rules, item, 0) is not null || AmmoForAction(rules, item, 1) is not null || AmmoForAction(rules, item, 2) is not null;
+        return ItemRuleOf(item.ItemType).BattleType == BattleTypeMelee
+            ? AmmoForAction(item, 3) is not null
+            : AmmoForAction(item, 0) is not null || AmmoForAction(item, 1) is not null || AmmoForAction(item, 2) is not null;
     }
 
     /// <summary>BattleItem::getCurrentWaypoints: the item's waypoints, else those of the ammo its launch uses.</summary>
-    private int CurrentWaypoints(RuntimeRuleCatalog rules, BattleItem item)
+    private int CurrentWaypoints(BattleItem item)
     {
-        var waypoints = ItemRuleOf(rules, item.ItemType).Waypoints;
-        if (waypoints == 0 && AmmoForAction(rules, item, 0) is { } ammo && ammo != item) waypoints = ItemRuleOf(rules, ammo.ItemType).Waypoints;
+        var waypoints = ItemRuleOf(item.ItemType).Waypoints;
+        if (waypoints == 0 && AmmoForAction(item, 0) is { } ammo && ammo != item) waypoints = ItemRuleOf(ammo.ItemType).Waypoints;
         return waypoints;
     }
 
@@ -110,12 +115,12 @@ internal sealed partial class BattleState
     /// cheaper snap shot (the quickest one, else the active hand for a player's unit, else a hostile unit's other hand), a blaster first
     /// for a non-player; with none, a special firearm.
     /// </summary>
-    internal BattleItem? MainHandWeapon(RuntimeRuleCatalog rules, BattleUnit unit, bool quickest = true, bool needAmmo = true, bool reactions = false)
+    internal BattleItem? MainHandWeapon(BattleUnit unit, bool quickest = true, bool needAmmo = true, bool reactions = false)
     {
         var right = HandWeapon(unit, RightHand);
         var left = HandWeapon(unit, LeftHand);
-        if (right is null || needAmmo && !HaveAnyAmmo(rules, right)) right = null;
-        if (left is null || needAmmo && !HaveAnyAmmo(rules, left)) left = null;
+        if (right is null || needAmmo && !HaveAnyAmmo(right)) right = null;
+        if (left is null || needAmmo && !HaveAnyAmmo(left)) left = null;
         if (reactions && unit.Faction == BattleFaction.Player)
         {
             if (unit.ReactionsDisabledForRightHand) right = null;
@@ -126,16 +131,16 @@ internal sealed partial class BattleState
         if (right is null)
         {
             // The AI may also use a special weapon, when both hands are empty: the first special firearm.
-            return SpecialWeapons(unit).FirstOrDefault(special => ItemRuleOf(rules, special.ItemType).BattleType == BattleTypeFirearm);
+            return SpecialWeapons(unit).FirstOrDefault(special => ItemRuleOf(special.ItemType).BattleType == BattleTypeFirearm);
         }
-        var timeRight = unit.ActionCost(rules.Battle.Equipment.Items[right.ItemType].ActionCosts, BattleActionType.SnapShot).Time;
-        var timeLeft = unit.ActionCost(rules.Battle.Equipment.Items[left!.ItemType].ActionCosts, BattleActionType.SnapShot).Time;
+        var timeRight = unit.ActionCost(RequiredRules.Battle.Equipment.Items[right.ItemType].ActionCosts, BattleActionType.SnapShot).Time;
+        var timeLeft = unit.ActionCost(RequiredRules.Battle.Equipment.Items[left!.ItemType].ActionCosts, BattleActionType.SnapShot).Time;
         // getActiveHand: the active hand's weapon, else the left one, else the right one.
         var active = unit.ActiveHand == RightHand ? right : left;
         if (!quickest && unit.Faction != BattleFaction.Player)
         {
-            if (CurrentWaypoints(rules, right) != 0) return right;
-            if (CurrentWaypoints(rules, left) != 0) return left;
+            if (CurrentWaypoints(right) != 0) return right;
+            if (CurrentWaypoints(left) != 0) return left;
         }
         if (timeLeft <= 0 && timeRight > 0) return right;
         if (timeRight <= 0 && timeLeft > 0) return left;
@@ -152,32 +157,31 @@ internal sealed partial class BattleState
     /// classified; its text belongs to the client. The hostile side's reserve is a percentage of the AI's reserve mode (branch 6): it is
     /// not run and answers <see cref="ReservedTimeUnitsWarning.HostileReserveUnsupported"/>. <paramref name="reserved"/> replaces the saved reserve (the path preview's temporary auto shot reserve).
     /// </summary>
-    internal ReservedTimeUnitsResult CheckReservedTimeUnits(RuntimeRuleCatalog rules, BattleUnit unit, int timeUnits, int energy, bool justChecking, int? reserved = null)
+    internal ReservedTimeUnitsResult CheckReservedTimeUnits(BattleUnit unit, int timeUnits, int energy, bool justChecking, int? reserved = null)
     {
         var reserve = reserved ?? TimeUnitsReserved;
-        ArgumentNullException.ThrowIfNull(rules);
         ArgumentNullException.ThrowIfNull(unit);
         var cost = new BattleActionCost(unit)
         {
             Type = (BattleActionType)reserve,
-            Weapon = MainHandWeapon(rules, unit, quickest: false),
+            Weapon = MainHandWeapon(unit, quickest: false),
         };
         if (Side != unit.Faction || Side == BattleFaction.Neutral) return new(timeUnits <= unit.TimeUnits);
         if (Side == BattleFaction.Hostile) return new(false, ReservedTimeUnitsWarning.HostileReserveUnsupported) { Unsupported = HostileReserveUnsupportedReason };
 
-        cost.UpdateTimeUnits(rules);
+        cost.UpdateTimeUnits(RequiredRules);
         // If the weapon has no autoshot, reserve for a snap shot; likewise from snap to aimed.
         if (cost.Time == 0 && cost.Type == BattleActionType.AutoShot)
         {
             cost.Type = BattleActionType.SnapShot;
-            cost.UpdateTimeUnits(rules);
+            cost.UpdateTimeUnits(RequiredRules);
         }
         if (cost.Time == 0 && cost.Type == BattleActionType.SnapShot)
         {
             cost.Type = BattleActionType.AimedShot;
-            cost.UpdateTimeUnits(rules);
+            cost.UpdateTimeUnits(RequiredRules);
         }
-        var kneel = ReservedKneelCost(rules, unit);
+        var kneel = ReservedKneelCost(unit);
         // No aimed shot either: reserve nothing, or only the kneel.
         if (cost.Time == 0 && cost.Type == BattleActionType.AimedShot)
         {

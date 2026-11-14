@@ -71,10 +71,10 @@ internal sealed partial class BattleState
     // ---- small rule helpers ----
 
     /// <summary>SavedBattleGame::getMoraleLossModifierWhenKilled: the soldier type's or the unit rule's, never below 0.</summary>
-    private static int MoraleLossWhenKilled(RuntimeRuleCatalog rules, BattleUnit unit)
+    private int MoraleLossWhenKilled(BattleUnit unit)
     {
         var result = 100;
-        var equipment = rules.Battle.Equipment;
+        var equipment = RequiredRules.Battle.Equipment;
         if (unit.SoldierId is not null) result = equipment.SoldierMoraleLossWhenKilled.GetValueOrDefault(unit.UnitType, 100);
         else if (equipment.Units.TryGetValue(unit.UnitType, out var rule)) result = rule.MoraleLossWhenKilled;
         return Math.Max(0, result);
@@ -106,19 +106,19 @@ internal sealed partial class BattleState
     }
 
     /// <summary>BattleUnit::isCosmetic: a unit rule's <c>cosmetic</c>.</summary>
-    private static bool IsCosmetic(RuntimeRuleCatalog rules, BattleUnit unit) =>
-        unit.SoldierId is null && rules.Battle.Equipment.Units.TryGetValue(unit.UnitType, out var rule) && rule.Cosmetic;
+    private bool IsCosmetic(BattleUnit unit) =>
+        unit.SoldierId is null && RequiredRules.Battle.Equipment.Units.TryGetValue(unit.UnitType, out var rule) && rule.Cosmetic;
 
     /// <summary>BattleUnit::getCapturable: a unit rule's <c>capturable</c>; soldiers are.</summary>
-    private static bool IsCapturable(RuntimeRuleCatalog rules, BattleUnit unit) =>
-        unit.SoldierId is not null || !rules.Battle.Equipment.Units.TryGetValue(unit.UnitType, out var rule) || rule.Capturable;
+    private bool IsCapturable(BattleUnit unit) =>
+        unit.SoldierId is not null || !RequiredRules.Battle.Equipment.Units.TryGetValue(unit.UnitType, out var rule) || rule.Capturable;
 
     /// <summary>
     /// Whether the unit's <c>spawnUnit</c> names a unit the mod has. The reference dereferences a missing rule when it converts such a unit
     /// (undefined behaviour); the port treats a unit that names a missing one as having none (ADR 0041).
     /// </summary>
-    private static bool HasSpawnUnit(RuntimeRuleCatalog rules, BattleUnit unit) =>
-        unit.SpawnUnit.Length != 0 && rules.Units.TryGet(unit.SpawnUnit, out _) && rules.Battle.Equipment.Units.ContainsKey(unit.SpawnUnit);
+    private bool HasSpawnUnit(BattleUnit unit) =>
+        unit.SpawnUnit.Length != 0 && RequiredRules.Units.TryGet(unit.SpawnUnit, out _) && RequiredRules.Battle.Equipment.Units.ContainsKey(unit.SpawnUnit);
 
     /// <summary>
     /// <c>UnitDieBState::init</c>: a unit that is no longer on the map (dead already, or carried) is skipped, but for an X-COM unit, unless its notice
@@ -174,11 +174,11 @@ internal sealed partial class BattleState
     /// and the check of a battle that opens; <paramref name="terrainExplosion"/> a terrain explosion. <paramref name="statesQueued"/> says
     /// another state is running (an explosion, a fall): the reference then inserts each death behind it, the last victim first.
     /// </summary>
-    internal IReadOnlyList<BattleCasualty> CheckForCasualties(RuntimeRuleCatalog rules, RuntimeItemDamageRule? damageType, in BattleAttack attack,
+    internal IReadOnlyList<BattleCasualty> CheckForCasualties(RuntimeItemDamageRule? damageType, in BattleAttack attack,
         bool hiddenExplosion = false, bool terrainExplosion = false, bool statesQueued = false)
     {
-        var pending = QueueCasualties(rules, damageType, attack, hiddenExplosion, terrainExplosion, statesQueued);
-        return RunDeaths(rules, pending);
+        var pending = QueueCasualties(damageType, attack, hiddenExplosion, terrainExplosion, statesQueued);
+        return RunDeaths(pending);
     }
 
     /// <summary>
@@ -186,13 +186,12 @@ internal sealed partial class BattleState
     /// constructor's effects are done) and returned in the order the queue will run them. Units that fall without a floor queue to fall.
     /// With <paramref name="pushNext"/> each death is handed to that caller in the order the reference pushed it, and nothing is returned.
     /// </summary>
-    internal List<PendingDeath> QueueCasualties(RuntimeRuleCatalog rules, RuntimeItemDamageRule? damageType, in BattleAttack attack,
+    internal List<PendingDeath> QueueCasualties(RuntimeItemDamageRule? damageType, in BattleAttack attack,
         bool hiddenExplosion = false, bool terrainExplosion = false, bool statesQueued = false, Action<PendingDeath>? pushNext = null)
     {
-        ArgumentNullException.ThrowIfNull(rules);
         var original = attack.Attacker;
         // If the victim was killed by the murderer's death explosion, the one who killed the murderer is the murderer.
-        if (original is { Status: BattleUnitStatus.Dead } dead && SpecialAbilityOf(rules, dead) is 1 or 3 && dead.MurdererId != 0 &&
+        if (original is { Status: BattleUnitStatus.Dead } dead && SpecialAbilityOf(dead) is 1 or 3 && dead.MurdererId != 0 &&
             UnitById(dead.MurdererId) is { } killer)
             original = killer;
 
@@ -204,7 +203,7 @@ internal sealed partial class BattleState
             if (attack.DamageItem is { } damageItem)
             {
                 // The secondary melee data is represented by the ammunition "__GUNBUTT"; a melee item's own attack uses the item itself.
-                tempAmmo = attack.Type == BattleActionType.Hit && ItemRuleOf(rules, damageItem.ItemType).BattleType != BattleTypeMelee
+                tempAmmo = attack.Type == BattleActionType.Hit && ItemRuleOf(damageItem.ItemType).BattleType != BattleTypeMelee
                     ? GunButtAmmo : damageItem.ItemType;
             }
         }
@@ -215,7 +214,7 @@ internal sealed partial class BattleState
         {
             if (victim.Status == BattleUnitStatus.IgnoreMe) continue;
             var murderer = original;
-            var kill = DescribeUnit(rules, victim) with
+            var kill = DescribeUnit(victim) with
             {
                 Mission = mission,
                 Turn = Turn * 3 + (int)Side,
@@ -242,28 +241,28 @@ internal sealed partial class BattleState
                 kill = kill with { Weapon = victim.MurdererWeapon, WeaponAmmo = victim.MurdererWeaponAmmo };
             }
 
-            if (murderer is not null && kill.Status != (int)BattleUnitStatus.IgnoreMe) CreditKill(rules, victim, murderer, kill);
+            if (murderer is not null && kill.Status != (int)BattleUnitStatus.IgnoreMe) CreditKill(victim, murderer, kill);
 
             if (victim.Status != BattleUnitStatus.Dead)
             {
                 if (victim.Health <= 0)
                 {
-                    pushed.Add(Perish(rules, victim, murderer, kill, damageType, hiddenExplosion, terrainExplosion));
+                    pushed.Add(Perish(victim, murderer, kill, damageType, hiddenExplosion, terrainExplosion));
                 }
                 else if (victim.StunLevel >= victim.Health && victim.Status != BattleUnitStatus.Unconscious)
                 {
                     // Morale changes when an enemy is stunned (only the first time).
-                    if (rules.Campaign.Combat.StunningImprovesMorale && murderer is not null && !victim.Statistics.WasUnconscious &&
+                    if (RequiredRules.Campaign.Combat.StunningImprovesMorale && murderer is not null && !victim.Statistics.WasUnconscious &&
                         (victim.OriginalFaction == BattleFaction.Player && murderer.Faction == BattleFaction.Hostile ||
                          victim.OriginalFaction == BattleFaction.Hostile && murderer.Faction == BattleFaction.Player))
                     {
                         // The murderer gets a morale bonus when it is of a different faction (neutrals excluded); the winning squad gains.
-                        MoraleChange(ArmorOf(rules, murderer), murderer, 20);
+                        MoraleChange(ArmorOf(murderer), murderer, 20);
                         foreach (var winner in _units)
-                            if (!winner.IsOut && winner.OriginalFaction == murderer.OriginalFaction) MoraleChange(ArmorOf(rules, winner), winner, 10);
+                            if (!winner.IsOut && winner.OriginalFaction == murderer.OriginalFaction) MoraleChange(ArmorOf(winner), winner, 10);
                     }
                     victim.Statistics = victim.Statistics with { WasUnconscious = true };
-                    pushed.Add(BeginDeath(rules, victim, NoDamageType, noSound: true));
+                    pushed.Add(BeginDeath(victim, NoDamageType, noSound: true));
                     Events.Add(new UnitKnockedOut(victim.Id, murderer?.Id ?? -1));
                 }
                 else if (victim.HaveNoFloorBelow && victim.MovementType != MovementTypeFly)
@@ -306,13 +305,13 @@ internal sealed partial class BattleState
     }
 
     /// <summary>BattleUnitKills::setUnitStats: the victim's name or type, rank and race.</summary>
-    private BattleUnitKillSnapshot DescribeUnit(RuntimeRuleCatalog rules, BattleUnit unit)
+    private BattleUnitKillSnapshot DescribeUnit(BattleUnit unit)
     {
         string name = "", type = "", rank, race;
         var described = unit.SoldierId is { } soldierId ? CampaignLink?.DescribeSoldier(soldierId) : null;
         if (unit.SoldierId is not null) name = described?.Name ?? "";
         else type = unit.UnitType;
-        var rule = unit.SoldierId is null && rules.Battle.Equipment.Units.TryGetValue(unit.UnitType, out var found) ? found : null;
+        var rule = unit.SoldierId is null && RequiredRules.Battle.Equipment.Units.TryGetValue(unit.UnitType, out var found) ? found : null;
         switch (unit.OriginalFaction)
         {
             case BattleFaction.Player:
@@ -337,14 +336,14 @@ internal sealed partial class BattleState
     }
 
     /// <summary>The credit the murderer's statistics get for a kill or stun (a mind controlled unit's goes to the unit that controls it).</summary>
-    private void CreditKill(RuntimeRuleCatalog rules, BattleUnit victim, BattleUnit murderer, BattleUnitKillSnapshot kill)
+    private void CreditKill(BattleUnit victim, BattleUnit murderer, BattleUnitKillSnapshot kill)
     {
         if (murderer.Faction == BattleFaction.Player && murderer.OriginalFaction != BattleFaction.Player)
         {
             // This must be a mind controlled unit: the kill goes to the soldier who controls it.
             if (UnitById(murderer.MindControllerId) is { SoldierId: not null } controller)
             {
-                if (!IsCosmetic(rules, victim))
+                if (!IsCosmetic(victim))
                 {
                     controller.Statistics = controller.Statistics with
                     {
@@ -357,7 +356,7 @@ internal sealed partial class BattleState
         }
         else if (!murderer.Statistics.Kills.Any(entry => entry.Id == victim.Id && entry.Status == kill.Status))
         {
-            if (!IsCosmetic(rules, victim)) murderer.Statistics = murderer.Statistics with { Kills = [.. murderer.Statistics.Kills, kill] };
+            if (!IsCosmetic(victim)) murderer.Statistics = murderer.Statistics with { Kills = [.. murderer.Statistics.Kills, kill] };
             victim.MurdererId = murderer.Id;
         }
     }
@@ -366,16 +365,16 @@ internal sealed partial class BattleState
     /// The branch of <c>checkForCasualties</c> for a unit with no health left: the morale of the murderer and of both squads, the soldier's
     /// memorial, and the death's state.
     /// </summary>
-    private PendingDeath Perish(RuntimeRuleCatalog rules, BattleUnit victim, BattleUnit? murderer, BattleUnitKillSnapshot kill,
+    private PendingDeath Perish(BattleUnit victim, BattleUnit? murderer, BattleUnitKillSnapshot kill,
         RuntimeItemDamageRule? damageType, bool hiddenExplosion, bool terrainExplosion)
     {
-        var moraleLossWhenKilled = MoraleLossWhenKilled(rules, victim);
+        var moraleLossWhenKilled = MoraleLossWhenKilled(victim);
         if (murderer is not null)
         {
             murderer.Kills++;
             victim.KilledBy = (int)murderer.Faction;
             var modifier = murderer.Faction == BattleFaction.Player ? FactionMoraleModifier(true) : 100;
-            var armor = ArmorOf(rules, murderer);
+            var armor = ArmorOf(murderer);
             // A known murderer gets a morale bonus if it is of the other side (neutrals excluded)...
             if (victim.OriginalFaction == BattleFaction.Player && murderer.Faction == BattleFaction.Hostile ||
                 victim.OriginalFaction == BattleFaction.Hostile && murderer.Faction == BattleFaction.Player)
@@ -403,7 +402,7 @@ internal sealed partial class BattleState
                 {
                     // The losing squad all get a morale loss for losing a team member (mind controlled units aside).
                     var bravery = ReduceByBravery(other, 10);
-                    MoraleChange(ArmorOf(rules, other), other, -(modifier * moraleLossWhenKilled * 200 * bravery / loserModifier / 100 / 100));
+                    MoraleChange(ArmorOf(other), other, -(modifier * moraleLossWhenKilled * 200 * bravery / loserModifier / 100 / 100));
                     if (victim.Faction == BattleFaction.Hostile && murderer is not null && (murderer.Position ?? murderer.SavedPosition) is var where)
                     {
                         // The murderer is exposed to the aliens (the hostile entry of its spotting turns, and the tile they last saw it on).
@@ -416,7 +415,7 @@ internal sealed partial class BattleState
                 else
                 {
                     // The winning squad all get a morale increase.
-                    MoraleChange(ArmorOf(rules, other), other, 10 * winnerModifier / 100);
+                    MoraleChange(ArmorOf(other), other, 10 * winnerModifier / 100);
                 }
             }
         }
@@ -432,14 +431,14 @@ internal sealed partial class BattleState
         }
         else if (terrainExplosion) type = HighExplosiveType;
         else type = NoDamageType; // no murderer and no terrain explosion: a fatal wound
-        var death = BeginDeath(rules, victim, type, noSound);
+        var death = BeginDeath(victim, type, noSound);
         Events.Add(new UnitDied(victim.Id, murderer?.Id ?? -1));
 
         // One of our own died: the memorial records the murderer in the cause.
         if (victim.SoldierId is { } soldierId)
         {
             var cause = kill;
-            if (murderer is not null) cause = DescribeUnit(rules, murderer) with
+            if (murderer is not null) cause = DescribeUnit(murderer) with
             {
                 Mission = kill.Mission,
                 Turn = kill.Turn,
@@ -463,16 +462,16 @@ internal sealed partial class BattleState
     /// (it must face direction 3 first) and falls at once; its sight is cleared; a dying alien makes the route nodes around it dangerous.
     /// Before the game starts the unit becomes its corpse here and now.
     /// </summary>
-    internal PendingDeath BeginDeath(RuntimeRuleCatalog rules, BattleUnit unit, RuntimeItemDamageRule type, bool noSound)
+    internal PendingDeath BeginDeath(BattleUnit unit, RuntimeItemDamageRule type, bool noSound)
     {
-        var death = new PendingDeath(unit, type, noSound, OverKillDamage(rules, unit) > 0);
+        var death = new PendingDeath(unit, type, noSound, OverKillDamage(unit) > 0);
         if (!type.IsDirect || unit.Status == BattleUnitStatus.Unconscious)
         {
             unit.SetDirection(DeathDirection);
             unit.InstaFalling();
             if (IsBeforeGame)
             {
-                ConvertToCorpse(rules, death);
+                ConvertToCorpse(death);
                 death.Finished = true;
             }
         }
@@ -495,16 +494,16 @@ internal sealed partial class BattleState
     }
 
     /// <summary>The queue's turn: each death's state runs to its end, in order.</summary>
-    internal IReadOnlyList<BattleCasualty> RunDeaths(RuntimeRuleCatalog rules, IEnumerable<PendingDeath> pending)
+    internal IReadOnlyList<BattleCasualty> RunDeaths(IEnumerable<PendingDeath> pending)
     {
         var casualties = new List<BattleCasualty>();
         foreach (var death in pending)
-            if (RunDeath(rules, death) is { } casualty) casualties.Add(casualty);
+            if (RunDeath(death) is { } casualty) casualties.Add(casualty);
         return casualties;
     }
 
     /// <summary><c>UnitDieBState::init</c> and <c>think</c> to the state's end; the outcome, or null when the state skipped the unit.</summary>
-    private BattleCasualty? RunDeath(RuntimeRuleCatalog rules, PendingDeath death)
+    private BattleCasualty? RunDeath(PendingDeath death)
     {
         var unit = death.Unit;
         if (death.Finished) return new(unit.Id, unit.Status);
@@ -530,7 +529,7 @@ internal sealed partial class BattleState
         var where = RestingPosition(unit);
         var size = unit.ArmorSize;
         int? convertedTo = null;
-        if (unit.Status == BattleUnitStatus.Unconscious && !IsCapturable(rules, unit)) unit.InstaKill();
+        if (unit.Status == BattleUnitStatus.Unconscious && !IsCapturable(unit)) unit.InstaKill();
         Array.Fill(unit.TurnsSinceSpotted, byte.MaxValue);
         Array.Fill(unit.TurnsLeftSpottedForSnipers, (byte)0);
         for (var faction = 0; faction < unit.TurnsSinceSeenBy.Length; faction++)
@@ -539,27 +538,27 @@ internal sealed partial class BattleState
             if (unit.TileLastSpottedBy[faction] >= 0) unit.TileLastSpottedBy[faction] = -1;
             if (unit.TileLastSpottedForBlindShotBy[faction] >= 0) unit.TileLastSpottedForBlindShotBy[faction] = -1;
         }
-        if (HasSpawnUnit(rules, unit) && !death.OverKill)
+        if (HasSpawnUnit(unit) && !death.OverKill)
         {
-            if (!unit.AlreadyRespawned) convertedTo = ConvertUnit(rules, unit)?.Id;
+            if (!unit.AlreadyRespawned) convertedTo = ConvertUnit(unit)?.Id;
         }
         else
         {
-            ConvertToCorpse(rules, death);
+            ConvertToCorpse(death);
         }
         ClearUnitSelection(unit);
 
         // The last frames: the light of the items and everyone's sight of the place are updated, and the notices of X-COM's own are recorded.
         if (where is { } place)
         {
-            CalculateLighting(rules, BattleLightLayer.Items, place, size);
+            CalculateLighting(BattleLightLayer.Items, place, size);
             Sight().CalculateFov(place, size, updateTiles: false);
         }
         if (unit.OriginalFaction == BattleFaction.Player)
         {
             if (unit.Status == BattleUnitStatus.Dead)
             {
-                if (death.Type.ResistType == RuntimeItemDamageRule.DamageNone && !HasSpawnUnit(rules, unit) && unit.NotificationShown < 2)
+                if (death.Type.ResistType == RuntimeItemDamageRule.DamageNone && !HasSpawnUnit(unit) && unit.NotificationShown < 2)
                     unit.NotificationShown = 2;
             }
             else if (!unit.DisableIndicators && unit.NotificationShown < 1)
@@ -578,17 +577,17 @@ internal sealed partial class BattleState
     /// leaves its tile, and one corpse item per tile it covered lies where it fell (the corpse of a carried unit replaces its body item); with
     /// overkill nothing is left.
     /// </summary>
-    private void ConvertToCorpse(RuntimeRuleCatalog rules, PendingDeath death)
+    private void ConvertToCorpse(PendingDeath death)
     {
         var unit = death.Unit;
         var last = RestingPosition(unit);
         var size = unit.ArmorSize;
         // Options::weaponSelfDestruction is off, so a unit with an inventory always drops it.
-        var dropItems = HasInventory(rules, unit);
+        var dropItems = HasInventory(unit);
         var tile = unit.Position;
         // Remove the unconscious body item of this unit; a carried unit keeps its body item until it is replaced below.
         if (last is not null) RemoveUnconsciousBodyItem(unit);
-        if (dropItems && tile is { } at) ItemDropInventory(rules, at, unit, deleteFixedItems: false);
+        if (dropItems && tile is { } at) ItemDropInventory(at, unit, deleteFixedItems: false);
         ClearTile(unit);
 
         if (last is null)
@@ -601,8 +600,8 @@ internal sealed partial class BattleState
             else if (_items.Find(item => item.CorpseUnitId == unit.Id) is { } body)
             {
                 // We are in an inventory, so we are a 1x1 unit.
-                var corpses = CorpseItems(rules, unit);
-                if (corpses.Count != 0 && corpses[0] is { } corpse) ConvertItemToCorpse(rules, body, corpse);
+                var corpses = CorpseItems(unit);
+                if (corpses.Count != 0 && corpses[0] is { } corpse) ConvertItemToCorpse(body, corpse);
             }
             return;
         }
@@ -611,7 +610,7 @@ internal sealed partial class BattleState
             ApplyGravity(last);
             return;
         }
-        var corpseRules = CorpseItems(rules, unit);
+        var corpseRules = CorpseItems(unit);
         var index = size * size - 1;
         for (var y = size - 1; y >= 0; y--)
         {
@@ -620,9 +619,9 @@ internal sealed partial class BattleState
                 // A mod whose armor lists too few corpses would crash the reference; the part leaves no corpse (ADR 0041).
                 if (index < corpseRules.Count && corpseRules[index] is { } corpseType)
                 {
-                    var item = AddItemOnTile(ConstructItem(rules, TakeItemId(), corpseType), null);
+                    var item = AddItemOnTile(ConstructItem(RequiredRules, TakeItemId(), corpseType), null);
                     item.CorpseUnitId = unit.Id;
-                    ItemDrop(rules, new BattlePosition(last.Value.X + x, last.Value.Y + y, last.Value.Z), item, updateLight: true);
+                    ItemDrop(new BattlePosition(last.Value.X + x, last.Value.Y + y, last.Value.Z), item, updateLight: true);
                 }
                 index--;
             }
@@ -630,17 +629,17 @@ internal sealed partial class BattleState
     }
 
     /// <summary>Armor::getCorpseBattlescape: the item type of each tile part of the unit's body (null for a part the armor lacks).</summary>
-    private static IReadOnlyList<string?> CorpseItems(RuntimeRuleCatalog rules, BattleUnit unit)
+    private IReadOnlyList<string?> CorpseItems(BattleUnit unit)
     {
-        if (!rules.Armors.TryGet(unit.ArmorId, out var armor)) return [];
-        return [.. rules.Armors[armor].Value.Script.CorpseBattle.Select(handle => handle is { } item ? rules.Items.GetExternalId(item) : null)];
+        if (!RequiredRules.Armors.TryGet(unit.ArmorId, out var armor)) return [];
+        return [.. RequiredRules.Armors[armor].Value.Script.CorpseBattle.Select(handle => handle is { } item ? RequiredRules.Items.GetExternalId(item) : null)];
     }
 
     /// <summary>BattleItem::convertToCorpse: a corpse item takes the corpse rule of another armor.</summary>
-    private void ConvertItemToCorpse(RuntimeRuleCatalog rules, BattleItem item, string corpseType)
+    private void ConvertItemToCorpse(BattleItem item, string corpseType)
     {
-        if (item.CorpseUnitId is null || ItemRuleOf(rules, item.ItemType).BattleType != CorpseItemBattleType ||
-            ItemRuleOf(rules, corpseType).BattleType != CorpseItemBattleType)
+        if (item.CorpseUnitId is null || ItemRuleOf(item.ItemType).BattleType != CorpseItemBattleType ||
+            ItemRuleOf(corpseType).BattleType != CorpseItemBattleType)
             return;
         item.ItemType = corpseType;
         MarkChanged();
@@ -664,11 +663,11 @@ internal sealed partial class BattleState
     /// TileEngine::itemDropInventory: the unit's items go to the tile, but for the fixed ones, which cannot be dropped (and with
     /// <paramref name="deleteFixedItems"/> are removed, their ammunition dropped first); the unit's special weapons go with them.
     /// </summary>
-    internal void ItemDropInventory(RuntimeRuleCatalog rules, BattlePosition tile, BattleUnit unit, bool deleteFixedItems)
+    internal void ItemDropInventory(BattlePosition tile, BattleUnit unit, bool deleteFixedItems)
     {
         foreach (var item in OrderedInventoryOf(unit).ToArray())
         {
-            if (!rules.Battle.Equipment.Items[item.ItemType].Fixed)
+            if (!RequiredRules.Battle.Equipment.Items[item.ItemType].Fixed)
             {
                 MoveToOwner(item, null);
                 item.Slot = GroundSlot;
@@ -685,7 +684,7 @@ internal sealed partial class BattleState
                     {
                         item.AmmoSlots[slot] = null;
                         ammo.IsAmmo = false;
-                        ItemDrop(rules, tile, ammo, updateLight: false);
+                        ItemDrop(tile, ammo, updateLight: false);
                     }
                 }
                 MoveToOwner(item, null);
@@ -712,10 +711,10 @@ internal sealed partial class BattleState
     /// light and sight around it are updated. A fixed item is never dropped. The danger zone a dropped live grenade makes for the AI is branch 6's:
     /// the callers of this slice drop corpses and ammunition only.
     /// </summary>
-    internal void ItemDrop(RuntimeRuleCatalog rules, BattlePosition tile, BattleItem item, bool updateLight)
+    internal void ItemDrop(BattlePosition tile, BattleItem item, bool updateLight)
     {
         if (!Contains(tile)) return;
-        if (rules.Battle.Equipment.Items[item.ItemType].Fixed) return;
+        if (RequiredRules.Battle.Equipment.Items[item.ItemType].Fixed) return;
         var index = Map.TileIndex(tile);
         var dropper = UnitOnTile(index);
         // (A primed grenade dropped where a unit stands also sets the AI's danger zone, AI state that branch 6 ports.)
@@ -733,9 +732,9 @@ internal sealed partial class BattleState
         ApplyGravity(tile);
         if (updateLight)
         {
-            CalculateLighting(rules, BattleLightLayer.Items, tile);
+            CalculateLighting(BattleLightLayer.Items, tile);
             // getVisibilityUpdateRange: a flare's glow range, else 1.
-            Sight().CalculateFov(tile, GlowRange(rules, item) ?? 1, updateTiles: false);
+            Sight().CalculateFov(tile, GlowRange(item) ?? 1, updateTiles: false);
         }
         MarkChanged();
     }
@@ -753,19 +752,19 @@ internal sealed partial class BattleState
     /// BattleUnit::knockOut: the stun reaches the health (a unit with a spawn unit turns into it first, and the new one is knocked out; the new
     /// one's own spawn unit is cleared so that it cannot loop).
     /// </summary>
-    internal void KnockOut(RuntimeRuleCatalog rules, BattleUnit unit)
+    internal void KnockOut(BattleUnit unit)
     {
-        if (HasSpawnUnit(rules, unit))
+        if (HasSpawnUnit(unit))
         {
             unit.Respawn = false;
-            if (ConvertUnit(rules, unit) is { } created)
+            if (ConvertUnit(unit) is { } created)
             {
                 // Scripts or rulesets could make a new chryssalid from a chryssalid: clearing the spawn unit breaks the loop.
                 // clearSpawnUnit
                 created.SpawnUnit = "";
                 created.SpawnUnitFaction = (int)BattleFaction.Hostile;
                 created.Respawn = false;
-                KnockOut(rules, created);
+                KnockOut(created);
             }
         }
         else
@@ -778,12 +777,11 @@ internal sealed partial class BattleState
     /// SavedBattleGame::convertUnit: the unit dies at once (it respawns only once), its inventory goes to the ground, and a unit of its spawn
     /// type stands where it was, facing as it did, with no time units. Nothing is spawned for a carried unit or when another unit stands on the place.
     /// </summary>
-    internal BattleUnit? ConvertUnit(RuntimeRuleCatalog rules, BattleUnit unit)
+    internal BattleUnit? ConvertUnit(BattleUnit unit)
     {
-        ArgumentNullException.ThrowIfNull(rules);
         // Only ever respawn once.
         unit.AlreadyRespawned = true;
-        var visible = unit.IsVisibleToPlayer(rules);
+        var visible = unit.IsVisibleToPlayer(RequiredRules);
         ClearUnitSelection(unit);
         var carried = IsCarried(unit);
         // In case the unit was unconscious.
@@ -793,21 +791,21 @@ internal sealed partial class BattleState
         var place = carried ? null : RestingPosition(unit);
         // An unconscious unit could be stood upon, or taken into an inventory: then nothing is spawned.
         if (place is not { } tile || UnitOnTile(Map.TileIndex(tile)) is { } other && other != unit) return null;
-        if (!HasSpawnUnit(rules, unit)) return null;
+        if (!HasSpawnUnit(unit)) return null;
 
-        ItemDropInventory(rules, tile, unit, deleteFixedItems: true);
+        ItemDropInventory(tile, unit, deleteFixedItems: true);
         var direction = unit.Direction;
         var faction = (BattleFaction)unit.SpawnUnitFaction;
         ClearTile(unit);
 
-        var (unitRule, armor) = UnitRule(rules, unit.SpawnUnit);
+        var (unitRule, armor) = UnitRule(unit.SpawnUnit);
         // A spawn unit bigger than the unit it replaces could cover a tile that is off the map or taken, where the reference would overwrite
         // the tile's unit; the port spawns nothing then (ADR 0041).
         foreach (var covered in BattleMap.Footprint(tile, armor.Size))
             if (!Contains(covered) || UnitOnTile(Map.TileIndex(covered)) is not null)
                 return null;
         // createTempUnit: the next ID after the last unit's; a player unit made this way is a summoned one.
-        var created = TempUnit(rules, (_units.Count == 0 ? -1 : _units[^1].Id) + 1, faction,
+        var created = TempUnit((_units.Count == 0 ? -1 : _units[^1].Id) + 1, faction,
             faction == BattleFaction.Player ? BattleController.Human(0) : BattleController.Ai, unit.SpawnUnit, unitRule, armor,
             CampaignLink?.Difficulty ?? 0, summoned: faction == BattleFaction.Player);
         created.SpawnUnitFaction = unit.SpawnUnitFaction; // an allied or neutral zombie spawns an allied or neutral chryssalid
@@ -816,7 +814,7 @@ internal sealed partial class BattleState
         created.SetDirection(direction);
         AddUnit(created);
         SetSpotted(created, BattleFaction.Player, visible);
-        new UnitEquipment(this, rules, Random).InitUnit(created, unitRule, "");
+        new UnitEquipment(this, RequiredRules, Random).InitUnit(created, unitRule, "");
         // This happens fairly rarely, so do a full recalculation of the units in range.
         Sight().CalculateFov(tile);
         ApplyGravity(tile);
@@ -829,7 +827,7 @@ internal sealed partial class BattleState
     /// <summary>
     /// BattlescapeGame::convertInfected: every unit with the respawn flag that is not out turns into its spawn unit. Returns whether any did.
     /// </summary>
-    internal bool ConvertInfected(RuntimeRuleCatalog rules)
+    internal bool ConvertInfected()
     {
         var infected = new List<BattleUnit>();
         foreach (var unit in _units)
@@ -839,7 +837,7 @@ internal sealed partial class BattleState
             infected.Add(unit);
         }
         foreach (var unit in infected)
-            if (HasSpawnUnit(rules, unit)) ConvertUnit(rules, unit);
+            if (HasSpawnUnit(unit)) ConvertUnit(unit);
         if (infected.Count != 0) MarkChanged();
         return infected.Count != 0;
     }
@@ -851,9 +849,9 @@ internal sealed partial class BattleState
     /// tile (it stays unconscious when there is none), stands, and loses its time units (<paramref name="noTU"/>) or recovers them as a new turn does,
     /// cut by <c>tuRecoveryWakeUpNewTurn</c>.
     /// </summary>
-    internal void ReviveUnconsciousUnits(RuntimeRuleCatalog rules, bool noTU)
+    internal void ReviveUnconsciousUnits(bool noTU)
     {
-        var equipment = new UnitEquipment(this, rules, Seedless);
+        var equipment = new UnitEquipment(this, RequiredRules, Seedless);
         foreach (var unit in _units)
         {
             if (unit.ArmorSize != 1 || unit.Status == BattleUnitStatus.IgnoreMe) continue;
@@ -864,7 +862,7 @@ internal sealed partial class BattleState
             if (unit.Status != BattleUnitStatus.Unconscious || unit.IsOutThresholdExceeded || original is not { } at || !Contains(at)) continue;
             var onTile = UnitOnTile(Map.TileIndex(at));
             var largeUnit = onTile is not null && onTile != unit && onTile.IsBigUnit;
-            if (!PlaceUnitNearPosition(rules, unit, at, largeUnit)) continue;
+            if (!PlaceUnitNearPosition(unit, at, largeUnit)) continue;
 
             // Recover from unconscious.
             unit.NotificationShown = 0;
@@ -879,8 +877,8 @@ internal sealed partial class BattleState
             {
                 PrepareTimeUnits(unit, unit.Stats.TimeUnits, equipment);
                 PrepareEnergy(unit, unit.EnergyRegeneration);
-                if (rules.Campaign.Combat.TuRecoveryWakeUpNewTurn < 100)
-                    unit.TimeUnits = unit.TimeUnits * rules.Campaign.Combat.TuRecoveryWakeUpNewTurn / 100;
+                if (RequiredRules.Campaign.Combat.TuRecoveryWakeUpNewTurn < 100)
+                    unit.TimeUnits = unit.TimeUnits * RequiredRules.Campaign.Combat.TuRecoveryWakeUpNewTurn / 100;
             }
             RemoveUnconsciousBodyItem(unit);
             MarkChanged();
@@ -891,7 +889,7 @@ internal sealed partial class BattleState
     /// SavedBattleGame::placeUnitNearPosition: the unit takes the position, or the first of the eight tiles around it (a large friend on the
     /// tile pushes them out by a tile) that no wall closes off and where it fits; a flying unit may take the tile above. Returns whether it was placed.
     /// </summary>
-    internal bool PlaceUnitNearPosition(RuntimeRuleCatalog rules, BattleUnit unit, BattlePosition entry, bool largeFriend)
+    internal bool PlaceUnitNearPosition(BattleUnit unit, BattlePosition entry, bool largeFriend)
     {
         if (SetUnitPosition(unit, entry)) return true;
 
@@ -906,7 +904,7 @@ internal sealed partial class BattleState
             var target = new BattlePosition(entry.X + offset.X, entry.Y + offset.Y, entry.Z);
             if (!Contains(target)) continue;
             var middle = new BattlePosition(entry.X + offset.X / 2, entry.Y + offset.Y / 2, entry.Z);
-            pathfinder ??= new BattlePathfinder(this, rules);
+            pathfinder ??= new BattlePathfinder(this, RequiredRules);
             if (!pathfinder.IsBlockedDirection(unit, middle, direction) && SetUnitPosition(unit, target)) return true;
         }
         if (unit.MovementType == MovementTypeFly)

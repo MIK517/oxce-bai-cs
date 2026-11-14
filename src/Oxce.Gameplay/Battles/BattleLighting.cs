@@ -105,10 +105,10 @@ internal sealed partial class BattleState
     /// <c>oxceTogglePersonalLightType</c> 1 does), and the units' light is recomputed, then every unit's field of view (a unit sees
     /// others by their tiles' light).
     /// </summary>
-    internal void TogglePersonalLighting(RuntimeRuleCatalog rules)
+    internal void TogglePersonalLighting()
     {
         TogglePersonalLight = !TogglePersonalLight;
-        CalculateLighting(rules, BattleLightLayer.Units);
+        CalculateLighting(BattleLightLayer.Units);
         Sight().RecalculateFov();
         MarkChanged();
     }
@@ -118,11 +118,10 @@ internal sealed partial class BattleState
     /// radius plus the light distance are recomputed; <paramref name="terrainChanged"/> first refreshes the blockage cache within the
     /// event radius plus one (the whole map without a position).
     /// </summary>
-    internal void CalculateLighting(RuntimeRuleCatalog rules, BattleLightLayer layer, BattlePosition? position = null, int eventRadius = 0,
+    internal void CalculateLighting(BattleLightLayer layer, BattlePosition? position = null, int eventRadius = 0,
         bool terrainChanged = false)
     {
-        ArgumentNullException.ThrowIfNull(rules);
-        var settings = rules.Campaign;
+        var settings = RequiredRules.Campaign;
         var whole = Map.Area;
         var dynamic = whole;
         var @static = whole;
@@ -137,9 +136,9 @@ internal sealed partial class BattleState
         var from = (BattleLightLayer)Math.Max((int)layer, (int)BattleLightLayer.Items);
         foreach (var tile in TilesIn(dynamic)) Map.ResetLightMulti(tile, from);
         if (layer <= BattleLightLayer.Ambient) CalculateSunShading(@static);
-        if (layer <= BattleLightLayer.Fire) CalculateTerrainBackground(@static, rules);
-        if (layer <= BattleLightLayer.Items) CalculateTerrainItems(dynamic, rules);
-        if (layer <= BattleLightLayer.Units) CalculateUnitLighting(dynamic, rules);
+        if (layer <= BattleLightLayer.Fire) CalculateTerrainBackground(@static);
+        if (layer <= BattleLightLayer.Items) CalculateTerrainItems(dynamic);
+        if (layer <= BattleLightLayer.Units) CalculateUnitLighting(dynamic);
     }
 
     /// <summary>TileEngine.cpp's iterateTiles: the tiles of a subset on every level, level by level, row by row.</summary>
@@ -205,9 +204,9 @@ internal sealed partial class BattleState
     }
 
     /// <summary>TileEngine::calculateTerrainBackground: light sources in the terrain and fires.</summary>
-    private void CalculateTerrainBackground(BattleMapSubset area, RuntimeRuleCatalog rules)
+    private void CalculateTerrainBackground(BattleMapSubset area)
     {
-        var maxStatic = rules.Campaign.MaximumStaticLightDistance;
+        var maxStatic = RequiredRules.Campaign.MaximumStaticLightDistance;
         foreach (var tile in TilesIn(area.Expand(maxStatic - 1)))
         {
             var light = 0;
@@ -215,7 +214,7 @@ internal sealed partial class BattleState
                 if (Map.MapData(tile, part) is { } data) light = Math.Max(light, data.LightSource);
             if (Map.Fire(tile) != 0) light = Math.Max(light, FireLightPower);
             if (light >= maxStatic) light = maxStatic - 1;
-            AddLight(area, Map.PositionOf(tile), light, BattleLightLayer.Fire, rules);
+            AddLight(area, Map.PositionOf(tile), light, BattleLightLayer.Fire);
         }
     }
 
@@ -223,22 +222,22 @@ internal sealed partial class BattleState
     /// TileEngine::calculateTerrainItems: the glow of flares lying on the ground and the fire of burning units lying as items. A
     /// flare's glow range is its power bonus (<see cref="GlowRange"/>).
     /// </summary>
-    private void CalculateTerrainItems(BattleMapSubset area, RuntimeRuleCatalog rules)
+    private void CalculateTerrainItems(BattleMapSubset area)
     {
-        var maxDynamic = rules.Campaign.MaximumDynamicLightDistance;
+        var maxDynamic = RequiredRules.Campaign.MaximumDynamicLightDistance;
         var glow = new int[Map.TileCount];
         foreach (var item in _items)
         {
             if (item.Tile is not { } at || item.Slot != GroundSlot || !Map.Contains(at)) continue;
             var tile = Map.TileIndex(at);
-            if (GlowRange(rules, item) is { } range) glow[tile] = Math.Max(glow[tile], range);
+            if (GlowRange(item) is { } range) glow[tile] = Math.Max(glow[tile], range);
             if (IsBurningBody(item)) glow[tile] = Math.Max(glow[tile], StunnedFireLightPower);
         }
         foreach (var tile in TilesIn(area.Expand(maxDynamic - 1)))
         {
             var light = glow[tile];
             if (light >= maxDynamic) light = maxDynamic - 1;
-            AddLight(area, Map.PositionOf(tile), light, BattleLightLayer.Items, rules);
+            AddLight(area, Map.PositionOf(tile), light, BattleLightLayer.Items);
         }
     }
 
@@ -248,12 +247,12 @@ internal sealed partial class BattleState
     /// last, would get it. A damage bonus written as code is not run (the briefing refuses such a battle, Phase 7 branch 8): the power stands.
     /// Null when the item does not glow.
     /// </summary>
-    private int? GlowRange(RuntimeRuleCatalog rules, BattleItem item)
+    private int? GlowRange(BattleItem item)
     {
-        if (!rules.Items.TryGet(item.ItemType, out var handle)) return null;
-        var rule = rules.Items[handle].Value;
+        if (!RequiredRules.Items.TryGet(item.ItemType, out var handle)) return null;
+        var rule = RequiredRules.Items[handle].Value;
         if (rule.BattleType != FlareBattleType) return null;
-        var equipment = rules.Battle.Equipment.Items[item.ItemType];
+        var equipment = RequiredRules.Battle.Equipment.Items[item.ItemType];
         var glows = equipment.FuseTrigger.DefaultBehavior && equipment.FuseType == NoFuseType || item.FuseEnabled && item.FuseTimer >= 0;
         if (!glows) return null;
         var bonus = equipment.Combat.StatBonuses.Damage;
@@ -266,16 +265,16 @@ internal sealed partial class BattleState
     private bool IsBurningBody(BattleItem item) => item.CorpseUnitId is { } corpse && UnitById(corpse) is { Fire: not 0 };
 
     /// <summary>TileEngine::calculateUnitLighting: personal light, hand-held flares and fire of the units that are not out.</summary>
-    private void CalculateUnitLighting(BattleMapSubset area, RuntimeRuleCatalog rules)
+    private void CalculateUnitLighting(BattleMapSubset area)
     {
-        var maxDynamic = rules.Campaign.MaximumDynamicLightDistance;
+        var maxDynamic = RequiredRules.Campaign.MaximumDynamicLightDistance;
         foreach (var unit in _units)
         {
             if (unit.IsOut || unit.Position is not { } position || !Map.Contains(position)) continue;
             var light = 0;
-            if (rules.Armors.TryGet(unit.ArmorId, out var armorHandle))
+            if (RequiredRules.Armors.TryGet(unit.ArmorId, out var armorHandle))
             {
-                var vision = rules.Armors[armorHandle].Value.Vision;
+                var vision = RequiredRules.Armors[armorHandle].Value.Vision;
                 light = Math.Max(light, unit.Faction switch
                 {
                     BattleFaction.Player => TogglePersonalLight ? vision.PersonalLight : 0,
@@ -286,13 +285,13 @@ internal sealed partial class BattleState
             foreach (var weapon in (ReadOnlySpan<BattleItem?>)[HandWeapon(unit, LeftHand), HandWeapon(unit, RightHand)])
             {
                 if (weapon is null) continue;
-                if (GlowRange(rules, weapon) is { } range) light = Math.Max(light, range);
+                if (GlowRange(weapon) is { } range) light = Math.Max(light, range);
                 if (IsBurningBody(weapon)) light = Math.Max(light, StunnedFireLightPower);
             }
             if (unit.Fire != 0) light = Math.Max(light, FireLightPower);
             if (light >= maxDynamic) light = maxDynamic - 1;
             foreach (var covered in BattleMap.Footprint(position, unit.ArmorSize))
-                AddLight(area, covered, light, BattleLightLayer.Units, rules);
+                AddLight(area, covered, light, BattleLightLayer.Units);
         }
     }
 
@@ -301,10 +300,10 @@ internal sealed partial class BattleState
     /// the enhanced mode (<c>lighting: enhanced</c> bits 1 fire, 2 items, 4 units for that layer) traces two lines of voxels from the
     /// source to every tile, which walls, smoke, fire and low objects dim or stop.
     /// </summary>
-    private void AddLight(BattleMapSubset area, BattlePosition center, int power, BattleLightLayer layer, RuntimeRuleCatalog rules)
+    private void AddLight(BattleMapSubset area, BattlePosition center, int power, BattleLightLayer layer)
     {
         if (power <= 0 || !Map.Contains(center)) return;
-        var settings = rules.Campaign;
+        var settings = RequiredRules.Campaign;
         var fire = layer == BattleLightLayer.Fire;
         var items = layer == BattleLightLayer.Items;
         var units = layer == BattleLightLayer.Units;

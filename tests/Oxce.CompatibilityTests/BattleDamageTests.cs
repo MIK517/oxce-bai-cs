@@ -72,7 +72,7 @@ public sealed class BattleDamageTests
 
     internal static BattleDamageResult Hurt(Arena arena, int damage, RuntimeItemDamageRule type, BattlePosition? relative = null, BattleAttack? attack = null,
         BattleUnit? victim = null, int side = -1, int part = -1) =>
-        arena.Battle.DamageUnit(arena.Rules, victim ?? arena.Alien, relative ?? Front, damage, type, attack ?? new BattleAttack(BattleActionType.None), side, part);
+        arena.Battle.DamageUnit(victim ?? arena.Alien, relative ?? Front, damage, type, attack ?? new BattleAttack(BattleActionType.None), side, part);
 
     // ---- the side and the body part ----
 
@@ -292,7 +292,7 @@ public sealed class BattleDamageTests
         var refusal = Hurt(arena, 1000, With(static type => type with { IgnoreOverKill = false })).Refusal;
         // Four times the maximum health below zero is the floor; the unit is past the threshold, which the casualty check (S4) resolves.
         Assert.Equal((-400, null), (arena.Alien.Health, refusal?.Code));
-        Assert.Equal(350, BattleState.OverKillDamage(arena.Rules, arena.Alien));
+        Assert.Equal(350, arena.Battle.OverKillDamage(arena.Alien));
         arena = Duel();
         Hurt(arena, 1000, Plain);
         Assert.Equal(0, arena.Alien.Health);
@@ -619,9 +619,9 @@ public sealed class BattleDamageTests
         arena.Alien.StunLevel = 100;
         Assert.Null(Hurt(arena, 10, Plain).Refusal);
         Assert.Equal(90, arena.Alien.Health);
-        Assert.Empty(arena.Battle.CheckForCasualties(arena.Rules, null, default));
+        Assert.Empty(arena.Battle.CheckForCasualties(null, default));
         Hurt(arena, 500, Plain);
-        Assert.Equal(BattleUnitStatus.Dead, Assert.Single(arena.Battle.CheckForCasualties(arena.Rules, null, default)).Status);
+        Assert.Equal(BattleUnitStatus.Dead, Assert.Single(arena.Battle.CheckForCasualties(null, default)).Status);
     }
 
     [Fact]
@@ -653,7 +653,7 @@ public sealed class BattleDamageTests
         arena.Put(12, 12, 0, BattleTilePart.Floor, BurnFloor);
         arena.Battle.AddItemOnTile(new BattleItem(arena.Battle.TakeItemId(), "GRENADE") { CorpseUnitId = arena.Alien.Id }, new BattlePosition(12, 12, 0));
         // The effect itself (gravity, light and sight refresh) has no observable result on this map; the path must run and spare the floor.
-        Assert.Null(arena.Battle.Hit(arena.Rules, attack, Voxel(12, 12, 0), 30, Flat100, false));
+        Assert.Null(arena.Battle.Hit(attack, Voxel(12, 12, 0), 30, Flat100, false));
         Assert.Equal(70, arena.Alien.Health);
     }
 
@@ -662,18 +662,18 @@ public sealed class BattleDamageTests
     {
         var arena = Duel();
         var (attack, _, _) = Shot(arena);
-        Assert.False(arena.Battle.HitUnit(arena.Rules, attack, null, Front, 10, Plain, true).Hit);
+        Assert.False(arena.Battle.HitUnit(attack, null, Front, 10, Plain, true).Hit);
         arena.Alien.Health = 0;
-        Assert.False(arena.Battle.HitUnit(arena.Rules, attack, arena.Alien, Front, 10, Plain, true).Hit);
+        Assert.False(arena.Battle.HitUnit(attack, arena.Alien, Front, 10, Plain, true).Hit);
         Assert.Equal(0, arena.Alien.MurdererId);
         arena.Alien.Health = 100;
-        Assert.True(arena.Battle.HitUnit(arena.Rules, attack, arena.Alien, Front, 10, Plain, true).Hit);
+        Assert.True(arena.Battle.HitUnit(attack, arena.Alien, Front, 10, Plain, true).Hit);
         Assert.Equal((arena.Soldier.Id, "GUN", "CLIP"), (arena.Alien.MurdererId, arena.Alien.MurdererWeapon, arena.Alien.MurdererWeaponAmmo));
         // A hit with no weapon names the unknown one.
-        arena.Battle.HitUnit(arena.Rules, new BattleAttack(BattleActionType.None, arena.Soldier), arena.Alien, Front, 10, Plain, false);
+        arena.Battle.HitUnit(new BattleAttack(BattleActionType.None, arena.Soldier), arena.Alien, Front, 10, Plain, false);
         Assert.Equal(("STR_WEAPON_UNKNOWN", "STR_WEAPON_UNKNOWN"), (arena.Alien.MurdererWeapon, arena.Alien.MurdererWeaponAmmo));
         // A hit with no attacker (the environment) leaves the murderer.
-        arena.Battle.HitUnit(arena.Rules, new BattleAttack(BattleActionType.None), arena.Alien, Front, 10, Plain, false);
+        arena.Battle.HitUnit(new BattleAttack(BattleActionType.None), arena.Alien, Front, 10, Plain, false);
         Assert.Equal(arena.Soldier.Id, arena.Alien.MurdererId);
     }
 
@@ -686,18 +686,18 @@ public sealed class BattleDamageTests
         arena.Alien.MurdererWeapon = "OLD";
         arena.Alien.Fire = 2;
         // No health lost (a smoke grenade): a burning victim keeps its murderer; wounds also keep it.
-        arena.Battle.HitUnit(arena.Rules, attack, arena.Alien, Front, 0, Plain, true);
+        arena.Battle.HitUnit(attack, arena.Alien, Front, 0, Plain, true);
         Assert.Equal((77, "OLD"), (arena.Alien.MurdererId, arena.Alien.MurdererWeapon));
         arena.Alien.Fire = 0;
         arena.Alien.FatalWounds[BattleUnit.BodyPartTorso] = 1;
-        arena.Battle.HitUnit(arena.Rules, attack, arena.Alien, Front, 0, Plain, true);
+        arena.Battle.HitUnit(attack, arena.Alien, Front, 0, Plain, true);
         Assert.Equal(77, arena.Alien.MurdererId);
         // A hit that does hurt takes the credit, and so does a harmless one on a healthy victim.
-        arena.Battle.HitUnit(arena.Rules, attack, arena.Alien, Front, 5, Plain, true);
+        arena.Battle.HitUnit(attack, arena.Alien, Front, 5, Plain, true);
         Assert.Equal(arena.Soldier.Id, arena.Alien.MurdererId);
         arena.Alien.MurdererId = 77;
         arena.Alien.FatalWounds[BattleUnit.BodyPartTorso] = 0;
-        arena.Battle.HitUnit(arena.Rules, attack, arena.Alien, Front, 0, Plain, true);
+        arena.Battle.HitUnit(attack, arena.Alien, Front, 0, Plain, true);
         Assert.Equal(arena.Soldier.Id, arena.Alien.MurdererId);
     }
 
@@ -724,7 +724,7 @@ public sealed class BattleDamageTests
         $"b{unit.Experience.Bravery} r{unit.Experience.Reactions} f{unit.Experience.Firing} t{unit.Experience.Throwing} s{unit.Experience.PsiSkill} p{unit.Experience.PsiStrength} m{unit.Experience.Melee} a{unit.Experience.Mana}";
 
     private static void Strike(Arena arena, BattleAttack attack, bool range = true, BattleUnit? target = null) =>
-        arena.Battle.HitUnit(arena.Rules, attack, target ?? arena.Alien, Front, 10, Plain, range);
+        arena.Battle.HitUnit(attack, target ?? arena.Alien, Front, 10, Plain, range);
 
     [Fact]
     public void AnXcomShooterEarnsFiringExperienceForAHitOnAnAlienAndAGunButtMeleeExperience()
@@ -894,15 +894,15 @@ public sealed class BattleDamageTests
         var arena = Duel();
         var (attack, _, _) = Shot(arena);
         // The alien is at (15, 10) facing west; the voxel is 6 west of its centre and 6 up: the front, the torso.
-        Assert.Null(arena.Battle.Hit(arena.Rules, attack, new BattlePosition(15 * 16 + 6, 10 * 16 + 8, 6), 30, Flat100, true));
+        Assert.Null(arena.Battle.Hit(attack, new BattlePosition(15 * 16 + 6, 10 * 16 + 8, 6), 30, Flat100, true));
         Assert.Equal((70, BattleUnit.SideFront, BattleUnit.BodyPartTorso), (arena.Alien.Health, arena.Alien.FatalShotSide, arena.Alien.FatalShotBodyPart));
         Assert.Equal(arena.Soldier.Id, arena.Alien.MurdererId);
         // From the north, near the top: the right side, the arm (the head is above the unit's 22 voxels).
-        arena.Battle.Hit(arena.Rules, attack, new BattlePosition(15 * 16 + 8, 10 * 16 + 6, 21), 30, Flat100, true);
+        arena.Battle.Hit(attack, new BattlePosition(15 * 16 + 8, 10 * 16 + 6, 21), 30, Flat100, true);
         Assert.Equal((BattleUnit.SideRight, BattleUnit.BodyPartRightArm), (arena.Alien.FatalShotSide, arena.Alien.FatalShotBodyPart));
         // The attacker itself in the voxel is not hit.
         var own = arena.Soldier.Health;
-        arena.Battle.Hit(arena.Rules, attack, new BattlePosition(10 * 16 + 8, 10 * 16 + 8, 6), 30, Flat100, true);
+        arena.Battle.Hit(attack, new BattlePosition(10 * 16 + 8, 10 * 16 + 8, 6), 30, Flat100, true);
         Assert.Equal(own, arena.Soldier.Health);
     }
 
@@ -916,7 +916,7 @@ public sealed class BattleDamageTests
         var alienAttack = new BattleAttack(BattleActionType.None, arena.Alien);
         arena.Battle.Random = new ScriptedDraws(4);
         // 2 west of its centre and 27 up (3 into the upper tile): relative z 27 - 24 = 3, low on the body; from the west it is its rear (it faces east).
-        arena.Battle.Hit(arena.Rules, alienAttack, new BattlePosition(10 * 16 + 6, 10 * 16 + 8, 27), 30, Flat100, true);
+        arena.Battle.Hit(alienAttack, new BattlePosition(10 * 16 + 6, 10 * 16 + 8, 27), 30, Flat100, true);
         Assert.Equal((70, BattleUnit.SideRear, BattleUnit.BodyPartRightLeg), (arena.Soldier.Health, arena.Soldier.FatalShotSide, arena.Soldier.FatalShotBodyPart));
     }
 
@@ -930,7 +930,7 @@ public sealed class BattleDamageTests
         // Its origin tile is at (15, 10): the center is 16 voxels into it. The voxel is 5 west and 5 north of that, in the pillar of the first tile: a diagonal
         // hit (measured from a tile's own center it would come from the south-east), which the draw below 2 puts on the front.
         arena.Battle.Random = new ScriptedDraws(0);
-        arena.Battle.Hit(arena.Rules, new BattleAttack(BattleActionType.None, arena.Soldier), new BattlePosition(15 * 16 + 11, 10 * 16 + 11, 10), 30, Flat100, true);
+        arena.Battle.Hit(new BattleAttack(BattleActionType.None, arena.Soldier), new BattlePosition(15 * 16 + 11, 10 * 16 + 11, 10), 30, Flat100, true);
         Assert.Equal((70, BattleUnit.SideFront), (big.Health, big.FatalShotSide));
     }
 
@@ -942,15 +942,15 @@ public sealed class BattleDamageTests
         arena.Put(12, 12, 0, BattleTilePart.Floor, BurnFloor);
         arena.Battle.AddItemOnTile(new BattleItem(arena.Battle.TakeItemId(), "CORPSE") { CorpseUnitId = arena.Alien.Id }, new BattlePosition(12, 12, 0));
         var tile = arena.Tile(12, 12);
-        Assert.Null(arena.Battle.Hit(arena.Rules, attack, Voxel(12, 12, 0), 30, Flat100, false));
+        Assert.Null(arena.Battle.Hit(attack, Voxel(12, 12, 0), 30, Flat100, false));
         // The body was hit from straight below (relative 0): the under side; the floor neither burns nor breaks.
         Assert.Equal((70, BattleUnit.SideUnder), (arena.Alien.Health, arena.Alien.FatalShotSide));
-        Assert.Null(arena.Battle.Hit(arena.Rules, attack, Voxel(12, 12, 0), 30, BattleDamageTypes.Fire, false));
+        Assert.Null(arena.Battle.Hit(attack, Voxel(12, 12, 0), 30, BattleDamageTypes.Fire, false));
         Assert.Equal(0, arena.Map.Fire(tile));
         Assert.NotNull(arena.Map.MapData(tile, BattleTilePart.Floor));
         // A dead body is not hit: the terrain is.
         arena.Alien.Health = 0;
-        Assert.Null(arena.Battle.Hit(arena.Rules, attack, Voxel(12, 12, 0), 30, BattleDamageTypes.Fire, false));
+        Assert.Null(arena.Battle.Hit(attack, Voxel(12, 12, 0), 30, BattleDamageTypes.Fire, false));
         Assert.True(arena.Map.Fire(tile) > 0);
     }
 
@@ -960,7 +960,7 @@ public sealed class BattleDamageTests
         var arena = Duel();
         var (attack, _, _) = Shot(arena);
         var voxel = new BattlePosition(15 * 16 + 6, 10 * 16 + 8, 6);
-        Assert.Null(arena.Battle.Hit(arena.Rules, attack, voxel, 500, Flat100, true));
+        Assert.Null(arena.Battle.Hit(attack, voxel, 500, Flat100, true));
         Assert.Equal((0, BattleUnitStatus.Standing), (arena.Alien.Health, arena.Alien.Status));
     }
 
@@ -973,7 +973,7 @@ public sealed class BattleDamageTests
         var revision = arena.Battle.Revision;
         // DT_IN: a fire threshold of zero; whatever the burn roll, a unit that is not resistant catches fire for 0 to 5 turns, and the effect refreshes the light.
         arena.Battle.Random = new ScriptedDraws(0, 4);
-        Assert.Null(arena.Battle.Hit(arena.Rules, attack, voxel, 30, BattleDamageTypes.Fire, false));
+        Assert.Null(arena.Battle.Hit(attack, voxel, 30, BattleDamageTypes.Fire, false));
         Assert.True(arena.Alien.Health < 100);
         Assert.True(arena.Battle.Revision >= revision);
     }
@@ -986,7 +986,7 @@ public sealed class BattleDamageTests
         arena.Battle.SetTile(arena.Alien, new BattlePosition(14, 12, 0));
         arena.Put(14, 12, 0, BattleTilePart.Floor, Floor);
         var voxel = new BattlePosition(14 * 16 + 8, 12 * 16 + 8, 6);
-        Assert.Null(arena.Battle.HitTerrain(arena.Rules, arena.Soldier, voxel, 30, BattleDamageTypes.Fire));
+        Assert.Null(arena.Battle.HitTerrain(arena.Soldier, voxel, 30, BattleDamageTypes.Fire));
         Assert.True(arena.Alien.Health < 100);
         Assert.Equal(arena.Soldier.Id, arena.Alien.MurdererId);
         // The soldier who burns is an X-COM attacker with no weapon: no experience, and the murderer's weapon is unknown.

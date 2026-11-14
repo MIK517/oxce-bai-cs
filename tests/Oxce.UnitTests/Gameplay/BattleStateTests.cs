@@ -75,4 +75,13 @@ public sealed class BattleStateTests
         var battle = new BattleState("STR_UFO_CRASH_RECOVERY", "STR_SMALL_SCOUT", new BattleMap(10, 10, 1), 0, 0, 20) { Depth = depth };
         Assert.Equal(expected, battle.MovementType(new RuntimeArmorRule(0, 1, 1, "", null) { MovementType = armorMovement }));
     }
+
+    [Fact]
+    public void ABattleBuiltWithoutRulesRefusesARuleThatReadsThem()
+    {
+        var battle = new BattleState("STR_UFO_CRASH_RECOVERY", "STR_SMALL_SCOUT", new BattleMap(10, 10, 1), 0, 0, 20);
+        Assert.Null(battle.Rules);
+        var thrown = Assert.Throws<InvalidOperationException>(() => battle.RequiredRules);
+        Assert.Equal("The battle has no rules.", thrown.Message);
+    }
 }

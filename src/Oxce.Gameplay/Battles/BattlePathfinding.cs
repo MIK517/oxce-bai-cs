@@ -439,7 +439,7 @@ internal sealed class BattlePathfinder
                 maskOfPartsGoingUp |= maskCurrentPart;
             else if (direction < Up && !fly && belowDestination[i] >= 0 && CanFallDown(destinationTile[i]) && _map.TerrainLevel(belowDestination[i]) <= -12)
                 maskOfPartsGoingDown |= maskCurrentPart;
-            else if (fly && _battle.OverlappingUnit(_rules, destinationTile[i], BattleState.OverlapIgnoreSmall) is { } overlapping)
+            else if (fly && _battle.OverlappingUnit(destinationTile[i], BattleState.OverlapIgnoreSmall) is { } overlapping)
             {
                 // 2 or more voxels poking into this tile = no go
                 if (overlapping != unit && KnowsOf(unit, overlapping, friends: !IgnoreFriends)) return Invalid;

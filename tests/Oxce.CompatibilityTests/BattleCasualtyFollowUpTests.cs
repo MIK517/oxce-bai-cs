@@ -47,7 +47,7 @@ public sealed class BattleCasualtyFollowUpTests
             arena.Battle.UpdateTileFloorState(faller);
             arena.Battle.AddFallingUnit(faller);
         }
-        Assert.Null(arena.Battle.ResolveFalls(arena.Rules));
+        Assert.Null(arena.Battle.ResolveFalls());
         Assert.Equal([BattleUnitStatus.Unconscious, BattleUnitStatus.Unconscious], [victim1.Status, victim2.Status]);
         var body1 = Assert.Single(arena.Battle.Items, item => item.CorpseUnitId == victim1.Id);
         var body2 = Assert.Single(arena.Battle.Items, item => item.CorpseUnitId == victim2.Id);
@@ -67,7 +67,7 @@ public sealed class BattleCasualtyFollowUpTests
         grenade.Slot = "STR_LEFT_HAND";
         grenade.Tile = null;
         var special = arena.Battle.Items.Where(item => soldier.SpecialWeaponIds.Contains(item.Id)).ToArray();
-        arena.Battle.ItemDropInventory(arena.Rules, At(10, 10), soldier, deleteFixedItems: true);
+        arena.Battle.ItemDropInventory(At(10, 10), soldier, deleteFixedItems: true);
         Assert.DoesNotContain(gun, arena.Battle.Items);
         Assert.Equal((At(10, 10), "STR_GROUND", null, false), (clip.Tile, clip.Slot, gun.AmmoSlots[0], clip.IsAmmo));
         Assert.Equal((At(10, 10), null), (grenade.Tile, grenade.OwnerUnitId));
@@ -77,7 +77,7 @@ public sealed class BattleCasualtyFollowUpTests
         // Without it the fixed weapon stays with its owner and the rest is dropped.
         var keep = Duel(gun: "fixedWeapon: true");
         var (_, fixedGun, _) = Shot(keep);
-        keep.Battle.ItemDropInventory(keep.Rules, At(10, 10), keep.Soldier, deleteFixedItems: false);
+        keep.Battle.ItemDropInventory(At(10, 10), keep.Soldier, deleteFixedItems: false);
         Assert.Equal((keep.Soldier.Id, null), (fixedGun.OwnerUnitId, fixedGun.Tile));
     }
 
@@ -89,7 +89,7 @@ public sealed class BattleCasualtyFollowUpTests
         var club = new BattleItem(arena.Battle.TakeItemId(), "GRENADE");
         arena.Battle.AddItem(club);
         arena.Alien.Health = 0;
-        arena.Battle.CheckForCasualties(arena.Rules, null, new BattleAttack(BattleActionType.Hit, arena.Soldier, gun, club));
+        arena.Battle.CheckForCasualties(null, new BattleAttack(BattleActionType.Hit, arena.Soldier, gun, club));
         Assert.Equal("GRENADE", Assert.Single(arena.Soldier.Statistics.Kills).WeaponAmmo);
     }
 
@@ -108,7 +108,7 @@ public sealed class BattleCasualtyFollowUpTests
         arena.Map.SetUnitAt(arena.Tile(4, 4), null);
         carried.Position = null;
         carried.Status = BattleUnitStatus.Unconscious;
-        Assert.Null(arena.Battle.ConvertUnit(arena.Rules, carried));
+        Assert.Null(arena.Battle.ConvertUnit(carried));
         Assert.Equal((units + 1, BattleUnitStatus.Dead), (arena.Battle.Units.Count, carried.Status));
         Assert.DoesNotContain(body, arena.Battle.Items);
 
@@ -117,16 +117,16 @@ public sealed class BattleCasualtyFollowUpTests
         crowded.SpawnUnit = "ALIEN";
         Extra(arena, 982, BattleFaction.Hostile, 7, 6, armor: "SMALL_VEHICLE_ARMOR");
         var count = arena.Battle.Units.Count;
-        Assert.Null(arena.Battle.ConvertUnit(arena.Rules, crowded));
+        Assert.Null(arena.Battle.ConvertUnit(crowded));
         var edge = Extra(arena, 983, BattleFaction.Hostile, 29, 29, armor: "SMALL_VEHICLE_ARMOR");
         edge.SpawnUnit = "ALIEN";
-        Assert.Null(arena.Battle.ConvertUnit(arena.Rules, edge));
+        Assert.Null(arena.Battle.ConvertUnit(edge));
         Assert.Equal((count + 1, BattleUnitStatus.Dead), (arena.Battle.Units.Count, edge.Status));
 
         // With room the big unit takes the place.
         var roomy = Extra(arena, 984, BattleFaction.Hostile, 20, 20, armor: "SMALL_VEHICLE_ARMOR");
         roomy.SpawnUnit = "ALIEN";
-        var spawned = arena.Battle.ConvertUnit(arena.Rules, roomy);
+        var spawned = arena.Battle.ConvertUnit(roomy);
         Assert.Equal((At(20, 20), 2), (spawned!.Position, spawned.ArmorSize));
     }
 
@@ -144,7 +144,7 @@ public sealed class BattleCasualtyFollowUpTests
         var id = 991;
         foreach (var (dx, dy) in new[] { (0, 0), (0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1) })
             Extra(arena, id++, BattleFaction.Hostile, 20 + dx, 20 + dy);
-        arena.Battle.ReviveUnconsciousUnits(arena.Rules, noTU: true);
+        arena.Battle.ReviveUnconsciousUnits(noTU: true);
         Assert.Equal((BattleUnitStatus.Standing, At(20, 20, 1)), (sleeper.Status, sleeper.Position));
         Assert.DoesNotContain(body, arena.Battle.Items);
     }

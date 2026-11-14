@@ -49,7 +49,7 @@ public sealed class BattleLightingTests
         public void Put(int x, int y, int z, BattleTilePart part, int id) => Place(Battle, new BattlePosition(x, y, z), part, id);
 
         /// <summary>Recomputes everything, as generation does.</summary>
-        public void Relight() => Battle.CalculateLighting(Rules, BattleLightLayer.Ambient, null, 0, true);
+        public void Relight() => Battle.CalculateLighting(BattleLightLayer.Ambient, null, 0, true);
 
         public int Shade(int x, int y, int z = 0) => Battle.TileShade(new BattlePosition(x, y, z));
 
@@ -277,7 +277,7 @@ public sealed class BattleLightingTests
     {
         var arena = Flat();
         arena.Put(12, 10, 0, BattleTilePart.WestWall, WallLos);
-        arena.Battle.CalculateLighting(arena.Rules, BattleLightLayer.Fire, new BattlePosition(12, 10, 0), 1, terrainChanged: true);
+        arena.Battle.CalculateLighting(BattleLightLayer.Fire, new BattlePosition(12, 10, 0), 1, terrainChanged: true);
         var partial = Enumerable.Range(0, arena.Map.TileCount).Select(arena.Map.LightCache).ToArray();
         arena.Relight();
         Assert.Equal(Enumerable.Range(0, arena.Map.TileCount).Select(arena.Map.LightCache), partial);
@@ -375,7 +375,7 @@ public sealed class BattleLightingTests
         arena.Relight();
         Assert.Equal(15, arena.Shade(15, 15));
         fused.SetFuseTimer(2, arena.Rules.Battle.Equipment.Items["FLARE_FUSED"]);
-        arena.Battle.CalculateLighting(arena.Rules, BattleLightLayer.Items, fused.Tile);
+        arena.Battle.CalculateLighting(BattleLightLayer.Items, fused.Tile);
         Assert.Equal(9, arena.Shade(15, 15));
         // Anything else lying there does not glow.
         arena.Drop("GRENADE", 20, 20);
@@ -426,11 +426,11 @@ public sealed class BattleLightingTests
         // The soldier's own light is the armor's personal light (15), lost by a level per tile.
         Assert.Equal((0, 5, 15), (arena.Shade(25, 25), arena.Shade(25, 20), arena.Shade(10, 25)));
         var revision = arena.Battle.Revision;
-        arena.Battle.TogglePersonalLighting(arena.Rules);
+        arena.Battle.TogglePersonalLighting();
         Assert.False(arena.Battle.TogglePersonalLight);
         Assert.True(arena.Battle.Revision > revision);
         Assert.Equal((15, 15), (arena.Shade(25, 25), arena.Shade(25, 20)));
-        arena.Battle.TogglePersonalLighting(arena.Rules);
+        arena.Battle.TogglePersonalLighting();
         Assert.True(arena.Battle.TogglePersonalLight);
         Assert.Equal((0, 5), (arena.Shade(25, 25), arena.Shade(25, 20)));
         // The toggle only affects X-COM's units: a hostile unit's light is its armor's personal light for the hostile side and a neutral
@@ -721,18 +721,18 @@ public sealed class BattleLightingTests
         arena.Relight();
         // A flare lands, a lamp is built and the soldier catches fire: each is recomputed around its tile only.
         arena.Drop("FLARE", 20, 20);
-        arena.Battle.CalculateLighting(arena.Rules, BattleLightLayer.Items, new BattlePosition(20, 20, 0));
+        arena.Battle.CalculateLighting(BattleLightLayer.Items, new BattlePosition(20, 20, 0));
         arena.Put(5, 20, 0, BattleTilePart.ObjectPart, Lamp);
-        arena.Battle.CalculateLighting(arena.Rules, BattleLightLayer.Fire, new BattlePosition(5, 20, 0), 1, terrainChanged: true);
+        arena.Battle.CalculateLighting(BattleLightLayer.Fire, new BattlePosition(5, 20, 0), 1, terrainChanged: true);
         arena.Soldier.Fire = 2;
-        arena.Battle.CalculateLighting(arena.Rules, BattleLightLayer.Units, arena.Soldier.Position);
+        arena.Battle.CalculateLighting(BattleLightLayer.Units, arena.Soldier.Position);
         var partial = Shades(arena.Battle);
         // Both are capped at 5, one below the distance.
         Assert.Equal((10, 10, 10, 10), (arena.Shade(20, 20), arena.Shade(25, 25), arena.Shade(5, 20), arena.Shade(10, 10)));
         arena.Relight();
         Assert.Equal(Shades(arena.Battle), partial);
         // A recompute from the units layer leaves the other layers alone.
-        arena.Battle.CalculateLighting(arena.Rules, BattleLightLayer.Units);
+        arena.Battle.CalculateLighting(BattleLightLayer.Units);
         Assert.Equal(partial, Shades(arena.Battle));
     }
 

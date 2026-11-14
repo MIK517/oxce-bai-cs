@@ -305,9 +305,9 @@ public sealed class BattleTurnKneelTests
         // A unit over its out threshold (no health left) is no spotter either; the casualty check stops commands before that, so ask the state.
         var dying = Make();
         Arm(dying);
-        Assert.True(dying.Battle.HasPossibleReactor(dying.Rules, dying.Soldier));
+        Assert.True(dying.Battle.HasPossibleReactor(dying.Soldier));
         dying.Alien.Health = 0;
-        Assert.False(dying.Battle.HasPossibleReactor(dying.Rules, dying.Soldier));
+        Assert.False(dying.Battle.HasPossibleReactor(dying.Soldier));
         Assert.NotNull(gun);
     }
 
@@ -371,7 +371,7 @@ public sealed class BattleTurnKneelTests
             away.Alien.Ai = null;
             away.Forget();
             away.Alien.HitState = hit;
-            away.Battle.SpotMover(away.Rules, away.Battle.Sight(), away.Soldier);
+            away.Battle.SpotMover(away.Battle.Sight(), away.Soldier);
             Assert.Equal(hit, away.Alien.VisibleUnits.Contains(away.Soldier.Id));
             Assert.Equal(hit, away.Soldier.IsSpottedBy(BattleFaction.Hostile));
         }
@@ -380,10 +380,10 @@ public sealed class BattleTurnKneelTests
         remembering.Alien.SetDirection(2);
         remembering.Alien.Ai ??= new BattleAiState(BattleFaction.Hostile);
         remembering.Forget();
-        remembering.Battle.SpotMover(remembering.Rules, remembering.Battle.Sight(), remembering.Soldier);
+        remembering.Battle.SpotMover(remembering.Battle.Sight(), remembering.Soldier);
         Assert.Empty(remembering.Alien.VisibleUnits);
         remembering.Alien.Ai!.WasHitBy.Add(remembering.Soldier.Id);
-        remembering.Battle.SpotMover(remembering.Rules, remembering.Battle.Sight(), remembering.Soldier);
+        remembering.Battle.SpotMover(remembering.Battle.Sight(), remembering.Soldier);
         Assert.Equal([remembering.Soldier.Id], remembering.Alien.VisibleUnits);
     }
 
@@ -394,14 +394,14 @@ public sealed class BattleTurnKneelTests
         var walled = Make();
         walled.Put(12, 10, 0, BattleTilePart.ObjectPart, Wall);
         walled.See();
-        walled.Battle.SpotMover(walled.Rules, walled.Battle.Sight(), walled.Soldier);
+        walled.Battle.SpotMover(walled.Battle.Sight(), walled.Soldier);
         Assert.Empty(walled.Alien.VisibleUnits);
         Assert.False(walled.Soldier.IsSpottedBy(BattleFaction.Hostile));
         // A reaction score below the mover's filters it out.
         var slow = Make();
         slow.Forget();
         slow.Alien.TimeUnits = 1;
-        slow.Battle.SpotMover(slow.Rules, slow.Battle.Sight(), slow.Soldier);
+        slow.Battle.SpotMover(slow.Battle.Sight(), slow.Soldier);
         Assert.Empty(slow.Alien.VisibleUnits);
         // The extended melee reaction rule 2 lets a unit that was melee attacked see its attacker from any side.
         var melee = Make(rules => rules + "\nextendedMeleeReactions: 2\n");
@@ -409,14 +409,14 @@ public sealed class BattleTurnKneelTests
         melee.Alien.Ai = null;
         melee.Forget();
         melee.Alien.MeleeAttackedBy.Add(melee.Soldier.Id);
-        melee.Battle.SpotMover(melee.Rules, melee.Battle.Sight(), melee.Soldier);
+        melee.Battle.SpotMover(melee.Battle.Sight(), melee.Soldier);
         Assert.Equal([melee.Soldier.Id], melee.Alien.VisibleUnits);
         var plain = Make();
         plain.Alien.SetDirection(2);
         plain.Alien.Ai = null;
         plain.Forget();
         plain.Alien.MeleeAttackedBy.Add(plain.Soldier.Id);
-        plain.Battle.SpotMover(plain.Rules, plain.Battle.Sight(), plain.Soldier);
+        plain.Battle.SpotMover(plain.Battle.Sight(), plain.Soldier);
         Assert.Empty(plain.Alien.VisibleUnits);
     }
 
@@ -449,14 +449,14 @@ public sealed class BattleTurnKneelTests
         }
         Assert.True(found);
         Assert.True(alien.ReactionScore < soldier.ReactionScore);
-        Assert.True(arena.Battle.HasPossibleReactor(arena.Rules, soldier));
+        Assert.True(arena.Battle.HasPossibleReactor(soldier));
         // And its spotting happens: an unarmed one lists the soldier.
         var unarmed = Make();
         unarmed.Soldier.Stats = unarmed.Soldier.Stats with { Reactions = 47 };
         unarmed.Soldier.TimeUnits = soldier.TimeUnits;
         unarmed.Alien.TimeUnits = alien.TimeUnits;
         unarmed.Forget();
-        unarmed.Battle.SpotMover(unarmed.Rules, unarmed.Battle.Sight(), unarmed.Soldier);
+        unarmed.Battle.SpotMover(unarmed.Battle.Sight(), unarmed.Soldier);
         Assert.Equal([unarmed.Soldier.Id], unarmed.Alien.VisibleUnits);
     }
 
@@ -478,21 +478,21 @@ public sealed class BattleTurnKneelTests
     {
         var arena = Make(rules => Replaced(rules, GunText + "\n    tuSnap: 20", GunText + "\n    psiRequired: true\n    tuSnap: 20"));
         Arm(arena);
-        Assert.False(arena.Battle.HasPossibleReactor(arena.Rules, arena.Soldier));
+        Assert.False(arena.Battle.HasPossibleReactor(arena.Soldier));
         arena.Alien.Stats = arena.Alien.Stats with { PsiSkill = 10 };
-        Assert.True(arena.Battle.HasPossibleReactor(arena.Rules, arena.Soldier));
+        Assert.True(arena.Battle.HasPossibleReactor(arena.Soldier));
     }
 
     [Fact]
     public void ASpecialWeaponCountsAsAReactionWeapon()
     {
         var arena = Make(rules => Replaced(rules, "  - type: RAM\n    battleType: 3\n    clipSize: -1", "  - type: RAM\n    battleType: 3\n    clipSize: -1\n    tuMelee: 30"));
-        Assert.False(arena.Battle.HasPossibleReactor(arena.Rules, arena.Soldier));
+        Assert.False(arena.Battle.HasPossibleReactor(arena.Soldier));
         var ram = Hold(arena, arena.Alien, "RAM", "", special: true);
         ram.IsWeaponWithAmmo = true;
         ram.AmmoSlots[0] = ram.Id;
         ram.AmmoQuantity = 1;
-        Assert.True(arena.Battle.HasPossibleReactor(arena.Rules, arena.Soldier));
+        Assert.True(arena.Battle.HasPossibleReactor(arena.Soldier));
     }
 
     [Fact]
@@ -500,17 +500,17 @@ public sealed class BattleTurnKneelTests
     {
         var arena = Make();
         Arm(arena);
-        Assert.True(arena.Battle.HasPossibleReactor(arena.Rules, arena.Soldier));
+        Assert.True(arena.Battle.HasPossibleReactor(arena.Soldier));
         arena.Battle.Side = BattleFaction.Neutral;
-        Assert.False(arena.Battle.HasPossibleReactor(arena.Rules, arena.Soldier));
+        Assert.False(arena.Battle.HasPossibleReactor(arena.Soldier));
         // The alien's own side on turn: it is a friend of the side's mover, not a spotter.
         arena.Battle.Side = BattleFaction.Hostile;
-        Assert.False(arena.Battle.HasPossibleReactor(arena.Rules, arena.Soldier));
+        Assert.False(arena.Battle.HasPossibleReactor(arena.Soldier));
         // A civilian reacts only to a hostile unit that the AI does not ignore.
         arena.Battle.Side = BattleFaction.Player;
         arena.Alien.Faction = BattleFaction.Neutral;
-        Assert.False(arena.Battle.HasPossibleReactor(arena.Rules, arena.Soldier));
+        Assert.False(arena.Battle.HasPossibleReactor(arena.Soldier));
         arena.Soldier.Faction = BattleFaction.Hostile;
-        Assert.True(arena.Battle.HasPossibleReactor(arena.Rules, arena.Soldier));
+        Assert.True(arena.Battle.HasPossibleReactor(arena.Soldier));
     }
 }

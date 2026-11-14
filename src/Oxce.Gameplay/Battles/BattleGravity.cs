@@ -101,9 +101,8 @@ internal sealed partial class BattleState
     /// floor (the occupant <see cref="ApplyGravity"/> would add), before anything changes: null when the falls can run. The knock-outs of a fall
     /// are not tried (they refuse nothing).
     /// </summary>
-    internal CampaignReason? FallsRefusal(RuntimeRuleCatalog rules, BattleUnit? extra = null)
+    internal CampaignReason? FallsRefusal(BattleUnit? extra = null)
     {
-        ArgumentNullException.ThrowIfNull(rules);
         if (_fallingUnits.Count == 0 && extra is null) return null;
         var saved = new FallSnapshot(this);
         try
@@ -113,7 +112,7 @@ internal sealed partial class BattleState
                 UpdateTileFloorState(extra);
                 if (IsFloorlessWalker(extra)) AddFallingUnit(extra);
             }
-            return RunFalls(rules, dryRun: true);
+            return RunFalls(dryRun: true);
         }
         finally
         {
@@ -126,20 +125,19 @@ internal sealed partial class BattleState
     /// has its light and the sight of those who see it updated (and spots as <c>checkReactionFire</c> does). The commands check
     /// <see cref="FallsRefusal"/> first (or run this on a trial copy); a refusal returned here has left the falls half done.
     /// </summary>
-    internal CampaignReason? ResolveFalls(RuntimeRuleCatalog rules)
+    internal CampaignReason? ResolveFalls()
     {
-        ArgumentNullException.ThrowIfNull(rules);
         if (_fallingUnits.Count == 0) return null;
-        var refusal = RunFalls(rules, dryRun: false);
+        var refusal = RunFalls(dryRun: false);
         MarkChanged();
         return refusal;
     }
 
     /// <summary><see cref="ResolveFalls(RuntimeRuleCatalog)"/>, raising a <see cref="UnitFell"/> for each unit that ended elsewhere; <paramref name="moved"/> when any did.</summary>
-    internal CampaignReason? ResolveFalls(RuntimeRuleCatalog rules, out bool moved)
+    internal CampaignReason? ResolveFalls(out bool moved)
     {
         var before = _units.Select(static unit => (unit, unit.Position)).ToArray();
-        var refusal = ResolveFalls(rules);
+        var refusal = ResolveFalls();
         moved = false;
         foreach (var (unit, was) in before)
             if (unit.Position is { } now && was is { } from && now != from)
@@ -162,7 +160,7 @@ internal sealed partial class BattleState
             if (IsFloorlessWalker(unit)) AddFallingUnit(unit);
     }
 
-    private CampaignReason? RunFalls(RuntimeRuleCatalog rules, bool dryRun)
+    private CampaignReason? RunFalls(bool dryRun)
     {
         var tilesToFallInto = new List<int>();
         var unitsToMove = new List<BattleUnit>();
@@ -200,7 +198,7 @@ internal sealed partial class BattleState
                 }
                 else if (unit.Status == BattleUnitStatus.Standing)
                 {
-                    if (Land(rules, unit, dryRun) is { } refusal)
+                    if (Land(unit, dryRun) is { } refusal)
                     {
                         stop = refusal;
                         break;
@@ -218,30 +216,30 @@ internal sealed partial class BattleState
             {
                 var below = unitsToMove[0];
                 unitsToMove.RemoveAt(0);
-                pathfinder ??= new BattlePathfinder(this, rules);
+                pathfinder ??= new BattlePathfinder(this, RequiredRules);
                 if (FindEscape(pathfinder, below, tilesToFallInto, escapeTiles) is not { } escape)
                 {
                     // STOMP THAT GOOMBA!
-                    if (!dryRun) KnockOut(rules, below);
+                    if (!dryRun) KnockOut(below);
                     continue;
                 }
                 AddFallingUnit(below);
                 steps.Add((below, escape.Direction, escape.Destination));
             }
             // statePushNext puts every push right behind the running fall state, so a later round's deaths run before an earlier round's.
-            if (hadUnitsToMove && !dryRun) deaths.InsertRange(0, QueueCasualties(rules, null, default, statesQueued: true));
+            if (hadUnitsToMove && !dryRun) deaths.InsertRange(0, QueueCasualties(null, default, statesQueued: true));
 
             // The steps complete: the units that moved aside are ahead of those that fall, as the list orders them.
             foreach (var (unit, direction, destination) in steps.OrderBy(step => _fallingUnits.IndexOf(step.Unit)))
-                WalkStep(rules, unit, direction, destination);
+                WalkStep(unit, direction, destination);
         }
         if (dryRun) return stop;
-        RunDeaths(rules, deaths);
+        RunDeaths(deaths);
         // The explosions a unit that blows itself up pushed run behind the fall state.
         RunStates();
         if (TakeExplosionRefusal() is { } explosionRefusal) return explosionRefusal;
         // The falls the deaths start (a converted unit, a corpse over a hole) are a fall state of their own.
-        return stop ?? (_fallingUnits.Count != 0 ? RunFalls(rules, dryRun: false) : null);
+        return stop ?? (_fallingUnits.Count != 0 ? RunFalls(dryRun: false) : null);
     }
 
     private (int Direction, BattlePosition Destination)? FindEscape(BattlePathfinder pathfinder, BattleUnit unitBelow, List<int> tilesToFallInto,
@@ -280,11 +278,11 @@ internal sealed partial class BattleState
     }
 
     /// <summary>BattleUnit's <c>_specab</c>: the armor's, or when it has none the unit rule's (a soldier has no unit rule).</summary>
-    private static int SpecialAbilityOf(RuntimeRuleCatalog rules, BattleUnit unit)
+    private int SpecialAbilityOf(BattleUnit unit)
     {
-        var armor = ArmorOf(rules, unit).SpecialAbility;
+        var armor = ArmorOf(unit).SpecialAbility;
         if (armor != 0 || unit.SoldierId is not null) return armor;
-        return rules.Battle.Equipment.Units.TryGetValue(unit.UnitType, out var rule) ? rule.SpecialAbility : 0;
+        return RequiredRules.Battle.Equipment.Units.TryGetValue(unit.UnitType, out var rule) ? rule.SpecialAbility : 0;
     }
 
     /// <summary>
@@ -292,23 +290,23 @@ internal sealed partial class BattleState
     /// refuse; otherwise its light moves with it, everyone's sight of the area is updated, its own tiles are, and what
     /// <c>checkReactionFire</c> spots happens (a reactor refuses).
     /// </summary>
-    private CampaignReason? Land(RuntimeRuleCatalog rules, BattleUnit unit, bool dryRun)
+    private CampaignReason? Land(BattleUnit unit, bool dryRun)
     {
         var position = unit.Position!.Value;
         // If the unit burns floor tiles, burn floor tiles (a hole it burns leaves it standing: gravity queued it, and it leaves the list below).
-        if (BurnsFloor(rules, unit) && !dryRun && BurnFloor(rules, unit) is { } burnRefusal) return burnRefusal;
-        if (ProximityEffects(rules, unit)) return BattleGravityReasons.ProximityUnsupported;
+        if (BurnsFloor(unit) && !dryRun && BurnFloor(unit) is { } burnRefusal) return burnRefusal;
+        if (ProximityEffects(unit)) return BattleGravityReasons.ProximityUnsupported;
         var reacts = unit.Faction == Side;
         // The trial copies of the first turn run this too (not a dry run), so the reactor test is part of both.
-        if (reacts && HasPossibleReactor(rules, unit)) return BattleMovementReasons.ReactionFireUnsupported;
+        if (reacts && HasPossibleReactor(unit)) return BattleMovementReasons.ReactionFireUnsupported;
         if (dryRun) return null;
 
         // checkForProximityGrenades returned 0, so the units' light is what changes.
-        CalculateLighting(rules, BattleLightLayer.Units, position, 2);
+        CalculateLighting(BattleLightLayer.Units, position, 2);
         var sight = Sight();
         sight.CalculateFov(position, 2, updateTiles: false);
         sight.CalculateFov(unit, true, false);
-        if (reacts) SpotMover(rules, sight, unit);
+        if (reacts) SpotMover(sight, unit);
         return null;
     }
 
@@ -318,12 +316,12 @@ internal sealed partial class BattleState
     /// proximity grenade, <c>proximityExplode</c>)
     /// (<c>fuseProximityEvent</c> enables the fuse, may explode, or removes the item). Over-approximates: no chance is rolled.
     /// </summary>
-    private bool ProximityEffects(RuntimeRuleCatalog rules, BattleUnit unit)
+    private bool ProximityEffects(BattleUnit unit)
     {
         var position = unit.Position!.Value;
         foreach (var covered in BattleMap.Footprint(position, unit.ArmorSize))
             if (Contains(covered) && Map.FloorSpecialType(Map.TileIndex(covered)) is var special && special >= DeathTraps &&
-                rules.Items.TryGet($"STR_DEATH_TRAP_{special}", out _))
+                RequiredRules.Items.TryGet($"STR_DEATH_TRAP_{special}", out _))
                 return true;
         for (var x = -1; x <= unit.ArmorSize; x++)
             for (var y = -1; y <= unit.ArmorSize; y++)
@@ -332,9 +330,9 @@ internal sealed partial class BattleState
                 if (!Contains(around)) continue;
                 foreach (var item in ItemsOnTile(around))
                 {
-                    var trigger = rules.Battle.Equipment.Items[item.ItemType].FuseTrigger;
+                    var trigger = RequiredRules.Battle.Equipment.Items[item.ItemType].FuseTrigger;
                     if (trigger.ProximityTrigger || item.FuseEnabled && item.FuseTimer >= 0 &&
-                        (trigger.ProximityExplode || trigger.DefaultBehavior && ItemRuleOf(rules, item.ItemType).BattleType == ProximityGrenadeBattleType))
+                        (trigger.ProximityExplode || trigger.DefaultBehavior && ItemRuleOf(item.ItemType).BattleType == ProximityGrenadeBattleType))
                         return true;
                 }
             }

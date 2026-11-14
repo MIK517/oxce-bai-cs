@@ -94,7 +94,7 @@ internal sealed partial class BattleSight
 
         if (!excludeAllUnits)
         {
-            var unit = _battle.OverlappingUnit(_rules, tile);
+            var unit = _battle.OverlappingUnit(tile);
             if (unit is not null && !unit.IsOut && unit != excludeUnit && (excludeAllBut is null || unit == excludeAllBut) &&
                 (!onlyVisible || unit.IsVisibleToPlayer(_rules)) && unit.Position is { } unitPosition)
             {

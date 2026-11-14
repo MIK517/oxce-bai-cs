@@ -39,21 +39,21 @@ internal sealed partial class BattleState
     internal IEnumerable<BattleItem> ItemsOnTile(BattlePosition tile) =>
         _items.Where(item => item.Tile == tile && item.Slot == GroundSlot).OrderBy(static item => item.ArrivalOrder);
 
-    private static RuntimeBattleInventory? Section(RuntimeRuleCatalog rules, string id) =>
-        rules.Battle.Equipment.Inventories.FirstOrDefault(inventory => inventory.Id == id);
+    private RuntimeBattleInventory? Section(string id) =>
+        RequiredRules.Battle.Equipment.Inventories.FirstOrDefault(inventory => inventory.Id == id);
 
-    private static RuntimeBattleInventory? Ground(RuntimeRuleCatalog rules) =>
-        Section(rules, GroundSlot);
+    private RuntimeBattleInventory? Ground() =>
+        Section(GroundSlot);
 
     /// <summary>The inventory screen is open to a unit: after the briefing, in the battle on X-COM's turn, for a live X-COM unit on the map with an inventory.</summary>
-    internal CampaignReason? InventoryAvailable(RuntimeRuleCatalog rules, int unitId, out BattleUnit? unit)
+    internal CampaignReason? InventoryAvailable(int unitId, out BattleUnit? unit)
     {
         unit = null;
         if (Phase == BattlePhase.Briefing || Phase == BattlePhase.InProgress && Side != BattleFaction.Player)
             return BattleInventoryReasons.Unavailable;
         unit = _units.Find(candidate => candidate.Id == unitId);
         if (unit is null || unit.Faction != BattleFaction.Player || unit.IsOut || unit.Position is null ||
-            !rules.Battle.Equipment.Armors.TryGetValue(unit.ArmorId, out var armor) || !armor.HasInventory)
+            !RequiredRules.Battle.Equipment.Armors.TryGetValue(unit.ArmorId, out var armor) || !armor.HasInventory)
         {
             unit = null;
             return BattleInventoryReasons.UnitUnavailable;
@@ -65,25 +65,25 @@ internal sealed partial class BattleState
     internal bool InventoryChargesTimeUnits => Phase == BattlePhase.InProgress;
 
     /// <summary>BattleItem::occupiesSlot(x, y) and occupiesSlot(x, y, item): a held item fills its hand; a grid item its rectangle.</summary>
-    private static bool Occupies(RuntimeRuleCatalog rules, BattleItem holder, int x, int y, BattleItem? other)
+    private bool Occupies(BattleItem holder, int x, int y, BattleItem? other)
     {
         if (other is not null && other.Id == holder.Id || holder.Slot.Length == 0) return false;
-        if (Section(rules, holder.Slot) is { Type: RuntimeBattleInventory.Hand }) return true;
-        var rule = rules.Battle.Equipment.Items[holder.ItemType];
+        if (Section(holder.Slot) is { Type: RuntimeBattleInventory.Hand }) return true;
+        var rule = RequiredRules.Battle.Equipment.Items[holder.ItemType];
         if (other is null)
             return x >= holder.SlotX && x < holder.SlotX + rule.InventoryWidth && y >= holder.SlotY && y < holder.SlotY + rule.InventoryHeight;
-        var otherRule = rules.Battle.Equipment.Items[other.ItemType];
+        var otherRule = RequiredRules.Battle.Equipment.Items[other.ItemType];
         return !(x >= holder.SlotX + rule.InventoryWidth || x + otherRule.InventoryWidth <= holder.SlotX ||
             y >= holder.SlotY + rule.InventoryHeight || y + otherRule.InventoryHeight <= holder.SlotY);
     }
 
     /// <summary>BattleUnit::getItem(slot, x, y) for a section that is not the ground.</summary>
-    private BattleItem? ItemAt(RuntimeRuleCatalog rules, BattleUnit unit, RuntimeBattleInventory slot, int x, int y) =>
-        OrderedInventoryOf(unit).FirstOrDefault(candidate => candidate.Slot == slot.Id && Occupies(rules, candidate, x, y, null));
+    private BattleItem? ItemAt(BattleUnit unit, RuntimeBattleInventory slot, int x, int y) =>
+        OrderedInventoryOf(unit).FirstOrDefault(candidate => candidate.Slot == slot.Id && Occupies(candidate, x, y, null));
 
     /// <summary>Inventory::overlapItems for a section that is not the ground.</summary>
-    private bool Overlaps(RuntimeRuleCatalog rules, BattleUnit unit, BattleItem item, RuntimeBattleInventory slot, int x, int y) =>
-        OrderedInventoryOf(unit).Any(candidate => candidate.Slot == slot.Id && Occupies(rules, candidate, x, y, item));
+    private bool Overlaps(BattleUnit unit, BattleItem item, RuntimeBattleInventory slot, int x, int y) =>
+        OrderedInventoryOf(unit).Any(candidate => candidate.Slot == slot.Id && Occupies(candidate, x, y, item));
 
     /// <summary>RuleInventory::fitItemInSlot for a hand or a grid section: every cell of the item's rectangle is a slot.</summary>
     private static bool FitsInSlot(RuntimeBattleInventory slot, RuntimeBattleItem item, int x, int y)
@@ -132,16 +132,16 @@ internal sealed partial class BattleState
     /// that takes ammo would load it: refused as unported); the move must be affordable in the battle; an enabled grenade's drop
     /// is refused for the danger zone it sets. The ground takes any item at once.
     /// </summary>
-    internal CampaignReason? PlanMove(RuntimeRuleCatalog rules, int unitId, int itemId, string slotId, int x, int y, out InventoryMove? move)
+    internal CampaignReason? PlanMove(int unitId, int itemId, string slotId, int x, int y, out InventoryMove? move)
     {
         move = null;
-        if (InventoryAvailable(rules, unitId, out var unit) is { } closed) return closed;
+        if (InventoryAvailable(unitId, out var unit) is { } closed) return closed;
         var item = _items.Find(candidate => candidate.Id == itemId);
         if (item is null || !IsHeld(unit!, item) && !IsOnTileOf(unit!, item)) return BattleInventoryReasons.ItemUnknown;
-        var itemRule = rules.Battle.Equipment.Items[item.ItemType];
+        var itemRule = RequiredRules.Battle.Equipment.Items[item.ItemType];
         if (itemRule.Fixed) return BattleInventoryReasons.ItemFixed;
-        if (Section(rules, slotId) is not { } to) return BattleInventoryReasons.SlotUnknown;
-        var from = Section(rules, item.Slot) ?? Ground(rules)!;
+        if (Section(slotId) is not { } to) return BattleInventoryReasons.SlotUnknown;
+        var from = Section(item.Slot) ?? Ground()!;
         if (to.Type == RuntimeBattleInventory.Ground)
         {
             x = 0;
@@ -150,9 +150,9 @@ internal sealed partial class BattleState
         else
         {
             if (!CanBePlaced(itemRule, to)) return BattleInventoryReasons.SectionUnsupported;
-            if (ItemAt(rules, unit!, to, x, y) is { } target && target.Id != item.Id)
+            if (ItemAt(unit!, to, x, y) is { } target && target.Id != item.Id)
                 return target.IsWeaponWithAmmo ? BattleInventoryReasons.AmmoUnsupported : BattleInventoryReasons.NoRoom;
-            if (Overlaps(rules, unit!, item, to, x, y) || !FitsInSlot(to, itemRule, x, y)) return BattleInventoryReasons.NoRoom;
+            if (Overlaps(unit!, item, to, x, y) || !FitsInSlot(to, itemRule, x, y)) return BattleInventoryReasons.NoRoom;
         }
         // The cost is read only where it is charged (the reference's `!_tu || spendTimeUnits(...)`).
         var cost = 0;
@@ -163,14 +163,14 @@ internal sealed partial class BattleState
             cost = charged;
         }
         if (to.Type == RuntimeBattleInventory.Ground && from.Type != RuntimeBattleInventory.Ground &&
-            RuleBattleType(rules, item) == GrenadeBattleType && item.FuseEnabled)
+            RuleBattleType(item) == GrenadeBattleType && item.FuseEnabled)
             return BattleInventoryReasons.DangerZoneUnsupported;
         move = new InventoryMove(unit!, item, from, to, x, y, cost);
         return null;
     }
 
-    private static int RuleBattleType(RuntimeRuleCatalog rules, BattleItem item) =>
-        rules.Items.TryGet(item.ItemType, out var handle) ? rules.Items[handle].Value.BattleType : 0;
+    private int RuleBattleType(BattleItem item) =>
+        RequiredRules.Items.TryGet(item.ItemType, out var handle) ? RequiredRules.Items[handle].Value.BattleType : 0;
 
     /// <summary>
     /// TileEngine::itemMoveInventory: to the ground the item leaves its owner and lies on the unit's tile (<see cref="TileOf"/>; an unconscious unit it
@@ -209,35 +209,35 @@ internal sealed partial class BattleState
         MarkChanged();
     }
 
-    private BattleItem? HandItem(RuntimeRuleCatalog rules, BattleUnit unit, bool right) =>
-        OrderedInventoryOf(unit).FirstOrDefault(item => Section(rules, item.Slot) is { } section && (right ? section.IsRightHand : section.IsLeftHand));
+    private BattleItem? HandItem(BattleUnit unit, bool right) =>
+        OrderedInventoryOf(unit).FirstOrDefault(item => Section(item.Slot) is { } section && (right ? section.IsRightHand : section.IsLeftHand));
 
-    private static RuntimeItemRule? ItemRule(RuntimeRuleCatalog rules, BattleItem item) =>
-        rules.Items.TryGet(item.ItemType, out var handle) ? rules.Items[handle].Value : null;
+    private RuntimeItemRule? ItemRule(BattleItem item) =>
+        RequiredRules.Items.TryGet(item.ItemType, out var handle) ? RequiredRules.Items[handle].Value : null;
 
     /// <summary>
     /// The Ctrl click of <c>Inventory::mouseClick</c>. A carried item drops to the ground. A ground item is tried in the smart
     /// choice's cheapest section (when asked), else its default section, the first of its category's inventory order, and the
     /// vanilla section for its battle type; then the alphabetical order of all sections. With the mod's extended slot sorting the last fallback follows the list order.
     /// </summary>
-    internal CampaignReason? PlanAutoPlace(RuntimeRuleCatalog rules, int unitId, int itemId, bool smart, out InventoryMove? result)
+    internal CampaignReason? PlanAutoPlace(int unitId, int itemId, bool smart, out InventoryMove? result)
     {
         result = null;
-        if (InventoryAvailable(rules, unitId, out var unit) is { } closed) return closed;
+        if (InventoryAvailable(unitId, out var unit) is { } closed) return closed;
         var item = _items.Find(candidate => candidate.Id == itemId);
         if (item is null || !IsHeld(unit!, item) && !IsOnTileOf(unit!, item)) return BattleInventoryReasons.ItemUnknown;
-        var itemRule = rules.Battle.Equipment.Items[item.ItemType];
+        var itemRule = RequiredRules.Battle.Equipment.Items[item.ItemType];
         if (itemRule.Fixed) return BattleInventoryReasons.ItemFixed;
-        var ground = Ground(rules);
+        var ground = Ground();
         if (ground is null) return BattleInventoryReasons.SlotUnknown;
-        if (item.Slot != GroundSlot) return PlanMove(rules, unitId, itemId, ground.Id, 0, 0, out result);
+        if (item.Slot != GroundSlot) return PlanMove(unitId, itemId, ground.Id, 0, 0, out result);
 
         // The plan is made on a copy of the choice only: the reference moves the item as soon as a section takes it, so the move itself
         // is applied by the caller through the returned plan.
         var warning = BattleInventoryReasons.NoRoom;
-        var sections = rules.Battle.Equipment.Inventories.Where(static section => section.Type != RuntimeBattleInventory.Ground)
+        var sections = RequiredRules.Battle.Equipment.Inventories.Where(static section => section.Type != RuntimeBattleInventory.Ground)
             .OrderBy(static section => section.Id, StringComparer.Ordinal).ToArray();
-        var from = Section(rules, item.Slot) ?? ground;
+        var from = Section(item.Slot) ?? ground;
         RuntimeBattleInventory? chosen = null;
         InventoryMove? Try(RuntimeBattleInventory slot)
         {
@@ -251,7 +251,7 @@ internal sealed partial class BattleState
             for (var y = 0; y <= maxY; y++)
                 for (var x = 0; x <= maxX; x++)
                 {
-                    if (Overlaps(rules, unit!, item, slot, x, y) || !FitsInSlot(slot, itemRule, x, y)) continue;
+                    if (Overlaps(unit!, item, slot, x, y) || !FitsInSlot(slot, itemRule, x, y)) continue;
                     var cost = 0;
                     if (InventoryChargesTimeUnits)
                     {
@@ -274,10 +274,10 @@ internal sealed partial class BattleState
 
         if (smart)
         {
-            var right = Section(rules, "STR_RIGHT_HAND");
-            var left = Section(rules, "STR_LEFT_HAND");
-            var rightItem = HandItem(rules, unit!, right: true);
-            var leftItem = HandItem(rules, unit!, right: false);
+            var right = Section("STR_RIGHT_HAND");
+            var left = Section("STR_LEFT_HAND");
+            var rightItem = HandItem(unit!, right: true);
+            var leftItem = HandItem(unit!, right: false);
             var cheapest = int.MaxValue;
             foreach (var section in sections)
             {
@@ -285,11 +285,11 @@ internal sealed partial class BattleState
                 if (right is null || left is null) return BattleInventoryReasons.SlotUnknown;
                 if (!HandCost(section, right, out var toRight) || !HandCost(section, left, out var toLeft)) return BattleInventoryReasons.CostUnknown;
                 var cost = Math.Min(toRight, toLeft);
-                if (section.IsLeftHand && rightItem is not null && ItemRule(rules, rightItem) is { BlockingBothHands: true } ||
-                    section.IsRightHand && leftItem is not null && ItemRule(rules, leftItem) is { BlockingBothHands: true })
+                if (section.IsLeftHand && rightItem is not null && ItemRule(rightItem) is { BlockingBothHands: true } ||
+                    section.IsRightHand && leftItem is not null && ItemRule(leftItem) is { BlockingBothHands: true })
                     continue;
-                if (section.IsLeftHand && rightItem is not null && ItemRule(rules, rightItem) is { TwoHanded: true } ||
-                    section.IsRightHand && leftItem is not null && ItemRule(rules, leftItem) is { TwoHanded: true })
+                if (section.IsLeftHand && rightItem is not null && ItemRule(rightItem) is { TwoHanded: true } ||
+                    section.IsRightHand && leftItem is not null && ItemRule(leftItem) is { TwoHanded: true })
                     cost += 10;
                 if (cost <= cheapest)
                 {
@@ -311,27 +311,27 @@ internal sealed partial class BattleState
         else
         {
             InventoryMove? placed = null;
-            if (itemRule.DefaultInventorySlot.Length != 0 && Section(rules, itemRule.DefaultInventorySlot) is { Type: not RuntimeBattleInventory.Ground } preferred)
+            if (itemRule.DefaultInventorySlot.Length != 0 && Section(itemRule.DefaultInventorySlot) is { Type: not RuntimeBattleInventory.Ground } preferred)
                 placed = Try(preferred);
             if (placed is null)
-                foreach (var name in CategoryInvOrder(rules, itemRule))
+                foreach (var name in CategoryInvOrder(itemRule))
                 {
-                    if (Section(rules, name) is not { } section || section.Type == RuntimeBattleInventory.Ground) continue;
+                    if (Section(name) is not { } section || section.Type == RuntimeBattleInventory.Ground) continue;
                     if ((placed = Try(section)) is not null) break;
                 }
             if (placed is null)
             {
-                var vanilla = (RuleBattleType(rules, item)) switch
+                var vanilla = (RuleBattleType(item)) switch
                 {
                     1 => "STR_RIGHT_HAND",
                     8 or 9 or 3 or 11 => "STR_LEFT_HAND",
                     _ => itemRule.InventoryHeight > 2 ? "STR_BACK_PACK" : "STR_BELT",
                 };
-                if (Section(rules, vanilla) is { } section && section.Type != RuntimeBattleInventory.Ground) placed = Try(section);
+                if (Section(vanilla) is { } section && section.Type != RuntimeBattleInventory.Ground) placed = Try(section);
             }
             if (placed is null)
-                foreach (var section in rules.Campaign.ExtendedInventorySlotSorting
-                    ? rules.Battle.Equipment.Inventories.Where(static section => section.Type != RuntimeBattleInventory.Ground) : sections)
+                foreach (var section in RequiredRules.Campaign.ExtendedInventorySlotSorting
+                    ? RequiredRules.Battle.Equipment.Inventories.Where(static section => section.Type != RuntimeBattleInventory.Ground) : sections)
                     if ((placed = Try(section)) is not null) break;
             if (placed is not null)
             {
@@ -349,10 +349,10 @@ internal sealed partial class BattleState
         return section.Id == hand.Id || section.Costs.TryGetValue(hand.Id, out cost);
     }
 
-    private static IEnumerable<string> CategoryInvOrder(RuntimeRuleCatalog rules, RuntimeBattleItem item)
+    private IEnumerable<string> CategoryInvOrder(RuntimeBattleItem item)
     {
         foreach (var category in item.Categories)
-            if (rules.Battle.Equipment.CategoryInventoryOrders.TryGetValue(category, out var order)) return order;
+            if (RequiredRules.Battle.Equipment.CategoryInventoryOrders.TryGetValue(category, out var order)) return order;
         return [];
     }
 
@@ -360,7 +360,7 @@ internal sealed partial class BattleState
     /// InventoryState::saveEquipmentLayout: each X-COM soldier's unit keeps its inventory as the soldier's layout. A fixed weapon is
     /// kept only for the ammunition it holds in its first slot; other items only when the mod lets them go on a craft.
     /// </summary>
-    internal IReadOnlyDictionary<int, IReadOnlyList<Campaigns.SoldierLayoutItem>> SaveEquipmentLayout(RuntimeRuleCatalog rules)
+    internal IReadOnlyDictionary<int, IReadOnlyList<Campaigns.SoldierLayoutItem>> SaveEquipmentLayout()
     {
         var layouts = new Dictionary<int, IReadOnlyList<Campaigns.SoldierLayoutItem>>();
         foreach (var unit in _units)
@@ -369,7 +369,7 @@ internal sealed partial class BattleState
             var entries = new List<Campaigns.SoldierLayoutItem>();
             foreach (var item in OrderedInventoryOf(unit))
             {
-                var rule = rules.Battle.Equipment.Items[item.ItemType];
+                var rule = RequiredRules.Battle.Equipment.Items[item.ItemType];
                 if (rule.Fixed)
                 {
                     if (!(item.IsWeaponWithAmmo && item.AmmoSlots[0] != item.Id && item.AmmoSlots[0] is not null)) continue;
@@ -389,19 +389,19 @@ internal sealed partial class BattleState
     }
 
     /// <summary>The unit's inventory screen as the owning faction sees it.</summary>
-    internal BattleInventoryView? InventoryView(RuntimeRuleCatalog rules, BattleViewer viewer, int unitId)
+    internal BattleInventoryView? InventoryView(BattleViewer viewer, int unitId)
     {
-        if (viewer.Faction != BattleFaction.Player || InventoryAvailable(rules, unitId, out var unit) is not null) return null;
+        if (viewer.Faction != BattleFaction.Player || InventoryAvailable(unitId, out var unit) is not null) return null;
         BattleInventoryItemView View(BattleItem item)
         {
-            var rule = rules.Battle.Equipment.Items[item.ItemType];
+            var rule = RequiredRules.Battle.Equipment.Items[item.ItemType];
             var loaded = new List<string>();
             for (var slot = 0; slot < item.AmmoSlots.Length; slot++)
                 loaded.Add(item.IsWeaponWithAmmo && item.AmmoSlots[slot] is { } id && id != item.Id && FindItem(id) is { } ammo ? ammo.ItemType : "");
             return new BattleInventoryItemView(item.Id, item.ItemType, item.Slot, item.SlotX, item.SlotY, rule.InventoryWidth, rule.InventoryHeight,
                 item.FuseTimer, item.AmmoQuantity, loaded.AsReadOnly(), rule.Fixed);
         }
-        var slots = rules.Battle.Equipment.Inventories.Select(static section => new BattleInventorySlotView(section.Id, section.Type,
+        var slots = RequiredRules.Battle.Equipment.Inventories.Select(static section => new BattleInventorySlotView(section.Id, section.Type,
             section.Slots.Select(static cell => new BattleInventoryCell(cell.X, cell.Y)).ToArray())).ToArray();
         return new BattleInventoryView(unitId, unit!.TimeUnits, InventoryChargesTimeUnits, slots,
             OrderedInventoryOf(unit).Select(View).ToArray(), ItemsOnTile(TileOf(unit)!.Value).Select(View).ToArray());

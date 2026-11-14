@@ -132,7 +132,7 @@ internal sealed class BattleProjectile
         if (_action.Type == BattleActionType.Throw) targets.Add(targetVoxel);
         else
         {
-            var unit = _battle.OverlappingUnit(_rules, targetTile);
+            var unit = _battle.OverlappingUnit(targetTile);
             if (_action.ForceFire && _battle.Side == BattleFaction.Player)
             {
                 targets.Add(Offset(0, 0, 12));
@@ -232,7 +232,7 @@ internal sealed class BattleProjectile
 
         if (_action.Type != BattleActionType.Hit)
         {
-            var dropoff = BattleState.CalculateLimits(_rules, _action.Weapon, _action.Type, out var upperLimit, out var lowerLimit);
+            var dropoff = _battle.CalculateLimits(_action.Weapon, _action.Type, out var upperLimit, out var lowerLimit);
             var distance = realDistance / 16; // distance in tiles, but still fractional
             var accuracyLoss = 0.0;
             if (distance > upperLimit) accuracyLoss = (dropoff * (distance - upperLimit)) / 100;

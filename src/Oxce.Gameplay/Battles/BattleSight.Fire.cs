@@ -331,11 +331,11 @@ internal sealed partial class BattleSight
         var xDifference = action.Target.X - position.X;
         var yDifference = action.Target.Y - position.Y;
         var realDistanceSq = xDifference * xDifference + yDifference * yDifference;
-        if (BattleState.IsOutOfThrowRange(_rules, action.Weapon, DistanceSquared(actor, action.Target), depth)) return false; // no need to check weight and strength
+        if (_battle.IsOutOfThrowRange(action.Weapon, DistanceSquared(actor, action.Target), depth)) return false; // no need to check weight and strength
         var realDistance = Math.Sqrt(realDistanceSq);
         const int offset = 2;
         var zd = originVoxel.Z - (action.Target.Z * TileZ + offset - _map.TerrainLevel(targetTile));
-        var weight = _battle.TotalWeight(_rules, action.Weapon);
+        var weight = _battle.TotalWeight(action.Weapon);
         var maxDistance = (MaxThrowDistance(weight, actor.Stats.Strength, zd) + 8) / 16.0;
         var underwaterFactor = _rules.Campaign.Combat.ExtendedUnderwaterThrowFactor;
         if (depth > 0 && underwaterFactor > 0) maxDistance = maxDistance * underwaterFactor / 100.0;
@@ -373,7 +373,7 @@ internal sealed partial class BattleSight
         double curvature;
         if (action.Type == BattleActionType.Throw)
         {
-            var raw = 1.73 / Math.Sqrt(Math.Sqrt((double)actor.Stats.Strength / _battle.TotalWeight(_rules, action.Weapon))) + (actor.Kneeled ? 0.1 : 0.0);
+            var raw = 1.73 / Math.Sqrt(Math.Sqrt((double)actor.Stats.Strength / _battle.TotalWeight(action.Weapon))) + (actor.Kneeled ? 0.1 : 0.0);
             // std::max(0.48, NaN) is 0.48 (a strength and a weight of 0); Math.Max would give NaN.
             curvature = double.IsNaN(raw) ? 0.48 : Math.Max(0.48, raw);
         }
@@ -490,7 +490,7 @@ internal sealed partial class BattleSight
                     {
                         var hitUnitTile = _map.TileAt(hitPosition.X, hitPosition.Y, hitPosition.Z);
                         var hitUnit = hitUnitTile >= 0 ? _battle.UnitOnTile(hitUnitTile) : null;
-                        var targetUnit = drawing ? _battle.UnitOnTile(tile) : _battle.OverlappingUnit(_rules, tile);
+                        var targetUnit = drawing ? _battle.UnitOnTile(tile) : _battle.OverlappingUnit(tile);
                         seen = hitUnit == targetUnit;
                     }
                     else seen = false;

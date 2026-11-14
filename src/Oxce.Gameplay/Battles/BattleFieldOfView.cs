@@ -29,13 +29,13 @@ internal sealed partial class BattleState
     /// Tile::getOverlappingUnit: the unit on the tile, or, when the tile has no floor and no object, the unit below whose top stands more than
     /// <paramref name="range"/> voxels above the base of its own tile (24, the default, is any voxel in this tile; see <see cref="OverlapIgnoreSmall"/>).
     /// </summary>
-    internal BattleUnit? OverlappingUnit(RuntimeRuleCatalog rules, int tile, int range = 24)
+    internal BattleUnit? OverlappingUnit(int tile, int range = 24)
     {
         var standing = UnitOnTile(tile);
         if (standing is null && Map.TileBelow(tile) is var below and >= 0 && Map.HasNoFloor(tile) && Map.MapData(tile, BattleTilePart.ObjectPart) is null)
         {
             standing = UnitOnTile(below);
-            if (standing is not null && standing.HeightOf(rules) + standing.FloatHeightOf(rules) - Map.TerrainLevel(below) <= range) standing = null;
+            if (standing is not null && standing.HeightOf(RequiredRules) + standing.FloatHeightOf(RequiredRules) - Map.TerrainLevel(below) <= range) standing = null;
         }
         return standing;
     }
@@ -63,9 +63,9 @@ internal sealed partial class BattleState
     /// What stops sight from working: a line of fire template the battle's map objects or units point past the end of LOFTEMPS.DAT (the
     /// reference reads it with <c>vector::at</c> and throws). Null when all are present.
     /// </summary>
-    internal string? VoxelDataFault(RuntimeRuleCatalog rules)
+    internal string? VoxelDataFault()
     {
-        ArgumentNullException.ThrowIfNull(rules);
+        var rules = RequiredRules;
         if (VoxelData is not { } voxels) return $"The battle has no {BattleVoxelData.VirtualPath}.";
         foreach (var set in Map.DataSets)
             for (var index = 0; index < set.Objects.Count; index++)

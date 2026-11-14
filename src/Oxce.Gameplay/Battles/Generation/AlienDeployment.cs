@@ -76,7 +76,7 @@ internal sealed class AlienDeployment
                 var name = data.CustomUnitType.Length == 0 ? AlienRaces.Member(raceId, race, data.AlienRank, _random) : data.CustomUnitType;
                 var outside = RandomChance.Percent(_random, data.PercentageOutsideUfo);
                 if (!ufo && !deployment.Battle.ForcePercentageOutsideUfo) outside = false;
-                var (unitRule, armor) = _battle.UnitRule(_rules, name);
+                var (unitRule, armor) = _battle.UnitRule(name);
                 var unit = AddAlien(name, unitRule, armor, data.AlienRank, outside);
                 var itemLevel = _equipment.DrawItemLevel();
                 if (unit is null) continue;
@@ -98,7 +98,7 @@ internal sealed class AlienDeployment
     /// <summary>BattlescapeGenerator::addAlien.</summary>
     private BattleUnit? AddAlien(string name, RuntimeBattleUnitRule unitRule, RuntimeArmorRule armor, int alienRank, bool outside)
     {
-        var unit = _battle.TempUnit(_rules, _unitSequence++, BattleFaction.Hostile, BattleController.Ai, name, unitRule, armor, _difficulty);
+        var unit = _battle.TempUnit(_unitSequence++, BattleFaction.Hostile, BattleController.Ai, name, unitRule, armor, _difficulty);
         // Safety against index out of bounds.
         if (alienRank > 7) alienRank = 7;
         if (alienRank < 0) throw new MapGenerationException($"Deployment data has a negative alien rank {alienRank}.");

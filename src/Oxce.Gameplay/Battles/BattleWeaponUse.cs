@@ -37,17 +37,17 @@ internal sealed partial class BattleState
     private static readonly BattleWeaponUse NoMessage = new(false, "STR_UNKNOWN");
 
     /// <summary>BattleItem::getTotalWeight: the item's weight with that of every ammunition item loaded into it (not itself).</summary>
-    internal int TotalWeight(RuntimeRuleCatalog rules, BattleItem item)
+    internal int TotalWeight(BattleItem item)
     {
-        var weight = ItemRuleOf(rules, item.ItemType).Weight;
+        var weight = ItemRuleOf(item.ItemType).Weight;
         foreach (var id in item.AmmoSlots)
             if (id is { } ammoId && ammoId != item.Id && _items.FirstOrDefault(candidate => candidate.Id == ammoId) is { } ammo)
-                weight += ItemRuleOf(rules, ammo.ItemType).Weight;
+                weight += ItemRuleOf(ammo.ItemType).Weight;
         return weight;
     }
 
     /// <summary>BattleItem::getAmmoForAction (const) by action type: the item feeding the action; null for an action without a config, or without ammunition.</summary>
-    internal BattleItem? AmmoForActionType(RuntimeRuleCatalog rules, BattleItem item, BattleActionType type) => ActionIndex(type) is { } action ? AmmoForAction(rules, item, action) : null;
+    internal BattleItem? AmmoForActionType(BattleItem item, BattleActionType type) => ActionIndex(type) is { } action ? AmmoForAction(item, action) : null;
 
     /// <summary>The index of the action's config (0 aimed or launch, 1 auto, 2 snap, 3 melee), or null for an action without one (<c>getActionConf</c>).</summary>
     internal static int? ActionIndex(BattleActionType type) => type switch
@@ -60,9 +60,9 @@ internal sealed partial class BattleState
     };
 
     /// <summary>BattleItem::getArcingShot: the item arcs every shot, or the action's config does.</summary>
-    internal static bool ArcingShot(RuntimeRuleCatalog rules, BattleItem weapon, BattleActionType type)
+    internal bool ArcingShot(BattleItem weapon, BattleActionType type)
     {
-        var combat = rules.Battle.Equipment.Items[weapon.ItemType].Combat;
+        var combat = RequiredRules.Battle.Equipment.Items[weapon.ItemType].Combat;
         if (combat.ArcingShot) return true;
         return type switch
         {
@@ -75,9 +75,9 @@ internal sealed partial class BattleState
     }
 
     /// <summary>RuleItem::isOutOfRange: the squared distance in tiles is past the range, but a diagonal step is allowed to a range of 1 or 2.</summary>
-    internal static bool IsOutOfRange(RuntimeRuleCatalog rules, BattleItem weapon, int distanceSquared)
+    internal bool IsOutOfRange(BattleItem weapon, int distanceSquared)
     {
-        var maxRange = rules.Battle.Equipment.Items[weapon.ItemType].Combat.MaxRange;
+        var maxRange = RequiredRules.Battle.Equipment.Items[weapon.ItemType].Combat.MaxRange;
         var outOfRange = distanceSquared > maxRange * maxRange;
         if (outOfRange)
         {
@@ -89,9 +89,9 @@ internal sealed partial class BattleState
     }
 
     /// <summary>RuleItem::isOutOfThrowRange: past the throw range (the underwater one under water); a diagonal gets no allowance.</summary>
-    internal static bool IsOutOfThrowRange(RuntimeRuleCatalog rules, BattleItem weapon, int distanceSquared, int depth)
+    internal bool IsOutOfThrowRange(BattleItem weapon, int distanceSquared, int depth)
     {
-        var combat = rules.Battle.Equipment.Items[weapon.ItemType].Combat;
+        var combat = RequiredRules.Battle.Equipment.Items[weapon.ItemType].Combat;
         var range = depth > 0 ? combat.UnderwaterThrowRange : combat.ThrowRange;
         return distanceSquared > range * range;
     }
@@ -100,22 +100,22 @@ internal sealed partial class BattleState
     /// RuleItem::calculateLimits: the range up to which the accuracy holds (200 tiles for a throw, else the aimed range) and the range below which it
     /// drops (0 for a throw, else the minimum range), and the loss per tile past them (the throw's or the weapon's dropoff).
     /// </summary>
-    internal static int CalculateLimits(RuntimeRuleCatalog rules, BattleItem weapon, BattleActionType type, out int upperLimit, out int lowerLimit)
+    internal int CalculateLimits(BattleItem weapon, BattleActionType type, out int upperLimit, out int lowerLimit)
     {
-        var combat = rules.Battle.Equipment.Items[weapon.ItemType].Combat;
+        var combat = RequiredRules.Battle.Equipment.Items[weapon.ItemType].Combat;
         upperLimit = type == BattleActionType.Throw ? 200 : combat.Aimed.Range;
         lowerLimit = type == BattleActionType.Throw ? 0 : combat.MinRange;
         return type == BattleActionType.Throw ? combat.ThrowDropoff : combat.Dropoff;
     }
 
     /// <summary>BattleUnit::getAccuracyModifier: the unit's health and the fatal wounds of its head and the arm or arms holding the weapon, as a percentage (at least 10).</summary>
-    internal static int AccuracyModifier(RuntimeRuleCatalog rules, BattleUnit unit, BattleItem? item)
+    internal int AccuracyModifier(BattleUnit unit, BattleItem? item)
     {
         var wounds = unit.FatalWounds[HeadPart];
         if (item is not null)
         {
-            if (ItemRuleOf(rules, item.ItemType).TwoHanded) wounds += unit.FatalWounds[RightArmPart] + unit.FatalWounds[LeftArmPart];
-            else if (Section(rules, item.Slot) is { } slot)
+            if (ItemRuleOf(item.ItemType).TwoHanded) wounds += unit.FatalWounds[RightArmPart] + unit.FatalWounds[LeftArmPart];
+            else if (Section(item.Slot) is { } slot)
             {
                 // Why should broken hands affect the aim when the weapon is not shot with them: only the hand holding it counts.
                 if (slot.IsRightHand) wounds += unit.FatalWounds[RightArmPart];
@@ -134,11 +134,11 @@ internal sealed partial class BattleState
     /// multiplier, less the unit's kneel bonus (a firing action only, so a kneeling hit or throw gets none) and the one-handed penalty of a two-handed
     /// weapon, all times the accuracy modifier.
     /// </summary>
-    internal int FiringAccuracy(RuntimeRuleCatalog rules, BattleUnit attacker, BattleItem weapon, BattleActionType type)
+    internal int FiringAccuracy(BattleUnit attacker, BattleItem weapon, BattleActionType type)
     {
-        var rule = ItemRuleOf(rules, weapon.ItemType);
-        var combat = rules.Battle.Equipment.Items[weapon.ItemType].Combat;
-        var modifier = AccuracyModifier(rules, attacker, weapon);
+        var rule = ItemRuleOf(weapon.ItemType);
+        var combat = RequiredRules.Battle.Equipment.Items[weapon.ItemType].Combat;
+        var modifier = AccuracyModifier(attacker, weapon);
         var result = 0;
         var kneeled = attacker.Kneeled;
         switch (type)
@@ -185,26 +185,25 @@ internal sealed partial class BattleState
     /// that began on X-COM's side needs the weapon's research (and the mana feature unlocked for a mana weapon); a psi weapon needs psi skill; water
     /// and land equipment need the depth; a weapon that blocks both hands needs one free (a berserk unit ignores that).
     /// </summary>
-    internal BattleWeaponUse CanUseWeapon(RuntimeRuleCatalog rules, BattleResearchGate research, BattleItem? weapon, BattleUnit? unit, bool berserking, BattleActionType type)
+    internal BattleWeaponUse CanUseWeapon(BattleResearchGate research, BattleItem? weapon, BattleUnit? unit, bool berserking, BattleActionType type)
     {
-        ArgumentNullException.ThrowIfNull(rules);
         ArgumentNullException.ThrowIfNull(research);
         if (weapon is null || unit is null) return BattleWeaponUse.Refused;
-        var rule = ItemRuleOf(rules, weapon.ItemType);
-        var battleRule = rules.Battle.Equipment.Items[weapon.ItemType];
+        var rule = ItemRuleOf(weapon.ItemType);
+        var battleRule = RequiredRules.Battle.Equipment.Items[weapon.ItemType];
         // The action type selected by the player, a leeroy jenkins AI, all reaction fire and every berserk unit know their ammunition; the standard AI does not.
-        var ammo = type != BattleActionType.None ? AmmoForActionType(rules, weapon, type) : null;
-        var ammoRule = ammo is null ? null : ItemRuleOf(rules, ammo.ItemType);
-        var ammoBattleRule = ammo is null ? null : rules.Battle.Equipment.Items[ammo.ItemType];
+        var ammo = type != BattleActionType.None ? AmmoForActionType(weapon, type) : null;
+        var ammoRule = ammo is null ? null : ItemRuleOf(ammo.ItemType);
+        var ammoBattleRule = ammo is null ? null : RequiredRules.Battle.Equipment.Items[ammo.ItemType];
 
         if (unit.Faction == BattleFaction.Hostile && Turn < battleRule.Combat.AiUseDelay) return NoMessage;
         if (unit.OriginalFaction == BattleFaction.Player && !research.DebugMode &&
-            !rule.Requirements.All(requirement => research.IsResearched(rules.Research.GetExternalId(requirement))))
+            !rule.Requirements.All(requirement => research.IsResearched(RequiredRules.Research.GetExternalId(requirement))))
             return new BattleWeaponUse(false, "STR_UNABLE_TO_USE_ALIEN_ARTIFACT_UNTIL_RESEARCHED");
         if (battleRule.PsiRequired && unit.Stats.PsiSkill <= 0) return NoMessage;
         if (battleRule.ManaRequired && unit.OriginalFaction == BattleFaction.Player)
         {
-            var combat = rules.Campaign.Combat;
+            var combat = RequiredRules.Campaign.Combat;
             if (!combat.ManaEnabled) return NoMessage;
             // SavedGame::isManaUnlocked: no research is named, or it is done (always, in the debug mode).
             if (!(combat.ManaUnlockResearch.Length == 0 || combat.ManaUnlockResearch == "STR_NULL" || research.DebugMode || research.IsResearched(combat.ManaUnlockResearch)))

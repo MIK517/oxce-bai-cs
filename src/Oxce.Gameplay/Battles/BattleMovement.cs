@@ -303,9 +303,9 @@ internal sealed partial class BattleState
     /// destination tile, lands when it has floor there, finishes a strafing step facing its face direction and gains the motion points
     /// of a step. The cost, doors, other units and falls belong to the walk that calls this.
     /// </summary>
-    internal void WalkStep(RuntimeRuleCatalog rules, BattleUnit unit, int direction, BattlePosition destination)
+    internal void WalkStep(BattleUnit unit, int direction, BattlePosition destination)
     {
-        ArgumentNullException.ThrowIfNull(rules);
+        var rules = RequiredRules;
         ArgumentNullException.ThrowIfNull(unit);
         if (direction is < 0 or > BattleUnit.DirectionDown) throw new ArgumentOutOfRangeException(nameof(direction));
         var start = unit.RequiredPosition;

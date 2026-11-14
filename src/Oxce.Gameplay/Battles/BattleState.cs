@@ -91,19 +91,20 @@ internal sealed partial class BattleState
     public string Music { get; internal set; } = "";
 
     /// <summary>The armor a unit created from a unit rule wears: the environment's transformation of its own, if any.</summary>
-    internal RuntimeArmorRule TempUnitArmor(RuntimeRuleCatalog rules, RuntimeArmorRule armor)
+    internal RuntimeArmorRule TempUnitArmor(RuntimeArmorRule armor)
     {
         if (ArmorTransformations is null || !ArmorTransformations.TryGetValue(armor.Type, out var transformed)) return armor;
-        return rules.Armors.TryGet(transformed, out var handle) ? rules.Armors[handle].Value
+        return RequiredRules.Armors.TryGet(transformed, out var handle) ? RequiredRules.Armors[handle].Value
             : throw new Generation.MapGenerationException($"Armor transformation target {transformed} does not exist.");
     }
 
     /// <summary>Mod::getUnit with the required flag: the unit rule a battle unit is created from, and the armor it wears here.</summary>
-    internal (RuntimeBattleUnitRule Rule, RuntimeArmorRule Armor) UnitRule(RuntimeRuleCatalog rules, string type)
+    internal (RuntimeBattleUnitRule Rule, RuntimeArmorRule Armor) UnitRule(string type)
     {
+        var rules = RequiredRules;
         if (!rules.Battle.Equipment.Units.TryGetValue(type, out var unitRule) || !rules.Units.TryGet(type, out var handle))
             throw new Generation.MapGenerationException($"Unit {type} does not exist.");
-        return rules.Units[handle].Value.Armor is { } armor ? (unitRule, TempUnitArmor(rules, rules.Armors[armor].Value))
+        return rules.Units[handle].Value.Armor is { } armor ? (unitRule, TempUnitArmor(rules.Armors[armor].Value))
             : throw new Generation.MapGenerationException($"Unit {type} has no armor.");
     }
 

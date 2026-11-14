@@ -21,9 +21,8 @@ internal sealed partial class BattleState
     /// (reserved time units checked first, as <c>think</c> does), turns, and updates the unit's field of view, and the turn stops on a new
     /// sighting or when the next eighth cannot be paid. Nothing changes when the first eighth cannot be paid.
     /// </summary>
-    internal CampaignReason? TurnTowards(RuntimeRuleCatalog rules, int unitId, BattlePosition target, out BattleTurnResult result)
+    internal CampaignReason? TurnTowards(int unitId, BattlePosition target, out BattleTurnResult result)
     {
-        ArgumentNullException.ThrowIfNull(rules);
         result = default;
         if (SelectionUnit(unitId, out var found) is { } closed) return closed;
         var unit = found!;
@@ -35,15 +34,15 @@ internal sealed partial class BattleState
         if (!turns)
         {
             // init: a unit that is not turning tries the door in front of it (unitOpensDoor with the right click).
-            if (UnitOpensDoor(rules, unit, true, -1, out var door) is { } unsupported) return unsupported;
+            if (UnitOpensDoor(unit, true, -1, out var door) is { } unsupported) return unsupported;
             if (door.Changed) MarkChanged();
             result = new BattleTurnResult(unit.Direction, 0, door.TimeUnitsSpent, BattleTurnStop.NoTurn, door.Result, door.DoorsOpened, door.Centre);
             return null;
         }
 
-        var cost = unit.TurnCost(rules);
+        var cost = unit.TurnCost(RequiredRules);
         // The first eighth: nothing changes when it is refused.
-        if (!CheckReservedTimeUnits(rules, unit, cost, 0, false).Allowed) return BattleMovementReasons.TurnTimeUnitsReserved;
+        if (!CheckReservedTimeUnits(unit, cost, 0, false).Allowed) return BattleMovementReasons.TurnTimeUnitsReserved;
         if (unit.TimeUnits < cost) return BattleMovementReasons.TurnNotEnoughTimeUnits;
 
         var sight = Sight();
@@ -54,7 +53,7 @@ internal sealed partial class BattleState
         while (true)
         {
             // think
-            if (eighths > 0 && !CheckReservedTimeUnits(rules, unit, cost, 0, false).Allowed)
+            if (eighths > 0 && !CheckReservedTimeUnits(unit, cost, 0, false).Allowed)
             {
                 unit.AbortTurn();
                 stop = BattleTurnStop.ReservedTimeUnits;
@@ -95,9 +94,8 @@ internal sealed partial class BattleState
     /// field of view of everyone through its tile and of the unit itself (<c>updateSoldierInfo</c>) is updated, and the spotting of
     /// <c>checkReactionFire</c> happens. Refused, before any change, when an opposing unit could react.
     /// </summary>
-    internal CampaignReason? KneelUnit(RuntimeRuleCatalog rules, int unitId, out bool kneeling, out int spent)
+    internal CampaignReason? KneelUnit(int unitId, out bool kneeling, out int spent)
     {
-        ArgumentNullException.ThrowIfNull(rules);
         kneeling = false;
         spent = 0;
         if (SelectionUnit(unitId, out var found) is { } closed) return closed;
@@ -105,15 +103,15 @@ internal sealed partial class BattleState
         if (unit.Position is not { } position) return BattleSelectionReasons.UnitUnknown;
 
         var cost = unit.KneelChangeCost;
-        if (!AllowsKneeling(rules, unit)) return BattleMovementReasons.KneelNotAllowed;
+        if (!AllowsKneeling(unit)) return BattleMovementReasons.KneelNotAllowed;
         if (unit.Floating) return BattleMovementReasons.KneelFloating;
-        if (!(!unit.Kneeled && KneelReserved) && !CheckReservedTimeUnits(rules, unit, cost, 0, false).Allowed)
+        if (!(!unit.Kneeled && KneelReserved) && !CheckReservedTimeUnits(unit, cost, 0, false).Allowed)
             return BattleMovementReasons.KneelTimeUnitsReserved;
         if (unit.TimeUnits < cost) return BattleMovementReasons.KneelNotEnoughTimeUnits;
         // checkReactionFire follows the change: a reactor with a weapon would shoot (branch 5).
         // The threshold is the kneeling unit's reaction score after it paid.
         unit.TimeUnits -= cost;
-        var reactor = HasPossibleReactor(rules, unit);
+        var reactor = HasPossibleReactor(unit);
         unit.TimeUnits += cost;
         if (reactor) return BattleMovementReasons.ReactionFireUnsupported;
 
@@ -124,7 +122,7 @@ internal sealed partial class BattleState
         // (updateSoldierInfo updates the unit's own, which also covers its tiles).
         sight.CalculateFov(position, 1, updateTiles: false);
         sight.CalculateFov(unit);
-        SpotMover(rules, sight, unit);
+        SpotMover(sight, unit);
         MarkChanged();
         kneeling = unit.Kneeled;
         spent = cost;
@@ -138,13 +136,13 @@ internal sealed partial class BattleState
     /// out threshold, a reaction score that reaches the mover's, not of the side on turn (and nobody reacts on the neutral side's turn), not a
     /// civilian unless the mover is a hostile that is not ignored by the AI, and within the maximum view distance.
     /// </summary>
-    private bool PassesSpottingFilters(RuntimeRuleCatalog rules, BattleUnit mover, BattleUnit other)
+    private bool PassesSpottingFilters(BattleUnit mover, BattleUnit other)
     {
         if (Side == BattleFaction.Neutral) return false;
         if (other.IsOut || other.IsOutThresholdExceeded || other.ReactionScore < Threshold(mover) || other.Faction == Side) return false;
-        if (other.Faction == BattleFaction.Neutral && !(mover.Faction == BattleFaction.Hostile && !IgnoredByAi(rules, mover))) return false;
+        if (other.Faction == BattleFaction.Neutral && !(mover.Faction == BattleFaction.Hostile && !IgnoredByAi(mover))) return false;
         if (mover.Position is not { } at || other.Position is not { } from) return false;
-        var maximum = rules.Campaign.MaximumViewDistance;
+        var maximum = RequiredRules.Campaign.MaximumViewDistance;
         return BattleGeometry.HorizontalDistanceSquared(at, from) <= maximum * maximum;
     }
 
@@ -152,8 +150,8 @@ internal sealed partial class BattleState
     private static double Threshold(BattleUnit mover) => double.IsFinite(mover.ReactionScore) ? Math.Truncate(mover.ReactionScore) : mover.ReactionScore;
 
     /// <summary>BattleUnit::isIgnoredByAI: the unit rule's (a soldier has none).</summary>
-    private static bool IgnoredByAi(RuntimeRuleCatalog rules, BattleUnit unit) =>
-        unit.SoldierId is null && rules.Battle.Equipment.Units.TryGetValue(unit.UnitType, out var rule) && rule.IgnoredByAi;
+    private bool IgnoredByAi(BattleUnit unit) =>
+        unit.SoldierId is null && RequiredRules.Battle.Equipment.Units.TryGetValue(unit.UnitType, out var rule) && rule.IgnoredByAi;
 
     /// <summary>
     /// Whether an opposing unit could react to the mover at its tile: one that passes <see cref="PassesSpottingFilters"/>, is not respawning, has
@@ -161,12 +159,12 @@ internal sealed partial class BattleState
     /// weapon it carries (its hands and special weapons) counts, so this over-approximates (Phase 7 plan D4): a unit that fails it never reacts,
     /// and the preferred hand, the research, depth and two-handed requirements of <c>canUseWeapon</c> only narrow what passes.
     /// </summary>
-    internal bool HasPossibleReactor(RuntimeRuleCatalog rules, BattleUnit mover)
+    internal bool HasPossibleReactor(BattleUnit mover)
     {
         foreach (var other in _units)
         {
-            if (other == mover || !PassesSpottingFilters(rules, mover, other) || other.Respawn || other.ReactionScore <= 0.001) continue;
-            if (CanReactWithAnyWeapon(rules, other)) return true;
+            if (other == mover || !PassesSpottingFilters(mover, other) || other.Respawn || other.ReactionScore <= 0.001) continue;
+            if (CanReactWithAnyWeapon(other)) return true;
         }
         return false;
     }
@@ -175,7 +173,7 @@ internal sealed partial class BattleState
     /// determineReactionType's weapon tests for every weapon the unit could use: any weapon with ammo for its hit (a firearm's butt too) and the time units for it,
     /// or a firearm with ammo for its snap shot and the time units for it, unless a psi weapon needs a psi skill the unit lacks.
     /// </summary>
-    private bool CanReactWithAnyWeapon(RuntimeRuleCatalog rules, BattleUnit unit)
+    private bool CanReactWithAnyWeapon(BattleUnit unit)
     {
         var weapons = new List<BattleItem>();
         if (HandWeapon(unit, RightHand) is { } right) weapons.Add(right);
@@ -183,12 +181,12 @@ internal sealed partial class BattleState
         weapons.AddRange(SpecialWeapons(unit));
         foreach (var weapon in weapons)
         {
-            var rule = ItemRuleOf(rules, weapon.ItemType);
-            if (rules.Battle.Equipment.Items[weapon.ItemType].PsiRequired && unit.Stats.PsiSkill <= 0) continue;
-            if (AmmoForAction(rules, weapon, 3) is not null &&
-                BattleActionCost.For(rules, BattleActionType.Hit, unit, weapon).HaveTimeUnits()) return true;
-            if (rule.BattleType == BattleTypeFirearm && AmmoForAction(rules, weapon, 2) is not null &&
-                BattleActionCost.For(rules, BattleActionType.SnapShot, unit, weapon).HaveTimeUnits()) return true;
+            var rule = ItemRuleOf(weapon.ItemType);
+            if (RequiredRules.Battle.Equipment.Items[weapon.ItemType].PsiRequired && unit.Stats.PsiSkill <= 0) continue;
+            if (AmmoForAction(weapon, 3) is not null &&
+                BattleActionCost.For(RequiredRules, BattleActionType.Hit, unit, weapon).HaveTimeUnits()) return true;
+            if (rule.BattleType == BattleTypeFirearm && AmmoForAction(weapon, 2) is not null &&
+                BattleActionCost.For(RequiredRules, BattleActionType.SnapShot, unit, weapon).HaveTimeUnits()) return true;
         }
         return false;
     }
@@ -200,17 +198,17 @@ internal sealed partial class BattleState
     /// mover spotted by a hostile or neutral spotter's faction). The reactors it finds are branch 5's; <see cref="HasPossibleReactor"/> refused
     /// the command when there could be one.
     /// </summary>
-    internal void SpotMover(RuntimeRuleCatalog rules, BattleSight sight, BattleUnit mover)
+    internal void SpotMover(BattleSight sight, BattleUnit mover)
     {
         if (Side != mover.Faction || mover.Position is not { } position) return;
         var tile = Map.TileIndex(position);
         foreach (var other in _units)
         {
-            if (other == mover || other.Position is null || !PassesSpottingFilters(rules, mover, other)) continue;
+            if (other == mover || other.Position is null || !PassesSpottingFilters(mover, other)) continue;
             var origin = sight.SnapShotOriginVoxel(other, position);
             // A unit that was hit sees its attacker whatever way it faces: the AI's memory, a player unit's hit state, or a melee attacker.
             var gotHit = other.Ai is { } ai ? ai.WasHitBy.Contains(mover.Id) : other.HitState;
-            if (!gotHit && rules.Campaign.ExtendedMeleeReactions == 2) gotHit = other.MeleeAttackedBy.Contains(mover.Id);
+            if (!gotHit && RequiredRules.Campaign.ExtendedMeleeReactions == 2) gotHit = other.MeleeAttackedBy.Contains(mover.Id);
             if (!(other.CheckViewSector(position) || gotHit) || !sight.CanTargetUnit(origin, tile, out _, other) || !sight.Visible(other, tile)) continue;
             SetSpotted(mover, other.Faction, true);
             other.AddToVisibleUnits(mover.Id);

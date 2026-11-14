@@ -663,15 +663,15 @@ public sealed class BattleSaveUnitTests
     {
         var battle = BattleState.Restore(new BattleSnapshot(4, 4, 2, "M") { StartingConditionId = "SC_BAN" }, Content, Terrain(), campaign: Campaign);
         var rules = Content.RuntimeRules;
-        var (alienRule, alienArmor) = battle.UnitRule(rules, "ALIEN");
+        var (alienRule, alienArmor) = battle.UnitRule("ALIEN");
         // BattleUnit's constructors with the starting condition (prepareBannedFlag): createTempUnit's and the soldier's.
-        Assert.True(battle.TempUnit(rules, 1000005, BattleFaction.Hostile, BattleController.Ai, "ALIEN", alienRule, alienArmor).BannedInNextStage);
+        Assert.True(battle.TempUnit(1000005, BattleFaction.Hostile, BattleController.Ai, "ALIEN", alienRule, alienArmor).BannedInNextStage);
         var (id, campaign) = SoldierCampaign(static personal => personal with { Armor = "PAINTED_ARMOR" });
         var soldier = campaign.Soldiers(id)!;
         var painted = rules.Armors[rules.Armors.GetRequired("PAINTED_ARMOR")].Value;
-        Assert.True(battle.SoldierUnit(rules, id, soldier, "PAINTED_ARMOR", painted, "").BannedInNextStage);
-        Assert.False(battle.SoldierUnit(rules, id, soldier, "PAINTED_ARMOR", painted, "", startingCondition: false).BannedInNextStage);
-        Assert.False(battle.TempUnit(rules, 1000006, BattleFaction.Neutral, BattleController.Ai, "PAINTED", rules.Battle.Equipment.Units["PAINTED"],
+        Assert.True(battle.SoldierUnit(id, soldier, "PAINTED_ARMOR", painted, "").BannedInNextStage);
+        Assert.False(battle.SoldierUnit(id, soldier, "PAINTED_ARMOR", painted, "", startingCondition: false).BannedInNextStage);
+        Assert.False(battle.TempUnit(1000006, BattleFaction.Neutral, BattleController.Ai, "PAINTED", rules.Battle.Equipment.Units["PAINTED"],
             rules.Armors[rules.Armors.GetRequired("ARMOR")].Value).BannedInNextStage);
         // The load passes no starting condition: only the save's flag counts.
         var loaded = BattleState.Restore(OxceBattleSave.Read(Parse(Root + "startingConditionType: SC_BAN\nunits:\n  - " + Alien + "}\n  - " +

@@ -150,7 +150,7 @@ public sealed class BattleSightTests
             unit.SetDirection(direction);
         }
 
-        public void Relight() => Battle.CalculateLighting(Rules, BattleLightLayer.Ambient, null, 0, true);
+        public void Relight() => Battle.CalculateLighting(BattleLightLayer.Ambient, null, 0, true);
 
         /// <summary>Forgets what the first turn's sight found: the spotting, the discovery and the visibility counts of every unit and tile.</summary>
         public void Forget()
@@ -378,10 +378,10 @@ public sealed class BattleSightTests
         var arena = Flat(15, 8, "    visibilityAtDark: 6\n", personalLight: true);
         Assert.Equal(8, arena.Battle.TileShade(new BattlePosition(18, 10, 0)));
         Assert.True(Arena.Sees(arena.Soldier, arena.Alien));
-        arena.Battle.TogglePersonalLighting(arena.Rules);
+        arena.Battle.TogglePersonalLighting();
         Assert.False(arena.Battle.TogglePersonalLight);
         Assert.False(Arena.Sees(arena.Soldier, arena.Alien));
-        arena.Battle.TogglePersonalLighting(arena.Rules);
+        arena.Battle.TogglePersonalLighting();
         Assert.True(Arena.Sees(arena.Soldier, arena.Alien));
     }
 

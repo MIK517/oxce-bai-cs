@@ -316,7 +316,7 @@ internal sealed partial class BattleState
             // The line of fire templates sight reads; a template past the file's end is where the reference's vector::at throws.
             if (terrain.TryLoadVoxelData(out var voxels) is { } voxelReason) throw new InvalidDataException($"Battle save: {voxelReason}");
             battle.VoxelData = voxels;
-            if (battle.VoxelDataFault(rules) is { } voxelFault) throw new InvalidDataException($"Battle save: {voxelFault}");
+            if (battle.VoxelDataFault() is { } voxelFault) throw new InvalidDataException($"Battle save: {voxelFault}");
             // load's resetUnitTiles has put the units on their tiles. A save from before the first turn (which the reference cannot make)
             // waits for the first turn's sight, and a battle whose armors bind a visibility script keeps its saved spotting: the script
             // is branch 8's, and commands on it are refused.
@@ -324,7 +324,7 @@ internal sealed partial class BattleState
             battle.IsBeforeGame = !sees;
             // loadMapResources: the lighting of the restored map, then every unit's field of view. The saved spotting and discovery stay:
             // the recomputation only adds to them.
-            battle.CalculateLighting(rules, BattleLightLayer.Ambient, terrainChanged: true);
+            battle.CalculateLighting(BattleLightLayer.Ambient, terrainChanged: true);
             if (sees && battle.VisibilityScriptRefusal(content) is null) battle.RecalculateFov();
         }
         catch (Exception failure) when (failure is InvalidOperationException or MapGenerationException)

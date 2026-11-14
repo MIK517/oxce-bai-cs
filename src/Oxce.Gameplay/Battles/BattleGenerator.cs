@@ -58,14 +58,14 @@ internal static class BattleGenerator
         if (battle.Music.Count != 0) state.Music = battle.Music[random.NextInclusive(0, battle.Music.Count - 1)];
         else if (terrain.Music.Count != 0) state.Music = terrain.Music[random.NextInclusive(0, terrain.Music.Count - 1)];
         // The line of fire templates sight reads: a template past the file's end is where the reference's vector::at throws.
-        if (state.VoxelDataFault(rules) is { } voxelFault) throw new MapGenerationException(voxelFault);
+        if (state.VoxelDataFault() is { } voxelFault) throw new MapGenerationException(voxelFault);
         // The lighting of the finished map, with its units and items.
-        state.CalculateLighting(rules, BattleLightLayer.Ambient, terrainChanged: true);
+        state.CalculateLighting(BattleLightLayer.Ambient, terrainChanged: true);
         // run's last steps: a crashed UFO's power sources explode, then the grenades the map primed. The units they take out are the battlescape's
         // opening casualty check (OpenBattlescape).
         state.Random = random;
-        if (inputs.UfoCrashed) state.ExplodePowerSources(rules);
-        state.ExplodeOtherJunk(rules);
+        if (inputs.UfoCrashed) state.ExplodePowerSources();
+        state.ExplodeOtherJunk();
         // The reference would fail on a unit that blows itself up here; the port refuses the one whose explosion it cannot run.
         if (state.TakeExplosionRefusal() is { } explosionRefusal) throw new MapGenerationException(explosionRefusal.Code);
         return state;

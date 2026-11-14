@@ -82,6 +82,16 @@ public sealed class BattleRuntimeTests
     }
 
     [Fact]
+    public void TheRuntimeRefusesABattleThatHoldsAnotherCatalogThanTheCampaigns()
+    {
+        var arena = Armed();
+        var other = Armed();
+        Assert.NotSame(arena.Rules, other.Rules);
+        Assert.Throws<ArgumentException>(() => RuntimeOf(arena with { Rules = other.Rules }));
+        Assert.Same(arena.Rules, RuntimeOf(arena).State.Rules);
+    }
+
+    [Fact]
     public void ABattleTheCampaignStartsAndConfirmsDrawsFromTheCampaignsStreamWithItsLinkWithoutAnyAssignmentPerCommand()
     {
         var (campaign, _) = BattleStartTests.Requested(BattleStartTests.Rules, "UFO_SCOUT");
@@ -149,7 +159,7 @@ public sealed class BattleRuntimeTests
         arena.Battle.Events.Add(new UnitKneeled(1, true, 0));
         runtime.Register<Detonate>(_ =>
         {
-            arena.Battle.PushExplosion(arena.Rules, Throw(arena), Center(20, 20));
+            arena.Battle.PushExplosion(Throw(arena), Center(20, 20));
             arena.Battle.RunStates();
             return new CampaignCommandResult([]);
         });
@@ -268,7 +278,7 @@ public sealed class BattleRuntimeTests
         var watchedVictim = Victim(watched, 100);
         foreach (var arena in new[] { plain, watched })
         {
-            arena.Battle.PushExplosion(arena.Rules, Throw(arena), Center(20, 20));
+            arena.Battle.PushExplosion(Throw(arena), Center(20, 20));
             arena.Battle.RunStates();
         }
         Assert.Equal((plainVictim.Health, plainVictim.StunLevel), (watchedVictim.Health, watchedVictim.StunLevel));
@@ -290,7 +300,7 @@ public sealed class BattleRuntimeTests
         var arena = Armed();
         RuntimeOf(arena, hooks: new Recorder { DamageToSet = 0 });
         var victim = Victim(arena, 100);
-        arena.Battle.PushExplosion(arena.Rules, Throw(arena), Center(20, 20));
+        arena.Battle.PushExplosion(Throw(arena), Center(20, 20));
         arena.Battle.RunStates();
         Assert.Equal(100, victim.Health);
     }
@@ -305,7 +315,7 @@ public sealed class BattleRuntimeTests
         arena.Battle.Sight().Visible(arena.Soldier, arena.Tile(15, 10));
         Assert.Contains("visibility:" + arena.Soldier.Id + ":" + arena.Alien.Id, hooks.Calls);
         var (_, gun, _) = Shot(arena);
-        arena.Battle.FiringAccuracy(arena.Rules, arena.Soldier, gun, BattleActionType.AimedShot);
+        arena.Battle.FiringAccuracy(arena.Soldier, gun, BattleActionType.AimedShot);
         Assert.Contains("bonus:Accuracy", hooks.Calls);
         // A script that sees nothing hides a unit that is in plain view.
         var sighted = Duel();
@@ -370,7 +380,7 @@ public sealed class BattleRuntimeTests
         Assert.NotNull(junk);
         arena.Alien.Health = 30;
         arena.Alien.Morale = 100;
-        arena.Battle.ExplodeOtherJunk(arena.Rules);
+        arena.Battle.ExplodeOtherJunk();
         Assert.True(arena.Alien.Health < 30);
         Assert.DoesNotContain("special:" + arena.Alien.Id, hooks.Calls);
         Assert.Equal((100, 0, false), (arena.Alien.Morale, arena.Alien.Fire, arena.Alien.AlreadyExploded));
@@ -391,7 +401,7 @@ public sealed class BattleRuntimeTests
             RuntimeOf(arena, hooks: new Recorder { Experience = multiplier });
             var (attack, _, _) = Shot(arena);
             arena.Battle.Random = new ScriptedDraws(99, 99, 99, 99, 99);
-            arena.Battle.HitUnit(arena.Rules, attack, arena.Alien, new BattlePosition(0, 0, 0), 10, Plain, true);
+            arena.Battle.HitUnit(attack, arena.Alien, new BattlePosition(0, 0, 0), 10, Plain, true);
             Assert.Equal(expected, arena.Soldier.Experience.Firing);
         }
     }
@@ -408,8 +418,8 @@ public sealed class BattleRuntimeTests
         foreach (var type in new[] { BattleActionType.SnapShot, BattleActionType.AimedShot, BattleActionType.AutoShot, BattleActionType.Hit,
                      BattleActionType.Throw, BattleActionType.CloseQuarters })
         {
-            var before = plain.Battle.FiringAccuracy(plain.Rules, plain.Soldier, plainGun, type);
-            var after = boosted.Battle.FiringAccuracy(boosted.Rules, boosted.Soldier, boostedGun, type);
+            var before = plain.Battle.FiringAccuracy(plain.Soldier, plainGun, type);
+            var after = boosted.Battle.FiringAccuracy(boosted.Soldier, boostedGun, type);
             Assert.True(after > before, $"{type}: {before} then {after}");
         }
     }
@@ -426,7 +436,7 @@ public sealed class BattleRuntimeTests
         foreach (var arena in new[] { plain, strong })
         {
             arena.Battle.Random = new SplitMix64RandomSource(3);
-            arena.Battle.PushExplosion(arena.Rules, Throw(arena), Center(20, 20));
+            arena.Battle.PushExplosion(Throw(arena), Center(20, 20));
             arena.Battle.RunStates();
         }
         Assert.True(nearStrong.Health < near.Health);
@@ -454,7 +464,7 @@ public sealed class BattleRuntimeTests
         arena.Put(20, 20, 0, Oxce.Gameplay.Battles.Terrain.BattleTilePart.Floor, BurnFloor);
         var tile = arena.Tile(20, 20);
         var fire = RuntimeItemDamageRule.Predefined(RuntimeItemDamageRule.DamageIncendiary) with { RandomType = RuntimeItemDamageRule.RandomFlat, FireThreshold = 0 };
-        arena.Battle.Explode(arena.Rules, default, new BattlePosition(20 * 16 + 8, 20 * 16 + 8, 12), 60, fire, 1, true);
+        arena.Battle.Explode(default, new BattlePosition(20 * 16 + 8, 20 * 16 + 8, 12), 60, fire, 1, true);
         Assert.NotEqual(0, arena.Map.Fire(tile));
         Assert.Equal(new BattlePosition(20, 20, 0), Assert.Single(arena.Battle.Events.Of<TileIgnited>(), static raised => raised.Position == new BattlePosition(20, 20, 0)).Position);
         // A unit burning already does not say it again.
@@ -472,13 +482,13 @@ public sealed class BattleRuntimeTests
         var arena = Duel();
         arena.Alien.StunLevel = arena.Alien.Health;
         arena.Alien.MurdererId = arena.Soldier.Id;
-        Assert.Single(arena.Battle.CheckForCasualties(arena.Rules, null, default));
+        Assert.Single(arena.Battle.CheckForCasualties(null, default));
         Assert.Equal(new UnitKnockedOut(arena.Alien.Id, arena.Soldier.Id), Assert.Single(arena.Battle.Events.Of<UnitKnockedOut>()));
 
         var infected = Duel();
         infected.Alien.SpawnUnit = "ALIEN";
         infected.Alien.Respawn = true;
-        Assert.True(infected.Battle.ConvertInfected(infected.Rules));
+        Assert.True(infected.Battle.ConvertInfected());
         var converted = Assert.Single(infected.Battle.Events.Of<UnitConverted>());
         Assert.Equal((infected.Alien.Id, infected.Battle.Units[^1].Id), (converted.UnitId, converted.NewUnitId));
     }

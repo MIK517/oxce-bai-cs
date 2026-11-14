@@ -61,13 +61,13 @@ internal sealed partial class BattleState
     internal static bool IsOutThresholdExceeded(BattleUnit unit) => unit.Health <= 0 || unit.Health <= unit.StunLevel;
 
     /// <summary>BattleUnit::getOverKillDamage: the damage past the health and the armor's overkill share of the maximum health.</summary>
-    internal static int OverKillDamage(RuntimeRuleCatalog rules, BattleUnit unit) =>
-        Math.Max(-unit.Health - (int)(unit.Stats.Health * ArmorOf(rules, unit).OverKill), 0);
+    internal int OverKillDamage(BattleUnit unit) =>
+        Math.Max(-unit.Health - (int)(unit.Stats.Health * ArmorOf(unit).OverKill), 0);
 
     /// <summary>BattleUnit::setFire: a unit that burns floors cannot catch fire.</summary>
-    private static void SetUnitFire(RuntimeRuleCatalog rules, BattleUnit unit, int fire)
+    private void SetUnitFire(BattleUnit unit, int fire)
     {
-        if (SpecialAbilityOf(rules, unit) < 2) unit.Fire = fire;
+        if (SpecialAbilityOf(unit) < 2) unit.Fire = fire;
     }
 
     /// <summary>
@@ -95,15 +95,14 @@ internal sealed partial class BattleState
     /// <c>(0, 0, z &lt;= 0)</c>, the side under); <paramref name="sideOverride"/> and <paramref name="bodyPartOverride"/> are the environment's. Returns
     /// the damage to the health, with the refusal when the hit would push a self-destruct explosion (S5).
     /// </summary>
-    internal BattleDamageResult DamageUnit(RuntimeRuleCatalog rules, BattleUnit unit, BattlePosition relative, int damage, RuntimeItemDamageRule type,
+    internal BattleDamageResult DamageUnit(BattleUnit unit, BattlePosition relative, int damage, RuntimeItemDamageRule type,
         in BattleAttack attack, int sideOverride = -1, int bodyPartOverride = -1)
     {
-        ArgumentNullException.ThrowIfNull(rules);
         ArgumentNullException.ThrowIfNull(unit);
         ArgumentNullException.ThrowIfNull(type);
         unit.HitState = true;
         if (unit.Health <= 0) return new(0);
-        var armor = ArmorOf(rules, unit);
+        var armor = ArmorOf(unit);
         var side = BattleUnit.SideFront;
         var bodyPart = BattleUnit.BodyPartTorso;
         damage = ReduceByResistance(armor, damage, type.ResistType);
@@ -135,7 +134,7 @@ internal sealed partial class BattleState
                     6 => BattleUnit.SideLeft,
                     _ => RollSide(BattleUnit.SideFront, BattleUnit.SideLeft, Random.NextInclusive(0, 2)),
                 };
-                if (relative.Z >= unit.HeightOf(rules))
+                if (relative.Z >= unit.HeightOf(RequiredRules))
                 {
                     bodyPart = BattleUnit.BodyPartHead;
                 }
@@ -173,7 +172,7 @@ internal sealed partial class BattleState
         var overKillMinimum = type.IgnoreOverKill ? 0 : -OverkillMultiplier * unit.Stats.Health;
 
         // The ammunition that turns its victims into others, if this victim can be.
-        var damageRule = attack.DamageItem is { } damageItem ? rules.Battle.Equipment.Items[damageItem.ItemType].Combat : null;
+        var damageRule = attack.DamageItem is { } damageItem ? RequiredRules.Battle.Equipment.Items[damageItem.ItemType].Combat : null;
         var transformUnit = damageRule is null ? "" : ZombieUnitFor(damageRule, unit);
         var transformChance = 0;
         var transforms = damageRule is not null && transformUnit.Length != 0 && !(armor.ZombieImmune ?? false);
@@ -182,7 +181,7 @@ internal sealed partial class BattleState
             transformChance = damageRule!.ZombieUnitChance;
             if (attack.Weapon is { } weapon && ActionIndex(attack.Type) is { } index)
             {
-                var conf = rules.Battle.Equipment.Items[weapon.ItemType].Combat;
+                var conf = RequiredRules.Battle.Equipment.Items[weapon.ItemType].Combat;
                 var overrideChance = (index switch { 0 => conf.Aimed, 1 => conf.Auto, 2 => conf.Snap, _ => conf.Melee }).AmmoZombieUnitChanceOverride;
                 if (overrideChance != -1) transformChance = overrideChance;
             }
@@ -249,7 +248,7 @@ internal sealed partial class BattleState
             var modifier = unit.Faction == BattleFaction.Player ? PlayerMoraleModifier() : 100;
             moraleLoss = 100 * (damage * bravery / 10) / modifier;
         }
-        var specialAbility = SpecialAbilityOf(rules, unit);
+        var specialAbility = SpecialAbilityOf(unit);
         var selfDestruct = specialAbility is 1 or 3;
         var selfDestructChance = 0;
         if (selfDestruct && !unit.IsOut && IsOutThresholdExceeded(unit) && !type.IgnoreSelfDestruct) selfDestructChance = 100;
@@ -268,8 +267,8 @@ internal sealed partial class BattleState
         // fire extinguisher
         if (fire > 0)
         {
-            if (attack.Weapon is { } extinguisher && rules.Battle.Equipment.Items[extinguisher.ItemType].Combat.IsFireExtinguisher) fire = 0;
-            else if (attack.DamageItem is { } ammo && rules.Battle.Equipment.Items[ammo.ItemType].Combat.IsFireExtinguisher) fire = 0;
+            if (attack.Weapon is { } extinguisher && RequiredRules.Battle.Equipment.Items[extinguisher.ItemType].Combat.IsFireExtinguisher) fire = 0;
+            else if (attack.DamageItem is { } ammo && RequiredRules.Battle.Equipment.Items[ammo.ItemType].Combat.IsFireExtinguisher) fire = 0;
         }
 
         // AI direct hit tracking
@@ -281,14 +280,14 @@ internal sealed partial class BattleState
             attackerTurnsSinceSpotted = attacker.TurnsSinceSpotted[faction];
             attackerTurnsLeftSpottedForSnipers = attacker.TurnsLeftSpottedForSnipers[faction];
             if (unit.Faction != attacker.Faction && attack.Type is BattleActionType.AimedShot or BattleActionType.SnapShot or BattleActionType.AutoShot &&
-                attack.DamageItem is { } shell && (relative == new BattlePosition(0, 0, 0) || ExplosionRadiusIsZero(rules, shell)))
+                attack.DamageItem is { } shell && (relative == new BattlePosition(0, 0, 0) || ExplosionRadiusIsZero(shell)))
             {
                 if (unit.Ai is { } ai && attacker.Faction != unit.Faction && !ai.WasHitBy.Contains(attacker.Id)) ai.WasHitBy.Add(attacker.Id);
                 attackerTurnsSinceSpotted = 0;
-                var spotting = rules.Campaign.Combat.ExtendedSpotOnHitForSniping;
+                var spotting = RequiredRules.Campaign.Combat.ExtendedSpotOnHitForSniping;
                 // 0 = don't spot, 1 = spot only if the victim doesn't die or pass out, 2 = always spot
                 if (spotting > 0 && (spotting > 1 || !IsOutThresholdExceeded(unit)))
-                    attackerTurnsLeftSpottedForSnipers = Math.Max(attackerTurnsLeftSpottedForSnipers, unit.SoldierId is null && rules.Battle.Equipment.Units.TryGetValue(unit.UnitType, out var unitRule) ? unitRule.SpotterDuration : 0);
+                    attackerTurnsLeftSpottedForSnipers = Math.Max(attackerTurnsLeftSpottedForSnipers, unit.SoldierId is null && RequiredRules.Battle.Equipment.Units.TryGetValue(unit.UnitType, out var unitRule) ? unitRule.SpotterDuration : 0);
             }
         }
 
@@ -304,13 +303,13 @@ internal sealed partial class BattleState
         // update state
         MoraleChange(armor, unit, -moraleLoss);
         var burningBefore = unit.Fire;
-        SetUnitFire(rules, unit, fire);
+        SetUnitFire(unit, fire);
         if (unit.Fire > 0 && burningBefore == 0) Events.Add(new UnitIgnited(unit.Id, unit.Fire));
 
         // check if this unit turns others into zombies
         if (RandomPercent(transformChance) && transforms && unit.SpawnUnit.Length == 0)
         {
-            if (SpawnArmorSize(rules, transformUnit) is { } spawnSize && spawnSize <= unit.ArmorSize)
+            if (SpawnArmorSize(transformUnit) is { } spawnSize && spawnSize <= unit.ArmorSize)
             {
                 var spawnFaction = damageRule!.ZombieUnitFaction;
                 if (spawnFaction == -1) spawnFaction = attack.Attacker is { } maker ? (int)maker.Faction : (int)BattleFaction.Hostile;
@@ -328,10 +327,10 @@ internal sealed partial class BattleState
         if (explodes)
         {
             unit.AlreadyExploded = true;
-            if (ItemRuleOf(rules, selfDestructItem!.ItemType).BattleType == MeleeBattleTypeOfItem)
+            if (ItemRuleOf(selfDestructItem!.ItemType).BattleType == MeleeBattleTypeOfItem)
                 ExplosionRefusal = refusal = BattleFireReasons.SelfDestructItemUnsupported;
             else
-                PushSelfDestruct(rules, unit, selfDestructItem);
+                PushSelfDestruct(unit, selfDestructItem);
         }
 
         if (attack.Attacker is { } spotter)
@@ -347,7 +346,7 @@ internal sealed partial class BattleState
     private bool RandomPercent(int chance) => RandomChance.Percent(Random, chance);
 
     /// <summary>RuleItem::getExplosionRadius(attack) == 0: a damage type of a single target (a radius from the power is 1 or more).</summary>
-    private static bool ExplosionRadiusIsZero(RuntimeRuleCatalog rules, BattleItem item) => ItemRuleOf(rules, item.ItemType).Damage.FixedRadius == 0;
+    private bool ExplosionRadiusIsZero(BattleItem item) => ItemRuleOf(item.ItemType).Damage.FixedRadius == 0;
 
     /// <summary>BattleUnit::getSpecialWeapon(const RuleItem*): the unit's built-in item of the type.</summary>
     private BattleItem? SpecialWeaponNamed(BattleUnit unit, string itemType)
@@ -358,8 +357,8 @@ internal sealed partial class BattleState
     }
 
     /// <summary>The armor size of the unit rule a victim turns into, or null for a unit that does not exist (the reference would fail).</summary>
-    private static int? SpawnArmorSize(RuntimeRuleCatalog rules, string unitType) =>
-        rules.Units.TryGet(unitType, out var handle) && rules.Units[handle].Value.Armor is { } armor ? rules.Armors[armor].Value.Size : null;
+    private int? SpawnArmorSize(string unitType) =>
+        RequiredRules.Units.TryGet(unitType, out var handle) && RequiredRules.Units[handle].Value.Armor is { } armor ? RequiredRules.Armors[armor].Value.Size : null;
 
     /// <summary>
     /// RuleItem::getZombieUnit(victim): the unit the item turns the victim into, by the victim's armor and gender, then by its type, else the item's own.
@@ -376,17 +375,17 @@ internal sealed partial class BattleState
     /// the victim is remembered as its murderer unless this hit did no harm to a victim that is already dying (it burns, bleeds or loses health by
     /// itself). Returns whether the unit was hit (a unit with no health is not), and the refusal of <see cref="DamageUnit"/>.
     /// </summary>
-    internal (bool Hit, CampaignReason? Refusal) HitUnit(RuntimeRuleCatalog rules, in BattleAttack attack, BattleUnit? target, BattlePosition relative,
+    internal (bool Hit, CampaignReason? Refusal) HitUnit(in BattleAttack attack, BattleUnit? target, BattlePosition relative,
         int damage, RuntimeItemDamageRule type, bool rangeAttack)
     {
         if (target is null || target.Health <= 0) return (false, null);
         var healthOrig = target.Health;
-        var result = DamageUnit(rules, target, relative, damage, type, attack);
+        var result = DamageUnit(target, relative, damage, type, attack);
         var healthDamage = healthOrig - target.Health;
         Events.Add(new UnitHit(target.Id, attack.Attacker?.Id ?? -1, healthDamage, target.Health));
 
         // single place for firing/throwing/melee experience training
-        if (attack.Attacker is { OriginalFaction: BattleFaction.Player }) AwardExperience(rules, attack, target, rangeAttack);
+        if (attack.Attacker is { OriginalFaction: BattleFaction.Player }) AwardExperience(attack, target, rangeAttack);
 
         // Use case: an xcom soldier throwing a smoke grenade on a dying unit should not override the previously remembered murderer.
         // (Armor recovery bonuses are not ported yet, so a unit never regenerates negatively here: branch 6.)
@@ -410,12 +409,12 @@ internal sealed partial class BattleState
     /// is used. Only hits on hostile units (by birth, and for the extended system also by allegiance now) count; the mana experience of the weapon
     /// is added first. Returns whether experience was awarded.
     /// </summary>
-    internal bool AwardExperience(RuntimeRuleCatalog rules, in BattleAttack attack, BattleUnit target, bool rangeAttack)
+    internal bool AwardExperience(in BattleAttack attack, BattleUnit target, bool rangeAttack)
     {
         if (attack.Attacker is not { } unit || attack.Weapon is not { } weapon) return false;
-        var equipment = rules.Battle.Equipment.Items[weapon.ItemType];
-        var weaponRule = ItemRuleOf(rules, weapon.ItemType);
-        var extended = rules.Campaign.Combat.ExtendedExperienceAwardSystem;
+        var equipment = RequiredRules.Battle.Equipment.Items[weapon.ItemType];
+        var weaponRule = ItemRuleOf(weapon.ItemType);
+        var extended = RequiredRules.Campaign.Combat.ExtendedExperienceAwardSystem;
         AddManaExperience(unit, equipment.Combat.ManaExperience);
 
         var mode = equipment.Combat.ExperienceTrainingMode;
@@ -482,7 +481,7 @@ internal sealed partial class BattleState
         {
             first = TrainingKind.Firing;
         }
-        else if (ArcingShot(rules, weapon, attack.Type))
+        else if (ArcingShot(weapon, attack.Type))
         {
             first = TrainingKind.Throwing;
         }
@@ -564,7 +563,7 @@ internal sealed partial class BattleState
     /// hit at where the voxel lies against its bottom centre. Returns the unit part's outcome: the effect it made (2 for a fire or a glowing body),
     /// whether a unit took the hit, and the refusal of the hit (a later slice's work).
     /// </summary>
-    private (bool Hit, int Effect, CampaignReason? Refusal) HitUnitsInVoxel(RuntimeRuleCatalog rules, in BattleAttack attack, BattlePosition voxel, BattleVoxelType part,
+    private (bool Hit, int Effect, CampaignReason? Refusal) HitUnitsInVoxel(in BattleAttack attack, BattlePosition voxel, BattleVoxelType part,
         int tile, BattlePosition tilePosition, int damage, RuntimeItemDamageRule type, bool rangeAttack)
     {
         if (part is BattleVoxelType.Floor or BattleVoxelType.Object)
@@ -572,22 +571,22 @@ internal sealed partial class BattleState
             foreach (var item in ItemsOnTile(tilePosition).ToList())
             {
                 if (item.CorpseUnitId is not { } corpse) continue;
-                var (hit, refusal) = HitUnit(rules, attack, UnitById(corpse), new BattlePosition(0, 0, 0), damage, type, rangeAttack);
+                var (hit, refusal) = HitUnit(attack, UnitById(corpse), new BattlePosition(0, 0, 0), damage, type, rangeAttack);
                 if (!hit) continue;
-                return (true, GlowRange(rules, item) is not null ? 2 : 0, refusal);
+                return (true, GlowRange(item) is not null ? 2 : 0, refusal);
             }
             return (false, 0, null);
         }
-        if (OverlappingUnit(rules, tile) is { Health: > 0 } body)
+        if (OverlappingUnit(tile) is { Health: > 0 } body)
         {
             // A unit that stands on the tile below is hit 24 voxels lower.
             var verticalOffset = body != UnitOnTile(tile) ? 24 : 0;
             var half = body.ArmorSize * 8;
             var position = body.Position!.Value;
             var targetVoxel = new BattlePosition(position.X * 16 + half, position.Y * 16 + half,
-                position.Z * 24 + body.FloatHeightOf(rules) - Map.TerrainLevel(tile));
+                position.Z * 24 + body.FloatHeightOf(RequiredRules) - Map.TerrainLevel(tile));
             var relative = new BattlePosition(voxel.X - targetVoxel.X, voxel.Y - targetVoxel.Y, voxel.Z - targetVoxel.Z - verticalOffset);
-            var (_, refusal) = HitUnit(rules, attack, body, relative, damage, type, rangeAttack);
+            var (_, refusal) = HitUnit(attack, body, relative, damage, type, rangeAttack);
             return (true, body.Fire != 0 ? 2 : 0, refusal);
         }
         return (false, 0, null);

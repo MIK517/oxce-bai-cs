@@ -450,9 +450,9 @@ public sealed class BattleFirstTurnTests
         victim.Health = 10;
         victim.StunLevel = 12;
         victim.Status = BattleUnitStatus.Unconscious;
-        Assert.Empty(other.OpenBattlescape(second.Content.RuntimeRules));
+        Assert.Empty(other.OpenBattlescape());
         victim.Status = BattleUnitStatus.IgnoreMe;
-        Assert.Empty(other.OpenBattlescape(second.Content.RuntimeRules));
+        Assert.Empty(other.OpenBattlescape());
     }
 
     [Fact]
@@ -793,7 +793,7 @@ public sealed class BattleFirstTurnTests
             Assert.Equal(BattlePhase.Briefing, battle.Phase);
             Assert.Equivalent(before.Item1, campaign.Capture(), strict: true);
             // The first turn checks the same, should a script bind after the confirmation.
-            battle.EnterInventory(campaign.Content.RuntimeRules);
+            battle.EnterInventory();
             Assert.Equal("battle.new-turn-script-unsupported", Refusal(campaign, new StartFirstTurn()));
             Assert.Equal(0, battle.Turn);
         }

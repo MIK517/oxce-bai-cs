@@ -36,6 +36,7 @@ internal sealed class BattleRuntime
         Link = link;
         _trial = trial ?? throw new ArgumentNullException(nameof(trial));
         // Set once, here: a rule that draws or reads the campaign finds them on the state.
+        if (!ReferenceEquals(state.Rules, rules)) throw new ArgumentException("The battle's rules are not the campaign's.", nameof(state));
         state.Random = random;
         state.CampaignLink = link;
         state.Hooks = hooks ?? DefaultBattleHooks.Instance;
@@ -163,8 +164,8 @@ internal sealed class BattleRuntime
         Register<SelectSpotter>(SelectSpotter);
         Register<TurnUnit>(TurnUnit);
         Register<KneelUnit>(KneelUnit);
-        Register<WalkUnit>(command => RunMovement(battle => battle.Walk(Rules, command.UnitId, command.Target, command.Move, command.IgnoreSpottedEnemies)));
-        Register<MoveUnitUpDown>(command => RunMovement(battle => battle.MoveUpDown(Rules, command.UnitId, command.Up)));
+        Register<WalkUnit>(command => RunMovement(battle => battle.Walk(command.UnitId, command.Target, command.Move, command.IgnoreSpottedEnemies)));
+        Register<MoveUnitUpDown>(command => RunMovement(battle => battle.MoveUpDown(command.UnitId, command.Up)));
         Register<UseInventoryFeature>(command =>
             Blocked(State.Phase == BattlePhase.Briefing ? BattleInventoryReasons.Unavailable : BattleInventoryReasons.For(command.Feature)));
     }
@@ -172,14 +173,14 @@ internal sealed class BattleRuntime
     /// <summary>The pick-up and drop of <c>Inventory::mouseClick</c>; a refusal changes nothing.</summary>
     private CampaignCommandResult MoveInventory(MoveInventoryItem command)
     {
-        if (State.PlanMove(Rules, command.UnitId, command.ItemId, command.Slot ?? "", command.SlotX, command.SlotY, out var move) is { } refusal)
+        if (State.PlanMove(command.UnitId, command.ItemId, command.Slot ?? "", command.SlotX, command.SlotY, out var move) is { } refusal)
             return Blocked(refusal);
         return Moved(move!);
     }
 
     private CampaignCommandResult AutoPlaceInventory(AutoPlaceInventoryItem command)
     {
-        if (State.PlanAutoPlace(Rules, command.UnitId, command.ItemId, command.Smart, out var move) is { } refusal)
+        if (State.PlanAutoPlace(command.UnitId, command.ItemId, command.Smart, out var move) is { } refusal)
             return Blocked(refusal);
         // Smart choice with no section that takes a ground item: the reference "moves" it to the ground it lies on, at no cost.
         if (move is null)
@@ -191,13 +192,13 @@ internal sealed class BattleRuntime
     {
         // InventoryState's destructor in a running battle starts with gravity on the selected unit's tile (a unit without a floor falls).
         var selected = State.Phase == BattlePhase.InProgress && State.SelectedUnitId is { } chosen ? State.UnitById(chosen) : null;
-        if (selected?.Position is not null && State.FallsRefusal(Rules, selected) is { } fall) return Blocked(fall);
+        if (selected?.Position is not null && State.FallsRefusal(selected) is { } fall) return Blocked(fall);
         State.ApplyMove(move);
         // The port has no close command, so each move closes the inventory (the fall it starts was checked above).
         if (State.Phase == BattlePhase.InProgress)
         {
-            State.CloseInventory(Rules);
-            State.ResolveFalls(Rules);
+            State.CloseInventory();
+            State.ResolveFalls();
         }
         return new CampaignCommandResult([new InventoryItemMoved(move.Unit.Id, move.Item.Id, move.From.Id, move.To.Id, move.X, move.Y, move.Cost)]);
     }
@@ -210,7 +211,7 @@ internal sealed class BattleRuntime
 
     private CampaignCommandResult SelectNextUnit(SelectNextUnit command)
     {
-        if (State.SelectAdjacent(Rules, command.UnitId, command.Backwards, command.InventoryOnly, out var result, out var saved) is { } refusal)
+        if (State.SelectAdjacent(command.UnitId, command.Backwards, command.InventoryOnly, out var result, out var saved) is { } refusal)
             return Blocked(refusal);
         // Nothing to select leaves the selection empty, as in the reference; the event names the unit, or -1.
         return new CampaignCommandResult([new UnitSelected(result?.Id ?? -1, saved)]);
@@ -218,31 +219,31 @@ internal sealed class BattleRuntime
 
     private CampaignCommandResult SkipUnit(SkipUnit command)
     {
-        if (State.Skip(Rules, command.UnitId, command.ByDistance, out var result, out var saved) is { } refusal) return Blocked(refusal);
+        if (State.Skip(command.UnitId, command.ByDistance, out var result, out var saved) is { } refusal) return Blocked(refusal);
         return new CampaignCommandResult([new UnitSkipped(command.UnitId, result?.Id ?? -1, saved)]);
     }
 
     private CampaignCommandResult TurnUnit(TurnUnit command)
     {
-        if (State.TurnTowards(Rules, command.UnitId, command.Target, out var turn) is { } refusal) return Blocked(refusal);
+        if (State.TurnTowards(command.UnitId, command.Target, out var turn) is { } refusal) return Blocked(refusal);
         return new CampaignCommandResult([new UnitTurned(command.UnitId, turn.Direction, turn.Eighths, turn.TimeUnitsSpent, turn.Stop, turn.Door, turn.DoorsOpened, turn.DoorCentre)]);
     }
 
     private CampaignCommandResult KneelUnit(KneelUnit command)
     {
-        if (State.KneelUnit(Rules, command.UnitId, out var kneeling, out var spent) is { } refusal) return Blocked(refusal);
+        if (State.KneelUnit(command.UnitId, out var kneeling, out var spent) is { } refusal) return Blocked(refusal);
         return new CampaignCommandResult([new UnitKneeled(command.UnitId, kneeling, spent)]);
     }
 
     private CampaignCommandResult SelectSpotter(SelectSpotter command)
     {
-        if (State.SelectSpotter(Rules, command.UnitId, command.TargetUnitId, out var result, out var saved) is { } refusal) return Blocked(refusal);
+        if (State.SelectSpotter(command.UnitId, command.TargetUnitId, out var result, out var saved) is { } refusal) return Blocked(refusal);
         return new CampaignCommandResult([new UnitSelected(result!.Id, saved)]);
     }
 
     private CampaignCommandResult ReselectSkippedUnit(ReselectSkippedUnit command)
     {
-        if (State.ReselectSkipped(Rules, command.UnitId) is { } refusal) return Blocked(refusal);
+        if (State.ReselectSkipped(command.UnitId) is { } refusal) return Blocked(refusal);
         return new CampaignCommandResult([new UnitSelected(command.UnitId, true)]);
     }
 

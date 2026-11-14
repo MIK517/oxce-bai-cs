@@ -16,8 +16,14 @@ internal sealed partial class BattleState
     private const int MeleeType = 3;
     private const int MedikitType = 6;
 
-    /// <summary>The battle's rules (Mod), which the save's conditions read; null for a battle built without content.</summary>
+    /// <summary>
+    /// The battle's rules (Mod): the generator or the restore sets them once (init) and the runtime checks it holds the campaign's, so every rule of the battle reads them from
+    /// here instead of taking them as a parameter. Null for a battle built without content.
+    /// </summary>
     internal RuntimeRuleCatalog? Rules { get; init; }
+
+    /// <summary>The battle's rules for a rule that cannot run without them.</summary>
+    internal RuntimeRuleCatalog RequiredRules => Rules ?? throw new InvalidOperationException("The battle has no rules.");
 
     private readonly List<BattleItem> _conditionalRecovered = [];
     private readonly List<string> _restoreNotes = [];

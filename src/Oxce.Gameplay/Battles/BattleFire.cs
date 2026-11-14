@@ -156,12 +156,12 @@ internal sealed partial class BattleState
     /// TileEngine::hitTile: whether the tile caught smoke (1) or fire (2) from a hit of this damage, or neither (0). Smoke from a damage at the
     /// type's smoke threshold replaces any fire; fire needs a tile that is not void with a floor or an object and no fire yet.
     /// </summary>
-    internal int HitTile(RuntimeRuleCatalog rules, int tile, int damage, RuntimeItemDamageRule type)
+    internal int HitTile(int tile, int damage, RuntimeItemDamageRule type)
     {
         if (damage >= type.SmokeThreshold)
         {
             // Smoke from explosions always stays 6 to 14 turns.
-            if (Map.Smoke(tile) < rules.Campaign.TooMuchSmokeThreshold && Map.TerrainLevel(tile) > -24)
+            if (Map.Smoke(tile) < RequiredRules.Campaign.TooMuchSmokeThreshold && Map.TerrainLevel(tile) > -24)
             {
                 SetTileFire(tile, 0);
                 SetTileSmoke(tile, damage >= type.SmokeThreshold * 2
@@ -189,8 +189,8 @@ internal sealed partial class BattleState
     /// <c>TileEngine::hit</c> at a voxel, for a hit of terrain with no weapon: the attacker only stays out of the voxel check
     /// (<see cref="Hit"/> with an attack of no action, weapon or ammunition).
     /// </summary>
-    internal CampaignReason? HitTerrain(RuntimeRuleCatalog rules, BattleUnit? attacker, BattlePosition voxel, int power, RuntimeItemDamageRule type) =>
-        Hit(rules, new BattleAttack(BattleActionType.None, attacker), voxel, power, type, false);
+    internal CampaignReason? HitTerrain(BattleUnit? attacker, BattlePosition voxel, int power, RuntimeItemDamageRule type) =>
+        Hit(new BattleAttack(BattleActionType.None, attacker), voxel, power, type, false);
 
     /// <summary>
     /// <c>TileEngine::hit</c> at a voxel. What the voxel holds decides: a floor or an object first passes the hit to a body lying on the tile (an
@@ -201,17 +201,16 @@ internal sealed partial class BattleState
     /// explosion on the list of states (<see cref="RunStates"/>). The result is the refusal of a self-destruct item that is a melee weapon or a psi amplifier
     /// (S6 and branch 6), after the unit has taken the hit (commands run on a trial copy first). Terrain melee (the melee part of the voxel given) is S6's.
     /// </summary>
-    internal CampaignReason? Hit(RuntimeRuleCatalog rules, in BattleAttack attack, BattlePosition voxel, int power, RuntimeItemDamageRule type,
+    internal CampaignReason? Hit(in BattleAttack attack, BattlePosition voxel, int power, RuntimeItemDamageRule type,
         bool rangeAttack)
     {
-        ArgumentNullException.ThrowIfNull(rules);
         ArgumentNullException.ThrowIfNull(type);
         var tilePosition = BattleGeometry.TileOfVoxel(voxel);
         if (!Contains(tilePosition) || power <= 0) return null;
         var tile = Map.TileIndex(tilePosition);
         var sight = Sight();
         var part = sight.VoxelCheck(voxel, attack.Attacker);
-        var damage = type.RandomDamage(power, rules.Campaign.Interception, Random);
+        var damage = type.RandomDamage(power, RequiredRules.Campaign.Interception, Random);
         var finalDamage = BattleDamageTypes.TileDamage(type, Random, power, damage);
         var terrainChanged = false;
         var effect = 0;
@@ -223,21 +222,21 @@ internal sealed partial class BattleState
             if (part is BattleVoxelType.Floor or BattleVoxelType.Object)
             {
                 // A body that is still alive takes the hit, and the terrain is spared.
-                (bodyHit, effect, unitRefusal) = HitUnitsInVoxel(rules, attack, voxel, part, tile, tilePosition, damage, type, rangeAttack);
+                (bodyHit, effect, unitRefusal) = HitUnitsInVoxel(attack, voxel, part, tile, tilePosition, damage, type, rangeAttack);
             }
             if (!bodyHit)
             {
                 var data = Map.MapData(tile, tilePart)!;
                 terrainChanged = finalDamage >= data.Armor;
                 var module = part == BattleVoxelType.Object && MissionType == BaseDefenseMissionType && finalDamage >= data.Armor && data.IsBaseModule;
-                effect = HitTile(rules, tile, damage, type);
+                effect = HitTile(tile, damage, type);
                 if (module) CountModuleLost(tilePosition);
                 if (DamagePart(tile, tilePart, finalDamage, ObjectiveType)) AddDestroyedObjective();
             }
         }
         else if (part == BattleVoxelType.Unit)
         {
-            (_, effect, unitRefusal) = HitUnitsInVoxel(rules, attack, voxel, part, tile, tilePosition, damage, type, rangeAttack);
+            (_, effect, unitRefusal) = HitUnitsInVoxel(attack, voxel, part, tile, tilePosition, damage, type, rangeAttack);
         }
 
         if (terrainChanged || effect != 0)
@@ -245,7 +244,7 @@ internal sealed partial class BattleState
             ApplyGravity(tilePosition);
             // A destroyed floor changes the sunlight of the column below it; fire and smoke that can block light change the fire layer.
             var layer = part == BattleVoxelType.Floor && tilePosition.Z > 0 ? BattleLightLayer.Ambient : BattleLightLayer.Fire;
-            CalculateLighting(rules, layer, tilePosition, 1, true);
+            CalculateLighting(layer, tilePosition, 1, true);
             sight.CalculateFov(tilePosition, 1, true, terrainChanged);
         }
         else
@@ -258,20 +257,20 @@ internal sealed partial class BattleState
     private const string BaseDefenseMissionType = "STR_BASE_DEFENSE";
 
     /// <summary>BattleUnit's floor-burning abilities: <c>SPECAB_BURNFLOOR</c> and <c>SPECAB_BURN_AND_EXPLODE</c>.</summary>
-    private static bool BurnsFloor(RuntimeRuleCatalog rules, BattleUnit unit) => SpecialAbilityOf(rules, unit) >= 2;
+    private bool BurnsFloor(BattleUnit unit) => SpecialAbilityOf(unit) >= 2;
 
     /// <summary>
     /// What <c>UnitWalkBState</c> and <c>UnitFallBState</c> do for a unit that burns floors once it stands still: ignite its tile (power 1) and hit
     /// the floor under it with <c>DT_IN</c> at the strength of the unit. The hole that may burn through the floor makes the unit fall later (gravity
     /// queues it). A part that explodes leaves its explosive for the next explosion or the end of the turn, as the reference does.
     /// </summary>
-    private CampaignReason? BurnFloor(RuntimeRuleCatalog rules, BattleUnit unit)
+    private CampaignReason? BurnFloor(BattleUnit unit)
     {
         var position = unit.Position!.Value;
         var tile = Map.TileIndex(position);
         var voxel = new BattlePosition(position.X * 16 + 8, position.Y * 16 + 8, position.Z * 24 - Map.TerrainLevel(tile));
         Ignite(tile, 1);
-        return HitTerrain(rules, unit, voxel, unit.Stats.Strength, BattleDamageTypes.Fire);
+        return HitTerrain(unit, voxel, unit.Stats.Strength, BattleDamageTypes.Fire);
     }
 
     /// <summary>Tile::prepareNewTurn without the environment's damage: smoke added this turn is averaged over its overlaps.</summary>

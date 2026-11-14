@@ -54,7 +54,7 @@ public sealed class BattleLineOfFireTests
     {
         var tile = arena.Tile(x, y, z);
         arena.Map.SetDiscovered(tile, Oxce.Gameplay.Battles.Terrain.BattleTilePart.Floor, true, BattleFaction.Player);
-        return arena.Battle.AimView(arena.Rules, BattleResearchGate.Everything, Player, arena.Soldier.Id, weapon.Id, kind, new BattlePosition(x, y, z), force)!;
+        return arena.Battle.AimView(BattleResearchGate.Everything, Player, arena.Soldier.Id, weapon.Id, kind, new BattlePosition(x, y, z), force)!;
     }
 
     // ---- origins ----
@@ -120,7 +120,7 @@ public sealed class BattleLineOfFireTests
         var trajectory = new List<BattlePosition>();
         Assert.Equal(BattleVoxelType.Unit, sight.CalculateLineVoxel(origin, scan, false, trajectory, arena.Soldier));
         // The target voxel the shot chooses is that one, and its line of fire passes the first check.
-        var choice = arena.Battle.ChooseTargetVoxel(arena.Rules, action, arena.Soldier.RequiredPosition);
+        var choice = arena.Battle.ChooseTargetVoxel(action, arena.Soldier.RequiredPosition);
         Assert.Equal(scan, choice.Voxel);
     }
 
@@ -152,23 +152,23 @@ public sealed class BattleLineOfFireTests
         var corner = new BattlePosition(15 * 16, 10 * 16, 0);
         var sight = arena.Battle.Sight();
         // A seen unit: a voxel inside it that the line reaches.
-        var unit = arena.Battle.ChooseTargetVoxel(arena.Rules, action, origin);
+        var unit = arena.Battle.ChooseTargetVoxel(action, origin);
         Assert.NotNull(unit.Voxel);
         Assert.Equal(BattleVoxelType.Unit, sight.CalculateLineVoxel(unit.OriginVoxel, unit.Voxel!.Value, false, [], arena.Soldier));
         // Without the unit, a floor alone is aimed at its low centre; an object on it, at a voxel of the object.
         arena.Battle.SetTile(arena.Alien, new BattlePosition(27, 0, 0));
         arena.See();
-        var floor = arena.Battle.ChooseTargetVoxel(arena.Rules, action, origin);
+        var floor = arena.Battle.ChooseTargetVoxel(action, origin);
         Assert.Equal(new BattlePosition(corner.X + 8, corner.Y + 8, 2), floor.Voxel);
         arena.Put(15, 10, 0, Oxce.Gameplay.Battles.Terrain.BattleTilePart.ObjectPart, Wall);
-        var solid = arena.Battle.ChooseTargetVoxel(arena.Rules, action, origin);
+        var solid = arena.Battle.ChooseTargetVoxel(action, origin);
         Assert.NotEqual(floor.Voxel, solid.Voxel);
         var trajectory = new List<BattlePosition>();
         Assert.Equal(BattleVoxelType.Object, sight.CalculateLineVoxel(solid.OriginVoxel, solid.Voxel!.Value, false, trajectory, arena.Soldier));
         Assert.Equal((15, 10, 0), (trajectory[0].X / 16, trajectory[0].Y / 16, trajectory[0].Z / 24));
         // A shot at the shooter's own tile goes to the floor under it.
         var own = new BattleAimAction(arena.Soldier, BattleActionType.AimedShot, gun, arena.Soldier.RequiredPosition);
-        var self = arena.Battle.ChooseTargetVoxel(arena.Rules, own, arena.Soldier.RequiredPosition);
+        var self = arena.Battle.ChooseTargetVoxel(own, arena.Soldier.RequiredPosition);
         Assert.True(self.SelfShot);
         Assert.Equal(new BattlePosition(10 * 16 + 8, 10 * 16 + 8, 0), self.Voxel);
     }
@@ -184,19 +184,19 @@ public sealed class BattleLineOfFireTests
         var corner = new BattlePosition(15 * 16, 10 * 16, 0);
         // A west wall is scanned along the tile's west edge (x 0), a north wall along its north edge (y 0).
         arena.Put(15, 10, 0, Oxce.Gameplay.Battles.Terrain.BattleTilePart.WestWall, Wall);
-        Assert.Equal(corner.X, arena.Battle.ChooseTargetVoxel(arena.Rules, action, origin).Voxel!.Value.X);
+        Assert.Equal(corner.X, arena.Battle.ChooseTargetVoxel(action, origin).Voxel!.Value.X);
         arena.Clear(15, 10, 0, Oxce.Gameplay.Battles.Terrain.BattleTilePart.WestWall);
         arena.Put(15, 10, 0, Oxce.Gameplay.Battles.Terrain.BattleTilePart.NorthWall, Wall);
-        Assert.Equal(corner.Y, arena.Battle.ChooseTargetVoxel(arena.Rules, action, origin).Voxel!.Value.Y);
+        Assert.Equal(corner.Y, arena.Battle.ChooseTargetVoxel(action, origin).Voxel!.Value.Y);
         // With an object as well the object is aimed at: its spiral starts in the middle of the tile, so its voxel is not on the wall's edge.
         arena.Put(15, 10, 0, Oxce.Gameplay.Battles.Terrain.BattleTilePart.ObjectPart, Wall);
-        var voxel = arena.Battle.ChooseTargetVoxel(arena.Rules, action, origin).Voxel!.Value;
+        var voxel = arena.Battle.ChooseTargetVoxel(action, origin).Voxel!.Value;
         Assert.NotEqual(corner.Y, voxel.Y);
         Assert.Equal(15, voxel.X / 16);
         // A tile whose wall the origin cannot reach falls back to the middle of that edge (8, 0, 9).
         arena.Clear(15, 10, 0, Oxce.Gameplay.Battles.Terrain.BattleTilePart.ObjectPart);
         arena.Put(14, 10, 0, Oxce.Gameplay.Battles.Terrain.BattleTilePart.ObjectPart, Wall);
-        Assert.Equal(new BattlePosition(corner.X + 8, corner.Y, 9), arena.Battle.ChooseTargetVoxel(arena.Rules, action, origin).Voxel);
+        Assert.Equal(new BattlePosition(corner.X + 8, corner.Y, 9), arena.Battle.ChooseTargetVoxel(action, origin).Voxel);
     }
 
     [Fact]
@@ -205,12 +205,12 @@ public sealed class BattleLineOfFireTests
         var (arena, gun, _) = Armed(gun: "arcingShot: true");
         var target = new BattlePosition(15, 10, 0);
         var forced = new BattleAimAction(arena.Soldier, BattleActionType.AimedShot, gun, target) { ForceFire = true };
-        var choice = arena.Battle.ChooseTargetVoxel(arena.Rules, forced, arena.Soldier.RequiredPosition);
+        var choice = arena.Battle.ChooseTargetVoxel(forced, arena.Soldier.RequiredPosition);
         Assert.Equal(new BattlePosition(15 * 16 + 8, 10 * 16 + 8, 12), choice.Voxel);
         var launch = new BattleAimAction(arena.Soldier, BattleActionType.Launch, gun, target);
-        Assert.Equal(new BattlePosition(15 * 16 + 8, 10 * 16 + 8, 16), arena.Battle.ChooseTargetVoxel(arena.Rules, launch, arena.Soldier.RequiredPosition).Voxel);
-        Assert.Equal(new BattlePosition(15 * 16 + 8, 10 * 16 + 8, 2), arena.Battle.ChooseTargetVoxel(arena.Rules, launch, arena.Soldier.RequiredPosition, true).Voxel);
-        var arcing = arena.Battle.ChooseTargetVoxel(arena.Rules, new BattleAimAction(arena.Soldier, BattleActionType.AimedShot, gun, target), arena.Soldier.RequiredPosition);
+        Assert.Equal(new BattlePosition(15 * 16 + 8, 10 * 16 + 8, 16), arena.Battle.ChooseTargetVoxel(launch, arena.Soldier.RequiredPosition).Voxel);
+        Assert.Equal(new BattlePosition(15 * 16 + 8, 10 * 16 + 8, 2), arena.Battle.ChooseTargetVoxel(launch, arena.Soldier.RequiredPosition, true).Voxel);
+        var arcing = arena.Battle.ChooseTargetVoxel(new BattleAimAction(arena.Soldier, BattleActionType.AimedShot, gun, target), arena.Soldier.RequiredPosition);
         Assert.True(arcing.Arcing);
         Assert.Null(arcing.Voxel);
     }
@@ -301,8 +301,8 @@ public sealed class BattleLineOfFireTests
     public void AnArcingShotFliesLikeAThrowAndAnOrdinaryShotDoesNot()
     {
         var (arena, gun, _) = Armed(gun: "confAimed: {arcing: true}");
-        Assert.True(BattleState.ArcingShot(arena.Rules, gun, BattleActionType.AimedShot));
-        Assert.False(BattleState.ArcingShot(arena.Rules, gun, BattleActionType.SnapShot));
+        Assert.True(arena.Battle.ArcingShot(gun, BattleActionType.AimedShot));
+        Assert.False(arena.Battle.ArcingShot(gun, BattleActionType.SnapShot));
         // Over a full wall an ordinary shot has no line, an arc finds one by a high curvature.
         arena.Put(12, 10, 0, Oxce.Gameplay.Battles.Terrain.BattleTilePart.ObjectPart, Wall);
         arena.See();
@@ -357,28 +357,28 @@ public sealed class BattleLineOfFireTests
         var firing = Firing(soldier);
         Assert.True(firing > 0);
         // Two hands are not free, so the two handed gun is halved. Remove the grenade to hold the gun with an empty hand.
-        Assert.Equal(firing * 80 / 100 * 50 / 100, battle.FiringAccuracy(arena.Rules, soldier, gun, BattleActionType.AimedShot));
-        Assert.Equal(firing * 60 / 100 * 50 / 100, battle.FiringAccuracy(arena.Rules, soldier, gun, BattleActionType.SnapShot));
-        Assert.Equal(firing * 50 / 100 * 50 / 100, battle.FiringAccuracy(arena.Rules, soldier, gun, BattleActionType.AutoShot));
+        Assert.Equal(firing * 80 / 100 * 50 / 100, battle.FiringAccuracy(soldier, gun, BattleActionType.AimedShot));
+        Assert.Equal(firing * 60 / 100 * 50 / 100, battle.FiringAccuracy(soldier, gun, BattleActionType.SnapShot));
+        Assert.Equal(firing * 50 / 100 * 50 / 100, battle.FiringAccuracy(soldier, gun, BattleActionType.AutoShot));
         battle.RemoveItem(grenade!);
         var open = firing * 80 / 100;
-        Assert.Equal(open, battle.FiringAccuracy(arena.Rules, soldier, gun, BattleActionType.AimedShot));
+        Assert.Equal(open, battle.FiringAccuracy(soldier, gun, BattleActionType.AimedShot));
         // A kneeling unit gets the bonus.
         soldier.Kneeled = true;
-        Assert.Equal(open * 120 / 100, battle.FiringAccuracy(arena.Rules, soldier, gun, BattleActionType.AimedShot));
+        Assert.Equal(open * 120 / 100, battle.FiringAccuracy(soldier, gun, BattleActionType.AimedShot));
         // Wounds in the head and in both arms (a two handed weapon) cost 10% each; health scales the rest.
         soldier.FatalWounds[0] = 1;
         soldier.FatalWounds[2] = 1;
         soldier.FatalWounds[3] = 2;
-        Assert.Equal(75 - 40 + 25, BattleState.AccuracyModifier(arena.Rules, soldier, gun));
-        Assert.Equal(open * 120 / 100 * 60 / 100, battle.FiringAccuracy(arena.Rules, soldier, gun, BattleActionType.AimedShot));
+        Assert.Equal(75 - 40 + 25, arena.Battle.AccuracyModifier(soldier, gun));
+        Assert.Equal(open * 120 / 100 * 60 / 100, battle.FiringAccuracy(soldier, gun, BattleActionType.AimedShot));
         soldier.FatalWounds[0] = 20;
-        Assert.Equal(10, BattleState.AccuracyModifier(arena.Rules, soldier, gun)); // never below 10
+        Assert.Equal(10, arena.Battle.AccuracyModifier(soldier, gun)); // never below 10
         soldier.FatalWounds[0] = 0;
         soldier.FatalWounds[2] = 0;
         soldier.FatalWounds[3] = 0;
         soldier.Health = soldier.Stats.Health / 2;
-        Assert.Equal(25 * soldier.Health / soldier.Stats.Health + 75, BattleState.AccuracyModifier(arena.Rules, soldier, gun));
+        Assert.Equal(25 * soldier.Health / soldier.Stats.Health + 75, arena.Battle.AccuracyModifier(soldier, gun));
     }
 
     [Fact]
@@ -387,15 +387,15 @@ public sealed class BattleLineOfFireTests
         var (arena, gun, grenade) = Armed(gun: "accuracyAimed: 100\nkneelBonus: 130", grenade: "tuThrow: 25\naccuracyMelee: 70", leftHand: true);
         var soldier = arena.Soldier;
         soldier.FatalWounds[2] = 3; // the right arm
-        Assert.Equal(70, BattleState.AccuracyModifier(arena.Rules, soldier, gun));
-        Assert.Equal(100, BattleState.AccuracyModifier(arena.Rules, soldier, grenade!)); // held in the left hand
+        Assert.Equal(70, arena.Battle.AccuracyModifier(soldier, gun));
+        Assert.Equal(100, arena.Battle.AccuracyModifier(soldier, grenade!)); // held in the left hand
         soldier.FatalWounds[2] = 0;
         soldier.Kneeled = true;
         var standing = Firing(soldier) * 100 / 100;
-        Assert.Equal(standing * 130 / 100, arena.Battle.FiringAccuracy(arena.Rules, soldier, gun, BattleActionType.AimedShot));
+        Assert.Equal(standing * 130 / 100, arena.Battle.FiringAccuracy(soldier, gun, BattleActionType.AimedShot));
         // A throw uses the throwing statistic and the item's throw accuracy (100), no kneel bonus; a hit the melee skill's accuracy.
-        Assert.Equal(soldier.Stats.Throwing, arena.Battle.FiringAccuracy(arena.Rules, soldier, grenade!, BattleActionType.Throw));
-        Assert.Equal(soldier.Stats.Melee * 70 / 100, arena.Battle.FiringAccuracy(arena.Rules, soldier, grenade!, BattleActionType.Hit));
+        Assert.Equal(soldier.Stats.Throwing, arena.Battle.FiringAccuracy(soldier, grenade!, BattleActionType.Throw));
+        Assert.Equal(soldier.Stats.Melee * 70 / 100, arena.Battle.FiringAccuracy(soldier, grenade!, BattleActionType.Hit));
     }
 
     [Fact]
@@ -419,11 +419,11 @@ public sealed class BattleLineOfFireTests
         Assert.Equal((0, false), (gone.Accuracy, gone.InRange));
         // A range of 1 or 2 reaches one diagonal step.
         var (arena, _, _) = Armed(gun: "maxRange: 1");
-        Assert.False(BattleState.IsOutOfRange(arena.Rules, GunItem(arena), 3));
-        Assert.True(BattleState.IsOutOfRange(arena.Rules, GunItem(arena), 4));
+        Assert.False(arena.Battle.IsOutOfRange(GunItem(arena), 3));
+        Assert.True(arena.Battle.IsOutOfRange(GunItem(arena), 4));
         var (two, _, _) = Armed(gun: "maxRange: 2");
-        Assert.False(BattleState.IsOutOfRange(two.Rules, GunItem(two), 6));
-        Assert.True(BattleState.IsOutOfRange(two.Rules, GunItem(two), 7));
+        Assert.False(two.Battle.IsOutOfRange(GunItem(two), 6));
+        Assert.True(two.Battle.IsOutOfRange(GunItem(two), 7));
     }
 
     private static BattleItem GunItem(Arena arena) => arena.Battle.InventoryOf(arena.Soldier).Single(static item => item.ItemType == "GUN");
@@ -542,35 +542,34 @@ public sealed class BattleLineOfFireTests
     {
         var (arena, gun, _) = Armed(gun: "requires: [RES_GUN]\nai: {useDelay: 3}", global: ResearchText.TrimStart('\n'));
         var battle = arena.Battle;
-        var rules = arena.Rules;
         var nothing = new BattleResearchGate(static _ => false, false);
-        Assert.False(battle.CanUseWeapon(rules, nothing, gun, arena.Soldier, false, BattleActionType.AimedShot).Usable);
-        Assert.True(battle.CanUseWeapon(rules, new BattleResearchGate(static id => id == "RES_GUN", false), gun, arena.Soldier, false, BattleActionType.AimedShot).Usable);
-        Assert.True(battle.CanUseWeapon(rules, new BattleResearchGate(static _ => false, true), gun, arena.Soldier, false, BattleActionType.AimedShot).Usable); // the debug mode
+        Assert.False(battle.CanUseWeapon(nothing, gun, arena.Soldier, false, BattleActionType.AimedShot).Usable);
+        Assert.True(battle.CanUseWeapon(new BattleResearchGate(static id => id == "RES_GUN", false), gun, arena.Soldier, false, BattleActionType.AimedShot).Usable);
+        Assert.True(battle.CanUseWeapon(new BattleResearchGate(static _ => false, true), gun, arena.Soldier, false, BattleActionType.AimedShot).Usable); // the debug mode
         // A hostile unit's research does not matter, but its turn does: the weapon's delay of 3.
         var alien = arena.Alien;
         var alienGun = new BattleItem(battle.TakeItemId(), "GUN") { OwnerUnitId = alien.Id, Slot = "STR_RIGHT_HAND", IsWeaponWithAmmo = true };
         battle.AddItem(alienGun);
         battle.Turn = 2;
-        Assert.False(battle.CanUseWeapon(rules, nothing, alienGun, alien, false, BattleActionType.None).Usable);
+        Assert.False(battle.CanUseWeapon(nothing, alienGun, alien, false, BattleActionType.None).Usable);
         battle.Turn = 3;
-        Assert.True(battle.CanUseWeapon(rules, nothing, alienGun, alien, false, BattleActionType.None).Usable);
+        Assert.True(battle.CanUseWeapon(nothing, alienGun, alien, false, BattleActionType.None).Usable);
         // No weapon or unit is no use.
-        Assert.False(battle.CanUseWeapon(rules, nothing, null, alien, false, BattleActionType.None).Usable);
-        Assert.False(battle.CanUseWeapon(rules, nothing, alienGun, null, false, BattleActionType.None).Usable);
+        Assert.False(battle.CanUseWeapon(nothing, null, alien, false, BattleActionType.None).Usable);
+        Assert.False(battle.CanUseWeapon(nothing, alienGun, null, false, BattleActionType.None).Usable);
     }
 
     [Fact]
     public void CanUseWeaponChecksTheDepthOfTheWeaponAndOfTheAmmunitionTheActionUses()
     {
         var (arena, gun, _) = Armed(gun: "underwaterOnly: true");
-        var water = arena.Battle.CanUseWeapon(arena.Rules, BattleResearchGate.Everything, gun, arena.Soldier, false, BattleActionType.AimedShot);
+        var water = arena.Battle.CanUseWeapon(BattleResearchGate.Everything, gun, arena.Soldier, false, BattleActionType.AimedShot);
         Assert.Equal((false, "STR_UNDERWATER_EQUIPMENT"), (water.Usable, water.Message));
         // The ammunition's own flag counts for an action that names it, and not for the standard artificial intelligence's unknown action.
         var (ammoArena, ammoGun, _) = Armed(clip: "underwaterOnly: true");
-        var byAction = ammoArena.Battle.CanUseWeapon(ammoArena.Rules, BattleResearchGate.Everything, ammoGun, ammoArena.Soldier, false, BattleActionType.AimedShot);
+        var byAction = ammoArena.Battle.CanUseWeapon(BattleResearchGate.Everything, ammoGun, ammoArena.Soldier, false, BattleActionType.AimedShot);
         Assert.Equal((false, "STR_UNDERWATER_EQUIPMENT"), (byAction.Usable, byAction.Message));
-        Assert.True(ammoArena.Battle.CanUseWeapon(ammoArena.Rules, BattleResearchGate.Everything, ammoGun, ammoArena.Soldier, false, BattleActionType.None).Usable);
+        Assert.True(ammoArena.Battle.CanUseWeapon(BattleResearchGate.Everything, ammoGun, ammoArena.Soldier, false, BattleActionType.None).Usable);
     }
 
     [Fact]
@@ -578,13 +577,13 @@ public sealed class BattleLineOfFireTests
     {
         var (arena, gun, _) = Armed(gun: "blockBothHands: true", grenade: "tuThrow: 25", leftHand: true);
         var battle = arena.Battle;
-        var refused = battle.CanUseWeapon(arena.Rules, BattleResearchGate.Everything, gun, arena.Soldier, false, BattleActionType.AimedShot);
+        var refused = battle.CanUseWeapon(BattleResearchGate.Everything, gun, arena.Soldier, false, BattleActionType.AimedShot);
         Assert.Equal((false, "STR_MUST_USE_BOTH_HANDS"), (refused.Usable, refused.Message));
-        Assert.True(battle.CanUseWeapon(arena.Rules, BattleResearchGate.Everything, gun, arena.Soldier, true, BattleActionType.AimedShot).Usable); // berserk
-        Assert.True(battle.CanUseWeapon(arena.Rules, BattleResearchGate.Everything, gun, arena.Alien, false, BattleActionType.AimedShot).Usable); // not X-COM's side
+        Assert.True(battle.CanUseWeapon(BattleResearchGate.Everything, gun, arena.Soldier, true, BattleActionType.AimedShot).Usable); // berserk
+        Assert.True(battle.CanUseWeapon(BattleResearchGate.Everything, gun, arena.Alien, false, BattleActionType.AimedShot).Usable); // not X-COM's side
         // With a hand free it is fine.
         var (free, freeGun, _) = Armed(gun: "blockBothHands: true");
-        Assert.True(free.Battle.CanUseWeapon(free.Rules, BattleResearchGate.Everything, freeGun, free.Soldier, false, BattleActionType.AimedShot).Usable);
+        Assert.True(free.Battle.CanUseWeapon(BattleResearchGate.Everything, freeGun, free.Soldier, false, BattleActionType.AimedShot).Usable);
     }
 
     [Fact]
@@ -592,24 +591,24 @@ public sealed class BattleLineOfFireTests
     {
         var (psi, psiGun, _) = Armed(gun: "psiRequired: true");
         psi.Soldier.Stats = psi.Soldier.Stats with { PsiSkill = 0 };
-        Assert.False(psi.Battle.CanUseWeapon(psi.Rules, BattleResearchGate.Everything, psiGun, psi.Soldier, false, BattleActionType.AimedShot).Usable);
+        Assert.False(psi.Battle.CanUseWeapon(BattleResearchGate.Everything, psiGun, psi.Soldier, false, BattleActionType.AimedShot).Usable);
         psi.Soldier.Stats = psi.Soldier.Stats with { PsiSkill = 20 };
-        Assert.True(psi.Battle.CanUseWeapon(psi.Rules, BattleResearchGate.Everything, psiGun, psi.Soldier, false, BattleActionType.AimedShot).Usable);
+        Assert.True(psi.Battle.CanUseWeapon(BattleResearchGate.Everything, psiGun, psi.Soldier, false, BattleActionType.AimedShot).Usable);
 
         // The mana feature is off by default: X-COM's unit cannot use a mana weapon.
         var (off, offGun, _) = Armed(gun: "manaRequired: true");
-        Assert.False(off.Battle.CanUseWeapon(off.Rules, BattleResearchGate.Everything, offGun, off.Soldier, false, BattleActionType.AimedShot).Usable);
-        Assert.True(off.Battle.CanUseWeapon(off.Rules, BattleResearchGate.Everything, offGun, off.Alien, false, BattleActionType.AimedShot).Usable); // a hostile unit is not gated
+        Assert.False(off.Battle.CanUseWeapon(BattleResearchGate.Everything, offGun, off.Soldier, false, BattleActionType.AimedShot).Usable);
+        Assert.True(off.Battle.CanUseWeapon(BattleResearchGate.Everything, offGun, off.Alien, false, BattleActionType.AimedShot).Usable); // a hostile unit is not gated
         // On, with an unlock research: until it is researched.
         var (on, onGun, _) = Armed(gun: "manaRequired: true", global: "mana:\n  enabled: true\n  unlockResearch: RES_GUN\n" + ResearchText.TrimStart('\n'));
         Assert.True(on.Rules.Campaign.Combat.ManaEnabled);
         Assert.Equal("RES_GUN", on.Rules.Campaign.Combat.ManaUnlockResearch);
-        Assert.False(on.Battle.CanUseWeapon(on.Rules, new BattleResearchGate(static _ => false, false), onGun, on.Soldier, false, BattleActionType.AimedShot).Usable);
-        Assert.True(on.Battle.CanUseWeapon(on.Rules, new BattleResearchGate(static id => id == "RES_GUN", false), onGun, on.Soldier, false, BattleActionType.AimedShot).Usable);
-        Assert.True(on.Battle.CanUseWeapon(on.Rules, new BattleResearchGate(static _ => false, true), onGun, on.Soldier, false, BattleActionType.AimedShot).Usable);
+        Assert.False(on.Battle.CanUseWeapon(new BattleResearchGate(static _ => false, false), onGun, on.Soldier, false, BattleActionType.AimedShot).Usable);
+        Assert.True(on.Battle.CanUseWeapon(new BattleResearchGate(static id => id == "RES_GUN", false), onGun, on.Soldier, false, BattleActionType.AimedShot).Usable);
+        Assert.True(on.Battle.CanUseWeapon(new BattleResearchGate(static _ => false, true), onGun, on.Soldier, false, BattleActionType.AimedShot).Usable);
         // Enabled with no research named: unlocked.
         var (open, openGun, _) = Armed(gun: "manaRequired: true", global: "mana:\n  enabled: true\n");
-        Assert.True(open.Battle.CanUseWeapon(open.Rules, new BattleResearchGate(static _ => false, false), openGun, open.Soldier, false, BattleActionType.AimedShot).Usable);
+        Assert.True(open.Battle.CanUseWeapon(new BattleResearchGate(static _ => false, false), openGun, open.Soldier, false, BattleActionType.AimedShot).Usable);
     }
 
     // ---- the queries ----
@@ -618,7 +617,7 @@ public sealed class BattleLineOfFireTests
     public void TheMenuListsTheShotsOfAFirearmWithTheirAccuracyAndCostAndAThrowForAnItemThatIsNotFixed()
     {
         var (arena, gun, _) = Armed(gun: "accuracyAimed: 80\naccuracySnap: 60\naccuracyAuto: 40\ntuAimed: 30\ntuSnap: 18\ntuAuto: 24\ntuThrow: 20\ntuMelee: 12\naccuracyMelee: 50");
-        var menu = arena.Battle.AimMenu(arena.Rules, BattleResearchGate.Everything, Player, arena.Soldier.Id, gun.Id)!;
+        var menu = arena.Battle.AimMenu(BattleResearchGate.Everything, Player, arena.Soldier.Id, gun.Id)!;
         var firing = Firing(arena.Soldier);
         Assert.Equal(["Throw", "AutoShot", "SnapShot", "AimedShot", "Hit"], menu.Items.Select(static item => item.Kind.ToString()).ToArray());
         var timeUnits = arena.Soldier.Stats.TimeUnits;
@@ -630,13 +629,13 @@ public sealed class BattleLineOfFireTests
         Assert.Equal("STR_HIT_MELEE", menu.Items[^1].Name);
         // A fixed item cannot be thrown; a psi weapon the unit cannot use shows only the throw.
         var (fixedArena, fixedGun, _) = Armed(gun: "fixedWeapon: true\ntuAimed: 30\ntuThrow: 20");
-        Assert.DoesNotContain(fixedArena.Battle.AimMenu(fixedArena.Rules, BattleResearchGate.Everything, Player, fixedArena.Soldier.Id, fixedGun.Id)!.Items, static item => item.Kind == BattleAimKind.Throw);
+        Assert.DoesNotContain(fixedArena.Battle.AimMenu(BattleResearchGate.Everything, Player, fixedArena.Soldier.Id, fixedGun.Id)!.Items, static item => item.Kind == BattleAimKind.Throw);
         var (psiArena, psiGun, _) = Armed(gun: "psiRequired: true\ntuAimed: 30\ntuThrow: 20");
         psiArena.Soldier.Stats = psiArena.Soldier.Stats with { PsiSkill = 0 };
-        Assert.Equal(["Throw"], psiArena.Battle.AimMenu(psiArena.Rules, BattleResearchGate.Everything, Player, psiArena.Soldier.Id, psiGun.Id)!.Items.Select(static item => item.Kind.ToString()).ToArray());
+        Assert.Equal(["Throw"], psiArena.Battle.AimMenu(BattleResearchGate.Everything, Player, psiArena.Soldier.Id, psiGun.Id)!.Items.Select(static item => item.Kind.ToString()).ToArray());
         // A launcher offers its launch instead of the aimed shot.
         var (launcher, launchGun, _) = Armed(gun: "waypoints: 1\ntuAimed: 30\ntuAuto: 20\ntuSnap: 18");
-        var kinds = launcher.Battle.AimMenu(launcher.Rules, BattleResearchGate.Everything, Player, launcher.Soldier.Id, launchGun.Id)!.Items.Select(static item => item.Kind).ToArray();
+        var kinds = launcher.Battle.AimMenu(BattleResearchGate.Everything, Player, launcher.Soldier.Id, launchGun.Id)!.Items.Select(static item => item.Kind).ToArray();
         // A launcher's shots share their ammunition slot with the ones it replaces, so only the launch (and the throw) remain.
         Assert.Equal([BattleAimKind.Throw, BattleAimKind.Launch], kinds);
         Assert.DoesNotContain(BattleAimKind.AimedShot, kinds);
@@ -646,9 +645,9 @@ public sealed class BattleLineOfFireTests
     public void TheMenuNamesWhyAWeaponCannotBeUsed()
     {
         var (arena, gun, _) = Armed(gun: "underwaterOnly: true\ntuAimed: 30");
-        Assert.Equal("STR_UNDERWATER_EQUIPMENT", arena.Battle.AimMenu(arena.Rules, BattleResearchGate.Everything, Player, arena.Soldier.Id, gun.Id)!.Reason);
+        Assert.Equal("STR_UNDERWATER_EQUIPMENT", arena.Battle.AimMenu(BattleResearchGate.Everything, Player, arena.Soldier.Id, gun.Id)!.Reason);
         var (usable, usableGun, _) = Armed(gun: "tuAimed: 30");
-        Assert.Equal("", usable.Battle.AimMenu(usable.Rules, BattleResearchGate.Everything, Player, usable.Soldier.Id, usableGun.Id)!.Reason);
+        Assert.Equal("", usable.Battle.AimMenu(BattleResearchGate.Everything, Player, usable.Soldier.Id, usableGun.Id)!.Reason);
     }
 
     [Fact]
@@ -698,12 +697,12 @@ public sealed class BattleLineOfFireTests
     {
         var (arena, gun, _) = Armed(gun: "landOnly: true");
         SetDepth(arena.Battle, 1);
-        var refused = arena.Battle.CanUseWeapon(arena.Rules, BattleResearchGate.Everything, gun, arena.Soldier, false, BattleActionType.AimedShot);
+        var refused = arena.Battle.CanUseWeapon(BattleResearchGate.Everything, gun, arena.Soldier, false, BattleActionType.AimedShot);
         Assert.Equal((false, "STR_LAND_EQUIPMENT"), (refused.Usable, refused.Message));
         var (ammoArena, ammoGun, _) = Armed(clip: "landOnly: true");
         SetDepth(ammoArena.Battle, 1);
-        Assert.Equal("STR_LAND_EQUIPMENT", ammoArena.Battle.CanUseWeapon(ammoArena.Rules, BattleResearchGate.Everything, ammoGun, ammoArena.Soldier, false, BattleActionType.AutoShot).Message);
-        Assert.True(ammoArena.Battle.CanUseWeapon(ammoArena.Rules, BattleResearchGate.Everything, ammoGun, ammoArena.Soldier, false, BattleActionType.None).Usable);
+        Assert.Equal("STR_LAND_EQUIPMENT", ammoArena.Battle.CanUseWeapon(BattleResearchGate.Everything, ammoGun, ammoArena.Soldier, false, BattleActionType.AutoShot).Message);
+        Assert.True(ammoArena.Battle.CanUseWeapon(BattleResearchGate.Everything, ammoGun, ammoArena.Soldier, false, BattleActionType.None).Usable);
     }
 
     [Fact]
@@ -712,18 +711,18 @@ public sealed class BattleLineOfFireTests
         var (arena, gun, grenade) = Armed(gun: "requires: [RES_GUN]\ntuAimed: 30", grenade: "requires: [RES_GUN]\ntuThrow: 25", global: ResearchText.TrimStart('\n'), leftHand: true);
         var nothing = new BattleResearchGate(static _ => false, false);
         arena.Map.SetDiscovered(arena.Tile(15, 10), Oxce.Gameplay.Battles.Terrain.BattleTilePart.Floor, true, BattleFaction.Player);
-        var throwView = arena.Battle.AimView(arena.Rules, nothing, Player, arena.Soldier.Id, grenade!.Id, BattleAimKind.Throw, new BattlePosition(15, 10, 0), false)!;
+        var throwView = arena.Battle.AimView(nothing, Player, arena.Soldier.Id, grenade!.Id, BattleAimKind.Throw, new BattlePosition(15, 10, 0), false)!;
         Assert.True(throwView.Usable);
-        var shot = arena.Battle.AimView(arena.Rules, nothing, Player, arena.Soldier.Id, gun.Id, BattleAimKind.AimedShot, new BattlePosition(15, 10, 0), false)!;
+        var shot = arena.Battle.AimView(nothing, Player, arena.Soldier.Id, gun.Id, BattleAimKind.AimedShot, new BattlePosition(15, 10, 0), false)!;
         Assert.Equal((false, "STR_UNABLE_TO_USE_ALIEN_ARTIFACT_UNTIL_RESEARCHED"), (shot.Usable, shot.Reason));
-        var menu = arena.Battle.AimMenu(arena.Rules, nothing, Player, arena.Soldier.Id, gun.Id)!;
+        var menu = arena.Battle.AimMenu(nothing, Player, arena.Soldier.Id, gun.Id)!;
         Assert.Equal((false, "STR_UNABLE_TO_USE_ALIEN_ARTIFACT_UNTIL_RESEARCHED"), (menu.Usable, menu.Reason));
         var (psi, psiGun, _) = Armed(gun: "psiRequired: true\ntuAimed: 30");
         psi.Soldier.Stats = psi.Soldier.Stats with { PsiSkill = 0 };
-        Assert.Equal("STR_UNKNOWN", psi.Battle.AimMenu(psi.Rules, BattleResearchGate.Everything, Player, psi.Soldier.Id, psiGun.Id)!.Reason);
+        Assert.Equal("STR_UNKNOWN", psi.Battle.AimMenu(BattleResearchGate.Everything, Player, psi.Soldier.Id, psiGun.Id)!.Reason);
         // The mana gate of the menu: a mana weapon without the feature lists the throw only.
         var (mana, manaGun, _) = Armed(gun: "manaRequired: true\ntuAimed: 30");
-        Assert.Equal([BattleAimKind.Throw], mana.Battle.AimMenu(mana.Rules, BattleResearchGate.Everything, Player, mana.Soldier.Id, manaGun.Id)!.Items.Select(static item => item.Kind).ToArray());
+        Assert.Equal([BattleAimKind.Throw], mana.Battle.AimMenu(BattleResearchGate.Everything, Player, mana.Soldier.Id, manaGun.Id)!.Items.Select(static item => item.Kind).ToArray());
     }
 
     [Fact]
@@ -731,9 +730,9 @@ public sealed class BattleLineOfFireTests
     {
         var (arena, gun, grenade) = Armed(grenade: "tuMelee: 10\ndamageType: 6\nclipSize: -1", leftHand: true,
             more: static rules => Replaced(rules, "- type: GRENADE\n    battleType: 4", "- type: GRENADE\n    battleType: 3"));
-        Assert.Equal("STR_STUN", arena.Battle.AimMenu(arena.Rules, BattleResearchGate.Everything, Player, arena.Soldier.Id, grenade!.Id)!.Items.Single(static item => item.Kind == BattleAimKind.Hit).Name);
+        Assert.Equal("STR_STUN", arena.Battle.AimMenu(BattleResearchGate.Everything, Player, arena.Soldier.Id, grenade!.Id)!.Items.Single(static item => item.Kind == BattleAimKind.Hit).Name);
         var action = new BattleAimAction(arena.Soldier, BattleActionType.AimedShot, gun, new BattlePosition(15, 10, 0)) { PanicHandled = false };
-        Assert.Equal(new BattlePosition(15 * 16 + 8, 10 * 16 + 8, 12), arena.Battle.ChooseTargetVoxel(arena.Rules, action, arena.Soldier.RequiredPosition).Voxel);
+        Assert.Equal(new BattlePosition(15 * 16 + 8, 10 * 16 + 8, 12), arena.Battle.ChooseTargetVoxel(action, arena.Soldier.RequiredPosition).Voxel);
     }
 
     [Fact]
@@ -830,11 +829,11 @@ public sealed class BattleLineOfFireTests
         var (arena, gun, _) = Armed(gun: "twoHanded: true\naccuracyAimed: 100\noneHandedPenalty: 50\naccuracyCloseQuarters: 50");
         var soldier = arena.Soldier;
         var combat = arena.Rules.Battle.Equipment.Items["GUN"].Combat;
-        Assert.Equal(combat.StatBonuses.CloseQuarters.Evaluate(soldier) * 50 / 100, arena.Battle.FiringAccuracy(arena.Rules, soldier, gun, BattleActionType.CloseQuarters));
+        Assert.Equal(combat.StatBonuses.CloseQuarters.Evaluate(soldier) * 50 / 100, arena.Battle.FiringAccuracy(soldier, gun, BattleActionType.CloseQuarters));
         // Alone in a hand it is held with an empty hand: no penalty.
-        Assert.Equal(Firing(soldier), arena.Battle.FiringAccuracy(arena.Rules, soldier, gun, BattleActionType.AimedShot));
+        Assert.Equal(Firing(soldier), arena.Battle.FiringAccuracy(soldier, gun, BattleActionType.AimedShot));
         var (special, specialGun, _) = Armed(gun: "twoHanded: true\naccuracyAimed: 100\noneHandedPenalty: 50\nspecialUseEmptyHand: true");
-        Assert.Equal(Firing(special.Soldier) * 50 / 100, special.Battle.FiringAccuracy(special.Rules, special.Soldier, specialGun, BattleActionType.AimedShot));
+        Assert.Equal(Firing(special.Soldier) * 50 / 100, special.Battle.FiringAccuracy(special.Soldier, specialGun, BattleActionType.AimedShot));
     }
 
     [Fact]

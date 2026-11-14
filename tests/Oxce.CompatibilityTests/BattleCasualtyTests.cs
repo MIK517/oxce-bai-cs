@@ -22,7 +22,7 @@ public sealed class BattleCasualtyTests
     private static BattlePosition At(int x, int y, int z = 0) => new(x, y, z);
 
     private static IReadOnlyList<BattleCasualty> Check(Arena arena, BattleAttack? attack = null, RuntimeItemDamageRule? type = null, bool hidden = false,
-        bool terrain = false) => arena.Battle.CheckForCasualties(arena.Rules, type, attack ?? default, hidden, terrain);
+        bool terrain = false) => arena.Battle.CheckForCasualties(type, attack ?? default, hidden, terrain);
 
     /// <summary>A unit of the alien rule on the arena, of any faction, standing at the tile.</summary>
     private static BattleUnit Extra(Arena arena, int id, BattleFaction faction, int x, int y, string armor = "", int size = 1)
@@ -440,7 +440,7 @@ public sealed class BattleCasualtyTests
         soldier.MurdererId = alien.Id;
         soldier.MurdererWeapon = "STR_PLASMA_RIFLE";
         soldier.MurdererWeaponAmmo = "STR_PLASMA_RIFLE_CLIP";
-        battle.CheckForCasualties(campaign.Content.RuntimeRules, null, default);
+        battle.CheckForCasualties(null, default);
         var snapshot = campaign.Capture();
         var dead = Assert.Single(snapshot.DeadSoldiers);
         Assert.Equal(("STR_PLASMA_RIFLE", (int)BattleUnitStatus.Dead), (dead.Cause!.Weapon, dead.Cause.Status));
@@ -524,24 +524,24 @@ public sealed class BattleCasualtyTests
         var arena = Duel();
         arena.Alien.SpawnUnit = "ALIEN";
         arena.Alien.Respawn = true;
-        Assert.True(arena.Battle.ConvertInfected(arena.Rules));
+        Assert.True(arena.Battle.ConvertInfected());
         Assert.False(arena.Alien.Respawn);
         Assert.Equal(BattleUnitStatus.Dead, arena.Alien.Status);
         var spawned = arena.Battle.Units[^1];
         Assert.Equal((At(15, 10), spawned.Stats.Health), (spawned.Position, spawned.Health));
-        Assert.False(arena.Battle.ConvertInfected(arena.Rules));
+        Assert.False(arena.Battle.ConvertInfected());
 
         // knockOut: a unit with a spawn unit turns first and the new unit is stunned; without one the stun reaches the health.
         var knock = Duel();
         knock.Alien.SpawnUnit = "ALIEN";
-        knock.Battle.KnockOut(knock.Rules, knock.Alien);
+        knock.Battle.KnockOut(knock.Alien);
         var created = knock.Battle.Units[^1];
         Assert.Equal((BattleUnitStatus.Dead, "", true), (knock.Alien.Status, created.SpawnUnit, created.StunLevel >= created.Health));
         var plain = Duel();
-        plain.Battle.KnockOut(plain.Rules, plain.Soldier);
+        plain.Battle.KnockOut(plain.Soldier);
         Assert.Equal(100, plain.Soldier.StunLevel);
         plain.Soldier.Health = 0;
-        plain.Battle.KnockOut(plain.Rules, plain.Soldier);
+        plain.Battle.KnockOut(plain.Soldier);
         Assert.Equal(1, plain.Soldier.StunLevel);
     }
 
@@ -554,7 +554,7 @@ public sealed class BattleCasualtyTests
         var alien = arena.Alien;
         var body = Lie(arena, alien);
         alien.Direction = 3;
-        arena.Battle.ReviveUnconsciousUnits(arena.Rules, noTU: true);
+        arena.Battle.ReviveUnconsciousUnits(noTU: true);
         Assert.Equal((BattleUnitStatus.Standing, At(15, 10), 0, 0), (alien.Status, alien.Position, alien.TimeUnits, alien.NotificationShown));
         Assert.Equal(alien.Id, arena.Map.UnitAt(arena.Tile(15, 10)));
         Assert.DoesNotContain(body, arena.Battle.Items);
@@ -566,11 +566,11 @@ public sealed class BattleCasualtyTests
     {
         var arena = Duel(global: "tuRecoveryWakeUpNewTurn: 50");
         Lie(arena, arena.Alien);
-        arena.Battle.ReviveUnconsciousUnits(arena.Rules, noTU: false);
+        arena.Battle.ReviveUnconsciousUnits(noTU: false);
         Assert.Equal((BattleUnitStatus.Standing, arena.Alien.Stats.TimeUnits * 50 / 100), (arena.Alien.Status, arena.Alien.TimeUnits));
         var whole = Duel();
         Lie(whole, whole.Alien);
-        whole.Battle.ReviveUnconsciousUnits(whole.Rules, noTU: false);
+        whole.Battle.ReviveUnconsciousUnits(noTU: false);
         Assert.Equal(whole.Alien.Stats.TimeUnits, whole.Alien.TimeUnits);
     }
 
@@ -580,11 +580,11 @@ public sealed class BattleCasualtyTests
         var arena = Duel();
         Lie(arena, arena.Alien);
         arena.Alien.StunLevel = 10;
-        arena.Battle.ReviveUnconsciousUnits(arena.Rules, noTU: true);
+        arena.Battle.ReviveUnconsciousUnits(noTU: true);
         Assert.Equal(BattleUnitStatus.Unconscious, arena.Alien.Status);
         arena.Alien.StunLevel = 3;
         arena.Alien.Status = BattleUnitStatus.Dead;
-        arena.Battle.ReviveUnconsciousUnits(arena.Rules, noTU: true);
+        arena.Battle.ReviveUnconsciousUnits(noTU: true);
         Assert.Equal(BattleUnitStatus.Dead, arena.Alien.Status);
     }
 
@@ -600,7 +600,7 @@ public sealed class BattleCasualtyTests
         lying.SavedPosition = At(15, 10);
         body.Tile = At(15, 10);
         Extra(arena, 942, BattleFaction.Hostile, 15, 9);
-        arena.Battle.ReviveUnconsciousUnits(arena.Rules, noTU: true);
+        arena.Battle.ReviveUnconsciousUnits(noTU: true);
         Assert.Equal((BattleUnitStatus.Standing, At(17, 9)), (lying.Status, lying.Position));
 
         // A place with no floor around it takes no walker: it stays unconscious.
@@ -610,7 +610,7 @@ public sealed class BattleCasualtyTests
         sleeper.SavedPosition = At(20, 20);
         spot.Tile = At(20, 20);
         foreach (var (dx, dy) in new[] { (0, 0), (0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1) }) stuck.Clear(20 + dx, 20 + dy, 0, BattleTilePart.Floor);
-        stuck.Battle.ReviveUnconsciousUnits(stuck.Rules, noTU: true);
+        stuck.Battle.ReviveUnconsciousUnits(noTU: true);
         Assert.Equal((BattleUnitStatus.Unconscious, true), (sleeper.Status, stuck.Battle.Items.Contains(spot)));
     }
 
@@ -624,7 +624,7 @@ public sealed class BattleCasualtyTests
         arena.Battle.IsBeforeGame = true;
         arena.Alien.Health = 0;
         arena.Alien.TurnsSinceSpotted[0] = 3;
-        arena.Battle.OpenBattlescape(arena.Rules);
+        arena.Battle.OpenBattlescape();
         Assert.Equal((BattleUnitStatus.Dead, null, 3), (arena.Alien.Status, arena.Alien.Position, (int)arena.Alien.TurnsSinceSpotted[0]));
         Assert.Single(arena.Battle.Items, item => item.CorpseUnitId == arena.Alien.Id);
         Assert.Equal(3, arena.Alien.Direction);
@@ -639,12 +639,12 @@ public sealed class BattleCasualtyTests
         foreach (var unit in new[] { arena.Alien, second, third }) unit.Health = 0;
         // Into an empty queue the first state runs at once and the others go right behind the running one, the last pushed first; behind a state that
         // is running (an explosion, a fall) every push goes there.
-        var empty = arena.Battle.QueueCasualties(arena.Rules, null, default);
+        var empty = arena.Battle.QueueCasualties(null, default);
         Assert.Equal([arena.Alien.Id, third.Id, second.Id], empty.Select(static death => death.Unit.Id));
         var again = Duel();
         var (b, c) = (Extra(again, 950, BattleFaction.Hostile, 17, 12), Extra(again, 951, BattleFaction.Hostile, 18, 12));
         foreach (var unit in new[] { again.Alien, b, c }) unit.Health = 0;
-        Assert.Equal([c.Id, b.Id, again.Alien.Id], again.Battle.QueueCasualties(again.Rules, null, default, statesQueued: true).Select(static death => death.Unit.Id));
+        Assert.Equal([c.Id, b.Id, again.Alien.Id], again.Battle.QueueCasualties(null, default, statesQueued: true).Select(static death => death.Unit.Id));
     }
 
     [Fact]
@@ -708,7 +708,7 @@ public sealed class BattleCasualtyTests
         sleeper.SavedPosition = At(14, 14);
         Extra(arena, 962, BattleFaction.Hostile, 14, 14);
         var count = arena.Battle.Units.Count;
-        Assert.Null(arena.Battle.ConvertUnit(arena.Rules, sleeper));
+        Assert.Null(arena.Battle.ConvertUnit(sleeper));
         Assert.Equal((count, BattleUnitStatus.Dead, true), (arena.Battle.Units.Count, sleeper.Status, sleeper.AlreadyRespawned));
 
         // A carried hostile that loses its health is dead, but the state skips a unit with no tile: its body item stays.
@@ -731,7 +731,7 @@ public sealed class BattleCasualtyTests
         body.Tile = null;
         body.OwnerUnitId = arena.Soldier.Id;
         body.Slot = "STR_BACK_PACK";
-        arena.Battle.ReviveUnconsciousUnits(arena.Rules, noTU: true);
+        arena.Battle.ReviveUnconsciousUnits(noTU: true);
         // The carrier's own tile is taken, so the first free place around it (north) is where the unit wakes up.
         Assert.Equal((BattleUnitStatus.Standing, At(10, 9)), (carried.Status, carried.Position));
         Assert.DoesNotContain(body, arena.Battle.Items);
