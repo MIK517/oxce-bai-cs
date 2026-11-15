@@ -6,7 +6,7 @@ namespace Oxce.Gameplay.Battles;
 /// <summary>
 /// Gravity and falling (Phase 7 branch 4 S7): <c>TileEngine::applyGravity</c> and the fall routine of <c>UnitFallBState</c>. The animation
 /// is collapsed: each cycle every falling unit that stands still either takes its next step down, or has landed. A fall onto a unit that finds no
-/// escape knocks it out, and the casualty check that follows takes it out; a landing the reaction fire (S9) could follow is refused before any change.
+/// escape knocks it out, and the casualty check that follows takes it out; a landing draws the reaction fire (S9) the live fall runs.
 /// A landed unit's proximity check (S8, <c>BattleProximity.cs</c>) may start an explosion.
 /// </summary>
 internal sealed partial class BattleState
@@ -121,7 +121,10 @@ internal sealed partial class BattleState
     internal CampaignReason? ResolveFalls()
     {
         if (_fallingUnits.Count == 0) return null;
+        // (Only a walk reads whether a landing drew a reaction: a fall outside one leaves nothing behind.)
+        var insideWalk = _deferredBack is not null;
         var refusal = RunFalls(dryRun: false);
+        if (!insideWalk) _reactionDuringFall = false;
         MarkChanged();
         return refusal;
     }
@@ -162,6 +165,8 @@ internal sealed partial class BattleState
         // What the fall pushes behind itself (statePushNext), in the order it pushes: a landed unit's proximity explosions, then each round's knock-out deaths. The list runs the last
         // push first when the fall state is done.
         var pushes = new List<QueuedState>();
+        // The reactions a landed unit draws go to the back of the list, behind the deaths and explosions (statePushBack); a fall inside a walk leaves them to the walk.
+        var holdsBack = !dryRun && HoldBackPushes();
         CampaignReason? stop = null;
         for (var round = 0; _fallingUnits.Count != 0 && stop is null; round++)
         {
@@ -230,6 +235,7 @@ internal sealed partial class BattleState
         if (dryRun) return stop;
         // The deaths and the proximity explosions run behind the fall state; the explosions a unit that blows itself up, or a proximity grenade, push run in turn.
         PushBehindRunning(pushes);
+        if (holdsBack) ReleaseBackPushes();
         RunStates();
         if (TakeExplosionRefusal() is { } explosionRefusal) return explosionRefusal;
         // The falls the deaths start (a converted unit, a corpse over a hole) are a fall state of their own.
@@ -283,7 +289,7 @@ internal sealed partial class BattleState
     /// A unit that has stopped falling (<c>UnitFallBState::think</c>'s else branch): a floor-burning unit burns the floor under it (a hit that reaches a unit or starts an explosion refuses),
     /// <see cref="CheckForProximityGrenades"/> runs (its explosions are collected in <paramref name="explosions"/> for the fall to push behind itself; a dry run does not run it, as it
     /// draws and changes items, but refuses a landing that could start one); then its light moves with it (the items' layer when the check changed anything), everyone's sight of the area is updated, its own tiles are, and what
-    /// <c>checkReactionFire</c> spots happens (a reactor refuses).
+    /// <c>checkReactionFire</c> spots happens (a live fall draws the reactions; a dry run reacts to nothing).
     /// </summary>
     private CampaignReason? Land(BattleUnit unit, bool dryRun, List<QueuedState> explosions)
     {
@@ -294,16 +300,14 @@ internal sealed partial class BattleState
         // starts has knock-on effects that can refuse after changes, so a landing that could start one is refused before any (the commands that run on a trial copy meet it there).
         if (dryRun && ProximityMayExplode(unit)) return BattleMovementReasons.ProximityExplosionOnFallUnsupported;
         var change = dryRun ? 0 : CheckForProximityGrenades(unit, explosions);
-        var reacts = unit.Faction == Side;
-        // The trial copies of the first turn run this too (not a dry run), so the reactor test is part of both.
-        if (reacts && HasPossibleReactor(unit)) return BattleMovementReasons.ReactionFireUnsupported;
         if (dryRun) return null;
 
         CalculateLighting(change != 0 ? BattleLightLayer.Items : BattleLightLayer.Units, position, 2);
         var sight = Sight();
         sight.CalculateFov(position, 2, updateTiles: false);
         sight.CalculateFov(unit, true, false);
-        if (reacts) SpotMover(sight, unit);
+        // checkReactionFire(unit, fall): the action is a walk of the normal move type. A reaction aborts the path of the walk the fall belongs to.
+        if (CheckReactionFire(unit, new BattleReactionOrigin(BattleActionType.Walk))) _reactionDuringFall = true;
         return null;
     }
 

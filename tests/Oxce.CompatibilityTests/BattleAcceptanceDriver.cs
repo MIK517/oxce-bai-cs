@@ -16,8 +16,7 @@ namespace Oxce.CompatibilityTests;
 internal static class BattleAcceptanceDriver
 {
     /// <summary>What a battle's scripted turn did; <see cref="Refusal"/> is the named reason when a command was refused.</summary>
-    internal sealed record Outcome(int UnitId, BattlePosition From, BattlePosition To, int Steps, bool Turned, bool KneltAndStood,
-        bool OpponentsSpent, string? Refusal);
+    internal sealed record Outcome(int UnitId, BattlePosition From, BattlePosition To, int Steps, bool Turned, bool KneltAndStood, string? Refusal);
 
     private const int LeftAfterWalk = 28;
 
@@ -35,22 +34,8 @@ internal static class BattleAcceptanceDriver
         foreach (var kept in new[] { LeftAfterWalk, 16, 0 })
             if ((outcome = Walk(screen, battle, tries: 3, soldiers: 3, kept)) is not null) break;
         if (outcome is not { Refusal: not null }) return outcome;
-        // Every walk is refused where an opposing unit within the view distance could react (reaction fire is branch 5's, plan D4). The
-        // acceptance then walks with the opposing units out of time units (their reaction score is 0), which the rules accept, and gives
-        // them their time units back.
-        var spent = WithOpponentsSpent(battle, () => Walk(screen, battle, tries: 8, soldiers: 3, LeftAfterWalk));
-        return spent is { Refusal: null } ? spent with { OpponentsSpent = true } : outcome;
-    }
-
-    private static T WithOpponentsSpent<T>(BattleState battle, Func<T> action)
-    {
-        var opponents = battle.Units.Where(static unit => unit.Faction != BattleFaction.Player).Select(static unit => (unit, unit.TimeUnits)).ToList();
-        foreach (var (unit, _) in opponents) unit.TimeUnits = 0;
-        try { return action(); }
-        finally
-        {
-            foreach (var (unit, timeUnits) in opponents) unit.TimeUnits = timeUnits;
-        }
+        // (Reaction fire answers the walk since S9: the opposing units' time units are no longer spent to keep it from refusing.)
+        return Walk(screen, battle, tries: 8, soldiers: 3, LeftAfterWalk) is { Refusal: null } more ? more : outcome;
     }
 
     private static Outcome? Walk(BattlescapeClient screen, BattleState battle, int tries, int soldiers, int kept)
@@ -115,6 +100,12 @@ internal static class BattleAcceptanceDriver
             // The unit stands where the walk ended; it followed the path to the end unless an event names why it stopped (a unit it spotted,
             // time units or energy that the next step lacked, the reserve).
             var ended = model.LastEvents.OfType<UnitWalkEnded>().Single();
+            // A reactor that shot the unit once the walk was over may have killed it: it has no tile then, and the walk ended where the event says.
+            if (unit.Position is null)
+            {
+                Assert.True(unit.IsOut);
+                return new(id, from, ended.Position, steps, false, false, null);
+            }
             Assert.Equal(unit.Position!.Value, ended.Position);
             // (A tile without a floor ends in a fall, which the events show.)
             if (ended.Stop == BattleWalkStop.Arrived && !model.LastEvents.OfType<UnitFell>().Any()) Assert.Equal(target, unit.Position!.Value);
@@ -139,7 +130,7 @@ internal static class BattleAcceptanceDriver
                 turned = turn.Stop == BattleTurnStop.Arrived;
                 if (turned) Assert.Equal(wanted, unit.Direction);
             }
-            return new(id, from, at, steps, turned, kneeled, false, null);
+            return new(id, from, at, steps, turned, kneeled, null);
         }
         return refused;
     }
@@ -258,7 +249,7 @@ internal static class BattleAcceptanceDriver
     private static Outcome Refused(int id, BattlePosition from, string code)
     {
         RequireLaterBranch(code);
-        return new(id, from, from, 0, false, false, false, code);
+        return new(id, from, from, 0, false, false, code);
     }
 
     /// <summary>
@@ -267,7 +258,7 @@ internal static class BattleAcceptanceDriver
     /// can reach a tile beside a door (or the map has none).
     /// </summary>
     internal static string? OpenDoor(BattlescapeClient screen, BattleState battle) =>
-        OpenDoorOnce(screen, battle) is { } door ? door : WithOpponentsSpent(battle, () => OpenDoorOnce(screen, battle) is { } spent ? spent + " (opponents spent)" : null);
+        OpenDoorOnce(screen, battle);
 
     private static string? OpenDoorOnce(BattlescapeClient screen, BattleState battle)
     {

@@ -10,8 +10,8 @@ internal readonly record struct BattleTurnResult(int Direction, int Eighths, int
 
 /// <summary>
 /// Turning and kneeling (Phase 7 branch 4 S5): <c>UnitTurnBState</c> (<c>init</c> and <c>think</c>, the eighths collapsed into one command),
-/// <c>BattlescapeGame::kneel</c>, and the part of <c>TileEngine::getSpottingUnits</c> that changes spotting (the reaction itself is branch 5's,
-/// refused by <see cref="HasPossibleReactor"/>).
+/// <c>BattlescapeGame::kneel</c>, and the part of <c>TileEngine::getSpottingUnits</c> that changes spotting (the reaction itself is
+/// <see cref="CheckReactionFire"/>).
 /// </summary>
 internal sealed partial class BattleState
 {
@@ -94,7 +94,7 @@ internal sealed partial class BattleState
     /// field of view of everyone through its tile and of the unit itself (<c>updateSoldierInfo</c>) is updated, and the spotting of
     /// <c>checkReactionFire</c> happens. Refused, before any change, when an opposing unit could react.
     /// </summary>
-    internal CampaignReason? KneelUnit(int unitId, out bool kneeling, out int spent)
+    internal CampaignReason? KneelUnit(int unitId, out bool kneeling, out int spent, bool raise = false)
     {
         kneeling = false;
         spent = 0;
@@ -108,13 +108,6 @@ internal sealed partial class BattleState
         if (!(!unit.Kneeled && KneelReserved) && !CheckReservedTimeUnits(unit, cost, 0, false).Allowed)
             return BattleMovementReasons.KneelTimeUnitsReserved;
         if (unit.TimeUnits < cost) return BattleMovementReasons.KneelNotEnoughTimeUnits;
-        // checkReactionFire follows the change: a reactor with a weapon would shoot (branch 5).
-        // The threshold is the kneeling unit's reaction score after it paid.
-        unit.TimeUnits -= cost;
-        var reactor = HasPossibleReactor(unit);
-        unit.TimeUnits += cost;
-        if (reactor) return BattleMovementReasons.ReactionFireUnsupported;
-
         var sight = Sight();
         unit.TimeUnits -= cost;
         unit.Kneel(!unit.Kneeled);
@@ -122,11 +115,27 @@ internal sealed partial class BattleState
         // (updateSoldierInfo updates the unit's own, which also covers its tiles).
         sight.CalculateFov(position, 1, updateTiles: false);
         sight.CalculateFov(unit);
-        SpotMover(sight, unit);
+        // The command's event comes before what the reactions raise (the first one starts at once, on the empty list).
+        if (raise) Events.Add(new UnitKneeled(unitId, unit.Kneeled, cost));
+        // checkReactionFire(unit, kneel): the reactions are pushed to the back of the list; the caller runs them (the command, or the walk that ends first).
+        CheckReactionFire(unit, new BattleReactionOrigin(BattleActionType.Kneel));
         MarkChanged();
         kneeling = unit.Kneeled;
         spent = cost;
         return null;
+    }
+
+    /// <summary>
+    /// The kneel button's command: <see cref="KneelUnit(int, out bool, out int)"/>, its event, then the reactions it drew run (<see cref="RunStates"/>, <see cref="TakeExplosionRefusal"/>)
+    /// and the falls they start.
+    /// </summary>
+    internal CampaignReason? KneelAction(int unitId)
+    {
+        if (KneelUnit(unitId, out _, out _, raise: true) is { } refusal) return refusal;
+        RunStates();
+        if (TakeExplosionRefusal() is { } explosionRefusal) return explosionRefusal;
+        MarkChanged();
+        return ResolveFalls(out _);
     }
 
     // ---- reaction fire's state, for the commands that move a unit (kneeling, landing, walking) ----
@@ -154,58 +163,9 @@ internal sealed partial class BattleState
         unit.SoldierId is null && RequiredRules.Battle.Equipment.Units.TryGetValue(unit.UnitType, out var rule) && rule.IgnoredByAi;
 
     /// <summary>
-    /// Whether an opposing unit could react to the mover at its tile: one that passes <see cref="PassesSpottingFilters"/>, is not respawning, has
-    /// a reaction score above 0.001 and a weapon <c>determineReactionType</c> could pick. Sight, range and melee reach are not asked, and every
-    /// weapon it carries (its hands and special weapons) counts, so this over-approximates (Phase 7 plan D4): a unit that fails it never reacts,
-    /// and the preferred hand, the research, depth and two-handed requirements of <c>canUseWeapon</c> only narrow what passes.
-    /// </summary>
-    internal bool HasPossibleReactor(BattleUnit mover)
-    {
-        foreach (var other in _units)
-        {
-            if (other == mover || !PassesSpottingFilters(mover, other) || other.Respawn || other.ReactionScore <= 0.001) continue;
-            if (CanReactWithAnyWeapon(other)) return true;
-        }
-        return false;
-    }
-
-    /// <summary>
-    /// determineReactionType's weapon tests for every weapon the unit could use: any weapon with ammo for its hit (a firearm's butt too) and the time units for it,
-    /// or a firearm with ammo for its snap shot and the time units for it, unless a psi weapon needs a psi skill the unit lacks.
-    /// </summary>
-    private bool CanReactWithAnyWeapon(BattleUnit unit)
-    {
-        var weapons = new List<BattleItem>();
-        if (HandWeapon(unit, RightHand) is { } right) weapons.Add(right);
-        if (HandWeapon(unit, LeftHand) is { } left) weapons.Add(left);
-        weapons.AddRange(SpecialWeapons(unit));
-        foreach (var weapon in weapons)
-        {
-            var rule = ItemRuleOf(weapon.ItemType);
-            if (RequiredRules.Battle.Equipment.Items[weapon.ItemType].PsiRequired && unit.Stats.PsiSkill <= 0) continue;
-            if (AmmoForAction(weapon, 3) is not null &&
-                BattleActionCost.For(RequiredRules, BattleActionType.Hit, unit, weapon).HaveTimeUnits()) return true;
-            if (rule.BattleType == BattleTypeFirearm && AmmoForAction(weapon, 2) is not null &&
-                BattleActionCost.For(RequiredRules, BattleActionType.SnapShot, unit, weapon).HaveTimeUnits()) return true;
-        }
-        return false;
-    }
-
-    /// <summary>
-    /// The spotting of <c>TileEngine::getSpottingUnits</c> (what <c>checkReactionFire</c> runs first), for every opposing unit that passes
-    /// the state filters, faces the mover (or was hit by it) and sees its tile from its snap shot origin: the player's spotter marks the mover
-    /// seen by the player, and every spotter lists the mover among its visible units (the port's per-faction spotting, ADR 0039, marks the
-    /// mover spotted by a hostile or neutral spotter's faction). The reactors it lists (<see cref="SpottingUnits"/>) are acted on by S9's next part;
-    /// <see cref="HasPossibleReactor"/> refuses the command when there could be one.
-    /// </summary>
-    internal void SpotMover(BattleSight sight, BattleUnit mover)
-    {
-        if (Side != mover.Faction) return;
-        SpottingUnits(sight, mover);
-    }
-
-    /// <summary>
-    /// <c>TileEngine::getSpottingUnits</c> whole: the spotting <see cref="SpotMover"/> describes, and for each spotter its <c>determineReactionType</c>; a spotter with
+    /// <c>TileEngine::getSpottingUnits</c> whole (what <c>checkReactionFire</c> runs first): for every opposing unit that passes the state filters, faces the mover (or was hit
+    /// by it) and sees its tile from its snap shot origin, the player's spotter marks the mover seen by the player, and every spotter lists the mover among its visible units
+    /// (the port's per-faction spotting, ADR 0039, marks the mover spotted by a hostile or neutral spotter's faction); and for each spotter its <c>determineReactionType</c>; a spotter with
     /// a reaction (and, with a reaction fire threshold of its faction above 0, a hit chance at that distance that reaches it, inside the weapon's range) is in the list
     /// <c>checkReactionFire</c> goes through.
     /// </summary>

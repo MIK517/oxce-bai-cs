@@ -62,8 +62,7 @@ internal sealed partial class BattleState
     /// target, each eighth paying its time units (the reserve is not asked), then <c>ProjectileFlyBState</c> checks the time units, the ammunition, the range and the line of
     /// fire, pays, and fires the weapon's shots. A check that fails after the unit turned stops the action with <see cref="UnitAttackStopped"/>; one that fails with nothing
     /// changed (the unit already faced the target) is a refusal. The states, the explosions and deaths they start and the falls then run
-    /// (<see cref="RunStates"/>, <see cref="TakeExplosionRefusal"/>, <see cref="ResolveFalls(out bool)"/>). A reaction this slice cannot run (S9) is refused too, on the
-    /// command's trial copy.
+    /// (<see cref="RunStates"/>, <see cref="TakeExplosionRefusal"/>, <see cref="ResolveFalls(out bool)"/>). The reactions the shot draws run with them (S9).
     /// </summary>
     internal CampaignReason? ShootAction(BattleResearchGate research, int unitId, int itemId, BattleAimKind kind, BattlePosition target, bool forceFire,
         IReadOnlyList<BattlePosition>? sprayWaypoints = null)
@@ -304,8 +303,8 @@ internal sealed partial class BattleState
             _initialized = true;
 
             var weapon = action.Weapon;
-            // (A reaction shot, a unit that is not on turn, is S9's.)
-            if (_unit.Faction != battle.Side) throw new InvalidOperationException("A shot of a unit that is not on turn is a reaction (Phase 7 branch 5 S9).");
+            // A unit that is not of the side on turn reacts (reactionShoot): no message is shown for it.
+            var reactionShoot = _unit.Faction != battle.Side;
             if (!battle.Contains(action.Target)) // invalid target position
             {
                 battle.PopState();
@@ -326,7 +325,7 @@ internal sealed partial class BattleState
                 _ammo = battle.AmmoForActionWithMessage(weapon, ConfigIndex, out var message, out _);
                 if (_ammo is null)
                 {
-                    action.Result = message;
+                    if (!reactionShoot) action.Result = message;
                     battle.PopState();
                     return;
                 }
@@ -335,6 +334,13 @@ internal sealed partial class BattleState
             if (_unit.IsOut || _unit.IsOutThresholdExceeded)
             {
                 // something went wrong - we can't shoot when dead or unconscious, or if we're about to fall over.
+                battle.PopState();
+                return;
+            }
+
+            // reaction fire: the unit that acted must still stand on the target tile, and the reactor turns to it for free
+            if (reactionShoot && !battle.StartReaction(_unit, action.Target))
+            {
                 battle.PopState();
                 return;
             }
@@ -642,20 +648,13 @@ internal sealed partial class BattleState
             }
         }
 
-        /// <summary>The end of the action: the reaction check (S9's reactions are refused while one could happen), the unit stops aiming, and an infected unit turns.</summary>
+        /// <summary>The end of the action: the reaction check (<see cref="CheckReactionFire"/>), the unit stops aiming, and an infected unit turns.</summary>
         private void Finish()
         {
             if (battle.FallingUnits.Count == 0 && action.PanicHandled)
             {
-                // checkReactionFire(unit, action): a reaction is S9's, so a shot a reactor could answer is refused (the command's trial copy finds it first).
-                if (battle.HasPossibleReactor(_unit))
-                {
-                    battle.ExplosionRefusal ??= BattleMovementReasons.ReactionFireUnsupported;
-                    battle.PopState();
-                    return;
-                }
-                // getSpottingUnits runs whether or not a reactor could answer: the units that see the shooter spot it.
-                battle.SpotMover(battle.Sight(), _unit);
+                // checkReactionFire(unit, action): the reactions go to the back of the list, behind this state.
+                battle.CheckReactionFire(_unit, new BattleReactionOrigin(action.Type, action.Weapon, action.Target));
             }
             if (!_unit.IsOut) _unit.AbortTurn();
             battle.ConvertInfected();

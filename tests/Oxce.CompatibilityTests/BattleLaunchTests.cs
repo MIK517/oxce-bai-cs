@@ -133,7 +133,7 @@ public sealed class BattleLaunchTests
     }
 
     [Fact]
-    public void AnOpposingUnitThatCouldReactAtTheEndOfTheFirstLegRefusesTheLaunch()
+    public void AHostileUnitWithAnExplosiveShotDoesNotAnswerALoneLauncherAtTheEndOfTheLaunch()
     {
         // (The alien's gun takes the launcher's rule: it needs a snap shot cost for the alien to react with it.)
         var (arena, gun, _) = Load(gun: Launcher + "\ncostSnap: {time: 20}");
@@ -141,8 +141,13 @@ public sealed class BattleLaunchTests
         arena.Alien.Stats = arena.Alien.Stats with { TimeUnits = 100, Reactions = 100 };
         arena.Alien.TimeUnits = 100;
         arena.Soldier.Stats = arena.Soldier.Stats with { Reactions = 1 };
-        // (Called on the battle itself the refusal comes after the changes; the command runs it on a trial copy first.)
-        Assert.Equal("battle.reaction-fire-unsupported", Launch(arena, gun, At(12, 10), At(15, 10))?.Code);
+        Assert.Null(Launch(arena, gun, At(12, 10), At(15, 10)));
+        // The alien sees the launch (the check ran, and it is a reactor), but tryReaction: its shot is an explosive one, and explosiveEfficacy for a lone
+        // target of a healthy hostile unit is 0, so no reaction state is pushed.
+        var fired = arena.Battle.Events.Drain().OfType<UnitFired>().ToList();
+        Assert.Equal([arena.Soldier.Id, arena.Soldier.Id], fired.Select(static shot => shot.UnitId).ToArray());
+        Assert.Equal(100, arena.Alien.TimeUnits);
+        Assert.Contains(arena.Soldier.Id, arena.Alien.VisibleUnits);
     }
 
     [Fact]

@@ -26,7 +26,9 @@ public sealed class BattleGravityTests
             if (reactive)
             {
                 rules = Replaced(rules, "stats: {tu: 50, firing: 61}", "stats: {tu: 50, firing: 61, reactions: 100}");
-                rules = Replaced(rules, GunText, GunText + "\n    tuSnap: 20\n    tuAimed: 50");
+                rules = Replaced(rules, GunText, GunText + "\n    tuSnap: 20\n    tuAimed: 50\n    accuracySnap: 100");
+                // (The AI judges a reaction by the damage it does: a clip with no damage scores nothing.)
+                rules = Replaced(rules, "- type: CLIP\n    battleType: 2\n    clipSize: 12\n    weight: 1", "- type: CLIP\n    battleType: 2\n    clipSize: 12\n    weight: 1\n    power: 10\n    damageType: 1\n    damageAlter: {RandomType: 3}");
             }
             if (grenadeEvents.Length != 0)
                 rules = Replaced(rules, "- type: GRENADE\n    battleType: 4\n    weight: 1", "- type: GRENADE\n    battleType: 4\n    weight: 1\n    fuseTriggerEvents: " + grenadeEvents);
@@ -276,17 +278,21 @@ public sealed class BattleGravityTests
     }
 
     [Fact]
-    public void ALandingThatAnArmedReactorCouldAnswerIsRefusedAndAnUnarmedOneSpots()
+    public void AnArmedReactorShootsAUnitThatLandsAndAnUnarmedOneSpots()
     {
         var arena = Tall(walkingSoldier: true, reactive: true);
         Raise(arena, arena.Soldier, 10, 10, 2);
         arena.Battle.ApplyGravity(arena.Soldier.Position);
         var gun = GunFor(arena.Battle, arena.Alien);
+        // The dry run (the gate of the commands that act on the live battle) no longer refuses: the reaction fire is ported, and a dry run changes nothing.
         var before = State(arena);
-        Assert.Equal("battle.reaction-fire-unsupported", arena.Battle.FallsRefusal()!.Code);
+        Assert.Null(arena.Battle.FallsRefusal());
         Assert.Equal(before, State(arena));
-        // The trial copies of the first turn run the fall for real and refuse the same way.
-        Assert.Equal("battle.reaction-fire-unsupported", arena.Battle.ResolveFalls()!.Code);
+        // The landing draws the alien's snap shot, which runs behind the fall state (UnitFallBState: checkReactionFire(unit, a walk)).
+        var alienUnits = arena.Alien.TimeUnits;
+        Assert.Null(arena.Battle.ResolveFalls());
+        Assert.Contains(arena.Battle.Events.Drain(), @event => @event is UnitFired fired && fired.UnitId == arena.Alien.Id);
+        Assert.True(arena.Alien.TimeUnits < alienUnits);
         arena.Battle.RemoveItem(gun);
         arena = Tall(walkingSoldier: true, reactive: true);
         Raise(arena, arena.Soldier, 10, 10, 2);

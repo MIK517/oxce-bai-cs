@@ -67,6 +67,9 @@ public enum BattleWalkStop
 
     /// <summary>A step set off a proximity grenade or a death trap next to the unit, and the walk ended there (Phase 7 branch 5 S8).</summary>
     ProximityExplosion,
+
+    /// <summary>The step drew reaction fire (<c>UnitWalkBState</c>: unit got fired upon, stop walking); the reactions run once the walk ended (Phase 7 branch 5 S9).</summary>
+    ReactionFire,
 }
 
 /// <summary>One step of a walk: a tile in a direction (0-7, 8 up, 9 down), what it cost and where the unit stands afterwards (a step down stairs or off an edge differs from the neighbour tile).</summary>
@@ -180,7 +183,4 @@ internal static class BattleMovementReasons
     internal static readonly CampaignReason ProximityExplosionOnFallUnsupported = new("battle.fall-proximity-explosion-unsupported",
         "A unit that falls would land next to an item that its proximity sets off, or on a death trap, and the explosion cannot be tried first where the fall starts (an inventory move, a loaded battle): " +
         "the unit's own commands (a walk, an attack) run it.");
-
-    internal static readonly CampaignReason ReactionFireUnsupported = new("battle.reaction-fire-unsupported",
-        "An opposing unit near the unit could react with a weapon, and reaction fire arrives with the reaction fire slice (Phase 7 branch 5 S9); the unit near may be one the player has not seen.");
 }

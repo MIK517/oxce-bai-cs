@@ -166,6 +166,7 @@ internal sealed partial class BattleState
     internal void EndCommand()
     {
         if (_commandDepth > 0) _commandDepth--;
+        if (_commandDepth == 0) _commandActor = null;
         if (_commandDepth != 0 || !_changePending) return;
         _committedRevision++;
         _changePending = false;

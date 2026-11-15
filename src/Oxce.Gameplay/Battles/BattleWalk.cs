@@ -7,9 +7,8 @@ namespace Oxce.Gameplay.Battles;
 /// Walking and flying (Phase 7 branch 4 S8): <c>BattlescapeGame::primaryAction</c>'s walk, <c>moveUpDown</c> and <c>UnitWalkBState</c> run to
 /// their end. The reference's <c>think</c> is called once per animation tick: the port runs it as one loop whose cycles are the reference's
 /// (a step starts in one cycle and is finished, with everything that follows it, at the start of the next; a turn eighth is one cycle), a step
-/// collapsed into <see cref="WalkStep"/>. What the reference hands to later work is refused by name: the reaction fire after a step
-/// (<see cref="HasPossibleReactor"/>), proximity explosions and a fall that finds no escape. The command checks them on a trial
-/// copy of the battle first, so a refusal changes nothing.
+/// collapsed into <see cref="WalkStep"/>. The reaction fire after a step (<see cref="CheckReactionFire"/>) pushes its states behind the walk, which runs them once it ended. What stays refused by name
+/// (a burning floor's hit that reaches a unit, a fall that finds no escape) is checked on a trial copy of the battle first, so a refusal changes nothing.
 /// </summary>
 internal sealed partial class BattleState
 {
@@ -58,9 +57,9 @@ internal sealed partial class BattleState
         // if running or shifting, ignore spotted enemies (i.e. don't stop)
         var ignore = ignoreSpottedEnemies || move == BattleMoveType.Run && RequiredRules.Campaign.ExtendedRunningCost;
         var refusal = RunWalk(unit, pathfinder, bam, move == BattleMoveType.Strafe, ignore, events);
-        // The explosions a unit that blows itself up pushed run behind the walk state.
+        // The explosions a unit that blows itself up pushed, and the reactions the walk drew, run behind the walk state; the falls they start follow.
         RunStates();
-        return refusal ?? TakeExplosionRefusal();
+        return refusal ?? TakeExplosionRefusal() ?? ResolveFalls(out _);
     }
 
     /// <summary>
@@ -81,9 +80,9 @@ internal sealed partial class BattleState
         // The kneel's result is not looked at: a unit that stays kneeling is stopped by the walk's own kneel.
         var kneelSpent = 0;
         var kneeled = false;
-        if (unit.Kneeled && KneelUnit(unit.Id, out var kneeling, out var spent) is null)
+        // The kneel's reactions go to the back of the empty list (the first starts at once), and the walk state is pushed behind them: they play before the unit takes its step.
+        if (unit.Kneeled && KneelUnit(unit.Id, out _, out var spent, raise: true) is null)
         {
-            events.Add(new UnitKneeled(unit.Id, kneeling, spent));
             kneelSpent = spent;
             kneeled = true;
         }
@@ -91,14 +90,18 @@ internal sealed partial class BattleState
         {
             // The walk state aborts silently in think, after moveUpDown's kneel.
             if (!kneeled) return BattleMovementReasons.WalkNotAllowed;
-            events.Add(new UnitWalkEnded(unit.Id, BattleWalkStop.Arrived, 0, kneelSpent, 0, unit.Position!.Value));
+            events.Add(new UnitWalkEnded(unit.Id, BattleWalkStop.Arrived, 0, kneelSpent, 0, RestingPosition(unit) ?? new BattlePosition(-1, -1, -1)));
             MarkChanged();
-            return null;
+            RunStates();
+            return TakeExplosionRefusal() ?? ResolveFalls(out _);
         }
         pathfinder.Calculate(unit, target, BattleActionMove.Normal);
+        // The reactions of the kneel run first (the list's front); the walk state behind them then finds a unit that was shot out and pops.
+        RunStates();
+        if (TakeExplosionRefusal() is { } kneelRefusal) return kneelRefusal;
         var refusal = RunWalk(unit, pathfinder, BattleActionMove.Normal, false, false, events, kneeled, kneelSpent);
         RunStates();
-        return refusal ?? TakeExplosionRefusal();
+        return refusal ?? TakeExplosionRefusal() ?? ResolveFalls(out _);
     }
 
     /// <summary>
@@ -187,7 +190,14 @@ internal sealed partial class BattleState
                             fallingWhenStopped = false;
                             pathfinder.DequeuePath();
                             AddFallingUnit(unit);
+                            _reactionDuringFall = false;
                             refusal = ResolveFalls(out _);
+                            // UnitFallBState: a unit that landed and drew a reaction aborts the walk's path.
+                            if (_reactionDuringFall)
+                            {
+                                _reactionDuringFall = false;
+                                pathfinder.AbortPath();
+                            }
                             return refusal is not null;
                         }
                 }
@@ -223,13 +233,8 @@ internal sealed partial class BattleState
                 if (Spotted()) return Cancel(BattleWalkStop.SpottedUnits);
                 if (!falling && !fallingWhenStopped)
                 {
-                    // checkReactionFire: a reactor would shoot (branch 5), the others spot the mover.
-                    if (HasPossibleReactor(unit))
-                    {
-                        refusal = BattleMovementReasons.ReactionFireUnsupported;
-                        return true;
-                    }
-                    SpotMover(sight, unit);
+                    // checkReactionFire: the reactors shoot once the walk ended; the unit got fired upon, stop walking.
+                    if (CheckReactionFire(unit, new BattleReactionOrigin(BattleActionType.Walk, Move: bam))) return Cancel(BattleWalkStop.ReactionFire);
                 }
             }
 
@@ -358,20 +363,21 @@ internal sealed partial class BattleState
         }
 
         var limit = 64 + 16 * (Map.Width + Map.Length + Map.Height);
+        var holdsBack = HoldBackPushes();
         for (var cycle = 0; !Think(); cycle++)
             if (cycle > limit) throw new InvalidOperationException($"The walk of battle unit {unit.Id} does not end.");
 
-        // The states the walk pushed (the explosion of a unit that blew itself up) run behind the walk state, and BattlescapeGame::think pushes the
-        // fall state only once the list is empty: a unit a burnt floor or a blast dropped falls after them.
+        // The states the walk pushed (the explosion of a unit that blew itself up) run behind the walk state. BattlescapeGame::think pushes the fall state only once the list is empty:
+        // a unit a burnt floor or a blast dropped falls after the explosions and the reactions the walk drew, which the caller runs and then resolves the falls.
         PushBehindRunning(proximity);
         RunStates();
         refusal ??= TakeExplosionRefusal();
-        if (refusal is null && _fallingUnits.Count != 0)
+        if (refusal is not null)
         {
-            refusal = ResolveFalls(out var fell);
-            changed |= fell;
+            if (holdsBack) ReleaseBackPushes();
+            return refusal;
         }
-        if (refusal is not null) return refusal;
+        changed |= _fallingUnits.Count != 0;
         if (!changed)
         {
             // Nothing happened: a walk that could not start is refused.
@@ -384,13 +390,19 @@ internal sealed partial class BattleState
                 BattleWalkStop.UnitInTheWay => BattleMovementReasons.WalkUnitInTheWay,
                 _ => null,
             };
-            if (why is not null) return why;
+            if (why is not null)
+            {
+                if (holdsBack) ReleaseBackPushes();
+                return why;
+            }
         }
         if (stop == BattleWalkStop.SpottedUnits)
             events.Add(new UnitsSpotted(unit.Id, [.. unit.UnitsSpottedThisTurn.Skip(numUnitsSpotted)]));
         // (A unit a proximity blast took out has no tile: the walk ended where it lies.)
         events.Add(new UnitWalkEnded(unit.Id, stop, steps, timeUnitsSpent, energySpent, RestingPosition(unit) ?? new BattlePosition(-1, -1, -1)));
         MarkChanged();
+        // The reactions the walk drew go to the back of the list once the end of the walk is reported (the reference's walk state has popped): the caller runs them.
+        if (holdsBack) ReleaseBackPushes();
         return null;
     }
 }

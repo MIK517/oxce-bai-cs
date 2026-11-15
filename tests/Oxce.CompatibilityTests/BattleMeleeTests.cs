@@ -781,16 +781,23 @@ public sealed class BattleMeleeTests
     // ---- the reaction and the command ----
 
     [Fact]
-    public void AnAttackAnOpposingUnitCouldAnswerIsRefusedByName()
+    public void AnAttackDrawsAReactionOnlyWithTheExtendedMeleeReactions()
     {
-        var arena = Arm();
-        var gun = Gun(arena);
-        var reactor = Gun(arena, arena.Alien);
-        Assert.NotNull(reactor);
-        arena.Alien.Stats = arena.Alien.Stats with { TimeUnits = 100, Reactions = 100 };
-        arena.Alien.TimeUnits = 100;
-        arena.Soldier.Stats = arena.Soldier.Stats with { Reactions = 1 };
-        Assert.Equal("battle.reaction-fire-unsupported", Hit(arena, gun)!.Code);
+        // tryReaction: the chance of a reaction to a hit is 100 with extendedMeleeReactions above 0, else 0 (the reactor is asked, and does not roll in).
+        var (plain, extended) = (Arm(), Arm(global: "\nconstants:\n  - extendedMeleeReactions: 1\n"));
+        foreach (var arena in new[] { plain, extended })
+        {
+            var gun = Gun(arena);
+            Assert.NotNull(Gun(arena, arena.Alien));
+            arena.Alien.Stats = arena.Alien.Stats with { TimeUnits = 100, Reactions = 100 };
+            arena.Alien.TimeUnits = 100;
+            arena.Soldier.Stats = arena.Soldier.Stats with { Reactions = 1 };
+            Assert.Null(Hit(arena, gun));
+        }
+        Assert.Equal(100, plain.Alien.TimeUnits);
+        Assert.True(extended.Alien.TimeUnits < 100);
+        Assert.Contains(extended.Battle.Events.Drain(), @event => @event is UnitFired fired && fired.UnitId == extended.Alien.Id ||
+            @event is UnitMeleeAttacked attacked && attacked.UnitId == extended.Alien.Id);
     }
 
     [Fact]

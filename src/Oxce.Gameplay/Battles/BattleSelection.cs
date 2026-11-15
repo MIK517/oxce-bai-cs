@@ -124,6 +124,7 @@ internal sealed partial class BattleState
         var found = UnitById(unitId);
         if (found is null || found.Faction != Side || found.IsOut) return BattleSelectionReasons.UnitUnknown;
         unit = found;
+        _commandActor = found;
         return null;
     }
 

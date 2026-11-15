@@ -344,8 +344,7 @@ internal sealed partial class BattleState
 
     /// <summary>
     /// <c>MeleeAttackBState</c>: <c>init</c> checks the weapon's ammunition, the target tile and the unit, pays the time units and strikes (the terrain part or the unit's
-    /// voxel), pushing the <see cref="ExplosionState"/> of the hit in front; <c>think</c> runs once that popped: the reaction check (refused while a reaction could
-    /// happen, S9), the floor a burning unit sets alight, and for a hostile unit the further hits of the weapon's AI count.
+    /// voxel), pushing the <see cref="ExplosionState"/> of the hit in front; <c>think</c> runs once that popped: the reaction check (<see cref="CheckReactionFire"/>), the floor a burning unit sets alight, and for a hostile unit the further hits of the weapon's AI count.
     /// </summary>
     private sealed class MeleeAttackState(BattleState battle, BattleUnit unit, BattleItem weapon, BattlePosition target, int terrainMeleeTilePart,
         BattleActionCost cost) : QueuedState
@@ -383,17 +382,23 @@ internal sealed partial class BattleState
             var part = _terrainPart;
             _terrainPart = 0; // reset!
 
-            // (A reaction to a move or a shot is S9's: this state starts for a unit of the side on turn.)
-            if (unit.Faction != battle.Side) throw new InvalidOperationException("A melee attack of a unit that is not on turn is a reaction (Phase 7 branch 5 S9).");
+            // A unit that is not of the side on turn reacts (reactionShoot): no message is shown for it.
+            var reactionShoot = unit.Faction != battle.Side;
             _ammo = battle.AmmoForHit(weapon, out var message, out _);
             if (_ammo is null)
             {
-                Result = message;
+                if (!reactionShoot) Result = message;
                 battle.PopState();
                 return;
             }
             // invalid target position
             if (!battle.Contains(target) || unit.IsOut || unit.IsOutThresholdExceeded)
+            {
+                battle.PopState();
+                return;
+            }
+            // reaction fire: the unit that acted must still stand there, and the reactor turns to it for free
+            if (reactionShoot && !battle.StartReaction(unit, target))
             {
                 battle.PopState();
                 return;
@@ -455,15 +460,8 @@ internal sealed partial class BattleState
             if (_reaction && battle.FallingUnits.Count == 0)
             {
                 _reaction = false;
-                // checkReactionFire(unit, action): a reaction is S9's, so an attack a reactor could answer is refused (the command's trial copy finds it first).
-                if (battle.HasPossibleReactor(unit))
-                {
-                    battle.ExplosionRefusal ??= BattleMovementReasons.ReactionFireUnsupported;
-                    battle.PopState();
-                    return;
-                }
-                // getSpottingUnits runs whether or not a reactor could answer: the units that see the attacker spot it.
-                battle.SpotMover(battle.Sight(), unit);
+                // checkReactionFire(unit, action): the reactions go to the back of the list; the reference's think returns here and runs the rest next time, which this does at once.
+                battle.CheckReactionFire(unit, new BattleReactionOrigin(BattleActionType.Hit, weapon, target));
             }
 
             // if the unit burns floor tiles, burn floor tiles
@@ -496,7 +494,7 @@ internal sealed partial class BattleState
     /// the facing direction (<see cref="ValidMeleeRange"/>) or a part of the terrain can be struck (<see cref="ValidTerrainMeleeRange"/>), else
     /// <c>STR_THERE_IS_NO_ONE_THERE</c>. There is no turn: the unit hits where it faces. Then the state runs with the explosions and deaths it starts and the falls
     /// they cause (<see cref="RunStates"/>, <see cref="TakeExplosionRefusal"/>, <see cref="ResolveFalls(out bool)"/>). A refusal before the strike leaves the battle as it was;
-    /// one after it (a reaction this slice cannot run) is what the command's trial copy finds.
+    /// one after it is what the command's trial copy finds.
     /// </summary>
     internal CampaignReason? MeleeAttackAction(BattleResearchGate research, int unitId, int itemId, bool altPressed)
     {
@@ -525,8 +523,7 @@ internal sealed partial class BattleState
 
     /// <summary>
     /// The state of a melee attack run to its end (<c>statePushBack</c> of a <c>MeleeAttackBState</c> on an empty list, then the loop): the unit strikes the tile
-    /// (the terrain part, when above 0), the explosions and deaths and falls that follow run, and a refusal a state met is returned (a reaction S9 must run, which
-    /// the command's trial copy finds first). A strike that never started leaves the reason the reference gives (its <c>result</c>).
+    /// (the terrain part, when above 0), the explosions and deaths and falls that follow run, and a refusal a state met is returned (the command's trial copy finds it first). A strike that never started leaves the reason the reference gives (its <c>result</c>).
     /// </summary>
     internal CampaignReason? StrikeMelee(BattleUnit unit, BattleItem weapon, BattlePosition target, int terrainMeleeTilePart, BattleActionCost cost)
     {

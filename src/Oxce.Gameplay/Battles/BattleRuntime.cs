@@ -257,11 +257,7 @@ internal sealed class BattleRuntime
         return new CampaignCommandResult([new UnitTurned(command.UnitId, turn.Direction, turn.Eighths, turn.TimeUnitsSpent, turn.Stop, turn.Door, turn.DoorsOpened, turn.DoorCentre)]);
     }
 
-    private CampaignCommandResult KneelUnit(KneelUnit command)
-    {
-        if (State.KneelUnit(command.UnitId, out var kneeling, out var spent) is { } refusal) return Blocked(refusal);
-        return new CampaignCommandResult([new UnitKneeled(command.UnitId, kneeling, spent)]);
-    }
+    private CampaignCommandResult KneelUnit(KneelUnit command) => RunOnTrialCopy(battle => battle.KneelAction(command.UnitId));
 
     private CampaignCommandResult SelectSpotter(SelectSpotter command)
     {
@@ -276,8 +272,8 @@ internal sealed class BattleRuntime
     }
 
     /// <summary>
-    /// The attack command (S6: the hit, S7: the aimed, snap and auto shots): run on a copy first like a walk, because the reaction fire after the attack is S9's and the
-    /// real battle must not change when a reactor could answer. The events are the rules' own, in order (the turn's, each shot, then its hit, deaths and blasts).
+    /// The attack command (S6: the hit, S7: the aimed, snap and auto shots): run on a copy first like a walk, because what a state meets that is refused by name must leave the
+    /// real battle as it was. The events are the rules' own, in order (the turn's, each shot, then its hit, deaths and blasts).
     /// </summary>
     private CampaignCommandResult Attack(Attack command)
     {
@@ -304,8 +300,8 @@ internal sealed class BattleRuntime
     }
 
     /// <summary>
-    /// A command that runs a state of the list (<c>UnitWalkBState</c>, <c>MeleeAttackBState</c>): first on a copy of the battle, so that what it meets that is not ported (the reaction fire after
-    /// a step, a proximity explosion, a burning floor, a fall that knocks a unit out) is refused before the real one changes anything; then on the
+    /// A command that runs a state of the list (<c>UnitWalkBState</c>, <c>MeleeAttackBState</c>): first on a copy of the battle, so that what it meets that is not ported (a burning floor's
+    /// hit, a fall that finds no escape) is refused before the real one changes anything; then on the
     /// battle, with the events the rules raised.
     /// </summary>
     private CampaignCommandResult RunOnTrialCopy(Func<BattleState, CampaignReason?> move)

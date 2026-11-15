@@ -24,7 +24,9 @@ public sealed class BattleWalkTests
             if (!flying) rules = Replaced(rules, "  - type: SUIT\n    movementType: 1\n", "  - type: SUIT\n    movementType: 0\n");
             if (suitExtra.Length != 0) rules = Replaced(rules, "  - type: SUIT\n", "  - type: SUIT\n" + suitExtra);
             rules = Replaced(rules, "stats: {tu: 50, firing: 61}", "stats: {tu: 50, firing: 61, reactions: 100}");
-            rules = Replaced(rules, GunText, GunText + "\n    tuSnap: 20\n    tuAimed: 50");
+            rules = Replaced(rules, GunText, GunText + "\n    tuSnap: 20\n    tuAimed: 50\n    accuracySnap: 100");
+            // (The AI judges a reaction by the damage it does: a clip with no damage scores nothing.)
+            rules = Replaced(rules, "- type: CLIP\n    battleType: 2\n    clipSize: 12\n    weight: 1", "- type: CLIP\n    battleType: 2\n    clipSize: 12\n    weight: 1\n    power: 10\n    damageType: 1\n    damageAlter: {RandomType: 3}");
             if (rulesExtra.Length != 0) rules += "\n" + rulesExtra + "\n";
             return edit is null ? rules : edit(rules);
         });
@@ -500,13 +502,18 @@ public sealed class BattleWalkTests
     // ---- what is refused by name ----
 
     [Fact]
-    public void AStepNextToAnArmedOpposingUnitThatCouldReactIsRefusedBeforeAnyChange()
+    public void AStepInSightOfAnArmedOpposingUnitDrawsItsShotAndStopsTheWalk()
     {
         var arena = Make();
         GunFor(arena.Battle, arena.Alien);
-        var state = State(arena);
-        Assert.Equal("battle.reaction-fire-unsupported", Refusal(arena.Campaign.Execute(new WalkUnit(arena.Soldier.Id, At(12, 10)))));
-        Assert.Equal(state, State(arena));
+        var alienUnits = arena.Alien.TimeUnits;
+        var events = Events(arena.Campaign.Execute(new WalkUnit(arena.Soldier.Id, At(12, 10))));
+        // UnitWalkBState: unit got fired upon, stop walking; the reaction runs once the walk state is gone.
+        var ended = events.OfType<UnitWalkEnded>().Single();
+        Assert.Equal(BattleWalkStop.ReactionFire, ended.Stop);
+        Assert.Equal(1, ended.Steps);
+        Assert.True(events.ToList().FindIndex(static @event => @event is UnitWalkEnded) < events.ToList().FindIndex(@event => @event is UnitFired fired && fired.UnitId == arena.Alien.Id));
+        Assert.True(arena.Alien.TimeUnits < alienUnits);
         // A weaponless alien only spots: the mover is seen by the hostile faction's unit that faces it.
         var unarmed = Make();
         unarmed.Forget();
@@ -600,16 +607,18 @@ public sealed class BattleWalkTests
     }
 
     [Fact]
-    public void AKneelingUnitThatAReactorWouldShootAtIsRefusedByTheKneelBeforeAnyChange()
+    public void AKneelingUnitThatStandsUpDrawsTheReactionOfTheKneelBehindTheWalk()
     {
         var arena = Make();
         GunFor(arena.Battle, arena.Alien);
         arena.Soldier.Kneeled = true;
-        var state = State(arena);
-        // Called on the battle itself: a refusal after a step would leave the walk done, a refusal of the kneel leaves nothing.
-        Assert.Equal("battle.reaction-fire-unsupported", arena.Battle.Walk(arena.Soldier.Id, At(12, 10), BattleMoveType.Normal, false)?.Code);
-        Assert.Equal(state, State(arena));
-        Assert.Equal("battle.reaction-fire-unsupported", Refusal(arena.Campaign.Execute(new WalkUnit(arena.Soldier.Id, At(12, 10)))));
+        var alienUnits = arena.Alien.TimeUnits;
+        var events = Events(arena.Campaign.Execute(new WalkUnit(arena.Soldier.Id, At(12, 10)))).ToList();
+        // The walk state stands the unit up (the kneel's reaction waits at the back of the list), takes its step (its own reaction waits too) and ends there;
+        // the reactions run after it, the alien's snap shots in the order they were pushed.
+        Assert.True(events.FindIndex(static @event => @event is UnitKneeled) < events.FindIndex(static @event => @event is UnitWalkEnded));
+        Assert.True(events.FindIndex(static @event => @event is UnitWalkEnded) < events.FindIndex(@event => @event is UnitFired fired && fired.UnitId == arena.Alien.Id));
+        Assert.True(arena.Alien.TimeUnits < alienUnits);
     }
 
     [Theory]

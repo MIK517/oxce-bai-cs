@@ -368,7 +368,7 @@ public sealed class BattleShootingTests
     // ---- the end of the action ----
 
     [Fact]
-    public void AShotAnOpposingUnitCouldAnswerIsRefusedByName()
+    public void AnOpposingUnitThatSeesAShotAnswersItAfterTheShootersStateEnded()
     {
         var (arena, gun, _) = Load();
         var reactor = Shot(arena, arena.Alien).Gun;
@@ -376,7 +376,33 @@ public sealed class BattleShootingTests
         arena.Alien.Stats = arena.Alien.Stats with { TimeUnits = 100, Reactions = 100 };
         arena.Alien.TimeUnits = 100;
         arena.Soldier.Stats = arena.Soldier.Stats with { Reactions = 1 };
-        Assert.Equal("battle.reaction-fire-unsupported", Fire(arena, gun)!.Code);
+        Assert.Null(Fire(arena, gun));
+        // The soldier's shot, then the alien's snap shots at it (its reaction states ran behind the shooter's): the reactor is asked again while its score
+        // reaches the shooter's, so it fires until its time units are gone, each time paying the snap shot's 20.
+        var fired = arena.Battle.Events.Drain().OfType<UnitFired>().Select(static shot => shot.UnitId).ToArray();
+        Assert.Equal(arena.Soldier.Id, fired[0]);
+        Assert.True(fired.Length > 1);
+        Assert.All(fired.Skip(1), id => Assert.Equal(arena.Alien.Id, id));
+        Assert.Equal(100 - 20 * (fired.Length - 1), arena.Alien.TimeUnits);
+    }
+
+    [Fact]
+    public void AReactionThatKillsTheShooterEndsItsActionWithoutFurtherShotsFromTheReactor()
+    {
+        var (arena, gun, _) = Load();
+        Assert.NotNull(Shot(arena, arena.Alien).Gun);
+        arena.Alien.Stats = arena.Alien.Stats with { TimeUnits = 100, Reactions = 100 };
+        arena.Alien.TimeUnits = 100;
+        arena.Soldier.Stats = arena.Soldier.Stats with { Reactions = 1, Health = 5 };
+        arena.Soldier.Health = 5;
+        Assert.Null(Fire(arena, gun));
+        var events = arena.Battle.Events.Drain();
+        // The soldier's shot hurts the alien; the alien's snap shot kills the soldier, and the reactions behind it find the target dead.
+        Assert.True(arena.Soldier.IsOut);
+        Assert.Contains(events, @event => @event is UnitDied died && died.UnitId == arena.Soldier.Id);
+        Assert.Equal([arena.Soldier.Id, arena.Alien.Id], events.OfType<UnitFired>().Select(static shot => shot.UnitId));
+        Assert.Equal(80, arena.Alien.TimeUnits);
+        Assert.True(arena.Alien.Health < 100);
     }
 
     [Fact]

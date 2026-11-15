@@ -39,8 +39,9 @@ internal sealed partial class BattleState
     }
 
     /// <summary>
-    /// The refusal a running state left behind (S6's melee state sets it where the reference would check for reaction fire, S9 retires that): the commands
-    /// and the generator take it with <see cref="TakeExplosionRefusal"/> when their states have run, and refuse (the generator fails, a command's trial copy is dropped).
+    /// The refusal a running state left behind: the commands and the generator take it with <see cref="TakeExplosionRefusal"/> when their states have run, and refuse (the
+    /// generator fails, a command's trial copy is dropped). No state sets one since S9 ported the reaction fire the melee state refused for; it stays as the seat of the refusals of the
+    /// states branch 6 (the AI's psi and berserk attacks) and branch 8 (scripted states) have not ported yet, and every command's end still reads it.
     /// </summary>
     internal CampaignReason? ExplosionRefusal { get; set; }
 
@@ -84,7 +85,8 @@ internal sealed partial class BattleState
     {
         if (_states.Count == 0) return;
         _states.RemoveAt(0);
-        if (_states.Count != 0) _states[0].Init();
+        if (_states.Count == 0) return;
+        _states[0].Init();
     }
 
     /// <summary>

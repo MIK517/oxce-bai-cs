@@ -12,6 +12,17 @@ internal readonly record struct BattleDamageHookValues(int Health, int Armor, in
 internal readonly record struct BattleSpecialHookValues(bool Transform, int TransformChance, bool SelfDestruct, int SelfDestructChance, int MoraleLoss, int Fire,
     int AttackerTurnsSinceSpotted, int AttackerTurnsLeftSpottedForSnipers);
 
+/// <summary>The values the reaction scripts (<c>ModScript::ReactionCommon</c>) may change: the chance of the reaction in percent and the distance between the units.</summary>
+internal readonly record struct BattleReactionHookValues(int Chance, int Distance);
+
+/// <summary>
+/// What the reaction scripts read (<c>ModScript::ReactionCommon::Worker</c>): the unit that drew the reaction (<see cref="Target"/>), the unit that reacts and its weapon and
+/// action, how many times it has reacted in this check, the action that drew the reaction (its weapon, type, the unit on its target tile and the move type of a walk:
+/// 0 normal, 1 run, 2 strafe, 3 sneak) and the angle of the reacting unit to the target (0 in front to 4 behind).
+/// </summary>
+internal readonly record struct BattleReactionHookContext(BattleUnit Target, BattleUnit Unit, BattleItem Weapon, BattleActionType Type, int Count, BattleItem? OriginalWeapon,
+    BattleActionType OriginalType, BattleUnit? OriginalTarget, int MoveType, int Arc);
+
 /// <summary>Where a stat bonus is read (<c>RuleItem</c>'s <c>*BonusStats</c> parsers); the scripted form of each is a hook in branch 8.</summary>
 internal enum BattleStatBonusKind { Damage, Accuracy, MeleeMultiplier, Throw, CloseQuarters, MeleeBonus, MeleeDodge }
 
@@ -40,6 +51,18 @@ internal interface IBattleHooks
 
     /// <summary><c>ModScript::AiCalculateTargetWeight</c> (<c>AIModule::getTargetAttackWeight</c>, run on the armor of the unit that weighs): the weight of the target for the unit.</summary>
     int AiCalculateTargetWeight(BattleUnit unit, BattleUnit target, int weight) => weight;
+
+    /// <summary>
+    /// <c>ModScript::ReactionWeaponAction</c> (<c>TileEngine::tryReaction</c>, run on the rules of the weapon of the action that drew the reaction, when it has one): the chance
+    /// in percent of the reaction and the distance between the two units.
+    /// </summary>
+    BattleReactionHookValues ReactionWeaponAction(in BattleReactionHookContext context, BattleReactionHookValues values) => values;
+
+    /// <summary><c>ModScript::ReactionUnitAction</c> (<c>TileEngine::tryReaction</c>, run on the armor of the unit that drew the reaction).</summary>
+    BattleReactionHookValues ReactionUnitAction(in BattleReactionHookContext context, BattleReactionHookValues values) => values;
+
+    /// <summary><c>ModScript::ReactionUnitReaction</c> (<c>TileEngine::tryReaction</c>, run on the armor of the unit that reacts).</summary>
+    BattleReactionHookValues ReactionUnitReaction(in BattleReactionHookContext context, BattleReactionHookValues values) => values;
 
     /// <summary><c>ModScript::VisibilityUnit</c> (<c>TileEngine::visible</c> and <c>isTileInLOS</c>): the visibility quality; the unit is seen above 0.</summary>
     int VisibilityUnit(BattleUnit viewer, BattleUnit? target, int tile, int quality) => quality;

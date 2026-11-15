@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 270 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 271 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 103 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 8 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 363 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 364 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 114 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -352,7 +352,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 270 files.
+`src/Oxce.Gameplay` - 271 files.
 
 ### `Oxce.Gameplay`
 
@@ -1376,7 +1376,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 363 files.
+`tests/Oxce.CompatibilityTests` - 364 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1388,7 +1388,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>356 test classes</summary>
+<details><summary>357 test classes</summary>
 
 - `BaseDefenseDeploymentTests` ([BaseDefenseDeploymentTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseDeploymentTests.cs))
 - `BaseDefenseMapTests` ([BaseDefenseMapTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseMapTests.cs))
@@ -1412,6 +1412,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BattleMeleeTests` ([BattleMeleeTests.cs](../tests/Oxce.CompatibilityTests/BattleMeleeTests.cs))
 - `BattleMovementGroundworkTests` ([BattleMovementGroundworkTests.cs](../tests/Oxce.CompatibilityTests/BattleMovementGroundworkTests.cs))
 - `BattlePathfindingTests` ([BattlePathfindingTests.cs](../tests/Oxce.CompatibilityTests/BattlePathfindingTests.cs))
+- `BattleReactionFireTests` ([BattleReactionFireTests.cs](../tests/Oxce.CompatibilityTests/BattleReactionFireTests.cs))
 - `BattleReactionTests` ([BattleReactionTests.cs](../tests/Oxce.CompatibilityTests/BattleReactionTests.cs))
 - `BattleRuntimeTests` ([BattleRuntimeTests.cs](../tests/Oxce.CompatibilityTests/BattleRuntimeTests.cs))
 - `BattleSaveItemTests` ([BattleSaveItemTests.cs](../tests/Oxce.CompatibilityTests/BattleSaveItemTests.cs))

@@ -453,9 +453,11 @@ public sealed class BattleFireTests
         Assert.Equal(At(11, 10, 0), arena.Soldier.Position);
         Assert.Empty(arena.Battle.FallingUnits);
         Assert.False(arena.Soldier.HaveNoFloorBelow);
-        // The next step starts over a hole: no valid step (the reference's getTUCost says the same), so the walk stops there and the fall state runs.
-        Assert.Equal(BattleWalkStop.PathBlocked, Assert.IsType<UnitWalkEnded>(events[^1]).Stop);
-        Assert.Contains(events, static @event => @event is UnitFell);
+        // The next step starts over a hole: no valid step (the reference's getTUCost says the same), so the walk stops there; BattlescapeGame::think
+        // pushes the fall state only once the state list is empty, so the fall comes after the walk's end (and after any reaction).
+        var ended = events.ToList().FindIndex(static @event => @event is UnitWalkEnded);
+        Assert.Equal(BattleWalkStop.PathBlocked, Assert.IsType<UnitWalkEnded>(events[ended]).Stop);
+        Assert.True(ended < events.ToList().FindIndex(static @event => @event is UnitFell));
         // The floors it stood on are gone.
         Assert.Equal((-1, -1), arena.Map.Part(arena.Tile(11, 10, 1), BattleTilePart.Floor));
     }
