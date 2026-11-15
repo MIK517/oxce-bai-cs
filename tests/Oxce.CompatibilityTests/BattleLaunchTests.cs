@@ -247,7 +247,7 @@ public sealed class BattleLaunchTests
     public void TheLaunchCommandRunsThroughTheRuntimeAndATrialCopyKeepsTheBattleOnRefusal()
     {
         var (arena, gun, clip) = Load();
-        var runtime = new BattleRuntime(arena.Battle, arena.Rules, new ScriptedDraws(0), null, static (_, _) => null);
+        var runtime = new BattleRuntime(arena.Battle, arena.Rules, new ScriptedDraws(0), null);
         var result = runtime.Execute(new Attack(arena.Soldier.Id, gun.Id, BattleAimKind.Launch, Waypoints: [At(12, 10), At(15, 10)]));
         Assert.Equal(2, result.Events.OfType<UnitFired>().Count());
         Assert.Contains(result.Events, static @event => @event is BattleExploded);

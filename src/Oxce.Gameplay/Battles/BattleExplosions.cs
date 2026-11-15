@@ -38,20 +38,9 @@ internal sealed partial class BattleState
         public abstract void Think();
     }
 
-    /// <summary>
-    /// The refusal a running state left behind: the commands and the generator take it with <see cref="TakeExplosionRefusal"/> when their states have run, and refuse (the
-    /// generator fails, a command's trial copy is dropped). No state sets one since S9 ported the reaction fire the melee state refused for; it stays as the seat of the refusals of the
-    /// states branch 6 (the AI's psi and berserk attacks) and branch 8 (scripted states) have not ported yet, and every command's end still reads it.
-    /// </summary>
-    internal CampaignReason? ExplosionRefusal { get; set; }
-
-    /// <summary>Returns and clears <see cref="ExplosionRefusal"/>.</summary>
-    internal CampaignReason? TakeExplosionRefusal()
-    {
-        var refusal = ExplosionRefusal;
-        ExplosionRefusal = null;
-        return refusal;
-    }
+    // A running state has no refusal to leave behind: a command that refuses does so before its first change (ADR 0038's failure model; the commands run on the live
+    // battle with no copy). A state of branch 6 (the AI's psi and berserk attacks) or branch 8 (scripted states) that cannot run must be refused before the command
+    // changes anything, never from inside a state.
 
     /// <summary>Whether a state waits to run.</summary>
     internal bool HasPendingStates => _states.Count != 0;

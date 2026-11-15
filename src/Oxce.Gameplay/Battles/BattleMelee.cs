@@ -493,8 +493,7 @@ internal sealed partial class BattleState
     /// unit's hand or among its special weapons, offer the hit, be usable (research, depth, psi, hands: <c>canUseWeapon</c>) and be paid for; a unit stands in
     /// the facing direction (<see cref="ValidMeleeRange"/>) or a part of the terrain can be struck (<see cref="ValidTerrainMeleeRange"/>), else
     /// <c>STR_THERE_IS_NO_ONE_THERE</c>. There is no turn: the unit hits where it faces. Then the state runs with the explosions and deaths it starts and the falls
-    /// they cause (<see cref="RunStates"/>, <see cref="TakeExplosionRefusal"/>, <see cref="ResolveFalls(out bool)"/>). A refusal before the strike leaves the battle as it was;
-    /// one after it is what the command's trial copy finds.
+    /// they cause (<see cref="RunStates"/>, <see cref="ResolveFalls(out bool)"/>). A refusal comes before the strike and leaves the battle as it was.
     /// </summary>
     internal CampaignReason? MeleeAttackAction(BattleResearchGate research, int unitId, int itemId, bool altPressed)
     {
@@ -523,14 +522,13 @@ internal sealed partial class BattleState
 
     /// <summary>
     /// The state of a melee attack run to its end (<c>statePushBack</c> of a <c>MeleeAttackBState</c> on an empty list, then the loop): the unit strikes the tile
-    /// (the terrain part, when above 0), the explosions and deaths and falls that follow run, and a refusal a state met is returned (the command's trial copy finds it first). A strike that never started leaves the reason the reference gives (its <c>result</c>).
+    /// (the terrain part, when above 0), the explosions and deaths and falls that follow run, and a refusal a state met is returned. A strike that never started leaves the reason the reference gives (its <c>result</c>).
     /// </summary>
     internal CampaignReason? StrikeMelee(BattleUnit unit, BattleItem weapon, BattlePosition target, int terrainMeleeTilePart, BattleActionCost cost)
     {
         var state = new MeleeAttackState(this, unit, weapon, target, terrainMeleeTilePart, cost);
         PushNext(state);
         RunStates();
-        if (TakeExplosionRefusal() is { } refusal) return refusal;
         if (!state.Performed) return state.Result.Length == 0 ? BattleAttackReasons.NotPerformed : BattleAttackReasons.ForMessage(state.Result);
         MarkChanged();
         return ResolveFalls(out _);

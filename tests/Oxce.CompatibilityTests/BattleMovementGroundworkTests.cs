@@ -175,7 +175,7 @@ public sealed class BattleMovementGroundworkTests
         var (_, battle, soldier, set) = Open(rules);
         var grenade = battle.InventoryOf(soldier).Single(static item => item.ItemType == "GRENADE");
         var options = new BattleOptions { ForcedAbsoluteCosts = true };
-        var runtime = new BattleRuntime(battle, set, new Oxce.Core.Random.SplitMix64RandomSource(1), null, static (live, run) => run(live), options: options);
+        var runtime = new BattleRuntime(battle, set, new Oxce.Core.Random.SplitMix64RandomSource(1), null, options: options);
         Assert.Same(options, runtime.Options);
         Assert.Same(options, battle.Options);
         Assert.Same(options, soldier.Options);

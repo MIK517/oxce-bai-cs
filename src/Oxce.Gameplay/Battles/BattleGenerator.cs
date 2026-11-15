@@ -66,8 +66,6 @@ internal static class BattleGenerator
         state.Random = random;
         if (inputs.UfoCrashed) state.ExplodePowerSources();
         state.ExplodeOtherJunk();
-        // The reference would fail on a unit that blows itself up here; the port refuses the one whose explosion it cannot run.
-        if (state.TakeExplosionRefusal() is { } explosionRefusal) throw new MapGenerationException(explosionRefusal.Code);
         return state;
     }
 

@@ -62,7 +62,7 @@ internal sealed partial class BattleState
     /// target, each eighth paying its time units (the reserve is not asked), then <c>ProjectileFlyBState</c> checks the time units, the ammunition, the range and the line of
     /// fire, pays, and fires the weapon's shots. A check that fails after the unit turned stops the action with <see cref="UnitAttackStopped"/>; one that fails with nothing
     /// changed (the unit already faced the target) is a refusal. The states, the explosions and deaths they start and the falls then run
-    /// (<see cref="RunStates"/>, <see cref="TakeExplosionRefusal"/>, <see cref="ResolveFalls(out bool)"/>). The reactions the shot draws run with them (S9).
+    /// (<see cref="RunStates"/>, <see cref="ResolveFalls(out bool)"/>). The reactions the shot draws run with them (S9).
     /// </summary>
     internal CampaignReason? ShootAction(BattleResearchGate research, int unitId, int itemId, BattleAimKind kind, BattlePosition target, bool forceFire,
         IReadOnlyList<BattlePosition>? sprayWaypoints = null)
@@ -167,7 +167,6 @@ internal sealed partial class BattleState
         _states.Add(flight);
         PushFront(turn);
         RunStates();
-        if (TakeExplosionRefusal() is { } refusal) return refusal;
 
         if (!flight.Fired)
         {

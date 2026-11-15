@@ -43,7 +43,7 @@ public sealed class BattleThrowingTests
 
     private static readonly BattleViewer Player = BattleViewer.LocalPlayer;
 
-    private static BattleRuntime RuntimeOf(Arena arena) => new(arena.Battle, arena.Rules, new ScriptedDraws(0), null, static (_, _) => null);
+    private static BattleRuntime RuntimeOf(Arena arena) => new(arena.Battle, arena.Rules, new ScriptedDraws(0), null);
 
     private static int Fuse(Arena arena, BattleItem item, int turns)
     {

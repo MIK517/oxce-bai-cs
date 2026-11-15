@@ -5,12 +5,6 @@ using Oxce.Mods.Rulesets.Runtime;
 namespace Oxce.Gameplay.Battles;
 
 /// <summary>
-/// Runs a rule on a copy of the battle with the campaign's stream put back afterwards and returns what it refused, or null: the host's trial copy
-/// (ADR 0040), kept until S11 deletes it. The copy has the live battle's campaign link, so it reads what the live run reads.
-/// </summary>
-internal delegate CampaignReason? BattleTrial(BattleState battle, Func<BattleState, CampaignReason?> run);
-
-/// <summary>
 /// The battle's runtime (ADR 0038): the state, the rules, the random source, the campaign link, the hooks and the event sink a battle command needs,
 /// set once when the battle is generated or restored, and the battle's own registry of commands. <see cref="CampaignBattles"/> forwards a battle
 /// command to <see cref="Execute"/> once; no entry point assigns the random source or the link again. An exception in a command is a defect: it
@@ -25,16 +19,14 @@ internal sealed class BattleRuntime
         "The battle does not know this command.");
 
     private readonly Dictionary<Type, Func<IBattleCommand, CampaignCommandResult>> _commands = [];
-    private readonly BattleTrial _trial;
 
-    public BattleRuntime(BattleState state, RuntimeRuleCatalog rules, IRandomSource random, IBattleCampaignLink? link, BattleTrial trial,
+    public BattleRuntime(BattleState state, RuntimeRuleCatalog rules, IRandomSource random, IBattleCampaignLink? link,
         IBattleHooks? hooks = null, BattleOptions? options = null)
     {
         State = state ?? throw new ArgumentNullException(nameof(state));
         Rules = rules ?? throw new ArgumentNullException(nameof(rules));
         Random = random ?? throw new ArgumentNullException(nameof(random));
         Link = link;
-        _trial = trial ?? throw new ArgumentNullException(nameof(trial));
         // Set once, here: a rule that draws or reads the campaign finds them on the state.
         if (!ReferenceEquals(state.Rules, rules)) throw new ArgumentException("The battle's rules are not the campaign's.", nameof(state));
         state.Random = random;
@@ -172,11 +164,11 @@ internal sealed class BattleRuntime
             ? Blocked(refusal) : new CampaignCommandResult([new ActiveHandChanged(command.UnitId, command.RightHand)]));
         Register<ToggleHandForReactions>(command => State.ToggleHandForReactions(command.UnitId, command.RightHand, command.Ctrl, out var unit) is { } refusal
             ? Blocked(refusal) : new CampaignCommandResult([new HandForReactionsChanged(command.UnitId, unit!.PreferredHandForReactions, unit.ReactionsDisabledForLeftHand, unit.ReactionsDisabledForRightHand)]));
-        Register<WalkUnit>(command => RunOnTrialCopy(battle => battle.Walk(command.UnitId, command.Target, command.Move, command.IgnoreSpottedEnemies)));
-        Register<MoveUnitUpDown>(command => RunOnTrialCopy(battle => battle.MoveUpDown(command.UnitId, command.Up)));
+        Register<WalkUnit>(command => RunOnLiveBattle(battle => battle.Walk(command.UnitId, command.Target, command.Move, command.IgnoreSpottedEnemies)));
+        Register<MoveUnitUpDown>(command => RunOnLiveBattle(battle => battle.MoveUpDown(command.UnitId, command.Up)));
         Register<Attack>(Attack);
-        Register<PrimeItem>(command => RunOnTrialCopy(battle => PrimeItem(battle, command.UnitId, command.ItemId, true, command.Turns)));
-        Register<UnprimeItem>(command => RunOnTrialCopy(battle => PrimeItem(battle, command.UnitId, command.ItemId, false, 0)));
+        Register<PrimeItem>(command => RunOnLiveBattle(battle => PrimeItem(battle, command.UnitId, command.ItemId, true, command.Turns)));
+        Register<UnprimeItem>(command => RunOnLiveBattle(battle => PrimeItem(battle, command.UnitId, command.ItemId, false, 0)));
         Register<UseInventoryFeature>(UseInventoryFeature);
     }
 
@@ -224,11 +216,9 @@ internal sealed class BattleRuntime
     /// <summary>An inventory change that is planned and checked: it runs, and in a running battle the inventory then closes.</summary>
     private CampaignCommandResult Applied(Func<IReadOnlyList<ICampaignEvent>> apply)
     {
-        // InventoryState's destructor in a running battle starts with gravity on the selected unit's tile (a unit without a floor falls).
-        var selected = State.Phase == BattlePhase.InProgress && State.SelectedUnitId is { } chosen ? State.UnitById(chosen) : null;
-        if (selected?.Position is not null && State.FallsRefusal(selected) is { } fall) return Blocked(fall);
         var events = apply();
-        // The port has no close command, so each change closes the inventory (the fall it starts was checked above).
+        // The port has no close command, so each change closes the inventory: InventoryState's destructor in a running battle starts with gravity on the
+        // selected unit's tile (a unit without a floor falls).
         if (State.Phase == BattlePhase.InProgress)
         {
             State.CloseInventory();
@@ -269,7 +259,7 @@ internal sealed class BattleRuntime
         return new CampaignCommandResult([new TimeUnitReserveChanged(unitId, State.ReserveKind, State.KneelReserved, saved)]);
     }
 
-    private CampaignCommandResult KneelUnit(KneelUnit command) => RunOnTrialCopy(battle => battle.KneelAction(command.UnitId));
+    private CampaignCommandResult KneelUnit(KneelUnit command) => RunOnLiveBattle(battle => battle.KneelAction(command.UnitId));
 
     private CampaignCommandResult SelectSpotter(SelectSpotter command)
     {
@@ -284,20 +274,19 @@ internal sealed class BattleRuntime
     }
 
     /// <summary>
-    /// The attack command (S6: the hit, S7: the aimed, snap and auto shots): run on a copy first like a walk, because what a state meets that is refused by name must leave the
-    /// real battle as it was. The events are the rules' own, in order (the turn's, each shot, then its hit, deaths and blasts).
+    /// The attack command (S6: the hit, S7: the aimed, snap and auto shots). The events are the rules' own, in order (the turn's, each shot, then its hit, deaths and blasts).
     /// </summary>
     private CampaignCommandResult Attack(Attack command)
     {
         var research = Link?.Research ?? BattleResearchGate.Everything;
         return command.Kind switch
         {
-            BattleAimKind.Hit => RunOnTrialCopy(battle => battle.MeleeAttackAction(research, command.UnitId, command.ItemId, command.AltPressed)),
+            BattleAimKind.Hit => RunOnLiveBattle(battle => battle.MeleeAttackAction(research, command.UnitId, command.ItemId, command.AltPressed)),
             BattleAimKind.AutoShot or BattleAimKind.SnapShot or BattleAimKind.AimedShot =>
-                RunOnTrialCopy(battle => battle.ShootAction(research, command.UnitId, command.ItemId, command.Kind, command.Target, command.ForceFire, command.SprayWaypoints)),
+                RunOnLiveBattle(battle => battle.ShootAction(research, command.UnitId, command.ItemId, command.Kind, command.Target, command.ForceFire, command.SprayWaypoints)),
             BattleAimKind.Prime or BattleAimKind.Unprime => Blocked(BattleAttackReasons.PrimeIsItsOwnCommand),
-            BattleAimKind.Throw => RunOnTrialCopy(battle => battle.ThrowAction(command.UnitId, command.ItemId, command.Target, command.ForceFire)),
-            BattleAimKind.Launch => RunOnTrialCopy(battle => battle.LaunchAction(research, command.UnitId, command.ItemId, command.Waypoints)),
+            BattleAimKind.Throw => RunOnLiveBattle(battle => battle.ThrowAction(command.UnitId, command.ItemId, command.Target, command.ForceFire)),
+            BattleAimKind.Launch => RunOnLiveBattle(battle => battle.LaunchAction(research, command.UnitId, command.ItemId, command.Waypoints)),
             _ => Blocked(BattleAttackReasons.KindUnsupported),
         };
     }
@@ -312,15 +301,19 @@ internal sealed class BattleRuntime
     }
 
     /// <summary>
-    /// A command that runs a state of the list (<c>UnitWalkBState</c>, <c>MeleeAttackBState</c>): first on a copy of the battle, so that what it meets that is not ported (a burning floor's
-    /// hit, a fall that finds no escape) is refused before the real one changes anything; then on the
-    /// battle, with the events the rules raised.
+    /// A command that runs a state of the list (<c>UnitWalkBState</c>, <c>MeleeAttackBState</c>): run on the battle, with the events the rules raised. A refusal comes
+    /// before the first change (S11 retired the trial copy that used to run each of these first: no state refuses after it has changed something any more).
     /// </summary>
-    private CampaignCommandResult RunOnTrialCopy(Func<BattleState, CampaignReason?> move)
+    private CampaignCommandResult RunOnLiveBattle(Func<BattleState, CampaignReason?> move)
     {
-        if (_trial(State, move) is { } trial) return Blocked(trial);
         Events.Clear();
-        if (move(State) is { } refusal) return Blocked(refusal);
+        var before = State.Revision;
+        if (move(State) is { } refusal)
+        {
+            // With no copy to fall back on, a refusal after a change would leave the battle changed and the command's events lost: a rule that does it is a defect.
+            if (State.Revision != before) throw new InvalidOperationException($"The command was refused with '{refusal.Code}' after it had changed the battle.");
+            return Blocked(refusal);
+        }
         return new CampaignCommandResult(Events.Drain());
     }
 }

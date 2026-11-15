@@ -422,7 +422,7 @@ public sealed class BattleFireTests
             Assert.Contains(arena.Map.Smoke(arena.Tile(x, 10)), SmokeOfAFire);
         }
         Assert.Equal(0, arena.Map.Fire(arena.Tile(14, 10)));
-        // Per step one roll for the ignite and one for the damage: the trial copy's draws were put back.
+        // Per step one roll for the ignite and one for the damage: the walk draws them once, on the live battle.
         var reference = new SplitMix64RandomSource(0);
         reference.Restore(before);
         for (var draw = 0; draw < 6; draw++) reference.NextInclusive(0, 99);
@@ -501,7 +501,6 @@ public sealed class BattleFireTests
         Cover(arena, BurnFloor, 12, 12, 12, 12);
         arena.Battle.SetTile(arena.Soldier, At(12, 12, 3));
         arena.Battle.ApplyGravity(arena.Soldier.Position);
-        Assert.Null(arena.Battle.FallsRefusal());
         Assert.Equal(0, arena.Map.Fire(arena.Tile(12, 12)));
         Assert.Null(arena.Battle.ResolveFalls());
         Assert.Equal(At(12, 12), arena.Soldier.Position);
@@ -533,7 +532,6 @@ public sealed class BattleFireTests
         arena.Battle.ApplyGravity(arena.Soldier.Position);
         var state = State(arena);
         // The body is no unit that blows up with its death, so the dry run finds nothing to refuse and the fall runs.
-        Assert.Null(arena.Battle.FallsRefusal());
         Assert.Equal(state, State(arena));
         arena.Battle.Random = new SplitMix64RandomSource(4);
         Assert.Null(arena.Battle.ResolveFalls());

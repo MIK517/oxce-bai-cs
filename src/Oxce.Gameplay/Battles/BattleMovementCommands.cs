@@ -126,14 +126,13 @@ internal sealed partial class BattleState
     }
 
     /// <summary>
-    /// The kneel button's command: <see cref="KneelUnit(int, out bool, out int)"/>, its event, then the reactions it drew run (<see cref="RunStates"/>, <see cref="TakeExplosionRefusal"/>)
+    /// The kneel button's command: <see cref="KneelUnit(int, out bool, out int)"/>, its event, then the reactions it drew run (<see cref="RunStates"/>)
     /// and the falls they start.
     /// </summary>
     internal CampaignReason? KneelAction(int unitId)
     {
         if (KneelUnit(unitId, out _, out _, raise: true) is { } refusal) return refusal;
         RunStates();
-        if (TakeExplosionRefusal() is { } explosionRefusal) return explosionRefusal;
         MarkChanged();
         return ResolveFalls(out _);
     }

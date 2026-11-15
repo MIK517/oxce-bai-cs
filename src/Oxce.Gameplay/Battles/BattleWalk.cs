@@ -7,8 +7,8 @@ namespace Oxce.Gameplay.Battles;
 /// Walking and flying (Phase 7 branch 4 S8): <c>BattlescapeGame::primaryAction</c>'s walk, <c>moveUpDown</c> and <c>UnitWalkBState</c> run to
 /// their end. The reference's <c>think</c> is called once per animation tick: the port runs it as one loop whose cycles are the reference's
 /// (a step starts in one cycle and is finished, with everything that follows it, at the start of the next; a turn eighth is one cycle), a step
-/// collapsed into <see cref="WalkStep"/>. The reaction fire after a step (<see cref="CheckReactionFire"/>) pushes its states behind the walk, which runs them once it ended. What stays refused by name
-/// (a burning floor's hit that reaches a unit, a fall that finds no escape) is checked on a trial copy of the battle first, so a refusal changes nothing.
+/// collapsed into <see cref="WalkStep"/>. The reaction fire after a step (<see cref="CheckReactionFire"/>) pushes its states behind the walk, which runs them once it ended. No state of the walk refuses after it
+/// has changed something (S11 retired the trial copy that used to run the command first).
 /// </summary>
 internal sealed partial class BattleState
 {
@@ -59,7 +59,7 @@ internal sealed partial class BattleState
         var refusal = RunWalk(unit, pathfinder, bam, move == BattleMoveType.Strafe, ignore, events);
         // The explosions a unit that blows itself up pushed, and the reactions the walk drew, run behind the walk state; the falls they start follow.
         RunStates();
-        return refusal ?? TakeExplosionRefusal() ?? ResolveFalls(out _);
+        return refusal ?? ResolveFalls(out _);
     }
 
     /// <summary>
@@ -93,20 +93,19 @@ internal sealed partial class BattleState
             events.Add(new UnitWalkEnded(unit.Id, BattleWalkStop.Arrived, 0, kneelSpent, 0, RestingPosition(unit) ?? new BattlePosition(-1, -1, -1)));
             MarkChanged();
             RunStates();
-            return TakeExplosionRefusal() ?? ResolveFalls(out _);
+            return ResolveFalls(out _);
         }
         pathfinder.Calculate(unit, target, BattleActionMove.Normal);
         // The reactions of the kneel run first (the list's front); the walk state behind them then finds a unit that was shot out and pops.
         RunStates();
-        if (TakeExplosionRefusal() is { } kneelRefusal) return kneelRefusal;
         var refusal = RunWalk(unit, pathfinder, BattleActionMove.Normal, false, false, events, kneeled, kneelSpent);
         RunStates();
-        return refusal ?? TakeExplosionRefusal() ?? ResolveFalls(out _);
+        return refusal ?? ResolveFalls(out _);
     }
 
     /// <summary>
     /// <c>UnitWalkBState</c> from <c>init</c> to the pop. Returns a refusal when the walk could not take its first step (nothing changed) or when
-    /// it met something unsupported (the command checks on a trial copy first). A kneeling unit first stands up (<c>BattlescapeGame::kneel</c>).
+    /// it met something unsupported. A kneeling unit first stands up (<c>BattlescapeGame::kneel</c>).
     /// </summary>
     private CampaignReason? RunWalk(BattleUnit unit, BattlePathfinder pathfinder, BattleActionMove bam, bool strafeAction,
         bool ignoreSpotted, BattleEventSink events, bool kneeled = false, int kneelSpent = 0)
@@ -371,7 +370,6 @@ internal sealed partial class BattleState
         // a unit a burnt floor or a blast dropped falls after the explosions and the reactions the walk drew, which the caller runs and then resolves the falls.
         PushBehindRunning(proximity);
         RunStates();
-        refusal ??= TakeExplosionRefusal();
         if (refusal is not null)
         {
             if (holdsBack) ReleaseBackPushes();

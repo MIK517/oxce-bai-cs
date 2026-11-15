@@ -179,8 +179,4 @@ internal static class BattleMovementReasons
 
     internal static readonly CampaignReason UpDownImpossible = new("battle.up-down-impossible",
         "The unit cannot move up or down from where it is.");
-
-    internal static readonly CampaignReason ProximityExplosionOnFallUnsupported = new("battle.fall-proximity-explosion-unsupported",
-        "A unit that falls would land next to an item that its proximity sets off, or on a death trap, and the explosion cannot be tried first where the fall starts (an inventory move, a loaded battle): " +
-        "the unit's own commands (a walk, an attack) run it.");
 }

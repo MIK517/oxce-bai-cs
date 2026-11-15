@@ -62,7 +62,7 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
     private void SetBattle(BattleState? battle)
     {
         _battle = battle;
-        _runtime = battle is null ? null : new BattleRuntime(battle, campaign.Content.RuntimeRules, campaign.Random, _link, TrialRefusal);
+        _runtime = battle is null ? null : new BattleRuntime(battle, campaign.Content.RuntimeRules, campaign.Random, _link);
     }
 
     /// <summary>Hands a battle command to the battle's runtime; with no battle it is refused with <paramref name="unavailable"/>.</summary>
@@ -116,9 +116,7 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
             if (command is IBattleCommand && running.VisibilityScriptRefusal(campaign.Content) is { } visibility) return Blocked(visibility);
             // The combat hooks and the stat bonuses written as code are branch 8's too.
             if (command is IBattleCommand && running.CombatScriptRefusal(campaign.Content) is { } combat) return Blocked(combat);
-            // The battlescape's constructor ran checkForCasualties when a loaded battle opened and queued the units that have no floor to fall;
-            // they fall at once, unless a landing needs a later branch's work (a reaction, a proximity explosion): then the battle waits.
-            return running.FallingUnits.Count != 0 && running.FallsRefusal() is { } fall ? Blocked(fall) : null;
+            return null;
         });
         registry.Capture(snapshot => _battle is null ? snapshot : snapshot with { Battle = _battle.Capture() });
         registry.Restore(Restore);
@@ -161,7 +159,7 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
     private static void OpenLoadedBattlescape(BattleState battle)
     {
         battle.OpenBattlescape();
-        if (battle.FallsRefusal() is null) battle.ResolveFalls();
+        battle.ResolveFalls();
     }
 
     private BattleTerrainLoader Loader(IBattleTerrainFiles files)
@@ -329,11 +327,7 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         {
             scratch.SpawnFromPrimedItems(content);
             if (noAliensYet && scratch.Tally().LiveAliens == 0) return BattleFlowReasons.NoLiveAliens;
-            if (scratch.FirstTurnRefusal(content, BattleRestoreCampaign.From(campaign)) is { } refusal) return refusal;
-            // The units a spawn put in the air fall when the first turn starts: a fall that cannot run is refused now.
-            if (!scratch.MayFall()) return null;
-            scratch.EnterInventory();
-            return scratch.StartFirstTurn(content);
+            return scratch.FirstTurnRefusal(content, BattleRestoreCampaign.From(campaign));
         });
     }
 
@@ -377,18 +371,12 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         var content = campaign.Content;
         if (battle.Tally().LiveSoldiers == 0) return Blocked(BattleFlowReasons.NoLiveSoldiers);
         if (battle.FirstTurnRefusal(content, BattleRestoreCampaign.From(campaign)) is { } refusal) return Blocked(refusal);
-        if (TrialFirstTurnRefusal(battle, content) is { } fall) return Blocked(fall);
         // btnOkClick saves the layout first, unless the alternate craft equipment management keeps it with the base screens.
         var saved = campaign.Options.AlternateCraftEquipmentManagement ? 0 : SaveEquipmentLayout(battle);
-        // (Only a battle without terrain files has no trial copy, and a fall that stops then leaves the first turn half done.)
+        // (The first turn's falls cannot refuse: a fall that knocks a unit out is a rule, not a refusal.)
         if (battle.StartFirstTurn(content) is { } late) return Blocked(late);
         return new CampaignCommandResult([new BattleFirstTurnStarted(battle.SelectedUnitId ?? -1) { LayoutsSaved = saved }]);
     }
-
-    /// <summary>The first turn run on a copy of the battle with the campaign's stream put back: the fall of a unit that cannot run is refused.</summary>
-    private CampaignReason? TrialFirstTurnRefusal(BattleState battle, RuntimeContent content) =>
-        // Only a unit without a floor can fall: a battle with none has nothing to try.
-        battle.MayFall() ? TrialRefusal(battle, scratch => scratch.StartFirstTurn(content)) : null;
 
     /// <summary>BriefingState's page: which deployment's briefing data shows, and the lines the briefing set.</summary>
     public BattleBriefing? QueryBriefing() => campaign.Read(() =>
@@ -436,8 +424,8 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
     }
 
     /// <summary>
-    /// Runs a command's rule on a copy of the battle (the reference's state machine can meet a refusal after it has changed things) and
-    /// returns what it refused, or null. Without the attached terrain files there is no copy, and a later refusal leaves the walk half done.
+    /// Runs the briefing's spawn on a copy of the battle and returns what it refused, or null (the only copy left: the commands of the played battle
+    /// have no refusal after a change and run on the live battle). Without the attached terrain files there is no copy.
     /// </summary>
     private CampaignReason? TrialRefusal(BattleState battle, Func<BattleState, CampaignReason?> run)
     {

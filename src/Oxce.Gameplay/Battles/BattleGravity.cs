@@ -26,9 +26,6 @@ internal sealed partial class BattleState
     /// <summary>Whether a unit that does not fly has no floor under it (<see cref="IsFloorlessWalker"/>).</summary>
     internal bool HasFloorlessWalker() => _units.Any(IsFloorlessWalker);
 
-    /// <summary>Whether any unit could fall when the first turn starts: one is queued, or a unit that does not fly has no floor under it.</summary>
-    internal bool MayFall() => _fallingUnits.Count != 0 || HasFloorlessWalker();
-
     /// <summary>SavedBattleGame::addFallingUnit: a unit joins the front of the list once.</summary>
     internal bool AddFallingUnit(BattleUnit unit)
     {
@@ -90,40 +87,16 @@ internal sealed partial class BattleState
     }
 
     /// <summary>
-    /// What stops <see cref="ResolveFalls"/> for the units now falling, and for <paramref name="extra"/> when it is not null and has no
-    /// floor (the occupant <see cref="ApplyGravity"/> would add), before anything changes: null when the falls can run. The knock-outs of a fall
-    /// are not tried (they refuse nothing).
-    /// </summary>
-    internal CampaignReason? FallsRefusal(BattleUnit? extra = null)
-    {
-        if (_fallingUnits.Count == 0 && extra is null) return null;
-        var saved = new FallSnapshot(this);
-        try
-        {
-            if (extra is not null)
-            {
-                UpdateTileFloorState(extra);
-                if (IsFloorlessWalker(extra)) AddFallingUnit(extra);
-            }
-            return RunFalls(dryRun: true);
-        }
-        finally
-        {
-            saved.Restore(this);
-        }
-    }
-
-    /// <summary>
     /// <c>UnitFallBState</c> to its end: the falling units fall level by level, the units below move out of the way, and each landed unit
-    /// has its light and the sight of those who see it updated (and spots as <c>checkReactionFire</c> does). The commands check
-    /// <see cref="FallsRefusal"/> first (or run this on a trial copy); a refusal returned here has left the falls half done.
+    /// has its light and the sight of those who see it updated (and spots as <c>checkReactionFire</c> does). A fall refuses nothing after
+    /// its first change (a landing's explosion, a burning floor's hit and a knock-out are rules, not refusals); the commands run it live.
     /// </summary>
     internal CampaignReason? ResolveFalls()
     {
         if (_fallingUnits.Count == 0) return null;
         // (Only a walk reads whether a landing drew a reaction: a fall outside one leaves nothing behind.)
         var insideWalk = _deferredBack is not null;
-        var refusal = RunFalls(dryRun: false);
+        var refusal = RunFalls();
         if (!insideWalk) _reactionDuringFall = false;
         MarkChanged();
         return refusal;
@@ -156,7 +129,7 @@ internal sealed partial class BattleState
             if (IsFloorlessWalker(unit)) AddFallingUnit(unit);
     }
 
-    private CampaignReason? RunFalls(bool dryRun)
+    private CampaignReason? RunFalls()
     {
         var tilesToFallInto = new List<int>();
         var unitsToMove = new List<BattleUnit>();
@@ -166,7 +139,7 @@ internal sealed partial class BattleState
         // push first when the fall state is done.
         var pushes = new List<QueuedState>();
         // The reactions a landed unit draws go to the back of the list, behind the deaths and explosions (statePushBack); a fall inside a walk leaves them to the walk.
-        var holdsBack = !dryRun && HoldBackPushes();
+        var holdsBack = HoldBackPushes();
         CampaignReason? stop = null;
         for (var round = 0; _fallingUnits.Count != 0 && stop is null; round++)
         {
@@ -197,7 +170,7 @@ internal sealed partial class BattleState
                 }
                 else if (unit.Status == BattleUnitStatus.Standing)
                 {
-                    if (Land(unit, dryRun, pushes) is { } refusal)
+                    if (Land(unit, pushes) is { } refusal)
                     {
                         stop = refusal;
                         break;
@@ -219,27 +192,25 @@ internal sealed partial class BattleState
                 if (FindEscape(pathfinder, below, tilesToFallInto, escapeTiles) is not { } escape)
                 {
                     // STOMP THAT GOOMBA!
-                    if (!dryRun) KnockOut(below);
+                    KnockOut(below);
                     continue;
                 }
                 AddFallingUnit(below);
                 steps.Add((below, escape.Direction, escape.Destination));
             }
             // statePushNext puts every push right behind the running fall state, so a later push (a later round's death or landing) runs before an earlier one.
-            if (hadUnitsToMove && !dryRun) QueueCasualties(null, default, pushNext: death => pushes.Add(new DeathState(this, death)));
+            if (hadUnitsToMove) QueueCasualties(null, default, pushNext: death => pushes.Add(new DeathState(this, death)));
 
             // The steps complete: the units that moved aside are ahead of those that fall, as the list orders them.
             foreach (var (unit, direction, destination) in steps.OrderBy(step => _fallingUnits.IndexOf(step.Unit)))
                 WalkStep(unit, direction, destination);
         }
-        if (dryRun) return stop;
         // The deaths and the proximity explosions run behind the fall state; the explosions a unit that blows itself up, or a proximity grenade, push run in turn.
         PushBehindRunning(pushes);
         if (holdsBack) ReleaseBackPushes();
         RunStates();
-        if (TakeExplosionRefusal() is { } explosionRefusal) return explosionRefusal;
         // The falls the deaths start (a converted unit, a corpse over a hole) are a fall state of their own.
-        return stop ?? (_fallingUnits.Count != 0 ? RunFalls(dryRun: false) : null);
+        return stop ?? (_fallingUnits.Count != 0 ? RunFalls() : null);
     }
 
     private (int Direction, BattlePosition Destination)? FindEscape(BattlePathfinder pathfinder, BattleUnit unitBelow, List<int> tilesToFallInto,
@@ -287,20 +258,15 @@ internal sealed partial class BattleState
 
     /// <summary>
     /// A unit that has stopped falling (<c>UnitFallBState::think</c>'s else branch): a floor-burning unit burns the floor under it (a hit that reaches a unit or starts an explosion refuses),
-    /// <see cref="CheckForProximityGrenades"/> runs (its explosions are collected in <paramref name="explosions"/> for the fall to push behind itself; a dry run does not run it, as it
-    /// draws and changes items, but refuses a landing that could start one); then its light moves with it (the items' layer when the check changed anything), everyone's sight of the area is updated, its own tiles are, and what
-    /// <c>checkReactionFire</c> spots happens (a live fall draws the reactions; a dry run reacts to nothing).
+    /// <see cref="CheckForProximityGrenades"/> runs (its explosions are collected in <paramref name="explosions"/> for the fall to push behind itself); then its light moves with it (the items' layer
+    /// when the check changed anything), everyone's sight of the area is updated, its own tiles are, and what <c>checkReactionFire</c> spots happens.
     /// </summary>
-    private CampaignReason? Land(BattleUnit unit, bool dryRun, List<QueuedState> explosions)
+    private CampaignReason? Land(BattleUnit unit, List<QueuedState> explosions)
     {
         var position = unit.Position!.Value;
         // If the unit burns floor tiles, burn floor tiles (a hole it burns leaves it standing: gravity queued it, and it leaves the list below).
-        if (BurnsFloor(unit) && !dryRun && BurnFloor(unit) is { } burnRefusal) return burnRefusal;
-        // The dry run is for the callers that act on the live battle (an inventory move, a loaded battle, the commands' gate): the check draws and changes items, and the explosion it
-        // starts has knock-on effects that can refuse after changes, so a landing that could start one is refused before any (the commands that run on a trial copy meet it there).
-        if (dryRun && ProximityMayExplode(unit)) return BattleMovementReasons.ProximityExplosionOnFallUnsupported;
-        var change = dryRun ? 0 : CheckForProximityGrenades(unit, explosions);
-        if (dryRun) return null;
+        if (BurnsFloor(unit) && BurnFloor(unit) is { } burnRefusal) return burnRefusal;
+        var change = CheckForProximityGrenades(unit, explosions);
 
         CalculateLighting(change != 0 ? BattleLightLayer.Items : BattleLightLayer.Units, position, 2);
         var sight = Sight();
@@ -309,45 +275,5 @@ internal sealed partial class BattleState
         // checkReactionFire(unit, fall): the action is a walk of the normal move type. A reaction aborts the path of the walk the fall belongs to.
         if (CheckReactionFire(unit, new BattleReactionOrigin(BattleActionType.Walk))) _reactionDuringFall = true;
         return null;
-    }
-
-    /// <summary>The unit and map state a fall changes, taken before a trial run and put back after it.</summary>
-    private sealed class FallSnapshot
-    {
-        private readonly BattleUnit[] _falling;
-        private readonly int[] _occupants;
-        private readonly (long Committed, bool Pending) _revision;
-        private readonly (BattleUnit Unit, BattlePosition? Position, BattlePosition? Last, BattleUnitStatus Status, bool Floating, bool NoFloor, int Vertical,
-            bool Kneeled, int Face, int Motion, int Direction)[] _units;
-
-        public FallSnapshot(BattleState battle)
-        {
-            _falling = [.. battle._fallingUnits];
-            _occupants = battle.Map.CaptureUnits();
-            _revision = battle.CaptureRevision();
-            _units = [.. battle._units.Select(static unit => (unit, unit.Position, unit.LastPosition, unit.Status, unit.Floating, unit.HaveNoFloorBelow,
-                unit.VerticalDirection, unit.Kneeled, unit.FaceDirection, unit.MotionPoints, unit.Direction))];
-        }
-
-        public void Restore(BattleState battle)
-        {
-            battle._fallingUnits.Clear();
-            battle._fallingUnits.AddRange(_falling);
-            battle.Map.RestoreUnits(_occupants);
-            battle.RestoreRevision(_revision);
-            foreach (var (unit, position, last, status, floating, noFloor, vertical, kneeled, face, motion, direction) in _units)
-            {
-                unit.Position = position;
-                unit.LastPosition = last;
-                unit.Status = status;
-                unit.Floating = floating;
-                unit.HaveNoFloorBelow = noFloor;
-                unit.VerticalDirection = vertical;
-                unit.Kneeled = kneeled;
-                unit.FaceDirection = face;
-                unit.MotionPoints = motion;
-                unit.Direction = direction;
-            }
-        }
     }
 }

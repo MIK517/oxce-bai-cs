@@ -34,7 +34,7 @@ public sealed class BattleClientCombatTests
     private static (BattleUiContext Context, BattlescapeClient Screen, BattleViewModel Model) ClientOf(Arena arena, List<ICampaignCommand>? sent = null)
     {
         var campaign = arena.Campaign;
-        var runtime = new BattleRuntime(arena.Battle, arena.Rules, new ScriptedDraws(0), null, static (_, _) => null);
+        var runtime = new BattleRuntime(arena.Battle, arena.Rules, new ScriptedDraws(0), null);
         var context = new BattleUiContext(new RuntimeTarget(runtime, sent), campaign.GetQuery<IBattleQuery>()!, campaign.GetQuery<IBattleViewQuery>()!,
             campaign.GetQuery<IBattleInventoryQuery>()!, campaign.GetQuery<IBattleBriefingQuery>()!, BattleViewer.LocalPlayer, new ScreenNavigator());
         Assert.True(context.Open());
@@ -318,7 +318,7 @@ public sealed class BattleClientCombatTests
         context.Screens.HandleInput(Panel(73, 2));
         Assert.Equal((BattleViewModel.UfopaediaCode, true), (screen.Message, model.Menu is null));
         // The event carries the unit's flags in the order the fields name them: the left hand disabled by Ctrl, the preferred right hand kept.
-        var runtime = new BattleRuntime(arena.Battle, arena.Rules, new ScriptedDraws(0), null, static (_, _) => null);
+        var runtime = new BattleRuntime(arena.Battle, arena.Rules, new ScriptedDraws(0), null);
         var toggled = Assert.IsType<HandForReactionsChanged>(Assert.Single(runtime.Execute(new ToggleHandForReactions(arena.Soldier.Id, false, true)).Events));
         Assert.Equal((arena.Soldier.Id, "STR_RIGHT_HAND", true, false), (toggled.UnitId, toggled.PreferredHand, toggled.LeftDisabled, toggled.RightDisabled));
     }
@@ -645,7 +645,7 @@ public sealed class BattleClientCombatTests
     public void AReserveFromAUnitThatIsNotTheWritingSlotChangesNothingAndTheKneelReserveReportsItsState()
     {
         var (arena, _, _) = BattleShootingTests.Load();
-        var runtime = new BattleRuntime(arena.Battle, arena.Rules, new ScriptedDraws(0), null, static (_, _) => null);
+        var runtime = new BattleRuntime(arena.Battle, arena.Rules, new ScriptedDraws(0), null);
         arena.Battle.AddUnit(new BattleUnit(912, BattleFaction.Player, BattleController.Human(1)) { Stats = arena.Soldier.Stats, Health = 10, ArmorId = arena.Soldier.ArmorId });
         var revision = arena.Battle.Revision;
         var other = Assert.IsType<TimeUnitReserveChanged>(Assert.Single(runtime.Execute(new SetTimeUnitReserve(912, BattleReserveKind.SnapShot)).Events));

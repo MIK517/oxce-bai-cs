@@ -330,7 +330,7 @@ public sealed class BattleFirstTurnTests
     public void AUnitInTheAirFallsWhenTheFirstTurnStarts()
     {
         var (campaign, battle, alien, ground) = AlienOverAHole();
-        Assert.True(battle.MayFall());
+        Assert.True(battle.HasFloorlessWalker());
         Event<BattleFirstTurnStarted>(campaign, new StartFirstTurn());
         Assert.Equal((ground, false), (alien.Position, alien.HaveNoFloorBelow));
         Assert.Empty(battle.FallingUnits);

@@ -35,7 +35,7 @@ public sealed class BattleRuntimeTests
     }
 
     private static BattleRuntime RuntimeOf(Arena arena, IBattleCampaignLink? link = null, IBattleHooks? hooks = null, IRandomSource? random = null) =>
-        new(arena.Battle, arena.Rules, random ?? new SplitMix64RandomSource(7), link, static (battle, run) => run(battle), hooks);
+        new(arena.Battle, arena.Rules, random ?? new SplitMix64RandomSource(7), link, hooks);
 
     private static BattleUnit Victim(Arena arena, int health)
     {
@@ -555,21 +555,6 @@ public sealed class BattleRuntimeTests
     }
 
     [Fact]
-    public void ATrialCopyOfAWalkRunsWithTheLiveBattlesHooks()
-    {
-        var arena = Duel();
-        var runtime = RuntimeOf(arena.Campaign);
-        var viewers = new List<BattleUnit>();
-        arena.Battle.Hooks = new ViewerRecorder(viewers);
-        arena.See();
-        Assert.Empty(arena.Campaign.Execute(new WalkUnit(arena.Soldier.Id, new BattlePosition(11, 10, 0))).Events.OfType<CampaignActionBlocked>());
-        // The visibility script ran for the live battle's unit and for the unit of the trial copy the walk ran on first: the copy has the hooks.
-        Assert.Contains(viewers, unit => !arena.Battle.Units.Any(live => ReferenceEquals(live, unit)));
-        Assert.Contains(viewers, unit => arena.Battle.Units.Any(live => ReferenceEquals(live, unit)));
-        Assert.Null(runtime.Fault);
-    }
-
-    [Fact]
     public void ACommandBumpsTheRevisionOnceHoweverOftenItMarksTheBattleChangedAndNotAtAllWhenItChangesNothing()
     {
         var arena = Armed();
@@ -650,6 +635,22 @@ public sealed class BattleRuntimeTests
         var revision = arena.Battle.Revision;
         Assert.Empty(arena.Campaign.Execute(new WalkUnit(arena.Soldier.Id, new BattlePosition(11, 10, 0))).Events.OfType<CampaignActionBlocked>());
         Assert.Equal(revision + 1, arena.Battle.Revision);
+        Assert.Null(runtime.Fault);
+    }
+
+    [Fact]
+    public void ARefusedWalkChangesNothingAndTheBattleIsNotFaulted()
+    {
+        // Phase 7 branch 5 S11: with no copy to run first, a refusal comes before the first change; RunOnLiveBattle faults the battle if one ever comes after.
+        var arena = Duel();
+        var runtime = RuntimeOf(arena.Campaign);
+        var revision = arena.Battle.Revision;
+        var at = arena.Soldier.Position;
+        var timeUnits = arena.Soldier.TimeUnits;
+        var blocked = Assert.Single(arena.Campaign.Execute(new WalkUnit(arena.Soldier.Id, new BattlePosition(-5, 10, 0))).Events.OfType<CampaignActionBlocked>());
+        Assert.NotEmpty(blocked.Code);
+        Assert.Equal(revision, arena.Battle.Revision);
+        Assert.Equal((at, timeUnits), (arena.Soldier.Position, arena.Soldier.TimeUnits));
         Assert.Null(runtime.Fault);
     }
 

@@ -428,7 +428,7 @@ public sealed class BattleShootingTests
 
     // ---- the command ----
 
-    private static BattleRuntime RuntimeOf(Arena arena) => new(arena.Battle, arena.Rules, new ScriptedDraws(0), null, static (_, _) => null);
+    private static BattleRuntime RuntimeOf(Arena arena) => new(arena.Battle, arena.Rules, new ScriptedDraws(0), null);
 
     [Fact]
     public void TheAttackCommandReturnsTheShotThenItsHitAndRefusesWithoutFaultingTheBattle()

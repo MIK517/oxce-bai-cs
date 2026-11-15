@@ -602,7 +602,7 @@ public sealed class BattlePathfindingTests
         Assert.Equal([2, 2, 3, 3], arena.Finder().Calculate(alien, At(9, 7), BattleActionMove.Normal));
         Assert.False(BattleSight.IsAiControlled(arena.Soldier));
         var options = new BattleOptions { Pathing = new BattlePathingOptions { BrutalAi = false, AutoCombat = true } };
-        var runtime = new BattleRuntime(arena.Battle, arena.Rules, new Oxce.Core.Random.SplitMix64RandomSource(1), null, static (live, run) => run(live), options: options);
+        var runtime = new BattleRuntime(arena.Battle, arena.Rules, new Oxce.Core.Random.SplitMix64RandomSource(1), null, options: options);
         // A pathfinder built with no options of its own reads the runtime's (no brutal A*: the line), and so does the sight's AI-control check.
         Assert.Equal([2, 3, 2, 3], arena.Finder().Calculate(alien, At(9, 7), BattleActionMove.Normal));
         Assert.True(BattleSight.IsAiControlled(arena.Soldier));

@@ -459,7 +459,6 @@ public sealed class BattleExplosionTests
         Assert.Empty(melee.Battle.Events.Of<BattleExploded>());
         Assert.Empty(melee.Battle.Events.Of<UnitMeleeAttacked>());
         Assert.Equal(100, next.Health);
-        Assert.Null(melee.Battle.TakeExplosionRefusal());
         var psi = Bomber(more: rules => Replaced(rules, "- type: GRENADE\n    battleType: 4", "- type: GRENADE\n    battleType: 9"));
         var near = Extra(psi, 970, 16, 10);
         Assert.Null(Hurt(psi, 500, Plain).Refusal);
@@ -467,7 +466,6 @@ public sealed class BattleExplosionTests
         // The amplifier's explosion is a hit at the unit's corner voxel, not an area blast.
         Assert.Empty(psi.Battle.Events.Of<BattleExploded>());
         Assert.Equal(100, near.Health);
-        Assert.Null(psi.Battle.TakeExplosionRefusal());
     }
 
     [Fact]

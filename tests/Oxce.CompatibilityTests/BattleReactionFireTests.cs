@@ -154,8 +154,8 @@ public sealed class BattleReactionFireTests
         var hooks = new CountingHooks();
         arena.Battle.Hooks = hooks;
         var result = Kneel(arena);
-        // (The command runs on a trial copy first, which shares the scripts: one run asks the scripts once for the one reaction, two runs twice; a second ask per run would make four.)
-        Assert.Equal((1, 2, 12), (ShotsOf(result, arena.Alien), hooks.UnitActions, arena.Alien.TimeUnits));
+        // (The command runs once: the scripts are asked once for the one reaction; a second ask would make two.)
+        Assert.Equal((1, 1, 12), (ShotsOf(result, arena.Alien), hooks.UnitActions, arena.Alien.TimeUnits));
     }
 
     [Fact]
@@ -402,7 +402,7 @@ public sealed class BattleReactionFireTests
     public void ALandingAfterAnInventoryChangeRunsTheReactionItDrawsOnTheLiveBattle()
     {
         // What the inventory's close does (BattleRuntime.Applied, the loaded battle and the first turn call the same): the gate passes, and the live fall then answers the landing of
-        // the selected unit. Nothing in a reaction state refuses (no state sets ExplosionRefusal), so the gate has nothing to miss.
+        // the selected unit. Nothing in a reaction state refuses.
         var arena = BattleWalkTests.Make();
         GunFor(arena.Battle, arena.Alien);
         arena.Soldier.Stats = arena.Soldier.Stats with { Health = 1000 };
@@ -410,13 +410,11 @@ public sealed class BattleReactionFireTests
         arena.Battle.SetTile(arena.Soldier, BattleWalkTests.At(10, 10, 2));
         arena.Battle.SelectedUnitId = arena.Soldier.Id;
         arena.See();
-        Assert.Null(arena.Battle.FallsRefusal(arena.Soldier));
         arena.Battle.ApplyGravity(arena.Soldier.Position);
         arena.Battle.Events.Drain();
         Assert.Null(arena.Battle.ResolveFalls());
         Assert.Equal(0, arena.Soldier.Position!.Value.Z);
         Assert.Contains(arena.Battle.Events.Drain(), @event => @event is UnitFired fired && fired.UnitId == arena.Alien.Id);
-        Assert.Null(arena.Battle.TakeExplosionRefusal());
     }
 
     private sealed class CountingHooks : IBattleHooks

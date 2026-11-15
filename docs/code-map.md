@@ -25,7 +25,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 8 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 365 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 366 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 114 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -1384,10 +1384,11 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 365 files.
+`tests/Oxce.CompatibilityTests` - 366 files.
 
 ### `Oxce.CompatibilityTests`
 
+- `BattleAcceptanceCombat` (internal class) [BattleAcceptanceCombat.cs](../tests/Oxce.CompatibilityTests/BattleAcceptanceCombat.cs) - Phase 7 branch 5 S11: the scripted combat of the acceptance battles.
 - `BattleAcceptanceDriver` (internal class) [BattleAcceptanceDriver.cs](../tests/Oxce.CompatibilityTests/BattleAcceptanceDriver.cs) - Phase 7 branch 4 S11: the scripted soldier of the acceptance battles.
 - `BattleSaveConformance` (internal class) [BattleSaveConformance.cs](../tests/Oxce.CompatibilityTests/BattleSaveConformance.cs) - The conformance reader (Phase 7 plan, branch 2 decisions): applies the reading rules of the reference's `SavedBattleGame::load` (`src/Sav...
 - `BattleTestSupport` (internal class) [BattleTestSupport.cs](../tests/Oxce.CompatibilityTests/BattleTestSupport.cs) - Helpers the battle movement tests share: rule text edits, command results, the walk's last event and a loaded gun.
@@ -1930,6 +1931,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 Shared sources compiled into several projects, and non-test types that tests reuse.
 Prefer these over local copies (see AGENTS.md, *Test conventions*).
+
+### [tests/Oxce.CompatibilityTests/BattleAcceptanceCombat.cs](../tests/Oxce.CompatibilityTests/BattleAcceptanceCombat.cs)
+
+- `BattleAcceptanceCombat` (class) - Phase 7 branch 5 S11: the scripted combat of the acceptance battles.
+- `BattleAcceptanceCombat.Outcome` (record) - What a battle's combat did.
+- `BattleAcceptanceCombat.Timing` (record) - The cost of the attack commands, in microseconds (medians, one sample per command; a Debug build) and of the one copy of the battle that...
+- `BattleAcceptanceCombat.Part` (record)
+- members: `Fight`, `HasGrenade`, `HasFirearm`, `IsGrenade`, `RecordReloadDiscovered`
 
 ### [tests/Oxce.CompatibilityTests/BattleAcceptanceDriver.cs](../tests/Oxce.CompatibilityTests/BattleAcceptanceDriver.cs)
 

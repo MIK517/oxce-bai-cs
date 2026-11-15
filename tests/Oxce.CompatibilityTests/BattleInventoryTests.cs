@@ -97,7 +97,6 @@ public sealed class BattleInventoryTests
         Assert.True(soldier.HaveNoFloorBelow);
         // (A battle loaded with a floorless walker lets it fall as it opens; here the walker is put in the air after the battle opened.)
         // Standing in the air only because a script changed its movement type is the same: nothing falls until a gravity call, so test the close itself.
-        Assert.Null(battle.FallsRefusal(soldier));
         battle.ApplyGravity(soldier.Position);
         Assert.Null(battle.ResolveFalls());
         Assert.Equal(ground, soldier.Position);
@@ -115,7 +114,6 @@ public sealed class BattleInventoryTests
         battle.ApplyGravity(soldier.Position);
         soldier.MovementType = 0;
         soldier.Floating = false;
-        Assert.Null(battle.FallsRefusal(soldier));
         Assert.Equal(gun, Where(battle, Gun));
     }
 

@@ -102,7 +102,7 @@ internal sealed partial class BattleState
     /// <summary>
     /// What the battlescape's constructor does for every battle it opens, a loaded one included (<c>BattlescapeGame.cpp:194</c>):
     /// <c>checkForCasualties</c> as a hidden explosion kills, stuns or converts the units past the out threshold, and queues the units that
-    /// have no floor to fall. The falls are the caller's to resolve (<see cref="FallsRefusal"/>, <see cref="ResolveFalls(RuntimeRuleCatalog)"/>).
+    /// have no floor to fall. The falls are the caller's to resolve (<see cref="ResolveFalls(RuntimeRuleCatalog)"/>).
     /// </summary>
     internal IReadOnlyList<BattleCasualty> OpenBattlescape()
     {

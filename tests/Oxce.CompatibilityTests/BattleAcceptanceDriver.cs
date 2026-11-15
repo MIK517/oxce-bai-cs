@@ -212,9 +212,12 @@ internal static class BattleAcceptanceDriver
     /// <summary>
     /// What a reload must keep: every viewer's discovered tiles with their parts, shade, smoke, fire, items and visible units on every level,
     /// and the units each viewer sees (lighting and the discovered tiles are derived on a load, so equal views mean equal derived state; spotting may only grow).
+    /// <paramref name="mayDiscoverMore"/> (only for a battle in which a shot, throw or blow changed the terrain, as the reference's reload of such a battle can find more than a live blast's
+    /// local field of view did) lets the load discover tiles the live battle had not; the result is the number of tiles it did, which is always counted.
     /// </summary>
-    internal static void AssertSameSight(CampaignState expected, CampaignState actual, BattleState battle)
+    internal static int AssertSameSight(CampaignState expected, CampaignState actual, BattleState battle, bool mayDiscoverMore = false)
     {
+        var discovered = 0;
         var before = expected.GetQuery<IBattleViewQuery>()!;
         var after = actual.GetQuery<IBattleViewQuery>()!;
         foreach (var faction in Enum.GetValues<BattleFaction>())
@@ -230,9 +233,17 @@ internal static class BattleAcceptanceDriver
                 {
                     if (!byPos.TryGetValue(t.Position, out var u)) { diff.Add($"{t.Position} only before (shade {t.Shade}, parts {t.Parts.Count})"); continue; }
                     if (t.Shade != u.Shade) diff.Add($"{t.Position} shade {t.Shade} vs {u.Shade}");
-                    if (t.UnitId is not null && t.UnitId != u.UnitId || t.Smoke != u.Smoke || t.Fire != u.Fire || !t.Parts.SequenceEqual(u.Parts) || !t.Items.SequenceEqual(u.Items)) diff.Add($"{t.Position} other");
+                    if (t.UnitId is not null && t.UnitId != u.UnitId) diff.Add($"{t.Position} unit {t.UnitId} vs {u.UnitId}");
+                    if (t.Smoke != u.Smoke) diff.Add($"{t.Position} smoke {t.Smoke} vs {u.Smoke}");
+                    if (t.Fire != u.Fire) diff.Add($"{t.Position} fire {t.Fire} vs {u.Fire}");
+                    if (!t.Parts.SequenceEqual(u.Parts)) diff.Add($"{t.Position} parts {string.Join("|", t.Parts)} vs {string.Join("|", u.Parts)}");
+                    // The order of the items on a tile is kept: a load adds them in the saved order with Tile::addItem's swap of a corpse to the front, as the reference's does.
+                    if (!t.Items.SequenceEqual(u.Items)) diff.Add($"{t.Position} items {string.Join("|", t.Items)} vs {string.Join("|", u.Items)}");
                 }
-                diff.AddRange(y.Where(t => !x.Any(o => o.Position == t.Position)).Select(t => $"{t.Position} only after"));
+                // After a fight the load's field of view, which looks from every unit at once, may discover tiles a side's units had not yet looked at (the blasts changed what they see).
+                var extra = y.Where(t => !x.Any(o => o.Position == t.Position)).ToList();
+                if (!mayDiscoverMore) diff.AddRange(extra.Select(t => $"{t.Position} only after"));
+                discovered += extra.Count;
                 Assert.True(diff.Count == 0, $"{faction} level {level}: {diff.Count} differ: {string.Join("; ", diff.Take(8))}");
             }
             // The load's field of view looks from every unit at once, so it may spot units that the moves of one soldier had not shown; it never
@@ -240,6 +251,7 @@ internal static class BattleAcceptanceDriver
             var seen = actual.GetQuery<IBattleQuery>()!.QueryBattle(viewer)!.Units;
             Assert.All(expected.GetQuery<IBattleQuery>()!.QueryBattle(viewer)!.Units, unit => Assert.Contains(unit, seen));
         }
+        return discovered;
     }
 
     /// <summary>A refusal the acceptance accepts is one that names a later branch's unported rule (<c>battle.*-unsupported</c>), not one of this branch's own rules.</summary>

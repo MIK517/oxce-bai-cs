@@ -10,8 +10,9 @@ namespace Oxce.Gameplay.Battles;
 internal readonly record struct BattleAttack(BattleActionType Type, BattleUnit? Attacker = null, BattleItem? Weapon = null, BattleItem? DamageItem = null);
 
 /// <summary>
-/// What <see cref="BattleState.DamageUnit"/> did: the damage to the unit's health, and the refusal when the hit needs work of a later slice (none
-/// does since S6 ported the melee self-destruct; the field and the refusal plumbing of <c>HitUnit</c> and <c>Hit</c> go in S7 unless branch 6's psi work needs them). A unit the hit takes out, or sets
+/// What <see cref="BattleState.DamageUnit"/> did: the damage to the unit's health. <c>Refusal</c> is set by no code and none may set it: the commands run on the live
+/// battle with no copy, so a refusal after a change would leave the battle half changed (ADR 0038); a later branch's rule that cannot run is refused before the command
+/// changes anything. (The field and the refusal plumbing of <c>HitUnit</c>, <c>Hit</c> and the fire's burn stay only until a branch 6 slice deletes them.) A unit the hit takes out, or sets
 /// to respawn, is left for <see cref="BattleState.CheckForCasualties"/>, which the reference also runs later (an explosion, a fall, a turn's end).
 /// </summary>
 internal readonly record struct BattleDamageResult(int Damage, CampaignReason? Refusal = null);

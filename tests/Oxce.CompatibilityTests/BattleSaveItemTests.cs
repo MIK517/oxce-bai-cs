@@ -248,6 +248,20 @@ public sealed class BattleSaveItemTests
     }
 
     [Fact]
+    public void ALoadAddsTheItemsOfATileInSaveOrderWithTheCorpseSwap()
+    {
+        // Tile::addItem in the saved order: an item that carries a unit swaps places with the tile's first item when the tile holds others
+        // (the reference's load calls it for each ground item). Item 3 carries a unit and is added last, so it lies first; item 4 on another tile has no company.
+        var battle = Restore(Units + "items:\n" +
+            "  - {id: 1, type: CLIP, inventoryslot: STR_GROUND, position: [2, 2, 0]}\n" +
+            "  - {id: 2, type: CLIP, inventoryslot: STR_GROUND, position: [2, 2, 0]}\n" +
+            "  - {id: 3, type: CLIP, unit: 1000001, inventoryslot: STR_GROUND, position: [2, 2, 0]}\n" +
+            "  - {id: 4, type: CLIP, unit: 1000001, inventoryslot: STR_GROUND, position: [1, 2, 0]}\n");
+        Assert.Equal([3, 2, 1], battle.ItemsOnTile(new BattlePosition(2, 2, 0)).Select(static item => item.Id));
+        Assert.Equal([4], battle.ItemsOnTile(new BattlePosition(1, 2, 0)).Select(static item => item.Id));
+    }
+
+    [Fact]
     public void OwnersAndCorpseUnitsAreFoundAmongTheLoadedUnits()
     {
         var battle = Restore(Units + "items:\n" +

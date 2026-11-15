@@ -162,6 +162,7 @@ internal sealed partial class BattleState
         ];
         var index = new Dictionary<int, BattleItem>();
         var highest = 0;
+        var tileOrder = new Dictionary<BattlePosition, List<BattleItem>>();
         foreach (var (saved, target) in lists)
             foreach (var entry in saved)
             {
@@ -190,11 +191,17 @@ internal sealed partial class BattleState
                 {
                     if (!Contains(position)) throw new InvalidOperationException($"Battle item {item.Id} lies at {position}, outside the map.");
                     item.Tile = position;
+                    // Tile::addItem in save order: an item that carries a unit swaps places with the tile's first item.
+                    if (!tileOrder.TryGetValue(position, out var onTile)) tileOrder[position] = onTile = [];
+                    onTile.Add(item);
+                    if (item.CorpseUnitId is not null && onTile.Count > 1) (onTile[0], onTile[^1]) = (onTile[^1], onTile[0]);
                 }
                 if (!index.TryAdd(item.Id, item)) throw new InvalidOperationException($"Battle item ID {item.Id} is saved twice.");
                 highest = Math.Max(highest, item.Id);
                 target.Add(item);
             }
+        foreach (var onTile in tileOrder.Values)
+            foreach (var member in onTile) member.ArrivalOrder = NextArrival();
         // _itemId++ after the highest ID (0 to start with).
         NextItemId = highest < int.MaxValue ? highest + 1
             : throw new InvalidOperationException($"Battle item ID {highest} leaves no ID for the next item.");

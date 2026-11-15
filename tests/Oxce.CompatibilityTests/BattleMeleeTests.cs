@@ -834,7 +834,7 @@ public sealed class BattleMeleeTests
     }
 
     private static BattleRuntime RuntimeOf(Arena arena, IBattleCampaignLink? link = null) =>
-        new(arena.Battle, arena.Rules, new ScriptedDraws(0), link, static (_, _) => null);
+        new(arena.Battle, arena.Rules, new ScriptedDraws(0), link);
 
     private sealed class ResearchLink : IBattleCampaignLink
     {

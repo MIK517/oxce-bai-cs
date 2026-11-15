@@ -49,48 +49,6 @@ internal sealed partial class BattleState
     }
 
     /// <summary>
-    /// Whether the landing of <paramref name="unit"/> could start an explosion in <see cref="CheckForProximityGrenades"/>, which changes nothing and draws nothing (the over-approximation
-    /// the falls' dry run needs: an item whose fuse could be lit by the unit and whose <c>specialChance</c> is not 0, or a death trap).
-    /// </summary>
-    private bool ProximityMayExplode(BattleUnit unit)
-    {
-        var position = unit.Position!.Value;
-        if (DeathTrapTriggered(unit, out _, out _)) return true;
-        var size = unit.ArmorSize + 1;
-        for (var tx = -1; tx < size; tx++)
-        {
-            for (var ty = -1; ty < size; ty++)
-            {
-                var at = new BattlePosition(position.X + tx, position.Y + ty, position.Z);
-                if (!Contains(at)) continue;
-                foreach (var item in _items)
-                {
-                    if (item.Tile != at || item.Slot != GroundSlot) continue;
-                    var rule = RequiredRules.Battle.Equipment.Items[item.ItemType];
-                    var enabled = item.FuseEnabled;
-                    var timer = item.FuseTimer;
-                    if (rule.FuseTrigger.ProximityTrigger)
-                    {
-                        if (rule.FuseType == NoFuseType)
-                        {
-                            enabled = true;
-                            timer = 0;
-                        }
-                        else if (timer >= 0)
-                        {
-                            enabled = true;
-                        }
-                    }
-                    if (rule.Combat.SpecialChance > 0 && ProximityExplodes(item, enabled, timer) &&
-                        ItemRuleOf(item.ItemType).BattleType is GrenadeBattleType or ProximityGrenadeBattleType)
-                        return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    /// <summary>
     /// <c>GetBeforeShoot(type, nullptr, item)</c>: the attack of a proximity event, with no attacker, the item as the weapon, and as the damage item (<c>UpdateAmmo</c>) the item itself for
     /// a grenade, a proximity grenade or a psi-amp, else the ammunition the item's action takes.
     /// </summary>

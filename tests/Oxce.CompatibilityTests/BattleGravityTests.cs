@@ -58,7 +58,6 @@ public sealed class BattleGravityTests
         var motion = alien.MotionPoints;
         Assert.Equal(At(12, 12, 0), arena.Battle.ApplyGravity(alien.Position));
         Assert.Same(alien, Assert.Single(arena.Battle.FallingUnits));
-        Assert.Null(arena.Battle.FallsRefusal());
         // Asking changed nothing: the unit still hangs where it was.
         Assert.Equal((At(12, 12, 3), true), (alien.Position, alien.HaveNoFloorBelow));
         Assert.Null(arena.Battle.ResolveFalls());
@@ -142,7 +141,6 @@ public sealed class BattleGravityTests
         arena.Stand(arena.Soldier, 12, 12, 2);
         Raise(arena, arena.Alien, 12, 12, 2);
         arena.Battle.ApplyGravity(arena.Alien.Position);
-        Assert.Null(arena.Battle.FallsRefusal());
         Assert.Null(arena.Battle.ResolveFalls());
         // The soldier flies, so the first direction (north) is open to it; the alien takes the tile it left.
         Assert.Equal(At(12, 11, 0), arena.Soldier.Position);
@@ -208,7 +206,6 @@ public sealed class BattleGravityTests
         arena.Battle.ApplyGravity(arena.Alien.Position);
         var before = State(arena);
         // The knock-out refuses nothing: the trial finds no reason to stop and changes nothing.
-        Assert.Null(arena.Battle.FallsRefusal());
         Assert.Equal(before, State(arena));
         // Give one side its floor back, and the unit below escapes that way (east is the first direction with a floor).
         var escape = Tall(walkingSoldier: true);
@@ -266,12 +263,10 @@ public sealed class BattleGravityTests
         arena.Battle.ApplyGravity(faller2.Position);
         Assert.Equal(2, arena.Battle.FallingUnits.Count);
         var before = State(arena);
-        Assert.Null(arena.Battle.FallsRefusal());
         Assert.Equal(before, State(arena));
         // The list runs the unit queued last first: the unit at (12, 10) takes (12, 11). Open a second way for the other one (east of it):
         // it takes that instead of the tile already taken.
         arena.Put(13, 12, 0, BattleTilePart.Floor, Floor);
-        Assert.Null(arena.Battle.FallsRefusal());
         Assert.Null(arena.Battle.ResolveFalls());
         Assert.Equal((At(13, 12, 0), At(12, 11, 0)), (below1.Position, below2.Position));
         Assert.Equal((At(12, 12, 0), At(12, 10, 0)), (faller1.Position, faller2.Position));
@@ -286,7 +281,6 @@ public sealed class BattleGravityTests
         var gun = GunFor(arena.Battle, arena.Alien);
         // The dry run (the gate of the commands that act on the live battle) no longer refuses: the reaction fire is ported, and a dry run changes nothing.
         var before = State(arena);
-        Assert.Null(arena.Battle.FallsRefusal());
         Assert.Equal(before, State(arena));
         // The landing draws the alien's snap shot, which runs behind the fall state (UnitFallBState: checkReactionFire(unit, a walk)).
         var alienUnits = arena.Alien.TimeUnits;
@@ -300,7 +294,6 @@ public sealed class BattleGravityTests
         gun = GunFor(arena.Battle, arena.Alien);
         // Without its gun, the alien sees the soldier land and has it among its visible units.
         arena.Battle.RemoveItem(gun);
-        Assert.Null(arena.Battle.FallsRefusal());
         Assert.Null(arena.Battle.ResolveFalls());
         Assert.Equal(At(10, 10, 0), arena.Soldier.Position);
         Assert.True(Arena.Sees(arena.Alien, arena.Soldier));
@@ -314,7 +307,6 @@ public sealed class BattleGravityTests
         GunFor(arena.Battle, arena.Soldier);
         Raise(arena, arena.Alien, 15, 10, 2);
         arena.Battle.ApplyGravity(arena.Alien.Position);
-        Assert.Null(arena.Battle.FallsRefusal());
         Assert.Null(arena.Battle.ResolveFalls());
         Assert.Equal(At(15, 10, 0), arena.Alien.Position);
     }
@@ -326,7 +318,6 @@ public sealed class BattleGravityTests
         Raise(arena, arena.Soldier, 10, 10, 2);
         arena.Battle.ApplyGravity(arena.Soldier.Position);
         var before = State(arena);
-        Assert.Null(arena.Battle.FallsRefusal());
         Assert.Equal(before, State(arena));
         Assert.Null(arena.Battle.ResolveFalls());
         Assert.Equal(At(10, 10, 0), arena.Soldier.Position);
@@ -340,7 +331,6 @@ public sealed class BattleGravityTests
         Raise(unlit, unlit.Soldier, 10, 10, 2);
         unlit.Battle.ApplyGravity(unlit.Soldier.Position);
         var idle = Drop(unlit, "GRENADE", At(11, 11, 0));
-        Assert.Null(unlit.Battle.FallsRefusal());
         Assert.Null(unlit.Battle.ResolveFalls());
         Assert.Contains(idle, unlit.Battle.Items);
 
@@ -351,10 +341,7 @@ public sealed class BattleGravityTests
         var grenade = Drop(arena, "GRENADE", At(11, 11, 0));
         grenade.FuseTimer = 0;
         grenade.FuseEnabled = true;
-        // A dry run draws and changes nothing, and refuses a landing that would set the item off (its explosion cannot be tried first on the live battle).
-        var before = State(arena);
-        Assert.Equal("battle.fall-proximity-explosion-unsupported", arena.Battle.FallsRefusal()?.Code);
-        Assert.Equal(before, State(arena));
+        // The landing runs live (nothing refuses it first) and sets the item off.
         Assert.Null(arena.Battle.ResolveFalls());
         Assert.DoesNotContain(grenade, arena.Battle.Items);
 
@@ -379,7 +366,6 @@ public sealed class BattleGravityTests
         var grenade = Drop(arena, "GRENADE", At(11, 10, 0));
         grenade.FuseTimer = 0;
         grenade.FuseEnabled = true;
-        Assert.Null(arena.Battle.FallsRefusal());
         Assert.Null(arena.Battle.ResolveFalls());
         Assert.Contains(grenade, arena.Battle.Items);
     }
@@ -561,22 +547,15 @@ public sealed class BattleGravityTests
     }
 
     [Fact]
-    public void ALandingThatCouldSetOffADeathTrapOrAnItemIsRefusedByTheDryRunAndChangesNothing()
+    public void ALandingOnADeathTrapRunsLiveAndIsNeverRefused()
     {
         var arena = Tall(walkingSoldier: true, more: rules => Replaced(rules, PlainGrenade, PlainGrenade + TrapMelee));
         arena.Put(12, 12, 0, BattleTilePart.Floor, DeathTrapFloor);
         Raise(arena, arena.Soldier, 12, 12, 2);
         arena.Battle.ApplyGravity(arena.Soldier.Position);
-        var before = State(arena);
-        Assert.Equal("battle.fall-proximity-explosion-unsupported", arena.Battle.FallsRefusal()?.Code);
-        Assert.Equal(before, State(arena));
-
-        // The same landing with an item the check leaves alone is no reason to wait.
-        var quiet = Tall(walkingSoldier: true, more: Armed());
-        Raise(quiet, quiet.Soldier, 10, 10, 2);
-        quiet.Battle.ApplyGravity(quiet.Soldier.Position);
-        Drop(quiet, "GRENADE", At(11, 11, 0));
-        Assert.Null(quiet.Battle.FallsRefusal());
+        // S11 retired the dry run that refused such a landing (battle.fall-proximity-explosion-unsupported): the fall runs and the trap is a rule.
+        Assert.Null(arena.Battle.ResolveFalls());
+        Assert.Empty(arena.Battle.FallingUnits);
     }
 
     [Fact]
@@ -634,7 +613,6 @@ public sealed class BattleGravityTests
             arena.Clear(12 + dx, 12 + dy, 0, BattleTilePart.Floor);
         Raise(arena, arena.Alien, 12, 12, 1);
         arena.Battle.ApplyGravity(arena.Alien.Position);
-        Assert.Null(arena.Battle.FallsRefusal());
         Assert.Null(arena.Battle.ResolveFalls());
         Assert.Equal((At(12, 11, 0), At(12, 12, 0)), (arena.Soldier.Position, arena.Alien.Position));
     }

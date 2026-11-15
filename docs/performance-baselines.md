@@ -769,4 +769,52 @@ camera's level or the preview changes. Paths are short where discovery is small 
 On the largest acceptance map (Rosigma, 28,800 tiles) one unit's reachable query takes about 7 ms and a level's query under 1.1 ms, so a selection change fits a frame; its path query is measured over one or two
 steps only, so it says little there. Paths of 11 to 14 steps on the 40x40 to 60x60 maps cost 1.3 to 4.4 ms (a pathfinder allocation and the search). The whole field of view takes 11 to 255 ms on the 4-level maps
 and about 0.7 to 1.1 s on the 8-level Rosigma maps in a Debug build; **the Rosigma figure is `RecalculateFov` called directly: the port does not run it on loading those battles (their visibility script is refused,
-branch 8), so it is a cost branch 8 will add, not one measured at a load.** For the other battles it runs once per load (`recalculateFOV`); a walk's own field of view is the sector around the unit. **But each `WalkUnit` and `MoveUnitUpDown` on a battle with terrain files also restores a trial copy of the battle first (`CampaignBattles.TrialRefusal`), and that restore rebuilds the map and runs a full lighting calculation and `RecalculateFov` again, so a walk command costs about one of these figures (11 to 255 ms on the 4-level maps in Debug) on top of the walk itself. The walk command's total was not measured.** A Release build was not measured.
+branch 8), so it is a cost branch 8 will add, not one measured at a load.** For the other battles it runs once per load (`recalculateFOV`); a walk's own field of view is the sector around the unit. **But each `WalkUnit` and `MoveUnitUpDown` on a battle with terrain files also restores a trial copy of the battle first (`CampaignBattles.TrialRefusal`), and that restore rebuilds the map and runs a full lighting calculation and `RecalculateFov` again, so a walk command costs about one of these figures (11 to 255 ms on the 4-level maps in Debug) on top of the walk itself. The walk command's total was not measured.** A Release build was not measured. (S11 deleted that per-command copy; see the next section for the cost it had and what stays.)
+
+## Battle attack and explosion commands (branch 5 S11, 2026-11-15)
+
+Measured by the acceptance tests (`BattleAcceptanceCombat`, called from `PrivateBattleGenerationTests` after the first turn of each played battle and from `PrivateBattleSaveTests` on each loaded
+active-battle save; recorded in `artifacts/private-battle-acceptance-attack-timings.json`, what the soldiers did in `private-battle-acceptance-attacks.json`). A soldier's shot (aimed, else snap, else auto) is sent as `Attack` (the median of
+four more shots after the first, which goes through the client and is not timed, with the unit's time units made up between them, so the later ones turn less), a primed grenade's throw is sent as `Attack` too (up to five grenades, one sample each), and
+the explosion is the `ExplosionBState` a primed grenade gets when it goes off, pushed at its tile with its casualties and falls (`PushExplosion`, `RunStates`, `ResolveFalls`; branch 6's end of turn will push the same
+state, so the acceptance does it where the throw left the grenade). A battle whose soldiers hold nothing (the staged TFTD landings and base defenses) measures none, and the Rosigma saves refuse the soldiers'
+commands (their visibility script is branch 8's). The last column is the cost of one restore of the battle, the copy `CampaignBattles.TrialRefusal` still makes at the briefing (median of five). Microseconds, Debug build; Release in
+the second table.
+
+| Battle or save | Map | Units | Shot (us) | Throw (us) | Explosion (us) | Battle copy (us) |
+|---|---|---:|---:|---:|---:|---:|
+| UFO farm landing | 40x40x4 | 12 | 2,719 | 6,996 | 61,694 | 105,294 |
+| TFTD port terror | 50x50x4 | 38 | 10,955 | 41,957 | none thrown | 247,147 |
+| TFTD island terror (no weapons) | 50x50x4 | 41 | - | - | - | 274,661 |
+| TFTD sunken escort (no weapons) | 50x50x4 | 15 | - | - | - | 150,659 |
+| UFO base defense (no weapons) | 60x60x2 | 18 | - | - | - | 150,563 |
+| TFTD base defense (no weapons) | 60x60x4 | 33 | - | - | - | 355,635 |
+| Rosigma `_autobattle_.asav` (largest map) | 60x60x8 | 47 | refused | refused | refused | 452,645 |
+| Rosigma `battlescape 1.sav` | 60x60x8 | 47 | refused | refused | refused | 437,987 |
+| Rosigma `battlescape 2.sav` | 60x60x8 | 49 | refused | refused | refused | 406,137 |
+| TFTD `battlescape 1.sav` | 50x50x4 | 45 | 16,708 | 25,985 | none thrown | 296,933 |
+| TFTD `battlescape 2.sav` | 50x50x4 | 45 | 1,312 | 25,282 | none thrown | 276,820 |
+| UFO `_autobattle_.asav` | 40x40x4 | 15 | 213 | 11,416 | 37,280 | 96,342 |
+| UFO `battlescape 2.sav` | 40x40x4 | 15 | 245 | 9,265 | 38,595 | 108,119 |
+| UFO `battlescape.sav` | 40x40x4 | 15 | 213 | 6,548 | 26,669 | 94,807 |
+
+Release build (the same runs):
+
+| Battle or save | Shot (us) | Throw (us) | Explosion (us) | Battle copy (us) |
+|---|---:|---:|---:|---:|
+| UFO farm landing | 601 | 1,536 | 14,501 | 16,435 |
+| TFTD port terror | 1,670 | 6,626 | none thrown | 40,917 |
+| TFTD island terror | - | - | - | 39,365 |
+| TFTD base defense | - | - | - | 52,371 |
+| Rosigma `_autobattle_.asav` (largest map) | refused | refused | refused | 49,139 |
+| Rosigma `battlescape 2.sav` | refused | refused | refused | 45,822 |
+| TFTD `battlescape 1.sav` | 1,869 | 4,668 | none thrown | 36,814 |
+| UFO `_autobattle_.asav` | 187 | 9,411 | 40,696 | 48,027 |
+| UFO `battlescape.sav` | 154 | 1,874 | 8,001 | 28,755 |
+
+Without the copy an attack is cheap: a shot costs 0.2 to 17 ms in Debug and an explosion with its casualties and falls 27 to 62 ms. **Until S11 every walk, kneel, attack, throw, launch and priming first restored a
+copy of the battle and ran the command on it** (`BattleRuntime.RunOnTrialCopy`): in the first run of this table the same shots cost 95 to 363 ms in Debug, so the copy was most of a command's cost. S11 deleted that
+copy (see the status record: no state refuses after it has changed something). What stays is the copy at the briefing, which runs once per battle: `CampaignBattles.TrialSpawnRefusal` (only for a battle with primed items
+that spawn; it refuses with `battle.no-live-aliens` or a spawned unit's script code). `TrialFirstTurnRefusal` is deleted too. A restore of the battle costs 95 to 453 ms in Debug (16 to 52 ms in Release, 49 ms on the largest map, Rosigma). The Rosigma copy is a restore with no field of view (the
+port does not run it on loading those battles, branch 8), so it is a floor for what branch 8 adds. **The attack and explosion costs on the largest map (Rosigma, 60x60x8) are not measured**: its soldiers' commands are refused (the visibility script, branch 8), so the acceptance cannot run an attack there; branch 8 measures them when it lifts that refusal. Each figure is one run, with one sample per grenade, so the Release explosion of the first UFO save being slower than
+its Debug run is the noise of different landing tiles; the tables are for the order of magnitude.

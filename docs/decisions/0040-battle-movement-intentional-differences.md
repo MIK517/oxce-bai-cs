@@ -58,8 +58,8 @@ the door at once and thinks again in the next cycle (the step cost is read again
 reference's next cycle would). A step is whole (`BattleUnit::startWalking` and `keepWalking`'s phases collapse), so the reference's checks in the middle of a
 step (the destination tile occupied by another unit, the `_falling` reset at each phase before the last) never see a change and are not run. A walk that cannot
 take its first step is a refusal with a reason where the reference ends silently; a walk whose first step is taken and whose later one cannot is a stop with
-its reason in the events. Refusals met after a step (the reaction fire of branch 5, a proximity explosion, a burning floor's hit that reaches a unit or an explosion, a fall that knocks a unit out) are
-found by running the walk on a copy of the battle first, into which the live battle's runtime sight state (the units spotted this turn and the spotting flags) is copied, so the copy stops where the live walk does.
+its reason in the events. No refusal can be met after a step (the reaction fire of branch 5, a proximity explosion, a burning floor's hit that reaches a unit or an explosion and a fall that knocks a unit out are rules that run, not refusals), so the walk runs
+on the live battle with no copy first (Phase 7 branch 5 S11 retired the copy that branch 4 used; ADR 0038's failure model stands, and a command that refuses after a change throws).
 `moveUpDown` always walks normally with Shift off (the reference reuses the flags of the last `primaryAction`), and a move type the armor does not allow (a run, strafe or sneak)
 is refused where the reference falls back to a normal walk; the player's client sends neither.
 
@@ -68,4 +68,4 @@ presentation and draw nothing, so a burn or spread draws fewer numbers than the 
 (the reference throws) leaves the destroyed part empty, and a ground floor destroyed when the first data set has no second object (scorched earth, which the port takes from set 0 as the generator's fill does, where the reference
 takes BLANKS' tile) is left empty. A unit that burns a hole in the floor stays standing, as the reference's call leaves its status; the fall runs after the walk, and a landing burner is taken off the falling list while it
 hangs over its own hole (`addFallingUnit` refuses the duplicate and `erase` follows). A hit that destroys a base module in a block a restored save's module map lacks destroys it without the count (Phase 7 branch 5 S5, ADR 0041; this replaced the refusal `battle.module-map-unsupported`).
-The dry run of a landing (`FallsRefusal`, used by the inventory move, which has no trial copy) does not apply the burn (the hit has no refusals left since S5, apart from a melee or psi self-destruct item).
+The dry run of a landing (`FallsRefusal`) is gone: the inventory move and a loaded battle run the falls live (Phase 7 branch 5 S11).

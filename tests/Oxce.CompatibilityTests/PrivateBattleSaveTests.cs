@@ -147,6 +147,11 @@ public sealed class PrivateBattleSaveTests
         Assert.NotNull(outcome);
         Assert.True(outcome!.Refusal is not null || outcome.Steps > 0, name);
         BattleAcceptanceDriver.Record(label, outcome, BattleAcceptanceDriver.OpenDoor(screen, battle));
+        // Phase 7 branch 5 S11: a player unit with a weapon attacks, or the attack is refused for a named reason (a later branch's, for a battle whose armors
+        // bind a visibility script); a grenade is thrown where a soldier carries one.
+        var fight = BattleAcceptanceCombat.Fight(label, context, screen, campaign, battle);
+        Assert.True(fight.Shot is not null || fight.ShotRefusal is not null, $"{name}: no soldier attacked and no refusal was named.");
+        if (fight.Shot is null) BattleAcceptanceDriver.RequireLaterBranch(fight.ShotRefusal!);
         // Placement is the generator's rule; a saved battle keeps its units where they were.
         battle.Validate(placement: false);
     }
