@@ -28,6 +28,15 @@ public sealed record ToggleKneelReserve(int UnitId) : IBattleCommand, IUnitComma
 /// </summary>
 public sealed record SetActiveHand(int UnitId, bool RightHand) : IBattleCommand, IUnitCommand;
 
+/// <summary>
+/// The hand buttons' right click (<c>toggleRightHandForReactions</c>, <c>toggleLeftHandForReactions</c>): without <see cref="Ctrl"/> the hand becomes the preferred one for reactions, or stops being it
+/// and the hand's reactions are enabled; with it the preferred flag is dropped if it was this hand's and the hand's reactions are disabled or enabled again. Saved with the unit.
+/// </summary>
+public sealed record ToggleHandForReactions(int UnitId, bool RightHand, bool Ctrl) : IBattleCommand, IUnitCommand;
+
+/// <summary>A hand's reaction flags were toggled: the unit's preferred hand now, and whether each hand's reactions are disabled.</summary>
+public sealed record HandForReactionsChanged(int UnitId, string PreferredHand, bool LeftDisabled, bool RightDisabled) : ICampaignEvent;
+
 /// <summary>A unit's active hand was set.</summary>
 public sealed record ActiveHandChanged(int UnitId, bool RightHand) : ICampaignEvent;
 
@@ -68,6 +77,52 @@ internal sealed partial class BattleState
             });
         else KneelReserved = !KneelReserved;
         MarkChanged();
+        return null;
+    }
+
+    /// <summary>BattleUnit::toggleRightHandForReactions and toggleLeftHandForReactions for a live unit of the side on turn.</summary>
+    internal CampaignReason? ToggleHandForReactions(int unitId, bool rightHand, bool ctrl, out BattleUnit? changed)
+    {
+        changed = null;
+        if (SelectionUnit(unitId, out var unit) is { } refusal) return refusal;
+        var hand = rightHand ? RightHand : LeftHand;
+        var disabled = rightHand ? unit!.ReactionsDisabledForRightHand : unit!.ReactionsDisabledForLeftHand;
+        if (unit.PreferredHandForReactions == hand) unit.PreferredHandForReactions = "";
+        else if (!ctrl) unit.PreferredHandForReactions = hand;
+        disabled = ctrl && !disabled;
+        if (rightHand) unit.ReactionsDisabledForRightHand = disabled;
+        else unit.ReactionsDisabledForLeftHand = disabled;
+        MarkChanged();
+        changed = unit;
+        return null;
+    }
+
+    /// <summary>
+    /// BattleUnit::getSpecialIconWeapon: the first special weapon whose rule has a special icon sprite, and <c>updateUiButton</c>'s filter on it: its battle type is not none, ammo, grenade,
+    /// proximity grenade, flare or corpse (the first icon weapon only: a later one of a usable type does not take its place).
+    /// </summary>
+    internal BattleItem? SpecialIconWeapon(BattleUnit unit)
+    {
+        var icon = SpecialWeapons(unit).FirstOrDefault(special => RequiredRules.Battle.Equipment.Items[special.ItemType].Combat.SpecialIconSprite != -1);
+        return icon is not null && ItemRuleOf(icon.ItemType).BattleType is not (0 or 2 or 4 or 5 or 10 or 11) ? icon : null;
+    }
+
+    /// <summary>
+    /// <c>skillMenuCheck</c>'s first part: the soldier's rules list a skill. The skill's cost, bonus and psi tests are branch 6's, so a soldier whose skills fail them still shows the button
+    /// (the reference hides it): an over-refusal, the button only answers with <c>battle.skills-unsupported</c>.
+    /// </summary>
+    internal bool HasSkills(BattleUnit unit) =>
+        unit.SoldierId is not null && RequiredRules.Soldiers.TryGet(unit.UnitType, out var handle) && RequiredRules.Soldiers[handle].Value.Skills.Count > 0;
+
+    /// <summary>
+    /// The special weapon an empty hand's button opens: the first of the melee, psi amp, firearm, medikit, scanner and mind probe special weapons that uses an empty hand
+    /// (<c>btnRightHandItemClick</c>'s loop; the reference's <c>BT_NONE</c> candidates never match). With <paramref name="shown"/> it is <c>drawHandsItems</c>' loop, which also needs <c>specialUseEmptyHandShow</c>.
+    /// </summary>
+    internal BattleItem? EmptyHandSpecialWeapon(BattleUnit unit, bool shown = false)
+    {
+        foreach (var type in new[] { BattleTypeMelee, BattleTypePsiAmp, BattleTypeFirearm, BattleTypeMedikit, BattleTypeScanner, BattleTypeMindProbe })
+            if (SpecialWeapon(unit, type) is { } special && RequiredRules.Battle.Equipment.Items[special.ItemType].Combat is var combat && combat.SpecialUseEmptyHand &&
+                (!shown || combat.SpecialUseEmptyHandShow)) return special;
         return null;
     }
 

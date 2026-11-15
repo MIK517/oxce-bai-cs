@@ -70,10 +70,10 @@ public sealed class BattleClientCombatTests
     {
         var (arena, _, _) = BattleShootingTests.Load();
         var (context, screen, model) = ClientOf(arena);
-        // The hand buttons set the active hand first; an empty hand opens no menu and says its special weapon is the next part.
+        // The hand buttons set the active hand first; an empty hand with no special weapon that uses it opens no menu and says nothing (handleItemClick of no item).
         Press(context, BattlescapeClient.LeftHandKey);
         Assert.Null(model.Menu);
-        Assert.Equal(BattleViewModel.SpecialWeaponCode, screen.Message);
+        Assert.Equal("", screen.Message);
         Assert.Equal("STR_LEFT_HAND", arena.Soldier.ActiveHand);
         Press(context, BattlescapeClient.RightHandKey);
         Assert.Equal("STR_RIGHT_HAND", arena.Soldier.ActiveHand);
@@ -104,20 +104,240 @@ public sealed class BattleClientCombatTests
         Assert.Null(model.Menu);
     }
 
+    private const string Fist = "- type: FIST\n    battleType: 3\n    clipSize: 1\n    weight: 1\n    specialIconSprite: 7\n    specialUseEmptyHand: true\n    costThrow: {time: 25}\n    costMelee: {time: 20}\n    accuracyMelee: 100\n    power: 5\n    damageType: 1\n  ";
+
+    /// <summary>The shooting arena with a built-in FIST (a melee special weapon with an icon that uses an empty hand) on the soldier.</summary>
+    private static (Arena Arena, BattleItem Fist) WithFist(bool icon = true, bool emptyHand = true, int battleType = 3, bool show = false, string skills = "")
+    {
+        var (arena, _, _) = BattleShootingTests.Load(more: FistRules(icon, emptyHand, battleType, show, skills));
+        return (arena, AddFist(arena));
+    }
+
+    private static Func<string, string> FistRules(bool icon = true, bool emptyHand = true, int battleType = 3, bool show = false, string skills = "", string extraItems = "")
+    {
+        var text = Fist.Replace("battleType: 3", $"battleType: {battleType}", StringComparison.Ordinal);
+        if (!icon) text = text.Replace("    specialIconSprite: 7\n", "", StringComparison.Ordinal);
+        if (!emptyHand) text = text.Replace("    specialUseEmptyHand: true\n", "", StringComparison.Ordinal);
+        if (show) text = text.Replace("    specialUseEmptyHand: true\n", "    specialUseEmptyHand: true\n    specialUseEmptyHandShow: true\n", StringComparison.Ordinal);
+        return rules => BattleTestSupport.Replaced(rules, "- type: GRENADE" + Nl + "    battleType: 4", text + extraItems + "- type: GRENADE" + Nl + "    battleType: 4") + skills;
+    }
+
+    private static BattleItem AddFist(Arena arena, string type = "FIST")
+    {
+        var fist = new BattleItem(arena.Battle.TakeItemId(), type) { OwnerUnitId = arena.Soldier.Id, Slot = "", IsSpecialWeapon = true };
+        arena.Battle.AddItem(fist);
+        arena.Soldier.SpecialWeaponIds.Add(fist.Id);
+        return fist;
+    }
+
     [Fact]
-    public void TheRightAndMiddleClickOnAHandSetTheActiveHandAndAreRefusedByName()
+    public void TheSpecialWeaponButtonOpensTheMenuOfTheIconWeaponAndAnEmptyHandOpensTheOneThatUsesIt()
+    {
+        var (arena, fist) = WithFist();
+        var (context, screen, model) = ClientOf(arena);
+        Assert.Equal((fist.Id, fist.Id), (model.SelectedUnit!.SpecialIconItem!.Value.ItemId, model.SelectedUnit.EmptyHandItem!.Value.ItemId));
+        // The button (key Y) opens the menu of the item without setting a hand; the menu lists the throw and the hit.
+        arena.Soldier.ActiveHand = "STR_RIGHT_HAND";
+        Press(context, BattlescapeClient.SpecialKey);
+        var menu = Assert.IsType<BattleAimMenuView>(model.Menu);
+        Assert.Equal(fist.Id, menu.ItemId);
+        Assert.Equal([BattleAimKind.Throw, BattleAimKind.Hit], menu.Items.Select(static item => item.Kind));
+        Assert.Equal([25, 20], menu.Items.Select(static item => item.TimeUnits));
+        Assert.Equal("", screen.Message);
+        // The menu is the item's: a line starts its aim, which the refresh keeps (the item is no hand's, it is the unit's special weapon).
+        Press(context, '1');
+        Assert.Equal((fist.Id, BattleAimKind.Throw), (model.Aiming!.Value.ItemId, model.Aiming.Value.Kind));
+        model.Refresh();
+        Assert.NotNull(model.Aiming);
+        // The button while aiming cancels the aim and opens no menu (the touch concession).
+        Press(context, BattlescapeClient.SpecialKey);
+        Assert.Null(model.Aiming);
+        Assert.Null(model.Menu);
+        // The middle click on the button is the Ufopaedia page, refused by owner; the left click on it opens the menu again.
+        var button = BattlescapeClient.MapWidth + 8 + 5 * 22 + 4;
+        context.Screens.HandleInput(GameInputEvent.PointerButtonChange(GameInputEventKind.PointerPressed, 0, 0, button, 288, 2, 1));
+        Assert.Equal((BattleViewModel.UfopaediaCode, true), (screen.Message, model.Menu is null));
+        context.Screens.HandleInput(GameInputEvent.PointerButtonChange(GameInputEventKind.PointerPressed, 0, 0, button, 288, 1, 1));
+        Assert.Equal(fist.Id, model.Menu!.ItemId);
+        Press(context, '\u001b');
+        // The empty left hand (the right one holds the gun) opens the same menu and becomes the active hand; the right hand keeps the gun's.
+        Press(context, BattlescapeClient.LeftHandKey);
+        Assert.Equal((fist.Id, "STR_LEFT_HAND"), (model.Menu!.ItemId, arena.Soldier.ActiveHand));
+        Press(context, '\u001b');
+        Press(context, BattlescapeClient.RightHandKey);
+        Assert.NotEqual(fist.Id, model.Menu!.ItemId);
+    }
+
+    [Fact]
+    public void TheSpecialWeaponButtonDoesNothingWithoutAnIconAndAnEmptyHandNeedsAWeaponThatUsesIt()
+    {
+        // An item with no icon on a soldier whose rules list no skill: no button, the key does nothing, but an empty hand still opens the item that uses it.
+        var (arena, fist) = WithFist(icon: false);
+        var (context, screen, model) = ClientOf(arena);
+        Assert.NotNull(arena.Soldier.SoldierId);
+        Assert.Null(model.SelectedUnit!.SpecialIconItem);
+        Assert.False(model.SelectedUnit.SpecialButtonShown);
+        Press(context, BattlescapeClient.SpecialKey);
+        Assert.Equal(("", true), (screen.Message, model.Menu is null));
+        Press(context, BattlescapeClient.LeftHandKey);
+        Assert.Equal(fist.Id, model.Menu!.ItemId);
+        // An item that does not use an empty hand: the empty hand opens nothing (the icon button still does).
+        var (second, other) = WithFist(emptyHand: false);
+        var (secondContext, _, secondModel) = ClientOf(second);
+        Assert.Null(secondModel.SelectedUnit!.EmptyHandItem);
+        Press(secondContext, BattlescapeClient.LeftHandKey);
+        Assert.Null(secondModel.Menu);
+        Press(secondContext, BattlescapeClient.SpecialKey);
+        Assert.Equal(other.Id, secondModel.Menu!.ItemId);
+    }
+
+    [Fact]
+    public void ASoldierWhoseRulesListASkillShowsTheButtonThatFallsBackOnTheSkillsMenuRefusedByName()
+    {
+        // The reference's skills button shares the key; the port's fallback is refused by name (branch 6) for a soldier whose rules list a skill, and only for one.
+        var (arena, _) = WithFist(icon: false, skills: "\nsoldiers:\n  - type: RECRUIT\n    skills: [SKILL_TEST]\nskills:\n  - type: SKILL_TEST\n");
+        var (context, screen, model) = ClientOf(arena);
+        Assert.Equal((true, true, true), (model.SelectedUnit!.HasSkills, model.SelectedUnit.SpecialButtonShown, model.SelectedUnit.SpecialIconItem is null));
+        Press(context, BattlescapeClient.SpecialKey);
+        Assert.Equal((BattleViewModel.SkillsCode, true), (screen.Message, model.Menu is null));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(2)]
+    [InlineData(4)]
+    [InlineData(5)]
+    [InlineData(10)]
+    [InlineData(11)]
+    public void AnIconWeaponOfATypeTheButtonDoesNotShowHasNoButtonAndTheKeyAndThePointerDoNothing(int battleType)
+    {
+        // updateUiButton hides the button for none, ammo, grenade, proximity grenade, flare and corpse; an invisible button handles no input.
+        var (arena, _) = WithFist(battleType: battleType);
+        var (context, screen, model) = ClientOf(arena);
+        Assert.Null(model.SelectedUnit!.SpecialIconItem);
+        Assert.False(model.SelectedUnit.SpecialButtonShown);
+        Press(context, BattlescapeClient.SpecialKey);
+        Assert.Equal(("", true), (screen.Message, model.Menu is null));
+        var button = BattlescapeClient.MapWidth + 8 + 5 * 22 + 4;
+        context.Screens.HandleInput(GameInputEvent.PointerButtonChange(GameInputEventKind.PointerPressed, 0, 0, button, 288, 1, 1));
+        Assert.Null(model.Menu);
+    }
+
+    [Fact]
+    public void TheSpecialButtonWhileALaunchIsAimedTakesBackOnlyTheLastWaypointAndWithAMenuOpenItClosesTheMenuFirst()
+    {
+        var arena = BattleDamageTests.Duel(gun: "costAimed: {time: 30}\naccuracyAimed: 100\nwaypoints: 3", clip: "power: 40\ndamageType: 2\ndamageAlter: {RandomType: 3}", more: FistRules());
+        arena.Stand(arena.Alien, 15, 10, 6);
+        arena.Soldier.Stats = arena.Soldier.Stats with { TimeUnits = 100, Firing = 100 };
+        arena.Soldier.TimeUnits = 100;
+        BattleDamageTests.Shot(arena).Clip.AmmoQuantity = 3;
+        var fist = AddFist(arena);
+        arena.See();
+        arena.Battle.Random = new ScriptedDraws(0);
+        var (context, screen, model) = ClientOf(arena);
+        Pick(context, model, BattleAimKind.Launch);
+        context.Screens.HandleInput(ClickTile(screen, 12, 12));
+        context.Screens.HandleInput(ClickTile(screen, 15, 10));
+        Assert.Equal(2, model.Waypoints.Count);
+        // The button is btnSpecialClick's cancelCurrentAction: the last waypoint goes and the aim stays.
+        Press(context, BattlescapeClient.SpecialKey);
+        Assert.Equal([new BattlePosition(12, 12, 0)], model.Waypoints);
+        Assert.NotNull(model.Aiming);
+        Press(context, BattlescapeClient.SpecialKey);
+        Assert.Empty(model.Waypoints);
+        // With a menu open (no aim) the button closes it and opens the special weapon's menu, as a hand button does (one rule for both).
+        Press(context, '\u001b');
+        Press(context, BattlescapeClient.RightHandKey);
+        Assert.NotEqual(fist.Id, model.Menu!.ItemId);
+        // (The client's menu is modal for keys and clicks, so this is the model's rule, the same as the hand buttons'.)
+        Assert.True(model.OpenSpecialMenu());
+        Assert.Equal(fist.Id, model.Menu!.ItemId);
+    }
+
+    [Fact]
+    public void AnEmptyHandsItemIsDrawnOnlyWithItsShowFlagWhileTheClickNeedsOnlyTheEmptyHandFlag()
+    {
+        var (arena, fist) = WithFist();
+        var (_, _, model) = ClientOf(arena);
+        Assert.Equal((fist.Id, true, "L -"), (model.SelectedUnit!.EmptyHandItem!.Value.ItemId, model.SelectedUnit.ShownEmptyHandItem is null, BattlescapeClient.HandLines(model.SelectedUnit).Left));
+        var (shown, shownFist) = WithFist(show: true);
+        var (_, _, shownModel) = ClientOf(shown);
+        Assert.Equal((shownFist.Id, "L FIST"), (shownModel.SelectedUnit!.ShownEmptyHandItem!.Value.ItemId, BattlescapeClient.HandLines(shownModel.SelectedUnit).Left));
+    }
+
+    [Fact]
+    public void TheEmptyHandsItemFollowsTheTypeOrderAndTheHandLinesPlaceItAndCarryTheReactionMarkers()
+    {
+        var psi = "- type: PSI\n    battleType: 9\n    clipSize: 1\n    weight: 1\n    specialUseEmptyHand: true\n    specialUseEmptyHandShow: true\n  ";
+        var (arena, _, _) = BattleShootingTests.Load(more: FistRules(show: true, extraItems: psi));
+        // The psi amp is added first, but the melee fist comes before it in the type order.
+        var psiAmp = AddFist(arena, "PSI");
+        var fist = AddFist(arena);
+        var (context, _, model) = ClientOf(arena);
+        Assert.Equal((fist.Id, fist.Id), (model.SelectedUnit!.EmptyHandItem!.Value.ItemId, model.SelectedUnit.ShownEmptyHandItem!.Value.ItemId));
+        // The right hand holds the gun, so the empty left hand shows it; the right line shows the gun.
+        var (right, left) = BattlescapeClient.HandLines(model.SelectedUnit);
+        Assert.Equal(("L FIST", false), (left, right.Contains("FIST", StringComparison.Ordinal)));
+        // A preferred left hand is starred and a disabled right hand has an exclamation mark.
+        context.Screens.HandleInput(Panel(85, 3));
+        context.Screens.HandleInput(Panel(73, 3) with { Modifiers = InputKeyModifiers.LeftControl });
+        (right, left) = BattlescapeClient.HandLines(model.SelectedUnit!);
+        Assert.Equal(("L* FIST", true), (left, right.StartsWith("R!", StringComparison.Ordinal)));
+        // Without the melee fist the psi amp takes its place.
+        arena.Soldier.SpecialWeaponIds.Remove(fist.Id);
+        arena.Battle.MarkChanged();
+        model.Refresh();
+        Assert.Equal((psiAmp.Id, "L* PSI"), (model.SelectedUnit!.ShownEmptyHandItem!.Value.ItemId, BattlescapeClient.HandLines(model.SelectedUnit).Left));
+    }
+
+    [Fact]
+    public void TheRightClickOnAHandTogglesItForReactionsAndTheMiddleClickIsRefusedByName()
     {
         var (arena, _, _) = BattleShootingTests.Load();
         var (context, screen, model) = ClientOf(arena);
         arena.Soldier.ActiveHand = "STR_LEFT_HAND";
         context.Screens.HandleInput(Panel(73, 3));
-        Assert.Equal((BattleViewModel.HandReactionCode, "STR_RIGHT_HAND"), (screen.Message, arena.Soldier.ActiveHand));
+        Assert.Equal(("", "STR_RIGHT_HAND", "STR_RIGHT_HAND"), (screen.Message, arena.Soldier.ActiveHand, arena.Soldier.PreferredHandForReactions));
+        Assert.Equal("STR_RIGHT_HAND", model.SelectedUnit!.PreferredHandForReactions);
         Assert.Null(model.Menu);
-        context.Screens.HandleInput(Panel(85, 3));
-        Assert.Equal("STR_LEFT_HAND", arena.Soldier.ActiveHand);
+        // Again: the preferred hand is dropped. The left hand with Ctrl: its reactions are disabled, and again: enabled; the preferred flag is dropped only by its own hand.
+        context.Screens.HandleInput(Panel(73, 3));
+        Assert.Equal("", arena.Soldier.PreferredHandForReactions);
+        context.Screens.HandleInput(Panel(73, 3));
+        context.Screens.HandleInput(Panel(85, 3) with { Modifiers = InputKeyModifiers.LeftControl });
+        Assert.Equal(("STR_RIGHT_HAND", true, "STR_LEFT_HAND"), (arena.Soldier.PreferredHandForReactions, arena.Soldier.ReactionsDisabledForLeftHand, arena.Soldier.ActiveHand));
+        Assert.True(model.SelectedUnit!.LeftHandDisabledForReactions);
+        context.Screens.HandleInput(Panel(73, 3) with { Modifiers = InputKeyModifiers.LeftControl });
+        Assert.Equal(("", true, true), (arena.Soldier.PreferredHandForReactions, arena.Soldier.ReactionsDisabledForLeftHand, arena.Soldier.ReactionsDisabledForRightHand));
+        context.Screens.HandleInput(Panel(85, 3) with { Modifiers = InputKeyModifiers.LeftControl });
+        // A plain right click on a disabled hand enables it again and prefers it.
+        context.Screens.HandleInput(Panel(73, 3));
+        Assert.Equal(("STR_RIGHT_HAND", false, false), (arena.Soldier.PreferredHandForReactions, arena.Soldier.ReactionsDisabledForLeftHand, arena.Soldier.ReactionsDisabledForRightHand));
+        // The command refuses a unit that is not the side's and the middle click opens no menu.
+        Assert.Equal("battle.selection-unit-unknown", Blocked(arena.Campaign.Execute(new ToggleHandForReactions(arena.Alien.Id, true, false))).Code);
         context.Screens.HandleInput(Panel(73, 2));
-        Assert.Equal(BattleViewModel.UfopaediaCode, screen.Message);
-        Assert.Null(model.Menu);
+        Assert.Equal((BattleViewModel.UfopaediaCode, true), (screen.Message, model.Menu is null));
+        // The event carries the unit's flags in the order the fields name them: the left hand disabled by Ctrl, the preferred right hand kept.
+        var runtime = new BattleRuntime(arena.Battle, arena.Rules, new ScriptedDraws(0), null, static (_, _) => null);
+        var toggled = Assert.IsType<HandForReactionsChanged>(Assert.Single(runtime.Execute(new ToggleHandForReactions(arena.Soldier.Id, false, true)).Events));
+        Assert.Equal((arena.Soldier.Id, "STR_RIGHT_HAND", true, false), (toggled.UnitId, toggled.PreferredHand, toggled.LeftDisabled, toggled.RightDisabled));
+    }
+
+    [Fact]
+    public void AWalkThatDrawsAReactionIsReplayedWithItsStopBeforeTheReactorsShot()
+    {
+        var arena = BattleWalkTests.Make();
+        BattleTestSupport.GunFor(arena.Battle, arena.Alien);
+        arena.Soldier.Stats = arena.Soldier.Stats with { Health = 1000 };
+        arena.Soldier.Health = 1000;
+        var (context, screen, _) = ClientOf(arena);
+        context.Screens.HandleInput(ClickTile(screen, 12, 10));
+        var lines = Lines(screen);
+        var stop = Array.FindIndex(lines, static line => line.StartsWith("Walk ends: ReactionFire after 1 steps", StringComparison.Ordinal));
+        var shot = Array.FindIndex(lines, line => line.StartsWith($"Unit {arena.Alien.Id} fires", StringComparison.Ordinal));
+        Assert.True(stop >= 0 && shot > stop, string.Join(" | ", lines));
+        Play(screen);
+        Assert.Equal(BattleWalkTests.At(11, 10, 0), arena.Soldier.Position);
     }
 
     [Fact]

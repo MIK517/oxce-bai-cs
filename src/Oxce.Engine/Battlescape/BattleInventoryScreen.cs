@@ -9,7 +9,8 @@ namespace Oxce.Engine.Battlescape;
 /// stands in for the mouse: Up and Down pick an item, Left and Right a section, Enter drops the item in the first place of that section
 /// the rules accept (<c>CheckInventoryMove</c>), G is the Ctrl click, Tab and Shift-Tab the next and previous soldier and Escape closes
 /// (before the first turn that is <see cref="StartFirstTurn"/>, which saves the equipment layout). The buttons of features not ported yet
-/// send <see cref="UseInventoryFeature"/>, so their refusal comes from the rules.
+/// send <see cref="UseInventoryFeature"/>, so their refusal comes from the rules. Shift is the reference's Shift click: with Enter it is the quick swap of a loaded weapon
+/// (<c>MoveInventoryItem.Shift</c>) and with the unload button the quick unload; <c>+</c> and <c>-</c> choose the turns of a settable fuse (<c>PrimeGrenadeState</c>) that the prime button sends.
 /// </summary>
 public sealed class BattleInventoryScreen : BattleScreenBase, IRevealedScreen
 {
@@ -36,6 +37,9 @@ public sealed class BattleInventoryScreen : BattleScreenBase, IRevealedScreen
     private BattleInventoryView? _view;
     private int _item;
     private int _slot;
+
+    /// <summary>The turns the prime button sets a settable fuse to (0 to 23, <c>PrimeGrenadeState</c>'s chooser).</summary>
+    public int PrimeTurns { get; private set; }
 
     public BattleInventoryScreen(BattleUiContext context, bool preBattle) : base(context)
     {
@@ -104,7 +108,13 @@ public sealed class BattleInventoryScreen : BattleScreenBase, IRevealedScreen
             case KeyRight: _slot = Math.Min(_slot + 1, Math.Max(0, (_view?.Slots.Count ?? 1) - 1)); return true;
             case KeyLeft: _slot = Math.Max(_slot - 1, 0); return true;
             case KeyEnter:
-                Drop();
+                Drop(Shift(input));
+                return true;
+            case '+' or '=':
+                PrimeTurns = Math.Min(MaxPrimeTurns, PrimeTurns + 1);
+                return true;
+            case '-':
+                PrimeTurns = Math.Max(0, PrimeTurns - 1);
                 return true;
             case 'g':
                 if (CurrentItem is { } auto && _view is { } view)
@@ -114,20 +124,22 @@ public sealed class BattleInventoryScreen : BattleScreenBase, IRevealedScreen
         foreach (var (featureKey, feature, _) in Features)
             if (key == featureKey && _view is { } open)
             {
-                Run(new UseInventoryFeature(open.UnitId, CurrentItem?.ItemId ?? -1, feature));
+                Run(new UseInventoryFeature(open.UnitId, CurrentItem?.ItemId ?? -1, feature, Shift(input), PrimeTurns));
                 return true;
             }
         return false;
     }
 
-    private void Drop()
+    private const int MaxPrimeTurns = 23;
+
+    private void Drop(bool shift)
     {
         if (_view is not { } view || CurrentItem is not { } item || CurrentSlot is not { } slot) return;
         IReadOnlyList<BattleInventoryCell> cells = slot.Cells.Count == 0 ? [new BattleInventoryCell(0, 0)] : slot.Cells;
         foreach (var cell in cells)
             if (Context.Inventory.CheckInventoryMove(Context.Viewer, view.UnitId, item.ItemId, slot.Id, cell.X, cell.Y) is null)
             {
-                Run(new MoveInventoryItem(view.UnitId, item.ItemId, slot.Id, cell.X, cell.Y));
+                Run(new MoveInventoryItem(view.UnitId, item.ItemId, slot.Id, cell.X, cell.Y, shift));
                 return;
             }
         // No place accepts it: the rules' reason for the first cell is the one shown.
@@ -194,8 +206,8 @@ public sealed class BattleInventoryScreen : BattleScreenBase, IRevealedScreen
             var place = view.Ground.Any(ground => ground.ItemId == item.ItemId) ? "ground" : item.Slot;
             Text($"{Context.Localize(item.ItemType)}  {place} {item.SlotX},{item.SlotY}{(item.Fixed ? " fixed" : "")}", 16, y);
         }
-        Text("Enter: drop  G: auto  Tab: next soldier  Esc: close", 16, 360);
-        Text(string.Join("  ", Features.Select(static feature => feature.Label)), 16, 372);
+        Text("Enter: drop (Shift: swap)  G: auto  Tab: next soldier  Esc: close", 16, 360);
+        Text(string.Join("  ", Features.Select(feature => feature.Feature == InventoryFeature.Prime ? $"{feature.Label} (fuse {PrimeTurns}, +/-)" : feature.Label)), 16, 372);
         if (Message.Length != 0) Text(Message, 16, 388, BattleUiContext.Color.Orange);
     }
 }

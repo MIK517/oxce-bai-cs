@@ -276,7 +276,12 @@ internal sealed partial class BattleState
         var burning = indicated.Where(static other => other.Fire > 0).Select(static other => other.Id).ToArray();
         return new BattleUnitInfo(unit.Id, unit.SoldierId, unit.UnitType, unit.TimeUnits, unit.Stats.TimeUnits, unit.Energy, unit.Stats.Stamina,
             unit.Health, unit.Stats.Health, unit.StunLevel, unit.Morale, unit.Mana, unit.Stats.Mana, unit.Kneeled,
-            Hand(right: true), Hand(right: false), visible, wounded, burning, unit.FatalWounds.Sum());
+            Hand(right: true), Hand(right: false), visible, wounded, burning, unit.FatalWounds.Sum(),
+            SpecialIconWeapon(unit) is { } icon ? new BattleTileItemView(icon.Id, icon.ItemType) : null,
+            EmptyHandSpecialWeapon(unit) is { } empty ? new BattleTileItemView(empty.Id, empty.ItemType) : null,
+            SpecialWeapons(unit).Select(static special => special.Id).ToArray(),
+            unit.PreferredHandForReactions, unit.ReactionsDisabledForLeftHand, unit.ReactionsDisabledForRightHand,
+            EmptyHandSpecialWeapon(unit, shown: true) is { } shown ? new BattleTileItemView(shown.Id, shown.ItemType) : null, HasSkills(unit));
     }
 
     /// <summary>

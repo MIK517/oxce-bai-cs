@@ -24,7 +24,6 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
     public static readonly IReadOnlyList<(char Key, string Code, string Owner)> LaterButtons =
     [
         ('p', "battle.psi-unsupported", "Phase 7 branch 6"),
-        ('y', "battle.special-unsupported", "Phase 7 branch 5 S10 second part: needs the item rule's specialIconSprite"),
         ('j', "battle.skills-unsupported", "Phase 7 branch 6"),
         ('z', "battle.zero-time-units-unsupported", "Phase 7 branch 6"),
         ('e', "battle.end-turn-unsupported", "Phase 7 branch 6"),
@@ -46,12 +45,12 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
     public const string IndicatorButtonsCode = "battle.wounded-indicators-unsupported (Phase 8)";
 
     /// <summary>The hand buttons (<c>btnLeftHandItemClick</c>, <c>btnRightHandItemClick</c>), the launch button, the reserve cycle and the kneel reserve; F1 to F4 reserve none, snap, aimed and auto.</summary>
-    public const char LeftHandKey = 'q', RightHandKey = 't', LaunchKey = 'n', ReserveKey = 'v', ReserveKneelKey = 'b';
+    public const char LeftHandKey = 'q', RightHandKey = 't', SpecialKey = 'y', LaunchKey = 'n', ReserveKey = 'v', ReserveKneelKey = 'b';
 
     private const uint F1 = 0x4000003a;
 
     /// <summary>The panel's lines: the hands are buttons, the menu or the actions list follow them, the aim line and the reserve buttons come below.</summary>
-    private const int RightHandY = 70, LeftHandY = 82, MenuY = 110, MenuLineHeight = 12, AimY = 272, ReserveY = 284, ReserveWidth = 20, ReserveHeight = 12;
+    private const int RightHandY = 70, LeftHandY = 82, MenuY = 110, MenuLineHeight = 12, AimY = 272, ReserveY = 284, ReserveWidth = 20, ReserveHeight = 12, SpecialX = MapWidth + 8 + 5 * (ReserveWidth + 2);
 
     /// <summary>The visible-unit buttons (<c>VISIBLE_MAX</c>), drawn in rows in the panel; the first ten have the keys 1 to 9 and 0.</summary>
     public const int VisibleMax = 10, VisibleKeys = 10;
@@ -160,6 +159,7 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
         switch (key)
         {
             case LeftHandKey or RightHandKey: HandButton(key == RightHandKey, 1); return true;
+            case SpecialKey: SpecialButton(false); return true;
             case LaunchKey: Attacked(Model.Launch()); return true;
             case ReserveKey: Report(Model.Reserve(NextReserve(Model.Selection?.TimeUnitReserve ?? BattleReserveKind.None))); return true;
             case 'b' when (input.Modifiers & InputKeyModifiers.Control) != 0: Message = BriefingAgainCode; return true;
@@ -223,9 +223,15 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
     }
 
     /// <summary>A hand button: the active hand is set and the menu opens, or the click is refused by name (<paramref name="button"/> 1 left, 2 middle, 3 right).</summary>
-    private void HandButton(bool rightHand, int button)
+    private void HandButton(bool rightHand, int button, bool ctrl = false)
     {
-        if (!Model.OpenMenu(rightHand, button) || Model.Message.Length != 0) Message = Model.Message;
+        if (!Model.OpenMenu(rightHand, button, ctrl) || Model.Message.Length != 0) Message = Model.Message;
+    }
+
+    /// <summary>The special-weapon button (key <see cref="SpecialKey"/>): the menu of the unit's special icon weapon.</summary>
+    private void SpecialButton(bool middle)
+    {
+        if (!Model.OpenSpecialMenu(middle) || Model.Message.Length != 0) Message = Model.Message;
     }
 
     /// <summary>After an attack, priming or launch: its events are replayed, or its refusal shown.</summary>
@@ -285,7 +291,12 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
         }
         if (input.PointerButton is 1 or 2 or 3 && HandAt(input) is { } rightHand)
         {
-            HandButton(rightHand, (int)input.PointerButton);
+            HandButton(rightHand, (int)input.PointerButton, (input.Modifiers & InputKeyModifiers.Control) != 0);
+            return true;
+        }
+        if (input.PointerButton is 1 or 2 && SpecialButtonAt(input))
+        {
+            SpecialButton(input.PointerButton == 2);
             return true;
         }
         if (Model.Aiming is { } aiming && TileAt(input) is var (tx, ty))
@@ -346,6 +357,11 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
         if (input.Y >= RightHandY && input.Y < RightHandY + 12) return true;
         return input.Y >= LeftHandY && input.Y < LeftHandY + 12 ? false : null;
     }
+
+    /// <summary>The special-weapon button, drawn after the reserve buttons: only a unit with a special icon weapon of a usable type (or a soldier with skills, whose button falls back on the skills menu) shows it (<c>BattleUnitInfo.SpecialButtonShown</c>).</summary>
+    private bool SpecialButtonAt(in GameInputEvent input) =>
+        Model.SelectedUnit is { SpecialButtonShown: true } &&
+        input.X >= SpecialX && input.X < SpecialX + ReserveWidth && input.Y >= ReserveY && input.Y < ReserveY + ReserveHeight;
 
     /// <summary>The reserve button under the pointer: 0 to 3 for none, snap, aimed and auto, 4 for kneeling.</summary>
     private static int? ReserveButtonAt(in GameInputEvent input)
@@ -538,9 +554,10 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
             Text($"HP {unit.Health}/{unit.MaxHealth} W {unit.FatalWounds} Mo {unit.Morale} St {unit.Stun}", x, y,
                 unit.FatalWounds > 0 ? BattleUiContext.Color.Orange : BattleUiContext.Color.White);
             y += 12;
-            Text($"R {unit.RightHand?.ItemType ?? "-"}", x, y);
+            var (rightLine, leftLine) = HandLines(unit);
+            Text(rightLine, x, y);
             y += 12;
-            Text($"L {unit.LeftHand?.ItemType ?? "-"}", x, y);
+            Text(leftLine, x, y);
             y += 12;
             Text($"Seen {unit.VisibleUnitIds.Count}  Hurt {unit.WoundedUnitIds.Count}", x, y);
             y += 16;
@@ -603,6 +620,19 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
             reason.Length == 0 ? BattleUiContext.Color.Green : BattleUiContext.Color.Orange);
     }
 
+    /// <summary>
+    /// The panel's two hand lines (<c>drawHandsItems</c>): each names its item and carries the reaction marker; an empty hand shows the special item that is shown in an empty hand, in the left
+    /// hand when it is empty and else in the right one.
+    /// </summary>
+    public static (string Right, string Left) HandLines(BattleUnitInfo unit) =>
+        ($"R{HandFlag(unit, right: true)} {unit.RightHand?.ItemType ?? (unit.LeftHand is not null ? unit.ShownEmptyHandItem?.ItemType : null) ?? "-"}",
+         $"L{HandFlag(unit, right: false)} {unit.LeftHand?.ItemType ?? unit.ShownEmptyHandItem?.ItemType ?? "-"}");
+
+    /// <summary>A hand's marker for reactions (<c>drawItem</c>'s preferred and disabled flags): * preferred, ! disabled.</summary>
+    private static string HandFlag(BattleUnitInfo unit, bool right) =>
+        (right ? unit.RightHandDisabledForReactions : unit.LeftHandDisabledForReactions) ? "!" :
+        unit.PreferredHandForReactions == (right ? "STR_RIGHT_HAND" : "STR_LEFT_HAND") ? "*" : "";
+
     /// <summary>The reserve buttons (<c>_btnReserveNone</c> and the others): none, snap, aimed, auto and kneeling, the one in force marked.</summary>
     private void DrawReserve(int x)
     {
@@ -614,6 +644,11 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
             var bx = x + index * (ReserveWidth + 2);
             Frame.FillRectangle(bx, ReserveY, ReserveWidth, ReserveHeight, on ? BattleUiContext.Color.Xcom : BattleUiContext.Color.Frame);
             Text(labels[index], bx + 7, ReserveY + 2);
+        }
+        if (Model.SelectedUnit is { SpecialButtonShown: true })
+        {
+            Frame.FillRectangle(SpecialX, ReserveY, ReserveWidth, ReserveHeight, BattleUiContext.Color.Frame);
+            Text("Y", SpecialX + 7, ReserveY + 2);
         }
     }
 

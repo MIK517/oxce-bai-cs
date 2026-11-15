@@ -267,6 +267,7 @@ public sealed class RuntimeBattleEquipment
             LandOnly = values.Boolean("landOnly"),
             SpecialUseEmptyHand = values.Boolean("specialUseEmptyHand"),
             SpecialUseEmptyHandShow = values.Boolean("specialUseEmptyHandShow"),
+            SpecialIconSprite = rule.ResourceIndexes["specialIconSprite"].Index,
             IsFireExtinguisher = values.Boolean("isFireExtinguisher"),
             ConvertToCivilian = values.Boolean("convertToCivilian"),
             TargetMatrix = values.GetInteger("targetMatrix"),

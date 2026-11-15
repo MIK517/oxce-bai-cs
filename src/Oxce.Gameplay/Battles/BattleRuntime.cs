@@ -170,6 +170,8 @@ internal sealed class BattleRuntime
         Register<ToggleKneelReserve>(command => Reserve(command.UnitId, null));
         Register<SetActiveHand>(command => State.SetActiveHand(command.UnitId, command.RightHand) is { } refusal
             ? Blocked(refusal) : new CampaignCommandResult([new ActiveHandChanged(command.UnitId, command.RightHand)]));
+        Register<ToggleHandForReactions>(command => State.ToggleHandForReactions(command.UnitId, command.RightHand, command.Ctrl, out var unit) is { } refusal
+            ? Blocked(refusal) : new CampaignCommandResult([new HandForReactionsChanged(command.UnitId, unit!.PreferredHandForReactions, unit.ReactionsDisabledForLeftHand, unit.ReactionsDisabledForRightHand)]));
         Register<WalkUnit>(command => RunOnTrialCopy(battle => battle.Walk(command.UnitId, command.Target, command.Move, command.IgnoreSpottedEnemies)));
         Register<MoveUnitUpDown>(command => RunOnTrialCopy(battle => battle.MoveUpDown(command.UnitId, command.Up)));
         Register<Attack>(Attack);

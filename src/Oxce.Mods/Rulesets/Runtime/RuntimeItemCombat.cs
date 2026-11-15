@@ -86,6 +86,9 @@ public sealed record RuntimeItemCombat
     public bool LandOnly { get; init; }
     public bool SpecialUseEmptyHand { get; init; }
     public bool SpecialUseEmptyHandShow { get; init; }
+
+    /// <summary>RuleItem::getSpecialIconSprite (<c>specialIconSprite</c>, -1 for none): a special weapon with one has the battlescape's special-weapon button.</summary>
+    public int SpecialIconSprite { get; init; } = -1;
     public bool IsFireExtinguisher { get; init; }
 
     /// <summary>RuleItem::isConvertedToCivilian (<c>convertToCivilian</c>) and the target matrix (<c>isTargetAllowed</c>: bit 1 own side, 2 hostile, 4 neutral).</summary>

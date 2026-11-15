@@ -113,6 +113,10 @@ public sealed record BattleLevelView(int Level, int Width, int Length, int Level
 /// <summary>
 /// <c>BattlescapeState::updateSoldierInfo</c>: a viewer's own unit with its bars, hands, the hostile units it sees and its wounded (and burning) units. The cap on indicators (<c>VISIBLE_MAX</c>) is the screen's.
 /// <see cref="FatalWounds"/> is the unit's wounds over every body part (the panel's wound indicator). <see cref="VisibleUnitIds"/> lists the units the unit itself sees, then the live hostile units the viewer's side has spotted.
+/// <see cref="SpecialIconItem"/> is <c>getSpecialIconWeapon</c> (the special-weapon button's item), <see cref="EmptyHandItem"/> the special weapon an empty hand's button opens
+/// (<c>btnRightHandItemClick</c>'s loop over the battle types, the weapon must use an empty hand), <see cref="SpecialWeaponIds"/> every special weapon of the unit, and the last three the
+/// hands' reaction flags (<c>isRightHandPreferredForReactions</c>, <c>isLeftHandDisabledForReactions</c>). <see cref="SpecialIconItem"/> is only set for a type <c>updateUiButton</c> shows (not none, ammo, grenade, proximity grenade, flare or corpse),
+/// <see cref="ShownEmptyHandItem"/> is the empty hand's item <c>drawHandsItems</c> draws (it also needs <c>specialUseEmptyHandShow</c>), and <see cref="HasSkills"/> says the soldier's rules list a skill (branch 6's menu).
 /// </summary>
 public sealed record BattleUnitInfo(
     int UnitId,
@@ -134,7 +138,19 @@ public sealed record BattleUnitInfo(
     IReadOnlyList<int> VisibleUnitIds,
     IReadOnlyList<int> WoundedUnitIds,
     IReadOnlyList<int> BurningUnitIds,
-    int FatalWounds = 0);
+    int FatalWounds = 0,
+    BattleTileItemView? SpecialIconItem = null,
+    BattleTileItemView? EmptyHandItem = null,
+    IReadOnlyList<int>? SpecialWeaponIds = null,
+    string PreferredHandForReactions = "",
+    bool LeftHandDisabledForReactions = false,
+    bool RightHandDisabledForReactions = false,
+    BattleTileItemView? ShownEmptyHandItem = null,
+    bool HasSkills = false)
+{
+    /// <summary><c>updateUiButton</c>: the special-weapon button shows for an icon weapon of a usable type, or for a unit with the skills menu (the reference's separate skills button, which shares the key).</summary>
+    public bool SpecialButtonShown => SpecialIconItem is not null || HasSkills;
+}
 
 /// <summary>How a previewed step stands against the unit's time units, energy and reserve (<c>Pathfinding::refreshPath</c>'s marker colours).</summary>
 public enum BattlePathMarker

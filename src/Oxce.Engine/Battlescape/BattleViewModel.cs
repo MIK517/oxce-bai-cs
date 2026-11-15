@@ -87,9 +87,8 @@ public sealed class BattleViewModel
     private int _maxWaypoints, _sprayMax;
     private bool _spraying;
 
-    /// <summary>The hand button's refusals: an empty hand (the special weapon of <c>getSpecialWeapon</c> is the next part), the right click (<c>toggleRightHandForReactions</c>) and the middle click (Ufopaedia).</summary>
-    public const string SpecialWeaponCode = "battle.special-unsupported (Phase 7 branch 5 S10 second part)";
-    public const string HandReactionCode = "battle.reaction-hand-unsupported (Phase 7 branch 5 S10 second part)";
+    /// <summary>The hand and special buttons' middle click (Ufopaedia), refused by owner, and the special button of a unit with no special weapon (the reference's hack opens the skills menu, branch 6).</summary>
+    public const string SkillsCode = "battle.skills-unsupported (Phase 7 branch 6)";
     public const string UfopaediaCode = "battle.ufopaedia-unsupported (Phase 8)";
 
     /// <summary>The events of the last command that ran (empty after a refusal): what the screen replays.</summary>
@@ -131,7 +130,7 @@ public sealed class BattleViewModel
         _previewDirty = false;
         // An aim belongs to the unit and weapon it was opened for: another selection, or a weapon that left the hand, ends it.
         if ((Aiming?.ItemId ?? Menu?.ItemId) is { } weapon && (SelectedUnit is null || SelectedUnit.UnitId != (Menu?.UnitId ?? SelectedUnit.UnitId) ||
-                SelectedUnit.RightHand?.ItemId != weapon && SelectedUnit.LeftHand?.ItemId != weapon)) CancelAim();
+                SelectedUnit.RightHand?.ItemId != weapon && SelectedUnit.LeftHand?.ItemId != weapon && SelectedUnit.SpecialWeaponIds?.Contains(weapon) != true)) CancelAim();
         Aim = Aiming is { Kind: not (BattleAimKind.Launch or BattleAimKind.Hit) } aiming && _aimTile is var (ax, ay, force) && _selected is { } shooter
             ? _view.QueryAim(Viewer, shooter, aiming.ItemId, aiming.Kind, new BattlePosition(ax, ay, Camera.ViewLevel), force)
             : null;
@@ -140,10 +139,11 @@ public sealed class BattleViewModel
 
     /// <summary>
     /// The hand buttons (<c>btnLeftHandItemClick</c>, <c>btnRightHandItemClick</c>): an aim in progress is cancelled instead (the touch concession; a launch loses its last waypoint); else
-    /// the clicked hand becomes the unit's active hand, and the left click opens the action menu of the item in it. The right click toggles the hand for reactions and the middle one
-    /// opens the item's Ufopaedia page: both are refused by name, as is an empty hand (its special weapon is the next part). <paramref name="button"/> is 1, 2 or 3.
+    /// the clicked hand becomes the unit's active hand, and the left click opens the action menu of the item in it (an empty hand opens the menu of the special weapon that uses an empty hand,
+    /// and nothing when there is none). The right click toggles the hand for reactions (<paramref name="ctrl"/> disables its reactions instead) and the middle one opens the item's Ufopaedia page, which
+    /// is refused by name. <paramref name="button"/> is 1, 2 or 3. True when the menu opened or the reaction hand was toggled.
     /// </summary>
-    public bool OpenMenu(bool rightHand, int button = 1)
+    public bool OpenMenu(bool rightHand, int button = 1, bool ctrl = false)
     {
         Refresh();
         Message = "";
@@ -161,15 +161,43 @@ public sealed class BattleViewModel
         Refresh();
         if (button == 3)
         {
-            Message = HandReactionCode;
-            return false;
+            var toggled = _commands.Execute(new ToggleHandForReactions(unit.UnitId, rightHand, ctrl));
+            Message = toggled.Events.OfType<CampaignActionBlocked>().FirstOrDefault()?.Code ?? "";
+            _gate.Reset();
+            Refresh();
+            return Message.Length == 0;
         }
-        if ((rightHand ? unit.RightHand : unit.LeftHand) is not { } item)
+        return OpenItemMenu(unit, (rightHand ? unit.RightHand : unit.LeftHand) ?? unit.EmptyHandItem, button == 2);
+    }
+
+    /// <summary>
+    /// The special-weapon button (<c>btnSpecialClick</c>): an aim in progress is cancelled instead (a launch loses its last waypoint, as with the hand buttons); an open menu is closed first, as the hand buttons do; else the menu of the unit's special icon weapon opens (the middle click is its Ufopaedia page).
+    /// A unit with none does nothing, but for the skills menu the reference's button falls back on, which is branch 6's and refused by name for a soldier whose rules list a skill.
+    /// </summary>
+    public bool OpenSpecialMenu(bool middle = false)
+    {
+        Refresh();
+        Message = "";
+        if (Aiming is not null)
         {
-            Message = SpecialWeaponCode;
+            CancelLast();
             return false;
         }
-        if (button == 2)
+        CancelAim();
+        if (SelectedUnit is not { } unit) return false;
+        if (unit.SpecialIconItem is null)
+        {
+            if (unit.HasSkills) Message = SkillsCode;
+            return false;
+        }
+        return OpenItemMenu(unit, unit.SpecialIconItem, middle);
+    }
+
+    /// <summary><c>handleItemClick</c>: nothing for no item, the Ufopaedia refusal for a middle click, else the item's action menu.</summary>
+    private bool OpenItemMenu(BattleUnitInfo unit, BattleTileItemView? shown, bool middle)
+    {
+        if (shown is not { } item) return false;
+        if (middle)
         {
             Message = UfopaediaCode;
             return false;

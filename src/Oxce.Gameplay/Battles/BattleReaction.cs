@@ -21,7 +21,7 @@ internal sealed class BattleReaction(BattleUnit unit, double score)
 /// </summary>
 internal sealed partial class BattleState
 {
-    private const int BattleTypePsiAmp = 9;
+    private const int BattleTypePsiAmp = 9, BattleTypeMedikit = 6, BattleTypeScanner = 7, BattleTypeMindProbe = 8;
 
     /// <summary>BattleUnit::getSpecialWeapon(type): the first special weapon of the unit of that battle type.</summary>
     private BattleItem? SpecialWeapon(BattleUnit unit, int battleType) =>
