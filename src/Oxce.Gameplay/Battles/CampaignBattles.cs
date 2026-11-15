@@ -113,9 +113,8 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
             if (command is not (AdvanceCampaignTime or IBattleCommand)) return Blocked(BattleInProgress);
             if (_battle is not { Phase: BattlePhase.InProgress } running) return null;
             // Sight runs the armors' visibility scripts, which battle scripts (branch 8) will; until then such a battle's commands are refused.
-            if (command is IBattleCommand && running.VisibilityScriptRefusal(campaign.Content) is { } visibility) return Blocked(visibility);
-            // The combat hooks and the stat bonuses written as code are branch 8's too.
-            if (command is IBattleCommand && running.CombatScriptRefusal(campaign.Content) is { } combat) return Blocked(combat);
+            // The combat hooks and the stat bonuses written as code are branch 8's too (checked after the visibility scripts).
+            if (command is IBattleCommand && running.ScriptRefusal(campaign.Content) is { } refusal) return Blocked(refusal);
             return null;
         });
         registry.Capture(snapshot => _battle is null ? snapshot : snapshot with { Battle = _battle.Capture() });

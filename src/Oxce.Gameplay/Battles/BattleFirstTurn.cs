@@ -340,12 +340,16 @@ internal sealed partial class BattleState
     /// The armor's <c>visibilityUnit</c> script (or a global event of that name) changes whether a unit is seen, in <c>TileEngine::visible</c>;
     /// battle scripts are branch 8's, so a battle whose units wear such an armor, or whose mods bind the event, stops.
     /// </summary>
-    internal CampaignReason? VisibilityScriptRefusal(RuntimeContent content)
+    internal CampaignReason? VisibilityScriptRefusal(RuntimeContent content) => VisibilityScriptRefusal(content, ReachableRules(content.RuntimeRules).Armors);
+
+    /// <summary><see cref="VisibilityScriptRefusal(RuntimeContent)"/> for the reachable armors the caller already computed.</summary>
+    internal static CampaignReason? VisibilityScriptRefusal(RuntimeContent content, HashSet<string> reachableArmors)
     {
         if (HasEventPlan(content, "visibilityUnit")) return BattleFlowReasons.VisibilityScriptUnsupported;
         // The armors of the units a command can create (a zombie's conversion, a spawn) are looked at as well (ReachableRules).
-        foreach (var armor in ReachableRules(content.RuntimeRules).Armors)
-            if (HasRuleScript(content, "armors", armor, "visibilityUnit")) return BattleFlowReasons.VisibilityScriptUnsupported;
+        foreach (var artifact in content.Scripts)
+            if (artifact.OwnerSection == "armors" && artifact.ParserName == "visibilityUnit" && reachableArmors.Contains(artifact.OwnerId))
+                return BattleFlowReasons.VisibilityScriptUnsupported;
         return null;
     }
 

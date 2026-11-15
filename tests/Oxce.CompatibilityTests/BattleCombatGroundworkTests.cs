@@ -457,6 +457,35 @@ public sealed class BattleCombatGroundworkTests
     }
 
     [Fact]
+    public void TheSpawnUnitOfAUnitInTheBattleBringsItsArmorsScriptsIn()
+    {
+        // The battle's aliens turn into VEHICLE_B when they die (their rule's spawnUnit, which the unit keeps); no item names that unit type.
+        const string FloatSuitText = "- type: FLOAT_SUIT\n    movementType: 3";
+        const string AlienText = "- type: ALIEN\n    armor: SMALL_VEHICLE_ARMOR";
+        static string Spawning(string parser) => Replaced(Replaced(Replaced(Rules, "- type: VEHICLE_B\n    armor: SMALL_VEHICLE_ARMOR", "- type: VEHICLE_B\n    armor: FLOAT_SUIT"),
+            FloatSuitText, FloatSuitText + "\n    scripts:\n      " + parser + ": |\n        return;\n"), AlienText, AlienText + "\n    spawnUnit: VEHICLE_B");
+        Assert.Equal("battle.combat-script-unsupported", Confirmed(Spawning("hitUnit")).Code);
+        Assert.Equal("battle.visibility-script-unsupported", Confirmed(Spawning("visibilityUnit")).Code);
+    }
+
+    [Fact]
+    public void AUnitACommandCanCreateIsCheckedInTheArmorTheEnvironmentTransformsItsOwnInto()
+    {
+        // UFO_SUITED's environment turns VEHICLE_ARMOR into FLOAT_SUIT here: the VEHICLE the gun spawns wears the scripted FLOAT_SUIT, never VEHICLE_ARMOR.
+        const string FloatSuitText = "- type: FLOAT_SUIT\n    movementType: 3";
+        var rules = Replaced(Replaced(Replaced(Rules, "armorTransformations: {ARMOR: SUIT}", "armorTransformations: {ARMOR: SUIT, VEHICLE_ARMOR: FLOAT_SUIT}"),
+            FloatSuitText, FloatSuitText + "\n    scripts:\n      hitUnit: |\n        return;\n"), GunText, GunText + "\n    spawnUnit: VEHICLE");
+        Assert.Equal("battle.combat-script-unsupported", Confirmed(rules).Code);
+        // The untransformed armor is not reachable: its hooks bring nothing in when the environment replaces it.
+        var untransformed = Replaced(Replaced(Rules, "armorTransformations: {ARMOR: SUIT}", "armorTransformations: {ARMOR: SUIT, VEHICLE_ARMOR: FLOAT_SUIT}"),
+            "- type: VEHICLE_ARMOR\n    size: 2", "- type: VEHICLE_ARMOR\n    size: 2\n    scripts:\n      hitUnit: |\n        return;\n");
+        var (campaign, _) = Requested(Replaced(untransformed, GunText, GunText + "\n    spawnUnit: VEHICLE"), "UFO_SUITED");
+        Started(campaign);
+        campaign.Execute(new BeginBriefing("T", "C"));
+        Assert.IsType<BriefingConfirmed>(Assert.Single(campaign.Execute(new ConfirmBriefing()).Events));
+    }
+
+    [Fact]
     public void AFirearmThatTakesAPsiAmplifierAsAmmunitionIsRefusedBeforeItsShotCanFaultTheBattle()
     {
         // ExplosionBState's psi attack is branch 6's; the refusal comes at the briefing and for every command, not in the middle of a shot.

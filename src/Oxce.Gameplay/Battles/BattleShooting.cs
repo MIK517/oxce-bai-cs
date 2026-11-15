@@ -1,3 +1,4 @@
+using Oxce.Core.Random;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Rulesets.Runtime;
 
@@ -296,7 +297,10 @@ internal sealed partial class BattleState
         /// <summary><c>targetFloor</c>: a launch leg whose waypoint is the tile it starts from aims at the floor.</summary>
         public bool TargetFloor { get; init; }
 
-        /// <summary>Whether the state changed the battle before it stopped (close quarters combat's result).</summary>
+        /// <summary>
+        /// Whether the state changed the battle before it stopped: close quarters combat drew from the battle's random source (a candidate reached the sneak up roll,
+        /// whatever the rolls gave), the spray's turn changed the unit's direction or turret direction, or a shot's deviation was drawn before it found nothing.
+        /// </summary>
         public bool Touched { get; private set; }
 
         /// <summary>BattleAction::result: why the shot did not start.</summary>
@@ -419,6 +423,8 @@ internal sealed partial class BattleState
                     // civilians don't inhibit the player, and the player doesn't inhibit civilians
                     _unit.Faction == BattleFaction.Player && candidate.Faction == BattleFaction.Neutral ||
                     _unit.Faction == BattleFaction.Neutral && candidate.Faction == BattleFaction.Player) continue;
+                // From here the random stream moves (the sneak up roll, then each target's melee check): a stop after it is a change, not a refusal.
+                Touched = true;
                 if (RandomChance.Percent(battle.Random, combat.CloseQuartersSneakUpGlobal))
                 {
                     if (_unit.Faction == BattleFaction.Hostile)
@@ -492,15 +498,24 @@ internal sealed partial class BattleState
                 }
 
                 // Turn at the end (to a potentially modified target position).
+                var facing = (_unit.Direction, _unit.DirectionTurret);
                 _unit.LookAt(targetPosition, _unit.TurretType != -1);
                 while (_unit.Status == BattleUnitStatus.Turning) _unit.Turn(_unit.TurretType != -1);
+                if ((_unit.Direction, _unit.DirectionTurret) != facing) Touched = true;
                 action.Waypoints.RemoveAt(action.Waypoints.Count - 1);
             }
 
             var projectile = new BattleProjectile(battle, battle.RequiredRules, action, _origin, _targetVoxel ?? default);
             // berserking units are half as accurate
             var accuracy = battle.FiringAccuracy(_unit, weapon, action.Type) / (action.PanicHandled ? 100.0 : 200.0);
-            if (action.Type == BattleActionType.Throw) return Throw(projectile, accuracy);
+            // The deviation's draws come before the result of some paths that then find nothing (a forced arcing shot): a stop after a draw is a change, not a refusal.
+            var drawn = (battle.Random as IStatefulRandomSource)?.State;
+            if (action.Type == BattleActionType.Throw)
+            {
+                var thrown = Throw(projectile, accuracy);
+                if (!thrown && (battle.Random as IStatefulRandomSource)?.State != drawn) Touched = true;
+                return thrown;
+            }
 
             BattleVoxelType impact;
             bool lineOfFire;
@@ -521,6 +536,7 @@ internal sealed partial class BattleState
             if (!lineOfFire)
             {
                 // no line of fire
+                if ((battle.Random as IStatefulRandomSource)?.State != drawn) Touched = true;
                 if (action.PanicHandled) action.Result = battle.ArcingShot(weapon, action.Type) ? "STR_NO_TRAJECTORY" : "STR_NO_LINE_OF_FIRE";
                 _unit.AbortTurn();
                 battle.PopState();

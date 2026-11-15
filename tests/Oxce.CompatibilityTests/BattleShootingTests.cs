@@ -366,6 +366,26 @@ public sealed class BattleShootingTests
         Assert.Equal((11, 2), (tired.Alien.TimeUnits, tired.Soldier.Direction));
     }
 
+    [Fact]
+    public void APassedCloseQuartersRollBeforeAShotWithNoLineOfFireStopsTheActionAsAChange()
+    {
+        // The neighbour stands behind the shooter, a wall blocks the target: the check's draws are made and passed, then the shot finds no line of fire.
+        var (arena, gun, _) = Load(global: CloseQuarters);
+        arena.Stand(arena.Alien, 9, 10, 2);
+        arena.Put(12, 10, 0, BattleTilePart.ObjectPart, Wall);
+        arena.See();
+        var draws = new ScriptedDraws(0);
+        var runtime = new BattleRuntime(arena.Battle, arena.Rules, draws, null);
+        var revision = runtime.Revision;
+        var result = runtime.Execute(new Attack(arena.Soldier.Id, gun.Id, BattleAimKind.AimedShot, Target: new BattlePosition(15, 10, 0)));
+        // The random stream moved, so the command is a result that stops the action, not a refusal.
+        Assert.NotEmpty(draws.Calls);
+        Assert.Equal([new UnitAttackStopped(arena.Soldier.Id, gun.Id, BattleAimKind.AimedShot, "STR_NO_LINE_OF_FIRE")], Events(result));
+        Assert.True(runtime.Revision > revision);
+        Assert.Null(runtime.Fault);
+        Assert.Equal((100, 60, 60, 2), (arena.Soldier.TimeUnits, arena.Alien.TimeUnits, arena.Alien.Energy, arena.Soldier.Direction));
+    }
+
     // ---- the end of the action ----
 
     [Fact]
@@ -918,6 +938,23 @@ public sealed class BattleShootingTests
         var (plain, plainGun, _) = Load(distance: 8);
         Assert.Equal("battle.attack-spray-not-offered", plain.Battle.ShootAction(BattleResearchGate.Everything, plain.Soldier.Id, plainGun.Id, BattleAimKind.AutoShot, default, false, two)!.Code);
         Assert.Equal((100, 12), (plain.Soldier.TimeUnits, plain.Battle.AmmoQuantityOf(plain.Battle.Items.First(item => item.Id == plainGun.AmmoSlots[0]))));
+    }
+
+    [Fact]
+    public void ASprayThatTurnedTheUnitAndFoundNoArcStopsTheActionAsAChange()
+    {
+        // The first waypoint is the shooter's own tile: the targeting turn does nothing, the spray's own turn looks south (the direction to one's own tile), and the
+        // arcing weapon finds no arc under the ceiling over the shooter.
+        var (arena, gun, clip) = Load(gun: Rifle + Spray + "\narcingShot: true", distance: 8);
+        arena.Put(10, 10, 1, BattleTilePart.Floor, Floor);
+        arena.See();
+        var runtime = RuntimeOf(arena);
+        var revision = runtime.Revision;
+        var result = runtime.Execute(new Attack(arena.Soldier.Id, gun.Id, BattleAimKind.AutoShot, SprayWaypoints: [new BattlePosition(10, 10, 0), new BattlePosition(12, 10, 0)]));
+        Assert.Equal([new UnitAttackStopped(arena.Soldier.Id, gun.Id, BattleAimKind.AutoShot, "STR_NO_TRAJECTORY")], Events(result));
+        Assert.True(runtime.Revision > revision);
+        Assert.Null(runtime.Fault);
+        Assert.Equal((4, 100, 12), (arena.Soldier.Direction, arena.Soldier.TimeUnits, clip.AmmoQuantity));
     }
 
     [Fact]

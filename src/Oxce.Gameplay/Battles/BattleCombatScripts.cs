@@ -35,11 +35,13 @@ internal sealed partial class BattleState
     private static readonly string[] ArmorBonusParsers = ["psiDefenceBonusStats", "meleeDodgeBonusStats"];
 
     /// <summary>
-    /// The armors and item types a command of the battle can bring into play, computed from the rules: those of the units that are not removed and of the
-    /// items held, and from each, transitively, what a command can create: an item's <c>spawnUnit</c>, <c>spawnItem</c> and <c>zombieUnit</c> (with the zombie
-    /// units by armor and by type), a unit type's <c>spawnUnit</c>, armor, built-in weapons, melee and psi weapons, an armor's corpse items, built-in, special and
-    /// self-destruct items, and a firearm's compatible ammunition. The scripts of a unit or an item that appears during a command run for it as for one that was there
-    /// (<c>ConvertUnit</c>, <c>SpawnNewUnit</c>, <c>SpawnNewItem</c>, the corpses), so the checks that refuse a script look at all of them.
+    /// The armors and item types a command of the battle can bring into play, computed from the rules: the armors and spawn units (<c>BattleUnit::_spawnUnit</c>,
+    /// set from the unit rule, a save or an infecting hit) of the units that are not removed and the items held, and from each, transitively, what a command can
+    /// create: an item's <c>spawnUnit</c>, <c>spawnItem</c> and <c>zombieUnit</c> (with the zombie units by armor and by type), a unit type's <c>spawnUnit</c>,
+    /// built-in weapons, melee and psi weapons and the armor a unit created from it wears here (<see cref="UnitRule"/>: the environment's transformation of the
+    /// rule's armor, if any), an armor's corpse items, built-in, special and self-destruct items, and a firearm's compatible ammunition. The scripts of a unit
+    /// or an item that appears during a command run for it as for one that was there (<c>ConvertUnit</c>, <c>SpawnNewUnit</c>, <c>SpawnNewItem</c>, the
+    /// corpses), so the checks that refuse a script look at all of them.
     /// </summary>
     internal (HashSet<string> Armors, HashSet<string> Items) ReachableRules(RuntimeRuleCatalog rules)
     {
@@ -61,7 +63,11 @@ internal sealed partial class BattleState
         }
 
         foreach (var unit in _units)
-            if (unit.Status != BattleUnitStatus.IgnoreMe) Armor(unit.ArmorId);
+        {
+            if (unit.Status == BattleUnitStatus.IgnoreMe) continue;
+            Armor(unit.ArmorId);
+            UnitType(unit.SpawnUnit);
+        }
         foreach (var item in _items) Item(item.ItemType);
         while (pending.Count != 0)
         {
@@ -99,8 +105,14 @@ internal sealed partial class BattleState
                         foreach (var set in unitRule.WeightedBuiltInWeaponSets)
                             foreach (var weapon in set.Keys) Item(weapon);
                     }
+                    // Every unit a command creates from a unit type goes through UnitRule, which puts it in the environment's transformation of the rule's armor
+                    // (a missing target is UnitRule's error when the unit is created; the gate skips it).
                     if (rules.Units.TryGet(id, out var unitHandle) && rules.Units[unitHandle].Value.Armor is { } unitArmor)
-                        Armor(rules.Armors.GetExternalId(unitArmor));
+                    {
+                        var worn = rules.Armors.GetExternalId(unitArmor);
+                        if (ArmorTransformations is null || !ArmorTransformations.TryGetValue(worn, out var transformed)) Armor(worn);
+                        else if (rules.Armors.TryGet(transformed, out _)) Armor(transformed);
+                    }
                     break;
             }
         }
@@ -113,7 +125,10 @@ internal sealed partial class BattleState
     /// everything a command can create from them (<see cref="ReachableRules"/>). A firearm in play that takes a psi amplifier as ammunition is refused
     /// with <c>battle.psi-unsupported</c>: its shot would be a psi attack, which is branch 6's, and the refusal must come before the shot's changes.
     /// </summary>
-    internal CampaignReason? CombatScriptRefusal(RuntimeContent content)
+    internal CampaignReason? CombatScriptRefusal(RuntimeContent content) => CombatScriptRefusal(content, ReachableRules(content.RuntimeRules));
+
+    /// <summary><see cref="CombatScriptRefusal(RuntimeContent)"/> for the reachable armors and items the caller already computed.</summary>
+    internal static CampaignReason? CombatScriptRefusal(RuntimeContent content, (HashSet<string> Armors, HashSet<string> Items) reachable)
     {
         if (CombatUnitHooks.Concat(CombatItemHooks).Any(parser => HasEventPlan(content, parser))) return BattleFlowReasons.CombatScriptUnsupported;
         if (ItemBonusParsers.Concat(ArmorBonusParsers).Any(parser => HasEventPlan(content, parser))) return BattleFlowReasons.StatBonusScriptUnsupported;
@@ -129,7 +144,7 @@ internal sealed partial class BattleState
         var rules = content.RuntimeRules;
         var armorBonus = false;
         var itemBonus = false;
-        var (armorIds, itemTypes) = ReachableRules(rules);
+        var (armorIds, itemTypes) = reachable;
         foreach (var armorId in armorIds)
         {
             if (armorsWithHooks.Contains(armorId)) return BattleFlowReasons.CombatScriptUnsupported;
@@ -149,6 +164,16 @@ internal sealed partial class BattleState
                     rules.Items[ammoHandle].Value.BattleType == RuntimeBattleItem.PsiAmpBattleType))
                 return BattleFlowReasons.PsiUnsupported;
         return null;
+    }
+
+    /// <summary>
+    /// The script gate of a running battle's command: <see cref="VisibilityScriptRefusal(RuntimeContent)"/>, then <see cref="CombatScriptRefusal(RuntimeContent)"/>,
+    /// with the reachable armors and items computed once for both.
+    /// </summary>
+    internal CampaignReason? ScriptRefusal(RuntimeContent content)
+    {
+        var reachable = ReachableRules(content.RuntimeRules);
+        return VisibilityScriptRefusal(content, reachable.Armors) ?? CombatScriptRefusal(content, reachable);
     }
 }
 
