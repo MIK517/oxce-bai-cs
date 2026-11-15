@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 35 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 271 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 272 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 103 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 8 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 364 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 365 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 114 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -139,7 +139,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BattleCamera` (class) [BattleCamera.cs](../src/Oxce.Engine/Battlescape/BattleCamera.cs) - The battlescape camera's map-side state (`Camera`: `up`, `down`, `setViewLevel`, `centerOnPosition`, `toggleShowAllLayers`): the tile at...
 - `BattleInventoryScreen` (class) [BattleInventoryScreen.cs](../src/Oxce.Engine/Battlescape/BattleInventoryScreen.cs) - `InventoryState`: one unit's sections, carried items and the items on its tile, from `IBattleInventoryQuery`.
 - `BattleReplayFrame` (record struct) [BattleReplay.cs](../src/Oxce.Engine/Battlescape/BattleReplay.cs) - One beat of a replayed action: the unit it concerns, where a unit that moved now stands (a step or a fall; null for the others) and the l...
-- `BattleReplay` (class) [BattleReplay.cs](../src/Oxce.Engine/Battlescape/BattleReplay.cs) - Turns the events of a movement command into the frames the battlescape replays.
+- `BattleReplay` (class) [BattleReplay.cs](../src/Oxce.Engine/Battlescape/BattleReplay.cs) - Turns the events of a command into the frames the battlescape replays: the walk's steps and the shots, hits, blasts, deaths and reactions...
 - `BattleScreenBase` (class) [BattleScreenBase.cs](../src/Oxce.Engine/Battlescape/BattleScreenBase.cs) - Frame, palette, revision and message handling the battle screens share.
 - `BattleUiContext` (class) [BattleUiContext.cs](../src/Oxce.Engine/Battlescape/BattleUiContext.cs) - What the battle screens share (Phase 7 branch 3 S6): the command target, the queries for one viewer, the font, the language and the stack...
 - `BattleUiContext.Color` (class) [BattleUiContext.cs](../src/Oxce.Engine/Battlescape/BattleUiContext.cs) - Palette indices of the placeholder drawing.
@@ -352,7 +352,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 271 files.
+`src/Oxce.Gameplay` - 272 files.
 
 ### `Oxce.Gameplay`
 
@@ -429,6 +429,12 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BattleTurnStop` (enum) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - Why a turn ended.
 - `UnitTurned` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - A unit turned (possibly not all the way): its direction now, the eighths it turned and the time units it paid.
 - `UnitKneeled` (record) [BattleMovementContracts.cs](../src/Oxce.Gameplay/Battles/BattleMovementContracts.cs) - A unit kneeled or stood up (`Kneeling` is whether it kneels now), paying `TimeUnitsSpent`.
+- `BattleReserveKind` (enum) [BattleReserveCommands.cs](../src/Oxce.Gameplay/Battles/BattleReserveCommands.cs) - The time units a side keeps for a shot (`btnReserveClick`'s four buttons: none, snap, aimed and auto).
+- `SetTimeUnitReserve` (record) [BattleReserveCommands.cs](../src/Oxce.Gameplay/Battles/BattleReserveCommands.cs) - A reserve button of the battlescape (`BattlescapeState::btnReserveClick` calling `BattlescapeGame::setTUReserved`): the saved time unit r...
+- `ToggleKneelReserve` (record) [BattleReserveCommands.cs](../src/Oxce.Gameplay/Battles/BattleReserveCommands.cs) - The kneel reserve button (`btnReserveKneelClick`): the saved `kneelReserved` is flipped.
+- `SetActiveHand` (record) [BattleReserveCommands.cs](../src/Oxce.Gameplay/Battles/BattleReserveCommands.cs) - The hand buttons' first step (`btnLeftHandItemClick`, `btnRightHandItemClick`: `setActiveLeftHand`, `setActiveRightHand`): the unit's act...
+- `ActiveHandChanged` (record) [BattleReserveCommands.cs](../src/Oxce.Gameplay/Battles/BattleReserveCommands.cs) - A unit's active hand was set.
+- `TimeUnitReserveChanged` (record) [BattleReserveCommands.cs](../src/Oxce.Gameplay/Battles/BattleReserveCommands.cs) - A reserve was set: the reserve now in force for the side and whether the saved battle was written (the side-owning slot's command) or not.
 - `BattleSnapshot` (record) [BattleSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleSnapshot.cs) - The persistence boundary of `BattleState` (Phase 7 branch 2): what `SavedBattleGame::load` reads and `save` writes, as values.
 - `BattleTileSnapshot` (record struct) [BattleSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleSnapshot.cs) - One saved tile (Tile::loadBinary and saveBinary, or the old Tile::load): each part's map data ID and data set ID (-1 for none), smoke, fi...
 - `BattleFactionDiscovery` (record struct) [BattleSnapshot.cs](../src/Oxce.Gameplay/Battles/BattleSnapshot.cs) - The tile parts the hostile and neutral factions have discovered on one tile, one bit per part (floor 1, west wall 2, north wall 4, object...
@@ -1376,7 +1382,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 364 files.
+`tests/Oxce.CompatibilityTests` - 365 files.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1388,13 +1394,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>357 test classes</summary>
+<details><summary>358 test classes</summary>
 
 - `BaseDefenseDeploymentTests` ([BaseDefenseDeploymentTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseDeploymentTests.cs))
 - `BaseDefenseMapTests` ([BaseDefenseMapTests.cs](../tests/Oxce.CompatibilityTests/BaseDefenseMapTests.cs))
 - `BattleCampaignSaveTests` ([BattleCampaignSaveTests.cs](../tests/Oxce.CompatibilityTests/BattleCampaignSaveTests.cs))
 - `BattleCasualtyFollowUpTests` ([BattleCasualtyFollowUpTests.cs](../tests/Oxce.CompatibilityTests/BattleCasualtyFollowUpTests.cs))
 - `BattleCasualtyTests` ([BattleCasualtyTests.cs](../tests/Oxce.CompatibilityTests/BattleCasualtyTests.cs))
+- `BattleClientCombatTests` ([BattleClientCombatTests.cs](../tests/Oxce.CompatibilityTests/BattleClientCombatTests.cs))
 - `BattleClientMovementTests` ([BattleClientMovementTests.cs](../tests/Oxce.CompatibilityTests/BattleClientMovementTests.cs))
 - `BattleCombatGroundworkTests` ([BattleCombatGroundworkTests.cs](../tests/Oxce.CompatibilityTests/BattleCombatGroundworkTests.cs))
 - `BattleDamageTests` ([BattleDamageTests.cs](../tests/Oxce.CompatibilityTests/BattleDamageTests.cs))

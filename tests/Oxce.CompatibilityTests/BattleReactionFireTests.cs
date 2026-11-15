@@ -17,7 +17,7 @@ public sealed class BattleReactionFireTests
     private const string GunText = "- type: GUN\n    battleType: 1\n    compatibleAmmo: [CLIP]\n    weight: 1";
     private const string ClipText = "- type: CLIP\n    battleType: 2\n    clipSize: 12\n    weight: 1";
 
-    private static Arena Make(Func<string, string>? edit = null)
+    internal static Arena Make(Func<string, string>? edit = null)
     {
         string Edit(string rules)
         {

@@ -126,6 +126,12 @@ public sealed record BattleUnitView(int Id, BattleFaction Faction, BattlePositio
 {
     /// <summary>The player slot that controls the unit (ADR 0038), or -1 for the AI.</summary>
     public int ControllerSlot { get; init; } = -1;
+
+    /// <summary>
+    /// Where the unit is for a button that centers on it (<c>btnVisibleUnitClick</c>): its tile, where an unconscious or dead unit lies, or the tile of the unit that carries it;
+    /// null for a unit that is off the map and carried by nobody.
+    /// </summary>
+    public BattlePosition? Whereabouts { get; init; }
 }
 
 /// <summary>The battle as a viewer sees it; <see cref="Revision"/> changes with every committed battle change.</summary>

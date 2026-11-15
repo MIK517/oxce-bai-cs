@@ -67,6 +67,31 @@ public sealed class BattleViewModel
         }
     }
 
+    /// <summary>The action menu of the weapon in the hand the player opened (<c>ActionMenuState</c>), or null while none is open.</summary>
+    public BattleAimMenuView? Menu { get; private set; }
+
+    /// <summary>The weapon and the action being aimed (<c>BattleAction::targeting</c>): null while the player is not aiming.</summary>
+    public (int ItemId, BattleAimKind Kind)? Aiming { get; private set; }
+
+    /// <summary>What aiming at the tile under the pointer shows (the cursor's accuracy and the checks of <c>ProjectileFlyBState</c>), or null.</summary>
+    public BattleAimView? Aim { get; private set; }
+
+    /// <summary>The waypoints of a launch, in order (<c>BattleAction::waypoints</c>).</summary>
+    public IReadOnlyList<BattlePosition> Waypoints => _waypoints;
+
+    /// <summary>The turns a primed item's fuse is set to (the prime grenade menu's buttons, 0 to 23), used by the menu's priming line.</summary>
+    public int PrimeTurns { get; set; }
+
+    private readonly List<BattlePosition> _waypoints = [];
+    private (int X, int Y, bool Force)? _aimTile;
+    private int _maxWaypoints, _sprayMax;
+    private bool _spraying;
+
+    /// <summary>The hand button's refusals: an empty hand (the special weapon of <c>getSpecialWeapon</c> is the next part), the right click (<c>toggleRightHandForReactions</c>) and the middle click (Ufopaedia).</summary>
+    public const string SpecialWeaponCode = "battle.special-unsupported (Phase 7 branch 5 S10 second part)";
+    public const string HandReactionCode = "battle.reaction-hand-unsupported (Phase 7 branch 5 S10 second part)";
+    public const string UfopaediaCode = "battle.ufopaedia-unsupported (Phase 8)";
+
     /// <summary>The events of the last command that ran (empty after a refusal): what the screen replays.</summary>
     public IReadOnlyList<ICampaignEvent> LastEvents { get; private set; } = [];
 
@@ -85,6 +110,7 @@ public sealed class BattleViewModel
             var had = Overview is not null;
             Overview = null;
             (Selection, Level, SelectedUnit, Actions, _selected, Path, Reachable) = (null, null, null, null, null, null, null);
+            CancelAim();
             _gate.Reset();
             return had;
         }
@@ -103,6 +129,199 @@ public sealed class BattleViewModel
         Path = _selected is { } walker && _previewTile is var (x, y) ? _view.QueryPath(Viewer, walker, new BattlePosition(x, y, Camera.ViewLevel)) : null;
         Reachable = _showReachable && _selected is { } reacher ? _view.QueryReachable(Viewer, reacher) : null;
         _previewDirty = false;
+        // An aim belongs to the unit and weapon it was opened for: another selection, or a weapon that left the hand, ends it.
+        if ((Aiming?.ItemId ?? Menu?.ItemId) is { } weapon && (SelectedUnit is null || SelectedUnit.UnitId != (Menu?.UnitId ?? SelectedUnit.UnitId) ||
+                SelectedUnit.RightHand?.ItemId != weapon && SelectedUnit.LeftHand?.ItemId != weapon)) CancelAim();
+        Aim = Aiming is { Kind: not (BattleAimKind.Launch or BattleAimKind.Hit) } aiming && _aimTile is var (ax, ay, force) && _selected is { } shooter
+            ? _view.QueryAim(Viewer, shooter, aiming.ItemId, aiming.Kind, new BattlePosition(ax, ay, Camera.ViewLevel), force)
+            : null;
+        return true;
+    }
+
+    /// <summary>
+    /// The hand buttons (<c>btnLeftHandItemClick</c>, <c>btnRightHandItemClick</c>): an aim in progress is cancelled instead (the touch concession; a launch loses its last waypoint); else
+    /// the clicked hand becomes the unit's active hand, and the left click opens the action menu of the item in it. The right click toggles the hand for reactions and the middle one
+    /// opens the item's Ufopaedia page: both are refused by name, as is an empty hand (its special weapon is the next part). <paramref name="button"/> is 1, 2 or 3.
+    /// </summary>
+    public bool OpenMenu(bool rightHand, int button = 1)
+    {
+        Refresh();
+        Message = "";
+        if (Aiming is not null)
+        {
+            CancelLast();
+            return false;
+        }
+        CancelAim();
+        if (SelectedUnit is not { } unit) return false;
+        var result = _commands.Execute(new SetActiveHand(unit.UnitId, rightHand));
+        Message = result.Events.OfType<CampaignActionBlocked>().FirstOrDefault()?.Code ?? "";
+        if (Message.Length != 0) return false;
+        _gate.Reset();
+        Refresh();
+        if (button == 3)
+        {
+            Message = HandReactionCode;
+            return false;
+        }
+        if ((rightHand ? unit.RightHand : unit.LeftHand) is not { } item)
+        {
+            Message = SpecialWeaponCode;
+            return false;
+        }
+        if (button == 2)
+        {
+            Message = UfopaediaCode;
+            return false;
+        }
+        Menu = _view.QueryAimMenu(Viewer, unit.UnitId, item.ItemId);
+        // The medikit, scanner, mind probe and psi amp lines are branch 6's: the menu opens with what it can list, and says what it cannot.
+        if (Menu is { Unsupported.Length: > 0 }) Message = Menu.Unsupported;
+        return Menu is not null;
+    }
+
+    /// <summary>
+    /// A line of the open menu (<c>ActionMenuState::btnActionMenuItemClick</c>): a priming line and a hit act at once, the other lines start aiming. The launch line checks the time units
+    /// and the ammunition first and refuses at once, as the menu does. <paramref name="alt"/> is the Alt key of the click or key that chose the line (a hit reads it).
+    /// </summary>
+    public bool Choose(BattleAimKind kind, bool alt = false)
+    {
+        if (Menu is not { } menu || menu.Items.All(item => item.Kind != kind)) return false;
+        Menu = null;
+        switch (kind)
+        {
+            case BattleAimKind.Prime: return SendAction(new PrimeItem(menu.UnitId, menu.ItemId, PrimeTurns));
+            case BattleAimKind.Unprime: return SendAction(new UnprimeItem(menu.UnitId, menu.ItemId));
+            case BattleAimKind.Hit: return SendAction(new Attack(menu.UnitId, menu.ItemId, BattleAimKind.Hit, alt));
+            case BattleAimKind.Launch when menu.LaunchRefusal.Length != 0:
+                Message = menu.LaunchRefusal;
+                return false;
+        }
+        Aiming = (menu.ItemId, kind);
+        Message = "";
+        _waypoints.Clear();
+        (_maxWaypoints, _sprayMax, _spraying) = (menu.Waypoints, menu.SprayWaypoints, false);
+        return true;
+    }
+
+    /// <summary>Closes the menu and ends the aim and its waypoints (<c>cancelCurrentAction</c>).</summary>
+    public void CancelAim()
+    {
+        (Menu, Aiming, Aim, _aimTile) = (null, null, null, null);
+        _waypoints.Clear();
+        _spraying = false;
+    }
+
+    /// <summary>The pointer over a tile while aiming: the rules answer what a shot there would show (Ctrl is force fire).</summary>
+    public void AimAt(int? x, int? y, bool force)
+    {
+        var tile = x is { } px && y is { } py ? (px, py, force) : ((int, int, bool)?)null;
+        if (_aimTile == tile) return;
+        _aimTile = tile;
+        _previewDirty = true;
+        Refresh();
+    }
+
+    /// <summary>
+    /// The click of an aim (<c>primaryAction</c> while targeting): a shot or a throw goes at the tile; a launch adds a waypoint (a click beyond the weapon's limit is ignored), and the launch
+    /// button then fires it; Ctrl and Shift with the first click of an auto shot of a weapon with spray waypoints start the spray, whose clicks collect the waypoints and fire early with
+    /// Ctrl and Shift or at the last one. A shot leaves the aim as it was, so the player can shoot again; a refusal leaves it too, and a throw or a launch that was done ends it.
+    /// </summary>
+    public bool Target(int x, int y, bool force, bool alt = false, bool shift = false)
+    {
+        Refresh();
+        if (Aiming is not { } aiming || _selected is not { } unit) return false;
+        var target = new BattlePosition(x, y, Camera.ViewLevel);
+        Message = "";
+        LastEvents = [];
+        if (aiming.Kind == BattleAimKind.Launch)
+        {
+            if (_maxWaypoints == -1 || _waypoints.Count < _maxWaypoints) _waypoints.Add(target);
+            return true;
+        }
+        if (_spraying)
+        {
+            // At the limit, or with Ctrl and Shift, or at the last free waypoint, the spray fires (with one more waypoint when it is early).
+            if (_waypoints.Count >= _sprayMax || force && shift || _waypoints.Count == _sprayMax - 1)
+            {
+                if (_waypoints.Count < _sprayMax) _waypoints.Add(target);
+                var spray = _waypoints.ToArray();
+                _spraying = false;
+                _waypoints.Clear();
+                return SendAction(new Attack(unit, aiming.ItemId, aiming.Kind, alt, spray[0], true, SprayWaypoints: spray));
+            }
+            _waypoints.Add(target);
+            return true;
+        }
+        if (aiming.Kind == BattleAimKind.AutoShot && _sprayMax > 0 && force && shift && _waypoints.Count == 0)
+        {
+            _spraying = true;
+            _waypoints.Add(target);
+            return true;
+        }
+        return SendAction(new Attack(unit, aiming.ItemId, aiming.Kind, alt, target, force));
+    }
+
+    /// <summary>The launch button (<c>btnLaunchClick</c>): the missile flies through the waypoints set so far. Nothing happens without a waypoint.</summary>
+    public bool Launch()
+    {
+        Refresh();
+        if (Aiming is not { Kind: BattleAimKind.Launch } aiming || _waypoints.Count == 0 || _selected is not { } unit) return false;
+        return SendAction(new Attack(unit, aiming.ItemId, BattleAimKind.Launch, Waypoints: [.. _waypoints]));
+    }
+
+    /// <summary>
+    /// The right click or Esc while aiming (<c>cancelCurrentAction</c>): the last waypoint of a launch or a spray goes first (the spray ends with its last one), else the aim ends. False
+    /// when nothing was aimed.
+    /// </summary>
+    public bool CancelLast()
+    {
+        if (Menu is null && Aiming is null) return false;
+        if (_waypoints.Count != 0 && (_spraying || Aiming is { Kind: BattleAimKind.Launch }))
+        {
+            _waypoints.RemoveAt(_waypoints.Count - 1);
+            if (_waypoints.Count == 0) _spraying = false;
+        }
+        else CancelAim();
+        return true;
+    }
+
+    /// <summary>
+    /// Sends the command of an action. As in <c>BattlescapeGame::popState</c> the aim stays after a shot (the player may shoot again in the same mode) and after a refusal (a launch keeps
+    /// its waypoints); a throw or a launch that was done ends it. A priming or a hit has no aim (the menu closed).
+    /// </summary>
+    private bool SendAction(ICampaignCommand command)
+    {
+        Message = "";
+        LastEvents = [];
+        var result = _commands.Execute(command);
+        Message = result.Events.OfType<CampaignActionBlocked>().FirstOrDefault()?.Code ?? "";
+        if (Message.Length != 0) return false;
+        LastEvents = result.Events;
+        if (Aiming is { Kind: BattleAimKind.Throw or BattleAimKind.Launch }) CancelAim();
+        _gate.Reset();
+        Refresh();
+        return true;
+    }
+
+    /// <summary>The reserve buttons (<c>btnReserveClick</c>): the time units kept for a snap, aimed or auto shot, or none.</summary>
+    public bool Reserve(BattleReserveKind kind) => SendReserve(unit => new SetTimeUnitReserve(unit, kind));
+
+    /// <summary>The kneel reserve button (<c>btnReserveKneelClick</c>).</summary>
+    public bool ToggleKneelReserve() => SendReserve(static unit => new ToggleKneelReserve(unit));
+
+    /// <summary>The reference needs no selected unit for a reserve button, only that the buttons are allowed; the command names a unit of this client's slot, the selected one or else any.</summary>
+    private bool SendReserve(Func<int, ICampaignCommand> command)
+    {
+        Refresh();
+        CancelAim();
+        Message = "";
+        var unit = _selected ?? Overview?.Units.FirstOrDefault(own => own.Faction == Viewer.Faction && own.ControllerSlot == Viewer.PlayerSlot)?.Id ?? -1;
+        var result = _commands.Execute(command(unit));
+        Message = result.Events.OfType<CampaignActionBlocked>().FirstOrDefault()?.Code ?? "";
+        if (Message.Length != 0) return false;
+        _gate.Reset();
+        Refresh();
         return true;
     }
 
@@ -189,16 +408,11 @@ public sealed class BattleViewModel
         return true;
     }
 
-    /// <summary>A visible-unit button's left click (<c>btnVisibleUnitClick</c>): the camera centers on that unit.</summary>
+    /// <summary>A visible-unit button's left click (<c>btnVisibleUnitClick</c>): the camera centers on that unit, or on the unit that carries it.</summary>
     public bool CenterOnUnit(int unitId)
     {
         Message = "";
-        if (Overview?.Units.FirstOrDefault(unit => unit.Id == unitId)?.Position is not { } position)
-        {
-            // The reference centers on the unit that carries it (Phase 7 branch 5, with the carried units).
-            Message = "battle.visible-unit-carried-unsupported (Phase 7 branch 5)";
-            return false;
-        }
+        if (Overview?.Units.FirstOrDefault(unit => unit.Id == unitId)?.Whereabouts is not { } position) return false;
         Camera.CenterOn(position);
         Refresh();
         return true;

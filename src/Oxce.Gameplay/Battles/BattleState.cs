@@ -353,6 +353,7 @@ internal sealed partial class BattleState
             if (Sees(viewer.Faction, unit)) units.Add(new BattleUnitView(unit.Id, unit.Faction, unit.Position)
             {
                 ControllerSlot = unit.Controller.Kind == BattleControllerKind.Player ? unit.Controller.PlayerSlot : -1,
+                Whereabouts = unit.Position ?? RestingPosition(unit) ?? CarrierPosition(unit, viewer.Faction),
             });
         return new BattleOverview(MissionType, DeploymentId, Width, Length, Height, Turn, Side, TurnLimit, Revision,
             units.AsReadOnly())

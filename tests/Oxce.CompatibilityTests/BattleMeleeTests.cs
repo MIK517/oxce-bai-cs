@@ -22,7 +22,7 @@ public sealed class BattleMeleeTests
 {
     private const string Butt = "meleePower: 30\ncostMelee: {time: 20}\naccuracyMelee: 100\nmeleeType: 1\nmeleeAlter: {RandomType: 3}";
 
-    private static Arena Arm(string gun = Butt, string alienExtra = "", string soldierExtra = "", int distance = 1, string global = "", Func<string, string>? more = null)
+    internal static Arena Arm(string gun = Butt, string alienExtra = "", string soldierExtra = "", int distance = 1, string global = "", Func<string, string>? more = null)
     {
         var arena = Duel(gun: gun, alienExtra: alienExtra, soldierExtra: soldierExtra, global: global, more: more);
         arena.Stand(arena.Alien, 10 + distance, 10, 6);

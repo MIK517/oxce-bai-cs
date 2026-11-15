@@ -166,6 +166,10 @@ internal sealed class BattleRuntime
         Register<SelectSpotter>(SelectSpotter);
         Register<TurnUnit>(TurnUnit);
         Register<KneelUnit>(KneelUnit);
+        Register<SetTimeUnitReserve>(command => Reserve(command.UnitId, command.Kind));
+        Register<ToggleKneelReserve>(command => Reserve(command.UnitId, null));
+        Register<SetActiveHand>(command => State.SetActiveHand(command.UnitId, command.RightHand) is { } refusal
+            ? Blocked(refusal) : new CampaignCommandResult([new ActiveHandChanged(command.UnitId, command.RightHand)]));
         Register<WalkUnit>(command => RunOnTrialCopy(battle => battle.Walk(command.UnitId, command.Target, command.Move, command.IgnoreSpottedEnemies)));
         Register<MoveUnitUpDown>(command => RunOnTrialCopy(battle => battle.MoveUpDown(command.UnitId, command.Up)));
         Register<Attack>(Attack);
@@ -255,6 +259,12 @@ internal sealed class BattleRuntime
     {
         if (State.TurnTowards(command.UnitId, command.Target, out var turn) is { } refusal) return Blocked(refusal);
         return new CampaignCommandResult([new UnitTurned(command.UnitId, turn.Direction, turn.Eighths, turn.TimeUnitsSpent, turn.Stop, turn.Door, turn.DoorsOpened, turn.DoorCentre)]);
+    }
+
+    private CampaignCommandResult Reserve(int unitId, BattleReserveKind? kind)
+    {
+        if (State.SetReserve(unitId, kind, out var saved) is { } refusal) return Blocked(refusal);
+        return new CampaignCommandResult([new TimeUnitReserveChanged(unitId, State.ReserveKind, State.KneelReserved, saved)]);
     }
 
     private CampaignCommandResult KneelUnit(KneelUnit command) => RunOnTrialCopy(battle => battle.KneelAction(command.UnitId));

@@ -93,6 +93,9 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         registry.Command<SelectSpotter>(command => Forward(command, BattleSelectionReasons.Unavailable));
         registry.Command<TurnUnit>(command => Forward(command, BattleSelectionReasons.Unavailable));
         registry.Command<KneelUnit>(command => Forward(command, BattleSelectionReasons.Unavailable));
+        registry.Command<SetTimeUnitReserve>(command => Forward(command, BattleSelectionReasons.Unavailable));
+        registry.Command<ToggleKneelReserve>(command => Forward(command, BattleSelectionReasons.Unavailable));
+        registry.Command<SetActiveHand>(command => Forward(command, BattleSelectionReasons.Unavailable));
         registry.Command<WalkUnit>(command => Forward(command, BattleSelectionReasons.Unavailable));
         registry.Command<MoveUnitUpDown>(command => Forward(command, BattleSelectionReasons.Unavailable));
         registry.Command<Attack>(command => Forward(command, BattleSelectionReasons.Unavailable));

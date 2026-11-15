@@ -122,6 +122,17 @@ internal sealed partial class BattleState
     /// pay). The unit turns to the first waypoint; the missile flies from the unit to it, and from each waypoint to the next
     /// (<c>ProjectileFlyBState</c>'s waypoint cascade) until the last one, where it explodes. The time units are paid once, by the first leg; the ammunition is spent at the end.
     /// </summary>
+    /// <summary>The menu checks the launch beforehand (<c>ActionMenuState::btnActionMenuItemClick</c>, before the unit turns): the time units, then the ammunition.</summary>
+    internal CampaignReason? LaunchPrecheck(BattleUnit unit, BattleItem weapon)
+    {
+        var launchCost = BattleActionCost.For(RequiredRules, BattleActionType.Launch, unit, weapon);
+        if (launchCost.Shortfall() is var shortfall && shortfall != BattleActionShortfall.None)
+            return shortfall == BattleActionShortfall.NoAction ? BattleAttackReasons.ActionNotOffered : BattleAttackReasons.ForMessage(ShortfallMessage(shortfall));
+        if (AmmoForActionWithMessage(weapon, ActionIndex(BattleActionType.Launch)!.Value, out var ammoMessage, out _) is null)
+            return BattleAttackReasons.ForMessage(ammoMessage);
+        return null;
+    }
+
     internal CampaignReason? LaunchAction(BattleResearchGate research, int unitId, int itemId, IReadOnlyList<BattlePosition>? waypoints)
     {
         ArgumentNullException.ThrowIfNull(research);
@@ -132,12 +143,7 @@ internal sealed partial class BattleState
         if (!WeaponOffersShot(research, unit, weapon, BattleAimKind.Launch)) return BattleShotReasons.ShotNotOffered;
         var usable = CanUseWeapon(research, weapon, unit, false, BattleActionType.Launch);
         if (!usable.Usable) return BattleAttackReasons.ForMessage(usable.Message);
-        // The menu checks the launch beforehand (before the unit turns): the time units, then the ammunition.
-        var launchCost = BattleActionCost.For(RequiredRules, BattleActionType.Launch, unit, weapon);
-        if (launchCost.Shortfall() is var shortfall && shortfall != BattleActionShortfall.None)
-            return shortfall == BattleActionShortfall.NoAction ? BattleAttackReasons.ActionNotOffered : BattleAttackReasons.ForMessage(ShortfallMessage(shortfall));
-        if (AmmoForActionWithMessage(weapon, ActionIndex(BattleActionType.Launch)!.Value, out var ammoMessage, out _) is null)
-            return BattleAttackReasons.ForMessage(ammoMessage);
+        if (LaunchPrecheck(unit, weapon) is { } unready) return unready;
         var allowed = CurrentWaypoints(weapon);
         if (waypoints is not { Count: > 0 } || allowed != -1 && waypoints.Count > allowed) return BattleShotReasons.WaypointsInvalid;
         if (waypoints.Any(waypoint => !Contains(waypoint))) return BattleShotReasons.TargetOutside;

@@ -18,7 +18,7 @@ public sealed class BattleLaunchTests
     private const string Launcher = "costAimed: {time: 30}\naccuracyAimed: 100\nwaypoints: 3";
     private const string Rocket = "power: 40\ndamageType: 2\ndamageAlter: {RandomType: 3}";
 
-    private static (Arena Arena, BattleItem Gun, BattleItem Clip) Load(string gun = Launcher)
+    internal static (Arena Arena, BattleItem Gun, BattleItem Clip) Load(string gun = Launcher)
     {
         var arena = Duel(gun: gun, clip: Rocket);
         arena.Stand(arena.Alien, 15, 10, 6);

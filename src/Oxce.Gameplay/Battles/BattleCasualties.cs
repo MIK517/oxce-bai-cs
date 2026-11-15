@@ -137,6 +137,16 @@ internal sealed partial class BattleState
     internal bool IsCarried(BattleUnit unit) => _items.Exists(item => item.CorpseUnitId == unit.Id && item.OwnerUnitId is not null);
 
     /// <summary>
+    /// The tile of the unit that carries <paramref name="unit"/> as a body, or null (<c>btnVisibleUnitClick</c> centers on the carrier). A viewer learns the tile only of a carrier it
+    /// sees (its own, or one it has spotted).
+    /// </summary>
+    internal BattlePosition? CarrierPosition(BattleUnit unit, BattleFaction viewer)
+    {
+        var body = _items.Find(item => item.CorpseUnitId == unit.Id && item.OwnerUnitId is not null);
+        return body is { OwnerUnitId: { } carrier } && UnitById(carrier) is { IsOut: false, Position: { } at } holder && Sees(viewer, holder) ? at : null;
+    }
+
+    /// <summary>
     /// <c>BattleUnit::getPosition</c> for a unit that is out: where it lies, or null while it is carried. A unit on the map has its tile;
     /// one off the map keeps the position it left (<see cref="BattleUnit.SavedPosition"/>).
     /// </summary>

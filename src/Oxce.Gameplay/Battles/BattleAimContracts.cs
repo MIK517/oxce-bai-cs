@@ -27,7 +27,20 @@ public sealed record BattleAimMenuItem(BattleAimKind Kind, string Name, int Accu
 /// shots of a firearm (a launch instead of the aimed shot for a launcher), a hit. The priming, medikit, scanner, psi amp and mind probe lines
 /// belong to the owners of those actions. <see cref="Reason"/> is empty, or why the unit cannot use the weapon at all (<c>canUseWeapon</c>'s message).
 /// </summary>
-public sealed record BattleAimMenuView(int UnitId, int ItemId, IReadOnlyList<BattleAimMenuItem> Items, bool Usable, string Reason);
+public sealed record BattleAimMenuView(int UnitId, int ItemId, IReadOnlyList<BattleAimMenuItem> Items, bool Usable, string Reason)
+{
+    /// <summary>The refusal code of the actions this menu cannot list yet (a medikit, scanner or mind probe: <c>battle.item-use-unsupported</c>; a psi amp: <c>battle.psi-unsupported</c>, both branch 6), or "".</summary>
+    public string Unsupported { get; init; } = "";
+
+    /// <summary>The waypoints the weapon's launch takes (<c>getCurrentWaypoints</c>; -1 is any number).</summary>
+    public int Waypoints { get; init; }
+
+    /// <summary>The waypoints of the weapon's spray auto shot (<c>getSprayWaypoints</c>; 0 is none).</summary>
+    public int SprayWaypoints { get; init; }
+
+    /// <summary>The refusal code of the launch line's time unit and ammunition checks (<c>ActionMenuState</c> runs them before targeting), or "".</summary>
+    public string LaunchRefusal { get; init; } = "";
+}
 
 /// <summary>
 /// What aiming a weapon at a tile shows (the cursor of <c>Map::drawTerrain</c> and the checks of <c>ProjectileFlyBState</c>): whether the unit may use

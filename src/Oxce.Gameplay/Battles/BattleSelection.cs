@@ -43,7 +43,7 @@ internal sealed partial class BattleState
         return slot;
     }
 
-    private bool WritesSavedSelection(BattleUnit unit) =>
+    internal bool WritesSavedSelection(BattleUnit unit) =>
         unit.Controller.Kind == BattleControllerKind.Player && unit.Controller.PlayerSlot == WritingSlot();
 
     /// <summary>
@@ -216,7 +216,7 @@ internal sealed partial class BattleState
         var selectable = own
             ? _units.Where(unit => IsSelectable(unit, Side, true, false)).Select(static unit => unit.Id).ToArray()
             : [];
-        return new BattleSelectionView(selected, undo, selectable, own ? WritingSlot() : -1, Revision);
+        return new BattleSelectionView(selected, undo, selectable, own ? WritingSlot() : -1, Revision, own ? ReserveKind : BattleReserveKind.None, own && KneelReserved);
     }
 
     internal BattleLegalActions? LegalActions(BattleViewer viewer, int unitId)
@@ -276,7 +276,7 @@ internal sealed partial class BattleState
         var burning = indicated.Where(static other => other.Fire > 0).Select(static other => other.Id).ToArray();
         return new BattleUnitInfo(unit.Id, unit.SoldierId, unit.UnitType, unit.TimeUnits, unit.Stats.TimeUnits, unit.Energy, unit.Stats.Stamina,
             unit.Health, unit.Stats.Health, unit.StunLevel, unit.Morale, unit.Mana, unit.Stats.Mana, unit.Kneeled,
-            Hand(right: true), Hand(right: false), visible, wounded, burning);
+            Hand(right: true), Hand(right: false), visible, wounded, burning, unit.FatalWounds.Sum());
     }
 
     /// <summary>

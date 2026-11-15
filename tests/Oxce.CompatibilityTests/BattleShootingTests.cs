@@ -20,7 +20,7 @@ public sealed class BattleShootingTests
     private const string Rifle = "costAimed: {time: 30}\ncostSnap: {time: 20}\ncostAuto: {time: 40}\naccuracyAimed: 100\naccuracySnap: 100\naccuracyAuto: 100";
     private const string Bullet = "power: 10\ndamageType: 1\ndamageAlter: {RandomType: 3}";
 
-    private static (Arena Arena, BattleItem Gun, BattleItem Clip) Load(string gun = Rifle, string clip = Bullet, string alienExtra = "", string global = "",
+    internal static (Arena Arena, BattleItem Gun, BattleItem Clip) Load(string gun = Rifle, string clip = Bullet, string alienExtra = "", string global = "",
         int distance = 5, Func<string, string>? more = null)
     {
         var arena = Duel(gun: gun, clip: clip, global: global, alienExtra: alienExtra, more: more);

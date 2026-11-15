@@ -83,9 +83,10 @@ public sealed record BattleLegalActions(int UnitId, IReadOnlyList<BattleActionKi
 /// <summary>
 /// What the selection looks like to a viewer: the saved selection and undo unit (only when they are the viewer's side's), the units
 /// of the side that <c>SavedBattleGame::selectPlayerUnit</c> would pick (live, not flagged <c>dontReselect</c>), in list order, and the
-/// slot whose selection is the saved one.
+/// slot whose selection is the saved one, and the side's saved time unit reserve and kneel reserve (<c>TUReserved</c>, <c>kneelReserved</c>).
 /// </summary>
-public sealed record BattleSelectionView(int? SelectedUnitId, int? UndoUnitId, IReadOnlyList<int> SelectableUnitIds, int WritingSlot, long Revision);
+public sealed record BattleSelectionView(int? SelectedUnitId, int? UndoUnitId, IReadOnlyList<int> SelectableUnitIds, int WritingSlot, long Revision,
+    BattleReserveKind TimeUnitReserve = BattleReserveKind.None, bool KneelReserved = false);
 
 /// <summary>A discovered part of a tile: the terrain object (data set name and index in it) and the part it occupies.</summary>
 public readonly record struct BattleTilePartView(BattleTilePart Part, string DataSet, int ObjectIndex);
@@ -111,7 +112,7 @@ public sealed record BattleLevelView(int Level, int Width, int Length, int Level
 
 /// <summary>
 /// <c>BattlescapeState::updateSoldierInfo</c>: a viewer's own unit with its bars, hands, the hostile units it sees and its wounded (and burning) units. The cap on indicators (<c>VISIBLE_MAX</c>) is the screen's.
-/// <see cref="VisibleUnitIds"/> lists the units the unit itself sees, then the live hostile units the viewer's side has spotted.
+/// <see cref="FatalWounds"/> is the unit's wounds over every body part (the panel's wound indicator). <see cref="VisibleUnitIds"/> lists the units the unit itself sees, then the live hostile units the viewer's side has spotted.
 /// </summary>
 public sealed record BattleUnitInfo(
     int UnitId,
@@ -132,7 +133,8 @@ public sealed record BattleUnitInfo(
     BattleTileItemView? LeftHand,
     IReadOnlyList<int> VisibleUnitIds,
     IReadOnlyList<int> WoundedUnitIds,
-    IReadOnlyList<int> BurningUnitIds);
+    IReadOnlyList<int> BurningUnitIds,
+    int FatalWounds = 0);
 
 /// <summary>How a previewed step stands against the unit's time units, energy and reserve (<c>Pathfinding::refreshPath</c>'s marker colours).</summary>
 public enum BattlePathMarker

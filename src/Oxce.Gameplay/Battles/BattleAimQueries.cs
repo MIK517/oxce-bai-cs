@@ -138,7 +138,24 @@ internal sealed partial class BattleState
                 Add(BattleAimKind.Hit, name);
             }
         }
-        return new BattleAimMenuView(unit.Id, weapon.Id, items, usable.Usable, usable.Usable ? "" : usable.Message);
+        return new BattleAimMenuView(unit.Id, weapon.Id, items, usable.Usable, usable.Usable ? "" : usable.Message)
+        {
+            Unsupported = rule.BattleType switch
+            {
+                RuntimeBattleItem.MedikitBattleType or RuntimeBattleItem.ScannerBattleType or RuntimeBattleItem.MindProbeBattleType => BattleAimReasons.ItemUseUnsupported,
+                RuntimeBattleItem.PsiAmpBattleType => BattleAimReasons.PsiUnsupported,
+                _ => "",
+            },
+            Waypoints = CurrentWaypoints(weapon),
+            SprayWaypoints = battleRule.Combat.SprayWaypoints,
+            LaunchRefusal = items.Any(static item => item.Kind == BattleAimKind.Launch) && LaunchPrecheck(unit, weapon) is { } unready ? unready.Code : "",
+        };
+    }
+
+    /// <summary>The refusal codes of the menu lines that belong to branch 6 (the medikit, scanner, mind probe and psi amp actions).</summary>
+    private static class BattleAimReasons
+    {
+        public const string ItemUseUnsupported = "battle.item-use-unsupported", PsiUnsupported = "battle.psi-unsupported";
     }
 
     /// <summary>ItemDamageType DT_STUN.</summary>

@@ -414,6 +414,8 @@ public sealed record RuntimeBattleItem(
     public const int GrenadeBattleType = 4;
     public const int ProximityGrenadeBattleType = 5;
     public const int MedikitBattleType = 6;
+    public const int ScannerBattleType = 7;
+    public const int MindProbeBattleType = 8;
     public const int PsiAmpBattleType = 9;
 
     /// <summary>

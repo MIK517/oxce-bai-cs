@@ -23,7 +23,7 @@ public sealed class BattleThrowingTests
     private const string GrenadeText = "- type: GRENADE\n    battleType: 4\n    weight: 1";
 
     /// <summary>The soldier's grenade: <see cref="Blast"/> (or another base text, for a key it sets) and the extra keys; <paramref name="more"/> edits the whole ruleset.</summary>
-    private static (Arena Arena, BattleItem Grenade) Load(string grenade = "", int distance = 5, string? blast = null, Func<string, string>? more = null,
+    internal static (Arena Arena, BattleItem Grenade) Load(string grenade = "", int distance = 5, string? blast = null, Func<string, string>? more = null,
         Action<Dictionary<string, byte[]>>? terrain = null)
     {
         var arena = Duel(grenade: (blast ?? Blast) + (grenade.Length == 0 ? "" : "\n" + grenade), more: more, terrain: terrain);
