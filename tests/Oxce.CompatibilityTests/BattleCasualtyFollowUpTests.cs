@@ -47,7 +47,7 @@ public sealed class BattleCasualtyFollowUpTests
             arena.Battle.UpdateTileFloorState(faller);
             arena.Battle.AddFallingUnit(faller);
         }
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         Assert.Equal([BattleUnitStatus.Unconscious, BattleUnitStatus.Unconscious], [victim1.Status, victim2.Status]);
         var body1 = Assert.Single(arena.Battle.Items, item => item.CorpseUnitId == victim1.Id);
         var body2 = Assert.Single(arena.Battle.Items, item => item.CorpseUnitId == victim2.Id);

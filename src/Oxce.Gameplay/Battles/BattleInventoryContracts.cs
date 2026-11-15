@@ -8,10 +8,11 @@ namespace Oxce.Gameplay.Battles;
 /// the ground of the unit's tile). Before the first turn it costs nothing; in the battle it costs the section's time units.
 /// A ground drop ignores the position: the ground holds any number of items and the screen arranges them. A drop on a position held by a weapon that takes
 /// the item as ammunition loads it (<c>Inventory::mouseClick</c>'s "put item in weapon", with the cost of <c>tuLoad</c>); with <paramref name="Shift"/> over a loaded weapon
-/// it swaps the clips (the quick swap). A ground weapon cannot be named (the port's ground has no positions): a drop on the ground is always a plain drop.
-/// Loading a weapon that lies on the ground is an open point (this command has no ground target item; see the status doc's "## Next").
+/// it swaps the clips (the quick swap). The port's ground has no positions, so a drop on the ground names the item it lands on:
+/// <paramref name="OntoItemId"/> is a ground item of the unit's tile; a weapon with ammunition that the dropped item cannot stack with takes it as a load (the same
+/// load as for a carried weapon, with <c>Shift</c> the quick swap, which in the battle needs the weapon in a hand); without it a drop on the ground is a plain drop.
 /// </summary>
-public sealed record MoveInventoryItem(int UnitId, int ItemId, string Slot, int SlotX, int SlotY, bool Shift = false) : IBattleCommand, IUnitCommand;
+public sealed record MoveInventoryItem(int UnitId, int ItemId, string Slot, int SlotX, int SlotY, bool Shift = false, int? OntoItemId = null) : IBattleCommand, IUnitCommand;
 
 /// <summary>
 /// <c>Inventory::mouseClick</c>'s Ctrl click: a ground item goes to the best section that holds it (the cheapest to reach
@@ -136,9 +137,6 @@ internal static class BattleInventoryReasons
 
     internal static readonly CampaignReason CostUnknown = new("battle.inventory-cost-unknown",
         "The inventory sections define no cost for this move; the reference reads past the end of its cost table.");
-
-    internal static readonly CampaignReason DangerZoneUnsupported = new("battle.inventory-danger-zone-unsupported",
-        "Dropping an enabled grenade marks a danger zone for the artificial intelligence, which arrives with turn processing (Phase 7 branch 6).");
 
     internal static readonly CampaignReason WrongAmmunition = new("battle.inventory-ammo-wrong",
         "The item is no ammunition for this weapon (STR_WRONG_AMMUNITION_FOR_THIS_WEAPON).")

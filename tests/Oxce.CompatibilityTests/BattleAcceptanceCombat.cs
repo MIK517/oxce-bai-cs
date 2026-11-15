@@ -235,7 +235,7 @@ internal static class BattleAcceptanceCombat
                     var blastStart = Stopwatch.GetTimestamp();
                     battle.PushExplosion(new BattleAttack(BattleActionType.Throw, unit, grenade, grenade), voxel);
                     battle.RunStates();
-                    Assert.Null(battle.ResolveFalls());
+                    battle.ResolveFalls();
                     blastTimes.Add(Stopwatch.GetElapsedTime(blastStart).TotalMicroseconds);
                     var events = battle.Events.Drain();
                     blasts += events.OfType<BattleExploded>().Count();

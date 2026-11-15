@@ -175,12 +175,14 @@ internal sealed partial class BattleState
                 return reason.Length == 0 ? BattleAttackReasons.NotPerformed : BattleAttackReasons.ForMessage(reason);
             Events.Add(new UnitAttackStopped(unit.Id, weapon.Id, kind, reason));
             MarkChanged();
-            return ResolveFalls(out _);
+            ResolveFalls(out _);
+            return null;
         }
         // popState shows the action's result whatever the outcome: a failed close quarters check, or the line of fire a later shot of the burst did not find.
         if (flight.Result.Length != 0) Events.Add(new UnitAttackStopped(unit.Id, weapon.Id, kind, flight.Result));
         MarkChanged();
-        return ResolveFalls(out _);
+        ResolveFalls(out _);
+        return null;
     }
 
     /// <summary>

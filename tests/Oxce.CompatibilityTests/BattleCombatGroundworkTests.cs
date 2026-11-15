@@ -429,6 +429,45 @@ public sealed class BattleCombatGroundworkTests
     }
 
     [Fact]
+    public void AnArmorOrItemOnlyACommandCanCreateIsCheckedForScriptsLikeOneInTheBattle()
+    {
+        // FLOAT_SUIT is worn by no unit of the battle; VEHICLE_B is a unit type that no unit has and whose fixed weapon is no item in it.
+        const string FloatSuitText = "- type: FLOAT_SUIT\n    movementType: 3";
+        const string TankText = "- type: VEHICLE_B\n    armor: SMALL_VEHICLE_ARMOR";
+        var hook = Replaced(Replaced(Rules, TankText, "- type: VEHICLE_B\n    armor: FLOAT_SUIT"), FloatSuitText,
+            FloatSuitText + "\n    scripts:\n      hitUnit: |\n        return;\n");
+        var visible = Replaced(Replaced(Rules, TankText, "- type: VEHICLE_B\n    armor: FLOAT_SUIT"), FloatSuitText,
+            FloatSuitText + "\n    scripts:\n      visibilityUnit: |\n        return;\n");
+        var (campaign, _) = Requested(hook, "UFO_SUITED");
+        Started(campaign);
+        campaign.Execute(new BeginBriefing("T", "C"));
+        // Nothing can bring the scripted armor in: the briefing is confirmed.
+        Assert.IsType<BriefingConfirmed>(Assert.Single(campaign.Execute(new ConfirmBriefing()).Events));
+
+        // An item of the battle that spawns that unit, or infects into it, or an ammunition the weapon takes, brings the armor's hooks in: refused at the briefing.
+        Assert.Equal("battle.combat-script-unsupported", Confirmed(Replaced(hook, GunText, GunText + "\n    spawnUnit: VEHICLE_B")).Code);
+        Assert.Equal("battle.combat-script-unsupported", Confirmed(Replaced(hook, GunText, GunText + "\n    zombieUnit: VEHICLE_B")).Code);
+        Assert.Equal("battle.visibility-script-unsupported", Confirmed(Replaced(visible, GunText, GunText + "\n    spawnUnit: VEHICLE_B")).Code);
+        // A unit type another spawns, and the items a spawn item or a creatable unit's weapon brings: the reach is transitive.
+        var chained = Replaced(Replaced(hook, GunText, GunText + "\n    spawnUnit: ALIEN"), "- type: ALIEN\n    armor: SMALL_VEHICLE_ARMOR", "- type: ALIEN\n    armor: SMALL_VEHICLE_ARMOR\n    spawnUnit: VEHICLE_B");
+        Assert.Equal("battle.combat-script-unsupported", Confirmed(chained).Code);
+        var scriptedItem = Replaced(Replaced(Rules, "- type: VEHICLE_B\n    fixedWeapon: true", "- type: VEHICLE_B\n    fixedWeapon: true\n    scripts:\n      hitUnitAmmo: |\n        return;\n"),
+            GunText, GunText + "\n    spawnItem: VEHICLE_B");
+        Assert.Equal("battle.combat-script-unsupported", Confirmed(scriptedItem).Code);
+    }
+
+    [Fact]
+    public void AFirearmThatTakesAPsiAmplifierAsAmmunitionIsRefusedBeforeItsShotCanFaultTheBattle()
+    {
+        // ExplosionBState's psi attack is branch 6's; the refusal comes at the briefing and for every command, not in the middle of a shot.
+        var rules = Replaced(Rules, GunText, "- type: GUN\n    battleType: 1\n    compatibleAmmo: [CLIP, AMP]\n    weight: 1");
+        Assert.Equal("battle.psi-unsupported", Confirmed(rules).Code);
+        var (campaign, _) = Requested(Rules, "UFO_SUITED");
+        Started(campaign);
+        Assert.Null(Battle(campaign).CombatScriptRefusal(campaign.Content));
+    }
+
+    [Fact]
     public void ARemovedUnitsArmorHooksAndAnyOfTheItemKeysCodeAreHandledAsTheyAre()
     {
         // A code bonus on any of the item keys is refused when the item is in the battle.

@@ -129,8 +129,8 @@ internal sealed partial class BattleState
     /// <summary>
     /// The pick-up and drop of <c>Inventory::mouseClick</c>, checked: the item must be the unit's or lie on its tile and not be
     /// fixed; the section must exist and take the item; a grid or hand position must be free and fit (an occupied position with a weapon
-    /// that takes ammo is a load, see the overload with the Shift key); the move must be affordable in the battle; an enabled grenade's drop
-    /// is refused for the danger zone it sets. The ground takes any item at once.
+    /// that takes ammo is a load, see the overload with the Shift key); the move must be affordable in the battle. The ground takes any item at once, and a
+    /// ground weapon named by the drop loads it (<c>ontoItemId</c>). An enabled grenade dropped where a unit stands sets the danger zone (<see cref="Relocate"/>).
     /// </summary>
     internal CampaignReason? PlanMove(int unitId, int itemId, string slotId, int x, int y, out InventoryMove? move) =>
         PlanMove(unitId, itemId, slotId, x, y, false, out move, out _);
@@ -140,7 +140,7 @@ internal sealed partial class BattleState
     /// instead (<paramref name="load"/>: it applies the load and returns its events; <paramref name="move"/> is then null).
     /// </summary>
     internal CampaignReason? PlanMove(int unitId, int itemId, string slotId, int x, int y, bool shift, out InventoryMove? move,
-        out Func<IReadOnlyList<ICampaignEvent>>? load)
+        out Func<IReadOnlyList<ICampaignEvent>>? load, int? ontoItemId = null)
     {
         move = null;
         load = null;
@@ -155,6 +155,15 @@ internal sealed partial class BattleState
         {
             x = 0;
             y = 0;
+            // Inventory::mouseClick: the ground item under the drop (_selUnit->getItem(ground, x, y)) that is not stackable with the dropped item and is a
+            // weapon with ammunition takes it as a load ("Put item in weapon"); a stackable item or none is a plain drop.
+            if (ontoItemId is { } ontoId)
+            {
+                var onto = _items.Find(candidate => candidate.Id == ontoId);
+                if (onto is null || !IsOnTileOf(unit!, onto)) return BattleInventoryReasons.ItemUnknown;
+                if (onto.Id != item.Id && !CanBeStacked(onto, item))
+                    return onto.IsWeaponWithAmmo ? PlanLoad(unit!, item, onto, shift, out load) : BattleInventoryReasons.NoRoom;
+            }
         }
         else
         {
@@ -171,11 +180,30 @@ internal sealed partial class BattleState
             if (charged > unit!.TimeUnits) return BattleInventoryReasons.NotEnoughTimeUnits;
             cost = charged;
         }
-        if (to.Type == RuntimeBattleInventory.Ground && from.Type != RuntimeBattleInventory.Ground &&
-            RuleBattleType(item) == GrenadeBattleType && item.FuseEnabled)
-            return BattleInventoryReasons.DangerZoneUnsupported;
         move = new InventoryMove(unit!, item, from, to, x, y, cost);
         return null;
+    }
+
+    /// <summary>Inventory::canBeStacked: the same item rules and, slot by slot, either no ammunition on both or the same ammunition type and quantity.</summary>
+    private bool CanBeStacked(BattleItem a, BattleItem b)
+    {
+        if (a.ItemType != b.ItemType) return false;
+        for (var slot = 0; slot < BattleItem.AmmoSlotCount; slot++)
+        {
+            var ammoA = a.AmmoSlots[slot] is { } idA ? FindItem(idA) : null;
+            var ammoB = b.AmmoSlots[slot] is { } idB ? FindItem(idB) : null;
+            if (ammoA is not null && ammoB is not null)
+            {
+                if (ammoA.ItemType != ammoB.ItemType || ammoA.AmmoQuantity != ammoB.AmmoQuantity) return false;
+            }
+            else if (ammoA is not null || ammoB is not null)
+            {
+                return false;
+            }
+        }
+        // Neither is primed, neither carries a unit, and a medikit has the same charges.
+        return a.FuseTimer == -1 && b.FuseTimer == -1 && a.CorpseUnitId is null && b.CorpseUnitId is null &&
+            a.PainKillerQuantity == b.PainKillerQuantity && a.HealQuantity == b.HealQuantity && a.StimulantQuantity == b.StimulantQuantity;
     }
 
     private int RuleBattleType(BattleItem item) =>
@@ -202,11 +230,15 @@ internal sealed partial class BattleState
             if (to.Type == RuntimeBattleInventory.Ground)
             {
                 var tile = TileOf(unit)!.Value;
+                // TileEngine::itemMoveInventory: a live grenade with a blast dropped where a unit stands sets the danger zone, and that dropper (the unit
+                // on the tile) learns the tile as a clue (updateEnemyKnowledge).
+                var dropper = Map.UnitAt(Map.TileIndex(tile)) is { } standing ? _units.Find(candidate => candidate.Id == standing) : null;
+                if (dropper is not null && ItemRuleOf(item.ItemType) is { BattleType: GrenadeBattleType } grenadeRule && item.FuseEnabled &&
+                    grenadeRule.Damage.ResistType != RuntimeItemDamageRule.DamageNone)
+                    SetDangerZone(tile, ExplosionRadius(item, new BattleAttack(BattleActionType.Throw, dropper, item, item)), dropper);
+                dropper?.UpdateEnemyKnowledge(Map.TileIndex(tile));
                 MoveToOwner(item, null);
                 AddToTile(item, tile);
-                // TileEngine::itemMoveInventory: the dropper (the unit on the tile) learns the tile as a clue (updateEnemyKnowledge).
-                var dropper = Map.UnitAt(Map.TileIndex(tile)) is { } standing ? _units.Find(candidate => candidate.Id == standing) : null;
-                dropper?.UpdateEnemyKnowledge(Map.TileIndex(tile));
                 if (item.CorpseUnitId is { } corpse && _units.Find(candidate => candidate.Id == corpse) is { Status: BattleUnitStatus.Unconscious } lying)
                     lying.Position = tile;
             }

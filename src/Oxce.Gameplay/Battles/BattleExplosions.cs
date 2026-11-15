@@ -659,7 +659,7 @@ internal sealed partial class BattleState
             {
                 foreach (var item in InventoryOf(unit).ToArray())
                 {
-                    var (hit, _) = HitUnit(attack, item.CorpseUnitId is { } body ? UnitById(body) : null, new BattlePosition(0, 0, 0), itemDamage, type,
+                    var hit = HitUnit(attack, item.CorpseUnitId is { } body ? UnitById(body) : null, new BattlePosition(0, 0, 0), itemDamage, type,
                         rangeAttack);
                     if (!hit && type.ItemFinalDamage(itemDamage, Random) > ItemRuleOf(item.ItemType).ArmorValue) toRemove.Add(item);
                 }
@@ -668,7 +668,7 @@ internal sealed partial class BattleState
         // Affect all items and units on ground
         foreach (var item in ItemsOnTile(position).ToArray())
         {
-            var (hit, _) = HitUnit(attack, item.CorpseUnitId is { } body ? UnitById(body) : null, new BattlePosition(0, 0, 0), damage, type, true);
+            var hit = HitUnit(attack, item.CorpseUnitId is { } body ? UnitById(body) : null, new BattlePosition(0, 0, 0), damage, type, true);
             if (!hit && type.ItemFinalDamage(damage, Random) > ItemRuleOf(item.ItemType).ArmorValue) toRemove.Add(item);
         }
         foreach (var item in toRemove) RemoveItem(item);

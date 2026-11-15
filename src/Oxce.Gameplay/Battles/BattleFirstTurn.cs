@@ -36,6 +36,9 @@ internal static class BattleFlowReasons
     internal static readonly CampaignReason CombatScriptUnsupported = new("battle.combat-script-unsupported",
         "The battle's rules bind a combat script (hitUnit, damageUnit, damageSpecialUnit or their ammunition forms, tryMeleeAttack, reactionWeaponAction, reactionUnitAction, reactionUnitReaction, aiCalculateTargetWeight or awardExperience); script bindings in battle arrive with Phase 7 branch 8.");
 
+    internal static readonly CampaignReason PsiUnsupported = new("battle.psi-unsupported",
+        "A firearm of the battle takes a psi amplifier as ammunition, so its shot would be a psi attack; the psi attack arrives with Phase 7 branch 6.");
+
     internal static readonly CampaignReason SpawnContentInvalid = new("battle.generation-failed",
         "A primed spawn item spawns a unit, but the mod lists no ten alien item levels for the battle's month.");
 
@@ -340,8 +343,9 @@ internal sealed partial class BattleState
     internal CampaignReason? VisibilityScriptRefusal(RuntimeContent content)
     {
         if (HasEventPlan(content, "visibilityUnit")) return BattleFlowReasons.VisibilityScriptUnsupported;
-        foreach (var unit in _units)
-            if (HasRuleScript(content, "armors", unit.ArmorId, "visibilityUnit")) return BattleFlowReasons.VisibilityScriptUnsupported;
+        // The armors of the units a command can create (a zombie's conversion, a spawn) are looked at as well (ReachableRules).
+        foreach (var armor in ReachableRules(content.RuntimeRules).Armors)
+            if (HasRuleScript(content, "armors", armor, "visibilityUnit")) return BattleFlowReasons.VisibilityScriptUnsupported;
         return null;
     }
 
@@ -358,7 +362,7 @@ internal sealed partial class BattleState
     /// new-turn scripts are refused beforehand (<see cref="FirstTurnRefusal"/>). Without a selected unit on the map (a null dereference in the reference) the
     /// inventory-tile steps are skipped (ADR 0039).
     /// </summary>
-    internal CampaignReason? StartFirstTurn(RuntimeContent content)
+    internal void StartFirstTurn(RuntimeContent content)
     {
         var random = Random;
         var equipment = new UnitEquipment(this, content.RuntimeRules, Seedless);
@@ -377,7 +381,7 @@ internal sealed partial class BattleState
         // The falls the spawns and the inventory's gravity started run when the battlescape first thinks.
         RequeueFallingUnits();
         CloseInventory();
-        return ResolveFalls();
+        ResolveFalls();
     }
 
     /// <summary>

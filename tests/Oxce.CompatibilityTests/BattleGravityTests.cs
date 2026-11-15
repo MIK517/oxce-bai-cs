@@ -60,7 +60,7 @@ public sealed class BattleGravityTests
         Assert.Same(alien, Assert.Single(arena.Battle.FallingUnits));
         // Asking changed nothing: the unit still hangs where it was.
         Assert.Equal((At(12, 12, 3), true), (alien.Position, alien.HaveNoFloorBelow));
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         Assert.Equal((At(12, 12, 0), At(12, 12, 1), false, false, BattleUnitStatus.Standing),
             (alien.Position, alien.LastPosition, alien.HaveNoFloorBelow, alien.Floating, alien.Status));
         Assert.Empty(arena.Battle.FallingUnits);
@@ -96,7 +96,7 @@ public sealed class BattleGravityTests
         Assert.Empty(arena.Battle.FallingUnits);
         Assert.Equal((At(12, 12, 2), true, false, BattleUnitStatus.Standing, At(12, 12, 2)),
             (soldier.Position, soldier.Floating, soldier.Kneeled, soldier.Status, soldier.LastPosition));
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         Assert.Equal(At(12, 12, 2), soldier.Position);
     }
 
@@ -141,7 +141,7 @@ public sealed class BattleGravityTests
         arena.Stand(arena.Soldier, 12, 12, 2);
         Raise(arena, arena.Alien, 12, 12, 2);
         arena.Battle.ApplyGravity(arena.Alien.Position);
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         // The soldier flies, so the first direction (north) is open to it; the alien takes the tile it left.
         Assert.Equal(At(12, 11, 0), arena.Soldier.Position);
         Assert.Equal(At(12, 12, 0), arena.Alien.Position);
@@ -161,7 +161,7 @@ public sealed class BattleGravityTests
         arena.Clear(12, 11, 0, BattleTilePart.Floor);
         Raise(arena, arena.Alien, 12, 12, 1);
         arena.Battle.ApplyGravity(arena.Alien.Position);
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         // North has no floor, so the soldier steps north east.
         Assert.Equal(At(13, 11, 0), arena.Soldier.Position);
         Assert.Equal(At(12, 12, 0), arena.Alien.Position);
@@ -176,7 +176,7 @@ public sealed class BattleGravityTests
         Assert.True(arena.Alien.IsBigUnit);
         arena.Battle.ApplyGravity(arena.Alien.Position);
         Assert.Same(arena.Alien, Assert.Single(arena.Battle.FallingUnits));
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         // North (13, 12) is one of the four tiles about to be taken, so the soldier takes north east.
         Assert.Equal(At(14, 12, 0), arena.Soldier.Position);
         Assert.Equal(At(12, 12, 0), arena.Alien.Position);
@@ -215,14 +215,14 @@ public sealed class BattleGravityTests
             escape.Clear(12 + dx, 12 + dy, 0, BattleTilePart.Floor);
         escape.Put(13, 12, 0, BattleTilePart.Floor, Floor);
         escape.Battle.ApplyGravity(escape.Alien.Position);
-        Assert.Null(escape.Battle.ResolveFalls());
+        escape.Battle.ResolveFalls();
         Assert.Equal((At(13, 12, 0), At(12, 12, 0)), (escape.Soldier.Position, escape.Alien.Position));
         Assert.Equal(BattleUnitStatus.Standing, escape.Soldier.Status);
 
         // Without one the unit below is stomped: its stun reaches its health, the casualty check follows, and the unit lies unconscious as a body
         // on the tile it was on while the faller stands there.
         var soldier = arena.Soldier;
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         Assert.Equal((BattleUnitStatus.Unconscious, null, soldier.Health, At(12, 12, 0)), (soldier.Status, soldier.Position, soldier.StunLevel, arena.Alien.Position));
         Assert.Equal(At(12, 12, 0), soldier.SavedPosition);
         Assert.Equal(arena.Alien.Id, arena.Map.UnitAt(arena.Tile(12, 12, 0)));
@@ -267,7 +267,7 @@ public sealed class BattleGravityTests
         // The list runs the unit queued last first: the unit at (12, 10) takes (12, 11). Open a second way for the other one (east of it):
         // it takes that instead of the tile already taken.
         arena.Put(13, 12, 0, BattleTilePart.Floor, Floor);
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         Assert.Equal((At(13, 12, 0), At(12, 11, 0)), (below1.Position, below2.Position));
         Assert.Equal((At(12, 12, 0), At(12, 10, 0)), (faller1.Position, faller2.Position));
     }
@@ -284,7 +284,7 @@ public sealed class BattleGravityTests
         Assert.Equal(before, State(arena));
         // The landing draws the alien's snap shot, which runs behind the fall state (UnitFallBState: checkReactionFire(unit, a walk)).
         var alienUnits = arena.Alien.TimeUnits;
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         Assert.Contains(arena.Battle.Events.Drain(), @event => @event is UnitFired fired && fired.UnitId == arena.Alien.Id);
         Assert.True(arena.Alien.TimeUnits < alienUnits);
         arena.Battle.RemoveItem(gun);
@@ -294,7 +294,7 @@ public sealed class BattleGravityTests
         gun = GunFor(arena.Battle, arena.Alien);
         // Without its gun, the alien sees the soldier land and has it among its visible units.
         arena.Battle.RemoveItem(gun);
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         Assert.Equal(At(10, 10, 0), arena.Soldier.Position);
         Assert.True(Arena.Sees(arena.Alien, arena.Soldier));
     }
@@ -307,7 +307,7 @@ public sealed class BattleGravityTests
         GunFor(arena.Battle, arena.Soldier);
         Raise(arena, arena.Alien, 15, 10, 2);
         arena.Battle.ApplyGravity(arena.Alien.Position);
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         Assert.Equal(At(15, 10, 0), arena.Alien.Position);
     }
 
@@ -319,7 +319,7 @@ public sealed class BattleGravityTests
         arena.Battle.ApplyGravity(arena.Soldier.Position);
         var before = State(arena);
         Assert.Equal(before, State(arena));
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         Assert.Equal(At(10, 10, 0), arena.Soldier.Position);
     }
 
@@ -331,7 +331,7 @@ public sealed class BattleGravityTests
         Raise(unlit, unlit.Soldier, 10, 10, 2);
         unlit.Battle.ApplyGravity(unlit.Soldier.Position);
         var idle = Drop(unlit, "GRENADE", At(11, 11, 0));
-        Assert.Null(unlit.Battle.ResolveFalls());
+        unlit.Battle.ResolveFalls();
         Assert.Contains(idle, unlit.Battle.Items);
 
         // Lit and next to the landing: the grenade explodes (the fall's states run behind it).
@@ -342,7 +342,7 @@ public sealed class BattleGravityTests
         grenade.FuseTimer = 0;
         grenade.FuseEnabled = true;
         // The landing runs live (nothing refuses it first) and sets the item off.
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         Assert.DoesNotContain(grenade, arena.Battle.Items);
 
         // Two tiles away it is out of reach.
@@ -352,7 +352,7 @@ public sealed class BattleGravityTests
         var distant = Drop(far, "GRENADE", At(12, 10, 0));
         distant.FuseTimer = 0;
         distant.FuseEnabled = true;
-        Assert.Null(far.Battle.ResolveFalls());
+        far.Battle.ResolveFalls();
         Assert.Contains(distant, far.Battle.Items);
     }
 
@@ -366,7 +366,7 @@ public sealed class BattleGravityTests
         var grenade = Drop(arena, "GRENADE", At(11, 10, 0));
         grenade.FuseTimer = 0;
         grenade.FuseEnabled = true;
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         Assert.Contains(grenade, arena.Battle.Items);
     }
 
@@ -378,7 +378,7 @@ public sealed class BattleGravityTests
         arena.Battle.ApplyGravity(arena.Soldier.Position);
         var grenade = Drop(arena, "GRENADE", At(9, 11, 0));
         grenade.FuseTimer = 2;
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         Assert.Equal((true, 2), (grenade.FuseEnabled, grenade.FuseTimer));
     }
 
@@ -417,7 +417,7 @@ public sealed class BattleGravityTests
         var lit = Lit(arena, At(13, 12, 0));
         var carried = new BattleItem(arena.Battle.TakeItemId(), "GRENADE") { OwnerUnitId = arena.Soldier.Id, Slot = "STR_RIGHT_HAND" };
         arena.Battle.AddItem(carried);
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         Assert.Contains(arena.Battle.Events.Drain(), static @event => @event is BattleExploded);
         Assert.DoesNotContain(lit, arena.Battle.Items);
         Assert.Equal(BattleUnitStatus.Unconscious, arena.Soldier.Status);
@@ -436,7 +436,7 @@ public sealed class BattleGravityTests
         var clip = Drop(arena, "CLIP", At(11, 11, 0));
         clip.FuseTimer = 0;
         clip.FuseEnabled = true;
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         Assert.DoesNotContain(clip, arena.Battle.Items);
         Assert.DoesNotContain(arena.Battle.Events.Drain(), static @event => @event is BattleExploded);
     }
@@ -450,7 +450,7 @@ public sealed class BattleGravityTests
         var grenade = Lit(arena, At(11, 11, 0));
         var draws = new ScriptedDraws(99);
         arena.Battle.Random = draws;
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         Assert.Contains(grenade, arena.Battle.Items);
         Assert.Equal((true, 0), (grenade.FuseEnabled, grenade.FuseTimer));
         Assert.Single(draws.Calls);
@@ -466,7 +466,7 @@ public sealed class BattleGravityTests
         arena.Battle.ApplyGravity(arena.Soldier.Position);
         Lit(arena, At(9, 9, 0));
         Lit(arena, At(11, 11, 0));
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         var centers = arena.Battle.Events.Drain().OfType<BattleExploded>().Select(static blast => (blast.Center.X / 16, blast.Center.Y / 16)).ToArray();
         Assert.Equal([(11, 11), (9, 9)], centers);
     }
@@ -479,7 +479,7 @@ public sealed class BattleGravityTests
         Raise(arena, arena.Soldier, 12, 12, 2);
         arena.Battle.ApplyGravity(arena.Soldier.Position);
         var trap = Drop(arena, "STR_DEATH_TRAP_200", At(12, 12, 0));
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         // No second trap item was made (the one on the tile may be gone with the blow it struck).
         Assert.DoesNotContain(arena.Battle.Items, item => item.ItemType == "STR_DEATH_TRAP_200" && item != trap);
         // No attacker, and the trap's own item is the weapon of the hit.
@@ -496,7 +496,7 @@ public sealed class BattleGravityTests
         trapped.Put(13, 13, 0, BattleTilePart.Floor, DeathTrapFloor);
         Raise(trapped, trapped.Alien, 12, 12, 1);
         trapped.Battle.ApplyGravity(trapped.Alien.Position);
-        Assert.Null(trapped.Battle.ResolveFalls());
+        trapped.Battle.ResolveFalls();
         var blast = Assert.Single(trapped.Battle.Events.Drain().OfType<BattleExploded>());
         Assert.Equal((13, 13), (blast.Center.X / 16, blast.Center.Y / 16));
 
@@ -506,7 +506,7 @@ public sealed class BattleGravityTests
         near.Battle.ApplyGravity(near.Alien.Position);
         Lit(near, At(14, 14, 0));
         Lit(near, At(15, 15, 0));
-        Assert.Null(near.Battle.ResolveFalls());
+        near.Battle.ResolveFalls();
         // Only the grenade within reach of a tile of the unit was set off (the other one may be gone with its blast, but did not explode itself).
         var set = Assert.Single(near.Battle.Events.Drain().OfType<BattleExploded>());
         Assert.Equal((14, 14), (set.Center.X / 16, set.Center.Y / 16));
@@ -525,7 +525,7 @@ public sealed class BattleGravityTests
         arena.Relight();
         var lit = arena.Battle.TileShade(At(11, 11, 0));
         Assert.True(lit < 15, $"{lit}");
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         Assert.DoesNotContain(flare, arena.Battle.Items);
         Assert.Equal(15, arena.Battle.TileShade(At(11, 11, 0)));
     }
@@ -540,7 +540,7 @@ public sealed class BattleGravityTests
         var flare = Drop(arena, "FLARE_TRIGGERED", At(11, 11, 0));
         arena.Relight();
         Assert.Equal(15, arena.Battle.TileShade(At(11, 11, 0)));
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         Assert.Contains(flare, arena.Battle.Items);
         Assert.True(flare.FuseEnabled);
         Assert.True(arena.Battle.TileShade(At(11, 11, 0)) < 15);
@@ -554,7 +554,7 @@ public sealed class BattleGravityTests
         Raise(arena, arena.Soldier, 12, 12, 2);
         arena.Battle.ApplyGravity(arena.Soldier.Position);
         // S11 retired the dry run that refused such a landing (battle.fall-proximity-explosion-unsupported): the fall runs and the trap is a rule.
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         Assert.Empty(arena.Battle.FallingUnits);
     }
 
@@ -587,7 +587,7 @@ public sealed class BattleGravityTests
             Raise(arena, arena.Soldier, 10, 10, 2);
             arena.Battle.ApplyGravity(arena.Soldier.Position);
             arena.Soldier.Status = status;
-            Assert.Null(arena.Battle.ResolveFalls());
+            arena.Battle.ResolveFalls();
             Assert.Equal((At(10, 10, 0), BattleUnitStatus.Standing), (arena.Soldier.Position, arena.Soldier.Status));
         }
     }
@@ -599,7 +599,7 @@ public sealed class BattleGravityTests
         Raise(arena, arena.Alien, 12, 12, 3);
         arena.Battle.ApplyGravity(arena.Alien.Position);
         arena.Alien.StunLevel = arena.Alien.Health;
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         Assert.Empty(arena.Battle.FallingUnits);
         Assert.Equal(At(12, 12, 3), arena.Alien.Position);
     }
@@ -613,7 +613,7 @@ public sealed class BattleGravityTests
             arena.Clear(12 + dx, 12 + dy, 0, BattleTilePart.Floor);
         Raise(arena, arena.Alien, 12, 12, 1);
         arena.Battle.ApplyGravity(arena.Alien.Position);
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         Assert.Equal((At(12, 11, 0), At(12, 12, 0)), (arena.Soldier.Position, arena.Alien.Position));
     }
 
@@ -624,7 +624,7 @@ public sealed class BattleGravityTests
         Raise(arena, arena.Alien, 12, 12, 0);
         Raise(arena, arena.Soldier, 13, 13, 1);
         arena.Battle.ApplyGravity(arena.Soldier.Position);
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         // North moves the big unit to (12, 11): none of the four tiles it takes is the soldier's or occupied.
         Assert.Equal((At(12, 11, 0), At(13, 13, 0)), (arena.Alien.Position, arena.Soldier.Position));
         Assert.Equal(arena.Soldier.Id, arena.Map.UnitAt(arena.Tile(13, 13, 0)));
@@ -641,7 +641,7 @@ public sealed class BattleGravityTests
         var grenade = Drop(arena, "GRENADE", At(10, 11, 0));
         grenade.FuseTimer = 0;
         grenade.FuseEnabled = true;
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         Assert.DoesNotContain(grenade, arena.Battle.Items);
     }
 
@@ -656,7 +656,7 @@ public sealed class BattleGravityTests
         arena.Alien.Stats = arena.Alien.Stats with { Strength = 30 };
         Raise(arena, arena.Alien, 12, 12, 2);
         arena.Battle.ApplyGravity(arena.Alien.Position);
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         Assert.Equal(4, arena.Map.Fire(arena.Tile(12, 12)));
     }
 }

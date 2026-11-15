@@ -32,7 +32,7 @@ public sealed class BattleInventoryAmmoTests
 
     /// <summary>The BOMB is a grenade (battle type 4) the GUN takes as ammunition, so a live one dropped to the ground would set the danger zone.</summary>
     private static readonly string BombRules = Costs
-        .Replace(GrenadeText, GrenadeText + "\n  - type: BOMB\n    battleType: 4\n    weight: 1", StringComparison.Ordinal)
+        .Replace(GrenadeText, GrenadeText + "\n  - type: BOMB\n    battleType: 4\n    weight: 1\n    damageType: 3\n    power: 40", StringComparison.Ordinal)
         .Replace("compatibleAmmo: [CLIP]", "compatibleAmmo: [CLIP, BOMB]", StringComparison.Ordinal);
 
     /// <summary>An extra weapon that is fixed (the reference never picks it up).</summary>
@@ -450,33 +450,105 @@ public sealed class BattleInventoryAmmoTests
     }
 
     [Fact]
-    public void ALiveGrenadeClipThatWouldLandOnTheGroundRefusesTheSwapTheQuickUnloadAndTheUnload()
+    public void ALiveGrenadeClipThatLandsOnTheGroundSetsTheDangerZoneOfTheSwapTheQuickUnloadAndTheUnload()
     {
+        static bool Marked(BattleState battle, BattleUnit soldier) => battle.Map.Dangerous(battle.TileIndex(BattleState.TileOf(soldier)!.Value));
+
         // The swap: before the battle the old clip always goes to the ground.
         var (swap, swapBattle, swapSoldier) = Open(BombRules);
         var bomb = LiveBomb(swapBattle, swapSoldier);
         var fresh = Carry(swapBattle, swapSoldier, "CLIP", "STR_BACK_PACK");
-        var revision = swapBattle.Revision;
-        Assert.Equal("battle.inventory-danger-zone-unsupported", Refusal(swap, new MoveInventoryItem(swapSoldier.Id, fresh.Id, "STR_RIGHT_HAND", 0, 0, Shift: true)));
-        Assert.Equal((revision, bomb.Id), (swapBattle.Revision, Item(swapBattle, Gun).AmmoSlots[0]));
+        Assert.False(Marked(swapBattle, swapSoldier));
+        Assert.Equal("STR_GROUND", Assert.IsType<InventoryAmmoLoaded>(Assert.Single(Run(swap, new MoveInventoryItem(swapSoldier.Id, fresh.Id, "STR_RIGHT_HAND", 0, 0, Shift: true)))).ReplacedTo);
+        Assert.Equal(("STR_GROUND", fresh.Id), (State(swapBattle, bomb.Id).Slot, Item(swapBattle, Gun).AmmoSlots[0]));
+        Assert.True(Marked(swapBattle, swapSoldier));
 
         // The quick unload drops the clip to the ground.
         var (quick, quickBattle, quickSoldier) = Open(BombRules);
-        var quickBomb = LiveBomb(quickBattle, quickSoldier);
-        revision = quickBattle.Revision;
-        Assert.Equal("battle.inventory-danger-zone-unsupported", Refusal(quick, new UseInventoryFeature(quickSoldier.Id, Gun, InventoryFeature.UnloadAmmo, Shift: true)));
-        Assert.Equal((revision, quickBomb.Id), (quickBattle.Revision, Item(quickBattle, Gun).AmmoSlots[0]));
+        LiveBomb(quickBattle, quickSoldier);
+        Run(quick, new UseInventoryFeature(quickSoldier.Id, Gun, InventoryFeature.UnloadAmmo, Shift: true));
+        Assert.True(Marked(quickBattle, quickSoldier));
 
-        // The unload: the left hand taken sends the clip to the ground, a free left hand takes it.
+        // The unload: the left hand taken sends the clip to the ground, a free left hand takes it and sets nothing.
         var (taken, takenBattle, takenSoldier) = Open(BombRules);
-        var takenBomb = LiveBomb(takenBattle, takenSoldier);
+        LiveBomb(takenBattle, takenSoldier);
         Carry(takenBattle, takenSoldier, "GRENADE", "STR_LEFT_HAND");
-        revision = takenBattle.Revision;
-        Assert.Equal("battle.inventory-danger-zone-unsupported", Refusal(taken, new UseInventoryFeature(takenSoldier.Id, Gun, InventoryFeature.UnloadAmmo)));
-        Assert.Equal((revision, takenBomb.Id), (takenBattle.Revision, Item(takenBattle, Gun).AmmoSlots[0]));
+        Assert.Equal("STR_GROUND", Assert.IsType<InventoryItemUnloaded>(Assert.Single(Run(taken, new UseInventoryFeature(takenSoldier.Id, Gun, InventoryFeature.UnloadAmmo)))).AmmoTo);
+        Assert.True(Marked(takenBattle, takenSoldier));
         var (free, freeBattle, freeSoldier) = Open(BombRules);
         LiveBomb(freeBattle, freeSoldier);
         Assert.Equal("STR_LEFT_HAND", Assert.IsType<InventoryItemUnloaded>(Assert.Single(Run(free, new UseInventoryFeature(freeSoldier.Id, Gun, InventoryFeature.UnloadAmmo)))).AmmoTo);
+        Assert.False(Marked(freeBattle, freeSoldier));
+    }
+
+    // ---- a weapon that lies on the ground ----
+
+    [Fact]
+    public void ADropOnAGroundWeaponLoadsItAndWithoutTheTargetItIsAPlainDrop()
+    {
+        // Inventory::mouseClick: the ground item under the drop, a weapon with ammunition that the clip does not stack with, is loaded ("Put item in weapon").
+        var (campaign, battle, soldier) = Open(firstTurn: true);
+        var gun = EmptyGun(battle);
+        OnTheGround(battle, soldier, gun);
+        var fresh = Carry(battle, soldier, "CLIP", "STR_LEFT_HAND");
+        var revision = battle.Revision;
+        var loaded = Assert.IsType<InventoryAmmoLoaded>(Assert.Single(Run(campaign, new MoveInventoryItem(soldier.Id, fresh.Id, "STR_GROUND", 0, 0, OntoItemId: gun.Id))));
+        Assert.Equal((soldier.Id, gun.Id, fresh.Id, 0, -1, "", 15), (loaded.UnitId, loaded.WeaponId, loaded.AmmoId, loaded.AmmoSlot, loaded.ReplacedItemId, loaded.ReplacedTo, loaded.TimeUnitsSpent));
+        Assert.True(battle.Revision > revision);
+        Assert.Equal(fresh.Id, gun.AmmoSlots[0]);
+        Assert.Equal(("", (int?)null, true), State(battle, fresh.Id));
+        Assert.Equal(45, soldier.TimeUnits);
+        // The weapon stays where it lay.
+        Assert.Equal(("STR_GROUND", BattleState.TileOf(soldier)), (gun.Slot, gun.Tile));
+
+        // Without a target the clip is only put down (the cost of the move to the ground, the clip on the tile, the weapon empty).
+        var (plain, plainBattle, plainSoldier) = Open(firstTurn: true);
+        var plainGun = EmptyGun(plainBattle);
+        OnTheGround(plainBattle, plainSoldier, plainGun);
+        var clip = Carry(plainBattle, plainSoldier, "CLIP", "STR_LEFT_HAND");
+        var moved = Assert.IsType<InventoryItemMoved>(Assert.Single(Run(plain, new MoveInventoryItem(plainSoldier.Id, clip.Id, "STR_GROUND", 0, 0))));
+        Assert.Equal(("STR_GROUND", (int?)null), (moved.ToSlot, plainGun.AmmoSlots[0]));
+        Assert.Equal(("STR_GROUND", (int?)null, false), State(plainBattle, clip.Id));
+    }
+
+    [Fact]
+    public void ADropOnAGroundWeaponRefusesAWrongClipALoadedWeaponAndAQuickSwapInTheBattleButSwapsBeforeIt()
+    {
+        var (campaign, battle, soldier) = Open(firstTurn: true);
+        OnTheGround(battle, soldier, Item(battle, Gun));
+        var fresh = Carry(battle, soldier, "CLIP", "STR_LEFT_HAND");
+        var revision = battle.Revision;
+        // The gun is loaded; the grenade is no ammunition for it; in the battle only a weapon in a hand is swapped.
+        Assert.Equal("battle.inventory-ammo-already-loaded", Refusal(campaign, new MoveInventoryItem(soldier.Id, fresh.Id, "STR_GROUND", 0, 0, OntoItemId: Gun)));
+        Assert.Equal("battle.inventory-ammo-wrong", Refusal(campaign, new MoveInventoryItem(soldier.Id, Grenade, "STR_GROUND", 0, 0, OntoItemId: Gun)));
+        Assert.Equal("battle.inventory-ammo-swap-not-held", Refusal(campaign, new MoveInventoryItem(soldier.Id, fresh.Id, "STR_GROUND", 0, 0, Shift: true, OntoItemId: Gun)));
+        Assert.Equal(revision, battle.Revision);
+        Assert.Equal(Clip, Item(battle, Gun).AmmoSlots[0]);
+
+        // Before the battle the swap needs no hand, and the old clip goes to the ground.
+        var (before, beforeBattle, beforeSoldier) = Open();
+        OnTheGround(beforeBattle, beforeSoldier, Item(beforeBattle, Gun));
+        var spare = Carry(beforeBattle, beforeSoldier, "CLIP", "STR_BACK_PACK");
+        var swapped = Assert.IsType<InventoryAmmoLoaded>(Assert.Single(Run(before, new MoveInventoryItem(beforeSoldier.Id, spare.Id, "STR_GROUND", 0, 0, Shift: true, OntoItemId: Gun))));
+        Assert.Equal((Clip, "STR_GROUND"), (swapped.ReplacedItemId, swapped.ReplacedTo));
+        Assert.Equal(spare.Id, Item(beforeBattle, Gun).AmmoSlots[0]);
+    }
+
+    [Fact]
+    public void ADropOnAGroundItemThatIsNotThereOrCannotTakeItIsRefusedAndAStackableOneIsAPlainDrop()
+    {
+        var (campaign, battle, soldier) = Open();
+        var fresh = Carry(battle, soldier, "CLIP", "STR_LEFT_HAND");
+        // An item that is not on the unit's tile (the grenade in the back pack), or none at all.
+        Assert.Equal("battle.inventory-item-unknown", Refusal(campaign, new MoveInventoryItem(soldier.Id, fresh.Id, "STR_GROUND", 0, 0, OntoItemId: Grenade)));
+        Assert.Equal("battle.inventory-item-unknown", Refusal(campaign, new MoveInventoryItem(soldier.Id, fresh.Id, "STR_GROUND", 0, 0, OntoItemId: 9999)));
+        // A ground item that is no weapon and does not stack with the clip: nothing happens in the reference.
+        var rock = OnTheGround(battle, soldier, Carry(battle, soldier, "GRENADE", "STR_BELT"));
+        Assert.Equal("battle.inventory-no-room", Refusal(campaign, new MoveInventoryItem(soldier.Id, fresh.Id, "STR_GROUND", 0, 0, OntoItemId: rock.Id)));
+        // A ground clip of the same type stacks: a plain drop.
+        var other = OnTheGround(battle, soldier, Carry(battle, soldier, "CLIP", "STR_BELT"));
+        Assert.IsType<InventoryItemMoved>(Assert.Single(Run(campaign, new MoveInventoryItem(soldier.Id, fresh.Id, "STR_GROUND", 0, 0, OntoItemId: other.Id))));
+        Assert.Equal("STR_GROUND", State(battle, fresh.Id).Slot);
     }
 
     [Fact]

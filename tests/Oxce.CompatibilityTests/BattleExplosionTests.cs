@@ -453,7 +453,7 @@ public sealed class BattleExplosionTests
     {
         var melee = Bomber(more: rules => Replaced(rules, "- type: GRENADE\n    battleType: 4", "- type: GRENADE\n    clipSize: -1\n    battleType: 3"));
         var next = Extra(melee, 970, 16, 10);
-        Assert.Null(Hurt(melee, 500, Plain).Refusal);
+        Hurt(melee, 500, Plain);
         melee.Battle.RunStates();
         // The weapon is a melee one, but the attack is the explosion of a self-destruct, not a hit: no melee roll, no area.
         Assert.Empty(melee.Battle.Events.Of<BattleExploded>());
@@ -461,7 +461,7 @@ public sealed class BattleExplosionTests
         Assert.Equal(100, next.Health);
         var psi = Bomber(more: rules => Replaced(rules, "- type: GRENADE\n    battleType: 4", "- type: GRENADE\n    battleType: 9"));
         var near = Extra(psi, 970, 16, 10);
-        Assert.Null(Hurt(psi, 500, Plain).Refusal);
+        Hurt(psi, 500, Plain);
         psi.Battle.RunStates();
         // The amplifier's explosion is a hit at the unit's corner voxel, not an area blast.
         Assert.Empty(psi.Battle.Events.Of<BattleExploded>());

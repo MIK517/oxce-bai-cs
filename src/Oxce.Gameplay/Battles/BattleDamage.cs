@@ -10,12 +10,12 @@ namespace Oxce.Gameplay.Battles;
 internal readonly record struct BattleAttack(BattleActionType Type, BattleUnit? Attacker = null, BattleItem? Weapon = null, BattleItem? DamageItem = null);
 
 /// <summary>
-/// What <see cref="BattleState.DamageUnit"/> did: the damage to the unit's health. <c>Refusal</c> is set by no code and none may set it: the commands run on the live
+/// What <see cref="BattleState.DamageUnit"/> did: the damage to the unit's health. The damage, the hits and the falls refuse nothing: the commands run on the live
 /// battle with no copy, so a refusal after a change would leave the battle half changed (ADR 0038); a later branch's rule that cannot run is refused before the command
-/// changes anything. (The field and the refusal plumbing of <c>HitUnit</c>, <c>Hit</c> and the fire's burn stay only until a branch 6 slice deletes them.) A unit the hit takes out, or sets
+/// changes anything. A unit the hit takes out, or sets
 /// to respawn, is left for <see cref="BattleState.CheckForCasualties"/>, which the reference also runs later (an explosion, a fall, a turn's end).
 /// </summary>
-internal readonly record struct BattleDamageResult(int Damage, CampaignReason? Refusal = null);
+internal readonly record struct BattleDamageResult(int Damage);
 
 /// <summary>
 /// Damage to units (Phase 7 branch 5 S3): <c>BattleUnit::damage</c> (the side and body part of the hit, the armor, every conversion to health, stun,
@@ -94,7 +94,7 @@ internal sealed partial class BattleState
     /// <summary>
     /// BattleUnit::damage. <paramref name="relative"/> is where the hit landed relative to the unit's bottom centre (a straight hit from below is
     /// <c>(0, 0, z &lt;= 0)</c>, the side under); <paramref name="sideOverride"/> and <paramref name="bodyPartOverride"/> are the environment's. Returns
-    /// the damage to the health, with the refusal when the hit would push a self-destruct explosion (S5).
+    /// the damage to the health (a hit that would push a self-destruct explosion pushes it on the list of states).
     /// </summary>
     internal BattleDamageResult DamageUnit(BattleUnit unit, BattlePosition relative, int damage, RuntimeItemDamageRule type,
         in BattleAttack attack, int sideOverride = -1, int bodyPartOverride = -1)
@@ -241,7 +241,7 @@ internal sealed partial class BattleState
         }
 
         // special effects: only with a battlescape (the generator's explosions have none)
-        if (Generating) return new(damage, null);
+        if (Generating) return new(damage);
         var moraleLoss = 0;
         if (!type.IgnoreNormalMoraleLose)
         {
@@ -370,14 +370,14 @@ internal sealed partial class BattleState
     /// <summary>
     /// TileEngine::hitUnit: the target takes the damage (<see cref="DamageUnit"/>), an X-COM attacker earns its experience, and the last unit to hit
     /// the victim is remembered as its murderer unless this hit did no harm to a victim that is already dying (it burns, bleeds or loses health by
-    /// itself). Returns whether the unit was hit (a unit with no health is not), and the refusal of <see cref="DamageUnit"/>.
+    /// itself). Returns whether the unit was hit (a unit with no health is not).
     /// </summary>
-    internal (bool Hit, CampaignReason? Refusal) HitUnit(in BattleAttack attack, BattleUnit? target, BattlePosition relative,
+    internal bool HitUnit(in BattleAttack attack, BattleUnit? target, BattlePosition relative,
         int damage, RuntimeItemDamageRule type, bool rangeAttack)
     {
-        if (target is null || target.Health <= 0) return (false, null);
+        if (target is null || target.Health <= 0) return false;
         var healthOrig = target.Health;
-        var result = DamageUnit(target, relative, damage, type, attack);
+        DamageUnit(target, relative, damage, type, attack);
         var healthDamage = healthOrig - target.Health;
         Events.Add(new UnitHit(target.Id, attack.Attacker?.Id ?? -1, healthDamage, target.Health));
 
@@ -394,7 +394,7 @@ internal sealed partial class BattleState
             target.MurdererWeapon = attack.Weapon?.ItemType ?? "STR_WEAPON_UNKNOWN";
             target.MurdererWeaponAmmo = attack.DamageItem?.ItemType ?? "STR_WEAPON_UNKNOWN";
         }
-        return (true, result.Refusal);
+        return true;
     }
 
     // ---- experience ----
@@ -558,9 +558,9 @@ internal sealed partial class BattleState
     /// The part of <c>TileEngine::hit</c> that concerns units: what stands in the hit voxel. A floor or an object hit passes through to the bodies
     /// lying on the tile (unconscious units' items) first, the first one still alive takes the hit, and the terrain is spared; a unit in the voxel is
     /// hit at where the voxel lies against its bottom centre. Returns the unit part's outcome: the effect it made (2 for a fire or a glowing body),
-    /// whether a unit took the hit, and the refusal of the hit (a later slice's work).
+    /// and whether a unit took the hit.
     /// </summary>
-    private (bool Hit, int Effect, CampaignReason? Refusal) HitUnitsInVoxel(in BattleAttack attack, BattlePosition voxel, BattleVoxelType part,
+    private (bool Hit, int Effect) HitUnitsInVoxel(in BattleAttack attack, BattlePosition voxel, BattleVoxelType part,
         int tile, BattlePosition tilePosition, int damage, RuntimeItemDamageRule type, bool rangeAttack)
     {
         if (part is BattleVoxelType.Floor or BattleVoxelType.Object)
@@ -568,11 +568,10 @@ internal sealed partial class BattleState
             foreach (var item in ItemsOnTile(tilePosition).ToList())
             {
                 if (item.CorpseUnitId is not { } corpse) continue;
-                var (hit, refusal) = HitUnit(attack, UnitById(corpse), new BattlePosition(0, 0, 0), damage, type, rangeAttack);
-                if (!hit) continue;
-                return (true, GlowRange(item) is not null ? 2 : 0, refusal);
+                if (!HitUnit(attack, UnitById(corpse), new BattlePosition(0, 0, 0), damage, type, rangeAttack)) continue;
+                return (true, GlowRange(item) is not null ? 2 : 0);
             }
-            return (false, 0, null);
+            return (false, 0);
         }
         if (OverlappingUnit(tile) is { Health: > 0 } body)
         {
@@ -583,9 +582,9 @@ internal sealed partial class BattleState
             var targetVoxel = new BattlePosition(position.X * 16 + half, position.Y * 16 + half,
                 position.Z * 24 + body.FloatHeightOf(RequiredRules) - Map.TerrainLevel(tile));
             var relative = new BattlePosition(voxel.X - targetVoxel.X, voxel.Y - targetVoxel.Y, voxel.Z - targetVoxel.Z - verticalOffset);
-            var (_, refusal) = HitUnit(attack, body, relative, damage, type, rangeAttack);
-            return (true, body.Fire != 0 ? 2 : 0, refusal);
+            HitUnit(attack, body, relative, damage, type, rangeAttack);
+            return (true, body.Fire != 0 ? 2 : 0);
         }
-        return (false, 0, null);
+        return (false, 0);
     }
 }

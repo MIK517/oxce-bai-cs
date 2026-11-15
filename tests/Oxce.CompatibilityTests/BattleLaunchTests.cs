@@ -244,7 +244,7 @@ public sealed class BattleLaunchTests
     }
 
     [Fact]
-    public void TheLaunchCommandRunsThroughTheRuntimeAndATrialCopyKeepsTheBattleOnRefusal()
+    public void TheLaunchCommandRunsThroughTheRuntimeAndARefusalComesBeforeAnyChange()
     {
         var (arena, gun, clip) = Load();
         var runtime = new BattleRuntime(arena.Battle, arena.Rules, new ScriptedDraws(0), null);

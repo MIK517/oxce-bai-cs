@@ -168,7 +168,7 @@ public sealed class BattleReactionFireTests
         arena.Battle.ApplyGravity(arena.Soldier.Position);
         arena.Battle.SelectedUnitId = arena.Alien.Id;
         var alienUnits = arena.Alien.TimeUnits;
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         Assert.Equal(BattleWalkTests.At(10, 10, 0), arena.Soldier.Position);
         Assert.DoesNotContain(arena.Battle.Events.Drain(), static @event => @event is UnitFired);
         Assert.Equal(alienUnits, arena.Alien.TimeUnits);
@@ -179,7 +179,7 @@ public sealed class BattleReactionFireTests
         control.Battle.SetTile(control.Soldier, BattleWalkTests.At(10, 10, 2));
         control.Battle.ApplyGravity(control.Soldier.Position);
         control.Battle.SelectedUnitId = control.Soldier.Id;
-        Assert.Null(control.Battle.ResolveFalls());
+        control.Battle.ResolveFalls();
         Assert.Contains(control.Battle.Events.Drain(), @event => @event is UnitFired fired && fired.UnitId == control.Alien.Id);
     }
 
@@ -343,7 +343,7 @@ public sealed class BattleReactionFireTests
         arena.See();
         arena.Battle.SelectedUnitId = selected ? arena.Soldier.Id : arena.Alien.Id;
         var units = arena.Alien.TimeUnits;
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         Assert.Equal(BattleWalkTests.At(10, 10, 0), arena.Soldier.Position);
         var events = arena.Battle.Events.Drain();
         Assert.Equal(selected, events.Any(static @event => @event is UnitMeleeAttacked));
@@ -412,7 +412,7 @@ public sealed class BattleReactionFireTests
         arena.See();
         arena.Battle.ApplyGravity(arena.Soldier.Position);
         arena.Battle.Events.Drain();
-        Assert.Null(arena.Battle.ResolveFalls());
+        arena.Battle.ResolveFalls();
         Assert.Equal(0, arena.Soldier.Position!.Value.Z);
         Assert.Contains(arena.Battle.Events.Drain(), @event => @event is UnitFired fired && fired.UnitId == arena.Alien.Id);
     }

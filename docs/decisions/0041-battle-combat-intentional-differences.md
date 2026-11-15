@@ -73,5 +73,4 @@ nothing calls `StrikeMelee` for a hostile unit, so the port takes the unit on th
 **Two crashes of `MeleeAttackBState::init` (S6).** The reference throws an `Exception` when no unit stands on the target tile (after it paid the time units) and when the victim's voxel lies outside the map ("Melee attack animation overflow"; reachable for a victim on the top level standing on
 a high stair part, whose voxel height is half its height plus 16). The port picks a deterministic behaviour: with no unit nothing is struck and nothing is spent (the state ends, the command reports `battle.attack-not-performed`), and the voxel's height is cut to the map's top voxel so the strike goes on.
 
-**A hit log and a melee attacker's reaction (S6).** `meleeAttack` appends `HITLOG_NEW_SHOT` to the hit log (runtime text, not ported). `MeleeAttackBState::think` calls `checkReactionFire` after the hit: until S9 a command whose attacker could be answered is refused by name
-(`battle.reaction-fire-unsupported`, found on the command's trial copy), as a walk and a kneel are.
+**A hit log and a melee attacker's reaction (S6).** `meleeAttack` appends `HITLOG_NEW_SHOT` to the hit log (runtime text, not ported). `MeleeAttackBState::think` calls `checkReactionFire` after the hit, and S9 ported it: the reactions run within the command. Only the hit log is left out.

@@ -154,7 +154,7 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
 
     /// <summary>
     /// The battlescape's constructor for a loaded battle that is under way: <c>checkForCasualties</c> (a unit past the out threshold dies, is stunned or
-    /// converts) and the falls it queues. A fall that needs a later branch's work stays queued, and the battle's commands wait (the gate).
+    /// converts) and the falls it queues, which run at once.
     /// </summary>
     private static void OpenLoadedBattlescape(BattleState battle)
     {
@@ -289,8 +289,7 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
     /// BriefingState::btnOkClick and NextTurnState's turn-0 work. Everything that can refuse is checked first, so a refusal
     /// changes nothing, except that the battlescape's casualty check (which the reference runs first, and which a second run repeats without
     /// change) comes before the refusals that read its result (no live aliens, the trial spawn): no live aliens (the aliens' crash screen), a wave that could deploy at the start (branch 6), a script or a revive
-    /// the first turn cannot do yet, before and after the spawn, and a fall of the first turn that cannot run (so that the pre-battle
-    /// inventory always leads to a first turn). Then primed spawn items spawn, and bug hunt mode is checked.
+    /// the first turn cannot do yet, before and after the spawn. Then primed spawn items spawn, and bug hunt mode is checked.
     /// </summary>
     private CampaignCommandResult ConfirmBriefing()
     {
@@ -374,7 +373,7 @@ internal sealed class CampaignBattles(CampaignState campaign) : ICampaignCapabil
         // btnOkClick saves the layout first, unless the alternate craft equipment management keeps it with the base screens.
         var saved = campaign.Options.AlternateCraftEquipmentManagement ? 0 : SaveEquipmentLayout(battle);
         // (The first turn's falls cannot refuse: a fall that knocks a unit out is a rule, not a refusal.)
-        if (battle.StartFirstTurn(content) is { } late) return Blocked(late);
+        battle.StartFirstTurn(content);
         return new CampaignCommandResult([new BattleFirstTurnStarted(battle.SelectedUnitId ?? -1) { LayoutsSaved = saved }]);
     }
 

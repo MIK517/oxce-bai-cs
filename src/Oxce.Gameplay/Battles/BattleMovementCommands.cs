@@ -92,7 +92,7 @@ internal sealed partial class BattleState
     /// <c>BattlescapeGame::kneel</c> for a unit of the side on turn: the armor must allow kneeling, the unit not float, and unless it is
     /// kneeling down with the kneel time units reserved the change must respect the reserved time units; then it pays, changes stance, and the
     /// field of view of everyone through its tile and of the unit itself (<c>updateSoldierInfo</c>) is updated, and the spotting of
-    /// <c>checkReactionFire</c> happens. Refused, before any change, when an opposing unit could react.
+    /// <c>checkReactionFire</c> happens (the reactions run after the kneel, as the reference's list does). Refused, before any change, when the armor or the reserve forbids it.
     /// </summary>
     internal CampaignReason? KneelUnit(int unitId, out bool kneeling, out int spent, bool raise = false)
     {
@@ -134,7 +134,8 @@ internal sealed partial class BattleState
         if (KneelUnit(unitId, out _, out _, raise: true) is { } refusal) return refusal;
         RunStates();
         MarkChanged();
-        return ResolveFalls(out _);
+        ResolveFalls(out _);
+        return null;
     }
 
     // ---- reaction fire's state, for the commands that move a unit (kneeling, landing, walking) ----

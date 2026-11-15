@@ -1,6 +1,7 @@
 using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Rulesets;
 using Oxce.Mods.Rulesets.Content;
+using Oxce.Mods.Rulesets.Runtime;
 
 namespace Oxce.Gameplay.Battles;
 
@@ -34,9 +35,83 @@ internal sealed partial class BattleState
     private static readonly string[] ArmorBonusParsers = ["psiDefenceBonusStats", "meleeDodgeBonusStats"];
 
     /// <summary>
+    /// The armors and item types a command of the battle can bring into play, computed from the rules: those of the units that are not removed and of the
+    /// items held, and from each, transitively, what a command can create: an item's <c>spawnUnit</c>, <c>spawnItem</c> and <c>zombieUnit</c> (with the zombie
+    /// units by armor and by type), a unit type's <c>spawnUnit</c>, armor, built-in weapons, melee and psi weapons, an armor's corpse items, built-in, special and
+    /// self-destruct items, and a firearm's compatible ammunition. The scripts of a unit or an item that appears during a command run for it as for one that was there
+    /// (<c>ConvertUnit</c>, <c>SpawnNewUnit</c>, <c>SpawnNewItem</c>, the corpses), so the checks that refuse a script look at all of them.
+    /// </summary>
+    internal (HashSet<string> Armors, HashSet<string> Items) ReachableRules(RuntimeRuleCatalog rules)
+    {
+        var armors = new HashSet<string>(StringComparer.Ordinal);
+        var items = new HashSet<string>(StringComparer.Ordinal);
+        var unitTypes = new HashSet<string>(StringComparer.Ordinal);
+        var pending = new Stack<(char Kind, string Id)>();
+        void Armor(string id)
+        {
+            if (id.Length != 0 && armors.Add(id)) pending.Push(('a', id));
+        }
+        void Item(string id)
+        {
+            if (id.Length != 0 && items.Add(id)) pending.Push(('i', id));
+        }
+        void UnitType(string id)
+        {
+            if (id.Length != 0 && unitTypes.Add(id)) pending.Push(('u', id));
+        }
+
+        foreach (var unit in _units)
+            if (unit.Status != BattleUnitStatus.IgnoreMe) Armor(unit.ArmorId);
+        foreach (var item in _items) Item(item.ItemType);
+        while (pending.Count != 0)
+        {
+            var (kind, id) = pending.Pop();
+            switch (kind)
+            {
+                case 'a':
+                    if (rules.Armors.TryGet(id, out var armorHandle))
+                        foreach (var corpse in rules.Armors[armorHandle].Value.Script.CorpseBattle)
+                            if (corpse is { } corpseItem) Item(rules.Items.GetExternalId(corpseItem));
+                    if (rules.Battle.Equipment.Armors.TryGetValue(id, out var armor))
+                    {
+                        foreach (var builtIn in armor.BuiltInWeapons) Item(builtIn);
+                        Item(armor.SpecialWeapon);
+                        Item(armor.SelfDestructItem);
+                    }
+                    break;
+                case 'i':
+                    if (!rules.Battle.Equipment.Items.TryGetValue(id, out var rule)) break;
+                    Item(rule.SpawnItem);
+                    UnitType(rule.SpawnUnit);
+                    UnitType(rule.Combat.ZombieUnit);
+                    foreach (var named in rule.Combat.ZombieUnitsByMaleArmor.Values.Concat(rule.Combat.ZombieUnitsByFemaleArmor.Values).Concat(rule.Combat.ZombieUnitsByType.Values))
+                        UnitType(named);
+                    foreach (var ammo in rule.Combat.CompatibleAmmo.SelectMany(static slot => slot)) Item(ammo);
+                    break;
+                default:
+                    if (rules.Battle.Equipment.Units.TryGetValue(id, out var unitRule))
+                    {
+                        UnitType(unitRule.SpawnUnit);
+                        Item(unitRule.MeleeWeapon);
+                        Item(unitRule.PsiWeapon);
+                        foreach (var set in unitRule.BuiltInWeaponSets)
+                            foreach (var weapon in set) Item(weapon);
+                        foreach (var set in unitRule.WeightedBuiltInWeaponSets)
+                            foreach (var weapon in set.Keys) Item(weapon);
+                    }
+                    if (rules.Units.TryGet(id, out var unitHandle) && rules.Units[unitHandle].Value.Armor is { } unitArmor)
+                        Armor(rules.Armors.GetExternalId(unitArmor));
+                    break;
+            }
+        }
+        return (armors, items);
+    }
+
+    /// <summary>
     /// A combat script or a stat bonus written as code that the battle's units or items would run, or a global event of either: refused with
-    /// <c>battle.combat-script-unsupported</c> or <c>battle.stat-bonus-script-unsupported</c> (null when none). Armors are those of the battle's units
-    /// that are not removed, items those it holds.
+    /// <c>battle.combat-script-unsupported</c> or <c>battle.stat-bonus-script-unsupported</c> (null when none). Armors and items are those of the battle and
+    /// everything a command can create from them (<see cref="ReachableRules"/>). A firearm in play that takes a psi amplifier as ammunition is refused
+    /// with <c>battle.psi-unsupported</c>: its shot would be a psi attack, which is branch 6's, and the refusal must come before the shot's changes.
     /// </summary>
     internal CampaignReason? CombatScriptRefusal(RuntimeContent content)
     {
@@ -54,19 +129,26 @@ internal sealed partial class BattleState
         var rules = content.RuntimeRules;
         var armorBonus = false;
         var itemBonus = false;
-        foreach (var unit in _units)
+        var (armorIds, itemTypes) = ReachableRules(rules);
+        foreach (var armorId in armorIds)
         {
-            if (unit.Status == BattleUnitStatus.IgnoreMe) continue;
-            if (armorsWithHooks.Contains(unit.ArmorId)) return BattleFlowReasons.CombatScriptUnsupported;
-            armorBonus |= rules.Battle.Equipment.Armors.TryGetValue(unit.ArmorId, out var armor) &&
+            if (armorsWithHooks.Contains(armorId)) return BattleFlowReasons.CombatScriptUnsupported;
+            armorBonus |= rules.Battle.Equipment.Armors.TryGetValue(armorId, out var armor) &&
                 (armor.StatBonuses.PsiDefence.IsScript || armor.StatBonuses.MeleeDodge.IsScript);
         }
-        foreach (var item in _items)
+        foreach (var itemType in itemTypes)
         {
-            if (itemsWithHooks.Contains(item.ItemType)) return BattleFlowReasons.CombatScriptUnsupported;
-            itemBonus |= rules.Battle.Equipment.Items.TryGetValue(item.ItemType, out var rule) && rule.Combat.StatBonuses.AnyScript;
+            if (itemsWithHooks.Contains(itemType)) return BattleFlowReasons.CombatScriptUnsupported;
+            itemBonus |= rules.Battle.Equipment.Items.TryGetValue(itemType, out var rule) && rule.Combat.StatBonuses.AnyScript;
         }
-        return armorBonus || itemBonus ? BattleFlowReasons.StatBonusScriptUnsupported : null;
+        if (armorBonus || itemBonus) return BattleFlowReasons.StatBonusScriptUnsupported;
+        foreach (var itemType in itemTypes)
+            if (rules.Items.TryGet(itemType, out var handle) && rules.Items[handle].Value.BattleType == RuntimeBattleItem.FirearmBattleType &&
+                rules.Battle.Equipment.Items.TryGetValue(itemType, out var firearm) &&
+                firearm.Combat.CompatibleAmmo.SelectMany(static slot => slot).Any(ammo => rules.Items.TryGet(ammo, out var ammoHandle) &&
+                    rules.Items[ammoHandle].Value.BattleType == RuntimeBattleItem.PsiAmpBattleType))
+                return BattleFlowReasons.PsiUnsupported;
+        return null;
     }
 }
 

@@ -14,7 +14,7 @@ internal static class BattleAttackReasons
     internal static readonly CampaignReason ActionNotOffered = new("battle.attack-action-not-offered",
         "The weapon does not offer this action to this unit (a hit costs no time units, or the weapon needs a psi skill or the mana feature the unit lacks).");
 
-    internal static readonly CampaignReason KindUnsupported = new("battle.attack-kind-unsupported",
+    internal static readonly CampaignReason KindUnknown = new("battle.attack-kind-unknown",
         "The attack kind is not one the battle knows (the hit, the throw, the shots and the launch are attacks; priming has its own commands).");
 
     internal static readonly CampaignReason PrimeIsItsOwnCommand = new("battle.attack-kind-is-prime-command",
@@ -522,7 +522,7 @@ internal sealed partial class BattleState
 
     /// <summary>
     /// The state of a melee attack run to its end (<c>statePushBack</c> of a <c>MeleeAttackBState</c> on an empty list, then the loop): the unit strikes the tile
-    /// (the terrain part, when above 0), the explosions and deaths and falls that follow run, and a refusal a state met is returned. A strike that never started leaves the reason the reference gives (its <c>result</c>).
+    /// (the terrain part, when above 0), the explosions and deaths and falls that follow run. A strike that never started leaves the reason the reference gives (its <c>result</c>).
     /// </summary>
     internal CampaignReason? StrikeMelee(BattleUnit unit, BattleItem weapon, BattlePosition target, int terrainMeleeTilePart, BattleActionCost cost)
     {
@@ -531,7 +531,8 @@ internal sealed partial class BattleState
         RunStates();
         if (!state.Performed) return state.Result.Length == 0 ? BattleAttackReasons.NotPerformed : BattleAttackReasons.ForMessage(state.Result);
         MarkChanged();
-        return ResolveFalls(out _);
+        ResolveFalls(out _);
+        return null;
     }
 
     /// <summary>ActionMenuState's constructor: the hit is listed for a weapon the unit can shoot with (no psi weapon without the skill, no mana weapon without the feature) that has a melee cost.</summary>

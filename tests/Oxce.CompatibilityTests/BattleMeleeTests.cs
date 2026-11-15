@@ -864,7 +864,7 @@ public sealed class BattleMeleeTests
         Assert.Equal(80, arena.Soldier.TimeUnits);
         // A kind the battle does not know (the shots are in BattleShootingTests, the throw in BattleThrowingTests, the launch in BattleLaunchTests).
         var shot = runtime.Execute(new Attack(arena.Soldier.Id, gun.Id, (BattleAimKind)99));
-        Assert.Equal("battle.attack-kind-unsupported", Refusal(shot));
+        Assert.Equal("battle.attack-kind-unknown", Refusal(shot));
         // A refused attack returns its reason alone and the command does not fault the battle.
         arena.Soldier.TimeUnits = 5;
         Assert.Equal("battle.attack-refused", Refusal(runtime.Execute(new Attack(arena.Soldier.Id, gun.Id, BattleAimKind.Hit))));

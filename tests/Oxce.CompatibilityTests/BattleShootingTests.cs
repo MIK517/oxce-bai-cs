@@ -1,3 +1,4 @@
+using Oxce.Core.Random;
 using Oxce.Gameplay.Battles;
 using Oxce.Gameplay.Battles.Terrain;
 using Oxce.Gameplay.Campaigns;
@@ -804,10 +805,50 @@ public sealed class BattleShootingTests
         Assert.True(taken.Soldier.IsOut);
     }
 
+    [Fact]
+    public void ALaterShotOfABurstThatFindsNoArcStopsTheBurstWithNoTrajectoryAndSpendsOnlyTheFirstShot()
+    {
+        // The arc is found from the unchanged target (so the first shot flies), but the second shot's deviation, drawn up to 100 times, always leaves the map over the
+        // north edge: the burst ends there with ProjectileFlyBState::createNewProjectile's "no line of fire" (STR_NO_TRAJECTORY for an arc) and no further cost.
+        var (arena, gun, clip) = Load(gun: Rifle.Replace("accuracyAuto: 100", "accuracyAuto: 1", StringComparison.Ordinal) + "\narcingShot: true");
+        arena.Stand(arena.Soldier, 1, 0, 2);
+        arena.Stand(arena.Alien, 4, 0, 6);
+        arena.See();
+        var random = new AfterTheFirstHitRandom(arena.Alien);
+        arena.Battle.Random = random;
+        Assert.Null(Fire(arena, gun, BattleAimKind.AutoShot, x: 4, y: 0));
+        var events = arena.Battle.Events.Drain();
+        Assert.Equal([typeof(UnitFired), typeof(UnitHit), typeof(UnitAttackStopped)], events.Select(static e => e.GetType()));
+        Assert.Equal(new UnitAttackStopped(arena.Soldier.Id, gun.Id, BattleAimKind.AutoShot, "STR_NO_TRAJECTORY"), events[2]);
+        // One payment, one round, one shot in the statistics: the failed shot spent nothing.
+        Assert.Equal((60, 11, 1), (arena.Soldier.TimeUnits, clip.AmmoQuantity, arena.Soldier.Statistics.ShotsFiredCounter));
+        Assert.Equal(BattleUnitStatus.Standing, arena.Soldier.Status);
+        // All 100 tries of the second shot were drawn (the deviation draw of 0 to 100 opens each).
+        Assert.True(random.WildDeviationDraws >= 100, $"{random.WildDeviationDraws} tries");
+    }
+
+    /// <summary>Draws 0 (a shot lands where it is aimed) until the target is hurt, then the widest deviation with the lowest offsets.</summary>
+    private sealed class AfterTheFirstHitRandom(BattleUnit target) : IRandomSource
+    {
+        public int WildDeviationDraws { get; private set; }
+
+        public int NextInclusive(int minimum, int maximum)
+        {
+            if (target.Health >= 100) return minimum;
+            if (minimum != 0 || maximum != 100) return minimum;
+            WildDeviationDraws++;
+            return 100;
+        }
+
+        public int NextExclusive(int exclusiveMaximum) => NextInclusive(0, exclusiveMaximum - 1);
+
+        public double NextUnit() => throw new InvalidOperationException("The draws are integers.");
+    }
+
     private static CampaignReason? FireKind(Arena arena, BattleItem gun, BattleAimKind kind, int x) => Fire(arena, gun, kind, x);
 
     [Fact]
-    public void TheTrialCopyOfACommandKeepsTheLiveUnitsVisibleUnitsWhichTheRestoreWouldRecalculate()
+    public void TheBriefingsTrialCopyKeepsTheLiveUnitsVisibleUnitsWhichTheRestoreWouldRecalculate()
     {
         var (arena, _, _) = Load();
         Assert.Equal([arena.Alien.Id], arena.Soldier.VisibleUnits);

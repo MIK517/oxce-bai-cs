@@ -192,7 +192,7 @@ internal sealed class BattleRuntime
     /// <summary>The pick-up and drop of <c>Inventory::mouseClick</c> (a drop on a weapon loads it); a refusal changes nothing.</summary>
     private CampaignCommandResult MoveInventory(MoveInventoryItem command)
     {
-        if (State.PlanMove(command.UnitId, command.ItemId, command.Slot ?? "", command.SlotX, command.SlotY, command.Shift, out var move, out var load) is { } refusal)
+        if (State.PlanMove(command.UnitId, command.ItemId, command.Slot ?? "", command.SlotX, command.SlotY, command.Shift, out var move, out var load, command.OntoItemId) is { } refusal)
             return Blocked(refusal);
         return load is not null ? Applied(load) : Moved(move!);
     }
@@ -287,7 +287,7 @@ internal sealed class BattleRuntime
             BattleAimKind.Prime or BattleAimKind.Unprime => Blocked(BattleAttackReasons.PrimeIsItsOwnCommand),
             BattleAimKind.Throw => RunOnLiveBattle(battle => battle.ThrowAction(command.UnitId, command.ItemId, command.Target, command.ForceFire)),
             BattleAimKind.Launch => RunOnLiveBattle(battle => battle.LaunchAction(research, command.UnitId, command.ItemId, command.Waypoints)),
-            _ => Blocked(BattleAttackReasons.KindUnsupported),
+            _ => Blocked(BattleAttackReasons.KindUnknown),
         };
     }
 

@@ -59,7 +59,8 @@ internal sealed partial class BattleState
         var refusal = RunWalk(unit, pathfinder, bam, move == BattleMoveType.Strafe, ignore, events);
         // The explosions a unit that blows itself up pushed, and the reactions the walk drew, run behind the walk state; the falls they start follow.
         RunStates();
-        return refusal ?? ResolveFalls(out _);
+        if (refusal is null) ResolveFalls(out _);
+        return refusal;
     }
 
     /// <summary>
@@ -93,14 +94,16 @@ internal sealed partial class BattleState
             events.Add(new UnitWalkEnded(unit.Id, BattleWalkStop.Arrived, 0, kneelSpent, 0, RestingPosition(unit) ?? new BattlePosition(-1, -1, -1)));
             MarkChanged();
             RunStates();
-            return ResolveFalls(out _);
+            ResolveFalls(out _);
+            return null;
         }
         pathfinder.Calculate(unit, target, BattleActionMove.Normal);
         // The reactions of the kneel run first (the list's front); the walk state behind them then finds a unit that was shot out and pops.
         RunStates();
         var refusal = RunWalk(unit, pathfinder, BattleActionMove.Normal, false, false, events, kneeled, kneelSpent);
         RunStates();
-        return refusal ?? ResolveFalls(out _);
+        if (refusal is null) ResolveFalls(out _);
+        return refusal;
     }
 
     /// <summary>
@@ -190,25 +193,21 @@ internal sealed partial class BattleState
                             pathfinder.DequeuePath();
                             AddFallingUnit(unit);
                             _reactionDuringFall = false;
-                            refusal = ResolveFalls(out _);
+                            ResolveFalls(out _);
                             // UnitFallBState: a unit that landed and drew a reaction aborts the walk's path.
                             if (_reactionDuringFall)
                             {
                                 _reactionDuringFall = false;
                                 pathfinder.AbortPath();
                             }
-                            return refusal is not null;
+                            return false;
                         }
                 }
 
                 // if the unit burns floor tiles, burn floor tiles as long as we're not falling
                 if (!falling && BurnsFloor(unit))
                 {
-                    if (BurnFloor(unit) is { } burnRefusal)
-                    {
-                        refusal = burnRefusal;
-                        return true;
-                    }
+                    BurnFloor(unit);
                     // (A unit that burnt a hole stays standing: gravity queued it, and its fall runs when the walk is over.)
                     if (unit.Status != BattleUnitStatus.Standing)
                     {

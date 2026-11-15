@@ -45,10 +45,6 @@ internal sealed partial class BattleState
     private BattleItem? InventoryItem(BattleUnit unit, int itemId) =>
         _items.Find(candidate => candidate.Id == itemId) is { } item && (IsHeld(unit, item) || IsOnTileOf(unit, item)) ? item : null;
 
-    /// <summary>A grenade with a live fuse dropped to the ground sets the danger zone of the artificial intelligence (branch 6): refused until then.</summary>
-    private bool SetsDangerZone(BattleItem item, RuntimeBattleInventory to) =>
-        to.Type == RuntimeBattleInventory.Ground && item.FuseEnabled && RuleBattleType(item) == GrenadeBattleType;
-
     /// <summary>
     /// <c>Inventory::mouseClick</c>'s "put item in weapon": the ammunition <paramref name="selected"/> dropped on <paramref name="weapon"/>. The slot is the first whose compatible ammunition
     /// lists it; the cost is <c>tuLoad</c> (with the mod's extended reload cost, plus the move to the right hand of an item that is in no hand). A loaded slot refuses the drop, but
@@ -92,7 +88,6 @@ internal sealed partial class BattleState
                 if (!HandCost(right, ground, out var drop)) return BattleInventoryReasons.CostUnknown;
                 cost += drop;
             }
-            if (SetsDangerZone(old, goesTo)) return BattleInventoryReasons.DangerZoneUnsupported;
         }
         if (charges && cost > unit.TimeUnits) return BattleInventoryReasons.NotEnoughTimeUnits;
 
@@ -167,8 +162,6 @@ internal sealed partial class BattleState
 
         if (quick)
         {
-            if (!grenade && item.AmmoSlots[slotForUnload] is { } dropped && FindItem(dropped) is { } clip && SetsDangerZone(clip, ground!))
-                return BattleInventoryReasons.DangerZoneUnsupported;
             unload = () =>
             {
                 if (grenade)
@@ -224,13 +217,6 @@ internal sealed partial class BattleState
             if (shortfall == BattleActionShortfall.NoAction) return BattleInventoryReasons.NothingToUnload;
             if (shortfall != BattleActionShortfall.None) return BattleAttackReasons.ForMessage(ShortfallMessage(shortfall));
         }
-        if (!grenade)
-        {
-            var target = second ?? ground;
-            if (item.AmmoSlots[slotForUnload] is { } held && FindItem(held) is { } ammoItem && SetsDangerZone(ammoItem, target))
-                return BattleInventoryReasons.DangerZoneUnsupported;
-        }
-
         var weaponTo = first;
         unload = () =>
         {

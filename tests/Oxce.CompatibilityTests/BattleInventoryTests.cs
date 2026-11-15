@@ -98,7 +98,7 @@ public sealed class BattleInventoryTests
         // (A battle loaded with a floorless walker lets it fall as it opens; here the walker is put in the air after the battle opened.)
         // Standing in the air only because a script changed its movement type is the same: nothing falls until a gravity call, so test the close itself.
         battle.ApplyGravity(soldier.Position);
-        Assert.Null(battle.ResolveFalls());
+        battle.ResolveFalls();
         Assert.Equal(ground, soldier.Position);
     }
 
@@ -302,14 +302,35 @@ public sealed class BattleInventoryTests
     }
 
     [Fact]
-    public void AnEnabledGrenadeIsNotDroppedBecauseItsDangerZoneBelongsToTheAi()
+    public void ALiveGrenadeDroppedWhereAUnitStandsMakesADangerZoneAndOtherDropsDoNot()
     {
-        var (campaign, battle, soldier) = Open();
+        // TileEngine::itemMoveInventory: a BT_GRENADE with an enabled fuse and a damage type that resists dropped to the ground of a unit's tile sets the
+        // danger zone of its blast radius; the dropper's own tile is always in it.
+        var blast = CostRules.Replace("  - type: GRENADE\n    battleType: 4\n    weight: 1", "  - type: GRENADE\n    battleType: 4\n    weight: 1\n    damageType: 3\n    power: 40", StringComparison.Ordinal);
+        Assert.NotEqual(CostRules, blast);
+        static int Marked(BattleState battle) => Enumerable.Range(0, battle.Map.TileCount).Count(battle.Map.Dangerous);
+
+        var (campaign, battle, soldier) = Open(blast);
         battle.Items.Single(static item => item.Id == Grenade).FuseEnabled = true;
-        Assert.Equal("battle.inventory-danger-zone-unsupported", Refusal(campaign, new MoveInventoryItem(soldier.Id, Grenade, "STR_GROUND", 0, 0)));
-        Assert.Equal(("STR_BACK_PACK", 0, 0, (int?)soldier.Id, (BattlePosition?)null), Where(battle, Grenade));
-        // Between sections it moves freely.
-        Moved(campaign, new MoveInventoryItem(soldier.Id, Grenade, "STR_LEFT_HAND", 0, 0));
+        Moved(campaign, new MoveInventoryItem(soldier.Id, Grenade, "STR_GROUND", 0, 0));
+        Assert.Equal(BattleState.GroundSlot, Where(battle, Grenade).Slot);
+        Assert.True(battle.Map.Dangerous(battle.TileIndex(BattleState.TileOf(soldier)!.Value)));
+        Assert.True(Marked(battle) >= 1);
+
+        // A grenade without a live fuse, or one moved between sections, marks nothing.
+        var (cold, coldBattle, coldSoldier) = Open(blast);
+        Moved(cold, new MoveInventoryItem(coldSoldier.Id, Grenade, "STR_GROUND", 0, 0));
+        Assert.Equal(0, Marked(coldBattle));
+        var (between, betweenBattle, betweenSoldier) = Open(blast);
+        betweenBattle.Items.Single(static item => item.Id == Grenade).FuseEnabled = true;
+        Moved(between, new MoveInventoryItem(betweenSoldier.Id, Grenade, "STR_LEFT_HAND", 0, 0));
+        Assert.Equal(0, Marked(betweenBattle));
+
+        // A grenade whose damage type does not resist (the default type) is no danger either.
+        var (plain, plainBattle, plainSoldier) = Open();
+        plainBattle.Items.Single(static item => item.Id == Grenade).FuseEnabled = true;
+        Moved(plain, new MoveInventoryItem(plainSoldier.Id, Grenade, "STR_GROUND", 0, 0));
+        Assert.Equal(0, Marked(plainBattle));
     }
 
     [Fact]

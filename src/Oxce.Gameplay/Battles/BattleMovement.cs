@@ -202,7 +202,7 @@ internal sealed partial class BattleUnit
 
     /// <summary>
     /// BattleUnit::getHitState: the unit was hit since a unit of its side was last selected. Runtime state (not saved) that a player unit's
-    /// reaction reads in <c>getSpottingUnits</c>; the damage that sets it and the selection that resets it belong to branch 5.
+    /// reaction reads in <c>getSpottingUnits</c>; the damage sets it (branch 5); the reset is the AI think's <c>resetUnitHitStates</c> (<c>BattlescapeGame::think</c>), branch 6's.
     /// </summary>
     public bool HitState { get; set; }
 

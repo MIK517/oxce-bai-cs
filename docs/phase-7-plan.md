@@ -553,6 +553,13 @@ corpses, the melee dodge and threat fields, `selfDestructItem`, pain and zombie 
   command returns ordered events (a turn, a shot with its trajectory voxels, an impact, an explosion with its center and radius, a
   unit hit, a unit dead or unconscious, an item created or removed, a terrain part destroyed, a reaction) that clients
   replay. Events carry IDs and positions, and a client draws a unit only as its query shows it (branch 4's rule).
+  Built in branch 5: the turn, the shot with its trajectory, the hit, the blast, the death, the knock-out, the
+  conversion, the ignition, a fall, a reaction. Not built, and handed on (branch audit M6, M5): the events for an
+  item created or removed (`SpawnNewItem`, corpse items, a spent clip), a terrain part destroyed, and a unit spawned
+  by `SpawnNewUnit`; clients refresh those from their queries after the revision moves (ADR 0037), which meets the
+  rule. Branch 6's per-viewer event filter (B2) owns the filtered form of every event, these included, and the
+  branch 5 client draws the unfiltered events of a single-player battle until then; Phase 8's replay can draw the
+  missing three.
   Animation time collapses (the projectile's flight, `ExplosionBState`'s frames, the dying unit's fall); where that
   changes a rule outcome, ADR 0041 (battle combat intentional differences) records it, created by the first slice that
   needs it. A dying unit ends facing direction 3 (`UnitDieBState`: its constructor sets it for non-direct damage or an
@@ -567,7 +574,8 @@ corpses, the melee dodge and threat fields, `selfDestructItem`, pain and zombie 
     last projectile, keep `battle.reaction-fire-unsupported` (`HasPossibleReactor`), as walks and kneels do.
 
   Each slice's status section names the interim refusals it leaves, and the slice that retires them checks none is
-  left. A check that depends on the hit's random draws runs the command on the trial copy first (ADR 0040).
+  left. (S11 deleted the per-command trial copy: every refusal is made before the first change, and a command that
+  would refuse after one faults the battle, ADR 0038. ADR 0040's copy now serves the briefing only.)
 - **A refusal before the turn, a stop after it.** The checks `ActionMenuState::handleAction` makes before an action
   starts are refusals before any change. They differ by action:
   - aimed, snap and auto shots: the weapon offers the action, its research (`getRequirements`) and `canUseWeapon`;
@@ -678,12 +686,14 @@ corpses, the melee dodge and threat fields, `selfDestructItem`, pain and zombie 
     module `tryReaction` creates for a unit that has none), and the reaction chance and its draw.
 
   The reaction's shot or melee hit resolves within the same command, and a walk that drew a reaction stops
-  (`UnitWalkBState`). Hits set `BattleUnit.HitState` and `resetUnitHitStates` clears it where the reference does.
+  (`UnitWalkBState`). Hits set `BattleUnit.HitState`; `resetUnitHitStates` is the AI think's (`BattlescapeGame::think`)
+  and clears it in branch 6.
   `HasPossibleReactor` and `battle.reaction-fire-unsupported` retire, which ends the refusal that told the player an
   unseen unit was near. The acceptance driver's `WithOpponentsSpent` goes. The trial copies (ADR 0040) exist to catch
-  refusals met after a change. When the last of those refusals retires, S11 deletes `TrialRefusal`. A copy that must
-  stay is listed in the status record with the refusal that needs it and its Release cost on the largest acceptance
-  map ([audit follow-up](#audit-follow-up-2026-11-14), A3).
+  refusals met after a change. When the last of those refusals retired, S11 deleted the commands' copy; `TrialRefusal`
+  stays for the briefing's primed spawns (`TrialSpawnRefusal`). A copy that must stay is listed in the status record
+  with the refusal that needs it and its Release cost on the largest acceptance map
+  ([audit follow-up](#audit-follow-up-2026-11-14), A3).
 - **The battle runtime (S5b; audit A1, A2, A4, C1).** One object holds what a battle command needs: the state, the
   rules, the random source, the campaign link, the options, the revision and an ordered event sink. It is set when a
   battle is generated or restored, so no entry point assigns the random source and no rule method takes the rules as
@@ -748,21 +758,61 @@ corpses, the melee dodge and threat fields, `selfDestructItem`, pain and zombie 
 | S6 | Melee and the attack command: `Attack` with `BA_HIT` (`MeleeAttackBState`: the player strikes in its facing direction with no targeting turn, and only a reaction turns, for free, in `init`; the cost, the to-hit roll, the dodge and its back penalty, a firearm's butt, terrain melee, a burn-floor attacker), `meleeAttack`, `meleeAttackCalculate`, `validMeleeRange` (big units, other levels), `validTerrainMeleeRange`; the command's events, refusals and stops; the reaction check after it stays `battle.reaction-fire-unsupported` until S9 | a hit and a miss; a dodge from behind; a big unit's reach; a rifle butt; a wall struck by terrain melee; refused when not adjacent or without time units |
 | S7 | Shooting: aimed, snap and auto (all of `ProjectileFlyBState`: the targeting turn with a turret turning alone, the checks and stops, each shot, ammo spent, shotgun pellets, explosive ammo exploding two voxels back, `projectileHitUnit`, statistics, the auto-shot loop, spray waypoints, force fire), close-quarters combat, `updateEnemyKnowledge` | a hit and a miss on a unit; a shot destroying an object; the out-of-range, no-line-of-fire, no-ammo and time-unit stops after a turn, and the same checks as refusals when the shooter already faces the target; an auto shot of three; spray waypoints (the shots spread between them, a waypoint past the range moved to it); force fire at a tile with a unit on it; a shotgun; explosive ammo; a turret; close-quarters on and off |
 | S8 | Throwing, priming, launching and proximity: `BA_THROW`, `BA_PRIME` and `BA_UNPRIME`, `BA_LAUNCH` with waypoints, the landing item (`itemDrop`, gravity, light), `fuseThrowEvent`, all of `checkForProximityGrenades`; the inventory's load, unload, quick swap, and the pre-battle prime and unprime; `battle.proximity-unsupported`, `battle.inventory-ammo-unsupported` and `battle.inventory-prime-unsupported` retire and `battle.inventory-throw-unsupported` goes | a throw landing and one out of range; a hot grenade; a primed fuse; a proximity grenade set off by a walk; a death trap; a thrown flare lighting the floor; a launch with three waypoints; loading, unloading and the Shift quick swap with their costs, in battle and before it; priming and unpriming in the pre-battle inventory |
-| S9 | Reaction fire: `checkReactionFire`, the reactor list of `getSpottingUnits` with the reaction fire threshold, `getReactor`, `determineReactionType`, `tryReaction`, the AI's reaction scoring; reactions after walk steps, kneels, landings and attacks; the walk's stop; `HitState` and its reset; `HasPossibleReactor` and `battle.reaction-fire-unsupported` retire; the trial copies reviewed | a walk drawing a snap shot and stopping; a reactor out of range; a reactor below the reaction fire threshold (`getHitChance`); the score order and its reduction per reaction; a melee reaction; a preferred and a disabled hand; a hostile reactor holding an explosive shot that would hit its own side; a kneel drawing a reaction; an attack whose reaction kills the attacker |
+| S9 | Reaction fire: `checkReactionFire`, the reactor list of `getSpottingUnits` with the reaction fire threshold, `getReactor`, `determineReactionType`, `tryReaction`, the AI's reaction scoring; reactions after walk steps, kneels, landings and attacks; the walk's stop; `HitState` (set by hits; its reset is branch 6's, with the AI think); `HasPossibleReactor` and `battle.reaction-fire-unsupported` retire; the trial copies reviewed | a walk drawing a snap shot and stopping; a reactor out of range; a reactor below the reaction fire threshold (`getHitChance`); the score order and its reduction per reaction; a melee reaction; a preferred and a disabled hand; a hostile reactor holding an explosive shot that would hit its own side; a kneel drawing a reaction; an attack whose reaction kills the attacker |
 | S10 | Battlescape client: the action menu from the hand and special-weapon buttons with costs and accuracy; targeting with the cursor's accuracy, Ctrl for force fire, the launch waypoints and launch button; priming and throwing; the reserve buttons as commands (the saved `TUReserved` and `kneelReserved`, written by the side-owning slot as `SelectUnit` is); the replay of shots, impacts, explosions and deaths; the carried unit's visible-unit button; health and wounds in the panel. This branch's later-button refusals are replaced (`battle.shooting-unsupported`, the hand buttons, `battle.launch-unsupported`, the special-weapon button, the reserve buttons, `battle.visible-unit-carried-unsupported`). The action menu still lists the branch 6 actions of the items it shows (`ActionMenuState`): the medikit, scanner and mind probe refuse with a new `battle.item-use-unsupported` and the psi amp's actions with `battle.psi-unsupported`, both owned by branch 6; the psi and skills buttons are relabelled to branch 6 | scripted loop tests: an aimed shot, a throw, a melee hit, a refused shot showing its reason, a reaction during a walk replayed, a reserve set and saved, a medikit and a psi amp action refused with branch 6's names |
 | S11 | Acceptance on branch 1's battles and the private active-battle saves (below); attack and explosion timings in the performance baselines | none beyond acceptance |
-| — | Branch audit (`git diff main...HEAD`) | — |
+| — | Branch audit (`git diff main...HEAD`), done: its findings are closed (the ground weapon's load, the danger zone of an inventory drop, the dead refusal plumbing, the scripts of what a command creates, the psi ammunition refusal) and the open points are handed on in [the hand-off below](#handed-on-from-branch-5) | the audit's tests |
 
 Acceptance: this covers each acceptance battle of branch 1 that starts (the three Rosigma battles stay refused at the
 briefing by branch 8's `battle.new-turn-script-unsupported`). After the first turn, and without branch 4's
 opponents-spent setup, a soldier walks out and draws reaction fire wherever the rules say (or no reaction). A soldier
 fires an aimed shot at a spotted unit, or at a discovered tile when none is spotted. It throws a grenade where the
 battle has one, and strikes in melee where a unit can reach another. Damage, deaths, corpses and destroyed terrain
-follow the rules. The battle validates, then saves and reloads with equal saved, derived and sight state, and each
-viewer still sees only its own side's spotted units. A crashed-UFO deployment generates with its power sources
+follow the rules. The battle validates, then saves and reloads with equal saved and derived state, and equal sight
+state except that a reload after a fight may discover more tiles (the load's field of view looks from every unit at
+once; a live blast updates its radius), and each viewer still sees only its own side's spotted units. A crashed-UFO deployment generates with its power sources
 exploded; S11 stages one from the corpus if none of branch 1's battles is one. Each private active-battle save loads,
 and a player unit with a weapon attacks, or the attack is refused for a named reason of a later branch. Attack and
-explosion costs on the largest acceptance map are recorded in the performance baselines.
+explosion costs on the acceptance maps are recorded in the performance baselines; the largest map (Rosigma, whose
+soldiers' commands branch 8's visibility script refuses) is recorded by branch 8.
+
+## Handed on from branch 5
+
+The branch audit (2026-11-15) assigns what branch 5 leaves to the places below. Branch 6's planning slice expands its
+list into the branch's own section (this plan has only its [delivery row](#delivery-shape) yet); each item names the
+reference function and the refusal or flag that stands until then. The details are in the
+[battle combat status](battle-combat-status.md#handed-on-to-branches-6-and-8).
+
+**Branch 6 (`claude/battle-turns-ai`).**
+- *The turn's end.* The danger flags (`BattleMap.Dangerous`, set by `ItemDrop`, the inventory's drop of a live grenade and
+  a dying hostile's neighbours' nodes) are cleared for every tile at the end of each side's turn
+  (`SavedBattleGame::endTurn`) and in `spreadFireAndSmoke`; they are not saved. Until then they are correct within a
+  player's turn only. The same end of turn runs `RunTerrainExplosions` and the fuse timers (`fuseTimerEvent`), and the
+  AI think's `resetUnitHitStates` clears `HitState`.
+- *The AI's combat.* The AI's throw danger zone, the no-sight score form, `StrikeMelee`'s target, berserk and panic shots
+  (`PanicHandled`), `checkForReactivation`.
+- *Psi and the item uses.* The psi attack (`ExplosionBState`'s `psiAttack` for a psi amplifier that is a shot's damage item:
+  until then a battle whose firearm takes a psi amplifier as ammunition is refused with `battle.psi-unsupported` at the
+  briefing and for every command), `psiDefence`, the menu's psi, medikit, scanner and mind probe lines
+  (`battle.psi-unsupported`, `battle.item-use-unsupported`), the skills button and `skillMenuCheck`
+  (`battle.skills-unsupported`).
+- *Events.* The per-viewer event filter (B2) filters every event, the replay's unit ids, falls, hits and deaths included
+  (branch audit M5); and the three events listed under "Built in branch 5" above, if the replay needs them before Phase 8.
+- *The failure model.* A state branch 6 adds never refuses after a change (ADR 0038); a refusal that cannot be met first
+  needs the copy back, with its cost.
+
+**Branch 8 (`claude/battle-scripts-corpus`).** The combat and stat-bonus script bindings (`battle.combat-script-unsupported`,
+`battle.stat-bonus-script-unsupported`, `battle.visibility-script-unsupported`), which the battle checks for everything a
+command can create (`ReachableRules`) and not only for what is in play; `CreateUnit` and `CreateItem`; `origTarg`,
+`skillRules` and `moveUpDown`'s move type for the reaction scripts; the attack and explosion timings on the largest
+acceptance map (Rosigma), which its visibility script refuses until then.
+
+**Phase 8 (client).** The reactor's free turn, the three missing events, `battleConfirmFireMode`, the middle click's
+Ufopaedia, and the inventory screen's choice of a ground item as the target of a drop (`MoveInventoryItem.OntoItemId`
+carries it; the screen has no ground positions yet).
+
+Decided by the plan and the ADRs already: branch 5's refusals before a change and the fault after one (ADR 0038), the
+animation-time differences (ADR 0041), the per-viewer filtering of events (ADR 0037 and the plan's "Hidden information").
 
 ## Inherited refusals
 
