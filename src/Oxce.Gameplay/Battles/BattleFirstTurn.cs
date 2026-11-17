@@ -65,7 +65,6 @@ internal readonly record struct BattleTally(int LiveAliens, int LiveSoldiers);
 /// </summary>
 internal sealed partial class BattleState
 {
-    private const int GrenadeBattleType = 4;
     private const int RightLeg = 4;
     private const int LeftLeg = 5;
     private const int Torso = 1;
@@ -146,7 +145,7 @@ internal sealed partial class BattleState
         {
             if (item.Tile is null || item.XcomProperty || item.IsSpecialWeapon) continue;
             if (!RequiredRules.Battle.Equipment.Items.TryGetValue(item.ItemType, out var battleRule) || !battleRule.Spawns) continue;
-            if (RequiredRules.Items.GetRequiredValue(item.ItemType).BattleType == GrenadeBattleType && item.FuseTimer == 0 && item.FuseEnabled)
+            if (RequiredRules.Items.GetRequiredValue(item.ItemType).BattleType == RuntimeBattleItem.GrenadeBattleType && item.FuseTimer == 0 && item.FuseEnabled)
                 result.Add(item);
         }
         return result;
@@ -197,12 +196,12 @@ internal sealed partial class BattleState
     private BattleUnit? OwnerOf(BattleItem item)
     {
         var id = item.OwnerUnitId ?? item.PreviousOwnerUnitId;
-        return id is { } owner ? _units.Find(unit => unit.Id == owner) : null;
+        return id is { } owner ? UnitById(owner) : null;
     }
 
-    /// <summary>spawnNewUnit's faction: the rule's, or the item owner's for -1 (any other value, or no owner, is the aliens').</summary>
-    private BattleFaction SpawnFaction(BattleItem item, RuntimeBattleItem rule) =>
-        rule.SpawnUnitFaction == -1 && OwnerOf(item) is { } owner ? owner.Faction : rule.SpawnUnitFaction switch
+    /// <summary>spawnNewUnit's faction: the rule's, or the owner's for -1 (any other value, or no owner, is the aliens').</summary>
+    private static BattleFaction SpawnFaction(BattleUnit? owner, RuntimeBattleItem rule) =>
+        rule.SpawnUnitFaction == -1 && owner is not null ? owner.Faction : rule.SpawnUnitFaction switch
         {
             0 => BattleFaction.Player,
             1 => BattleFaction.Hostile,
@@ -215,22 +214,37 @@ internal sealed partial class BattleState
         PrimedSpawnItems().Any(item =>
         {
             var rule = RequiredRules.Battle.Equipment.Items[item.ItemType];
-            return rule.SpawnUnit.Length != 0 && rule.SpawnUnitChance > 0 && SpawnFaction(item, rule) == BattleFaction.Hostile;
+            return rule.SpawnUnit.Length != 0 && rule.SpawnUnitChance > 0 && SpawnFaction(OwnerOf(item), rule) == BattleFaction.Hostile;
         });
 
+    /// <summary>BattlescapeGame::spawnNewUnit(item): the briefing's form, for a primed item lying on its tile (its owner's faction for -1).</summary>
     private bool SpawnNewUnit(BattleItem item, RuntimeBattleItem rule, UnitEquipment equipment, int difficulty,
         IRandomSource random)
     {
         if (rule.SpawnUnit.Length == 0 || !RandomChance.Percent(random, rule.SpawnUnitChance)) return false;
-        var owner = OwnerOf(item);
-        var faction = SpawnFaction(item, rule);
+        return PlaceSpawnedUnit(rule, OwnerOf(item), difficulty, item.Tile!.Value, checkInside: false, startDirection: 0, facing: null, random,
+            equipment) is not null;
+    }
+
+    /// <summary>
+    /// The body both forms of spawnNewUnit share once the chance passed: createTempUnit (the next ID after the last unit's; a player unit made
+    /// this way is a summoned one), the placement on the tile or beside it (searched from <paramref name="startDirection"/>; with
+    /// <paramref name="checkInside"/>, a position off the map places nothing), the facing (<paramref name="facing"/>, else a draw from
+    /// <paramref name="random"/>), a tank's weapon and clip, the item level, then the unit joins the battle unseen by the player unless it is
+    /// theirs, is equipped and takes gravity on its tile. Null when it could not be placed.
+    /// </summary>
+    private BattleUnit? PlaceSpawnedUnit(RuntimeBattleItem rule, BattleUnit? owner, int difficulty, BattlePosition position, bool checkInside,
+        int startDirection, int? facing, IRandomSource random, UnitEquipment equipment)
+    {
+        var faction = SpawnFaction(owner, rule);
         var (unitRule, armor) = UnitRule(rule.SpawnUnit);
-        // createTempUnit: the next ID after the last unit's; a player unit made this way is a summoned one.
         var unit = TempUnit((_units.Count == 0 ? -1 : _units[^1].Id) + 1, faction,
             faction == BattleFaction.Player ? BattleController.Human(0) : BattleController.Ai, rule.SpawnUnit, unitRule, armor, difficulty,
             summoned: faction == BattleFaction.Player);
-        if (BattlePlacement.ValidForUnit(Map, unit, item.Tile!.Value, surrounding: true, startDirection: 0) is not { } position) return false;
-        var direction = random.NextInclusive(0, 7);
+        if ((checkInside && !Contains(position)) ||
+            BattlePlacement.ValidForUnit(Map, unit, position, surrounding: true, startDirection: startDirection) is not { } placed)
+            return null;
+        var direction = facing ?? random.NextInclusive(0, 7);
         // A tank is armed with its weapon (the item named like the unit) and that weapon's clip.
         if (RequiredRules.Battle.Equipment.Items.TryGetValue(unit.UnitType, out var weaponRule) && weaponRule.Fixed)
         {
@@ -240,26 +254,36 @@ internal sealed partial class BattleState
             unit.TurretType = weaponRule.TurretType;
         }
         var itemLevel = equipment.DrawItemLevel();
-        unit.Position = position;
+        unit.Position = placed;
         unit.SetDirection(direction);
         unit.TimeUnits = 0;
         unit.PreviousOwnerId = owner?.Id;
         AddUnit(unit);
         SetSpotted(unit, BattleFaction.Player, faction == BattleFaction.Player);
         equipment.InitUnit(unit, unitRule, "", itemLevel);
-        // applyGravity on the unit's tile: it falls with the first turn's falls, or its tile's items drop.
+        // applyGravity on the unit's tile: it falls with the first turn's falls (or the attack's), or its tile's items drop.
         ApplyGravity(unit.Position);
-        return true;
+        return unit;
     }
 
+    /// <summary>BattlescapeGame::spawnNewItem(item): the briefing's form, for a primed item lying on its tile.</summary>
     private bool SpawnNewItem(BattleItem item, RuntimeBattleItem rule, UnitEquipment equipment, IRandomSource random)
     {
         if (rule.SpawnItem.Length == 0 || !RandomChance.Percent(random, rule.SpawnItemChance)) return false;
-        var owner = OwnerOf(item);
-        var created = equipment.CreateItemForTile(rule.SpawnItem, item.Tile);
-        created.PreviousOwnerUnitId = owner?.Id;
-        ApplyGravity(created.Tile);
+        PlaceSpawnedItem(rule, OwnerOf(item), item.Tile, equipment);
         return true;
+    }
+
+    /// <summary>
+    /// The body both forms of spawnNewItem share once the chance passed: the rule's spawn item lies on the tile, remembers its previous owner and
+    /// falls to a floor (where it landed is returned with it).
+    /// </summary>
+    private (BattleItem Created, BattlePosition? Landed) PlaceSpawnedItem(RuntimeBattleItem rule, BattleUnit? owner, BattlePosition? tile,
+        UnitEquipment equipment)
+    {
+        var created = equipment.CreateItemForTile(rule.SpawnItem, tile);
+        created.PreviousOwnerUnitId = owner?.Id;
+        return (created, ApplyGravity(created.Tile));
     }
 
     /// <summary>SavedBattleGame::removeItem: a special weapon stays; the item and the ammo loaded in it leave the battle's items.</summary>
@@ -307,7 +331,7 @@ internal sealed partial class BattleState
         }
         foreach (var item in _items)
         {
-            var owner = item.OwnerUnitId is { } id ? _units.Find(unit => unit.Id == id) : null;
+            var owner = item.OwnerUnitId is { } id ? UnitById(id) : null;
             if (owner?.Status == BattleUnitStatus.IgnoreMe) continue;
             if (HasRuleScript(content, "items", item.ItemType, "newTurnItem")) return BattleFlowReasons.NewTurnScriptUnsupported;
         }

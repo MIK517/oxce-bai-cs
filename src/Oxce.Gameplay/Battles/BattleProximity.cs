@@ -45,7 +45,7 @@ internal sealed partial class BattleState
     {
         var trigger = RequiredRules.Battle.Equipment.Items[item.ItemType].FuseTrigger;
         return fuseEnabled && fuseTimer >= 0 &&
-            (trigger.ProximityExplode || trigger.DefaultBehavior && ItemRuleOf(item.ItemType).BattleType == ProximityGrenadeBattleType);
+            (trigger.ProximityExplode || trigger.DefaultBehavior && ItemRuleOf(item.ItemType).BattleType == RuntimeBattleItem.ProximityGrenadeBattleType);
     }
 
     /// <summary>
@@ -55,7 +55,7 @@ internal sealed partial class BattleState
     private BattleAttack ProximityAttack(BattleActionType type, BattleItem item)
     {
         var battleType = ItemRuleOf(item.ItemType).BattleType;
-        var damage = battleType is GrenadeBattleType or ProximityGrenadeBattleType or PsiAmpBattleTypeOfItem ? item
+        var damage = battleType is RuntimeBattleItem.GrenadeBattleType or RuntimeBattleItem.ProximityGrenadeBattleType or RuntimeBattleItem.PsiAmpBattleType ? item
             : ActionIndex(type) is { } index ? AmmoForActionWithMessage(item, index, out _, out _) : null;
         return new BattleAttack(type, null, item, damage);
     }
@@ -99,16 +99,16 @@ internal sealed partial class BattleState
             var equipment = RequiredRules.Battle.Equipment.Items[name];
             var trapItem = ItemsOnTile(trap).FirstOrDefault(item => item.ItemType == name) ??
                 new UnitEquipment(this, RequiredRules, Random).CreateItemForTile(name, trap);
-            if (trapRule.BattleType == ProximityGrenadeBattleType)
+            if (trapRule.BattleType == RuntimeBattleItem.ProximityGrenadeBattleType)
             {
                 trapItem.SetFuseTimer(0, equipment);
-                var voxel = new BattlePosition(trap.X * 16 + 8, trap.Y * 16 + 8, trap.Z * 24 + Map.TerrainLevel(Map.TileIndex(trap)));
+                var voxel = BattleGeometry.TileCentreVoxel(trap, Map.TerrainLevel(Map.TileIndex(trap)));
                 explosions.Add(new ExplosionState(this, RequiredRules, ProximityAttack(BattleActionType.TriggerProximityGrenade, trapItem), voxel, voxel, null, false, 0, 0));
             }
             else
             {
                 // EXPERIMENTAL in the reference: the terrain melee part is 4 (a unit), and nobody attacks.
-                var voxel = new BattlePosition(trap.X * 16 + 8, trap.Y * 16 + 8, trap.Z * 24 + 12);
+                var voxel = BattleGeometry.TileCentreVoxel(trap, 12);
                 explosions.Add(new ExplosionState(this, RequiredRules, ProximityAttack(BattleActionType.Hit, trapItem), voxel, voxel, null, false, 0, 0, DeathTrapMeleePart));
             }
             return 2;
@@ -136,9 +136,9 @@ internal sealed partial class BattleState
                     var glowing = GlowRange(item) is not null;
                     if (FuseProximityEvent(item))
                     {
-                        if (itemRule.BattleType is GrenadeBattleType or ProximityGrenadeBattleType)
+                        if (itemRule.BattleType is RuntimeBattleItem.GrenadeBattleType or RuntimeBattleItem.ProximityGrenadeBattleType)
                         {
-                            var voxel = new BattlePosition(at.X * 16 + 8, at.Y * 16 + 8, at.Z * 24 + Map.TerrainLevel(Map.TileIndex(at)));
+                            var voxel = BattleGeometry.TileCentreVoxel(at, Map.TerrainLevel(Map.TileIndex(at)));
                             explosions.Add(new ExplosionState(this, RequiredRules, ProximityAttack(BattleActionType.TriggerProximityGrenade, item), voxel, voxel, null, false, 0, 0));
                             exploded = true;
                         }
@@ -176,7 +176,7 @@ internal sealed partial class BattleState
             name = $"STR_DEATH_TRAP_{special}";
             if (!RequiredRules.Items.TryGet(name, out _)) return false;
             return TargetAllowed(RequiredRules.Battle.Equipment.Items[name].Combat.TargetMatrix, unit.OriginalFaction, BattleFaction.Player) &&
-                ItemRuleOf(name).BattleType is ProximityGrenadeBattleType or MeleeBattleTypeOfItem;
+                ItemRuleOf(name).BattleType is RuntimeBattleItem.ProximityGrenadeBattleType or RuntimeBattleItem.MeleeBattleType;
         }
         return false;
     }

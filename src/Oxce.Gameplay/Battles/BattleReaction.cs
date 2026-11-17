@@ -1,3 +1,5 @@
+using Oxce.Mods.Rulesets.Runtime;
+
 namespace Oxce.Gameplay.Battles;
 
 /// <summary>
@@ -21,8 +23,6 @@ internal sealed class BattleReaction(BattleUnit unit, double score)
 /// </summary>
 internal sealed partial class BattleState
 {
-    private const int BattleTypePsiAmp = 9, BattleTypeMedikit = 6, BattleTypeScanner = 7, BattleTypeMindProbe = 8;
-
     /// <summary>BattleUnit::getSpecialWeapon(type): the first special weapon of the unit of that battle type.</summary>
     private BattleItem? SpecialWeapon(BattleUnit unit, int battleType) =>
         SpecialWeapons(unit).FirstOrDefault(special => ItemRuleOf(special.ItemType).BattleType == battleType);
@@ -35,11 +35,22 @@ internal sealed partial class BattleState
         return SpecialWeapon(unit, battleType);
     }
 
+    /// <summary>The battle types <see cref="EmptyHandWeapon"/> looks at, in order.</summary>
+    private static readonly int[] ReactionEmptyHandTypes =
+        [RuntimeBattleItem.MeleeBattleType, RuntimeBattleItem.PsiAmpBattleType, RuntimeBattleItem.FirearmBattleType];
+
     /// <summary>The special weapon that uses an empty hand: the first of a melee, psi and firearm special weapon that does, or null (the loop of the reference's two callers).</summary>
-    private BattleItem? EmptyHandWeapon(BattleUnit unit)
+    private BattleItem? EmptyHandWeapon(BattleUnit unit) => FirstEmptyHandSpecialWeapon(unit, ReactionEmptyHandTypes, shown: false);
+
+    /// <summary>
+    /// The first special weapon of the given battle types, in their order, that uses an empty hand (<c>specialUseEmptyHand</c>), and with
+    /// <paramref name="shown"/> also <c>specialUseEmptyHandShow</c>; null for none.
+    /// </summary>
+    private BattleItem? FirstEmptyHandSpecialWeapon(BattleUnit unit, int[] types, bool shown)
     {
-        foreach (var type in new[] { BattleTypeMelee, BattleTypePsiAmp, BattleTypeFirearm })
-            if (SpecialWeapon(unit, type) is { } special && RequiredRules.Battle.Equipment.Items[special.ItemType].Combat.SpecialUseEmptyHand) return special;
+        foreach (var type in types)
+            if (SpecialWeapon(unit, type) is { } special && RequiredRules.Battle.Equipment.Items[special.ItemType].Combat is var combat && combat.SpecialUseEmptyHand &&
+                (!shown || combat.SpecialUseEmptyHandShow)) return special;
         return null;
     }
 
@@ -55,16 +66,14 @@ internal sealed partial class BattleState
         {
             weapon = EmptyHandWeapon(unit);
             // Only a melee weapon or a firearm: a psi amp has neither a hit nor a snap shot.
-            if (weapon is not null && ItemRuleOf(weapon.ItemType).BattleType == BattleTypePsiAmp) weapon = null;
+            if (weapon is not null && ItemRuleOf(weapon.ItemType).BattleType == RuntimeBattleItem.PsiAmpBattleType) weapon = null;
         }
         if (weapon is null) return null;
-        if (ItemRuleOf(weapon.ItemType).BattleType == BattleTypeMelee) return weapon;
+        if (ItemRuleOf(weapon.ItemType).BattleType == RuntimeBattleItem.MeleeBattleType) return weapon;
         // ignore weapons without ammo (rules out grenades)
         if (!HaveAnyAmmo(weapon)) return null;
         return unit.ActionCost(RequiredRules.Battle.Equipment.Items[weapon.ItemType].ActionCosts, BattleActionType.SnapShot).Time > 0 ? weapon : null;
     }
-
-    private BattleResearchGate ReactionResearch => CampaignLink?.Research ?? BattleResearchGate.Everything;
 
     /// <summary>
     /// TileEngine::determineReactionType: the weapon and action a unit would react to the target with. The candidates are the preferred weapon (X-COM's units
@@ -91,7 +100,7 @@ internal sealed partial class BattleState
         var isPlayer = unit.Faction == BattleFaction.Player;
         if (isPlayer && WeaponForReactions(unit) is { } preferred) weapons.Add(preferred);
         // 2. then prioritize melee
-        if (UtilityWeapon(unit, BattleTypeMelee) is { } melee) weapons.Add(melee);
+        if (UtilityWeapon(unit, RuntimeBattleItem.MeleeBattleType) is { } melee) weapons.Add(melee);
         // 3. then the rest (AI: quickest weapon, Player: last selected/main weapon)
         if (MainHandWeapon(unit, quickest: !isPlayer, needAmmo: true, reactions: true) is { } other) weapons.Add(other);
 
@@ -117,18 +126,18 @@ internal sealed partial class BattleState
             // the player doesn't want to react with this weapon
             if (weapon == disabledLeft || weapon == disabledRight) continue;
 
-            if (CanUseWeapon(ReactionResearch, weapon, unit, false, BattleActionType.Hit).Usable &&
+            if (CanUseWeapon(ResearchGate, weapon, unit, false, BattleActionType.Hit).Usable &&
                 // has a weapon capable of melee and is in melee range
                 ValidMeleeRange(unit.RequiredPosition, direction, unit, target, out _) &&
-                AmmoForAction(weapon, 3) is not null &&
+                AmmoForAction(weapon, MeleeActionIndex) is not null &&
                 BattleActionCost.For(RequiredRules, BattleActionType.Hit, unit, weapon).HaveTimeUnits())
                 return Set(BattleActionType.Hit, weapon);
 
-            if (CanUseWeapon(ReactionResearch, weapon, unit, false, BattleActionType.SnapShot).Usable &&
+            if (CanUseWeapon(ResearchGate, weapon, unit, false, BattleActionType.SnapShot).Usable &&
                 // has a gun capable of snap shot with ammo
-                ItemRuleOf(weapon.ItemType).BattleType == BattleTypeFirearm &&
+                ItemRuleOf(weapon.ItemType).BattleType == RuntimeBattleItem.FirearmBattleType &&
                 !IsOutOfRange(weapon, DistanceSquaredBetween(unit.RequiredPosition, target.RequiredPosition)) &&
-                AmmoForAction(weapon, 2) is not null &&
+                AmmoForAction(weapon, SnapActionIndex) is not null &&
                 BattleActionCost.For(RequiredRules, BattleActionType.SnapShot, unit, weapon).HaveTimeUnits())
                 return Set(BattleActionType.SnapShot, weapon);
         }

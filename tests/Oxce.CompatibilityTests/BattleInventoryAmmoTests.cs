@@ -3,6 +3,7 @@ using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Sessions;
 using Xunit;
 using static Oxce.CompatibilityTests.BattleStartTests;
+using static Oxce.CompatibilityTests.BattleTestSupport;
 
 namespace Oxce.CompatibilityTests;
 
@@ -103,9 +104,6 @@ public sealed class BattleInventoryAmmoTests
         item.Tile = BattleState.TileOf(soldier);
         return item;
     }
-
-    private static string Refusal(CampaignState campaign, ICampaignCommand command) =>
-        Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(command).Events)).Code;
 
     private static (string Slot, int? Owner, bool IsAmmo) State(BattleState battle, int id)
     {

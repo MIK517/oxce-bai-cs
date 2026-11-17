@@ -89,7 +89,7 @@ internal sealed partial class BattleState
     /// <summary>The weapon the viewer's unit holds in a hand or as a special weapon, or null.</summary>
     private BattleItem? WeaponOf(BattleUnit unit, int itemId)
     {
-        var item = _items.FirstOrDefault(candidate => candidate.Id == itemId);
+        var item = ItemById(itemId);
         if (item is null || item.OwnerUnitId != unit.Id) return null;
         return item.Slot is RightHand or LeftHand || unit.SpecialWeaponIds.Contains(item.Id) ? item : null;
     }

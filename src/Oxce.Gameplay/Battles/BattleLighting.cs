@@ -93,7 +93,6 @@ internal sealed partial class BattleState
     /// <summary>TileEngine.cpp's unitFireLightPowerStunned: the light of a burning unit lying as an item.</summary>
     private const int StunnedFireLightPower = 10;
 
-    private const int FlareBattleType = 10;
     private const int NoFuseType = -3;
 
     /// <summary>Tile::getShade: 0 (full light) to 15 (dark), the brightest of the tile's light layers.</summary>
@@ -251,7 +250,7 @@ internal sealed partial class BattleState
     {
         if (!RequiredRules.Items.TryGet(item.ItemType, out var handle)) return null;
         var rule = RequiredRules.Items[handle].Value;
-        if (rule.BattleType != FlareBattleType) return null;
+        if (rule.BattleType != RuntimeBattleItem.FlareBattleType) return null;
         var equipment = RequiredRules.Battle.Equipment.Items[item.ItemType];
         var glows = equipment.FuseTrigger.DefaultBehavior && equipment.FuseType == NoFuseType || item.FuseEnabled && item.FuseTimer >= 0;
         return glows ? FlareRange(item, rule, equipment) : null;
@@ -270,7 +269,7 @@ internal sealed partial class BattleState
     {
         if (!RequiredRules.Items.TryGet(item.ItemType, out var handle)) return 1;
         var rule = RequiredRules.Items[handle].Value;
-        return rule.BattleType == FlareBattleType ? FlareRange(item, rule, RequiredRules.Battle.Equipment.Items[item.ItemType]) : 1;
+        return rule.BattleType == RuntimeBattleItem.FlareBattleType ? FlareRange(item, rule, RequiredRules.Battle.Equipment.Items[item.ItemType]) : 1;
     }
 
     /// <summary>The item is the body of a unit that burns (a stunned unit lying as an item).</summary>

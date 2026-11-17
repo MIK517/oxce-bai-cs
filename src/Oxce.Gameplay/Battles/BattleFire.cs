@@ -260,7 +260,7 @@ internal sealed partial class BattleState
     {
         var position = unit.Position!.Value;
         var tile = Map.TileIndex(position);
-        var voxel = new BattlePosition(position.X * 16 + 8, position.Y * 16 + 8, position.Z * 24 - Map.TerrainLevel(tile));
+        var voxel = BattleGeometry.TileCentreVoxel(position, -Map.TerrainLevel(tile));
         Ignite(tile, 1);
         HitTerrain(unit, voxel, unit.Stats.Strength, BattleDamageTypes.Fire);
     }

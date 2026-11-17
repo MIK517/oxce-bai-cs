@@ -833,9 +833,6 @@ public sealed class BattleMeleeTests
         Assert.True(arena.Alien.Health < 100);
     }
 
-    private static BattleRuntime RuntimeOf(Arena arena, IBattleCampaignLink? link = null) =>
-        new(arena.Battle, arena.Rules, new ScriptedDraws(0), link);
-
     private sealed class ResearchLink : IBattleCampaignLink
     {
         public int MissionCount => 0;

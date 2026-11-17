@@ -10,17 +10,6 @@ namespace Oxce.Gameplay.Battles.Generation;
 /// </summary>
 internal sealed class XcomCargo
 {
-    // BattleType values.
-    private const int Firearm = 1;
-    private const int Ammo = 2;
-    private const int Melee = 3;
-    private const int Grenade = 4;
-    private const int ProximityGrenade = 5;
-    private const int Scanner = 7;
-    private const int MindProbe = 8;
-    private const int PsiAmp = 9;
-    private const int Flare = 10;
-
     /// <summary>BattleFuseType BFT_NONE.</summary>
     private const int NoFuse = -3;
 
@@ -58,7 +47,7 @@ internal sealed class XcomCargo
         {
             item.XcomProperty = true;
             // Don't let the soldiers take extra ammo yet.
-            if (Type(item) == Ammo && !_options.AlternateCraftEquipmentManagement) continue;
+            if (Type(item) == RuntimeBattleItem.AmmoBattleType && !_options.AlternateCraftEquipmentManagement) continue;
             PlaceItemByLayout(item, items);
         }
         ReloadFixedWeaponsByLayout(tile);
@@ -67,7 +56,7 @@ internal sealed class XcomCargo
         LoadWeapons([.. TileItems(tile).OrderBy(item => _equipment.BattleItemRule(item.ItemType).LoadOrder)]);
         items = TileItems(tile);
         foreach (var item in items)
-            if (Type(item) == Ammo) PlaceItemByLayout(item, items);
+            if (Type(item) == RuntimeBattleItem.AmmoBattleType) PlaceItemByLayout(item, items);
         AutoEquip(TileItems(tile));
     }
 
@@ -194,7 +183,7 @@ internal sealed class XcomCargo
                 foreach (var candidate in items)
                 {
                     var type = Type(candidate);
-                    if (type == Flare && _worldShade <= _rules.Campaign.MaximumDarknessToSeeUnits) continue;
+                    if (type == RuntimeBattleItem.FlareBattleType && _worldShade <= _rules.Campaign.MaximumDarknessToSeeUnits) continue;
                     var rule = _equipment.BattleItemRule(candidate.ItemType);
                     if (rule.InventoryHeight == 0 || rule.InventoryWidth == 0 || !OnGround(candidate)) continue;
                     var count = 0;
@@ -206,7 +195,7 @@ internal sealed class XcomCargo
                         if (_equipment.SlotForAmmo(carried, candidate.ItemType) != -1) baseScore = 2.0;
                         else if (type == Type(carried))
                         {
-                            if (type is Firearm or Melee or MindProbe or PsiAmp or Scanner) count += 10;
+                            if (type is RuntimeBattleItem.FirearmBattleType or RuntimeBattleItem.MeleeBattleType or RuntimeBattleItem.MindProbeBattleType or RuntimeBattleItem.PsiAmpBattleType or RuntimeBattleItem.ScannerBattleType) count += 10;
                             else if (_equipment.ItemRule(carried.ItemType).Name == name) count++;
                         }
                     }
@@ -231,9 +220,9 @@ internal sealed class XcomCargo
             foreach (var item in _battle.InventoryOf(unit))
             {
                 var type = Type(item);
-                if (type is not (Grenade or ProximityGrenade)) continue;
+                if (type is not (RuntimeBattleItem.GrenadeBattleType or RuntimeBattleItem.ProximityGrenadeBattleType)) continue;
                 if (_options.PreprimeGrenades < 2 && _equipment.ItemRule(item.ItemType).Damage.ResistType != Smoke) continue;
-                if (_options.PreprimeGrenades < 3 && type == ProximityGrenade) continue;
+                if (_options.PreprimeGrenades < 3 && type == RuntimeBattleItem.ProximityGrenadeBattleType) continue;
                 item.SetFuseTimer(0, _equipment.BattleItemRule(item.ItemType));
             }
         }

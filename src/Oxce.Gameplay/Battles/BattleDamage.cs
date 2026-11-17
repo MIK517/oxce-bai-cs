@@ -182,8 +182,7 @@ internal sealed partial class BattleState
             transformChance = damageRule!.ZombieUnitChance;
             if (attack.Weapon is { } weapon && ActionIndex(attack.Type) is { } index)
             {
-                var conf = RequiredRules.Battle.Equipment.Items[weapon.ItemType].Combat;
-                var overrideChance = (index switch { 0 => conf.Aimed, 1 => conf.Auto, 2 => conf.Snap, _ => conf.Melee }).AmmoZombieUnitChanceOverride;
+                var overrideChance = ActionConfig(weapon, index).AmmoZombieUnitChanceOverride;
                 if (overrideChance != -1) transformChance = overrideChance;
             }
             // A hostile victim is converted by an X-COM or neutral attacker only ((mind-controlled) chryssalid on snakeman is not allowed).
@@ -349,7 +348,7 @@ internal sealed partial class BattleState
     private BattleItem? SpecialWeaponNamed(BattleUnit unit, string itemType)
     {
         foreach (var id in unit.SpecialWeaponIds)
-            if (_items.Find(item => item.Id == id) is { } item && item.ItemType == itemType) return item;
+            if (ItemById(id) is { } item && item.ItemType == itemType) return item;
         return null;
     }
 

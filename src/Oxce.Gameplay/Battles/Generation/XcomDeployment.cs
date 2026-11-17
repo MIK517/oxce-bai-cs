@@ -205,7 +205,7 @@ internal sealed class XcomDeployment
         var item = _rules.Items.GetRequiredValue(type);
         if (!_rules.Battle.Equipment.Items.TryGetValue(type, out var battle)) return false;
         if (battle.IgnoreInBaseDefense || !battle.IsInventoryItem) return false;
-        if (item.BattleType is 0 or 11 && battle.IgnoreInCraftEquip) return false;
+        if (item.BattleType is RuntimeBattleItem.NoneBattleType or RuntimeBattleItem.CorpseBattleType && battle.IgnoreInCraftEquip) return false;
         var research = campaign.ArcResearch;
         return item.Requirements.All(requirement => research.IsResearched(_rules.Research.GetExternalId(requirement)));
     }
@@ -276,7 +276,7 @@ internal sealed class XcomDeployment
         if (!_rules.Items.TryGet(itemType, out var handle)) return condition.IsItemPermitted(itemType, null);
         var item = _rules.Items[handle].Value;
         IEnumerable<string> categories = item.Categories;
-        if (_rules.Campaign.ShareAmmoCategories && item.BattleType == 1 && item.CompatibleAmmo.Count != 0)
+        if (_rules.Campaign.ShareAmmoCategories && item.BattleType == RuntimeBattleItem.FirearmBattleType && item.CompatibleAmmo.Count != 0)
             foreach (var ammo in item.CompatibleAmmo[0])
                 if (request.Items.GetValueOrDefault(_rules.Items.GetExternalId(ammo)) > 0)
                     categories = categories.Concat(_rules.Items[ammo].Value.Categories);

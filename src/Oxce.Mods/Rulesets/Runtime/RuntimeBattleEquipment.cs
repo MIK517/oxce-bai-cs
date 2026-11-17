@@ -408,7 +408,8 @@ public sealed record RuntimeBattleItem(
     /// <summary>RuleItem::getCost* and getFlat*, resolved (see <see cref="RuntimeItemActionCosts"/>).</summary>
     public RuntimeItemActionCosts ActionCosts { get; init; } = RuntimeItemActionCosts.Default;
 
-    /// <summary>The <c>BattleType</c> values the combat rules test (<c>RuleItem.h</c>).</summary>
+    /// <summary>The <c>BattleType</c> values (<c>enum BattleType</c> in <c>RuleItem.h</c>), the single source of these numbers.</summary>
+    public const int NoneBattleType = 0;
     public const int FirearmBattleType = 1;
     public const int AmmoBattleType = 2;
     public const int MeleeBattleType = 3;
@@ -418,6 +419,8 @@ public sealed record RuntimeBattleItem(
     public const int ScannerBattleType = 7;
     public const int MindProbeBattleType = 8;
     public const int PsiAmpBattleType = 9;
+    public const int FlareBattleType = 10;
+    public const int CorpseBattleType = 11;
 
     /// <summary>
     /// The combat fields of the item rule: actions, ranges, accuracy globals resolved, shotgun, ammo, throwing, the stat bonuses. The power, the

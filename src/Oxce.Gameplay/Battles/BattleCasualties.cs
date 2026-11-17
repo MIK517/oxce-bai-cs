@@ -47,6 +47,9 @@ internal sealed partial class BattleState
     /// <summary>What the campaign gives the battle (see <see cref="IBattleCampaignLink"/>); null for a battle built by hand. The <see cref="BattleRuntime"/> sets it once; a trial copy has the same values with the memorial left alone.</summary>
     internal IBattleCampaignLink? CampaignLink { get; set; }
 
+    /// <summary>The saved game's research the weapon checks read (the campaign link's), or everything for a battle without a link.</summary>
+    internal BattleResearchGate ResearchGate => CampaignLink?.Research ?? BattleResearchGate.Everything;
+
     /// <summary><c>Mod::getDamageType(DT_HE)</c> and <c>DT_NONE</c>, which <c>checkForCasualties</c> hands the dying unit when no weapon did.</summary>
     private static readonly RuntimeItemDamageRule HighExplosiveType = RuntimeItemDamageRule.Predefined(RuntimeItemDamageRule.DamageHighExplosive);
 
@@ -57,7 +60,6 @@ internal sealed partial class BattleState
 
     private const string UnknownWeapon = "STR_WEAPON_UNKNOWN";
     private const string GunButtAmmo = "__GUNBUTT";
-    private const int CorpseItemBattleType = 11;
 
     /// <summary>One <c>UnitDieBState</c> pushed by <c>checkForCasualties</c>, with what its constructor fixed (the overkill of the moment).</summary>
     internal sealed class PendingDeath(BattleUnit unit, RuntimeItemDamageRule type, bool noSound, bool overKill)
@@ -216,7 +218,7 @@ internal sealed partial class BattleState
             if (attack.DamageItem is { } damageItem)
             {
                 // The secondary melee data is represented by the ammunition "__GUNBUTT"; a melee item's own attack uses the item itself.
-                tempAmmo = attack.Type == BattleActionType.Hit && ItemRuleOf(damageItem.ItemType).BattleType != BattleTypeMelee
+                tempAmmo = attack.Type == BattleActionType.Hit && ItemRuleOf(damageItem.ItemType).BattleType != RuntimeBattleItem.MeleeBattleType
                     ? GunButtAmmo : damageItem.ItemType;
             }
         }
@@ -651,8 +653,8 @@ internal sealed partial class BattleState
     /// <summary>BattleItem::convertToCorpse: a corpse item takes the corpse rule of another armor.</summary>
     private void ConvertItemToCorpse(BattleItem item, string corpseType)
     {
-        if (item.CorpseUnitId is null || ItemRuleOf(item.ItemType).BattleType != CorpseItemBattleType ||
-            ItemRuleOf(corpseType).BattleType != CorpseItemBattleType)
+        if (item.CorpseUnitId is null || ItemRuleOf(item.ItemType).BattleType != RuntimeBattleItem.CorpseBattleType ||
+            ItemRuleOf(corpseType).BattleType != RuntimeBattleItem.CorpseBattleType)
             return;
         item.ItemType = corpseType;
         MarkChanged();
@@ -731,7 +733,7 @@ internal sealed partial class BattleState
         var dropper = UnitOnTile(index);
         // A primed grenade dropped where a unit stands makes a danger zone (the AI keeps away from it for the turn).
         var dropRule = ItemRuleOf(item.ItemType);
-        if (dropper is not null && dropRule.BattleType == GrenadeBattleType && item.FuseEnabled && dropRule.Damage.ResistType != RuntimeItemDamageRule.DamageNone)
+        if (dropper is not null && dropRule.BattleType == RuntimeBattleItem.GrenadeBattleType && item.FuseEnabled && dropRule.Damage.ResistType != RuntimeItemDamageRule.DamageNone)
             SetDangerZone(tile, ExplosionRadius(item, new BattleAttack(BattleActionType.Throw, dropper, item, item)), dropper);
         if (Side != BattleFaction.Player) item.DroppedOnAlienTurn = true;
 

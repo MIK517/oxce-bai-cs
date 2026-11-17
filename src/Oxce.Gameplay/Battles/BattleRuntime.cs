@@ -278,7 +278,7 @@ internal sealed class BattleRuntime
     /// </summary>
     private CampaignCommandResult Attack(Attack command)
     {
-        var research = Link?.Research ?? BattleResearchGate.Everything;
+        var research = State.ResearchGate;
         return command.Kind switch
         {
             BattleAimKind.Hit => RunOnLiveBattle(battle => battle.MeleeAttackAction(research, command.UnitId, command.ItemId, command.AltPressed)),
@@ -294,7 +294,7 @@ internal sealed class BattleRuntime
     /// <summary>Priming or unpriming: the state's change and its event (the research is the saved game's, as for a shot).</summary>
     private CampaignReason? PrimeItem(BattleState battle, int unitId, int itemId, bool prime, int turns)
     {
-        var research = Link?.Research ?? BattleResearchGate.Everything;
+        var research = State.ResearchGate;
         if (battle.PrimeAction(research, unitId, itemId, prime, turns, out var fuse) is { } refusal) return refusal;
         battle.Events.Add(prime ? new ItemPrimed(unitId, itemId, fuse) : new ItemUnprimed(unitId, itemId));
         return null;

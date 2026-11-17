@@ -192,8 +192,7 @@ internal sealed partial class BattleState
     /// </summary>
     private static List<BattlePosition> SprayVoxels(IReadOnlyList<BattlePosition> tiles, int shots)
     {
-        var centres = tiles.Select(static tile => new BattlePosition(tile.X * 16 + BattleSight.VoxelTileCenter.X, tile.Y * 16 + BattleSight.VoxelTileCenter.Y,
-            tile.Z * 24 + BattleSight.VoxelTileCenter.Z)).ToList();
+        var centres = tiles.Select(static tile => BattleGeometry.TileCentreVoxel(tile)).ToList();
         var count = centres.Count;
         var voxels = new List<BattlePosition>();
         for (var i = shots - 1; i > 0; --i)
@@ -461,8 +460,7 @@ internal sealed partial class BattleState
 
                 // turn to look at the new target
                 action.Target = newTarget;
-                _unit.LookAt(newTarget, _unit.TurretType != -1);
-                while (_unit.Status == BattleUnitStatus.Turning) _unit.Turn(_unit.TurretType != -1);
+                _unit.LookAtAndTurn(newTarget);
 
                 // we're done, spend time units and energy; and don't check the remaining candidates anymore
                 defender.SpendTimeUnits(combat.CloseQuartersTuCostGlobal);
@@ -493,14 +491,13 @@ internal sealed partial class BattleState
                     var distance = (int)Math.Ceiling(MathF.Sqrt(distanceSquared));
                     var tile = new BattlePosition(actorPosition.X + (targetPosition.X - actorPosition.X) * maxRange / distance,
                         actorPosition.Y + (targetPosition.Y - actorPosition.Y) * maxRange / distance, actorPosition.Z + (targetPosition.Z - actorPosition.Z) * maxRange / distance);
-                    _targetVoxel = new BattlePosition(tile.X * 16 + BattleSight.VoxelTileCenter.X, tile.Y * 16 + BattleSight.VoxelTileCenter.Y, tile.Z * 24 + BattleSight.VoxelTileCenter.Z);
+                    _targetVoxel = BattleGeometry.TileCentreVoxel(tile);
                     targetPosition = tile;
                 }
 
                 // Turn at the end (to a potentially modified target position).
                 var facing = (_unit.Direction, _unit.DirectionTurret);
-                _unit.LookAt(targetPosition, _unit.TurretType != -1);
-                while (_unit.Status == BattleUnitStatus.Turning) _unit.Turn(_unit.TurretType != -1);
+                _unit.LookAtAndTurn(targetPosition);
                 if ((_unit.Direction, _unit.DirectionTurret) != facing) Touched = true;
                 action.Waypoints.RemoveAt(action.Waypoints.Count - 1);
             }
@@ -577,7 +574,7 @@ internal sealed partial class BattleState
             }
 
             var equipment = battle.RequiredRules.Battle.Equipment.Items[weapon.ItemType];
-            if (_unit.Faction != BattleFaction.Player && battle.ItemRuleOf(weapon.ItemType).BattleType is GrenadeBattleType or ProximityGrenadeBattleType)
+            if (_unit.Faction != BattleFaction.Player && battle.ItemRuleOf(weapon.ItemType).BattleType is RuntimeBattleItem.GrenadeBattleType or RuntimeBattleItem.ProximityGrenadeBattleType)
                 weapon.SetFuseTimer(BattleState.FuseTimerDefault(equipment), equipment);
             BattleState.MoveToOwner(weapon, null);
             if (battle.GlowRange(weapon) is { } glow)
@@ -609,7 +606,7 @@ internal sealed partial class BattleState
             var rule = battle.ItemRuleOf(weapon.ItemType);
             if (battle.FuseThrowEvent(weapon))
             {
-                if (rule.BattleType is GrenadeBattleType or ProximityGrenadeBattleType)
+                if (rule.BattleType is RuntimeBattleItem.GrenadeBattleType or RuntimeBattleItem.ProximityGrenadeBattleType)
                 {
                     // it's a hot grenade to explode immediately
                     battle.PushFront(new ExplosionState(battle, battle.RequiredRules, new BattleAttack(BattleActionType.Throw, _unit, weapon, weapon),

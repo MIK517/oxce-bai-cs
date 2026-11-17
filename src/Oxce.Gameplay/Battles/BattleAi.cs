@@ -1,3 +1,5 @@
+using Oxce.Mods.Rulesets.Runtime;
+
 namespace Oxce.Gameplay.Battles;
 
 /// <summary>
@@ -94,7 +96,7 @@ internal sealed partial class BattleState
     internal bool ShouldAvoidMeleeRange(BattleUnit unit, BattleUnit enemy)
     {
         var weapon = MainHandWeapon(unit);
-        var maxRange = weapon is null ? 0 : ItemRuleOf(weapon.ItemType).BattleType == BattleTypeMelee ? 1 : RequiredRules.Battle.Equipment.Items[weapon.ItemType].Combat.MaxRange;
+        var maxRange = weapon is null ? 0 : ItemRuleOf(weapon.ItemType).BattleType == RuntimeBattleItem.MeleeBattleType ? 1 : RequiredRules.Battle.Equipment.Items[weapon.ItemType].Combat.MaxRange;
         if (maxRange == 1) return false;
         return RequiredRules.Campaign.Combat.EnableCloseQuartersCombat != 0 && !(ArmorOf(unit).IgnoresMeleeThreat ?? false) && (ArmorOf(enemy).CreatesMeleeThreat ?? true);
     }
@@ -155,7 +157,7 @@ internal sealed partial class BattleState
             if (weight == 0) continue;
             // trace a line from the grenade origin to the unit we're checking against
             var trajectory = new List<BattlePosition>();
-            var hit = sight.CalculateLineVoxel(TileCentreVoxel(targetPosition), TileCentreVoxel(position), false, trajectory, target, other);
+            var hit = sight.CalculateLineVoxel(BattleGeometry.TileCentreVoxel(targetPosition), BattleGeometry.TileCentreVoxel(position), false, trajectory, target, other);
             if (hit == BattleVoxelType.Unit && trajectory.Count > 0 && BattleGeometry.TileOfVoxel(trajectory[0]) == position)
             {
                 if (other.Faction == targetFaction) ++enemiesAffected;
@@ -206,7 +208,7 @@ internal sealed partial class BattleState
             // don't count people who were already grenaded this turn
             if (Map.Dangerous(Map.TileIndex(position))) continue;
             var trajectory = new List<BattlePosition>();
-            var hit = sight.CalculateLineVoxel(TileCentreVoxel(targetPosition), TileCentreVoxel(position), false, trajectory, target, other);
+            var hit = sight.CalculateLineVoxel(BattleGeometry.TileCentreVoxel(targetPosition), BattleGeometry.TileCentreVoxel(position), false, trajectory, target, other);
             var distanceToTarget = Distance2d(targetPosition, position);
             var distanceModifier = (float)(radius - distanceToTarget / 2.0) / radius;
             if (hit == BattleVoxelType.Unit && trajectory.Count > 0 && BattleGeometry.TileOfVoxel(trajectory[0]) == position)
@@ -249,9 +251,7 @@ internal sealed partial class BattleState
     }
 
     /// <summary>setDangerZone's voxel of a tile: the middle of the tile, 12 voxels above its floor.</summary>
-    private BattlePosition DangerVoxel(BattlePosition position, int tile) => new(
-        position.X * BattleGeometry.VoxelsPerTile + 8, position.Y * BattleGeometry.VoxelsPerTile + 8,
-        position.Z * BattleGeometry.VoxelsPerLevel + 12 - Map.TerrainLevel(tile));
+    private BattlePosition DangerVoxel(BattlePosition position, int tile) => BattleGeometry.TileCentreVoxel(position, 12 - Map.TerrainLevel(tile));
 
     /// <summary>Position::distance2d: the distance on a level, rounded up to whole tiles.</summary>
     private static int Distance2d(BattlePosition one, BattlePosition other)
@@ -259,9 +259,4 @@ internal sealed partial class BattleState
         int x = one.X - other.X, y = one.Y - other.Y;
         return (int)Math.Ceiling(Math.Sqrt(x * x + y * y));
     }
-
-    /// <summary>tile.toVoxel() + TileEngine::voxelTileCenter: the voxel in the middle of the tile.</summary>
-    private static BattlePosition TileCentreVoxel(BattlePosition tile) => new(
-        tile.X * BattleGeometry.VoxelsPerTile + BattleSight.VoxelTileCenter.X, tile.Y * BattleGeometry.VoxelsPerTile + BattleSight.VoxelTileCenter.Y,
-        tile.Z * BattleGeometry.VoxelsPerLevel + BattleSight.VoxelTileCenter.Z);
 }

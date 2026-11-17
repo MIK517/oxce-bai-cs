@@ -293,7 +293,7 @@ public sealed partial class CampaignState
             if (count < 2) continue;
             var otherCount = 0;
             foreach (var item in owner.Value)
-                if (rules.Items.GetRequiredValue(item.Key).BattleType != 0) otherCount++;
+                if (rules.Items.GetRequiredValue(item.Key).BattleType != RuntimeBattleItem.NoneBattleType) otherCount++;
             if (otherCount == 0) continue;
             var levels = 0;
             for (var remaining = otherCount; remaining > 1; remaining = (remaining + 1) / 2) levels++;
@@ -302,7 +302,7 @@ public sealed partial class CampaignState
             if (work > ForecastLimits.Work) return false;
             List<KeyValuePair<string, int>> reusable = new(count - otherCount), other = new(otherCount);
             foreach (var item in owner.Value)
-                (rules.Items.GetRequiredValue(item.Key).BattleType == 0 ? reusable : other).Add(item);
+                (rules.Items.GetRequiredValue(item.Key).BattleType == RuntimeBattleItem.NoneBattleType ? reusable : other).Add(item);
             other.Sort(static (first, second) =>
             {
                 var identity = StringComparer.Ordinal.Compare(first.Key, second.Key);

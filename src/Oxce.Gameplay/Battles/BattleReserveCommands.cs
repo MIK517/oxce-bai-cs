@@ -1,5 +1,6 @@
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Sessions;
+using Oxce.Mods.Rulesets.Runtime;
 
 namespace Oxce.Gameplay.Battles;
 
@@ -104,7 +105,7 @@ internal sealed partial class BattleState
     internal BattleItem? SpecialIconWeapon(BattleUnit unit)
     {
         var icon = SpecialWeapons(unit).FirstOrDefault(special => RequiredRules.Battle.Equipment.Items[special.ItemType].Combat.SpecialIconSprite != -1);
-        return icon is not null && ItemRuleOf(icon.ItemType).BattleType is not (0 or 2 or 4 or 5 or 10 or 11) ? icon : null;
+        return icon is not null && ItemRuleOf(icon.ItemType).BattleType is not (RuntimeBattleItem.NoneBattleType or RuntimeBattleItem.AmmoBattleType or RuntimeBattleItem.GrenadeBattleType or RuntimeBattleItem.ProximityGrenadeBattleType or RuntimeBattleItem.FlareBattleType or RuntimeBattleItem.CorpseBattleType) ? icon : null;
     }
 
     /// <summary>
@@ -118,13 +119,14 @@ internal sealed partial class BattleState
     /// The special weapon an empty hand's button opens: the first of the melee, psi amp, firearm, medikit, scanner and mind probe special weapons that uses an empty hand
     /// (<c>btnRightHandItemClick</c>'s loop; the reference's <c>BT_NONE</c> candidates never match). With <paramref name="shown"/> it is <c>drawHandsItems</c>' loop, which also needs <c>specialUseEmptyHandShow</c>.
     /// </summary>
-    internal BattleItem? EmptyHandSpecialWeapon(BattleUnit unit, bool shown = false)
-    {
-        foreach (var type in new[] { BattleTypeMelee, BattleTypePsiAmp, BattleTypeFirearm, BattleTypeMedikit, BattleTypeScanner, BattleTypeMindProbe })
-            if (SpecialWeapon(unit, type) is { } special && RequiredRules.Battle.Equipment.Items[special.ItemType].Combat is var combat && combat.SpecialUseEmptyHand &&
-                (!shown || combat.SpecialUseEmptyHandShow)) return special;
-        return null;
-    }
+    internal BattleItem? EmptyHandSpecialWeapon(BattleUnit unit, bool shown = false) => FirstEmptyHandSpecialWeapon(unit, HandButtonEmptyHandTypes, shown);
+
+    /// <summary>The battle types <see cref="EmptyHandSpecialWeapon"/> looks at, in order.</summary>
+    private static readonly int[] HandButtonEmptyHandTypes =
+    [
+        RuntimeBattleItem.MeleeBattleType, RuntimeBattleItem.PsiAmpBattleType, RuntimeBattleItem.FirearmBattleType, RuntimeBattleItem.MedikitBattleType,
+        RuntimeBattleItem.ScannerBattleType, RuntimeBattleItem.MindProbeBattleType,
+    ];
 
     /// <summary>Sets the active hand of a live unit of the side on turn (<c>setActiveRightHand</c>, <c>setActiveLeftHand</c>).</summary>
     internal CampaignReason? SetActiveHand(int unitId, bool rightHand)

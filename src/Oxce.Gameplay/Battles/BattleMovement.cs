@@ -116,6 +116,17 @@ internal sealed partial class BattleUnit
         }
     }
 
+    /// <summary>
+    /// <see cref="LookAt(BattlePosition, bool)"/> with the turret when the unit has one (<c>getTurretType() != -1</c>), then <see cref="Turn"/>
+    /// until it faces the point: the reference's <c>lookAt</c> followed by <c>while (getStatus() == STATUS_TURNING) turn()</c>.
+    /// </summary>
+    public void LookAtAndTurn(BattlePosition point)
+    {
+        var turret = TurretType != -1;
+        LookAt(point, turret);
+        while (Status == BattleUnitStatus.Turning) Turn(turret);
+    }
+
     /// <summary>BattleUnit::lookAt(direction, force): turn to a direction (ignored outside 0-7), or with <paramref name="force"/> set it at once.</summary>
     public void LookAt(int direction, bool force)
     {

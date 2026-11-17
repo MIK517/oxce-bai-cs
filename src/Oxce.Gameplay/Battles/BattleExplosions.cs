@@ -17,10 +17,6 @@ internal sealed partial class BattleState
 {
     private const int BigWallNesw = 2;
     private const int BigWallNwse = 3;
-    private const int MeleeBattleTypeOfItem = 3;
-    private const int PsiAmpBattleTypeOfItem = 9;
-    private const int FirearmBattleTypeOfItem = 1;
-    private const int ProximityBattleTypeOfItem = 5;
     private const int StunDamage = 6;
 
     /// <summary><c>Options::battleExplosionHeight</c> is 0 (a flat explosion) by default: the vertical decrement of a ray is 1000.</summary>
@@ -182,11 +178,11 @@ internal sealed partial class BattleState
                 var hit = _attack.Type == BattleActionType.Hit;
                 _hit = hit;
                 // A psi attack is branch 6's (a hit with a psi amplifier is a melee hit; a psi amplifier's self-destruct is a plain hit).
-                if (type == PsiAmpBattleTypeOfItem && !hit && _attack.Type != BattleActionType.SelfDestruct)
+                if (type == RuntimeBattleItem.PsiAmpBattleType && !hit && _attack.Type != BattleActionType.SelfDestruct)
                     throw new NotSupportedException("A psi attack is not an explosion of Phase 7 branch 5 (branch 6).");
 
                 _power = 0;
-                if (hit && type != MeleeBattleTypeOfItem)
+                if (hit && type != RuntimeBattleItem.MeleeBattleType)
                 {
                     // A hit with something that is not a melee weapon (a firearm's butt) uses the item's melee power and damage type.
                     _power += _battle.MeleeBonus(damageItem, _attack);
@@ -219,7 +215,7 @@ internal sealed partial class BattleState
                 {
                     if (!RandomChance.Percent(_battle.Random, _rules.Battle.Equipment.Items[damageItem.ItemType].Combat.SpecialChance)) _power = 0;
                 }
-                else if (type == MeleeBattleTypeOfItem || hit)
+                else if (type == RuntimeBattleItem.MeleeBattleType || hit)
                 {
                     var success = _battle.MeleeAttack(_attack, struck, _terrainMeleeTilePart);
                     if (!success)
@@ -230,13 +226,13 @@ internal sealed partial class BattleState
                     _battle.Events.Add(new UnitMeleeAttacked(_attack.Attacker?.Id ?? -1, _attack.Weapon?.Id ?? -1, struck?.Id ?? -1, _center,
                         _terrainMeleeTilePart, success));
                 }
-                else if (type == FirearmBattleTypeOfItem && _power <= 0)
+                else if (type == RuntimeBattleItem.FirearmBattleType && _power <= 0)
                 {
                     miss = true;
                 }
                 // (A psi amplifier's self-destruct is a plain hit: its area test fails, and no psi attack runs for BA_SELF_DESTRUCT.)
-                _areaOfEffect = type != MeleeBattleTypeOfItem && type != PsiAmpBattleTypeOfItem && _radius != 0 && !hit && !miss;
-                rangeAttack = !(hit || _attack.Weapon is { } held && _battle.ItemRuleOf(held.ItemType).BattleType == PsiAmpBattleTypeOfItem);
+                _areaOfEffect = type != RuntimeBattleItem.MeleeBattleType && type != RuntimeBattleItem.PsiAmpBattleType && _radius != 0 && !hit && !miss;
+                rangeAttack = !(hit || _attack.Weapon is { } held && _battle.ItemRuleOf(held.ItemType).BattleType == RuntimeBattleItem.PsiAmpBattleType);
             }
             else if (_tile is { } tile)
             {
@@ -308,7 +304,7 @@ internal sealed partial class BattleState
             // if this explosion was caused by a unit shooting, now it's the time to put the gun down
             if (_attack.Attacker is { IsOut: false } attacker && _lowerWeapon) attacker.Status = BattleUnitStatus.Standing;
 
-            if (_attack.DamageItem is { } item && _battle.ItemRuleOf(item.ItemType).BattleType is GrenadeBattleType or ProximityBattleTypeOfItem)
+            if (_attack.DamageItem is { } item && _battle.ItemRuleOf(item.ItemType).BattleType is RuntimeBattleItem.GrenadeBattleType or RuntimeBattleItem.ProximityGrenadeBattleType)
                 _battle.RemoveItem(item);
 
             _battle.PopState();
@@ -317,7 +313,7 @@ internal sealed partial class BattleState
             if (_battle.CheckForTerrainExplosions() is { } next)
             {
                 var position = _battle.Map.PositionOf(next);
-                var voxel = new BattlePosition(position.X * 16 + 8, position.Y * 16 + 8, position.Z * 24);
+                var voxel = BattleGeometry.TileCentreVoxel(position, 0);
                 _battle.PushFront(new ExplosionState(_battle, _rules, new BattleAttack(BattleActionType.None, _attack.Attacker), voxel, voxel, next, false, 0,
                     _explosionCounter + 1));
             }
@@ -406,8 +402,7 @@ internal sealed partial class BattleState
     {
         if (attack.Weapon is { } weapon && ActionIndex(attack.Type) is { } index)
         {
-            var conf = RequiredRules.Battle.Equipment.Items[weapon.ItemType].Combat;
-            var replaced = overrideOf(index switch { 0 => conf.Aimed, 1 => conf.Auto, 2 => conf.Snap, _ => conf.Melee });
+            var replaced = overrideOf(ActionConfig(weapon, index));
             if (replaced != -1) return replaced;
         }
         return chance;
@@ -426,41 +421,11 @@ internal sealed partial class BattleState
         var chance = SpawnChance(attack, rule.SpawnUnitChance, static action => action.AmmoSpawnUnitChanceOverride);
         if (!RandomChance.Percent(Random, chance)) return false;
 
-        var owner = SpawnOwner(attack);
-        var faction = rule.SpawnUnitFaction == -1 && owner is not null ? owner.Faction : rule.SpawnUnitFaction switch
-        {
-            0 => BattleFaction.Player,
-            1 => BattleFaction.Hostile,
-            2 => BattleFaction.Neutral,
-            _ => BattleFaction.Hostile,
-        };
-        var (unitRule, armor) = UnitRule(rule.SpawnUnit);
-        // createTempUnit: the next ID after the last unit's; a player unit made this way is a summoned one.
-        var unit = TempUnit((_units.Count == 0 ? -1 : _units[^1].Id) + 1, faction,
-            faction == BattleFaction.Player ? BattleController.Human(0) : BattleController.Ai, rule.SpawnUnit, unitRule, armor,
-            CampaignLink?.Difficulty ?? 0, summoned: faction == BattleFaction.Player);
+        // Placement searches from the side facing the attacker; the unit faces as the attacker does, else a random way (PlaceSpawnedUnit).
         var checkDirection = attack.Attacker is { } shooter ? (shooter.Direction + 4) % 8 : 0;
-        if (!Contains(position) || BattlePlacement.ValidForUnit(Map, unit, position, surrounding: true, startDirection: checkDirection) is not { } placed)
+        if (PlaceSpawnedUnit(rule, SpawnOwner(attack), CampaignLink?.Difficulty ?? 0, position, checkInside: true, checkDirection,
+                attack.Attacker?.Direction, Random, new UnitEquipment(this, RequiredRules, Random)) is not { } unit)
             return false;
-        var direction = attack.Attacker?.Direction ?? Random.NextInclusive(0, 7);
-        var equipment = new UnitEquipment(this, RequiredRules, Random);
-        // A tank is armed with its weapon (the item named like the unit) and that weapon's clip.
-        if (RequiredRules.Battle.Equipment.Items.TryGetValue(unit.UnitType, out var weaponRule) && weaponRule.Fixed)
-        {
-            equipment.CreateItemForUnit(unit.UnitType, unit, fixedWeapon: true);
-            if (equipment.VehicleClipAmmo(unit.UnitType) is { } clip && equipment.CreateItemForUnit(clip, unit) is { } ammo)
-                ammo.AmmoQuantity = equipment.VehicleClipSize(unit.UnitType);
-            unit.TurretType = weaponRule.TurretType;
-        }
-        var itemLevel = equipment.DrawItemLevel();
-        unit.Position = placed;
-        unit.SetDirection(direction);
-        unit.TimeUnits = 0;
-        unit.PreviousOwnerId = owner?.Id;
-        AddUnit(unit);
-        SetSpotted(unit, BattleFaction.Player, faction == BattleFaction.Player);
-        equipment.InitUnit(unit, unitRule, "", itemLevel);
-        ApplyGravity(unit.Position);
         // This happens fairly rarely, so do a full recalculation of the units in range.
         Sight().CalculateFov(unit.Position!.Value);
         MarkChanged();
@@ -479,11 +444,9 @@ internal sealed partial class BattleState
         var chance = SpawnChance(attack, rule.SpawnItemChance, static action => action.AmmoSpawnItemChanceOverride);
         if (!RandomChance.Percent(Random, chance)) return false;
 
-        var owner = attack.Attacker ?? OwnerOf(damageItem);
+        var owner = SpawnOwner(attack);
         if (!Contains(position)) return false;
-        var created = new UnitEquipment(this, RequiredRules, Random).CreateItemForTile(rule.SpawnItem, position);
-        created.PreviousOwnerUnitId = owner?.Id;
-        var landed = ApplyGravity(created.Tile);
+        var (created, landed) = PlaceSpawnedItem(rule, owner, position, new UnitEquipment(this, RequiredRules, Random));
         if (GlowRange(created) is { } range && (created.Tile ?? landed) is { } at)
         {
             CalculateLighting(BattleLightLayer.Items, at);
@@ -847,13 +810,13 @@ internal sealed partial class BattleState
             if (item.Tile is not { } tile || item.XcomProperty || item.IsSpecialWeapon) continue;
             if (RequiredRules.Battle.Equipment.Items[item.ItemType].Spawns) continue;
             // fuseTimer == 0 cannot be used, because it is already used for "explode after the first player turn"; -1 is an unprimed grenade
-            if (ItemRuleOf(item.ItemType).BattleType == GrenadeBattleType && item.FuseTimer == -2) goBoom.Add((tile, item));
+            if (ItemRuleOf(item.ItemType).BattleType == RuntimeBattleItem.GrenadeBattleType && item.FuseTimer == -2) goBoom.Add((tile, item));
         }
         foreach (var (_, item) in goBoom) RemoveItem(item);
         foreach (var (tile, item) in goBoom)
         {
             var rule = ItemRuleOf(item.ItemType);
-            var voxel = new BattlePosition(tile.X * 16 + 8, tile.Y * 16 + 8, tile.Z * 24 - Map.TerrainLevel(Map.TileIndex(tile)));
+            var voxel = BattleGeometry.TileCentreVoxel(tile, -Map.TerrainLevel(Map.TileIndex(tile)));
             var radius = ExplosionRadius(item, default);
             Events.Add(new BattleExploded(voxel, rule.Power, radius, false));
             Explode(default, voxel, rule.Power, rule.Damage, radius, true);
@@ -878,7 +841,7 @@ internal sealed partial class BattleState
             var power = Map.Explosive(tile);
             Map.SetExplosive(tile, 0, 0, force: true);
             var position = Map.PositionOf(tile);
-            var voxel = new BattlePosition(position.X * 16 + 8, position.Y * 16 + 8, position.Z * 24);
+            var voxel = BattleGeometry.TileCentreVoxel(position, 0);
             Events.Add(new BattleExploded(voxel, power, power / 10, true));
             Explode(default, voxel, power, RuntimeItemDamageRule.Predefined(damageType), power / 10, true);
         }

@@ -109,7 +109,7 @@ internal sealed partial class BattleState
         var unit = reaction.Unit;
         var weapon = reaction.Weapon!;
         var type = reaction.AttackType;
-        if (!CanUseWeapon(ReactionResearch, weapon, unit, false, type).Usable) return false;
+        if (!CanUseWeapon(ResearchGate, weapon, unit, false, type).Usable) return false;
 
         var action = new BattleAimAction(unit, type, weapon, target.RequiredPosition);
         var cost = BattleActionCost.For(RequiredRules, type, unit, weapon);
@@ -159,8 +159,7 @@ internal sealed partial class BattleState
         var selected = _commandActor ?? (SelectedUnitId is { } id ? UnitById(id) : null);
         // target is dead: cancel the shot.
         if (victim is null || victim.IsOut || victim.IsOutThresholdExceeded || victim != selected) return false;
-        unit.LookAt(target, unit.TurretType != -1);
-        while (unit.Status == BattleUnitStatus.Turning) unit.Turn(unit.TurretType != -1);
+        unit.LookAtAndTurn(target);
         return true;
     }
 }

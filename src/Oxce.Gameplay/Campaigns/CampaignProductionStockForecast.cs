@@ -335,7 +335,7 @@ public sealed partial class CampaignState
         var quantity = (long)stocks[ownerId].GetValueOrDefault(item) + added;
         if (quantity > int.MaxValue) return ForecastLimits.ProductionOutputsStockRange;
         stocks[ownerId][item] = (int)quantity;
-        if (rules.Items[item].Value.BattleType != 0) return null;
+        if (rules.Items[item].Value.BattleType != RuntimeBattleItem.NoneBattleType) return null;
         var sources = crafts[ownerId];
         work += sources.Count;
         if (work > ForecastLimits.Work) return StockWorkReason;
@@ -400,7 +400,7 @@ public sealed partial class CampaignState
         {
             var item = rules.Items.GetRequired(id);
             var definition = rules.Items[item].Value;
-            return stableTransfers && definition.BattleType != 0 && !definition.IsAlien && !sensitive.Contains(item);
+            return stableTransfers && definition.BattleType != RuntimeBattleItem.NoneBattleType && !definition.IsAlien && !sensitive.Contains(item);
         }, id => stableTransfers && !rules.Items.GetRequiredValue(id).IsAlien,
             ref work, out items, out minimum);
     }

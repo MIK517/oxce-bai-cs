@@ -58,7 +58,7 @@ internal sealed partial class BattleState
         }
 
         if (!item.FuseEnabled || item.FuseTimer != 0) return false;
-        var explodes = trigger.ThrowExplode || trigger.DefaultBehavior && ItemRuleOf(item.ItemType).BattleType == GrenadeBattleType && rule.FuseType == InstantFuseType;
+        var explodes = trigger.ThrowExplode || trigger.DefaultBehavior && ItemRuleOf(item.ItemType).BattleType == RuntimeBattleItem.GrenadeBattleType && rule.FuseType == InstantFuseType;
         return explodes && RandomPercent(rule.Combat.SpecialChance);
     }
 

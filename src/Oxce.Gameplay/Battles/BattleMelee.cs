@@ -134,8 +134,7 @@ internal sealed partial class BattleState
                 if (Map.TerrainLevel(origin) <= -16 && above >= 0 && !Map.HasNoFloor(above)) targetTile = above;
                 else if (below >= 0 && Map.HasNoFloor(targetTile) && UnitOnTile(targetTile) is null && Map.TerrainLevel(below) <= -16) targetTile = below;
                 if (UnitOnTile(targetTile) is not { } unit || target is not null && unit != target) continue;
-                var originVoxel = new BattlePosition(originPosition.X * BattleGeometry.VoxelsPerTile + 8, originPosition.Y * BattleGeometry.VoxelsPerTile + 8,
-                    originPosition.Z * BattleGeometry.VoxelsPerLevel + attacker.HeightOf(RequiredRules) + attacker.FloatHeightOf(RequiredRules) -
+                var originVoxel = BattleGeometry.TileCentreVoxel(originPosition, attacker.HeightOf(RequiredRules) + attacker.FloatHeightOf(RequiredRules) -
                     MeleeOriginHeightReduction - Map.TerrainLevel(origin) + originOffset);
                 if (!sight.CanTargetUnit(originVoxel, targetTile, out _, attacker)) continue;
                 dest = Map.PositionOf(targetTile);
@@ -176,7 +175,7 @@ internal sealed partial class BattleState
         {
             // is the melee weapon able to hit terrain?
             var rule = ItemRuleOf(weapon.ItemType);
-            if (rule.BattleType == MeleeBattleTypeOfItem ? rule.Damage.Conversions.Tile == 0 : rule.MeleeDamage.Conversions.Tile == 0) return false;
+            if (rule.BattleType == RuntimeBattleItem.MeleeBattleType ? rule.Damage.Conversions.Tile == 0 : rule.MeleeDamage.Conversions.Tile == 0) return false;
         }
 
         var direction = actor.Direction;
@@ -283,16 +282,16 @@ internal sealed partial class BattleState
     /// BattleItem::getAmmoForAction(BA_HIT, &amp;message, &amp;spendPerShot): the item the hit feeds on (the weapon itself for a self-use slot), or null with the
     /// reason: no ammunition loaded, or fewer rounds than one hit spends.
     /// </summary>
-    private BattleItem? AmmoForHit(BattleItem weapon, out string message, out int spendPerShot) => AmmoForActionWithMessage(weapon, 3, out message, out spendPerShot);
+    private BattleItem? AmmoForHit(BattleItem weapon, out string message, out int spendPerShot) => AmmoForActionWithMessage(weapon, MeleeActionIndex, out message, out spendPerShot);
 
     /// <summary>BattleItem::spendAmmoForAction(BA_HIT): a round (or the hit's share of the battery) leaves the ammunition, and a spent clip leaves the battle and the weapon.</summary>
-    private void SpendAmmoForHit(BattleItem weapon) => SpendAmmoForAction(weapon, 3);
+    private void SpendAmmoForHit(BattleItem weapon) => SpendAmmoForAction(weapon, MeleeActionIndex);
 
     /// <summary>The config of an action by its index (0 aimed or launch, 1 auto, 2 snap, 3 melee): <c>getActionConf</c>.</summary>
     internal RuntimeItemAction ActionConfig(BattleItem weapon, int action)
     {
         var combat = RequiredRules.Battle.Equipment.Items[weapon.ItemType].Combat;
-        return action switch { 0 => combat.Aimed, 1 => combat.Auto, 2 => combat.Snap, 3 => combat.Melee, _ => throw new ArgumentOutOfRangeException(nameof(action)) };
+        return action switch { AimedActionIndex => combat.Aimed, AutoActionIndex => combat.Auto, SnapActionIndex => combat.Snap, MeleeActionIndex => combat.Melee, _ => throw new ArgumentOutOfRangeException(nameof(action)) };
     }
 
     /// <summary>BattleItem::getAmmoQuantity: an item with no clip size (-1) never runs dry (255).</summary>
@@ -430,8 +429,7 @@ internal sealed partial class BattleState
             // terrain melee
             if (part > 0)
             {
-                _voxel = new BattlePosition(target.X * BattleGeometry.VoxelsPerTile + 8, target.Y * BattleGeometry.VoxelsPerTile + 8,
-                    target.Z * BattleGeometry.VoxelsPerLevel + 12);
+                _voxel = BattleGeometry.TileCentreVoxel(target, 12);
                 PerformMeleeAttack(part);
                 return;
             }
@@ -473,7 +471,7 @@ internal sealed partial class BattleState
                 // whose target is still alive or at least conscious
                 _victim is not null && !_victim.IsOutThresholdExceeded &&
                 // and we still have ammo to make the attack
-                battle.AmmoForAction(weapon, 3) is not null &&
+                battle.AmmoForAction(weapon, MeleeActionIndex) is not null &&
                 // spend the TUs immediately
                 SpendTimeUnits())
             {

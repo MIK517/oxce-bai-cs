@@ -41,7 +41,7 @@ internal sealed partial class BattleState
     {
         var weight = ItemRuleOf(item.ItemType).Weight;
         foreach (var id in item.AmmoSlots)
-            if (id is { } ammoId && ammoId != item.Id && _items.FirstOrDefault(candidate => candidate.Id == ammoId) is { } ammo)
+            if (id is { } ammoId && ammoId != item.Id && ItemById(ammoId) is { } ammo)
                 weight += ItemRuleOf(ammo.ItemType).Weight;
         return weight;
     }
@@ -49,13 +49,16 @@ internal sealed partial class BattleState
     /// <summary>BattleItem::getAmmoForAction (const) by action type: the item feeding the action; null for an action without a config, or without ammunition.</summary>
     internal BattleItem? AmmoForActionType(BattleItem item, BattleActionType type) => ActionIndex(type) is { } action ? AmmoForAction(item, action) : null;
 
+    /// <summary>The indices of the action configs (<c>getActionConf</c>): aimed or launch, auto, snap and melee.</summary>
+    internal const int AimedActionIndex = 0, AutoActionIndex = 1, SnapActionIndex = 2, MeleeActionIndex = 3;
+
     /// <summary>The index of the action's config (0 aimed or launch, 1 auto, 2 snap, 3 melee), or null for an action without one (<c>getActionConf</c>).</summary>
     internal static int? ActionIndex(BattleActionType type) => type switch
     {
-        BattleActionType.Launch or BattleActionType.AimedShot => 0,
-        BattleActionType.AutoShot => 1,
-        BattleActionType.SnapShot => 2,
-        BattleActionType.Hit => 3,
+        BattleActionType.Launch or BattleActionType.AimedShot => AimedActionIndex,
+        BattleActionType.AutoShot => AutoActionIndex,
+        BattleActionType.SnapShot => SnapActionIndex,
+        BattleActionType.Hit => MeleeActionIndex,
         _ => null,
     };
 

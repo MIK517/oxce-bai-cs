@@ -11,11 +11,6 @@ namespace Oxce.Gameplay.Battles;
 /// </summary>
 internal sealed partial class BattleState
 {
-    // RuleItem's BattleType values the constructor and save read.
-    private const int FirearmType = 1;
-    private const int MeleeType = 3;
-    private const int MedikitType = 6;
-
     /// <summary>
     /// The battle's rules (Mod): the generator or the restore sets them once (init) and the runtime checks it holds the campaign's, so every rule of the battle reads them from
     /// here instead of taking them as a parameter. Null for a battle built without content.
@@ -51,13 +46,13 @@ internal sealed partial class BattleState
             InventoryMoveCostPercent = battleRule.InventoryMoveCostPercent,
             AmmoQuantity = rule.ClipSize,
         };
-        if (rule.BattleType == MedikitType)
+        if (rule.BattleType == RuntimeBattleItem.MedikitBattleType)
         {
             item.HealQuantity = battleRule.HealQuantity;
             item.PainKillerQuantity = battleRule.PainKillerQuantity;
             item.StimulantQuantity = battleRule.StimulantQuantity;
         }
-        else if (rule.BattleType is FirearmType or MeleeType)
+        else if (rule.BattleType is RuntimeBattleItem.FirearmBattleType or RuntimeBattleItem.MeleeBattleType)
         {
             for (var slot = 0; slot < BattleItem.AmmoSlotCount; slot++)
             {
@@ -83,7 +78,10 @@ internal sealed partial class BattleState
 
     /// <summary>An item of the battle or of either recovery list by ID, or null.</summary>
     internal BattleItem? FindItem(int id) =>
-        _items.Find(item => item.Id == id) ?? _guaranteedRecovered.Find(item => item.Id == id) ?? _conditionalRecovered.Find(item => item.Id == id);
+        ItemById(id) ?? _guaranteedRecovered.Find(item => item.Id == id) ?? _conditionalRecovered.Find(item => item.Id == id);
+
+    /// <summary>The battle's item with that ID, or null; unlike <see cref="FindItem"/>, the recovered items are not looked at.</summary>
+    internal BattleItem? ItemById(int id) => _items.Find(item => item.Id == id);
 
     /// <summary>
     /// SavedBattleGame::save's items: <c>items</c> and <c>itemsSpecial</c> split the battle's items (isSpecialWeapon: owned
@@ -123,7 +121,7 @@ internal sealed partial class BattleState
             AmmoRechargeable = battleRule?.AmmoRechargeable ?? false,
             AmmoItem = item.AmmoSlots[0],
             AmmoItemSlots = Array.AsReadOnly(item.AmmoSlots.Take(last + 1).Select(static slot => slot ?? -1).ToArray()),
-            Medikit = battleType == MedikitType,
+            Medikit = battleType == RuntimeBattleItem.MedikitBattleType,
             PainKiller = item.PainKillerQuantity,
             Heal = item.HealQuantity,
             Stimulant = item.StimulantQuantity,

@@ -46,8 +46,6 @@ internal sealed partial class BattleState
     internal static readonly CampaignReason HostileReserveUnsupportedReason = new("battle.hostile-reserve-unsupported",
         "The hostile side's percentage time unit reserve (the AI's reserve mode) arrives with the AI turn (Phase 7 branch 6).");
 
-    private const int BattleTypeFirearm = 1;
-    private const int BattleTypeMelee = 3;
     private const string RightHand = "STR_RIGHT_HAND";
     private const string LeftHand = "STR_LEFT_HAND";
 
@@ -76,7 +74,7 @@ internal sealed partial class BattleState
     private IEnumerable<BattleItem> SpecialWeapons(BattleUnit unit)
     {
         foreach (var id in unit.SpecialWeaponIds)
-            if (_items.FirstOrDefault(item => item.Id == id) is { } special) yield return special;
+            if (ItemById(id) is { } special) yield return special;
     }
 
     /// <summary>BattleItem::getAmmoForAction (const): the item feeding an action (0 aimed or launch, 1 auto, 2 snap, 3 hit), null when unloaded or spent.</summary>
@@ -94,16 +92,16 @@ internal sealed partial class BattleState
     internal bool HaveAnyAmmo(BattleItem item)
     {
         if (!item.IsWeaponWithAmmo) return true;
-        return ItemRuleOf(item.ItemType).BattleType == BattleTypeMelee
-            ? AmmoForAction(item, 3) is not null
-            : AmmoForAction(item, 0) is not null || AmmoForAction(item, 1) is not null || AmmoForAction(item, 2) is not null;
+        return ItemRuleOf(item.ItemType).BattleType == RuntimeBattleItem.MeleeBattleType
+            ? AmmoForAction(item, MeleeActionIndex) is not null
+            : AmmoForAction(item, AimedActionIndex) is not null || AmmoForAction(item, AutoActionIndex) is not null || AmmoForAction(item, SnapActionIndex) is not null;
     }
 
     /// <summary>BattleItem::getCurrentWaypoints: the item's waypoints, else those of the ammo its launch uses.</summary>
     private int CurrentWaypoints(BattleItem item)
     {
         var waypoints = ItemRuleOf(item.ItemType).Waypoints;
-        if (waypoints == 0 && AmmoForAction(item, 0) is { } ammo && ammo != item) waypoints = ItemRuleOf(ammo.ItemType).Waypoints;
+        if (waypoints == 0 && AmmoForAction(item, AimedActionIndex) is { } ammo && ammo != item) waypoints = ItemRuleOf(ammo.ItemType).Waypoints;
         return waypoints;
     }
 
@@ -131,7 +129,7 @@ internal sealed partial class BattleState
         if (right is null)
         {
             // The AI may also use a special weapon, when both hands are empty: the first special firearm.
-            return SpecialWeapons(unit).FirstOrDefault(special => ItemRuleOf(special.ItemType).BattleType == BattleTypeFirearm);
+            return SpecialWeapons(unit).FirstOrDefault(special => ItemRuleOf(special.ItemType).BattleType == RuntimeBattleItem.FirearmBattleType);
         }
         var timeRight = unit.ActionCost(RequiredRules.Battle.Equipment.Items[right.ItemType].ActionCosts, BattleActionType.SnapShot).Time;
         var timeLeft = unit.ActionCost(RequiredRules.Battle.Equipment.Items[left!.ItemType].ActionCosts, BattleActionType.SnapShot).Time;

@@ -17,7 +17,6 @@ internal sealed partial class BattleState
     internal IReadOnlyList<BattleUnit> FallingUnits => _fallingUnits;
 
     private const int DeathTraps = 200;
-    private const int ProximityGrenadeBattleType = 5;
 
     /// <summary>A unit on the map that does not fly, has no floor under it and is not out (what the battlescape's constructor queues to fall).</summary>
     private static bool IsFloorlessWalker(BattleUnit unit) =>

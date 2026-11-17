@@ -51,7 +51,7 @@ internal sealed partial class BattleState
         unit = null;
         if (Phase == BattlePhase.Briefing || Phase == BattlePhase.InProgress && Side != BattleFaction.Player)
             return BattleInventoryReasons.Unavailable;
-        unit = _units.Find(candidate => candidate.Id == unitId);
+        unit = UnitById(unitId);
         if (unit is null || unit.Faction != BattleFaction.Player || unit.IsOut || unit.Position is null ||
             !RequiredRules.Battle.Equipment.Armors.TryGetValue(unit.ArmorId, out var armor) || !armor.HasInventory)
         {
@@ -145,7 +145,7 @@ internal sealed partial class BattleState
         move = null;
         load = null;
         if (InventoryAvailable(unitId, out var unit) is { } closed) return closed;
-        var item = _items.Find(candidate => candidate.Id == itemId);
+        var item = ItemById(itemId);
         if (item is null || !IsHeld(unit!, item) && !IsOnTileOf(unit!, item)) return BattleInventoryReasons.ItemUnknown;
         var itemRule = RequiredRules.Battle.Equipment.Items[item.ItemType];
         if (itemRule.Fixed) return BattleInventoryReasons.ItemFixed;
@@ -159,7 +159,7 @@ internal sealed partial class BattleState
             // weapon with ammunition takes it as a load ("Put item in weapon"); a stackable item or none is a plain drop.
             if (ontoItemId is { } ontoId)
             {
-                var onto = _items.Find(candidate => candidate.Id == ontoId);
+                var onto = ItemById(ontoId);
                 if (onto is null || !IsOnTileOf(unit!, onto)) return BattleInventoryReasons.ItemUnknown;
                 if (onto.Id != item.Id && !CanBeStacked(onto, item))
                     return onto.IsWeaponWithAmmo ? PlanLoad(unit!, item, onto, shift, out load) : BattleInventoryReasons.NoRoom;
@@ -232,14 +232,14 @@ internal sealed partial class BattleState
                 var tile = TileOf(unit)!.Value;
                 // TileEngine::itemMoveInventory: a live grenade with a blast dropped where a unit stands sets the danger zone, and that dropper (the unit
                 // on the tile) learns the tile as a clue (updateEnemyKnowledge).
-                var dropper = Map.UnitAt(Map.TileIndex(tile)) is { } standing ? _units.Find(candidate => candidate.Id == standing) : null;
-                if (dropper is not null && ItemRuleOf(item.ItemType) is { BattleType: GrenadeBattleType } grenadeRule && item.FuseEnabled &&
+                var dropper = Map.UnitAt(Map.TileIndex(tile)) is { } standing ? UnitById(standing) : null;
+                if (dropper is not null && ItemRuleOf(item.ItemType) is { BattleType: RuntimeBattleItem.GrenadeBattleType } grenadeRule && item.FuseEnabled &&
                     grenadeRule.Damage.ResistType != RuntimeItemDamageRule.DamageNone)
                     SetDangerZone(tile, ExplosionRadius(item, new BattleAttack(BattleActionType.Throw, dropper, item, item)), dropper);
                 dropper?.UpdateEnemyKnowledge(Map.TileIndex(tile));
                 MoveToOwner(item, null);
                 AddToTile(item, tile);
-                if (item.CorpseUnitId is { } corpse && _units.Find(candidate => candidate.Id == corpse) is { Status: BattleUnitStatus.Unconscious } lying)
+                if (item.CorpseUnitId is { } corpse && UnitById(corpse) is { Status: BattleUnitStatus.Unconscious } lying)
                     lying.Position = tile;
             }
             else if (item.Slot.Length == 0 || item.Slot == GroundSlot)
@@ -247,7 +247,7 @@ internal sealed partial class BattleState
                 MoveToOwner(item, unit.Id);
                 item.ArrivalOrder = NextArrival();
                 item.DroppedOnAlienTurn = false;
-                if (item.CorpseUnitId is { } corpse && _units.Find(candidate => candidate.Id == corpse) is { Status: BattleUnitStatus.Unconscious } carried)
+                if (item.CorpseUnitId is { } corpse && UnitById(corpse) is { Status: BattleUnitStatus.Unconscious } carried)
                     carried.Position = null;
             }
         }
@@ -271,7 +271,7 @@ internal sealed partial class BattleState
     {
         result = null;
         if (InventoryAvailable(unitId, out var unit) is { } closed) return closed;
-        var item = _items.Find(candidate => candidate.Id == itemId);
+        var item = ItemById(itemId);
         if (item is null || !IsHeld(unit!, item) && !IsOnTileOf(unit!, item)) return BattleInventoryReasons.ItemUnknown;
         var itemRule = RequiredRules.Battle.Equipment.Items[item.ItemType];
         if (itemRule.Fixed) return BattleInventoryReasons.ItemFixed;

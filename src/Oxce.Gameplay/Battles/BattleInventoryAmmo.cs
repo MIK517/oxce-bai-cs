@@ -43,7 +43,7 @@ internal sealed partial class BattleState
 
     /// <summary>The unit's item for an inventory command: carried or lying on its tile (<c>Inventory::_selItem</c> was picked from there).</summary>
     private BattleItem? InventoryItem(BattleUnit unit, int itemId) =>
-        _items.Find(candidate => candidate.Id == itemId) is { } item && (IsHeld(unit, item) || IsOnTileOf(unit, item)) ? item : null;
+        ItemById(itemId) is { } item && (IsHeld(unit, item) || IsOnTileOf(unit, item)) ? item : null;
 
     /// <summary>
     /// <c>Inventory::mouseClick</c>'s "put item in weapon": the ammunition <paramref name="selected"/> dropped on <paramref name="weapon"/>. The slot is the first whose compatible ammunition
@@ -138,7 +138,7 @@ internal sealed partial class BattleState
             if (item.FuseTimer == -1 || rule.FuseType == NoFuseType || rule.ActionCosts.Of(RuntimeItemActionCosts.Unprime).Cost.Time == 0)
                 return BattleInventoryReasons.NothingToUnload;
         }
-        else if (battleType is BattleTypeFirearm or BattleTypeMelee)
+        else if (battleType is RuntimeBattleItem.FirearmBattleType or RuntimeBattleItem.MeleeBattleType)
         {
             var showError = false;
             for (var slot = 0; slot < BattleItem.AmmoSlotCount && slotForUnload == -1; slot++)

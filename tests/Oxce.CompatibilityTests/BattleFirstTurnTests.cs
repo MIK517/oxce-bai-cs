@@ -7,6 +7,7 @@ using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Runtime;
 using Xunit;
 using static Oxce.CompatibilityTests.BattleStartTests;
+using static Oxce.CompatibilityTests.BattleTestSupport;
 
 namespace Oxce.CompatibilityTests;
 
@@ -25,9 +26,6 @@ public sealed class BattleFirstTurnTests
         Started(campaign);
         return (campaign, Battle(campaign));
     }
-
-    private static string Refusal(CampaignState campaign, ICampaignCommand command) =>
-        Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(command).Events)).Code;
 
     private static T Event<T>(CampaignState campaign, ICampaignCommand command) where T : ICampaignEvent
     {

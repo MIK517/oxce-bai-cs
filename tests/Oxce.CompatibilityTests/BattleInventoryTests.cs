@@ -4,6 +4,7 @@ using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Sessions;
 using Xunit;
 using static Oxce.CompatibilityTests.BattleStartTests;
+using static Oxce.CompatibilityTests.BattleTestSupport;
 
 namespace Oxce.CompatibilityTests;
 
@@ -46,9 +47,6 @@ public sealed class BattleInventoryTests
         if (firstTurn) Assert.IsType<BattleFirstTurnStarted>(Assert.Single(campaign.Execute(new StartFirstTurn()).Events));
         return (campaign, battle, soldier);
     }
-
-    private static string Refusal(CampaignState campaign, ICampaignCommand command) =>
-        Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(command).Events)).Code;
 
     private static InventoryItemMoved Moved(CampaignState campaign, ICampaignCommand command)
     {

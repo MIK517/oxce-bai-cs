@@ -1391,7 +1391,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `BattleAcceptanceCombat` (internal class) [BattleAcceptanceCombat.cs](../tests/Oxce.CompatibilityTests/BattleAcceptanceCombat.cs) - Phase 7 branch 5 S11: the scripted combat of the acceptance battles.
 - `BattleAcceptanceDriver` (internal class) [BattleAcceptanceDriver.cs](../tests/Oxce.CompatibilityTests/BattleAcceptanceDriver.cs) - Phase 7 branch 4 S11: the scripted soldier of the acceptance battles.
 - `BattleSaveConformance` (internal class) [BattleSaveConformance.cs](../tests/Oxce.CompatibilityTests/BattleSaveConformance.cs) - The conformance reader (Phase 7 plan, branch 2 decisions): applies the reading rules of the reference's `SavedBattleGame::load` (`src/Sav...
-- `BattleTestSupport` (internal class) [BattleTestSupport.cs](../tests/Oxce.CompatibilityTests/BattleTestSupport.cs) - Helpers the battle movement tests share: rule text edits, command results, the walk's last event and a loaded gun.
+- `BattleTestSupport` (internal class) [BattleTestSupport.cs](../tests/Oxce.CompatibilityTests/BattleTestSupport.cs) - Helpers the battle tests share: rule text edits, command results, a runtime over an arena, the walk's last event and a loaded gun.
 - `BattleTestTerrain` (internal class) [BattleTestTerrain.cs](../tests/Oxce.CompatibilityTests/BattleTestTerrain.cs) - Synthetic terrain files for battle tests: MCD records, MAP blocks and an in-memory file port.
 - `ContentStateDump` (internal class) [ContentStateDump.cs](../tests/Oxce.CompatibilityTests/ContentStateDump.cs) - Deterministic dump of every instance field reachable from an object graph.
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
@@ -1954,8 +1954,8 @@ Prefer these over local copies (see AGENTS.md, *Test conventions*).
 
 ### [tests/Oxce.CompatibilityTests/BattleTestSupport.cs](../tests/Oxce.CompatibilityTests/BattleTestSupport.cs)
 
-- `BattleTestSupport` (class) - Helpers the battle movement tests share: rule text edits, command results, the walk's last event and a loaded gun.
-- members: `Replaced`, `Refusal`, `Events`, `End`, `GunFor`
+- `BattleTestSupport` (class) - Helpers the battle tests share: rule text edits, command results, a runtime over an arena, the walk's last event and a loaded gun.
+- members: `Replaced`, `Refusal`, `Refusal`, `RuntimeOf`, `Events`, `End`, `GunFor`
 
 ### [tests/Oxce.CompatibilityTests/BattleTestTerrain.cs](../tests/Oxce.CompatibilityTests/BattleTestTerrain.cs)
 
