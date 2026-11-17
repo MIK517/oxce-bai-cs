@@ -49,15 +49,18 @@ internal sealed partial class BattleState
     }
 
     /// <summary>
-    /// <c>GetBeforeShoot(type, nullptr, item)</c>: the attack of a proximity event, with no attacker, the item as the weapon, and as the damage item (<c>UpdateAmmo</c>) the item itself for
-    /// a grenade, a proximity grenade or a psi-amp, else the ammunition the item's action takes.
+    /// <c>GetBeforeShoot(type, nullptr, item)</c>: the attack of a proximity event, the item as the weapon; the attacker (<c>UpdateAttacker</c>) is the item's previous owner (who threw
+    /// or dropped it) for a grenade or proximity grenade, else none; the damage item (<c>UpdateAmmo</c>) is the item itself for a grenade, a proximity grenade or a psi-amp, else the
+    /// ammunition the item's action takes.
     /// </summary>
     private BattleAttack ProximityAttack(BattleActionType type, BattleItem item)
     {
         var battleType = ItemRuleOf(item.ItemType).BattleType;
         var damage = battleType is RuntimeBattleItem.GrenadeBattleType or RuntimeBattleItem.ProximityGrenadeBattleType or RuntimeBattleItem.PsiAmpBattleType ? item
             : ActionIndex(type) is { } index ? AmmoForActionWithMessage(item, index, out _, out _) : null;
-        return new BattleAttack(type, null, item, damage);
+        var attacker = battleType is RuntimeBattleItem.GrenadeBattleType or RuntimeBattleItem.ProximityGrenadeBattleType && item.PreviousOwnerUnitId is { } previous
+            ? UnitById(previous) : null;
+        return new BattleAttack(type, attacker, item, damage);
     }
 
     /// <summary>

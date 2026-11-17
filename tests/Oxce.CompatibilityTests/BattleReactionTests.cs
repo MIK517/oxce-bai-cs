@@ -132,6 +132,20 @@ public sealed class BattleReactionTests
     }
 
     [Fact]
+    public void AGunWithFewerRoundsThanASnapShotSpendsIsNoReactionWeapon()
+    {
+        // determineReactionType calls the non-const getAmmoForAction(BA_SNAPSHOT), which refuses a clip with fewer rounds than spendPerShot.
+        var arena = Make(rules => Replaced(rules, GunText + "\n    tuSnap: 20", GunText + "\n    confSnap: {spendPerShot: 2}\n    tuSnap: 20"));
+        var gun = Arm(arena, arena.Alien);
+        var clip = arena.Battle.FindItem(gun.AmmoSlots[0]!.Value)!;
+        clip.AmmoQuantity = 2;
+        Assert.Equal((BattleActionType.SnapShot, gun), (arena.Battle.DetermineReactionType(arena.Alien, arena.Soldier).AttackType,
+            arena.Battle.DetermineReactionType(arena.Alien, arena.Soldier).Weapon));
+        clip.AmmoQuantity = 1;
+        Assert.Equal(BattleActionType.None, arena.Battle.DetermineReactionType(arena.Alien, arena.Soldier).AttackType);
+    }
+
+    [Fact]
     public void AHitInReachComesBeforeASnapShotAndExtendedMeleeReactionsAllowAnyDirection()
     {
         var arena = Make(rules => Replaced(rules, "tuSnap: 20\n    tuAimed: 50", "tuSnap: 20\n    tuAimed: 50\n    tuMelee: 30"), distance: 1);
@@ -558,14 +572,17 @@ public sealed class BattleReactionTests
         arena.Battle.RemoveItem(right);
         reaction = arena.Battle.DetermineReactionType(soldier, arena.Alien);
         Assert.Equal((left, BattleActionType.Hit), (reaction.Weapon, reaction.AttackType));
+        // A weapon with no clip size never runs dry (getAmmoQuantity is 255), whatever its quantity says.
+        left.AmmoQuantity = 0;
+        Assert.Equal(BattleActionType.Hit, arena.Battle.DetermineReactionType(soldier, arena.Alien).AttackType);
         // A melee weapon in the left hand with a gun in the right one: the melee weapon is not the main hand weapon, and still the one that hits.
         var gun = Arm(arena, soldier);
         reaction = arena.Battle.DetermineReactionType(soldier, arena.Alien);
         Assert.Equal((left, BattleActionType.Hit), (reaction.Weapon, reaction.AttackType));
         Assert.NotNull(gun);
 
-        // A spent hit has no ammunition: no hit, and a melee weapon has no snap shot.
-        var spent = Make(distance: 1);
+        // A spent hit (a RAM with a clip size of 1 and no round left) has no ammunition: no hit, and a melee weapon has no snap shot.
+        var spent = Make(distance: 1, edit: rules => Replaced(rules, "  - type: RAM\n    battleType: 3\n    clipSize: -1", "  - type: RAM\n    battleType: 3\n    clipSize: 1"));
         Strip(spent, spent.Soldier);
         spent.Soldier.PreferredHandForReactions = "";
         Ram(spent, spent.Soldier, "STR_RIGHT_HAND", special: false, spent: true);

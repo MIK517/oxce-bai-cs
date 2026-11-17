@@ -471,7 +471,7 @@ internal sealed partial class BattleState
                 // whose target is still alive or at least conscious
                 _victim is not null && !_victim.IsOutThresholdExceeded &&
                 // and we still have ammo to make the attack
-                battle.AmmoForAction(weapon, MeleeActionIndex) is not null &&
+                battle.AmmoForHit(weapon, out _, out _) is not null &&
                 // spend the TUs immediately
                 SpendTimeUnits())
             {

@@ -639,7 +639,12 @@ public sealed class BattleClientCombatTests
         var refused = arena.Campaign.Execute(new SetTimeUnitReserve(arena.Alien.Id, BattleReserveKind.SnapShot));
         Assert.Equal("battle.selection-unit-unknown", Blocked(refused).Code);
         Assert.Equal((int)BattleActionType.None, arena.Battle.TimeUnitsReserved);
-    }
+        // The reserve buttons leave an aim in progress alone (btnReserveClick only sets the reserve and refreshes a previewed path).
+        Pick(context, model, BattleAimKind.AimedShot);
+        Press(context, BattlescapeClient.ReserveKey);
+        Assert.Equal((int)BattleActionType.SnapShot, arena.Battle.TimeUnitsReserved);
+        Assert.Equal(BattleAimKind.AimedShot, model.Aiming!.Value.Kind);
+            }
 
     [Fact]
     public void AReserveFromAUnitThatIsNotTheWritingSlotChangesNothingAndTheKneelReserveReportsItsState()

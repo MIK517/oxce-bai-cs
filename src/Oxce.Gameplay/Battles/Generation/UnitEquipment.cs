@@ -487,7 +487,8 @@ internal sealed class UnitEquipment
             throw new MapGenerationException($"Item {item.ItemType} names ammo slot {slot}.");
         if (item.AmmoSlots[slot] is not { } id) return null;
         var ammo = id == item.Id ? item : Find(id);
-        return ammo.AmmoQuantity == 0 && !BattleItemRule(ammo.ItemType).AmmoRechargeable ? null : ammo;
+        // getAmmoQuantity: an item with no clip size (-1) never runs dry.
+        return ItemRule(ammo.ItemType).ClipSize != -1 && ammo.AmmoQuantity == 0 && !BattleItemRule(ammo.ItemType).AmmoRechargeable ? null : ammo;
     }
 
     /// <summary>BattleItem::getTotalWeight: the item and the ammo loaded in it.</summary>

@@ -85,7 +85,7 @@ internal sealed partial class BattleState
         if (slot < 0 || slot >= BattleItem.AmmoSlotCount) throw new InvalidOperationException($"Item {item.ItemType} names ammo slot {slot}.");
         if (item.AmmoSlots[slot] is not { } id) return null;
         var ammo = id == item.Id ? item : _items.First(candidate => candidate.Id == id);
-        return ammo.AmmoQuantity == 0 && !RequiredRules.Battle.Equipment.Items[ammo.ItemType].AmmoRechargeable ? null : ammo;
+        return AmmoQuantityOf(ammo) == 0 && !RequiredRules.Battle.Equipment.Items[ammo.ItemType].AmmoRechargeable ? null : ammo;
     }
 
     /// <summary>BattleItem::haveAnyAmmo: loaded (an empty clip counts) for its aimed, auto or snap shot, or its hit for melee.</summary>

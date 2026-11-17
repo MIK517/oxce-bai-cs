@@ -548,6 +548,21 @@ public sealed class BattleWalkTests
     }
 
     [Fact]
+    public void AProximityGrenadeSetOffByAStepHasItsPreviousOwnerAsTheAttacker()
+    {
+        // UpdateAttacker: GetBeforeShoot(BA_TRIGGER_PROXY_GRENADE, nullptr, item) makes the grenade's previous owner the attacker of its blast.
+        const string Armed = "- type: GRENADE\n    battleType: 5\n    weight: 1\n    power: 50\n    damageType: 2\n    damageAlter: {RandomType: 3}";
+        var arena = Make(edit: rules => Replaced(rules, "- type: GRENADE\n    battleType: 4\n    weight: 1", Armed));
+        var grenade = arena.Battle.AddItemOnTile(new BattleItem(arena.Battle.TakeItemId(), "GRENADE")
+            { FuseEnabled = true, FuseTimer = 2, PreviousOwnerUnitId = arena.Alien.Id }, At(13, 11));
+        Assert.NotNull(grenade);
+        var events = Walk(arena, At(14, 10));
+        var hit = Assert.Single(events.OfType<UnitHit>(), hit => hit.UnitId == arena.Soldier.Id);
+        Assert.Equal(arena.Alien.Id, hit.AttackerId);
+        Assert.Equal(arena.Alien.Id, arena.Soldier.MurdererId);
+    }
+
+    [Fact]
     public void AStepNextToAnItemWithAProximityTriggerEnablesItsFuse()
     {
         var arena = Make(edit: rules => Replaced(rules, "- type: GRENADE\n    battleType: 4\n    weight: 1", "- type: GRENADE\n    battleType: 4\n    weight: 1\n    fuseTriggerEvents: {proximityTrigger: true}"));

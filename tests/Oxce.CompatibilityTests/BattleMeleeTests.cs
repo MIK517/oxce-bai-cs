@@ -252,10 +252,10 @@ public sealed class BattleMeleeTests
     }
 
     [Fact]
-    public void AHostileUnitsFurtherHitsOnlyNeedSomeAmmunitionInTheSlotNotTheFullShare()
+    public void AHostileUnitsFurtherHitNeedsTheFullShareOfAmmunition()
     {
-        // Each hit spends 2 rounds. Three are loaded: the first hit spends two, the later ones find one round, strike anyway (the reference's check only
-        // asks for ammunition in the slot) and spend nothing.
+        // Each hit spends 2 rounds. Three are loaded: the first hit spends two and the one round left is less than a hit spends, so there is no
+        // further hit (MeleeAttackBState::think calls the non-const getAmmoForAction(BA_HIT), which compares the rounds with spendPerShot).
         var arena = Rod(spendPerShot: 2, gunExtra: "    ai: {meleeHitCount: 3}\n");
         foreach (var item in arena.Battle.InventoryOf(arena.Soldier).ToList()) arena.Battle.RemoveItem(item);
         var (_, rod, clip) = Shot(arena, arena.Alien);
@@ -267,9 +267,16 @@ public sealed class BattleMeleeTests
         arena.Soldier.Health = 30000;
         var cost = BattleActionCost.For(arena.Rules, BattleActionType.Hit, arena.Alien, rod);
         Assert.Null(arena.Battle.StrikeMelee(arena.Alien, rod, new BattlePosition(10, 10, 0), 0, cost));
-        Assert.Equal(3, arena.Battle.Events.Drain().OfType<UnitMeleeAttacked>().Count());
-        Assert.Equal(40, arena.Alien.TimeUnits);
+        Assert.Single(arena.Battle.Events.Drain().OfType<UnitMeleeAttacked>());
+        Assert.Equal(80, arena.Alien.TimeUnits);
         Assert.Equal(1, clip.AmmoQuantity);
+        // With four rounds the second hit has its share and strikes; the third finds none left.
+        arena.Alien.TimeUnits = 100;
+        clip.AmmoQuantity = 4;
+        Assert.Null(arena.Battle.StrikeMelee(arena.Alien, rod, new BattlePosition(10, 10, 0), 0, cost));
+        Assert.Equal(2, arena.Battle.Events.Drain().OfType<UnitMeleeAttacked>().Count());
+        Assert.Equal(60, arena.Alien.TimeUnits);
+        Assert.Equal(0, clip.AmmoQuantity);
     }
 
     [Fact]

@@ -338,11 +338,13 @@ public sealed class BattleViewModel
     /// <summary>The kneel reserve button (<c>btnReserveKneelClick</c>).</summary>
     public bool ToggleKneelReserve() => SendReserve(static unit => new ToggleKneelReserve(unit));
 
-    /// <summary>The reference needs no selected unit for a reserve button, only that the buttons are allowed; the command names a unit of this client's slot, the selected one or else any.</summary>
+    /// <summary>
+    /// The reference needs no selected unit for a reserve button, only that the buttons are allowed; the command names a unit of this client's slot, the selected one or else any.
+    /// An aim in progress stays (<c>btnReserveClick</c> does not touch the targeting).
+    /// </summary>
     private bool SendReserve(Func<int, ICampaignCommand> command)
     {
         Refresh();
-        CancelAim();
         Message = "";
         var unit = _selected ?? Overview?.Units.FirstOrDefault(own => own.Faction == Viewer.Faction && own.ControllerSlot == Viewer.PlayerSlot)?.Id ?? -1;
         var result = _commands.Execute(command(unit));

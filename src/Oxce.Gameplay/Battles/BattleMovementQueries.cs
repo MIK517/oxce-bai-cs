@@ -22,8 +22,12 @@ internal sealed partial class BattleState
     private BattleUnit? ViewersUnitOnTurn(BattleViewer viewer, int unitId)
     {
         if (!Enum.IsDefined(viewer.Faction)) throw new ArgumentOutOfRangeException(nameof(viewer));
-        if (viewer.Faction != Side || SelectionUnit(unitId, out var found) is not null) return null;
-        return found!.Position is null ? null : found;
+        if (viewer.Faction != Side) return null;
+        // A query is no command: it leaves the command's actor as it was (reaction fire reads it before the saved selection).
+        var actor = _commandActor;
+        var refused = SelectionUnit(unitId, out var found) is not null;
+        _commandActor = actor;
+        return refused || found!.Position is null ? null : found;
     }
 
     /// <summary>

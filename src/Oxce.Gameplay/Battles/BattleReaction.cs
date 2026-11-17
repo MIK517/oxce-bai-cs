@@ -129,7 +129,7 @@ internal sealed partial class BattleState
             if (CanUseWeapon(ResearchGate, weapon, unit, false, BattleActionType.Hit).Usable &&
                 // has a weapon capable of melee and is in melee range
                 ValidMeleeRange(unit.RequiredPosition, direction, unit, target, out _) &&
-                AmmoForAction(weapon, MeleeActionIndex) is not null &&
+                AmmoForActionWithMessage(weapon, MeleeActionIndex, out _, out _) is not null &&
                 BattleActionCost.For(RequiredRules, BattleActionType.Hit, unit, weapon).HaveTimeUnits())
                 return Set(BattleActionType.Hit, weapon);
 
@@ -137,7 +137,7 @@ internal sealed partial class BattleState
                 // has a gun capable of snap shot with ammo
                 ItemRuleOf(weapon.ItemType).BattleType == RuntimeBattleItem.FirearmBattleType &&
                 !IsOutOfRange(weapon, DistanceSquaredBetween(unit.RequiredPosition, target.RequiredPosition)) &&
-                AmmoForAction(weapon, SnapActionIndex) is not null &&
+                AmmoForActionWithMessage(weapon, SnapActionIndex, out _, out _) is not null &&
                 BattleActionCost.For(RequiredRules, BattleActionType.SnapShot, unit, weapon).HaveTimeUnits())
                 return Set(BattleActionType.SnapShot, weapon);
         }

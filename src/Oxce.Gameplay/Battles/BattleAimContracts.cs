@@ -24,8 +24,8 @@ public sealed record BattleAimMenuItem(BattleAimKind Kind, string Name, int Accu
 
 /// <summary>
 /// The aiming actions a weapon in a viewer's unit's hand offers (<c>ActionMenuState</c>'s constructor): a throw for an item that is not fixed, the
-/// shots of a firearm (a launch instead of the aimed shot for a launcher), a hit. The priming, medikit, scanner, psi amp and mind probe lines
-/// belong to the owners of those actions. <see cref="Reason"/> is empty, or why the unit cannot use the weapon at all (<c>canUseWeapon</c>'s message).
+/// shots of a firearm (a launch instead of the aimed shot for a launcher), a hit, and the priming and unpriming lines (S8); the medikit,
+/// scanner, psi amp and mind probe lines are branch 6's. <see cref="Reason"/> is empty, or why the unit cannot use the weapon at all (<c>canUseWeapon</c>'s message).
 /// </summary>
 public sealed record BattleAimMenuView(int UnitId, int ItemId, IReadOnlyList<BattleAimMenuItem> Items, bool Usable, string Reason)
 {

@@ -113,7 +113,7 @@ internal sealed partial class BattleState
 
         var action = new BattleAimAction(unit, type, weapon, target.RequiredPosition);
         var cost = BattleActionCost.For(RequiredRules, type, unit, weapon);
-        if (AmmoForAction(weapon, ActionIndex(type)!.Value) is not { } ammo || !cost.HaveTimeUnits()) return false;
+        if (AmmoForActionWithMessage(weapon, ActionIndex(type)!.Value, out _, out _) is not { } ammo || !cost.HaveTimeUnits()) return false;
 
         // hostile units will go into an "aggro" state when they react.
         if (unit.Faction == BattleFaction.Hostile)

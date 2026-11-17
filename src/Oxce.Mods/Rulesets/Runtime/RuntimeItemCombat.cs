@@ -16,8 +16,8 @@ public sealed record RuntimeItemAction(int Range, int Shots, int SpendPerShot, b
 }
 
 /// <summary>
-/// are those of an item under the default mod, apart from the melee action's ammo slot and the action names, which the reference sets when it reads the item.
-/// are those of a freshly created RuleItem under the default mod.
+/// The combat fields of an item rule (<c>RuleItem</c>), starting with its four action configurations. The defaults are those of a freshly
+/// created RuleItem under the default mod; the melee action's ammo slot and the action names are set by the reference when it reads the item.
 /// </summary>
 public sealed record RuntimeItemCombat
 {

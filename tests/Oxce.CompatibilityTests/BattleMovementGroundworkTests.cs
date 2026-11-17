@@ -738,13 +738,18 @@ public sealed class BattleMovementGroundworkTests
         Assert.False(battle.HaveAnyAmmo(gun));
         clip.AmmoQuantity = 1;
         Assert.True(battle.HaveAnyAmmo(gun));
-        // A melee weapon needs its hit loaded; one that takes no ammunition always is.
+        // A melee weapon needs its hit loaded. Feeding on itself with no clip size (-1), it never runs dry (getAmmoQuantity is 255).
         var ram = new BattleItem(battle.TakeItemId(), "RAM") { IsWeaponWithAmmo = true };
         battle.AddItem(ram);
         ram.AmmoSlots[0] = ram.Id;
-        ram.AmmoQuantity = 1;
-        Assert.True(battle.HaveAnyAmmo(ram));
         ram.AmmoQuantity = 0;
+        Assert.True(battle.HaveAnyAmmo(ram));
+        // With a clip in its slot it is spent when the clip is.
+        ram.AmmoSlots[0] = clip.Id;
+        Assert.True(battle.HaveAnyAmmo(ram));
+        clip.AmmoQuantity = 0;
+        Assert.False(battle.HaveAnyAmmo(ram));
+        ram.AmmoSlots[0] = null;
         Assert.False(battle.HaveAnyAmmo(ram));
         // A weapon that is no weapon with ammunition (a grenade) counts as loaded.
         Assert.True(battle.HaveAnyAmmo(new BattleItem(900, "GRENADE")));

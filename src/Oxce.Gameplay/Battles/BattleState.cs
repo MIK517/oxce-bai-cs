@@ -143,12 +143,6 @@ internal sealed partial class BattleState
     /// </summary>
     public long Revision => _committedRevision + (_changePending ? 1 : 0);
 
-    /// <summary>The revision and the pending mark, for a trial run to put back; a rule never writes the revision itself (it marks the change).</summary>
-    internal (long Committed, bool Pending) CaptureRevision() => (_committedRevision, _changePending);
-
-    /// <summary>Puts back what <see cref="CaptureRevision"/> took, so a command's marks keep making one bump.</summary>
-    internal void RestoreRevision((long Committed, bool Pending) captured) => (_committedRevision, _changePending) = captured;
-
     /// <summary>
     /// Marks the battle as changed: inside a runtime command any number of marks make one bump of <see cref="Revision"/>, committed by
     /// <see cref="EndCommand"/>; outside one each mark is a bump.
