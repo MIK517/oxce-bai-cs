@@ -856,7 +856,7 @@ public sealed class BattleMeleeTests
     }
 
     [Fact]
-    public void TheAttackCommandReturnsTheStrikeThenTheHitAndRefusesTheKindsOfLaterSlices()
+    public void TheAttackCommandReturnsTheStrikeThenTheHitAndRefusesAnUnknownKind()
     {
         var arena = Arm();
         var gun = Gun(arena);

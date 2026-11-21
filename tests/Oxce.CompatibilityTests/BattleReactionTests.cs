@@ -653,6 +653,15 @@ public sealed class BattleReactionTests
         Assert.Equal(0, Score(arena, gun, BattleActionType.None));
         // A weapon with no auto shot has no score for one (no time units for it).
         Assert.Equal(0, Score(arena, gun, BattleActionType.AutoShot));
+        // brutalScoreFiringMode calls the non-const getAmmoForAction: a clip with fewer rounds than a snap shot spends scores nothing.
+        var hungry = Make(rules => Replaced(Clip(Bullet)(rules), GunText + "\n    tuSnap: 20", GunText + "\n    confSnap: {spendPerShot: 2}\n    tuSnap: 20"));
+        var hungryGun = Arm(hungry, hungry.Alien);
+        hungry.Alien.TimeUnits = 26;
+        var clip = hungry.Battle.FindItem(hungryGun.AmmoSlots[0]!.Value)!;
+        clip.AmmoQuantity = 2;
+        Assert.True(Score(hungry, hungryGun) > 0);
+        clip.AmmoQuantity = 1;
+        Assert.Equal(0, Score(hungry, hungryGun));
     }
 
     [Fact]

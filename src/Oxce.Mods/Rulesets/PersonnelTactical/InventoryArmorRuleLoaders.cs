@@ -50,7 +50,7 @@ internal sealed class ArmorRuleLoader : TypedRuleFamilyLoader<ArmorBuilder, Armo
 {
     private static readonly string[] DeferredKeys =
     [
-        "recovery", "psiDefence", "meleeDodge", "battleUnitScripts",
+        "recovery", "battleUnitScripts",
     ];
 
     public ArmorRuleLoader() : base(PersonnelTacticalYaml.Section("armors")) { }
@@ -92,6 +92,10 @@ internal sealed class ArmorRuleLoader : TypedRuleFamilyLoader<ArmorBuilder, Armo
 
         if (reader.TryGet("psiDefence", out var psiDefence)) builder.PsiDefence.Load(psiDefence!);
         if (reader.TryGet("meleeDodge", out var meleeDodge)) builder.MeleeDodge.Load(meleeDodge!);
+        // psiDefence and meleeDodge are evaluated as term mappings; only their scalar form (script code) is deferred.
+        foreach (var key in (string[])["psiDefence", "meleeDodge"])
+            if (reader.TryGet(key, out var bonus) && bonus is YamlScalarNode)
+                reader.Defer(key, "stat-bonus and tactical script compilation belongs to Phase 4");
         foreach (var key in DeferredKeys)
             reader.Defer(key, "stat-bonus and tactical script compilation belongs to Phase 4");
         reader.DeferRemaining("dynamic armor script values require Phase 4 registration");

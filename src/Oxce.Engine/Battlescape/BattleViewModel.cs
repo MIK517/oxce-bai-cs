@@ -125,7 +125,8 @@ public sealed class BattleViewModel
         _levelRead = Camera.ViewLevel;
         Level = _view.QueryLevel(Viewer, Camera.ViewLevel);
         // The preview and the reachable tiles are the rules' answers for the selected unit now; a new revision or level asks again.
-        Path = _selected is { } walker && _previewTile is var (x, y) ? _view.QueryPath(Viewer, walker, new BattlePosition(x, y, Camera.ViewLevel)) : null;
+        // No path preview while an action is aimed (ActionMenuState::btnActionMenuItemClick removes it, and targeting draws none).
+        Path = Aiming is null && _selected is { } walker && _previewTile is var (x, y) ? _view.QueryPath(Viewer, walker, new BattlePosition(x, y, Camera.ViewLevel)) : null;
         Reachable = _showReachable && _selected is { } reacher ? _view.QueryReachable(Viewer, reacher) : null;
         _previewDirty = false;
         // An aim belongs to the unit and weapon it was opened for: another selection, or a weapon that left the hand, ends it.
@@ -227,6 +228,8 @@ public sealed class BattleViewModel
         }
         Aiming = (menu.ItemId, kind);
         Message = "";
+        // btnActionMenuItemClick removes the path preview.
+        Path = null;
         _waypoints.Clear();
         (_maxWaypoints, _sprayMax, _spraying) = (menu.Waypoints, menu.SprayWaypoints, false);
         return true;
@@ -238,6 +241,8 @@ public sealed class BattleViewModel
         (Menu, Aiming, Aim, _aimTile) = (null, null, null, null);
         _waypoints.Clear();
         _spraying = false;
+        // The hovered tile's path preview comes back with the next refresh.
+        _previewDirty = true;
     }
 
     /// <summary>The pointer over a tile while aiming: the rules answer what a shot there would show (Ctrl is force fire).</summary>
@@ -326,7 +331,8 @@ public sealed class BattleViewModel
         Message = result.Events.OfType<CampaignActionBlocked>().FirstOrDefault()?.Code ?? "";
         if (Message.Length != 0) return false;
         LastEvents = result.Events;
-        if (Aiming is { Kind: BattleAimKind.Throw or BattleAimKind.Launch }) CancelAim();
+        // popState's actionFailed: a throw or launch that stopped with a result keeps the aim and the waypoints.
+        if (Aiming is { Kind: BattleAimKind.Throw or BattleAimKind.Launch } && !result.Events.OfType<UnitAttackStopped>().Any()) CancelAim();
         _gate.Reset();
         Refresh();
         return true;
@@ -381,13 +387,16 @@ public sealed class BattleViewModel
     public bool ReselectSkipped(bool keepCamera = false)
     {
         Refresh();
+        CancelAim();
         Message = "";
         return Selection?.UndoUnitId is { } undo && Send(new ReselectSkippedUnit(undo), !keepCamera);
     }
 
+    /// <summary>The selection buttons and keys (<c>selectNextPlayerUnit</c>, <c>selectPreviousPlayerUnit</c>) end an aim (<c>cancelAllActions</c>).</summary>
     private bool SendFromSelection(Func<int, ICampaignCommand> command, bool keepCamera, bool backwards = false)
     {
         Refresh();
+        CancelAim();
         if (_selected is { } unit) return Send(command(unit), !keepCamera);
         // Nothing selected (the reference then starts at the front of the list): select the first unit the rules offer.
         // The reference starts at the front of the list (at the end, going back); a command on no unit is refused with the rules' or the
@@ -419,8 +428,17 @@ public sealed class BattleViewModel
     /// <summary>The kneel button (<c>btnKneelClick</c>).</summary>
     public bool Kneel() => SendMovement(static unit => new KneelUnit(unit), follow: false);
 
-    /// <summary>The unit up and down buttons (<c>btnUnitUpClick</c>, <c>btnUnitDownClick</c>); the camera follows the unit to its level.</summary>
-    public bool MoveUpDown(bool up) => SendMovement(unit => new MoveUnitUpDown(unit, up), follow: true);
+    /// <summary>
+    /// The unit up and down buttons (<c>btnUnitUpClick</c>, <c>btnUnitDownClick</c>); the camera follows the unit to its level. A move the rules take
+    /// ends an aim (<c>cancelAllActions</c> once <c>validateUpDown</c> passed).
+    /// </summary>
+    public bool MoveUpDown(bool up)
+    {
+        if (!SendMovement(unit => new MoveUnitUpDown(unit, up), follow: true)) return false;
+        CancelAim();
+        Refresh();
+        return true;
+    }
 
     private bool SendMovement(Func<int, ICampaignCommand> command, bool follow)
     {

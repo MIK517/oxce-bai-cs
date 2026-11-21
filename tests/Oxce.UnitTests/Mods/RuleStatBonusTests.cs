@@ -1,4 +1,6 @@
+using Oxce.Core.Diagnostics;
 using Oxce.FixtureSupport;
+using Oxce.Mods;
 using Oxce.Mods.Rulesets;
 using Oxce.Mods.Rulesets.Items;
 using Oxce.TestSupport;
@@ -215,5 +217,20 @@ public sealed class RuleStatBonusTests
         Assert.Equal([("flatHundred", 0.5f)], Terms(armors["MAPPED"].MeleeDodge));
         Assert.True(armors["CODED"].MeleeDodge.IsScript);
         Assert.False(armors["CODED"].PsiDefence.IsScript);
+    }
+
+    [Fact]
+    public void ATermMappingIsLoadedWithoutADeferralAndOnlyCodeIsDeferred()
+    {
+        // RuleItem::load and Armor::load read these keys; only a scalar (script code) waits for script compilation.
+        using var fixture = new TemporaryModFixture(("fixture.rul",
+            "items:\n  - type: MAPPED\n    damageBonus: {strength: 1}\n    closeQuartersMultiplier: {flatOne: 1}\n  - type: CODED\n    meleeBonus: 'return bonus;'\n" +
+            "armors:\n  - type: MAPPED\n    psiDefence: {psiStrength: 2}\n    meleeDodge: {flatHundred: 0.5}\n  - type: CODED\n    meleeDodge: 'return bonus;'\n"));
+        var diagnostics = new DiagnosticCollector();
+        ItemRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root), diagnostics);
+        Oxce.Mods.Rulesets.PersonnelTactical.PersonnelTacticalRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root), diagnostics);
+        var deferred = diagnostics.Snapshot().Where(static item => item.Code == ModDiagnosticCodes.DeferredRuleProperty)
+            .Select(static item => (item.Context.RuleId, item.Message.Split('\'')[1])).ToList();
+        Assert.Equal([("CODED", "meleeBonus"), ("CODED", "meleeDodge")], deferred);
     }
 }

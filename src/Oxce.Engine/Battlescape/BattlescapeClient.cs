@@ -405,6 +405,8 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
             Message = "battle.inventory-unavailable";
             return true;
         }
+        // btnInventoryClick: cancelAllActions before the inventory opens.
+        Model.CancelAim();
         Context.Screens.Push(new BattleInventoryScreen(Context, preBattle: false));
         return true;
     }

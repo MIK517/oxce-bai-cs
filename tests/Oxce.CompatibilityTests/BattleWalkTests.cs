@@ -553,8 +553,8 @@ public sealed class BattleWalkTests
         // UpdateAttacker: GetBeforeShoot(BA_TRIGGER_PROXY_GRENADE, nullptr, item) makes the grenade's previous owner the attacker of its blast.
         const string Armed = "- type: GRENADE\n    battleType: 5\n    weight: 1\n    power: 50\n    damageType: 2\n    damageAlter: {RandomType: 3}";
         var arena = Make(edit: rules => Replaced(rules, "- type: GRENADE\n    battleType: 4\n    weight: 1", Armed));
-        var grenade = arena.Battle.AddItemOnTile(new BattleItem(arena.Battle.TakeItemId(), "GRENADE")
-            { FuseEnabled = true, FuseTimer = 2, PreviousOwnerUnitId = arena.Alien.Id }, At(13, 11));
+        var armed = new BattleItem(arena.Battle.TakeItemId(), "GRENADE") { FuseEnabled = true, FuseTimer = 2, PreviousOwnerUnitId = arena.Alien.Id };
+        var grenade = arena.Battle.AddItemOnTile(armed, At(13, 11));
         Assert.NotNull(grenade);
         var events = Walk(arena, At(14, 10));
         var hit = Assert.Single(events.OfType<UnitHit>(), hit => hit.UnitId == arena.Soldier.Id);

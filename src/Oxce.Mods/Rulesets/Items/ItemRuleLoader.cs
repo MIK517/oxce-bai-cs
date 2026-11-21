@@ -7,10 +7,14 @@ namespace Oxce.Mods.Rulesets.Items;
 
 internal sealed class ItemRuleLoader : TypedRuleFamilyLoader<ItemRuleBuilder, ItemRule>
 {
+    private static readonly string[] StatBonusKeys =
+    [
+        "damageBonus", "meleeBonus", "accuracyMultiplier", "meleeMultiplier", "throwMultiplier", "closeQuartersMultiplier",
+    ];
+
     private static readonly string[] ScriptKeys =
     [
-        "damageBonus", "meleeBonus", "accuracyMultiplier", "meleeMultiplier", "throwMultiplier",
-        "closeQuartersMultiplier", "recolorItemSprite", "selectItemSprite", "vaporParticleAmmo",
+        "recolorItemSprite", "selectItemSprite", "vaporParticleAmmo",
         "vaporParticleWeapon", "reactionWeaponAction", "tryPsiAttackItem", "tryMeleeAttackItem",
         "hitUnitAmmo", "damageUnitAmmo", "damageSpecialUnitAmmo", "createItem", "newTurnItem",
         "sellCostItem", "buyCostItem", "statsForNerdsItem",
@@ -48,6 +52,10 @@ internal sealed class ItemRuleLoader : TypedRuleFamilyLoader<ItemRuleBuilder, It
         ApplyLegacyAliases(builder, reader);
 
         ApplyStatBonuses(builder, reader);
+        // A stat bonus's term mapping is evaluated; only its scalar form (script code) waits for script compilation.
+        foreach (var key in StatBonusKeys)
+            if (reader.TryGet(key, out var bonus) && bonus is YamlScalarNode)
+                reader.Defer(key, "item script compilation belongs to Phase 4");
         foreach (var key in ScriptKeys)
             reader.Defer(key, "item script compilation belongs to Phase 4");
         reader.DeferRemaining("dynamic item script values require Phase 4 registration");

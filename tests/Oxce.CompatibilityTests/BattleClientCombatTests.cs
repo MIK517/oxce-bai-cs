@@ -7,6 +7,7 @@ using Oxce.TestSupport;
 using Xunit;
 using static Oxce.CompatibilityTests.BattleClientMovementTests;
 using static Oxce.CompatibilityTests.BattleSightTests;
+using static Oxce.CompatibilityTests.BattleTestSupport;
 
 namespace Oxce.CompatibilityTests;
 
@@ -60,8 +61,6 @@ public sealed class BattleClientCombatTests
     /// <summary>A press on the panel at a row (the hand lines are at 70 and 82, the menu's lines from 110).</summary>
     private static GameInputEvent Panel(int y, byte button = 1) =>
         GameInputEvent.PointerButtonChange(GameInputEventKind.PointerPressed, 0, 0, BattlescapeClient.MapWidth + 20, y, button, 1);
-
-    private static CampaignActionBlocked Blocked(CampaignCommandResult result) => Assert.IsType<CampaignActionBlocked>(Assert.Single(result.Events));
 
     // ---- the menu ----
 
@@ -314,7 +313,7 @@ public sealed class BattleClientCombatTests
         context.Screens.HandleInput(Panel(73, 3));
         Assert.Equal(("STR_RIGHT_HAND", false, false), (arena.Soldier.PreferredHandForReactions, arena.Soldier.ReactionsDisabledForLeftHand, arena.Soldier.ReactionsDisabledForRightHand));
         // The command refuses a unit that is not the side's and the middle click opens no menu.
-        Assert.Equal("battle.selection-unit-unknown", Blocked(arena.Campaign.Execute(new ToggleHandForReactions(arena.Alien.Id, true, false))).Code);
+        Assert.Equal("battle.selection-unit-unknown", Refusal(arena.Campaign.Execute(new ToggleHandForReactions(arena.Alien.Id, true, false))));
         context.Screens.HandleInput(Panel(73, 2));
         Assert.Equal((BattleViewModel.UfopaediaCode, true), (screen.Message, model.Menu is null));
         // The event carries the unit's flags in the order the fields name them: the left hand disabled by Ctrl, the preferred right hand kept.
@@ -637,14 +636,77 @@ public sealed class BattleClientCombatTests
         Assert.False(arena.Battle.KneelReserved);
         // The rules refuse a reserve for a unit that is not the side's.
         var refused = arena.Campaign.Execute(new SetTimeUnitReserve(arena.Alien.Id, BattleReserveKind.SnapShot));
-        Assert.Equal("battle.selection-unit-unknown", Blocked(refused).Code);
+        Assert.Equal("battle.selection-unit-unknown", Refusal(refused));
         Assert.Equal((int)BattleActionType.None, arena.Battle.TimeUnitsReserved);
-        // The reserve buttons leave an aim in progress alone (btnReserveClick only sets the reserve and refreshes a previewed path).
+    }
+
+    [Fact]
+    public void TheSelectionButtonsAndTheInventoryEndAnAimAndAnAimHidesThePathPreview()
+    {
+        var (arena, _, _) = BattleShootingTests.Load();
+        var (context, _, model) = ClientOf(arena);
+        model.Preview(12, 12);
+        Assert.NotNull(model.Path);
+        // btnActionMenuItemClick removes the path preview; targeting draws none.
         Pick(context, model, BattleAimKind.AimedShot);
+        Assert.Null(model.Path);
+        // selectNextPlayerUnit's cancelAllActions: the aim ends and the preview comes back.
+        Assert.True(model.Next());
+        Assert.Null(model.Aiming);
+        model.Refresh();
+        Assert.NotNull(model.Path);
+        Pick(context, model, BattleAimKind.AimedShot);
+        Assert.True(model.Skip());
+        Assert.Null(model.Aiming);
+        // btnInventoryClick's cancelAllActions (the skip left the only soldier unselected).
+        Assert.True(model.Select(arena.Soldier.Id));
+        Pick(context, model, BattleAimKind.AimedShot);
+        Press(context, 'i');
+        Assert.Null(model.Aiming);
+    }
+
+    [Fact]
+    public void ALaunchThatStopsKeepsTheAimAndItsWaypointsAndOneThatFlewEndsIt()
+    {
+        // popState's actionFailed: a launch whose result is set (a later waypoint out of range) leaves the targeting and the waypoints as they were.
+        var (arena, _, _) = BattleLaunchTests.Load(gun: "costAimed: {time: 30}\naccuracyAimed: 100\nwaypoints: 3\nmaxRange: 8");
+        var (context, _, model) = ClientOf(arena);
+        Pick(context, model, BattleAimKind.Launch);
+        Assert.True(model.Target(12, 10, force: false));
+        Assert.True(model.Target(25, 10, force: false));
+        Assert.True(model.Launch());
+        Assert.Contains(model.LastEvents, static @event => @event is UnitAttackStopped { Reason: "STR_OUT_OF_RANGE" });
+        Assert.Equal(BattleAimKind.Launch, model.Aiming!.Value.Kind);
+        Assert.Equal([new BattlePosition(12, 10, 0), new BattlePosition(25, 10, 0)], model.Waypoints);
+        // Within range the missile flies and the launch ends the aim.
+        Assert.True(model.CancelLast());
+        Assert.True(model.Launch());
+        Assert.DoesNotContain(model.LastEvents, static @event => @event is UnitAttackStopped);
+        Assert.Null(model.Aiming);
+        Assert.Empty(model.Waypoints);
+    }
+
+    [Fact]
+    public void TheReserveButtonsKeepAnAimInProgressAndALaunchsWaypoints()
+    {
+        // btnReserveClick only sets the reserve (and refreshes a previewed path): the targeting and its waypoints stay.
+        var arena = BattleDamageTests.Duel(gun: "costAimed: {time: 30}\naccuracyAimed: 100\nwaypoints: 3", clip: "power: 40\ndamageType: 2\ndamageAlter: {RandomType: 3}");
+        arena.Stand(arena.Alien, 15, 10, 6);
+        arena.Soldier.Stats = arena.Soldier.Stats with { TimeUnits = 100, Firing = 100 };
+        arena.Soldier.TimeUnits = 100;
+        arena.See();
+        var (context, screen, model) = ClientOf(arena);
+        Pick(context, model, BattleAimKind.Launch);
+        context.Screens.HandleInput(ClickTile(screen, 12, 12));
         Press(context, BattlescapeClient.ReserveKey);
         Assert.Equal((int)BattleActionType.SnapShot, arena.Battle.TimeUnitsReserved);
-        Assert.Equal(BattleAimKind.AimedShot, model.Aiming!.Value.Kind);
-            }
+        Assert.Equal(BattleAimKind.Launch, model.Aiming!.Value.Kind);
+        Assert.Equal([new BattlePosition(12, 12, 0)], model.Waypoints);
+        Press(context, BattlescapeClient.ReserveKneelKey);
+        Assert.True(arena.Battle.KneelReserved);
+        Assert.Equal(BattleAimKind.Launch, model.Aiming!.Value.Kind);
+        Assert.Single(model.Waypoints);
+    }
 
     [Fact]
     public void AReserveFromAUnitThatIsNotTheWritingSlotChangesNothingAndTheKneelReserveReportsItsState()
@@ -677,7 +739,7 @@ public sealed class BattleClientCombatTests
         Assert.True(model.ToggleKneelReserve());
         Assert.True(arena.Battle.KneelReserved);
         // A unit of another side is still refused.
-        Assert.Equal("battle.selection-unit-unknown", Blocked(arena.Campaign.Execute(new SetTimeUnitReserve(arena.Alien.Id, BattleReserveKind.None))).Code);
+        Assert.Equal("battle.selection-unit-unknown", Refusal(arena.Campaign.Execute(new SetTimeUnitReserve(arena.Alien.Id, BattleReserveKind.None))));
     }
 
     [Fact]

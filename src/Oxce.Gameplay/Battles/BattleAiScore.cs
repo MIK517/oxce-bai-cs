@@ -78,7 +78,8 @@ internal sealed partial class BattleState
         var cost = BattleActionCost.For(RequiredRules, type, unit, weapon);
         // Return a score of zero if this firing mode doesn't exist for this weapon
         if (cost.Time == 0) return 0;
-        if (AmmoForActionType(weapon, type) is not { } ammo) return 0;
+        // action->weapon->getAmmoForAction(type): the non-const form, which also needs one use's full spendPerShot.
+        if (ActionIndex(type) is not { } index || AmmoForActionWithMessage(weapon, index, out _, out _) is not { } ammo) return 0;
         float damage = ItemRuleOf(ammo.ItemType).Power;
         var radius = ExplosionRadius(ammo, new BattleAttack(type, unit, null, ammo));
         if (radius > 0) explosionMod *= BrutalExplosiveEfficacy(targetPosition, unit, radius, false);

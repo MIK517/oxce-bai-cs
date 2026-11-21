@@ -787,8 +787,9 @@ reference function and the refusal or flag that stands until then. The details a
 - *The turn's end.* The danger flags (`BattleMap.Dangerous`, set by `ItemDrop`, the inventory's drop of a live grenade and
   a dying hostile's neighbours' nodes) are cleared for every tile at the end of each side's turn
   (`SavedBattleGame::endTurn`) and in `spreadFireAndSmoke`; they are not saved. Until then they are correct within a
-  player's turn only. The same end of turn runs `RunTerrainExplosions` and the fuse timers (`fuseTimerEvent`), and the
-  AI think's `resetUnitHitStates` clears `HitState`.
+  player's turn only. The same end of turn runs `RunTerrainExplosions` and the fuse timers (`fuseTimerEvent`; a timed grenade's blast is
+  `GetBeforeShoot(BA_TRIGGER_TIMED_GRENADE, unit, item)`: the attacker is the unit carrying it, else, by `UpdateAttacker`,
+  its previous owner, as in `ProximityAttack`), and the AI think's `resetUnitHitStates` clears `HitState`.
 - *The AI's combat.* The AI's throw danger zone, the no-sight score form, `StrikeMelee`'s target, berserk and panic shots
   (`PanicHandled`), `checkForReactivation`.
 - *Psi and the item uses.* The psi attack (`ExplosionBState`'s `psiAttack` for a psi amplifier that is a shot's damage item:
