@@ -6,9 +6,13 @@ namespace Oxce.Gameplay.Battles;
 /// <summary>
 /// <c>Inventory::mouseClick</c>'s drop: a unit's item goes to a position of an inventory section (a hand, a grid slot, or
 /// the ground of the unit's tile). Before the first turn it costs nothing; in the battle it costs the section's time units.
-/// A ground drop ignores the position: the ground holds any number of items and the screen arranges them.
+/// A ground drop ignores the position: the ground holds any number of items and the screen arranges them. A drop on a position held by a weapon that takes
+/// the item as ammunition loads it (<c>Inventory::mouseClick</c>'s "put item in weapon", with the cost of <c>tuLoad</c>); with <paramref name="Shift"/> over a loaded weapon
+/// it swaps the clips (the quick swap). The port's ground has no positions, so a drop on the ground names the item it lands on:
+/// <paramref name="OntoItemId"/> is a ground item of the unit's tile; a weapon with ammunition that the dropped item cannot stack with takes it as a load (the same
+/// load as for a carried weapon, with <c>Shift</c> the quick swap, which in the battle needs the weapon in a hand); without it a drop on the ground is a plain drop.
 /// </summary>
-public sealed record MoveInventoryItem(int UnitId, int ItemId, string Slot, int SlotX, int SlotY) : IBattleCommand, IUnitCommand;
+public sealed record MoveInventoryItem(int UnitId, int ItemId, string Slot, int SlotX, int SlotY, bool Shift = false, int? OntoItemId = null) : IBattleCommand, IUnitCommand;
 
 /// <summary>
 /// <c>Inventory::mouseClick</c>'s Ctrl click: a ground item goes to the best section that holds it (the cheapest to reach
@@ -16,19 +20,13 @@ public sealed record MoveInventoryItem(int UnitId, int ItemId, string Slot, int 
 /// </summary>
 public sealed record AutoPlaceInventoryItem(int UnitId, int ItemId, bool Smart) : IBattleCommand, IUnitCommand;
 
-/// <summary>What an inventory screen can ask for that is not ported yet; each is refused by its own name.</summary>
+/// <summary>What an inventory screen can ask for beyond the moves: the unload and the pre-battle priming run, the others are refused by their own names.</summary>
 public enum InventoryFeature
 {
-    /// <summary>Loading a clip into a weapon, and Shift-swapping it (<c>Inventory::mouseClick</c>'s "put item in weapon").</summary>
-    LoadAmmo,
-
-    /// <summary>Unloading a weapon (<c>Inventory::unload</c>).</summary>
+    /// <summary>Unloading a weapon or unpriming a grenade (<c>Inventory::unload</c>: the button, or Shift on the item with <c>Shift</c>).</summary>
     UnloadAmmo,
 
-    /// <summary>Throwing from the inventory screen.</summary>
-    Throw,
-
-    /// <summary>Priming a grenade (<c>PrimeGrenadeState</c>) and unpriming it.</summary>
+    /// <summary>The right click of the pre-battle inventory: primes an item with a fuse (for <c>Turns</c> when the fuse is settable) or unprimes a primed one.</summary>
     Prime,
 
     /// <summary>Saving a unit's layout under a name (<c>InventorySaveState</c>).</summary>
@@ -50,11 +48,26 @@ public enum InventoryFeature
     RenameSoldier,
 }
 
-/// <summary>A request for a feature of the inventory screen that arrives later; it is always refused by the feature's name.</summary>
-public sealed record UseInventoryFeature(int UnitId, int ItemId, InventoryFeature Feature) : IBattleCommand, IUnitCommand;
+/// <summary>
+/// A feature of the inventory screen: the unload and the pre-battle priming run; the others arrive later and are always refused by the feature's name.
+/// <paramref name="Shift"/> is the Shift click of an unload (the quick unload), <paramref name="Turns"/> the turns of a settable fuse.
+/// </summary>
+public sealed record UseInventoryFeature(int UnitId, int ItemId, InventoryFeature Feature, bool Shift = false, int Turns = 0) : IBattleCommand, IUnitCommand;
 
 /// <summary>An item moved between sections, or to or from the ground.</summary>
 public sealed record InventoryItemMoved(int UnitId, int ItemId, string FromSlot, string ToSlot, int SlotX, int SlotY, int TimeUnitsSpent) : ICampaignEvent;
+
+/// <summary>
+/// An ammunition item loaded into a weapon's slot. A clip it replaced (quick swap) is <paramref name="ReplacedItemId"/> (-1 for none) and went to
+/// <paramref name="ReplacedTo"/>, a section.
+/// </summary>
+public sealed record InventoryAmmoLoaded(int UnitId, int WeaponId, int AmmoId, int AmmoSlot, int ReplacedItemId, string ReplacedTo, int TimeUnitsSpent) : ICampaignEvent;
+
+/// <summary>
+/// A weapon unloaded: its ammunition <paramref name="AmmoId"/> went to the section <paramref name="AmmoTo"/> and the weapon is in <paramref name="WeaponSlot"/>.
+/// A grenade is unprimed instead (an <see cref="ItemUnprimed"/> follows; AmmoId is -1).
+/// </summary>
+public sealed record InventoryItemUnloaded(int UnitId, int WeaponId, int AmmoId, string WeaponSlot, string AmmoTo, int TimeUnitsSpent) : ICampaignEvent;
 
 /// <summary>An item as the inventory screen draws it: its section and position, size and what it holds.</summary>
 public sealed record BattleInventoryItemView(
@@ -125,17 +138,36 @@ internal static class BattleInventoryReasons
     internal static readonly CampaignReason CostUnknown = new("battle.inventory-cost-unknown",
         "The inventory sections define no cost for this move; the reference reads past the end of its cost table.");
 
-    internal static readonly CampaignReason DangerZoneUnsupported = new("battle.inventory-danger-zone-unsupported",
-        "Dropping an enabled grenade marks a danger zone for the artificial intelligence, which arrives with turn processing (Phase 7 branch 6).");
+    internal static readonly CampaignReason WrongAmmunition = new("battle.inventory-ammo-wrong",
+        "The item is no ammunition for this weapon (STR_WRONG_AMMUNITION_FOR_THIS_WEAPON).")
+    { TextKey = "STR_WRONG_AMMUNITION_FOR_THIS_WEAPON" };
 
-    internal static readonly CampaignReason AmmoUnsupported = new("battle.inventory-ammo-unsupported",
-        "Loading and unloading ammunition in the inventory is not ported yet.");
+    internal static readonly CampaignReason AlreadyLoaded = new("battle.inventory-ammo-already-loaded",
+        "The weapon is loaded; a Shift drop swaps the clips (STR_WEAPON_IS_ALREADY_LOADED).")
+    { TextKey = "STR_WEAPON_IS_ALREADY_LOADED" };
 
-    internal static readonly CampaignReason ThrowUnsupported = new("battle.inventory-throw-unsupported",
-        "Throwing from the inventory is not ported yet.");
+    internal static readonly CampaignReason SwapNotHeld = new("battle.inventory-ammo-swap-not-held",
+        "In the battle only a weapon held in a hand takes the quick swap; the reference refuses without a message.");
 
-    internal static readonly CampaignReason PrimeUnsupported = new("battle.inventory-prime-unsupported",
-        "Priming and unpriming from the inventory is not ported yet.");
+    internal static readonly CampaignReason UnloadNotHeld = new("battle.inventory-unload-not-held",
+        "In the battle only a weapon held in a hand is Shift-unloaded; the reference does nothing.");
+
+    internal static readonly CampaignReason NothingToUnload = new("battle.inventory-nothing-to-unload",
+        "The item is no weapon with a loaded slot nor a primed grenade that can be unprimed; the reference does nothing.");
+
+    internal static readonly CampaignReason NoAmmunitionLoaded = new("battle.inventory-no-ammunition-loaded",
+        "The weapon holds no ammunition (STR_NO_AMMUNITION_LOADED).")
+    { TextKey = "STR_NO_AMMUNITION_LOADED" };
+
+    internal static readonly CampaignReason HandsFull = new("battle.inventory-hands-full",
+        "Unloading needs one empty hand (STR_ONE_HAND_MUST_BE_EMPTY).")
+    { TextKey = "STR_ONE_HAND_MUST_BE_EMPTY" };
+
+    internal static readonly CampaignReason PrimeInBattle = new("battle.inventory-prime-in-battle",
+        "The inventory primes only before the battle (the right click closes the battle's inventory); the action menu primes in the battle.");
+
+    internal static readonly CampaignReason ItemNeedsNoFuse = new("battle.inventory-prime-not-offered",
+        "The item has no fuse, or no time cost to prime or unprime it.");
 
     internal static readonly CampaignReason LayoutScreensUnsupported = new("battle.inventory-layout-screens-unsupported",
         "Saving and loading named inventory layouts is not ported yet.");
@@ -154,13 +186,11 @@ internal static class BattleInventoryReasons
 
     internal static CampaignReason For(InventoryFeature feature) => feature switch
     {
-        InventoryFeature.LoadAmmo or InventoryFeature.UnloadAmmo => AmmoUnsupported,
-        InventoryFeature.Throw => ThrowUnsupported,
-        InventoryFeature.Prime => PrimeUnsupported,
         InventoryFeature.ClearInventory => ClearUnsupported,
         InventoryFeature.AutoEquip => AutoEquipUnsupported,
         InventoryFeature.Template => TemplateUnsupported,
         InventoryFeature.RenameSoldier => RenameUnsupported,
-        _ => LayoutScreensUnsupported,
+        InventoryFeature.SaveLayout or InventoryFeature.LoadLayout => LayoutScreensUnsupported,
+        _ => throw new ArgumentOutOfRangeException(nameof(feature), feature, "The feature runs; it has no refusal of its own."),
     };
 }

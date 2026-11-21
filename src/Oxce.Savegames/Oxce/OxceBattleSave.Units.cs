@@ -259,7 +259,7 @@ public static partial class OxceBattleSave
     }
 
     /// <summary>BattleUnitKills::load: <c>name</c> only without a <c>type</c>; the side is a Uint8 enumeration.</summary>
-    private static BattleUnitKillSnapshot ReadKill(YamlNode node)
+    internal static BattleUnitKillSnapshot ReadKill(YamlNode node)
     {
         if (node is not YamlMappingNode map) return new BattleUnitKillSnapshot();
         var type = String(map, "type", "");
@@ -562,7 +562,7 @@ public static partial class OxceBattleSave
     }
 
     /// <summary>BattleUnitKills::save: <c>name</c> and <c>type</c> only when set.</summary>
-    private static YamlMappingNode WriteKill(BattleUnitKillSnapshot kill)
+    internal static YamlMappingNode WriteKill(BattleUnitKillSnapshot kill)
     {
         return Overlay(null,
         [

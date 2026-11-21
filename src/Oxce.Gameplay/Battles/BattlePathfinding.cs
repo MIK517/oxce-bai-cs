@@ -4,7 +4,7 @@ using Oxce.Mods.Rulesets.Runtime;
 namespace Oxce.Gameplay.Battles;
 
 /// <summary>
-/// BattleActionMove without <c>BAM_MISSILE</c>, which guided missiles use (Phase 7 branch 5): how a unit moves along a path. A
+/// BattleActionMove without <c>BAM_MISSILE</c>, which only the AI uses for guided missiles (Phase 7 branch 6): how a unit moves along a path. A
 /// player's walk is always <see cref="Normal"/>; the AI runs, strafes and sneaks.
 /// </summary>
 internal enum BattleActionMove
@@ -48,7 +48,7 @@ internal sealed record BattleReachability(IReadOnlyList<BattleReachableNode> Nod
 /// Pathfinding (<c>src/Battlescape/Pathfinding.cpp</c>, <c>PathfindingNode</c>, <c>PathfindingOpenSet</c>) on the port's tile arrays: the cost
 /// of one step (<see cref="GetTuCost"/>), blocked tiles and directions, the Bresenham shortcut and A* behind <see cref="Calculate"/>, and the
 /// reachable tiles (<see cref="FindReachableNodes"/>). One instance holds the nodes and the last path, as the reference's does; it reads
-/// the battle as it is and changes nothing in it. Guided missiles (<c>BAM_MISSILE</c>, a missile target) belong to Phase 7 branch 5 and are
+/// the battle as it is and changes nothing in it. Guided missiles (<c>BAM_MISSILE</c>, a missile target) belong to the AI of Phase 7 branch 6 and are
 /// not here; <c>previewPath</c> is the client's display and not here either.
 /// </summary>
 internal sealed class BattlePathfinder
@@ -98,7 +98,7 @@ internal sealed class BattlePathfinder
         _battle = battle;
         _map = battle.Map;
         _rules = rules;
-        _options = options ?? BattleOptions.Pathing;
+        _options = options ?? battle.Options.Pathing;
         _nodes = new Node[_map.TileCount];
         _layer = _map.Width * _map.Length;
     }
@@ -439,7 +439,7 @@ internal sealed class BattlePathfinder
                 maskOfPartsGoingUp |= maskCurrentPart;
             else if (direction < Up && !fly && belowDestination[i] >= 0 && CanFallDown(destinationTile[i]) && _map.TerrainLevel(belowDestination[i]) <= -12)
                 maskOfPartsGoingDown |= maskCurrentPart;
-            else if (fly && _battle.OverlappingUnit(_rules, destinationTile[i], BattleState.OverlapIgnoreSmall) is { } overlapping)
+            else if (fly && _battle.OverlappingUnit(destinationTile[i], BattleState.OverlapIgnoreSmall) is { } overlapping)
             {
                 // 2 or more voxels poking into this tile = no go
                 if (overlapping != unit && KnowsOf(unit, overlapping, friends: !IgnoreFriends)) return Invalid;

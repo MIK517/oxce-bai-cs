@@ -23,6 +23,12 @@ public sealed record InventoryRule(
 
 public sealed record ArmorMoveCostRule(int TimePercent, int EnergyPercent);
 
+/// <summary>Armor's two combat <c>RuleStatBonus</c> fields: <c>psiDefence</c> (default the psi defense) and <c>meleeDodge</c> (default none).</summary>
+public sealed record ArmorStatBonusRules(RuleStatBonus PsiDefence, RuleStatBonus MeleeDodge)
+{
+    public static ArmorStatBonusRules Default { get; } = new(RuleStatBonus.PsiDefense, RuleStatBonus.Empty);
+}
+
 public sealed record ArmorRule(
     IReadOnlyDictionary<string, string> Strings,
     IReadOnlyDictionary<string, int> Integers,
@@ -42,7 +48,8 @@ public sealed record ArmorRule(
     IReadOnlyDictionary<string, IReadOnlyList<RuleIndexReference>> ResourceIndexLists,
     IReadOnlyDictionary<string, IReadOnlyList<int>> SpriteColors,
     IReadOnlyDictionary<int, string> LayerSpecificPrefixes,
-    IReadOnlyDictionary<string, IReadOnlyList<string>> LayerDefinitions)
+    IReadOnlyDictionary<string, IReadOnlyList<string>> LayerDefinitions,
+    ArmorStatBonusRules StatBonuses)
 {
     public int TotalSize => Integers["size"] * Integers["size"];
     public int EffectiveSpaceOccupied => Integers["spaceOccupied"] < 0 ? TotalSize : Integers["spaceOccupied"];
@@ -270,6 +277,8 @@ internal sealed class ArmorBuilder
     public List<int> RankColors { get; set; } = [];
     public List<int> UtileColors { get; set; } = [];
     public List<double> DamageModifiers { get; } = [];
+    public StatBonusBuilder PsiDefence { get; } = new(RuleStatBonus.PsiDefense);
+    public StatBonusBuilder MeleeDodge { get; } = new(RuleStatBonus.Empty);
     public UnitStatsBuilder Stats { get; } = new();
     public Dictionary<string, ArmorMoveCostRule> MoveCosts { get; } = CreateMoveCosts();
     public Dictionary<string, RuleIndexReference> ResourceIndexes { get; } = new(StringComparer.Ordinal);

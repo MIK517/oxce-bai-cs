@@ -1219,8 +1219,7 @@ internal sealed class BattleMapGenerator
         PlaceBlockItems(block, offsetX, offsetY, itemZ, file.Width, file.Length, file.Levels);
     }
 
-    // BattleType BT_CORPSE and BattleFuseType BFT_NONE.
-    private const int CorpseBattleType = 11;
+    // BattleFuseType BFT_NONE.
     private const int NoFuse = -3;
 
     /// <summary>
@@ -1245,7 +1244,7 @@ internal sealed class BattleMapGenerator
         {
             if (!_catalog.Items.TryGet(type, out var handle)) throw new MapGenerationException($"Map block {block.Name} places unknown item '{type}'.");
             var rule = _catalog.Items[handle].Value;
-            if (rule.BattleType == CorpseBattleType)
+            if (rule.BattleType == RuntimeBattleItem.CorpseBattleType)
                 throw new MapGenerationException($"Placing corpse items (battleType: 11) on the map is not allowed. {kind}: {type}, map block: {block.Name}");
             return rule;
         }
@@ -1283,7 +1282,7 @@ internal sealed class BattleMapGenerator
         foreach (var extended in items.ExtendedItems)
         {
             var rule = Rule(extended.Type, "Item");
-            var weaponWithAmmo = rule.BattleType is 1 or 3 && rule.CompatibleAmmo.Take(4).Any(static slot => slot.Count != 0);
+            var weaponWithAmmo = rule.BattleType is RuntimeBattleItem.FirearmBattleType or RuntimeBattleItem.MeleeBattleType && rule.CompatibleAmmo.Take(4).Any(static slot => slot.Count != 0);
             foreach (var position in extended.Positions)
             {
                 var tile = Tile(position, "Extended item", extended.Type);

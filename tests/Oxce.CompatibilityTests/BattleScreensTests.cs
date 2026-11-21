@@ -145,8 +145,6 @@ public sealed class BattleScreensTests
         Assert.Equal("battle.inventory-cost-unknown", screen.Message);
         Assert.Contains(screen.Inventory!.Ground, item => item.ItemId == carried.ItemId);
         // A feature of a later part is refused by the rules' name, and nothing changes.
-        Press(context.Screens, 'l');
-        Assert.Equal("battle.inventory-ammo-unsupported", screen.Message);
         Press(context.Screens, 'r');
         Assert.Equal("battle.inventory-rename-unsupported", screen.Message);
         Press(context.Screens, Tab, InputKeyModifiers.LeftShift);
@@ -400,6 +398,59 @@ public sealed class BattleScreensTests
         // NextTurnState::close would finish the battle (branch 7); the rules refuse it by name and the inventory stays.
         Assert.Equal("battle.no-live-soldiers", screen.Message);
         Assert.Same(screen, context.Screens.Top);
+    }
+
+    private sealed class Recording(ICampaignCommandTarget inner, List<ICampaignCommand> sent) : ICampaignCommandTarget
+    {
+        public CampaignCommandResult Execute(ICampaignCommand command)
+        {
+            sent.Add(command);
+            return inner.Execute(command);
+        }
+    }
+
+    [Fact]
+    public void TheInventoryScreenSendsTheShiftKeyAndTheFuseTurnsItsButtonsAndDropsNeed()
+    {
+        var (campaign, _, plain) = Open(BattlePhase.Inventory);
+        var sent = new List<ICampaignCommand>();
+        var context = new BattleUiContext(new Recording(campaign, sent), plain.Battle, plain.View, plain.Inventory, plain.Briefing, BattleViewer.LocalPlayer, new ScreenNavigator());
+        context.Open();
+        var screen = Assert.IsType<BattleInventoryScreen>(context.Screens.Top);
+        // The unload button is a plain click or a Shift click (the quick unload); the prime button sends the chosen turns, 0 to 23.
+        context.Screens.HandleInput(Key('u'));
+        context.Screens.HandleInput(Key('u', InputKeyModifiers.LeftShift));
+        Assert.Equal([false, true], sent.OfType<UseInventoryFeature>().Select(static command => command.Shift));
+        sent.Clear();
+        context.Screens.HandleInput(Key('-'));
+        Assert.Equal(0, screen.PrimeTurns);
+        for (var i = 0; i < 30; i++) context.Screens.HandleInput(Key('+'));
+        Assert.Equal(23, screen.PrimeTurns);
+        for (var i = 0; i < 21; i++) context.Screens.HandleInput(Key('-'));
+        context.Screens.HandleInput(Key('p'));
+        Assert.Equal((InventoryFeature.Prime, 2), (sent.OfType<UseInventoryFeature>().Single().Feature, sent.OfType<UseInventoryFeature>().Single().Turns));
+        // A drop with Shift carries it: whichever section accepts the first carried item gets a command with the flag, a plain drop one without.
+        sent.Clear();
+        for (var slot = 0; slot < screen.Inventory!.Slots.Count; slot++)
+        {
+            context.Screens.HandleInput(Key(Enter, InputKeyModifiers.LeftShift));
+            context.Screens.HandleInput(Key(Right));
+        }
+        Assert.NotEmpty(sent.OfType<MoveInventoryItem>());
+        Assert.All(sent.OfType<MoveInventoryItem>(), static command => Assert.True(command.Shift));
+        // A plain drop carries no flag (on a fresh screen, since the drops above moved the items).
+        var (plainCampaign, _, plainFixture) = Open(BattlePhase.Inventory);
+        sent.Clear();
+        var plainContext = new BattleUiContext(new Recording(plainCampaign, sent), plainFixture.Battle, plainFixture.View, plainFixture.Inventory, plainFixture.Briefing, BattleViewer.LocalPlayer, new ScreenNavigator());
+        plainContext.Open();
+        screen = Assert.IsType<BattleInventoryScreen>(plainContext.Screens.Top);
+        for (var slot = 0; slot < screen.Inventory!.Slots.Count; slot++)
+        {
+            plainContext.Screens.HandleInput(Key(Enter));
+            plainContext.Screens.HandleInput(Key(Right));
+        }
+        Assert.NotEmpty(sent.OfType<MoveInventoryItem>());
+        Assert.All(sent.OfType<MoveInventoryItem>(), static command => Assert.False(command.Shift));
     }
 
     private sealed class NoBattle : IBattleQuery

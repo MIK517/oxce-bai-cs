@@ -116,6 +116,17 @@ internal sealed partial class BattleUnit
         }
     }
 
+    /// <summary>
+    /// <see cref="LookAt(BattlePosition, bool)"/> with the turret when the unit has one (<c>getTurretType() != -1</c>), then <see cref="Turn"/>
+    /// until it faces the point: the reference's <c>lookAt</c> followed by <c>while (getStatus() == STATUS_TURNING) turn()</c>.
+    /// </summary>
+    public void LookAtAndTurn(BattlePosition point)
+    {
+        var turret = TurretType != -1;
+        LookAt(point, turret);
+        while (Status == BattleUnitStatus.Turning) Turn(turret);
+    }
+
     /// <summary>BattleUnit::lookAt(direction, force): turn to a direction (ignored outside 0-7), or with <paramref name="force"/> set it at once.</summary>
     public void LookAt(int direction, bool force)
     {
@@ -202,7 +213,7 @@ internal sealed partial class BattleUnit
 
     /// <summary>
     /// BattleUnit::getHitState: the unit was hit since a unit of its side was last selected. Runtime state (not saved) that a player unit's
-    /// reaction reads in <c>getSpottingUnits</c>; the damage that sets it and the selection that resets it belong to branch 5.
+    /// reaction reads in <c>getSpottingUnits</c>; the damage sets it (branch 5); the reset is the AI think's <c>resetUnitHitStates</c> (<c>BattlescapeGame::think</c>), branch 6's.
     /// </summary>
     public bool HitState { get; set; }
 
@@ -291,7 +302,7 @@ internal sealed partial class BattleState
             unit.Floating = false;
         }
         else if (unit.Status == BattleUnitStatus.Unconscious) unit.Floating = unit.MovementType == MovementTypeFly && unit.HaveNoFloorBelow;
-        Revision++;
+        MarkChanged();
     }
 
     /// <summary>MovementType MT_FLY.</summary>
@@ -303,9 +314,9 @@ internal sealed partial class BattleState
     /// destination tile, lands when it has floor there, finishes a strafing step facing its face direction and gains the motion points
     /// of a step. The cost, doors, other units and falls belong to the walk that calls this.
     /// </summary>
-    internal void WalkStep(RuntimeRuleCatalog rules, BattleUnit unit, int direction, BattlePosition destination)
+    internal void WalkStep(BattleUnit unit, int direction, BattlePosition destination)
     {
-        ArgumentNullException.ThrowIfNull(rules);
+        var rules = RequiredRules;
         ArgumentNullException.ThrowIfNull(unit);
         if (direction is < 0 or > BattleUnit.DirectionDown) throw new ArgumentOutOfRangeException(nameof(direction));
         var start = unit.RequiredPosition;
@@ -342,6 +353,6 @@ internal sealed partial class BattleState
         }
         // Motion points for the motion scanner blips: a big unit 30, a tall small one 4, else 3.
         unit.MotionPoints += unit.IsBigUnit ? 30 : HeightsOf(rules, unit).Stand > 16 ? 4 : 3;
-        Revision++;
+        MarkChanged();
     }
 }

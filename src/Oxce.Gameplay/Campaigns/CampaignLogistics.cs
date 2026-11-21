@@ -577,7 +577,7 @@ public sealed partial class CampaignState
                     case CampaignTransferKind.Scientist: scientists += transfer.Quantity; break;
                     case CampaignTransferKind.Engineer: engineers += transfer.Quantity; break;
                     case CampaignTransferKind.Item:
-                        if (_content.RuntimeRules.Items.GetRequiredValue(transfer.RuleId).BattleType == 0)
+                        if (_content.RuntimeRules.Items.GetRequiredValue(transfer.RuleId).BattleType == RuntimeBattleItem.NoneBattleType)
                             reusableItems++;
                         var current = incoming.GetValueOrDefault(transfer.RuleId,
                             state.Items.GetValueOrDefault(_content.RuntimeRules.Items.GetRequired(transfer.RuleId)));
@@ -656,7 +656,7 @@ public sealed partial class CampaignState
                         case CampaignTransferKind.Item:
                             var handle = _content.RuntimeRules.Items.GetRequired(transfer.RuleId);
                             ChangeStock(state.Items, handle, transfer.Quantity);
-                            if (_content.RuntimeRules.Items[handle].Value.BattleType == 0)
+                            if (_content.RuntimeRules.Items[handle].Value.BattleType == RuntimeBattleItem.NoneBattleType)
                                 (reusableItems ??= []).Add(handle);
                             break;
                         default: throw new InvalidOperationException("Arrival provider was not preflighted.");

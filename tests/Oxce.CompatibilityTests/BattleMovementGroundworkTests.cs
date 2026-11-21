@@ -54,7 +54,7 @@ public sealed class BattleMovementGroundworkTests
         Assert.Equal((16, 24, 0, 10, false, 0), (defaults.Campaign.MaximumStaticLightDistance, defaults.Campaign.MaximumDynamicLightDistance,
             defaults.Campaign.EnhancedLighting, defaults.Campaign.TooMuchSmokeThreshold, defaults.Campaign.ExtendedRunningCost,
             defaults.Campaign.ExtendedMovementCostRounding));
-        var rules = Rules + "\nlighting: {maxStatic: 12, maxDynamic: 20, enhanced: 1}\ntooMuchSmokeThreshold: 7\nextendedRunningCost: true\nextendedMovementCostRounding: 2\n";
+        var rules = Rules + "\nlighting: {maxStatic: 12, maxDynamic: 20, enhanced: 1}\ntooMuchSmokeThreshold: 7\nconstants:\n  - extendedRunningCost: true\n    extendedMovementCostRounding: 2\n";
         var (_, _, _, set) = Open(rules);
         Assert.Equal((12, 20, 1, 7, true, 2), (set.Campaign.MaximumStaticLightDistance, set.Campaign.MaximumDynamicLightDistance,
             set.Campaign.EnhancedLighting, set.Campaign.TooMuchSmokeThreshold, set.Campaign.ExtendedRunningCost,
@@ -162,10 +162,30 @@ public sealed class BattleMovementGroundworkTests
         var (_, battle, soldier, set) = Open(rules);
         Assert.Equal(37, BattleActionCost.For(set, BattleActionType.AimedShot, soldier, Gun(battle, soldier)).Time);
         // The default option converts nothing: a percentage is still a share of the statistic.
-        Assert.False(BattleOptions.ForcedAbsoluteCosts);
+        Assert.False(BattleOptions.Default.ForcedAbsoluteCosts);
         var grenade = battle.InventoryOf(soldier).Single(static item => item.ItemType == "GRENADE");
         Assert.Equal((int)Math.Floor(soldier.Stats.TimeUnits * 50 / 100f), BattleActionCost.For(set, BattleActionType.Prime, soldier, grenade).Time);
         Assert.Equal((int)Math.Floor(soldier.Stats.TimeUnits * 25 / 100f), BattleActionCost.For(set, BattleActionType.Throw, soldier, grenade).Time);
+    }
+
+    [Fact]
+    public void TheRuntimesOptionsReachTheBattleItsUnitsAndTheirActionCosts()
+    {
+        var rules = WithGun("tuAimed: 37\n    flatAimed: {time: true}");
+        var (_, battle, soldier, set) = Open(rules);
+        var grenade = battle.InventoryOf(soldier).Single(static item => item.ItemType == "GRENADE");
+        var options = new BattleOptions { ForcedAbsoluteCosts = true };
+        var runtime = new BattleRuntime(battle, set, new Oxce.Core.Random.SplitMix64RandomSource(1), null, options: options);
+        Assert.Same(options, runtime.Options);
+        Assert.Same(options, battle.Options);
+        Assert.Same(options, soldier.Options);
+        // Forced absolute costs convert nothing: the grenade's percentage is the cost itself, not a share of the statistic.
+        Assert.Equal(50, BattleActionCost.For(set, BattleActionType.Prime, soldier, grenade).Time);
+        Assert.Equal(25, BattleActionCost.For(set, BattleActionType.Throw, soldier, grenade).Time);
+        // A unit the battle takes in later reads the same set.
+        var late = new BattleUnit(971, BattleFaction.Hostile, BattleController.Ai) { Stats = soldier.Stats, ArmorSize = 1 };
+        battle.AddUnit(late);
+        Assert.Same(options, late.Options);
     }
 
     [Fact]
@@ -204,7 +224,7 @@ public sealed class BattleMovementGroundworkTests
     // ---- the reserve ----
 
     private static ReservedTimeUnitsResult Check(BattleState battle, RuntimeRuleCatalog rules, BattleUnit unit, int timeUnits, int energy = 0, bool justChecking = false) =>
-        battle.CheckReservedTimeUnits(rules, unit, timeUnits, energy, justChecking);
+        battle.CheckReservedTimeUnits(unit, timeUnits, energy, justChecking);
 
     [Fact]
     public void ReservedTimeUnitsFallBackFromAutoToSnapToAimedToNone()
@@ -280,7 +300,7 @@ public sealed class BattleMovementGroundworkTests
         battle.TimeUnitsReserved = (int)BattleActionType.AutoShot;
         var gun = Gun(battle, soldier);
         gun.Slot = "STR_BELT";
-        Assert.Null(battle.MainHandWeapon(set, soldier, quickest: false));
+        Assert.Null(battle.MainHandWeapon(soldier, quickest: false));
         Assert.Equal(new ReservedTimeUnitsResult(true), Check(battle, set, soldier, 56));
         Assert.Equal(new ReservedTimeUnitsResult(false, ReservedTimeUnitsWarning.Kneeling), Check(battle, set, soldier, 57));
         // The armor can forbid kneeling; then nothing is reserved for it.
@@ -328,35 +348,35 @@ public sealed class BattleMovementGroundworkTests
     [Fact]
     public void TheMainHandWeaponIsTheLoadedOneThenTheCheaperSnapShotThenTheActiveHand()
     {
-        var (_, battle, soldier, set) = Open(WithGun("tuSnap: 30"));
+        var (_, battle, soldier, _) = Open(WithGun("tuSnap: 30"));
         var right = Gun(battle, soldier);
-        Assert.Equal(right, battle.MainHandWeapon(set, soldier));
+        Assert.Equal(right, battle.MainHandWeapon(soldier));
         // A second gun in the left hand, unloaded: ignored when ammunition is needed, picked when it is not and it is the quicker.
         var left = new BattleItem(battle.TakeItemId(), "GUN") { OwnerUnitId = soldier.Id, Slot = "STR_LEFT_HAND", IsWeaponWithAmmo = true };
         battle.AddItem(left);
-        Assert.Equal(right, battle.MainHandWeapon(set, soldier));
-        Assert.Equal(right, battle.MainHandWeapon(set, soldier, quickest: false));
+        Assert.Equal(right, battle.MainHandWeapon(soldier));
+        Assert.Equal(right, battle.MainHandWeapon(soldier, quickest: false));
         // Load it: equal snap costs go to the right hand when the quickest is asked for, the active hand when not (a player's unit).
         var clip = new BattleItem(battle.TakeItemId(), "CLIP") { AmmoQuantity = 5, IsAmmo = true };
         battle.AddItem(clip);
         left.AmmoSlots[0] = clip.Id;
-        Assert.Equal(right, battle.MainHandWeapon(set, soldier, quickest: true));
+        Assert.Equal(right, battle.MainHandWeapon(soldier, quickest: true));
         soldier.ActiveHand = "STR_LEFT_HAND";
-        Assert.Equal(left, battle.MainHandWeapon(set, soldier, quickest: false));
+        Assert.Equal(left, battle.MainHandWeapon(soldier, quickest: false));
         soldier.ActiveHand = "STR_RIGHT_HAND";
-        Assert.Equal(right, battle.MainHandWeapon(set, soldier, quickest: false));
+        Assert.Equal(right, battle.MainHandWeapon(soldier, quickest: false));
         // The weapon without a snap shot loses to the one with.
-        var (_, otherBattle, otherSoldier, otherSet) = Open(WithGun("tuSnap: 30"));
+        var (_, otherBattle, otherSoldier, _) = Open(WithGun("tuSnap: 30"));
         var otherRight = Gun(otherBattle, otherSoldier);
         var otherClip = new BattleItem(otherBattle.TakeItemId(), "CLIP") { AmmoQuantity = 5, IsAmmo = true };
         otherBattle.AddItem(otherClip);
         var grenade = new BattleItem(otherBattle.TakeItemId(), "GRENADE") { OwnerUnitId = otherSoldier.Id, Slot = "STR_LEFT_HAND" };
         otherBattle.AddItem(grenade);
-        Assert.Equal(otherRight, otherBattle.MainHandWeapon(otherSet, otherSoldier, quickest: false));
+        Assert.Equal(otherRight, otherBattle.MainHandWeapon(otherSoldier, quickest: false));
         // Reactions disabled for a hand drop its weapon (player units only).
         otherSoldier.ReactionsDisabledForRightHand = true;
-        Assert.Equal(grenade, otherBattle.MainHandWeapon(otherSet, otherSoldier, reactions: true));
-        Assert.Equal(otherRight, otherBattle.MainHandWeapon(otherSet, otherSoldier, reactions: false));
+        Assert.Equal(grenade, otherBattle.MainHandWeapon(otherSoldier, reactions: true));
+        Assert.Equal(otherRight, otherBattle.MainHandWeapon(otherSoldier, reactions: false));
     }
 
     // ---- the primitives ----
@@ -499,13 +519,13 @@ public sealed class BattleMovementGroundworkTests
     [Fact]
     public void AWholeStepMovesTheUnitsTileSetsItsFacingAndGainsMotionPoints()
     {
-        var (_, battle, soldier, set) = Open(WithSuit("standHeight: 22"), HoleAndLadder);
+        var (_, battle, soldier, _) = Open(WithSuit("standHeight: 22"), HoleAndLadder);
         var start = soldier.Position!.Value;
         var target = East(start);
         soldier.Kneel(true);
         soldier.MotionPoints = 10;
         var revision = battle.Revision;
-        battle.WalkStep(set, soldier, 2, target);
+        battle.WalkStep(soldier, 2, target);
         Assert.Equal(target, soldier.Position);
         Assert.Equal(start, soldier.LastPosition);
         Assert.Null(battle.Map.UnitAt(battle.Map.TileIndex(start)));
@@ -515,36 +535,36 @@ public sealed class BattleMovementGroundworkTests
         Assert.True(battle.Revision > revision);
         battle.Validate(placement: false);
         // A shorter unit gains 3: the soldier rule's own height is not above 16.
-        var (_, shortBattle, shortSoldier, shortSet) = Open();
-        shortBattle.WalkStep(shortSet, shortSoldier, 4, shortSoldier.Position!.Value with { Y = shortSoldier.Position!.Value.Y + 1 });
+        var (_, shortBattle, shortSoldier, _) = Open();
+        shortBattle.WalkStep(shortSoldier, 4, shortSoldier.Position!.Value with { Y = shortSoldier.Position!.Value.Y + 1 });
         Assert.Equal(3, shortSoldier.MotionPoints);
         // A strafing step finishes facing its face direction.
         soldier.FaceDirection = 6;
-        battle.WalkStep(set, soldier, 2, East(target));
+        battle.WalkStep(soldier, 2, East(target));
         Assert.Equal((6, -1), (soldier.Direction, soldier.FaceDirection));
     }
 
     [Fact]
     public void AStepOntoATileWithNoFloorTakesAFlyingUnitIntoTheAirAndAStepBackLandsIt()
     {
-        var (_, battle, soldier, set) = Open(terrain: HoleAndLadder);
+        var (_, battle, soldier, _) = Open(terrain: HoleAndLadder);
         Assert.Equal(1, soldier.MovementType);
         var start = soldier.Position!.Value;
         var hole = East(start);
         Place(battle, hole, BattleTilePart.Floor, 3);
         Assert.False(battle.Map.HasNoFloor(start));
         Assert.True(battle.Map.HasNoFloor(hole));
-        battle.WalkStep(set, soldier, 2, hole);
+        battle.WalkStep(soldier, 2, hole);
         Assert.Equal((true, true, BattleUnitStatus.Standing), (soldier.HaveNoFloorBelow, soldier.Floating, soldier.Status));
         // Back onto the floor: the unit lands.
-        battle.WalkStep(set, soldier, 6, start);
+        battle.WalkStep(soldier, 6, start);
         Assert.Equal((false, false), (soldier.HaveNoFloorBelow, soldier.Floating));
         // Up a level where there is no floor, and down again: the vertical direction is cleared and the facing is kept.
         var above = start with { Z = start.Z + 1 };
         soldier.Direction = 3;
-        battle.WalkStep(set, soldier, BattleUnit.DirectionUp, above);
+        battle.WalkStep(soldier, BattleUnit.DirectionUp, above);
         Assert.Equal((above, 3, true, true, 0), (soldier.Position!.Value, soldier.Direction, soldier.HaveNoFloorBelow, soldier.Floating, soldier.VerticalDirection));
-        battle.WalkStep(set, soldier, BattleUnit.DirectionDown, start);
+        battle.WalkStep(soldier, BattleUnit.DirectionDown, start);
         Assert.Equal((start, 3, false, false), (soldier.Position!.Value, soldier.Direction, soldier.HaveNoFloorBelow, soldier.Floating));
         battle.Validate(placement: false);
     }
@@ -552,7 +572,7 @@ public sealed class BattleMovementGroundworkTests
     [Fact]
     public void ALadderHoldsASmallUnitUpAndABigUnitNeedsFloorUnderAnyOfItsTiles()
     {
-        var (_, battle, soldier, set) = Open(terrain: HoleAndLadder);
+        var (_, battle, soldier, _) = Open(terrain: HoleAndLadder);
         var start = soldier.Position!.Value;
         var upstairs = start with { Z = start.Z + 1 };
         Assert.True(battle.Map.HasNoFloor(upstairs));
@@ -619,7 +639,7 @@ public sealed class BattleMovementGroundworkTests
         battle.Validate(placement: false);
         Assert.True(vehicle.IsBigUnit);
         var target = East(origin);
-        battle.WalkStep(set, vehicle, 2, target);
+        battle.WalkStep(vehicle, 2, target);
         Assert.Equal(30, vehicle.MotionPoints);
         foreach (var covered in BattleMap.Footprint(origin, 2))
             Assert.Equal(covered.X == origin.X ? (int?)null : vehicle.Id, battle.Map.UnitAt(battle.Map.TileIndex(covered)));
@@ -632,7 +652,7 @@ public sealed class BattleMovementGroundworkTests
         Assert.Equal(revision, battle.Revision);
         Assert.Throws<InvalidOperationException>(() => battle.SetTile(vehicle, new BattlePosition(-1, 0, 0)));
         Assert.Throws<InvalidOperationException>(() => battle.SetTile(Bare(), target));
-        Assert.Throws<ArgumentOutOfRangeException>(() => battle.WalkStep(set, vehicle, 10, target));
+        Assert.Throws<ArgumentOutOfRangeException>(() => battle.WalkStep(vehicle, 10, target));
         // Heights: the armor's own, else the soldier's or the unit rule's.
         Assert.Equal(new RuntimeUnitHeights(0, 0, 0), BattleState.HeightsOf(set, vehicle));
         Assert.Equal(new RuntimeUnitHeights(0, 0, 0), BattleState.HeightsOf(set, soldier));
@@ -651,83 +671,88 @@ public sealed class BattleMovementGroundworkTests
     [Fact]
     public void TheMainHandPickCoversUnloadedSpecialBlasterAndFactionCases()
     {
-        var (_, battle, soldier, set) = Open(TwoGuns("tuSnap: 30\n    waypoints: 3"));
+        var (_, battle, soldier, _) = Open(TwoGuns("tuSnap: 30\n    waypoints: 3"));
         var right = Gun(battle, soldier);
         // Ammunition not required: an unloaded left gun competes (equal snap costs: the quickest is the right, a player's pick the active hand).
         var left = Hold(battle, soldier, "GUN", "STR_LEFT_HAND");
         left.IsWeaponWithAmmo = true;
-        Assert.Equal(right, battle.MainHandWeapon(set, soldier, needAmmo: true));
-        Assert.Equal(right, battle.MainHandWeapon(set, soldier, quickest: true, needAmmo: false));
+        Assert.Equal(right, battle.MainHandWeapon(soldier, needAmmo: true));
+        Assert.Equal(right, battle.MainHandWeapon(soldier, quickest: true, needAmmo: false));
         soldier.ActiveHand = "STR_LEFT_HAND";
-        Assert.Equal(left, battle.MainHandWeapon(set, soldier, quickest: false, needAmmo: false));
+        Assert.Equal(left, battle.MainHandWeapon(soldier, quickest: false, needAmmo: false));
         soldier.ActiveHand = "STR_RIGHT_HAND";
         // A cheaper snap shot in the left hand wins for the quickest; a player's non-quickest pick is the active hand.
         left.Slot = "";
         var quick = Hold(battle, soldier, "GUN2", "STR_LEFT_HAND");
-        Assert.Equal(quick, battle.MainHandWeapon(set, soldier, quickest: true));
-        Assert.Equal(right, battle.MainHandWeapon(set, soldier, quickest: false));
+        Assert.Equal(quick, battle.MainHandWeapon(soldier, quickest: true));
+        Assert.Equal(right, battle.MainHandWeapon(soldier, quickest: false));
         soldier.ActiveHand = "STR_LEFT_HAND";
-        Assert.Equal(quick, battle.MainHandWeapon(set, soldier, quickest: false));
+        Assert.Equal(quick, battle.MainHandWeapon(soldier, quickest: false));
         soldier.ActiveHand = "STR_RIGHT_HAND";
 
         // A hostile unit: not the active hand but the right when the left is cheaper, the left when it is not; a blaster first.
         var alien = battle.Units.First(static unit => unit.Faction == BattleFaction.Hostile);
         var alienRight = Hold(battle, alien, "GUN2", "STR_RIGHT_HAND");
         var alienLeft = Hold(battle, alien, "GUN", "STR_LEFT_HAND");
-        Assert.Equal(alienLeft, battle.MainHandWeapon(set, alien, quickest: false));
-        Assert.Equal(alienRight, battle.MainHandWeapon(set, alien, quickest: true));
+        Assert.Equal(alienLeft, battle.MainHandWeapon(alien, quickest: false));
+        Assert.Equal(alienRight, battle.MainHandWeapon(alien, quickest: true));
         // GUN has waypoints in this rule: the blaster comes first, whichever hand and whatever the cost.
-        Assert.Equal(alienLeft, battle.MainHandWeapon(set, alien, quickest: false));
+        Assert.Equal(alienLeft, battle.MainHandWeapon(alien, quickest: false));
         alienRight.Slot = "";
         alienLeft.Slot = "";
         var gunRight = Hold(battle, alien, "GUN", "STR_RIGHT_HAND");
         var cheapLeft = Hold(battle, alien, "GUN2", "STR_LEFT_HAND");
-        Assert.Equal(gunRight, battle.MainHandWeapon(set, alien, quickest: false));
+        Assert.Equal(gunRight, battle.MainHandWeapon(alien, quickest: false));
         gunRight.Slot = "";
         cheapLeft.Slot = "";
         // Two blasters at equal cost: the cost rule would pick the left for a hostile unit, the blaster priority takes the right first (the blaster
         // priority is the only thing that separates the two here).
         var blasterRight = Hold(battle, alien, "GUN", "STR_RIGHT_HAND");
         var blasterLeft = Hold(battle, alien, "GUN", "STR_LEFT_HAND");
-        Assert.Equal(blasterRight, battle.MainHandWeapon(set, alien, quickest: false));
+        Assert.Equal(blasterRight, battle.MainHandWeapon(alien, quickest: false));
         blasterRight.Slot = "";
         blasterLeft.Slot = "";
         // Without waypoints the cost decides: the left is cheaper, so a hostile unit takes the right.
-        var (_, plainBattle, _, plainSet) = Open(TwoGuns("tuSnap: 30"));
+        var (_, plainBattle, _, _) = Open(TwoGuns("tuSnap: 30"));
         var plainAlien = plainBattle.Units.First(static unit => unit.Faction == BattleFaction.Hostile);
         var plainRight = Hold(plainBattle, plainAlien, "GUN", "STR_RIGHT_HAND");
         Hold(plainBattle, plainAlien, "GUN2", "STR_LEFT_HAND");
-        Assert.Equal(plainRight, plainBattle.MainHandWeapon(plainSet, plainAlien, quickest: false));
+        Assert.Equal(plainRight, plainBattle.MainHandWeapon(plainAlien, quickest: false));
         // Empty hands: the AI may use a special firearm.
-        var (_, specialBattle, specialSoldier, specialSet) = Open();
+        var (_, specialBattle, specialSoldier, _) = Open();
         Gun(specialBattle, specialSoldier).Slot = "STR_BELT";
-        Assert.Null(specialBattle.MainHandWeapon(specialSet, specialSoldier));
+        Assert.Null(specialBattle.MainHandWeapon(specialSoldier));
         var special = Hold(specialBattle, specialSoldier, "GUN", "", special: true);
         specialSoldier.SpecialWeaponIds.Add(special.Id);
-        Assert.Equal(special, specialBattle.MainHandWeapon(specialSet, specialSoldier));
+        Assert.Equal(special, specialBattle.MainHandWeapon(specialSoldier));
     }
 
     [Fact]
     public void AmmoChecksCoverMeleeAndASpentClip()
     {
-        var (_, battle, soldier, set) = Open();
+        var (_, battle, soldier, _) = Open();
         var gun = Gun(battle, soldier);
-        Assert.True(battle.HaveAnyAmmo(set, gun));
+        Assert.True(battle.HaveAnyAmmo(gun));
         var clip = battle.Items.Single(item => item.Id == gun.AmmoSlots[0]);
         clip.AmmoQuantity = 0;
-        Assert.False(battle.HaveAnyAmmo(set, gun));
+        Assert.False(battle.HaveAnyAmmo(gun));
         clip.AmmoQuantity = 1;
-        Assert.True(battle.HaveAnyAmmo(set, gun));
-        // A melee weapon needs its hit loaded; one that takes no ammunition always is.
+        Assert.True(battle.HaveAnyAmmo(gun));
+        // A melee weapon needs its hit loaded. Feeding on itself with no clip size (-1), it never runs dry (getAmmoQuantity is 255).
         var ram = new BattleItem(battle.TakeItemId(), "RAM") { IsWeaponWithAmmo = true };
         battle.AddItem(ram);
         ram.AmmoSlots[0] = ram.Id;
-        ram.AmmoQuantity = 1;
-        Assert.True(battle.HaveAnyAmmo(set, ram));
         ram.AmmoQuantity = 0;
-        Assert.False(battle.HaveAnyAmmo(set, ram));
+        Assert.True(battle.HaveAnyAmmo(ram));
+        // With a clip in its slot it is spent when the clip is.
+        ram.AmmoSlots[0] = clip.Id;
+        Assert.True(battle.HaveAnyAmmo(ram));
+        clip.AmmoQuantity = 0;
+        Assert.False(battle.HaveAnyAmmo(ram));
+        ram.AmmoSlots[0] = null;
+        Assert.False(battle.HaveAnyAmmo(ram));
         // A weapon that is no weapon with ammunition (a grenade) counts as loaded.
-        Assert.True(battle.HaveAnyAmmo(set, new BattleItem(900, "GRENADE")));
+        Assert.True(battle.HaveAnyAmmo(new BattleItem(900, "GRENADE")));
     }
 
     [Fact]

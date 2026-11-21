@@ -205,7 +205,7 @@ internal sealed class XcomDeployment
         var item = _rules.Items.GetRequiredValue(type);
         if (!_rules.Battle.Equipment.Items.TryGetValue(type, out var battle)) return false;
         if (battle.IgnoreInBaseDefense || !battle.IsInventoryItem) return false;
-        if (item.BattleType is 0 or 11 && battle.IgnoreInCraftEquip) return false;
+        if (item.BattleType is RuntimeBattleItem.NoneBattleType or RuntimeBattleItem.CorpseBattleType && battle.IgnoreInCraftEquip) return false;
         var research = campaign.ArcResearch;
         return item.Requirements.All(requirement => research.IsResearched(_rules.Research.GetExternalId(requirement)));
     }
@@ -230,8 +230,8 @@ internal sealed class XcomDeployment
         if (_rules.AlienRaces.Rules.Count == 0) throw new MapGenerationException(NoRaceForDummy);
         var race = _rules.AlienRaces.Rules[0];
         var name = AlienRaces.Member(race.Id, race.Value, 0, _random);
-        var (unitRule, armor) = _battle.UnitRule(_rules, name);
-        var unit = _battle.TempUnit(_rules, _unitSequence++, BattleFaction.Player, BattleController.Human(0), name, unitRule, armor, summoned: true);
+        var (unitRule, armor) = _battle.UnitRule(name);
+        var unit = _battle.TempUnit(_unitSequence++, BattleFaction.Player, BattleController.Human(0), name, unitRule, armor, summoned: true);
         var firstTile = new BattlePosition(0, 0, 0);
         unit.Position = _placement.TryPosition(unit, firstTile);
         _battle.AddUnit(unit);
@@ -276,7 +276,7 @@ internal sealed class XcomDeployment
         if (!_rules.Items.TryGet(itemType, out var handle)) return condition.IsItemPermitted(itemType, null);
         var item = _rules.Items[handle].Value;
         IEnumerable<string> categories = item.Categories;
-        if (_rules.Campaign.ShareAmmoCategories && item.BattleType == 1 && item.CompatibleAmmo.Count != 0)
+        if (_rules.Campaign.ShareAmmoCategories && item.BattleType == RuntimeBattleItem.FirearmBattleType && item.CompatibleAmmo.Count != 0)
             foreach (var ammo in item.CompatibleAmmo[0])
                 if (request.Items.GetValueOrDefault(_rules.Items.GetExternalId(ammo)) > 0)
                     categories = categories.Concat(_rules.Items[ammo].Value.Categories);
@@ -298,7 +298,7 @@ internal sealed class XcomDeployment
             !_rules.Battle.Equipment.Units.TryGetValue(itemId, out var unit))
             throw new MapGenerationException($"Vehicle item {itemId} has no vehicle unit.");
         // createTempUnit: the environment transforms the vehicle unit's armor.
-        return new(itemId, _battle.TempUnitArmor(_rules, _rules.Armors[armor].Value), unit, ammo);
+        return new(itemId, _battle.TempUnitArmor(_rules.Armors[armor].Value), unit, ammo);
     }
 
     private BattleUnit Soldier(CampaignState.SoldierState soldier)
@@ -309,7 +309,7 @@ internal sealed class XcomDeployment
         var (armorId, armor, transformed) = BattleArmor(soldierType, personal.Armor, own);
         // Recorded whenever a transformation or replacement applies, even into the same armor (the reference remembers it).
         if (transformed is { } kind) _battle.ChangeSoldierArmor(soldier.Id, armorId, kind);
-        return _battle.SoldierUnit(_rules, soldier.Id, new BattleSoldier(soldierType, personal), armorId, armor,
+        return _battle.SoldierUnit(soldier.Id, new BattleSoldier(soldierType, personal), armorId, armor,
             transformed is null ? "" : personal.Armor);
     }
 
@@ -348,7 +348,7 @@ internal sealed class XcomDeployment
     /// </summary>
     private void AddVehicle(Vehicle vehicle)
     {
-        var unit = _battle.TempUnit(_rules, _unitSequence++, BattleFaction.Player, BattleController.Human(0), vehicle.Id, vehicle.Unit, vehicle.Armor);
+        var unit = _battle.TempUnit(_unitSequence++, BattleFaction.Player, BattleController.Human(0), vehicle.Id, vehicle.Unit, vehicle.Armor);
         if (!AddUnit(unit, vehicle.Unit, "")) return;
         _equipment.CreateItemForUnit(vehicle.Id, unit, fixedWeapon: true);
         if (_equipment.VehicleClipAmmo(vehicle.Id) is { } clip)

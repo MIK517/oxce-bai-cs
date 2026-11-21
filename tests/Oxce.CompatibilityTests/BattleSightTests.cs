@@ -43,7 +43,7 @@ public sealed class BattleSightTests
 
     internal static void Terrain(Dictionary<string, byte[]> files) => files["TERRAIN/TESTSET.MCD"] = Mcd([Record((42, 2)), Record((42, 3)),
         Record((42, 4), (59, 2)), Record((39, 4), (40, 4), (41, 4)), Solid(1, 12, true), Solid(1, 6, false), Solid(4, 12, false), Record((34, 1), (39, 4)), UfoDoorRecord(), Record((35, 1), (46, 0)), Record((34, 1), (39, 4), (48, unchecked((byte)-24))),
-        .. DoorRecords, .. FireRecords]);
+        .. DoorRecords, .. FireRecords, .. MeleeRecords]);
 
     internal const int SwingDoor = 9; // a swinging door (its alternative is the first record)
     internal const int StairFloor = 10; // a floor with a terrain level of -24
@@ -76,6 +76,35 @@ public sealed class BattleSightTests
     internal const int Fuse = 34; // an object of armor 0, flammable 10, fuel 2, whose dead form is PowderFloor (a floor part)
     internal const int Dud = 31; // a floor with a loft, armor 0, a dead form that lies past the data set (die 200)
 
+    // The explosion tests' records (S5): west walls with a high explosive block of 40.
+    internal const int BlastWall = 35; // a west wall of armor 255 that blocks 40 of a blast and breaks under nothing
+    internal const int BlastDoor = 36; // a UFO door on a west wall of armor 255 that blocks 40 of a blast until it is open
+    internal const int ThinWall = 37; // a west wall of armor 30 that blocks 40 of a blast and breaks under an explosive of 30
+    internal const int DiagWall = 39; // an object of armor 255 on a diagonal big wall (2, north-east to south-west) that blocks 40 of a blast
+    internal const int Powder = 38; // like the barrel (armor 0, flammable 10, fuel 2, explosive 20) but of explosive type 0: a high explosive one
+
+    // The terrain melee tests' records (S6): every one fills its tile for lines of fire (template 1 in every layer).
+    internal const int SolidWall = 40; // walking, sliding and flying through it cost 255
+    internal const int DoorWall = 41; // a door that costs nothing to walk through
+    internal const int BigNorth = 42; // an object on a big wall of the north kind
+    internal const int BigEast = 43;
+    internal const int BigSouth = 44;
+    internal const int BigWest = 45;
+    internal const int BigWestNorth = 46;
+
+    private static byte[] Filled(params (int Offset, byte Value)[] more) => Record([.. Enumerable.Range(8, 12).Select(offset => (offset, (byte)1)), .. more]);
+
+    private static readonly byte[][] MeleeRecords =
+    [
+        Filled((39, 255), (40, 255), (41, 255)),
+        Filled((35, 1)),
+        Filled((33, 5)),
+        Filled((33, 6)),
+        Filled((33, 7)),
+        Filled((33, 4)),
+        Filled((33, 9)),
+    ];
+
     private static readonly byte[][] FireRecords =
     [
         Record((8, 1), (39, 4), (40, 4), (41, 4), (42, 100), (45, 10), (57, 3)),
@@ -91,6 +120,11 @@ public sealed class BattleSightTests
         Record([.. Enumerable.Range(8, 12).Select(offset => (offset, (byte)1)), (39, (byte)4), (42, (byte)0), (45, (byte)255), (53, (byte)3), (60, (byte)1)]),
         Record((8, 1), (39, 4), (40, 4), (41, 4), (42, 0), (45, 10), (54, 1), (55, 20), (57, 2)),
         Record([.. Enumerable.Range(8, 12).Select(offset => (offset, (byte)1)), (39, (byte)4), (42, (byte)0), (44, (byte)33), (45, (byte)10), (53, (byte)3), (57, (byte)2)]),
+        Record((42, 255), (43, 40), (53, 1)),
+        Record((30, 1), (42, 255), (43, 40), (53, 1)),
+        Record((42, 30), (43, 40), (45, 255), (53, 1)),
+        Record([.. Enumerable.Range(8, 12).Select(offset => (offset, (byte)1)), (39, (byte)4), (42, (byte)0), (45, (byte)10), (53, (byte)3), (54, (byte)0), (55, (byte)20), (57, (byte)2)]),
+        Record((33, 2), (42, 255), (43, 40), (53, 3)),
     ];
 
     private static readonly byte[][] DoorRecords =
@@ -138,7 +172,7 @@ public sealed class BattleSightTests
             unit.SetDirection(direction);
         }
 
-        public void Relight() => Battle.CalculateLighting(Rules, BattleLightLayer.Ambient, null, 0, true);
+        public void Relight() => Battle.CalculateLighting(BattleLightLayer.Ambient, null, 0, true);
 
         /// <summary>Forgets what the first turn's sight found: the spotting, the discovery and the visibility counts of every unit and tile.</summary>
         public void Forget()
@@ -177,12 +211,13 @@ public sealed class BattleSightTests
 
     /// <summary>A flat arena: a floor over the whole ground level, the soldier at (10, 10) facing east and the alien at (10 + distance, 10) facing west.</summary>
     internal static Arena Flat(int shade = 0, int distance = 5, string soldierExtra = "", string alienExtra = "", string? unitExtra = null,
-        bool personalLight = false, bool bigAlien = false, bool soldierAtWest = false, int soldierHeight = 22, Func<string, string>? edit = null)
+        bool personalLight = false, bool bigAlien = false, bool soldierAtWest = false, int soldierHeight = 22, Func<string, string>? edit = null,
+        Action<Dictionary<string, byte[]>>? terrain = null)
     {
         var rules = SightRules(shade, soldierExtra, alienExtra, unitExtra, soldierHeight);
         if (edit is not null) rules = edit(rules);
         if (bigAlien) rules = Replaced(rules, "  - type: ALIEN\n    armor: SMALL_VEHICLE_ARMOR\n", "  - type: ALIEN\n    armor: VEHICLE_ARMOR\n");
-        var (campaign, battle, soldier, set) = Open(rules, Terrain);
+        var (campaign, battle, soldier, set) = Open(rules, terrain ?? Terrain);
         var map = battle.Map;
         for (var tile = 0; tile < map.TileCount; tile++)
             foreach (var part in Enum.GetValues<BattleTilePart>()) map.SetPart(tile, part, -1, -1);
@@ -365,10 +400,10 @@ public sealed class BattleSightTests
         var arena = Flat(15, 8, "    visibilityAtDark: 6\n", personalLight: true);
         Assert.Equal(8, arena.Battle.TileShade(new BattlePosition(18, 10, 0)));
         Assert.True(Arena.Sees(arena.Soldier, arena.Alien));
-        arena.Battle.TogglePersonalLighting(arena.Rules);
+        arena.Battle.TogglePersonalLighting();
         Assert.False(arena.Battle.TogglePersonalLight);
         Assert.False(Arena.Sees(arena.Soldier, arena.Alien));
-        arena.Battle.TogglePersonalLighting(arena.Rules);
+        arena.Battle.TogglePersonalLighting();
         Assert.True(Arena.Sees(arena.Soldier, arena.Alien));
     }
 

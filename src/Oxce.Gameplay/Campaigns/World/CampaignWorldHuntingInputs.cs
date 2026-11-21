@@ -136,7 +136,7 @@ internal sealed partial class CampaignWorld
                 var quantity = (long)stocks.GetValueOrDefault(item) + transfer.Quantity;
                 if (quantity > int.MaxValue) return "Transfer arrivals exceed the supported stock range.";
                 stocks[item] = (int)quantity;
-                if (rules.Items[item].Value.BattleType != 0) continue;
+                if (rules.Items[item].Value.BattleType != RuntimeBattleItem.NoneBattleType) continue;
                 reusableItems.Add(item);
             }
         }
@@ -148,7 +148,7 @@ internal sealed partial class CampaignWorld
                 var quantity = (long)stocks.GetValueOrDefault(item) + arrival.Value;
                 if (quantity > int.MaxValue) return ForecastLimits.ResearchArrivalsStockRange;
                 stocks[item] = (int)quantity;
-                if (rules.Items[item].Value.BattleType == 0) reusableItems.Add(item);
+                if (rules.Items[item].Value.BattleType == RuntimeBattleItem.NoneBattleType) reusableItems.Add(item);
             }
         if (researchUncertainty is not null)
             foreach (var delta in researchUncertainty)

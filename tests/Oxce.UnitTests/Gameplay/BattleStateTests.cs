@@ -28,8 +28,8 @@ public sealed class BattleStateTests
         Assert.Equal(revision + 1, battle.Revision);
         battle.SetSpotted(alien, BattleFaction.Player, true);
         Assert.Equal(revision + 1, battle.Revision);
-        Assert.Equal([new BattleUnitView(7, BattleFaction.Player, new(1, 2, 0)) { ControllerSlot = 0 },
-            new BattleUnitView(BattleState.MaximumSoldierId, BattleFaction.Hostile, new(30, 30, 1))],
+        Assert.Equal([new BattleUnitView(7, BattleFaction.Player, new(1, 2, 0)) { ControllerSlot = 0, Whereabouts = new(1, 2, 0) },
+            new BattleUnitView(BattleState.MaximumSoldierId, BattleFaction.Hostile, new(30, 30, 1)) { Whereabouts = new(30, 30, 1) }],
             battle.Overview(BattleViewer.LocalPlayer).Units);
         // Spotting is per faction: the neutral side has seen nobody.
         Assert.Equal([civilian.Id], battle.Overview(new BattleViewer(BattleFaction.Neutral)).Units.Select(static unit => unit.Id));
@@ -74,5 +74,14 @@ public sealed class BattleStateTests
         // Armor::getMovementTypeByDepth: float flies underwater and walks on land, sink the reverse.
         var battle = new BattleState("STR_UFO_CRASH_RECOVERY", "STR_SMALL_SCOUT", new BattleMap(10, 10, 1), 0, 0, 20) { Depth = depth };
         Assert.Equal(expected, battle.MovementType(new RuntimeArmorRule(0, 1, 1, "", null) { MovementType = armorMovement }));
+    }
+
+    [Fact]
+    public void ABattleBuiltWithoutRulesRefusesARuleThatReadsThem()
+    {
+        var battle = new BattleState("STR_UFO_CRASH_RECOVERY", "STR_SMALL_SCOUT", new BattleMap(10, 10, 1), 0, 0, 20);
+        Assert.Null(battle.Rules);
+        var thrown = Assert.Throws<InvalidOperationException>(() => battle.RequiredRules);
+        Assert.Equal("The battle has no rules.", thrown.Message);
     }
 }

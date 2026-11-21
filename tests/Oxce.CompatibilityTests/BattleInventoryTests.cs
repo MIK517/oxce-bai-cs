@@ -4,6 +4,7 @@ using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Sessions;
 using Xunit;
 using static Oxce.CompatibilityTests.BattleStartTests;
+using static Oxce.CompatibilityTests.BattleTestSupport;
 
 namespace Oxce.CompatibilityTests;
 
@@ -46,9 +47,6 @@ public sealed class BattleInventoryTests
         if (firstTurn) Assert.IsType<BattleFirstTurnStarted>(Assert.Single(campaign.Execute(new StartFirstTurn()).Events));
         return (campaign, battle, soldier);
     }
-
-    private static string Refusal(CampaignState campaign, ICampaignCommand command) =>
-        Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(command).Events)).Code;
 
     private static InventoryItemMoved Moved(CampaignState campaign, ICampaignCommand command)
     {
@@ -95,12 +93,10 @@ public sealed class BattleInventoryTests
     {
         var (campaign, battle, soldier, ground) = WalkerInTheAir();
         Assert.True(soldier.HaveNoFloorBelow);
-        // A loaded battle with a floorless walker refuses its commands (the constructor queues the fall, which the port does at the first turn only).
-        Assert.Equal("battle.casualties-unsupported", Refusal(campaign, new MoveInventoryItem(soldier.Id, Gun, "STR_GROUND", 0, 0)));
+        // (A battle loaded with a floorless walker lets it fall as it opens; here the walker is put in the air after the battle opened.)
         // Standing in the air only because a script changed its movement type is the same: nothing falls until a gravity call, so test the close itself.
-        Assert.Null(battle.FallsRefusal(campaign.Content.RuntimeRules, soldier));
         battle.ApplyGravity(soldier.Position);
-        Assert.Null(battle.ResolveFalls(campaign.Content.RuntimeRules));
+        battle.ResolveFalls();
         Assert.Equal(ground, soldier.Position);
     }
 
@@ -116,7 +112,6 @@ public sealed class BattleInventoryTests
         battle.ApplyGravity(soldier.Position);
         soldier.MovementType = 0;
         soldier.Floating = false;
-        Assert.Null(battle.FallsRefusal(campaign.Content.RuntimeRules, soldier));
         Assert.Equal(gun, Where(battle, Gun));
     }
 
@@ -171,10 +166,10 @@ public sealed class BattleInventoryTests
             // The loaded clip is in no one's inventory.
             (new MoveInventoryItem(soldier.Id, 2, "STR_BELT", 0, 0), "battle.inventory-item-unknown"),
             (new MoveInventoryItem(soldier.Id, Grenade, "STR_NOWHERE", 0, 0), "battle.inventory-slot-unknown"),
-            // Belt (0, 0) holds a supply; (5, 5) is no slot; the right hand holds the gun, which would take the grenade as ammunition.
+            // Belt (0, 0) holds a supply; (5, 5) is no slot; the right hand holds the gun, which takes no grenade as ammunition.
             (new MoveInventoryItem(soldier.Id, GroundSupply, "STR_BELT", 0, 0), "battle.inventory-no-room"),
             (new MoveInventoryItem(soldier.Id, Grenade, "STR_BELT", 5, 5), "battle.inventory-no-room"),
-            (new MoveInventoryItem(soldier.Id, Grenade, "STR_RIGHT_HAND", 0, 0), "battle.inventory-ammo-unsupported"),
+            (new MoveInventoryItem(soldier.Id, Grenade, "STR_RIGHT_HAND", 0, 0), "battle.inventory-ammo-wrong"),
             (new MoveInventoryItem(soldier.Id, GroundSupply, "STR_BACK_PACK", 0, 0), "battle.inventory-no-room"),
         };
         foreach (var (command, code) in cases) Assert.Equal(code, Refusal(campaign, command));
@@ -305,14 +300,35 @@ public sealed class BattleInventoryTests
     }
 
     [Fact]
-    public void AnEnabledGrenadeIsNotDroppedBecauseItsDangerZoneBelongsToTheAi()
+    public void ALiveGrenadeDroppedWhereAUnitStandsMakesADangerZoneAndOtherDropsDoNot()
     {
-        var (campaign, battle, soldier) = Open();
+        // TileEngine::itemMoveInventory: a BT_GRENADE with an enabled fuse and a damage type that resists dropped to the ground of a unit's tile sets the
+        // danger zone of its blast radius; the dropper's own tile is always in it.
+        var blast = CostRules.Replace("  - type: GRENADE\n    battleType: 4\n    weight: 1", "  - type: GRENADE\n    battleType: 4\n    weight: 1\n    damageType: 3\n    power: 40", StringComparison.Ordinal);
+        Assert.NotEqual(CostRules, blast);
+        static int Marked(BattleState battle) => Enumerable.Range(0, battle.Map.TileCount).Count(battle.Map.Dangerous);
+
+        var (campaign, battle, soldier) = Open(blast);
         battle.Items.Single(static item => item.Id == Grenade).FuseEnabled = true;
-        Assert.Equal("battle.inventory-danger-zone-unsupported", Refusal(campaign, new MoveInventoryItem(soldier.Id, Grenade, "STR_GROUND", 0, 0)));
-        Assert.Equal(("STR_BACK_PACK", 0, 0, (int?)soldier.Id, (BattlePosition?)null), Where(battle, Grenade));
-        // Between sections it moves freely.
-        Moved(campaign, new MoveInventoryItem(soldier.Id, Grenade, "STR_LEFT_HAND", 0, 0));
+        Moved(campaign, new MoveInventoryItem(soldier.Id, Grenade, "STR_GROUND", 0, 0));
+        Assert.Equal(BattleState.GroundSlot, Where(battle, Grenade).Slot);
+        Assert.True(battle.Map.Dangerous(battle.TileIndex(BattleState.TileOf(soldier)!.Value)));
+        Assert.True(Marked(battle) >= 1);
+
+        // A grenade without a live fuse, or one moved between sections, marks nothing.
+        var (cold, coldBattle, coldSoldier) = Open(blast);
+        Moved(cold, new MoveInventoryItem(coldSoldier.Id, Grenade, "STR_GROUND", 0, 0));
+        Assert.Equal(0, Marked(coldBattle));
+        var (between, betweenBattle, betweenSoldier) = Open(blast);
+        betweenBattle.Items.Single(static item => item.Id == Grenade).FuseEnabled = true;
+        Moved(between, new MoveInventoryItem(betweenSoldier.Id, Grenade, "STR_LEFT_HAND", 0, 0));
+        Assert.Equal(0, Marked(betweenBattle));
+
+        // A grenade whose damage type does not resist (the default type) is no danger either.
+        var (plain, plainBattle, plainSoldier) = Open();
+        plainBattle.Items.Single(static item => item.Id == Grenade).FuseEnabled = true;
+        Moved(plain, new MoveInventoryItem(plainSoldier.Id, Grenade, "STR_GROUND", 0, 0));
+        Assert.Equal(0, Marked(plainBattle));
     }
 
     [Fact]
@@ -410,10 +426,6 @@ public sealed class BattleInventoryTests
     }
 
     [Theory]
-    [InlineData(InventoryFeature.LoadAmmo, "battle.inventory-ammo-unsupported")]
-    [InlineData(InventoryFeature.UnloadAmmo, "battle.inventory-ammo-unsupported")]
-    [InlineData(InventoryFeature.Throw, "battle.inventory-throw-unsupported")]
-    [InlineData(InventoryFeature.Prime, "battle.inventory-prime-unsupported")]
     [InlineData(InventoryFeature.SaveLayout, "battle.inventory-layout-screens-unsupported")]
     [InlineData(InventoryFeature.LoadLayout, "battle.inventory-layout-screens-unsupported")]
     [InlineData(InventoryFeature.ClearInventory, "battle.inventory-clear-unsupported")]
@@ -592,7 +604,7 @@ public sealed class BattleInventoryTests
     {
         var (campaign, _) = Requested(CostRules, "UFO_SUITED");
         Started(campaign);
-        Assert.Equal("battle.inventory-unavailable", Refusal(campaign, new UseInventoryFeature(1, Gun, InventoryFeature.Throw)));
+        Assert.Equal("battle.inventory-unavailable", Refusal(campaign, new UseInventoryFeature(1, Gun, InventoryFeature.Prime)));
     }
 
     [Fact]
@@ -603,7 +615,7 @@ public sealed class BattleInventoryTests
         Moved(plain, new MoveInventoryItem(first.Id, Grenade, "STR_GROUND", 0, 0));
         Assert.Equal("STR_BACK_PACK", Moved(plain, new AutoPlaceInventoryItem(first.Id, Grenade, Smart: false)).ToSlot);
 
-        var rules = CostRules + "\nextendedInventorySlotSorting: true\n";
+        var rules = CostRules + "\nconstants:\n  - extendedInventorySlotSorting: true\n";
         var (campaign, battle, soldier) = Open(rules);
         Assert.True(battle.Rules!.Campaign.ExtendedInventorySlotSorting);
         Moved(campaign, new MoveInventoryItem(soldier.Id, Grenade, "STR_GROUND", 0, 0));

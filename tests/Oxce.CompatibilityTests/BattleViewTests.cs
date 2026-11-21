@@ -5,6 +5,7 @@ using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Sessions;
 using Xunit;
 using static Oxce.CompatibilityTests.BattleStartTests;
+using static Oxce.CompatibilityTests.BattleTestSupport;
 
 namespace Oxce.CompatibilityTests;
 
@@ -38,9 +39,6 @@ public sealed class BattleViewTests
         }
         return (campaign, battle, Assert.Single(request.Soldiers));
     }
-
-    private static string Refusal(CampaignState campaign, ICampaignCommand command) =>
-        Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(command).Events)).Code;
 
     private static T Event<T>(CampaignState campaign, ICampaignCommand command) where T : ICampaignEvent
     {
@@ -344,7 +342,7 @@ public sealed class BattleViewTests
         Assert.Contains(BattleActionKind.ReselectSkippedUnit, view.QueryLegalActions(BattleViewer.LocalPlayer, FirstVehicle)!.Actions);
         // An armor without an inventory cannot open one.
         var armorLess = Unit(battle, SecondVehicle);
-        Assert.Equal(battle.InventoryAvailable(campaign.Content.RuntimeRules, armorLess.Id, out _) is null,
+        Assert.Equal(battle.InventoryAvailable(armorLess.Id, out _) is null,
             view.QueryLegalActions(BattleViewer.LocalPlayer, armorLess.Id)!.Actions.Contains(BattleActionKind.OpenInventory));
         // Not another side's unit, not an out unit, not before the first turn, not on the enemy's turn.
         Assert.Null(view.QueryLegalActions(BattleViewer.LocalPlayer, Alien(battle).Id));

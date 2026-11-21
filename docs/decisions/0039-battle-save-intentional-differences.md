@@ -91,7 +91,8 @@ reference's behaviour, not an undefined one. A present `moduleMap` that is no gr
 row is the reference's undefined indexing, which the branches that port those readers (the reinforcements) must refuse.
 A base defense's `moduleMap` is kept in its saved shape too (`tryRead`, no check); its readers index it per block of a
 tile or facility (`TileEngine` when a module is destroyed, `AIModule` choosing targets, `DebriefingState` counting lost
-facilities), so branches 5 (destruction), 6 (the AI) and 7 (the debriefing) must refuse a block the saved grid lacks.
+facilities), so branches 6 (the AI) and 7 (the debriefing) must refuse a block the saved grid lacks. Branch 5's destruction does not: it destroys the part and skips the count
+(ADR 0041, "A module destroyed in a block the saved module map lacks").
 
 **A restored map is validated (S2).** The reference loads any node list. The port runs `BattleState.Validate` on a
 restored battle: a node outside the map, a node whose ID is not its index (dummies aside), or a link to no live node

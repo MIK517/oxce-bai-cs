@@ -208,9 +208,13 @@ public sealed record SoldierSnapshot(string RuleId, int Id)
 
 /// <summary>
 /// A soldier in the memorial (SavedGame deadSoldiers): the soldier as it was at death and the death time.
-/// The cause of a battle death stays in the save node until Phase 7 owns it.
+/// <see cref="Cause"/> is <c>SoldierDeath::getCause</c>, the kill statistic of a death in battle (Phase 7 branch 5); a soldier who died on the
+/// geoscape, or one loaded from a save, keeps what its save node holds.
 /// </summary>
-public sealed record DeadSoldierSnapshot(SoldierSnapshot Soldier, CampaignTime? DiedAt);
+public sealed record DeadSoldierSnapshot(SoldierSnapshot Soldier, CampaignTime? DiedAt)
+{
+    public Battles.BattleUnitKillSnapshot? Cause { get; init; }
+}
 
 public enum CampaignTransferKind { Item, Scientist, Engineer, Soldier, Craft }
 

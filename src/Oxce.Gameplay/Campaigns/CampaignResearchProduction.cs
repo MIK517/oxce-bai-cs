@@ -1036,7 +1036,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
         {
             var item = _content.RuntimeRules.Items.GetRequired(id);
             ChangeStock(owner.Items, item, quantity);
-            if (_content.RuntimeRules.Items[item].Value.BattleType == 0)
+            if (_content.RuntimeRules.Items[item].Value.BattleType == RuntimeBattleItem.NoneBattleType)
                 for (var craftIndex = 0; craftIndex < owner.Crafts.Count; craftIndex++)
                 {
                     var craft = owner.Crafts[craftIndex];

@@ -295,8 +295,9 @@ The [Phase 7 delivery plan](phase-7-plan.md) splits the phase into eight branche
 [ADR 0038](decisions/0038-battle-aggregate.md). Branch 1 (battle generation) is complete
 and merged: [battle generation status](battle-generation-status.md). Branch 2 (battle saves) is complete
 and merged: [battle save status](battle-save-status.md). Branch 3 (session layer and battlescape UI) is complete and
-merged: [battle session and UI status](battle-session-ui-status.md). Branch 4 (battle movement) is implemented and audited, awaiting merge:
-[battle movement status](battle-movement-status.md).
+merged: [battle session and UI status](battle-session-ui-status.md). Branch 4 (battle movement) is complete and merged
+(PR #81): [battle movement status](battle-movement-status.md). Branch 5 (battle combat) is in progress:
+[battle combat status](battle-combat-status.md).
 
 Phase 7 inherits the Phase 6 named restrictions: every string in the
 [refusal inventory](phase-6-refusal-inventory.md)'s "Named restrictions" and "Tactical and battle boundaries"
@@ -415,7 +416,10 @@ content root no longer retains typed compatibility/provenance graphs, virtual re
 identity is deterministic across hosts, and managed-extension API `0.2` exposes
 separately versioned campaign query, command, and event capabilities.
 
-1. Implement [Phase 7 branch 4](phase-7-plan.md#branch-4--battle-movement) (pathfinding, movement, light and sight), then the
+1. Implement [Phase 7 branch 5](phase-7-plan.md#branch-5--battle-combat) (line of fire, attacks, damage, casualties,
+   explosions, melee, reaction fire), starting with the battle runtime slice the
+   [2026-11-14 audit](project-audit-2026-11-14.md) added
+   ([audit follow-up](phase-7-plan.md#audit-follow-up-2026-11-14)), then the
    following branches of the [Phase 7 plan](phase-7-plan.md). Keep each branch integrated across commands,
    script providers, saves and UI actions.
 2. Continue adding focused executable C++ probes, compatibility matrix entries, and

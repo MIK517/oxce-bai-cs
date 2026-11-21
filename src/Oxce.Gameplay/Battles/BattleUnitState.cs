@@ -35,11 +35,45 @@ internal sealed partial class BattleUnit
     /// <summary>BattleUnit's <c>_currentArmor</c> per UnitSide; the four diagonal sides are kept as saved and 0 otherwise.</summary>
     public int[] CurrentArmor { get; } = new int[ArmorSides];
 
+    /// <summary>BattleUnit's <c>_maxArmor</c> per UnitSide: the armor's sides as the constructor set them (the difficulty's adjustment and a soldier's bonuses included).</summary>
+    public int[] MaxArmor { get; } = new int[ArmorSides];
+
+    /// <summary>UnitSide's values, and UnitBodyPart's (BODYPART_HEAD to BODYPART_LEFTLEG).</summary>
+    public const int SideFront = 0, SideLeft = 1, SideRight = 2, SideRear = 3, SideUnder = 4;
+
+    public const int BodyPartHead = 0, BodyPartTorso = 1, BodyPartRightArm = 2, BodyPartLeftArm = 3, BodyPartRightLeg = 4, BodyPartLeftLeg = 5;
+
+    /// <summary>BattleUnit::hasAlreadyExploded: the self-destruct explosion was pushed. Runtime state, not saved.</summary>
+    public bool AlreadyExploded { get; set; }
+
+    /// <summary>BattleUnit::getGender (GENDER_MALE 0, GENDER_FEMALE 1): a soldier's, else male.</summary>
+    public int Gender { get; set; }
+
+    /// <summary>The geoscape soldier's current psi skill (<c>getCurrentStats()->psiSkill</c>, without the armor's bonus), 0 for a unit that is no soldier.</summary>
+    public int SoldierPsiSkill { get; set; }
+
     public int[] FatalWounds { get; } = new int[BodyParts];
     public int Fire { get; set; }
 
     /// <summary>BattleUnit::getExpStats (the eight saved fields).</summary>
     public BattleUnitStats Experience { get; set; }
+
+    /// <summary>BattleUnit::_expTmp: the experience <see cref="RememberExperience"/> took (runtime state, not saved).</summary>
+    private BattleUnitStats _rememberedExperience;
+
+    /// <summary>BattleUnit::rememberXP: remembers the experience, for <see cref="NerfExperience"/> to cut what extra shotgun pellets add.</summary>
+    internal void RememberExperience() => _rememberedExperience = Experience;
+
+    /// <summary>BattleUnit::nerfXP: each experience statistic gains at most one over the remembered value.</summary>
+    internal void NerfExperience()
+    {
+        var kept = _rememberedExperience;
+        static short Cut(short now, short before) => unchecked((short)Math.Min(now, before + 1));
+        Experience = new BattleUnitStats(Cut(Experience.TimeUnits, kept.TimeUnits), Cut(Experience.Stamina, kept.Stamina), Cut(Experience.Health, kept.Health),
+            Cut(Experience.Bravery, kept.Bravery), Cut(Experience.Reactions, kept.Reactions), Cut(Experience.Firing, kept.Firing),
+            Cut(Experience.Throwing, kept.Throwing), Cut(Experience.Strength, kept.Strength), Cut(Experience.PsiStrength, kept.PsiStrength),
+            Cut(Experience.PsiSkill, kept.PsiSkill), Cut(Experience.Melee, kept.Melee), Cut(Experience.Mana, kept.Mana));
+    }
 
     public byte[] TurnsSinceSpotted { get; } = [255, 255, 255];
     public byte[] TurnsLeftSpottedForSnipers { get; } = [0, 0, 0];
@@ -145,8 +179,12 @@ internal sealed class BattleAiState
     public BattleAiState(BattleFaction originalFaction, int fromNode = -1)
     {
         FromNode = fromNode;
-        TargetFaction = originalFaction is BattleFaction.Neutral or BattleFaction.Player ? (int)BattleFaction.Hostile : (int)BattleFaction.Player;
+        TargetFaction = (int)DefaultTargetFaction(originalFaction);
     }
+
+    /// <summary>AIModule::AIModule's target: the hostile faction for a unit that began on the neutral or player side, the player for the rest.</summary>
+    public static BattleFaction DefaultTargetFaction(BattleFaction originalFaction) =>
+        originalFaction is BattleFaction.Neutral or BattleFaction.Player ? BattleFaction.Hostile : BattleFaction.Player;
 
     public int FromNode { get; set; }
     public int ToNode { get; set; } = -1;

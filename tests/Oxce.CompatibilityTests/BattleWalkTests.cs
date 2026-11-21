@@ -24,7 +24,9 @@ public sealed class BattleWalkTests
             if (!flying) rules = Replaced(rules, "  - type: SUIT\n    movementType: 1\n", "  - type: SUIT\n    movementType: 0\n");
             if (suitExtra.Length != 0) rules = Replaced(rules, "  - type: SUIT\n", "  - type: SUIT\n" + suitExtra);
             rules = Replaced(rules, "stats: {tu: 50, firing: 61}", "stats: {tu: 50, firing: 61, reactions: 100}");
-            rules = Replaced(rules, GunText, GunText + "\n    tuSnap: 20\n    tuAimed: 50");
+            rules = Replaced(rules, GunText, GunText + "\n    tuSnap: 20\n    tuAimed: 50\n    accuracySnap: 100");
+            // (The AI judges a reaction by the damage it does: a clip with no damage scores nothing.)
+            rules = Replaced(rules, "- type: CLIP\n    battleType: 2\n    clipSize: 12\n    weight: 1", "- type: CLIP\n    battleType: 2\n    clipSize: 12\n    weight: 1\n    power: 10\n    damageType: 1\n    damageAlter: {RandomType: 3}");
             if (rulesExtra.Length != 0) rules += "\n" + rulesExtra + "\n";
             return edit is null ? rules : edit(rules);
         });
@@ -182,7 +184,7 @@ public sealed class BattleWalkTests
     {
         foreach (var extended in new[] { false, true })
         {
-            var arena = Make(suitExtra: "    allowsRunning: true\n", rulesExtra: extended ? "extendedRunningCost: true" : "");
+            var arena = Make(suitExtra: "    allowsRunning: true\n", rulesExtra: extended ? "constants:\n  - extendedRunningCost: true" : "");
             arena.Stand(arena.Alien, 14, 8, 6);
             arena.Put(12, 9, 0, BattleTilePart.ObjectPart, Wall);
             arena.See();
@@ -461,7 +463,7 @@ public sealed class BattleWalkTests
     }
 
     [Fact]
-    public void AFallOntoAUnitThatCanMoveAsideWorksAndOneThatCannotIsRefusedBeforeAnyChange()
+    public void AFallOntoAUnitThatCanMoveAsideWorksAndOneThatCannotKnocksItOut()
     {
         var arena = Make();
         var soldier = arena.Soldier;
@@ -480,7 +482,7 @@ public sealed class BattleWalkTests
         Assert.NotEqual(At(11, 10, 0), arena.Alien.Position);
         Assert.Empty(arena.Battle.FallingUnits);
 
-        // Boxed in by tiles without a floor, the unit below cannot move out of the way: the walk is refused.
+        // Boxed in by tiles without a floor, the unit below cannot move out of the way: the fall knocks it out.
         var boxed = Make();
         boxed.Put(10, 10, 1, BattleTilePart.Floor, Floor);
         boxed.Battle.SetTile(boxed.Soldier, At(10, 10, 1));
@@ -491,20 +493,27 @@ public sealed class BattleWalkTests
         boxed.See();
         boxed.Battle.SetSpotted(boxed.Alien, BattleFaction.Player, false);
         // (The trial copy sees what the soldier would see, so the walk is run on the battle itself here.)
-        var late = boxed.Battle.Walk(boxed.Rules, boxed.Soldier.Id, At(12, 10, 0), BattleMoveType.Normal, false, []);
-        Assert.Equal("battle.fall-knockout-unsupported", late?.Code);
+        var late = boxed.Battle.Walk(boxed.Soldier.Id, At(12, 10, 0), BattleMoveType.Normal, false);
+        Assert.Null(late);
+        Assert.Equal(BattleUnitStatus.Unconscious, boxed.Alien.Status);
+        Assert.Equal(At(12, 10, 0), boxed.Soldier.Position);
     }
 
     // ---- what is refused by name ----
 
     [Fact]
-    public void AStepNextToAnArmedOpposingUnitThatCouldReactIsRefusedBeforeAnyChange()
+    public void AStepInSightOfAnArmedOpposingUnitDrawsItsShotAndStopsTheWalk()
     {
         var arena = Make();
         GunFor(arena.Battle, arena.Alien);
-        var state = State(arena);
-        Assert.Equal("battle.reaction-fire-unsupported", Refusal(arena.Campaign.Execute(new WalkUnit(arena.Soldier.Id, At(12, 10)))));
-        Assert.Equal(state, State(arena));
+        var alienUnits = arena.Alien.TimeUnits;
+        var events = Events(arena.Campaign.Execute(new WalkUnit(arena.Soldier.Id, At(12, 10))));
+        // UnitWalkBState: unit got fired upon, stop walking; the reaction runs once the walk state is gone.
+        var ended = events.OfType<UnitWalkEnded>().Single();
+        Assert.Equal(BattleWalkStop.ReactionFire, ended.Stop);
+        Assert.Equal(1, ended.Steps);
+        Assert.True(events.ToList().FindIndex(static @event => @event is UnitWalkEnded) < events.ToList().FindIndex(@event => @event is UnitFired fired && fired.UnitId == arena.Alien.Id));
+        Assert.True(arena.Alien.TimeUnits < alienUnits);
         // A weaponless alien only spots: the mover is seen by the hostile faction's unit that faces it.
         var unarmed = Make();
         unarmed.Forget();
@@ -523,14 +532,47 @@ public sealed class BattleWalkTests
     }
 
     [Fact]
-    public void AStepNextToAnItemThatReactsToNearbyUnitsIsRefusedBeforeAnyChange()
+    public void AStepNextToAPrimedProximityGrenadeBlowsItUpAndEndsTheWalkThere()
     {
-        var arena = Make(edit: rules => Replaced(rules, "- type: GRENADE\n    battleType: 4", "- type: GRENADE\n    battleType: 5"));
+        const string Armed = "- type: GRENADE\n    battleType: 5\n    weight: 1\n    power: 50\n    damageType: 2\n    damageAlter: {RandomType: 3}";
+        var arena = Make(edit: rules => Replaced(rules, "- type: GRENADE\n    battleType: 4\n    weight: 1", Armed));
         var grenade = arena.Battle.AddItemOnTile(new BattleItem(arena.Battle.TakeItemId(), "GRENADE") { FuseEnabled = true, FuseTimer = 2 }, At(13, 11));
         Assert.NotNull(grenade);
-        var state = State(arena);
-        Assert.Equal("battle.proximity-unsupported", Refusal(arena.Campaign.Execute(new WalkUnit(arena.Soldier.Id, At(12, 10)))));
-        Assert.Equal(state, State(arena));
+        // Two tiles from the grenade the first step is out of its reach; the second one is next to it.
+        var events = Walk(arena, At(14, 10));
+        Assert.Contains(events, static @event => @event is BattleExploded);
+        var ended = Assert.IsType<UnitWalkEnded>(events[^1]);
+        Assert.Equal((BattleWalkStop.ProximityExplosion, 2), (ended.Stop, ended.Steps));
+        Assert.DoesNotContain(grenade, arena.Battle.Items);
+        Assert.Equal(2, events.OfType<UnitStepped>().Count());
+    }
+
+    [Fact]
+    public void AProximityGrenadeSetOffByAStepHasItsPreviousOwnerAsTheAttacker()
+    {
+        // UpdateAttacker: GetBeforeShoot(BA_TRIGGER_PROXY_GRENADE, nullptr, item) makes the grenade's previous owner the attacker of its blast.
+        const string Armed = "- type: GRENADE\n    battleType: 5\n    weight: 1\n    power: 50\n    damageType: 2\n    damageAlter: {RandomType: 3}";
+        var arena = Make(edit: rules => Replaced(rules, "- type: GRENADE\n    battleType: 4\n    weight: 1", Armed));
+        var armed = new BattleItem(arena.Battle.TakeItemId(), "GRENADE") { FuseEnabled = true, FuseTimer = 2, PreviousOwnerUnitId = arena.Alien.Id };
+        var grenade = arena.Battle.AddItemOnTile(armed, At(13, 11));
+        Assert.NotNull(grenade);
+        var events = Walk(arena, At(14, 10));
+        var hit = Assert.Single(events.OfType<UnitHit>(), hit => hit.UnitId == arena.Soldier.Id);
+        Assert.Equal(arena.Alien.Id, hit.AttackerId);
+        Assert.Equal(arena.Alien.Id, arena.Soldier.MurdererId);
+    }
+
+    [Fact]
+    public void AStepNextToAnItemWithAProximityTriggerEnablesItsFuse()
+    {
+        var arena = Make(edit: rules => Replaced(rules, "- type: GRENADE\n    battleType: 4\n    weight: 1", "- type: GRENADE\n    battleType: 4\n    weight: 1\n    fuseTriggerEvents: {proximityTrigger: true}"));
+        var grenade = arena.Battle.AddItemOnTile(new BattleItem(arena.Battle.TakeItemId(), "GRENADE") { FuseTimer = 2 }, At(13, 11));
+        var events = Walk(arena, At(14, 10));
+        // The trigger starts the fuse of a primed item; a plain grenade then neither explodes nor leaves.
+        Assert.True(grenade.FuseEnabled);
+        Assert.Equal(2, grenade.FuseTimer);
+        Assert.Contains(arena.Battle.Items, item => item == grenade);
+        Assert.Equal(BattleWalkStop.Arrived, Assert.IsType<UnitWalkEnded>(events[^1]).Stop);
     }
 
     // ---- light and sight, the selection ----
@@ -576,38 +618,80 @@ public sealed class BattleWalkTests
         // CheckReservedTimeUnits' hostile answer (battle.hostile-reserve-unsupported) cannot reach the walk through the command or the method.
         var arena = Make();
         arena.Battle.Side = BattleFaction.Hostile;
-        Assert.Equal("battle.selection-unavailable", arena.Battle.Walk(arena.Rules, arena.Alien.Id, At(17, 10), BattleMoveType.Normal, false, [])?.Code);
+        Assert.Equal("battle.selection-unavailable", arena.Battle.Walk(arena.Alien.Id, At(17, 10), BattleMoveType.Normal, false)?.Code);
     }
 
     [Fact]
-    public void AKneelingUnitThatAReactorWouldShootAtIsRefusedByTheKneelBeforeAnyChange()
+    public void AKneelingUnitThatStandsUpDrawsTheReactionOfTheKneelBehindTheWalk()
     {
         var arena = Make();
         GunFor(arena.Battle, arena.Alien);
         arena.Soldier.Kneeled = true;
-        var state = State(arena);
-        // Called on the battle itself: a refusal after a step would leave the walk done, a refusal of the kneel leaves nothing.
-        Assert.Equal("battle.reaction-fire-unsupported", arena.Battle.Walk(arena.Rules, arena.Soldier.Id, At(12, 10), BattleMoveType.Normal, false, [])?.Code);
-        Assert.Equal(state, State(arena));
-        Assert.Equal("battle.reaction-fire-unsupported", Refusal(arena.Campaign.Execute(new WalkUnit(arena.Soldier.Id, At(12, 10)))));
+        var alienUnits = arena.Alien.TimeUnits;
+        var events = Events(arena.Campaign.Execute(new WalkUnit(arena.Soldier.Id, At(12, 10)))).ToList();
+        // The walk state stands the unit up (the kneel's reaction waits at the back of the list), takes its step (its own reaction waits too) and ends there;
+        // the reactions run after it, the alien's snap shots in the order they were pushed.
+        Assert.True(events.FindIndex(static @event => @event is UnitKneeled) < events.FindIndex(static @event => @event is UnitWalkEnded));
+        Assert.True(events.FindIndex(static @event => @event is UnitWalkEnded) < events.FindIndex(@event => @event is UnitFired fired && fired.UnitId == arena.Alien.Id));
+        Assert.True(arena.Alien.TimeUnits < alienUnits);
     }
 
     [Theory]
-    [InlineData("proximityTrigger")]
-    [InlineData("deathTrap")]
-    public void AStepNextToAProximityTriggerItemOrOntoADeathTrapIsRefusedBeforeAnyChange(string kind)
+    [InlineData(5)]
+    [InlineData(3)]
+    public void AStepOntoADeathTrapSetsOffItsItemAsAProximityGrenadeOrAMeleeHit(int battleType)
     {
-        var arena = Make(edit: rules =>
+        // The proximity grenade explodes where the unit stands; the melee item hits the tile's unit with no attacker.
+        var trap = $"\n  - type: STR_DEATH_TRAP_200\n    battleType: {battleType}\n    weight: 1\n    power: 40\n    damageType: {(battleType == 5 ? 2 : 1)}\n    damageAlter: {{RandomType: 3}}" +
+            (battleType == 5 ? "\n    fuseType: 0" : "\n    clipSize: -1\n    confMelee: {ammoSlot: -1}");
+        var arena = Make(edit: rules => Replaced(rules, "- type: GRENADE\n    battleType: 4\n    weight: 1", "- type: GRENADE\n    battleType: 4\n    weight: 1" + trap));
+        arena.Put(12, 10, 0, BattleTilePart.Floor, DeathTrapFloor);
+        var before = arena.Soldier.Health;
+        var events = Walk(arena, At(14, 10));
+        var ended = Assert.IsType<UnitWalkEnded>(events[^1]);
+        Assert.Equal(BattleWalkStop.ProximityExplosion, ended.Stop);
+        Assert.Equal(2, events.OfType<UnitStepped>().Count());
+        Assert.True(arena.Soldier.Health < before || arena.Soldier.IsOut);
+        // The trap's item was made on the tile for the trigger; the proximity grenade is gone with its blast.
+        Assert.Equal(battleType == 3, arena.Battle.Items.Any(item => item.ItemType == "STR_DEATH_TRAP_200"));
+        if (battleType == 5)
         {
-            if (kind == "proximityTrigger")
-                return Replaced(rules, "- type: GRENADE\n    battleType: 4\n    weight: 1", "- type: GRENADE\n    battleType: 4\n    weight: 1\n    fuseTriggerEvents: {proximityTrigger: true}");
-            return Replaced(rules, "- type: GRENADE\n    battleType: 4\n    weight: 1", "- type: GRENADE\n    battleType: 4\n    weight: 1\n  - type: STR_DEATH_TRAP_200\n    battleType: 0\n    weight: 1");
-        });
-        if (kind == "proximityTrigger") arena.Battle.AddItemOnTile(new BattleItem(arena.Battle.TakeItemId(), "GRENADE"), At(13, 11));
-        else arena.Put(12, 10, 0, BattleTilePart.Floor, DeathTrapFloor);
-        var state = State(arena);
-        Assert.Equal("battle.proximity-unsupported", Refusal(arena.Campaign.Execute(new WalkUnit(arena.Soldier.Id, At(12, 10)))));
-        Assert.Equal(state, State(arena));
+            var blast = Assert.Single(events.OfType<BattleExploded>());
+            Assert.Equal((12, 10), (blast.Center.X / 16, blast.Center.Y / 16));
+        }
+        else
+        {
+            // The melee item is the weapon of the hit, which has no attacker and is no explosion.
+            var trapItem = Assert.Single(arena.Battle.Items, static item => item.ItemType == "STR_DEATH_TRAP_200");
+            var hit = Assert.Single(events.OfType<UnitMeleeAttacked>());
+            Assert.Equal((-1, trapItem.Id, arena.Soldier.Id), (hit.UnitId, hit.ItemId, hit.TargetUnitId));
+            Assert.DoesNotContain(events, static @event => @event is BattleExploded);
+        }
+    }
+
+    [Fact]
+    public void AWalkerTheBlastTookOutEndsItsWalkWhereItLies()
+    {
+        // A strong blast kills the walker on its second step: the walk's end names the tile of its body, never the sentinel for no tile at all.
+        const string Armed = "- type: GRENADE\n    battleType: 5\n    weight: 1\n    power: 500\n    damageType: 3\n    damageAlter: {RandomType: 3}";
+        var arena = Make(edit: rules => Replaced(rules, "- type: GRENADE\n    battleType: 4\n    weight: 1", Armed));
+        arena.Battle.AddItemOnTile(new BattleItem(arena.Battle.TakeItemId(), "GRENADE") { FuseEnabled = true, FuseTimer = 2 }, At(13, 11));
+        var events = Walk(arena, At(14, 10));
+        Assert.True(arena.Soldier.IsOut);
+        var ended = Assert.IsType<UnitWalkEnded>(events[^1]);
+        Assert.Equal((BattleWalkStop.ProximityExplosion, At(12, 10)), (ended.Stop, ended.Position));
+    }
+
+    [Fact]
+    public void AStepOntoADeathTrapWhoseItemTheUnitsSideMayNotTriggerDoesNothing()
+    {
+        // targetMatrix 2 (hostile only): an X-COM unit walking on it, with FACTION_PLAYER as the attacker, is the same side (bit 1).
+        var arena = Make(edit: rules => Replaced(rules, "- type: GRENADE\n    battleType: 4\n    weight: 1",
+            "- type: GRENADE\n    battleType: 4\n    weight: 1\n  - type: STR_DEATH_TRAP_200\n    battleType: 5\n    weight: 1\n    power: 40\n    damageType: 2\n    fuseType: 0\n    targetMatrix: 2"));
+        arena.Put(12, 10, 0, BattleTilePart.Floor, DeathTrapFloor);
+        var events = Walk(arena, At(14, 10));
+        Assert.Equal(BattleWalkStop.Arrived, Assert.IsType<UnitWalkEnded>(events[^1]).Stop);
+        Assert.DoesNotContain(events, static @event => @event is BattleExploded);
     }
 
     [Fact]
@@ -635,7 +719,7 @@ public sealed class BattleWalkTests
         arena.Stand(arena.Alien, 11, 10, 6);
         arena.See();
         arena.Battle.SetSpotted(arena.Alien, BattleFaction.Player, false);
-        var late = arena.Battle.Walk(arena.Rules, arena.Soldier.Id, At(11, 10, 1), BattleMoveType.Normal, false, new List<ICampaignEvent>());
+        var late = arena.Battle.Walk(arena.Soldier.Id, At(11, 10, 1), BattleMoveType.Normal, false);
         Assert.Equal("battle.walk-unit-in-the-way", late?.Code);
     }
 

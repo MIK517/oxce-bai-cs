@@ -22,8 +22,12 @@ internal sealed partial class BattleState
     private BattleUnit? ViewersUnitOnTurn(BattleViewer viewer, int unitId)
     {
         if (!Enum.IsDefined(viewer.Faction)) throw new ArgumentOutOfRangeException(nameof(viewer));
-        if (viewer.Faction != Side || SelectionUnit(unitId, out var found) is not null) return null;
-        return found!.Position is null ? null : found;
+        if (viewer.Faction != Side) return null;
+        // A query is no command: it leaves the command's actor as it was (reaction fire reads it before the saved selection).
+        var actor = _commandActor;
+        var refused = SelectionUnit(unitId, out var found) is not null;
+        _commandActor = actor;
+        return refused || found!.Position is null ? null : found;
     }
 
     /// <summary>
@@ -31,16 +35,15 @@ internal sealed partial class BattleState
     /// unit would have left after each step (the kneel's standing up and, for an armor that turns before its first step, that turn paid first), and
     /// whether the step stays clear of the reserve (checked with an auto shot reserve when none is set, as the reference does for the preview).
     /// </summary>
-    internal BattlePathView? PathView(RuntimeRuleCatalog rules, BattleViewer viewer, int unitId, BattlePosition target, BattleMoveType move)
+    internal BattlePathView? PathView(BattleViewer viewer, int unitId, BattlePosition target, BattleMoveType move)
     {
-        ArgumentNullException.ThrowIfNull(rules);
         if (ViewersUnitOnTurn(viewer, unitId) is not { } unit || !Contains(target) || !ViewerKnowsTile(viewer, Map.TileIndex(target))) return null;
         BattlePathView None(string code) => new(unit.Id, target, move, [], 0, 0, code);
-        var armor = ArmorOf(rules, unit);
+        var armor = ArmorOf(unit);
         if (MoveRefusal(armor, unit, move) is { } notAllowed) return None(notAllowed.Code);
 
         // refreshPath prices the steps on the pathfinder that calculated them: a one-step strafe (StrafeMove) costs one more.
-        var pathfinder = new BattlePathfinder(this, rules);
+        var pathfinder = new BattlePathfinder(this, RequiredRules);
         var path = pathfinder.Calculate(unit, target, (BattleActionMove)move);
         if (path.Count == 0) return None(BattleMovementReasons.WalkNoPath.Code);
 
@@ -56,7 +59,7 @@ internal sealed partial class BattleState
         {
             var turn = Math.Abs(unit.Direction - path[0]);
             if (turn > 4) turn = 8 - turn;
-            turn *= unit.TurnCost(rules);
+            turn *= unit.TurnCost(RequiredRules);
             timeUnits -= turn;
             total += turn;
         }
@@ -71,7 +74,7 @@ internal sealed partial class BattleState
             energy -= step.Cost.Energy;
             timeUnits -= step.Cost.Time;
             total += step.Cost.Time;
-            var check = CheckReservedTimeUnits(rules, unit, total, unit.Energy - energy, true, reserved);
+            var check = CheckReservedTimeUnits(unit, total, unit.Energy - energy, true, reserved);
             var reserveKept = check.Allowed || check.Unsupported is not null;
             var marker = timeUnits >= 0 && energy >= 0 ? reserveKept ? BattlePathMarker.Affordable : BattlePathMarker.ReservedTimeUnits : BattlePathMarker.Unaffordable;
             steps.Add(new BattlePathStepView(position, direction, Math.Max(0, timeUnits), Math.Max(0, energy), marker));
@@ -82,19 +85,18 @@ internal sealed partial class BattleState
     }
 
     /// <summary>The tiles the unit can reach (<see cref="BattlePathfinder.FindReachable"/>, no action's cost kept back) that the viewer has discovered.</summary>
-    internal BattleReachableView? ReachableView(RuntimeRuleCatalog rules, BattleViewer viewer, int unitId)
+    internal BattleReachableView? ReachableView(BattleViewer viewer, int unitId)
     {
-        ArgumentNullException.ThrowIfNull(rules);
-        if (ViewersUnitOnTurn(viewer, unitId) is not { } unit || !ArmorOf(rules, unit).AllowsMoving) return null;
-        var reachable = new BattlePathfinder(this, rules).FindReachableNodes(unit, new BattleActionCost(unit));
+        if (ViewersUnitOnTurn(viewer, unitId) is not { } unit || !ArmorOf(unit).AllowsMoving) return null;
+        var reachable = new BattlePathfinder(this, RequiredRules).FindReachableNodes(unit, new BattleActionCost(unit));
         return new BattleReachableView(unit.Id, [.. reachable.Nodes.Where(node => ViewerKnowsTile(viewer, Map.TileIndex(node.Position))).Select(static node => node.Position)]);
     }
 
     /// <summary>Whether the unit up (or down) button is legal: the armor allows moving, a level lies there and <c>validateUpDown</c> accepts.</summary>
-    private bool UpDownLegal(RuntimeRuleCatalog rules, BattleUnit unit, bool up)
+    private bool UpDownLegal(BattleUnit unit, bool up)
     {
-        if (unit.Position is not { } position || !ArmorOf(rules, unit).AllowsMoving) return false;
+        if (unit.Position is not { } position || !ArmorOf(unit).AllowsMoving) return false;
         if (!Contains(position with { Z = position.Z + (up ? 1 : -1) })) return false;
-        return new BattlePathfinder(this, rules).ValidateUpDown(unit, position, up ? BattleUnit.DirectionUp : BattleUnit.DirectionDown);
+        return new BattlePathfinder(this, RequiredRules).ValidateUpDown(unit, position, up ? BattleUnit.DirectionUp : BattleUnit.DirectionDown);
     }
 }

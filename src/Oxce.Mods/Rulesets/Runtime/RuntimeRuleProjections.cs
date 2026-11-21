@@ -441,6 +441,8 @@ public sealed record RuntimeSoldierRule(
     RuleHandleList<RuntimeScriptFamily> Scripts)
 {
     public RuntimePurchaseRequirements Purchase { get; init; } = new(0, "", "", [], []);
+    /// <summary>RuleSoldier::getRankStrings (<c>rankStrings</c>), which name a soldier's rank.</summary>
+    public IReadOnlyList<string> RankStrings { get; init; } = [];
     public IReadOnlyDictionary<string, short> MinimumStats { get; init; } = new ReadOnlyDictionary<string, short>(new Dictionary<string, short>());
     public IReadOnlyDictionary<string, short> MaximumStats { get; init; } = new ReadOnlyDictionary<string, short>(new Dictionary<string, short>());
     public int FemaleFrequency { get; init; } = 50;
@@ -633,6 +635,9 @@ public sealed record RuntimeCampaignSettings(
     public double PerformanceBonusFactor { get; init; }
     /// <summary>Global rules read by interception, landing and base defense.</summary>
     public CampaignInterceptionSettings Interception { get; init; } = CampaignInterceptionSettings.Default;
+
+    /// <summary>The combat globals: accuracy, close quarters, hit chances, reaction fire, AI use delays and the extended options.</summary>
+    public CampaignCombatSettings Combat { get; init; } = CampaignCombatSettings.Default;
     /// <summary>Global rules read by the month rollover and the monthly report.</summary>
     public CampaignMonthlySettings Monthly { get; init; } = CampaignMonthlySettings.Default;
     /// <summary>Mod::getDefeatScore: the monthly rating threshold before the difficulty term.</summary>

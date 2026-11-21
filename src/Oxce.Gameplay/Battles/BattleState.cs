@@ -91,19 +91,20 @@ internal sealed partial class BattleState
     public string Music { get; internal set; } = "";
 
     /// <summary>The armor a unit created from a unit rule wears: the environment's transformation of its own, if any.</summary>
-    internal RuntimeArmorRule TempUnitArmor(RuntimeRuleCatalog rules, RuntimeArmorRule armor)
+    internal RuntimeArmorRule TempUnitArmor(RuntimeArmorRule armor)
     {
         if (ArmorTransformations is null || !ArmorTransformations.TryGetValue(armor.Type, out var transformed)) return armor;
-        return rules.Armors.TryGet(transformed, out var handle) ? rules.Armors[handle].Value
+        return RequiredRules.Armors.TryGet(transformed, out var handle) ? RequiredRules.Armors[handle].Value
             : throw new Generation.MapGenerationException($"Armor transformation target {transformed} does not exist.");
     }
 
     /// <summary>Mod::getUnit with the required flag: the unit rule a battle unit is created from, and the armor it wears here.</summary>
-    internal (RuntimeBattleUnitRule Rule, RuntimeArmorRule Armor) UnitRule(RuntimeRuleCatalog rules, string type)
+    internal (RuntimeBattleUnitRule Rule, RuntimeArmorRule Armor) UnitRule(string type)
     {
+        var rules = RequiredRules;
         if (!rules.Battle.Equipment.Units.TryGetValue(type, out var unitRule) || !rules.Units.TryGet(type, out var handle))
             throw new Generation.MapGenerationException($"Unit {type} does not exist.");
-        return rules.Units[handle].Value.Armor is { } armor ? (unitRule, TempUnitArmor(rules, rules.Armors[armor].Value))
+        return rules.Units[handle].Value.Armor is { } armor ? (unitRule, TempUnitArmor(rules.Armors[armor].Value))
             : throw new Generation.MapGenerationException($"Unit {type} has no armor.");
     }
 
@@ -130,8 +131,51 @@ internal sealed partial class BattleState
     /// <summary>SavedBattleGame::_side: the faction whose turn it is.</summary>
     public BattleFaction Side { get; internal set; } = BattleFaction.Player;
 
-    /// <summary>Changes with every committed battle change, so clients know to refresh.</summary>
-    public long Revision { get; private set; }
+    private long _committedRevision;
+    private bool _changePending;
+    private int _commandDepth;
+    private BattleOptions _options = BattleOptions.Default;
+
+    /// <summary>
+    /// Changes with every committed battle change, so clients know to refresh. A rule that changes the battle marks it (<see cref="MarkChanged"/>);
+    /// the runtime commits the marks of a command as one bump when the command ends. A rule run outside a command (the generator, a test calling it
+    /// directly) bumps the revision at each mark, as before.
+    /// </summary>
+    public long Revision => _committedRevision + (_changePending ? 1 : 0);
+
+    /// <summary>
+    /// Marks the battle as changed: inside a runtime command any number of marks make one bump of <see cref="Revision"/>, committed by
+    /// <see cref="EndCommand"/>; outside one each mark is a bump.
+    /// </summary>
+    internal void MarkChanged()
+    {
+        if (_commandDepth == 0) _committedRevision++;
+        else _changePending = true;
+    }
+
+    /// <summary>The runtime's command starts: the marks that follow are committed together by <see cref="EndCommand"/>.</summary>
+    internal void BeginCommand() => _commandDepth++;
+
+    /// <summary>The runtime's command ends: one bump of <see cref="Revision"/> if it marked the battle changed.</summary>
+    internal void EndCommand()
+    {
+        if (_commandDepth > 0) _commandDepth--;
+        if (_commandDepth == 0) _commandActor = null;
+        if (_commandDepth != 0 || !_changePending) return;
+        _committedRevision++;
+        _changePending = false;
+    }
+
+    /// <summary>The user options the rules read; the runtime sets them once, and every unit the battle holds reads the same set.</summary>
+    internal BattleOptions Options
+    {
+        get => _options;
+        set
+        {
+            _options = value ?? throw new ArgumentNullException(nameof(value));
+            foreach (var unit in _units) unit.Options = value;
+        }
+    }
 
     public IReadOnlyList<BattleUnit> Units => _units;
 
@@ -205,7 +249,7 @@ internal sealed partial class BattleState
         _items.RemoveAll(items.Contains);
         _guaranteedRecovered.AddRange(items);
         _guaranteedRecovered.Sort(static (left, right) => left.Id.CompareTo(right.Id));
-        Revision++;
+        MarkChanged();
     }
 
     /// <summary>SavedBattleGame::getAlienItemLevel: the month row of Mod::getAlienItemLevels the aliens draw from.</summary>
@@ -234,7 +278,7 @@ internal sealed partial class BattleState
         ArgumentNullException.ThrowIfNull(item);
         if (item.Tile is { } position && !Contains(position)) throw new InvalidOperationException($"Item tile {position} is outside the map.");
         _items.Add(item);
-        Revision++;
+        MarkChanged();
     }
 
     /// <summary>SavedBattleGame::createItemForTile: the item on the ground of a tile (or nowhere when the tile is null).</summary>
@@ -277,9 +321,10 @@ internal sealed partial class BattleState
             foreach (var covered in BattleMap.Footprint(position, unit.ArmorSize)) Map.SetUnitAt(Map.TileIndex(covered), unit.Id);
         }
         _units.Add(unit);
+        unit.Options = _options;
         // setTile ends with updateTileFloorState (a unit on no tile has floor).
         UpdateTileFloorState(unit);
-        Revision++;
+        MarkChanged();
     }
 
     internal void SetSpotted(BattleUnit unit, BattleFaction faction, bool spotted)
@@ -288,7 +333,7 @@ internal sealed partial class BattleState
         if (!_units.Contains(unit)) throw new InvalidOperationException($"Battle unit {unit.Id} is not in this battle.");
         if (unit.IsSpottedBy(faction) == spotted) return;
         unit.SetSpottedBy(faction, spotted);
-        Revision++;
+        MarkChanged();
     }
 
     /// <summary>Whether a faction can see a unit: its own units always, others once spotted.</summary>
@@ -302,6 +347,7 @@ internal sealed partial class BattleState
             if (Sees(viewer.Faction, unit)) units.Add(new BattleUnitView(unit.Id, unit.Faction, unit.Position)
             {
                 ControllerSlot = unit.Controller.Kind == BattleControllerKind.Player ? unit.Controller.PlayerSlot : -1,
+                Whereabouts = unit.Position ?? RestingPosition(unit) ?? CarrierPosition(unit, viewer.Faction),
             });
         return new BattleOverview(MissionType, DeploymentId, Width, Length, Height, Turn, Side, TurnLimit, Revision,
             units.AsReadOnly())

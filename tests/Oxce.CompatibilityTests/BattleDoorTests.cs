@@ -115,10 +115,10 @@ public sealed class BattleDoorTests
         var at = tank.Position!.Value;
         tank.SetDirection(2);
         arena.Put(at.X + 2, at.Y, 0, BattleTilePart.WestWall, SwingDoorCost);
-        Assert.Null(arena.Battle.UnitOpensDoor(arena.Rules, tank, true, -1, out var swing));
+        Assert.Null(arena.Battle.UnitOpensDoor(tank, true, -1, out var swing));
         Assert.Equal(BattleDoorAttempt.None, swing);
         arena.Put(at.X + 2, at.Y, 0, BattleTilePart.WestWall, UfoDoorCost);
-        Assert.Null(arena.Battle.UnitOpensDoor(arena.Rules, tank, true, -1, out var ufo));
+        Assert.Null(arena.Battle.UnitOpensDoor(tank, true, -1, out var ufo));
         Assert.Equal((BattleDoorResult.UfoDoorOpened, 1, UfoCost(tank)), (ufo.Result, ufo.DoorsOpened, ufo.TimeUnitsSpent));
         // Direction 0 checks the west wall of the tile north of the second column only.
         arena.Map.SetDoorFrame(arena.Tile(at.X + 2, at.Y), BattleTilePart.WestWall, false);
@@ -126,10 +126,10 @@ public sealed class BattleDoorTests
         tank.TimeUnits = 100;
         tank.SetDirection(0);
         arena.Put(at.X, at.Y - 1, 0, BattleTilePart.WestWall, UfoDoorCost);
-        Assert.Null(arena.Battle.UnitOpensDoor(arena.Rules, tank, true, -1, out var none));
+        Assert.Null(arena.Battle.UnitOpensDoor(tank, true, -1, out var none));
         Assert.Equal(BattleDoorResult.None, none.Result);
         arena.Put(at.X + 1, at.Y - 1, 0, BattleTilePart.WestWall, UfoDoorCost);
-        Assert.Null(arena.Battle.UnitOpensDoor(arena.Rules, tank, true, -1, out var found));
+        Assert.Null(arena.Battle.UnitOpensDoor(tank, true, -1, out var found));
         Assert.Equal(BattleDoorResult.UfoDoorOpened, found.Result);
     }
 
@@ -222,7 +222,7 @@ public sealed class BattleDoorTests
                         {
                             arena.Put(10 + dx, 10 + dy, 0, part, UfoDoorCost);
                             soldier.TimeUnits = 60;
-                            Assert.Null(arena.Battle.UnitOpensDoor(arena.Rules, soldier, rightClick, -1, out var attempt));
+                            Assert.Null(arena.Battle.UnitOpensDoor(soldier, rightClick, -1, out var attempt));
                             var expected = (rightClick ? RightClickDoors : WalkingDoors)[direction].Contains((dx, dy, part));
                             Assert.True(expected == (attempt.Result == BattleDoorResult.UfoDoorOpened), $"{(rightClick ? "right click" : "walking")} direction {direction}, ({dx}, {dy}) {part}");
                             arena.Map.SetDoorFrame(arena.Tile(10 + dx, 10 + dy), part, false);
@@ -261,9 +261,9 @@ public sealed class BattleDoorTests
     {
         var arena = Make();
         arena.Put(10, 11, 0, BattleTilePart.NorthWall, UfoDoorCost);
-        Assert.Null(arena.Battle.UnitOpensDoor(arena.Rules, arena.Soldier, true, -1, out var east));
+        Assert.Null(arena.Battle.UnitOpensDoor(arena.Soldier, true, -1, out var east));
         Assert.Equal(BattleDoorResult.None, east.Result);
-        Assert.Null(arena.Battle.UnitOpensDoor(arena.Rules, arena.Soldier, true, 4, out var south));
+        Assert.Null(arena.Battle.UnitOpensDoor(arena.Soldier, true, 4, out var south));
         Assert.Equal(BattleDoorResult.UfoDoorOpened, south.Result);
     }
 
@@ -393,7 +393,7 @@ public sealed class BattleDoorTests
         arena.Battle.Side = BattleFaction.Hostile;
         arena.Put(15, 10, 0, BattleTilePart.WestWall, UfoDoorCost);
         alien.TimeUnits = 1;
-        Assert.Null(arena.Battle.UnitOpensDoor(arena.Rules, alien, true, -1, out var attempt));
+        Assert.Null(arena.Battle.UnitOpensDoor(alien, true, -1, out var attempt));
         Assert.Equal(BattleDoorResult.NotEnoughTimeUnits, attempt.Result);
         Assert.False(arena.Map.IsUfoDoorOpen(arena.Tile(15, 10), BattleTilePart.WestWall));
     }
@@ -405,7 +405,7 @@ public sealed class BattleDoorTests
         arena.Put(11, 1, 0, BattleTilePart.WestWall, UfoDoorCost);
         arena.Put(11, 0, 0, BattleTilePart.WestWall, UfoDoorCost);
         arena.Stand(arena.Soldier, 10, 1, 2);
-        Assert.Null(arena.Battle.UnitOpensDoor(arena.Rules, arena.Soldier, true, -1, out var attempt));
+        Assert.Null(arena.Battle.UnitOpensDoor(arena.Soldier, true, -1, out var attempt));
         Assert.Equal((BattleDoorResult.UfoDoorOpened, 2), (attempt.Result, attempt.DoorsOpened));
     }
 
@@ -417,12 +417,12 @@ public sealed class BattleDoorTests
         arena.Put(11, 10, 0, BattleTilePart.WestWall, SwingDoorCost);
         // A walk's door costs 5 time units and 2 energy to be allowed, but opening pays nothing here (the step pays).
         soldier.Energy = 1;
-        Assert.Null(arena.Battle.UnitOpensDoor(arena.Rules, soldier, false, -1, out var poor));
+        Assert.Null(arena.Battle.UnitOpensDoor(soldier, false, -1, out var poor));
         Assert.Equal(BattleDoorResult.NotEnoughTimeUnits, poor.Result);
         Assert.Equal(SwingDoorCost, arena.Map.Part(arena.Tile(11, 10), BattleTilePart.WestWall).Id);
         soldier.Energy = 2;
         var units = soldier.TimeUnits;
-        Assert.Null(arena.Battle.UnitOpensDoor(arena.Rules, soldier, false, -1, out var open));
+        Assert.Null(arena.Battle.UnitOpensDoor(soldier, false, -1, out var open));
         Assert.Equal((BattleDoorResult.Opened, 0, units), (open.Result, open.TimeUnitsSpent, soldier.TimeUnits));
         Assert.Equal(OpenDoorPart, arena.Map.Part(arena.Tile(11, 10), BattleTilePart.NorthWall).Id);
     }
@@ -434,7 +434,7 @@ public sealed class BattleDoorTests
         var soldier = arena.Soldier;
         arena.Put(11, 10, 0, BattleTilePart.WestWall, UfoDoorCost);
         var units = soldier.TimeUnits;
-        Assert.Null(arena.Battle.UnitOpensDoor(arena.Rules, soldier, false, 2, out var open));
+        Assert.Null(arena.Battle.UnitOpensDoor(soldier, false, 2, out var open));
         Assert.Equal((BattleDoorResult.UfoDoorOpened, UfoCost(soldier)), (open.Result, open.TimeUnitsSpent));
         Assert.Equal(units - UfoCost(soldier), soldier.TimeUnits);
     }
@@ -445,10 +445,10 @@ public sealed class BattleDoorTests
         var arena = Make();
         var alien = arena.Alien;
         arena.Battle.Side = BattleFaction.Hostile;
-        Assert.Null(arena.Battle.UnitOpensDoor(arena.Rules, alien, true, -1, out var none));
+        Assert.Null(arena.Battle.UnitOpensDoor(alien, true, -1, out var none));
         Assert.Equal(BattleDoorResult.None, none.Result);
         arena.Put(15, 10, 0, BattleTilePart.WestWall, UfoDoorCost);
-        var reason = arena.Battle.UnitOpensDoor(arena.Rules, alien, true, -1, out var refused);
+        var reason = arena.Battle.UnitOpensDoor(alien, true, -1, out var refused);
         Assert.Equal("battle.hostile-reserve-unsupported", reason!.Code);
         Assert.Equal(BattleDoorAttempt.None, refused);
         Assert.False(arena.Map.IsUfoDoorOpen(arena.Tile(15, 10), BattleTilePart.WestWall));

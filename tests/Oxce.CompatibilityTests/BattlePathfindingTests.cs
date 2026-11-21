@@ -165,7 +165,7 @@ public sealed class BattlePathfindingTests
     [InlineData(2, 7, 4)]
     public void TheMovementCostRoundingModesRoundTheTimeAndEnergyPercentages(int mode, int time, int energy)
     {
-        var arena = Flat($"\nextendedMovementCostRounding: {mode}\n");
+        var arena = Flat($"\nconstants:\n  - extendedMovementCostRounding: {mode}\n");
         // A diagonal step is 6; at 125% the time is exactly 7.5 and the energy exactly 3.75.
         arena.Soldier.MoveCosts = RuntimeArmorMoveCosts.Default with { Base = (125, 125) };
         Assert.Equal((time, energy), TimeAndEnergy(arena.Finder().GetTuCost(At(5, 5), 3, arena.Soldier, BattleActionMove.Normal)));
@@ -591,6 +591,30 @@ public sealed class BattlePathfindingTests
     }
 
     [Fact]
+    public void ThePathingOptionsTheRuntimeHoldsReachAPathfinderASightCheckAndATrialCopy()
+    {
+        var arena = Flat();
+        var alien = arena.Alien;
+        alien.MovementType = 0;
+        arena.Stand(alien, 5, 5, 0);
+        alien.SetDirection(2);
+        // Defaults: brutal A* takes the cheapest path by its tie order; a player's unit is not under AI control.
+        Assert.Equal([2, 2, 3, 3], arena.Finder().Calculate(alien, At(9, 7), BattleActionMove.Normal));
+        Assert.False(BattleSight.IsAiControlled(arena.Soldier));
+        var options = new BattleOptions { Pathing = new BattlePathingOptions { BrutalAi = false, AutoCombat = true } };
+        var runtime = new BattleRuntime(arena.Battle, arena.Rules, new Oxce.Core.Random.SplitMix64RandomSource(1), null, options: options);
+        // A pathfinder built with no options of its own reads the runtime's (no brutal A*: the line), and so does the sight's AI-control check.
+        Assert.Equal([2, 3, 2, 3], arena.Finder().Calculate(alien, At(9, 7), BattleActionMove.Normal));
+        Assert.True(BattleSight.IsAiControlled(arena.Soldier));
+        // A trial copy of the battle gets the same set, and so do its units.
+        var copy = Flat().Battle;
+        Assert.NotSame(options, copy.Options);
+        runtime.Adopt(copy);
+        Assert.Same(options, copy.Options);
+        Assert.All(copy.Units, unit => Assert.Same(options, unit.Options));
+    }
+
+    [Fact]
     public void ABrutalUnitSkipsTheLineAndAStarFindsTheCheapestPathByItsTieOrder()
     {
         var arena = Flat();
@@ -599,7 +623,7 @@ public sealed class BattlePathfindingTests
         arena.Stand(alien, 5, 5, 0);
         alien.SetDirection(2);
         var brutal = arena.Finder();
-        Assert.True(alien.UsesBrutalAi(arena.Rules, BattleOptions.Pathing));
+        Assert.True(alien.UsesBrutalAi(arena.Rules, BattleOptions.Default.Pathing));
         // The same journey as the line's [2, 3, 2, 3] for the soldier: A* finds a path of the same cost, which is its own.
         var aStar = brutal.Calculate(alien, At(9, 7), BattleActionMove.Normal);
         Assert.Equal(4, aStar.Count);
@@ -611,7 +635,7 @@ public sealed class BattlePathfindingTests
         Assert.False(alien.UsesBrutalAi(arena.Rules, new BattlePathingOptions { BrutalAi = false }));
         Assert.Equal([2, 3, 2, 3], gentle.Calculate(alien, At(9, 7), BattleActionMove.Normal));
         // Brutal civilians, a player's unit under AI control, and the unit rule's own flags.
-        Assert.False(arena.Soldier.UsesBrutalAi(arena.Rules, BattleOptions.Pathing));
+        Assert.False(arena.Soldier.UsesBrutalAi(arena.Rules, BattleOptions.Default.Pathing));
         Assert.True(arena.Soldier.UsesBrutalAi(arena.Rules, new BattlePathingOptions { AutoCombat = true }));
         arena.Soldier.AllowAutoCombat = false;
         Assert.False(arena.Soldier.UsesBrutalAi(arena.Rules, new BattlePathingOptions { AutoCombat = true }));
@@ -635,7 +659,7 @@ public sealed class BattlePathfindingTests
         Assert.True(other.Alien.UsesBrutalAi(other.Rules, new BattlePathingOptions { BrutalAi = false }));
         var notBrutal = Rules.Replace(AlienRule, AlienRule + "    isNotBrutal: true\n    avoidsFire: false\n", StringComparison.Ordinal);
         var third = Flat(rules: notBrutal);
-        Assert.False(third.Alien.UsesBrutalAi(third.Rules, BattleOptions.Pathing));
+        Assert.False(third.Alien.UsesBrutalAi(third.Rules, BattleOptions.Default.Pathing));
         Assert.False(third.Alien.AvoidsFire(third.Rules));
     }
 

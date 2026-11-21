@@ -44,9 +44,8 @@ internal sealed partial class BattleState
     /// <see cref="BattleDoorResult.ReservedTimeUnits"/> leaves it open and unpaid. Returns a refusal, before any change, for the hostile
     /// side's reserve (branch 6). The AI's reactivation after the right click is branch 6's.
     /// </summary>
-    internal CampaignReason? UnitOpensDoor(RuntimeRuleCatalog rules, BattleUnit unit, bool rightClick, int direction, out BattleDoorAttempt attempt)
+    internal CampaignReason? UnitOpensDoor(BattleUnit unit, bool rightClick, int direction, out BattleDoorAttempt attempt)
     {
-        ArgumentNullException.ThrowIfNull(rules);
         ArgumentNullException.ThrowIfNull(unit);
         attempt = BattleDoorAttempt.None;
         var origin = unit.Position!.Value;
@@ -65,12 +64,12 @@ internal sealed partial class BattleState
                     var at = new BattlePosition(unitTile.X + dx, unitTile.Y + dy, unitTile.Z);
                     var tile = Map.TileAt(at.X, at.Y, at.Z);
                     if (tile < 0) continue;
-                    var code = OpenDoor(rules, tile, part, unit, rightClick, apply: false);
+                    var code = OpenDoor(tile, part, unit, rightClick, apply: false);
                     if (code == DoorNone) continue;
                     // The hostile side's reserve is not ported: refuse before the door opens.
                     if (code is DoorOpened or DoorUfoOpening && Side == BattleFaction.Hostile && unit.Faction == BattleFaction.Hostile)
                         return HostileReserveUnsupportedReason;
-                    attempt = FinishDoor(rules, unit, tile, at, part, code, rightClick);
+                    attempt = FinishDoor(unit, tile, at, part, code, rightClick);
                     return null;
                 }
             }
@@ -83,7 +82,7 @@ internal sealed partial class BattleState
     private const int DoorNotEnough = 4;
 
     /// <summary>The rest of <c>unitOpensDoor</c> once a part answered: the door opens, the cost is worked out, reserved and paid.</summary>
-    private BattleDoorAttempt FinishDoor(RuntimeRuleCatalog rules, BattleUnit unit, int tile, BattlePosition at, BattleTilePart part, int code, bool rightClick)
+    private BattleDoorAttempt FinishDoor(BattleUnit unit, int tile, BattlePosition at, BattleTilePart part, int code, bool rightClick)
     {
         if (code == DoorNotEnough)
             return new(BattleDoorResult.NotEnoughTimeUnits, 0, null, 0, false);
@@ -92,7 +91,7 @@ internal sealed partial class BattleState
         var cost = code == DoorUfoOpening ? Map.TimeUnitCost(tile, part, movement) : 0;
         var doorsOpened = 0;
         BattlePosition centre = at;
-        OpenDoor(rules, tile, part, unit, rightClick, apply: true);
+        OpenDoor(tile, part, unit, rightClick, apply: true);
         if (code == DoorOpened)
         {
             doorsOpened++;
@@ -105,16 +104,16 @@ internal sealed partial class BattleState
         }
         else
         {
-            var (adjacent, adjacentCentre) = CheckAdjacentDoors(rules, at, part);
+            var (adjacent, adjacentCentre) = CheckAdjacentDoors(at, part);
             doorsOpened += adjacent + 1;
             centre = adjacentCentre;
         }
 
-        if (!CheckReservedTimeUnits(rules, unit, cost, 0, false).Allowed)
+        if (!CheckReservedTimeUnits(unit, cost, 0, false).Allowed)
             return new(BattleDoorResult.ReservedTimeUnits, doorsOpened, centre, 0, true);
         if (!unit.SpendTimeUnits(cost))
             return new(BattleDoorResult.NotEnoughTimeUnits, doorsOpened, centre, 0, true);
-        CalculateLighting(rules, BattleLightLayer.Fire, centre, doorsOpened, true);
+        CalculateLighting(BattleLightLayer.Fire, centre, doorsOpened, true);
         // Update the field of view through the doorway.
         Sight().CalculateFov(centre, doorsOpened, true, true);
         unit.UpdateEnemyKnowledge(Map.TileIndex(unit.Position!.Value), door: true);
@@ -126,15 +125,15 @@ internal sealed partial class BattleState
     /// for not enough time units. With <paramref name="apply"/> the door is changed (a swinging door moves to its alternative object, a UFO
     /// door's frame is set); without, only the answer is worked out.
     /// </summary>
-    private int OpenDoor(RuntimeRuleCatalog rules, int tile, BattleTilePart part, BattleUnit? unit, bool rightClick, bool apply)
+    private int OpenDoor(int tile, BattleTilePart part, BattleUnit? unit, bool rightClick, bool apply)
     {
         if (Map.MapData(tile, part) is not { } data) return DoorNone;
         var cost = new BattleActionCost(unit);
         if (unit is not null)
         {
             var tuCost = BattleMap.MovementCost(data, unit.MovementType);
-            cost = BattleActionCost.For(rules, (BattleActionType)TimeUnitsReserved, unit, MainHandWeapon(rules, unit, quickest: false));
-            tuCost += ReservedKneelCost(rules, unit);
+            cost = BattleActionCost.For(RequiredRules, (BattleActionType)TimeUnitsReserved, unit, MainHandWeapon(unit, quickest: false));
+            tuCost += ReservedKneelCost(unit);
             cost.Time += tuCost;
             if (!rightClick) cost.Energy += tuCost / 2;
         }
@@ -173,7 +172,7 @@ internal sealed partial class BattleState
     /// <paramref name="position"/> (a run of UFO door parts; one already open does not stop the run). Returns how many it opened and the
     /// door's centre, the starting position moved by half the net offset.
     /// </summary>
-    private (int Opened, BattlePosition Centre) CheckAdjacentDoors(RuntimeRuleCatalog rules, BattlePosition position, BattleTilePart part)
+    private (int Opened, BattlePosition Centre) CheckAdjacentDoors(BattlePosition position, BattleTilePart part)
     {
         var west = part == BattleTilePart.WestWall;
         var opened = 0;
@@ -183,7 +182,7 @@ internal sealed partial class BattleState
             {
                 var tile = west ? Map.TileAt(position.X, position.Y + i, position.Z) : Map.TileAt(position.X + i, position.Y, position.Z);
                 if (tile < 0 || Map.MapData(tile, part) is not { IsUfoDoor: true }) break;
-                if (OpenDoor(rules, tile, part, null, false, apply: true) == DoorUfoOpening)
+                if (OpenDoor(tile, part, null, false, apply: true) == DoorUfoOpening)
                 {
                     opened++;
                     offset += step;

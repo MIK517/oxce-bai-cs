@@ -57,15 +57,15 @@ internal static class BattleGenerator
         // setMusic: one of the deployment's tracks, else one of the terrain's.
         if (battle.Music.Count != 0) state.Music = battle.Music[random.NextInclusive(0, battle.Music.Count - 1)];
         else if (terrain.Music.Count != 0) state.Music = terrain.Music[random.NextInclusive(0, terrain.Music.Count - 1)];
-        // explodePowerSources and explodeOtherJunk need explosions and terrain destruction.
-        if (inputs.UfoCrashed && ObjectTiles(map, PowerSource).Any()) throw new MapGenerationException(CrashedPowerSources);
-        if (state.Items.Any(item => item.Tile is not null && !item.XcomProperty && !item.IsSpecialWeapon && item.FuseTimer == -2 &&
-                rules.Items.GetRequiredValue(item.ItemType).BattleType == GrenadeBattleType && !rules.Battle.Equipment.Items[item.ItemType].Spawns))
-            throw new MapGenerationException(PrimedJunk);
         // The line of fire templates sight reads: a template past the file's end is where the reference's vector::at throws.
-        if (state.VoxelDataFault(rules) is { } voxelFault) throw new MapGenerationException(voxelFault);
-        // run's last step: the lighting of the finished map, with its units and items.
-        state.CalculateLighting(rules, BattleLightLayer.Ambient, terrainChanged: true);
+        if (state.VoxelDataFault() is { } voxelFault) throw new MapGenerationException(voxelFault);
+        // The lighting of the finished map, with its units and items.
+        state.CalculateLighting(BattleLightLayer.Ambient, terrainChanged: true);
+        // run's last steps: a crashed UFO's power sources explode, then the grenades the map primed. The units they take out are the battlescape's
+        // opening casualty check (OpenBattlescape).
+        state.Random = random;
+        if (inputs.UfoCrashed) state.ExplodePowerSources();
+        state.ExplodeOtherJunk();
         return state;
     }
 
@@ -186,14 +186,8 @@ internal static class BattleGenerator
     internal const string TextureTerrainWithoutTarget =
         "A base defense deployment without terrains would pick from its globe texture's terrains at no target, where the reference crashes.";
 
-    internal const string CrashedPowerSources =
-        "A crashed UFO's power sources explode when the battle starts; explosions arrive with combat (Phase 7 branch 5).";
-    internal const string PrimedJunk =
-        "Map grenades primed to explode at the start (fuse timer -2) need explosions, which arrive with combat (Phase 7 branch 5).";
-
-    // SpecialTileType UFO_POWER_SOURCE and BattleType BT_GRENADE.
+    // SpecialTileType UFO_POWER_SOURCE.
     private const int PowerSource = 2;
-    private const int GrenadeBattleType = 4;
 
     /// <summary>
     /// BattlescapeGenerator::setupObjectives: bug hunt off, its minimum turn (the deployment's when set), the VIP rules,

@@ -57,7 +57,7 @@ internal sealed class CivilianDeployment
                     throw new MapGenerationException($"Terrain {terrain.Id} has no civilian types for the deployment's civilians.");
                 type = terrain.CivilianTypes[_random.NextInclusive(0, terrain.CivilianTypes.Count - 1)];
             }
-            var (unitRule, armor) = _battle.UnitRule(_rules, type);
+            var (unitRule, armor) = _battle.UnitRule(type);
             if (AddCivilian(type, unitRule, armor, nodeRank) is not { } civilian) continue;
             // markAsVIP: the deployment's mark adds to the unit rule's own.
             if (markAsVip) civilian.IsVip = true;
@@ -69,7 +69,7 @@ internal sealed class CivilianDeployment
     /// <summary>BattlescapeGenerator::addCivilian: a neutral unit on a spawn node of the rank, else near a friend.</summary>
     private BattleUnit? AddCivilian(string type, RuntimeBattleUnitRule unitRule, RuntimeArmorRule armor, int nodeRank)
     {
-        var unit = _battle.TempUnit(_rules, _unitSequence++, BattleFaction.Neutral, BattleController.Ai, type, unitRule, armor);
+        var unit = _battle.TempUnit(_unitSequence++, BattleFaction.Neutral, BattleController.Ai, type, unitRule, armor);
         if (_placement.SpawnNode(nodeRank, unit) is { } node)
         {
             // getSpawnNode only returns a node the unit can stand on.

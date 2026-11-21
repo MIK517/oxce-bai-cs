@@ -1,10 +1,11 @@
 using Oxce.Gameplay.Battles;
 using Oxce.Gameplay.Campaigns;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
 
-/// <summary>Helpers the battle movement tests share: rule text edits, command results, the walk's last event and a loaded gun.</summary>
+/// <summary>Helpers the battle tests share: rule text edits, command results, a runtime over an arena, the walk's last event and a loaded gun.</summary>
 internal static class BattleTestSupport
 {
     /// <summary>The rules text with <paramref name="from"/> replaced, failing when it does not occur (so a stale edit cannot pass silently).</summary>
@@ -17,6 +18,13 @@ internal static class BattleTestSupport
 
     /// <summary>The code of a command's refusal, which must be its only event.</summary>
     public static string Refusal(CampaignCommandResult result) => Assert.IsType<CampaignActionBlocked>(Assert.Single(result.Events)).Code;
+
+    /// <summary>The code of the refusal the campaign answers a command with, which must be its only event.</summary>
+    public static string Refusal(CampaignState campaign, ICampaignCommand command) => Refusal(campaign.Execute(command));
+
+    /// <summary>A runtime over the arena's battle whose every draw is 0, with the given campaign link (none by default).</summary>
+    public static BattleRuntime RuntimeOf(BattleSightTests.Arena arena, IBattleCampaignLink? link = null) =>
+        new(arena.Battle, arena.Rules, new ScriptedDraws(0), link);
 
     /// <summary>The events of a command that was not refused.</summary>
     public static IReadOnlyList<ICampaignEvent> Events(CampaignCommandResult result)

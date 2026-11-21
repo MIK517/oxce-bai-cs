@@ -131,6 +131,55 @@ public sealed class PrivateBattleGenerationTests
     }, new() { [("modded/rosigma", "Early.sav")] = "battle.new-turn-script-unsupported" });
 
     /// <summary>
+    /// Phase 7 branch 5 S11: none of branch 1's battles is a crashed UFO's, so the farm landing of UFO <c>Begining.sav</c> is staged as one: the landed UFO of the
+    /// deployment request is crashed before the battle starts (the same site, the same deployment; the deployment request was made for the landing, so the battle keeps
+    /// the landing's mission type, which the reference never pairs with a crashed UFO). The generator explodes the UFO's power sources (<c>explodePowerSources</c>) before the
+    /// briefing. Every seed tried leaves no live alien, so the briefing refuses the battle with <c>battle.no-live-aliens</c> (a ported rule) and nothing is played, fired or
+    /// reloaded; a seed that plays on would run the briefing and the first turn, as the other battles do (with no reload check: no reference save exists before the battlescape's
+    /// constructor has finished the units a blast took out).
+    /// </summary>
+    [Fact]
+    public void ACrashedUfoStagedFromTheCorpusGeneratesWithItsPowerSourcesExploded()
+    {
+        var installation = TestFixtures.RequirePrivateInstallation();
+        WithFamily(installation, "vanilla-ufo", loaded =>
+        {
+            var landed = LoadSave(loaded, "vanilla-ufo", "Begining.sav");
+            var (_, request, stop) = RunToDeployment(landed, dispatch: true);
+            Assert.True(request is not null, $"The farm landing stopped without a deployment request: {stop}");
+            var snapshot = landed.Capture();
+            Assert.Contains(snapshot.World.Ufos, static ufo => ufo.Status == UfoStatus.Landed);
+            var crashed = snapshot with
+            {
+                World = snapshot.World with { Ufos = [.. snapshot.World.Ufos.Select(static ufo => ufo.Status == UfoStatus.Landed ? ufo with { Status = UfoStatus.Crashed } : ufo)] },
+            };
+            // A blast of 180 to 250 in a radius of 10 takes the aliens beside it out, and a battle with no live alien is refused at the briefing (a ported rule, and the
+            // outcome of every seed tried here for this farm): the briefing either refuses for that or plays on.
+            var generated = 0;
+            var played = false;
+            for (var seed = 17; seed < 25 && !played; seed++)
+            {
+                var campaign = CampaignState.Restore(crashed, loaded.Content, new SplitMix64RandomSource((ulong)seed));
+                campaign.BattleTerrainFiles = loaded.Files;
+                if (Sources.TryGetValue(landed, out var source)) Sources.AddOrUpdate(campaign, source);
+                var battle = Start(campaign);
+                // explodePowerSources: each source goes off at 75 percent with its own power and a radius of 10; the generated battle keeps the blasts it raised.
+                var blasts = battle.Events.Of<BattleExploded>();
+                if (blasts.Count == 0) continue;
+                generated++;
+                Assert.All(blasts, static blast => Assert.True(blast.Radius > 0 && blast.Power > 0));
+                Assert.False(battle.HasPendingStates);
+                // (No AssertReloads here: a unit a blast took out is the battlescape's to finish, so a reload before the briefing finishes it, as the reference's constructor
+                // does, and the nodes it makes dangerous differ from the generated battle's. The briefing and first turn resolve it before the save.)
+                var refusal = AssertPlaysOrIsRefusedAtTheBriefing(loaded, campaign, battle, " (crashed UFO)");
+                Assert.True(refusal is null or "battle.no-live-aliens", $"Seed {seed}: {refusal}");
+                played = refusal is null;
+            }
+            Assert.True(generated > 0, "No seed exploded a power source.");
+        });
+    }
+
+    /// <summary>
     /// handleBaseDefense's gate: TFTD <c>Middle.sav</c>'s two soldiers are on the Triton, which is out, and the base has no
     /// vehicles, so the attack destroys the base (BaseDestroyedState) and no battle starts.
     /// </summary>
@@ -277,8 +326,9 @@ public sealed class PrivateBattleGenerationTests
     /// (the first-turn restriction is retired) and reloaded into the battlescape directly. A client of another faction sees
     /// only its own side's units and the units its side spotted.
     /// </summary>
-    private static string? AssertPlaysOrIsRefusedAtTheBriefing(LoadedFamily loaded, CampaignState campaign, BattleState battle)
+    private static string? AssertPlaysOrIsRefusedAtTheBriefing(LoadedFamily loaded, CampaignState campaign, BattleState battle, string staged = "")
     {
+        var label = battle.TerrainId + "/" + battle.MapScriptId + staged;
         var context = Context(campaign, BattleViewer.LocalPlayer);
         Assert.True(context.Open("Target", "Craft"));
         Assert.IsType<BattleBriefingScreen>(context.Screens.Top);
@@ -299,9 +349,19 @@ public sealed class PrivateBattleGenerationTests
         Assert.True(outcome.Steps > 0 && outcome.To != outcome.From);
         Assert.True(outcome.Turned && outcome.KneltAndStood, $"The soldier turned {outcome.Turned} and knelt and stood {outcome.KneltAndStood}.");
         var door = BattleAcceptanceDriver.OpenDoor(screen, battle);
-        BattleAcceptanceDriver.Record(battle.TerrainId + "/" + battle.MapScriptId, outcome, door);
+        BattleAcceptanceDriver.Record(label, outcome, door);
         // A UFO door opens on each of the six maps today.
-        if (DoorsOpened.Contains(battle.TerrainId + "/" + battle.MapScriptId)) Assert.NotNull(door);
+        if (staged.Length == 0 && DoorsOpened.Contains(label)) Assert.NotNull(door);
+        // Phase 7 branch 5 S11: a soldier fires its weapon (at a spotted unit, or at a discovered tile when none is spotted) and throws a primed grenade
+        // where the battle has one; the damage, deaths and destroyed terrain follow the rules and the battle still validates, saves and reloads.
+        var hadFirearm = BattleAcceptanceCombat.HasFirearm(battle);
+        var hadGrenade = BattleAcceptanceCombat.HasGrenade(battle);
+        var fight = BattleAcceptanceCombat.Fight(label, context, screen, campaign, battle);
+        Assert.True(fight.Shot is not null || !hadFirearm, $"No soldier fired: {fight.ShotRefusal}");
+        Assert.True(fight.Shot is null || fight.ShotCount > 0);
+        // A grenade is thrown; only a refusal that names a later branch's rule (not the harness's own "no prime line" or "no discovered tile") excuses a battle that threw none.
+        Assert.True(fight.Throw is not null || !hadGrenade || fight.ThrowRefusal is { } later && later.StartsWith("battle.", StringComparison.Ordinal) && later.EndsWith("-unsupported", StringComparison.Ordinal),
+            $"A battle with a grenade threw none: {fight.ThrowRefusal}");
         battle.Validate();
         AssertOtherSidesSeeOnlyTheirOwn(campaign, battle);
         // The battle is saved as it is on turn 1 and reloads straight into the battlescape.
@@ -321,8 +381,11 @@ public sealed class PrivateBattleGenerationTests
         AssertOtherSidesSeeOnlyTheirOwn(reloaded, restored);
         // The reload computes the same lighting, field of view and spotting every viewer sees, and the battle still validates.
         restored.Validate();
-        BattleAcceptanceDriver.AssertSameSight(campaign, reloaded, restored);
-        BattleAcceptanceDriver.Measure(battle.TerrainId + "/" + battle.MapScriptId, reloaded, restored);
+        // Only a battle in which a shot, a throw or a blow was made may find tiles on a reload (the reference's reload runs a field of view from every unit at once, where a live blast's
+        // updates only its radius); the strict check of branch 4's walk and door stays for the others, and the tiles found are recorded.
+        var discovered = BattleAcceptanceDriver.AssertSameSight(campaign, reloaded, restored, mayDiscoverMore: fight.Shot is not null || fight.Throw is not null || fight.Strike is not null);
+        BattleAcceptanceCombat.RecordReloadDiscovered(label, discovered);
+        BattleAcceptanceDriver.Measure(label, reloaded, restored);
         foreach (var faction in Enum.GetValues<BattleFaction>())
         {
             // The load looks from every unit at once: it keeps what the viewers saw and may add what a walk past tired opponents did not show them.
@@ -388,8 +451,9 @@ public sealed class PrivateBattleGenerationTests
         Assert.NotNull(screen.Model.SelectedUnitId);
         var selected = battle.Units.Single(unit => unit.Id == screen.Model.SelectedUnitId);
         Assert.Equal(BattleFaction.Player, selected.Faction);
-        if (battle.Side == BattleFaction.Player && battle.Units.Count(static unit => unit.Faction == BattleFaction.Player) > 1)
+        if (battle.Side == BattleFaction.Player && battle.Units.Count(static unit => unit.Faction == BattleFaction.Player && !unit.IsOut) > 1)
         {
+            // (A soldier the acceptance's fight lost to a reaction is out: the next unit is the only one left.)
             var revision = screen.PresentationRevision;
             Press(context.Screens, 9);
             Assert.NotEqual(selected.Id, screen.Model.SelectedUnitId);

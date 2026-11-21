@@ -251,7 +251,8 @@ public static partial class OxceSaveAdapter
             var map = RequireMap(item, "dead soldier");
             var death = map.TryGet("death", out var deathNode) ? RequireMap(deathNode!, "soldier death") : null;
             var time = death is not null && death.TryGet("time", out var timeNode) ? ReadTime(RequireMap(timeNode!, "death time")) : (CampaignTime?)null;
-            return new DeadSoldierSnapshot(ReadSoldier(map, defaultSoldier, content), time);
+            var cause = death is not null && death.TryGet("cause", out var causeNode) ? OxceBattleSave.ReadKill(causeNode!) : null;
+            return new DeadSoldierSnapshot(ReadSoldier(map, defaultSoldier, content), time) { Cause = cause };
         }).ToArray());
     }
 
@@ -272,6 +273,9 @@ public static partial class OxceSaveAdapter
             var source = buried.GetValueOrDefault(item.Soldier.Id);
             var death = source is not null && source.TryGet("death", out var savedDeath) ? savedDeath as YamlMappingNode : null;
             var deathNode = item.DiedAt is not { } time ? death : Overlay(death, [Pair("time", Time(time))]);
+            // A death in battle (Phase 7 branch 5) names its cause; a loaded node keeps the one it has.
+            if (item.Cause is { } cause && (death is null || !death.TryGet("cause", out _)))
+                deathNode = Overlay(deathNode, [Pair("cause", OxceBattleSave.WriteKill(cause))]);
             // A soldier who died in this session leaves the live node behind: Soldier::die cleared its
             // equipment layouts and promotion flag.
             return Overlay(BuildSoldier(item.Soldier, index), source is not null ? [Pair("death", deathNode)] :

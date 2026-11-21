@@ -7,9 +7,8 @@ namespace Oxce.Gameplay.Battles;
 /// Walking and flying (Phase 7 branch 4 S8): <c>BattlescapeGame::primaryAction</c>'s walk, <c>moveUpDown</c> and <c>UnitWalkBState</c> run to
 /// their end. The reference's <c>think</c> is called once per animation tick: the port runs it as one loop whose cycles are the reference's
 /// (a step starts in one cycle and is finished, with everything that follows it, at the start of the next; a turn eighth is one cycle), a step
-/// collapsed into <see cref="WalkStep"/>. What the reference hands to later work is refused by name: the reaction fire after a step
-/// (<see cref="HasPossibleReactor"/>), proximity explosions, a burning floor whose hit reaches a unit or an explosion, and a fall that finds no escape. The command checks them on a trial
-/// copy of the battle first, so a refusal changes nothing.
+/// collapsed into <see cref="WalkStep"/>. The reaction fire after a step (<see cref="CheckReactionFire"/>) pushes its states behind the walk, which runs them once it ended. No state of the walk refuses after it
+/// has changed something (S11 retired the trial copy that used to run the command first).
 /// </summary>
 internal sealed partial class BattleState
 {
@@ -38,13 +37,11 @@ internal sealed partial class BattleState
     /// <summary>
     /// The walk command (<c>primaryAction</c>): the path to <paramref name="target"/> for the move type, then <see cref="RunWalk"/>. Refused, before
     /// any change, when the armor does not allow moving (or the move type), there is no path, or the first step cannot be taken. Ordered events are
-    /// added to <paramref name="events"/>.
+    /// raised through <see cref="Events"/>.
     /// </summary>
-    internal CampaignReason? Walk(RuntimeRuleCatalog rules, int unitId, BattlePosition target, BattleMoveType move, bool ignoreSpottedEnemies,
-        List<ICampaignEvent> events)
+    internal CampaignReason? Walk(int unitId, BattlePosition target, BattleMoveType move, bool ignoreSpottedEnemies)
     {
-        ArgumentNullException.ThrowIfNull(rules);
-        ArgumentNullException.ThrowIfNull(events);
+        var events = Events;
         if (SelectionUnit(unitId, out var found) is { } closed) return closed;
         var unit = found!;
         if (unit.Position is null) return BattleSelectionReasons.UnitUnknown;
@@ -52,62 +49,72 @@ internal sealed partial class BattleState
         // never reaches its end must not start.
         if (unit.Status != BattleUnitStatus.Standing) return BattleMovementReasons.WalkUnitBusy;
         if (!Contains(target)) return BattleMovementReasons.WalkTargetOutside;
-        if (MoveRefusal(ArmorOf(rules, unit), unit, move) is { } notAllowed) return notAllowed;
+        if (MoveRefusal(ArmorOf(unit), unit, move) is { } notAllowed) return notAllowed;
         var bam = (BattleActionMove)move;
-        var pathfinder = new BattlePathfinder(this, rules);
+        var pathfinder = new BattlePathfinder(this, RequiredRules);
         pathfinder.Calculate(unit, target, bam);
         if (pathfinder.StartDirection == -1) return BattleMovementReasons.WalkNoPath;
         // if running or shifting, ignore spotted enemies (i.e. don't stop)
-        var ignore = ignoreSpottedEnemies || move == BattleMoveType.Run && rules.Campaign.ExtendedRunningCost;
-        return RunWalk(rules, unit, pathfinder, bam, move == BattleMoveType.Strafe, ignore, events);
+        var ignore = ignoreSpottedEnemies || move == BattleMoveType.Run && RequiredRules.Campaign.ExtendedRunningCost;
+        var refusal = RunWalk(unit, pathfinder, bam, move == BattleMoveType.Strafe, ignore, events);
+        // The explosions a unit that blows itself up pushed, and the reactions the walk drew, run behind the walk state; the falls they start follow.
+        RunStates();
+        if (refusal is null) ResolveFalls(out _);
+        return refusal;
     }
 
     /// <summary>
     /// <c>BattlescapeGame::moveUpDown</c> behind the unit up and down buttons (<c>validateUpDown</c> first): a kneeling unit stands up, the path to
     /// the tile a level above or below is calculated, and the unit walks it. A path that is not there is a walk that ends where it started.
     /// </summary>
-    internal CampaignReason? MoveUpDown(RuntimeRuleCatalog rules, int unitId, bool up, List<ICampaignEvent> events)
+    internal CampaignReason? MoveUpDown(int unitId, bool up)
     {
-        ArgumentNullException.ThrowIfNull(rules);
-        ArgumentNullException.ThrowIfNull(events);
+        var events = Events;
         if (SelectionUnit(unitId, out var found) is { } closed) return closed;
         var unit = found!;
         if (unit.Position is not { } position) return BattleSelectionReasons.UnitUnknown;
         if (unit.Status != BattleUnitStatus.Standing) return BattleMovementReasons.WalkUnitBusy;
-        var pathfinder = new BattlePathfinder(this, rules);
+        var pathfinder = new BattlePathfinder(this, RequiredRules);
         if (!pathfinder.ValidateUpDown(unit, position, up ? BattleUnit.DirectionUp : BattleUnit.DirectionDown)) return BattleMovementReasons.UpDownImpossible;
         var target = position with { Z = position.Z + (up ? 1 : -1) };
         if (!Contains(target)) return BattleMovementReasons.UpDownImpossible;
         // The kneel's result is not looked at: a unit that stays kneeling is stopped by the walk's own kneel.
         var kneelSpent = 0;
         var kneeled = false;
-        if (unit.Kneeled && KneelUnit(rules, unit.Id, out var kneeling, out var spent) is null)
+        // The kneel's reactions go to the back of the empty list (the first starts at once), and the walk state is pushed behind them: they play before the unit takes its step.
+        if (unit.Kneeled && KneelUnit(unit.Id, out _, out var spent, raise: true) is null)
         {
-            events.Add(new UnitKneeled(unit.Id, kneeling, spent));
             kneelSpent = spent;
             kneeled = true;
         }
-        if (!ArmorOf(rules, unit).AllowsMoving)
+        if (!ArmorOf(unit).AllowsMoving)
         {
             // The walk state aborts silently in think, after moveUpDown's kneel.
             if (!kneeled) return BattleMovementReasons.WalkNotAllowed;
-            events.Add(new UnitWalkEnded(unit.Id, BattleWalkStop.Arrived, 0, kneelSpent, 0, unit.Position!.Value));
-            Revision++;
+            events.Add(new UnitWalkEnded(unit.Id, BattleWalkStop.Arrived, 0, kneelSpent, 0, RestingPosition(unit) ?? new BattlePosition(-1, -1, -1)));
+            MarkChanged();
+            RunStates();
+            ResolveFalls(out _);
             return null;
         }
         pathfinder.Calculate(unit, target, BattleActionMove.Normal);
-        return RunWalk(rules, unit, pathfinder, BattleActionMove.Normal, false, false, events, kneeled, kneelSpent);
+        // The reactions of the kneel run first (the list's front); the walk state behind them then finds a unit that was shot out and pops.
+        RunStates();
+        var refusal = RunWalk(unit, pathfinder, BattleActionMove.Normal, false, false, events, kneeled, kneelSpent);
+        RunStates();
+        if (refusal is null) ResolveFalls(out _);
+        return refusal;
     }
 
     /// <summary>
     /// <c>UnitWalkBState</c> from <c>init</c> to the pop. Returns a refusal when the walk could not take its first step (nothing changed) or when
-    /// it met something unsupported (the command checks on a trial copy first). A kneeling unit first stands up (<c>BattlescapeGame::kneel</c>).
+    /// it met something unsupported. A kneeling unit first stands up (<c>BattlescapeGame::kneel</c>).
     /// </summary>
-    private CampaignReason? RunWalk(RuntimeRuleCatalog rules, BattleUnit unit, BattlePathfinder pathfinder, BattleActionMove bam, bool strafeAction,
-        bool ignoreSpotted, List<ICampaignEvent> events, bool kneeled = false, int kneelSpent = 0)
+    private CampaignReason? RunWalk(BattleUnit unit, BattlePathfinder pathfinder, BattleActionMove bam, bool strafeAction,
+        bool ignoreSpotted, BattleEventSink events, bool kneeled = false, int kneelSpent = 0)
     {
         var sight = Sight();
-        var armor = ArmorOf(rules, unit);
+        var armor = ArmorOf(unit);
         var numUnitsSpotted = unit.UnitsSpottedThisTurn.Count;
         var startDirection = pathfinder.StartDirection;
         var beforeFirstStep = !strafeAction && startDirection != -1 && startDirection != unit.Direction;
@@ -122,6 +129,8 @@ internal sealed partial class BattleState
         var stop = BattleWalkStop.Arrived;
         CampaignReason? refusal = null;
         var size = unit.ArmorSize;
+        // The explosions the proximity check starts: statePushNext puts them behind the walk state, which pops when it finds one.
+        var proximity = new List<QueuedState>();
 
         // cancelCurentMove: a unit that stopped without a floor keeps falling first; otherwise the path is dropped and the state pops.
         bool Cancel(BattleWalkStop why)
@@ -143,7 +152,7 @@ internal sealed partial class BattleState
         {
             if (unit.Kneeled)
             {
-                if (KneelUnit(rules, unit.Id, out var kneeling, out var spentOnKneel) is { } kneelRefusal)
+                if (KneelUnit(unit.Id, out var kneeling, out var spentOnKneel) is { } kneelRefusal)
                 {
                     pathfinder.AbortPath();
                     refusal = kneelRefusal;
@@ -183,19 +192,22 @@ internal sealed partial class BattleState
                             fallingWhenStopped = false;
                             pathfinder.DequeuePath();
                             AddFallingUnit(unit);
-                            refusal = ResolveFalls(rules, events, out _);
-                            return refusal is not null;
+                            _reactionDuringFall = false;
+                            ResolveFalls(out _);
+                            // UnitFallBState: a unit that landed and drew a reaction aborts the walk's path.
+                            if (_reactionDuringFall)
+                            {
+                                _reactionDuringFall = false;
+                                pathfinder.AbortPath();
+                            }
+                            return false;
                         }
                 }
 
                 // if the unit burns floor tiles, burn floor tiles as long as we're not falling
-                if (!falling && BurnsFloor(rules, unit))
+                if (!falling && BurnsFloor(unit))
                 {
-                    if (BurnFloor(rules, unit, dryRun: false) is { } burnRefusal)
-                    {
-                        refusal = burnRefusal;
-                        return true;
-                    }
+                    BurnFloor(unit);
                     // (A unit that burnt a hole stays standing: gravity queued it, and its fall runs when the walk is over.)
                     if (unit.Status != BattleUnitStatus.Standing)
                     {
@@ -205,25 +217,22 @@ internal sealed partial class BattleState
                 }
                 foreach (var faction in Enum.GetValues<BattleFaction>())
                     if (faction != unit.Faction) SetSpotted(unit, faction, false);
-                if (ProximityEffects(rules, unit))
+                var change = CheckForProximityGrenades(unit, proximity);
+                // Move our personal lighting with us, and update the unit visibility of everyone who can see the last and the present position.
+                CalculateLighting(change != 0 ? BattleLightLayer.Items : BattleLightLayer.Units, position, 2);
+                sight.CalculateFov(position, 2, updateTiles: false);
+                if (change > 1)
                 {
-                    refusal = BattleGravityReasons.ProximityUnsupported;
+                    // popState: the walk is over; the explosion the check pushed runs behind it.
+                    stop = BattleWalkStop.ProximityExplosion;
                     return true;
                 }
-                // Move our personal lighting with us, and update the unit visibility of everyone who can see the last and the present position.
-                CalculateLighting(rules, BattleLightLayer.Units, position, 2);
-                sight.CalculateFov(position, 2, updateTiles: false);
                 // (The brutal units of the side wake up through checkForReactivation when a unit is spotted: the AI's, branch 6.)
                 if (Spotted()) return Cancel(BattleWalkStop.SpottedUnits);
                 if (!falling && !fallingWhenStopped)
                 {
-                    // checkReactionFire: a reactor would shoot (branch 5), the others spot the mover.
-                    if (HasPossibleReactor(rules, unit))
-                    {
-                        refusal = BattleMovementReasons.ReactionFireUnsupported;
-                        return true;
-                    }
-                    SpotMover(rules, sight, unit);
+                    // checkReactionFire: the reactors shoot once the walk ended; the unit got fired upon, stop walking.
+                    if (CheckReactionFire(unit, new BattleReactionOrigin(BattleActionType.Walk, Move: bam))) return Cancel(BattleWalkStop.ReactionFire);
                 }
             }
 
@@ -235,7 +244,7 @@ internal sealed partial class BattleState
                 if (direction == -1)
                 {
                     // postPathProcedures
-                    CalculateLighting(rules, BattleLightLayer.Units, unit.Position);
+                    CalculateLighting(BattleLightLayer.Units, unit.Position);
                     sight.CalculateFov(unit);
                     if (!falling)
                     {
@@ -253,7 +262,7 @@ internal sealed partial class BattleState
                 if (energy > unit.Energy) return Cancel(BattleWalkStop.NotEnoughEnergy);
                 if (!falling)
                 {
-                    var reserve = CheckReservedTimeUnits(rules, unit, tu, energy, false);
+                    var reserve = CheckReservedTimeUnits(unit, tu, energy, false);
                     if (reserve.Unsupported is { } unsupported)
                     {
                         refusal = unsupported;
@@ -272,14 +281,14 @@ internal sealed partial class BattleState
                 // now open doors (if any)
                 if (direction < BattleUnit.DirectionUp)
                 {
-                    if (UnitOpensDoor(rules, unit, false, direction, out var door) is { } doorRefusal)
+                    if (UnitOpensDoor(unit, false, direction, out var door) is { } doorRefusal)
                     {
                         refusal = doorRefusal;
                         return true;
                     }
                     if (door.Changed)
                     {
-                        Revision++;
+                        MarkChanged();
                         changed = true;
                         timeUnitsSpent += door.TimeUnitsSpent;
                         events.Add(new UnitWalkOpenedDoor(unit.Id, door.Result, door.DoorsOpened, door.Centre, door.TimeUnitsSpent));
@@ -293,7 +302,7 @@ internal sealed partial class BattleState
                         var ahead = step.Position with { X = step.Position.X + x, Y = step.Position.Y + y };
                         if (!Contains(ahead)) continue;
                         // Can't walk into units in this tile, or on top of other units sticking their head into this tile.
-                        if (!falling && OverlappingUnit(rules, Map.TileIndex(ahead), OverlapIgnoreSmall) is { } inTheWay && inTheWay != unit)
+                        if (!falling && OverlappingUnit(Map.TileIndex(ahead), OverlapIgnoreSmall) is { } inTheWay && inTheWay != unit)
                             return Cancel(BattleWalkStop.UnitInTheWay);
                     }
 
@@ -306,7 +315,7 @@ internal sealed partial class BattleState
                     if (unit.SpendEnergy(energy))
                     {
                         var from = unit.Position!.Value;
-                        WalkStep(rules, unit, direction, step.Position);
+                        WalkStep(unit, direction, step.Position);
                         beforeFirstStep = false;
                         stepDone = true;
                         changed = true;
@@ -327,7 +336,7 @@ internal sealed partial class BattleState
                     // except before the first step.
                     if (armor.TurnBeforeFirstStep)
                     {
-                        var cost = unit.TurnCost(rules);
+                        var cost = unit.TurnCost(RequiredRules);
                         if (unit.SpendTimeUnits(cost)) paid = cost;
                     }
                     else preMovementCost++;
@@ -341,7 +350,7 @@ internal sealed partial class BattleState
                 {
                     if (beforeFirstStep)
                     {
-                        preMovementCost *= unit.TurnCost(rules);
+                        preMovementCost *= unit.TurnCost(RequiredRules);
                         if (unit.SpendTimeUnits(preMovementCost)) timeUnitsSpent += preMovementCost;
                     }
                     unit.AbortTurn();
@@ -352,16 +361,20 @@ internal sealed partial class BattleState
         }
 
         var limit = 64 + 16 * (Map.Width + Map.Length + Map.Height);
+        var holdsBack = HoldBackPushes();
         for (var cycle = 0; !Think(); cycle++)
             if (cycle > limit) throw new InvalidOperationException($"The walk of battle unit {unit.Id} does not end.");
 
-        // BattlescapeGame::think pushes the fall state once the walk is over: a unit a burnt floor dropped falls now.
-        if (refusal is null && _fallingUnits.Count != 0)
+        // The states the walk pushed (the explosion of a unit that blew itself up) run behind the walk state. BattlescapeGame::think pushes the fall state only once the list is empty:
+        // a unit a burnt floor or a blast dropped falls after the explosions and the reactions the walk drew, which the caller runs and then resolves the falls.
+        PushBehindRunning(proximity);
+        RunStates();
+        if (refusal is not null)
         {
-            refusal = ResolveFalls(rules, events, out var fell);
-            changed |= fell;
+            if (holdsBack) ReleaseBackPushes();
+            return refusal;
         }
-        if (refusal is not null) return refusal;
+        changed |= _fallingUnits.Count != 0;
         if (!changed)
         {
             // Nothing happened: a walk that could not start is refused.
@@ -374,12 +387,19 @@ internal sealed partial class BattleState
                 BattleWalkStop.UnitInTheWay => BattleMovementReasons.WalkUnitInTheWay,
                 _ => null,
             };
-            if (why is not null) return why;
+            if (why is not null)
+            {
+                if (holdsBack) ReleaseBackPushes();
+                return why;
+            }
         }
         if (stop == BattleWalkStop.SpottedUnits)
             events.Add(new UnitsSpotted(unit.Id, [.. unit.UnitsSpottedThisTurn.Skip(numUnitsSpotted)]));
-        events.Add(new UnitWalkEnded(unit.Id, stop, steps, timeUnitsSpent, energySpent, unit.Position!.Value));
-        Revision++;
+        // (A unit a proximity blast took out has no tile: the walk ended where it lies.)
+        events.Add(new UnitWalkEnded(unit.Id, stop, steps, timeUnitsSpent, energySpent, RestingPosition(unit) ?? new BattlePosition(-1, -1, -1)));
+        MarkChanged();
+        // The reactions the walk drew go to the back of the list once the end of the walk is reported (the reference's walk state has popped): the caller runs them.
+        if (holdsBack) ReleaseBackPushes();
         return null;
     }
 }

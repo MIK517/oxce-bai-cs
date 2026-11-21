@@ -10,7 +10,8 @@ namespace Oxce.Gameplay.Battles;
 internal sealed class BattleItem(int id, string itemType)
 {
     public int Id { get; } = id;
-    public string ItemType { get; } = itemType;
+    /// <summary>The item rule; only <c>BattleItem::convertToCorpse</c> changes it (a corpse takes the corpse rule of another armor).</summary>
+    public string ItemType { get; set; } = itemType;
 
     /// <summary>
     /// The order the item arrived on its tile or in its owner's inventory (Tile::getInventory and BattleUnit::getInventory push to the

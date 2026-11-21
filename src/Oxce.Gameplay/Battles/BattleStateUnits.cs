@@ -47,6 +47,15 @@ internal sealed partial class BattleState
 
     private const ulong RestoredRandomSeed = 0x5EED_F1AE_0000_0002UL;
 
+    /// <summary>
+    /// The ordered events the rules raise where an outcome happens (hits, deaths, blasts, fire, steps and falls). A battle in play has the
+    /// <see cref="BattleRuntime"/>'s command empty it; every state, a trial copy included, has a sink of its own.
+    /// </summary>
+    internal BattleEventSink Events { get; } = new();
+
+    /// <summary>The tactical script hooks the rules call; the default does nothing (see <see cref="IBattleHooks"/>).</summary>
+    internal IBattleHooks Hooks { get; set; } = DefaultBattleHooks.Instance;
+
     /// <summary>BattleUnit::deriveHostileRank: the alien ranks whose index is a hostile unit's unified rank.</summary>
     private static readonly string[] HostileRanks =
     [
@@ -60,29 +69,29 @@ internal sealed partial class BattleState
     /// movement type, the unit rule's aggression, spawn unit, VIP flag and weapon pick-up, a unified rank, a recolor drawn
     /// from <see cref="Seedless"/>, and an AI module for a hostile or neutral unit (createTempUnit's).
     /// </summary>
-    internal BattleUnit TempUnit(RuntimeRuleCatalog rules, int id, BattleFaction faction, BattleController controller, string type,
+    internal BattleUnit TempUnit(int id, BattleFaction faction, BattleController controller, string type,
         RuntimeBattleUnitRule rule, RuntimeArmorRule armor, int difficulty = 0, bool summoned = false)
     {
-        var unit = NewUnit(rules, id, faction, controller, type, rule, armor, difficulty);
+        var unit = NewUnit(id, faction, controller, type, rule, armor, difficulty);
         unit.SummonedPlayerUnit = summoned;
-        unit.BannedInNextStage = BannedInNextStage(rules, unit.ArmorId);
+        unit.BannedInNextStage = BannedInNextStage(unit.ArmorId);
         if (faction != BattleFaction.Player) unit.Ai = new BattleAiState(faction);
         return unit;
     }
 
     // The BattleUnit(Unit*) constructor itself, which the load also calls (with the save's armor, no starting condition and
     // no AI module).
-    private BattleUnit NewUnit(RuntimeRuleCatalog rules, int id, BattleFaction faction, BattleController controller, string type,
+    private BattleUnit NewUnit(int id, BattleFaction faction, BattleController controller, string type,
         RuntimeBattleUnitRule rule, RuntimeArmorRule armor, int difficulty)
     {
-        var battleArmor = BattleArmor(rules, armor.Type);
+        var battleArmor = BattleArmor(armor.Type);
         var stats = (BattleUnitStats.From(rule.Stats) + BattleUnitStats.From(armor.Stats)).ObeyFixedMinimum();
         var sides = battleArmor.Sides.ToArray();
         if (faction == BattleFaction.Hostile)
         {
             // adjustStats: the statistics and the five side armor values (the diagonal sides stay 0, ADR 0039).
-            stats = AdjustHostileStats(rules, difficulty, stats);
-            for (var side = 0; side < sides.Length; side++) sides[side] = AdjustHostileArmor(rules, difficulty, sides[side]);
+            stats = AdjustHostileStats(difficulty, stats);
+            for (var side = 0; side < sides.Length; side++) sides[side] = AdjustHostileArmor(difficulty, sides[side]);
         }
         var movement = MovementType(armor);
         var unit = new BattleUnit(id, faction, controller)
@@ -100,9 +109,10 @@ internal sealed partial class BattleState
         unit.OriginalFaction = faction;
         unit.KilledBy = (int)faction;
         unit.OriginalMovementType = movement;
-        unit.Vision = BattleUnitVision.ForUnit(rules, battleArmor, faction);
+        unit.Vision = BattleUnitVision.ForUnit(RequiredRules, battleArmor, faction);
         unit.MoveCosts = unit.ArmorMoveCosts = battleArmor.MoveCosts;
         sides.CopyTo(unit.CurrentArmor, 0);
+        sides.CopyTo(unit.MaxArmor, 0);
         unit.Aggression = rule.Aggression;
         unit.SpawnUnit = rule.SpawnUnit;
         unit.EnergyRegeneration = rule.EnergyRecovery;
@@ -110,7 +120,7 @@ internal sealed partial class BattleState
         // Options::autoCombatDefaultHWP, autoCombatDefaultMindControl and autoCombatDefaultRemain, all on by default.
         unit.AllowAutoCombat = true;
         unit.PickUpWeaponsMoreActively = rule.PickUpWeaponsMoreActively != -1 ? rule.PickUpWeaponsMoreActively != 0
-            : faction == BattleFaction.Hostile ? rules.Campaign.AiPickUpWeaponsMoreActively : rules.Campaign.AiPickUpWeaponsMoreActivelyCivilians;
+            : faction == BattleFaction.Hostile ? RequiredRules.Campaign.AiPickUpWeaponsMoreActively : RequiredRules.Campaign.AiPickUpWeaponsMoreActivelyCivilians;
         // deriveHostileRank and deriveNeutralRank, before updateArmorFromNonSoldier's recolor.
         if (faction == BattleFaction.Hostile) unit.RankIntUnified = Math.Max(Array.IndexOf(HostileRanks, rule.Rank), 0);
         else if (faction == BattleFaction.Neutral) unit.RankIntUnified = Seedless.NextInclusive(0, 7);
@@ -128,19 +138,19 @@ internal sealed partial class BattleState
     /// starting condition (<paramref name="startingCondition"/>), which bans the armors it forbids in the next stage; the
     /// load passes none.
     /// </summary>
-    internal BattleUnit SoldierUnit(RuntimeRuleCatalog rules, int id, BattleSoldier soldier, string armorId, RuntimeArmorRule armor,
+    internal BattleUnit SoldierUnit(int id, BattleSoldier soldier, string armorId, RuntimeArmorRule armor,
         string originalArmorId, bool startingCondition = true)
     {
         ArgumentNullException.ThrowIfNull(soldier);
         var personal = soldier.Personal;
-        var battleArmor = BattleArmor(rules, armorId);
+        var battleArmor = BattleArmor(armorId);
         // Soldier::prepareStatsWithBonuses: current statistics, soldier bonuses and the battle armor's statistics.
-        var stats = (BattleUnitStats.From(CampaignState.StatsWithBonuses(personal, rules)) + BattleUnitStats.From(armor.Stats))
+        var stats = (BattleUnitStats.From(CampaignState.StatsWithBonuses(personal, RequiredRules)) + BattleUnitStats.From(armor.Stats))
             .ObeyFixedMinimum();
         var health = Math.Max(1, stats.Health - personal.HealthMissing);
         var morale = 100;
         // Wounded soldiers (defending the base) start with lowered morale.
-        if (SoldierReadiness.IsWounded(personal, rules.Campaign.ManaWoundThreshold, rules.Campaign.HealthWoundThreshold))
+        if (SoldierReadiness.IsWounded(personal, RequiredRules.Campaign.ManaWoundThreshold, RequiredRules.Campaign.HealthWoundThreshold))
         {
             morale = 75;
             health = Math.Max(1, health - (int)Math.Ceiling(personal.Recovery));
@@ -172,17 +182,20 @@ internal sealed partial class BattleState
         // The aggression is left uninitialized for a soldier (ADR 0039: 0).
         unit.AllowAutoCombat = personal.AllowAutoCombat;
         unit.EnergyRegeneration = personal.InitialStats.GetValueOrDefault("tu") / 3;
-        var bonuses = CampaignState.SoldierBonuses(personal, rules);
-        unit.Vision = BattleUnitVision.ForSoldier(rules, battleArmor, bonuses.Select(bonus => rules.SoldierBonuses[bonus].Value));
+        var bonuses = CampaignState.SoldierBonuses(personal, RequiredRules);
+        unit.Vision = BattleUnitVision.ForSoldier(RequiredRules, battleArmor, bonuses.Select(bonus => RequiredRules.SoldierBonuses[bonus].Value));
         for (var side = 0; side < battleArmor.Sides.Count; side++)
         {
             var value = battleArmor.Sides[side];
-            foreach (var bonus in bonuses) value = unchecked(value + rules.SoldierBonuses[bonus].Value.Sides[side]);
+            foreach (var bonus in bonuses) value = unchecked(value + RequiredRules.SoldierBonuses[bonus].Value.Sides[side]);
             unit.CurrentArmor[side] = Math.Max(0, value);
         }
+        unit.CurrentArmor.CopyTo(unit.MaxArmor, 0);
+        unit.Gender = personal.Gender;
+        unit.SoldierPsiSkill = personal.CurrentStats.GetValueOrDefault("psiSkill");
         var look = personal.Gender + 2 * personal.Look + 8 * personal.LookVariant;
         SetRecolor(unit, battleArmor, look, look, unit.RankIntUnified);
-        if (startingCondition) unit.BannedInNextStage = BannedInNextStage(rules, armorId);
+        if (startingCondition) unit.BannedInNextStage = BannedInNextStage(armorId);
         return unit;
     }
 
@@ -190,12 +203,12 @@ internal sealed partial class BattleState
     /// BattleUnit::prepareBannedFlag with the battle's starting condition: whether its <c>forbiddenArmorsInNextStage</c>
     /// holds the armor.
     /// </summary>
-    private bool BannedInNextStage(RuntimeRuleCatalog rules, string armorId) =>
-        StartingConditionId.Length != 0 && rules.StartingConditions.TryGet(StartingConditionId, out var handle) &&
-        rules.StartingConditions[handle].Value.ForbiddenArmorsInNextStage.Contains(armorId, StringComparer.Ordinal);
+    private bool BannedInNextStage(string armorId) =>
+        StartingConditionId.Length != 0 && RequiredRules.StartingConditions.TryGet(StartingConditionId, out var handle) &&
+        RequiredRules.StartingConditions[handle].Value.ForbiddenArmorsInNextStage.Contains(armorId, StringComparer.Ordinal);
 
-    private static RuntimeBattleArmor BattleArmor(RuntimeRuleCatalog rules, string armorId) =>
-        rules.Battle.Equipment.Armors.TryGetValue(armorId, out var armor) ? armor
+    private RuntimeBattleArmor BattleArmor(string armorId) =>
+        RequiredRules.Battle.Equipment.Armors.TryGetValue(armorId, out var armor) ? armor
             : throw new Generation.MapGenerationException($"Armor {armorId} does not exist.");
 
     /// <summary>
@@ -235,12 +248,12 @@ internal sealed partial class BattleState
     /// BattleUnit::adjustStats for a hostile unit: percentage growth times the difficulty coefficient, the firing multiplier
     /// (truncated to the 16-bit field), absolute growth. Mod::getStatAdjustment takes the last adjustment past it.
     /// </summary>
-    internal static BattleUnitStats AdjustHostileStats(RuntimeRuleCatalog rules, int difficulty, BattleUnitStats stats)
+    internal BattleUnitStats AdjustHostileStats(int difficulty, BattleUnitStats stats)
     {
-        var adjustments = rules.Campaign.StatAdjustments;
+        var adjustments = RequiredRules.Campaign.StatAdjustments;
         if (adjustments.Count == 0) return stats;
         var adjustment = adjustments[Math.Min(difficulty, adjustments.Count - 1)];
-        var multiplier = rules.Campaign.Interception.DifficultyCoefficient(difficulty);
+        var multiplier = RequiredRules.Campaign.Interception.DifficultyCoefficient(difficulty);
         var growth = BattleUnitStats.From(adjustment.StatGrowth);
         stats += Percent(stats, growth, multiplier);
         stats = stats with { Firing = unchecked((short)(int)(stats.Firing * adjustment.AimMultiplier)) };
@@ -248,9 +261,9 @@ internal sealed partial class BattleState
     }
 
     /// <summary>adjustStats' armor: each side times the armor multiplier (truncated to an int), plus the absolute bonus.</summary>
-    internal static int AdjustHostileArmor(RuntimeRuleCatalog rules, int difficulty, int side)
+    internal int AdjustHostileArmor(int difficulty, int side)
     {
-        var adjustments = rules.Campaign.StatAdjustments;
+        var adjustments = RequiredRules.Campaign.StatAdjustments;
         if (adjustments.Count == 0) return side;
         var adjustment = adjustments[Math.Min(difficulty, adjustments.Count - 1)];
         return unchecked((int)(side * adjustment.ArmorMultiplier) + adjustment.ArmorMultiplierAbsolute);
@@ -370,11 +383,10 @@ internal sealed partial class BattleState
     /// </summary>
     private void RestoreUnits(BattleSnapshot snapshot, RuntimeContent content, BattleRestoreCampaign? campaign)
     {
-        var rules = content.RuntimeRules;
         var restored = new List<(BattleUnit Unit, BattleUnitSnapshot Saved)>();
         foreach (var saved in snapshot.Units)
         {
-            var unit = saved.Id < MaximumSoldierId ? RestoreSoldier(rules, saved, campaign) : RestoreGenerated(rules, saved, campaign);
+            var unit = saved.Id < MaximumSoldierId ? RestoreSoldier(saved, campaign) : RestoreGenerated(saved, campaign);
             Load(unit, saved, content);
             restored.Add((unit, saved));
         }
@@ -413,30 +425,30 @@ internal sealed partial class BattleState
         UndoUnitId = undo;
     }
 
-    private BattleUnit RestoreSoldier(RuntimeRuleCatalog rules, BattleUnitSnapshot saved, BattleRestoreCampaign? campaign)
+    private BattleUnit RestoreSoldier(BattleUnitSnapshot saved, BattleRestoreCampaign? campaign)
     {
         var soldier = campaign?.Soldiers(saved.Id)
             ?? throw new InvalidDataException($"Battle save unit {saved.Id} is soldier {saved.Id}, which the campaign does not have.");
         var personal = soldier.Personal;
         // new BattleUnit(mod, savedGame->getSoldier(id), _depth, nullptr): the soldier's armor, which StartBattle set to the
         // battle armor (deployXCOM); genUnitArmor is not read, so a unit saved in other armor takes the soldier's.
-        if (!rules.Armors.TryGet(personal.Armor, out var handle) || !rules.Battle.Equipment.Armors.ContainsKey(personal.Armor))
+        if (!RequiredRules.Armors.TryGet(personal.Armor, out var handle) || !RequiredRules.Battle.Equipment.Armors.ContainsKey(personal.Armor))
             throw new InvalidDataException($"Battle save unit {saved.Id}: soldier {saved.Id} wears unknown armor '{personal.Armor}'.");
         var original = personal.TransformedArmor.Length != 0 ? personal.TransformedArmor : personal.ReplacedArmor;
-        var unit = SoldierUnit(rules, saved.Id, soldier, personal.Armor, rules.Armors[handle].Value, original, startingCondition: false);
+        var unit = SoldierUnit(saved.Id, soldier, personal.Armor, RequiredRules.Armors[handle].Value, original, startingCondition: false);
         unit.Controller = saved.Controller;
         return unit;
     }
 
-    private BattleUnit RestoreGenerated(RuntimeRuleCatalog rules, BattleUnitSnapshot saved, BattleRestoreCampaign? campaign)
+    private BattleUnit RestoreGenerated(BattleUnitSnapshot saved, BattleRestoreCampaign? campaign)
     {
         // OxceBattleSave.Read leaves out a unit whose rule or armor is gone (the load's continue).
-        if (!rules.Battle.Equipment.Units.TryGetValue(saved.UnitType, out var rule) || !rules.Armors.TryGet(saved.ArmorId, out var armor) ||
-            !rules.Battle.Equipment.Armors.ContainsKey(saved.ArmorId))
+        if (!RequiredRules.Battle.Equipment.Units.TryGetValue(saved.UnitType, out var rule) || !RequiredRules.Armors.TryGet(saved.ArmorId, out var armor) ||
+            !RequiredRules.Battle.Equipment.Armors.ContainsKey(saved.ArmorId))
             throw new InvalidDataException($"Battle save unit {saved.Id} names unknown unit '{saved.UnitType}' or armor '{saved.ArmorId}'.");
         // The BattleUnit(Unit*) constructor with the save's original faction and armor, no enviro effects and the
         // campaign's difficulty; the load creates no AI module unless the save has one.
-        return NewUnit(rules, saved.Id, saved.OriginalFaction, saved.Controller, saved.UnitType, rule, rules.Armors[armor].Value,
+        return NewUnit(saved.Id, saved.OriginalFaction, saved.Controller, saved.UnitType, rule, RequiredRules.Armors[armor].Value,
             campaign?.Difficulty ?? 0);
     }
 

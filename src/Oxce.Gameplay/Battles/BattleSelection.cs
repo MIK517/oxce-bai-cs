@@ -23,12 +23,12 @@ internal sealed partial class BattleState
     internal BattleUnit? UnitOnTile(int tile) => Map.UnitAt(tile) is { } id ? UnitById(id) : null;
 
     /// <summary>BattleUnit::hasInventory: the unit's armor has an inventory.</summary>
-    private static bool HasInventory(RuntimeRuleCatalog rules, BattleUnit unit) =>
-        rules.Battle.Equipment.Armors.TryGetValue(unit.ArmorId, out var armor) && armor.HasInventory;
+    private bool HasInventory(BattleUnit unit) =>
+        RequiredRules.Battle.Equipment.Armors.TryGetValue(unit.ArmorId, out var armor) && armor.HasInventory;
 
     /// <summary>BattleUnit::isSelectable.</summary>
-    private static bool IsSelectable(RuntimeRuleCatalog rules, BattleUnit unit, BattleFaction side, bool checkReselect, bool checkInventory) =>
-        unit.Faction == side && !unit.IsOut && (!checkReselect || !unit.DontReselect) && (!checkInventory || HasInventory(rules, unit));
+    private bool IsSelectable(BattleUnit unit, BattleFaction side, bool checkReselect, bool checkInventory) =>
+        unit.Faction == side && !unit.IsOut && (!checkReselect || !unit.DontReselect) && (!checkInventory || HasInventory(unit));
 
     /// <summary>
     /// The slot whose selection is the saved one (ADR 0039): the lowest human slot among the units that fight for the side on turn
@@ -43,7 +43,7 @@ internal sealed partial class BattleState
         return slot;
     }
 
-    private bool WritesSavedSelection(BattleUnit unit) =>
+    internal bool WritesSavedSelection(BattleUnit unit) =>
         unit.Controller.Kind == BattleControllerKind.Player && unit.Controller.PlayerSlot == WritingSlot();
 
     /// <summary>
@@ -51,7 +51,7 @@ internal sealed partial class BattleState
     /// <c>isSelectable</c>, wrapping around. Coming back to the start returns the unit itself, or nothing when it may not be reselected.
     /// Nothing is changed but the <c>dontReselect</c> flag of <paramref name="from"/> when <paramref name="setReselect"/>.
     /// </summary>
-    private BattleUnit? SelectPlayerUnit(RuntimeRuleCatalog rules, BattleUnit? from, int direction, bool checkReselect, bool setReselect, bool checkInventory)
+    private BattleUnit? SelectPlayerUnit(BattleUnit? from, int direction, bool checkReselect, bool setReselect, bool checkInventory)
     {
         var selected = from;
         if (selected is not null && setReselect) selected.DontReselect = true;
@@ -77,7 +77,7 @@ internal sealed partial class BattleState
             }
             if (selected is null && index == begin) return null;
         }
-        while (!IsSelectable(rules, _units[index], Side, checkReselect, checkInventory));
+        while (!IsSelectable(_units[index], Side, checkReselect, checkInventory));
         return _units[index];
     }
 
@@ -86,7 +86,7 @@ internal sealed partial class BattleState
     /// three dimensions; ties go to the list order, which <c>std::sort</c> leaves open). With <paramref name="setReselect"/> the
     /// selection is first dropped, so none is left when no unit is a candidate.
     /// </summary>
-    private BattleUnit? SelectPlayerUnitByDistance(RuntimeRuleCatalog rules, BattleUnit? from, bool checkReselect, bool setReselect, bool checkInventory)
+    private BattleUnit? SelectPlayerUnitByDistance(BattleUnit? from, bool checkReselect, bool setReselect, bool checkInventory)
     {
         var selected = from;
         if (selected is not null && setReselect)
@@ -98,7 +98,7 @@ internal sealed partial class BattleState
         var bestDistance = 0;
         foreach (var unit in _units)
         {
-            if (ReferenceEquals(unit, selected) || !IsSelectable(rules, unit, Side, checkReselect, checkInventory)) continue;
+            if (ReferenceEquals(unit, selected) || !IsSelectable(unit, Side, checkReselect, checkInventory)) continue;
             var distance = from is null ? 0 : DistanceSquared(from, unit);
             if (best is null || distance < bestDistance)
             {
@@ -124,6 +124,7 @@ internal sealed partial class BattleState
         var found = UnitById(unitId);
         if (found is null || found.Faction != Side || found.IsOut) return BattleSelectionReasons.UnitUnknown;
         unit = found;
+        _commandActor = found;
         return null;
     }
 
@@ -135,25 +136,25 @@ internal sealed partial class BattleState
         if (unit!.Position is null) return BattleSelectionReasons.UnitUnknown;
         saved = WritesSavedSelection(unit);
         if (saved) SelectedUnitId = unit.Id;
-        Revision++;
+        MarkChanged();
         return null;
     }
 
     /// <summary>Next or previous soldier, the saved selection written when this unit's slot is the writing one.</summary>
-    internal CampaignReason? SelectAdjacent(RuntimeRuleCatalog rules, int unitId, bool backwards, bool inventoryOnly, out BattleUnit? result, out bool saved)
+    internal CampaignReason? SelectAdjacent(int unitId, bool backwards, bool inventoryOnly, out BattleUnit? result, out bool saved)
     {
         result = null;
         saved = false;
         if (SelectionUnit(unitId, out var from, inventoryOnly) is { } refusal) return refusal;
         saved = WritesSavedSelection(from!);
-        result = SelectPlayerUnit(rules, from, backwards ? -1 : 1, checkReselect: !inventoryOnly, setReselect: false, checkInventory: inventoryOnly);
+        result = SelectPlayerUnit(from, backwards ? -1 : 1, checkReselect: !inventoryOnly, setReselect: false, checkInventory: inventoryOnly);
         if (saved) SelectedUnitId = result?.Id;
-        Revision++;
+        MarkChanged();
         return null;
     }
 
     /// <summary>"Next and stop": the unit becomes the undo unit and may not be reselected; the next unit by list order or distance is selected.</summary>
-    internal CampaignReason? Skip(RuntimeRuleCatalog rules, int unitId, bool byDistance, out BattleUnit? result, out bool saved)
+    internal CampaignReason? Skip(int unitId, bool byDistance, out BattleUnit? result, out bool saved)
     {
         result = null;
         saved = false;
@@ -161,10 +162,10 @@ internal sealed partial class BattleState
         saved = WritesSavedSelection(from!);
         if (saved) UndoUnitId = from!.Id;
         result = byDistance
-            ? SelectPlayerUnitByDistance(rules, from, checkReselect: true, setReselect: true, checkInventory: false)
-            : SelectPlayerUnit(rules, from, 1, checkReselect: true, setReselect: true, checkInventory: false);
+            ? SelectPlayerUnitByDistance(from, checkReselect: true, setReselect: true, checkInventory: false)
+            : SelectPlayerUnit(from, 1, checkReselect: true, setReselect: true, checkInventory: false);
         if (saved) SelectedUnitId = result?.Id;
-        Revision++;
+        MarkChanged();
         return null;
     }
 
@@ -172,14 +173,14 @@ internal sealed partial class BattleState
     /// <c>btnVisibleUnitClick</c>'s right click: the selectable unit of the side on turn that sees the target with the most time units left (a percent
     /// of its base time units) is selected; none that sees it is a refusal (the reference does nothing).
     /// </summary>
-    internal CampaignReason? SelectSpotter(RuntimeRuleCatalog rules, int unitId, int targetId, out BattleUnit? result, out bool saved)
+    internal CampaignReason? SelectSpotter(int unitId, int targetId, out BattleUnit? result, out bool saved)
     {
         result = null;
         saved = false;
         if (SelectionUnit(unitId, out _) is { } refusal) return refusal;
         if (UnitById(targetId) is not { } target || !Sees(Side, target)) return BattleSelectionReasons.UnitUnknown;
         var spotter = _units
-            .Where(unit => IsSelectable(rules, unit, Side, false, false) && unit.HasVisibleUnit(target))
+            .Where(unit => IsSelectable(unit, Side, false, false) && unit.HasVisibleUnit(target))
             .OrderByDescending(static unit => unit.Stats.TimeUnits > 0 ? unit.TimeUnits * 100 / unit.Stats.TimeUnits : 0)
             .FirstOrDefault();
         if (spotter is null) return BattleSelectionReasons.NoSpotter;
@@ -189,17 +190,17 @@ internal sealed partial class BattleState
     }
 
     /// <summary>The undo unit of the saved selection, when it can be selected again (<c>isSelectable(side, false, false)</c>).</summary>
-    internal BattleUnit? UndoCandidate(RuntimeRuleCatalog rules) =>
-        UndoUnitId is { } id && UnitById(id) is { } unit && IsSelectable(rules, unit, Side, false, false) ? unit : null;
+    internal BattleUnit? UndoCandidate() =>
+        UndoUnitId is { } id && UnitById(id) is { } unit && IsSelectable(unit, Side, false, false) ? unit : null;
 
-    internal CampaignReason? ReselectSkipped(RuntimeRuleCatalog rules, int unitId)
+    internal CampaignReason? ReselectSkipped(int unitId)
     {
         if (SelectionAvailable() is { } closed) return closed;
-        if (UndoCandidate(rules) is not { } candidate || candidate.Id != unitId) return BattleSelectionReasons.NothingToUndo;
+        if (UndoCandidate() is not { } candidate || candidate.Id != unitId) return BattleSelectionReasons.NothingToUndo;
         candidate.DontReselect = false;
         SelectedUnitId = candidate.Id;
         UndoUnitId = null;
-        Revision++;
+        MarkChanged();
         return null;
     }
 
@@ -207,18 +208,18 @@ internal sealed partial class BattleState
 
     private bool IsViewersSide(BattleViewer viewer) => Enum.IsDefined(viewer.Faction) ? viewer.Faction == Side : throw new ArgumentOutOfRangeException(nameof(viewer));
 
-    internal BattleSelectionView SelectionView(RuntimeRuleCatalog rules, BattleViewer viewer)
+    internal BattleSelectionView SelectionView(BattleViewer viewer)
     {
         var own = IsViewersSide(viewer) && Phase != BattlePhase.Briefing;
         int? selected = own && SelectedUnitId is { } id && UnitById(id) is { Faction: var faction } && faction == viewer.Faction ? id : null;
         int? undo = own && UndoUnitId is { } undoId && UnitById(undoId) is { Faction: var undoFaction } && undoFaction == viewer.Faction ? undoId : null;
         var selectable = own
-            ? _units.Where(unit => IsSelectable(rules, unit, Side, true, false)).Select(static unit => unit.Id).ToArray()
+            ? _units.Where(unit => IsSelectable(unit, Side, true, false)).Select(static unit => unit.Id).ToArray()
             : [];
-        return new BattleSelectionView(selected, undo, selectable, own ? WritingSlot() : -1, Revision);
+        return new BattleSelectionView(selected, undo, selectable, own ? WritingSlot() : -1, Revision, own ? ReserveKind : BattleReserveKind.None, own && KneelReserved);
     }
 
-    internal BattleLegalActions? LegalActions(RuntimeRuleCatalog rules, BattleViewer viewer, int unitId)
+    internal BattleLegalActions? LegalActions(BattleViewer viewer, int unitId)
     {
         if (!Enum.IsDefined(viewer.Faction)) throw new ArgumentOutOfRangeException(nameof(viewer));
         var unit = UnitById(unitId);
@@ -239,17 +240,17 @@ internal sealed partial class BattleState
             actions.Add(BattleActionKind.SelectPreviousUnit);
             actions.Add(BattleActionKind.SkipUnit);
             actions.Add(BattleActionKind.SkipUnitByDistance);
-            if (UndoCandidate(rules) is not null) actions.Add(BattleActionKind.ReselectSkippedUnit);
+            if (UndoCandidate() is not null) actions.Add(BattleActionKind.ReselectSkippedUnit);
             // btnInventoryClick: a selected unit whose armor has an inventory.
-            if (InventoryAvailable(rules, unitId, out _) is null) actions.Add(BattleActionKind.OpenInventory);
+            if (InventoryAvailable(unitId, out _) is null) actions.Add(BattleActionKind.OpenInventory);
             // The movement buttons and clicks (S10): what each lists is what the command can start; the time units it needs are the command's refusal.
             if (unit.Position is not null)
             {
                 actions.Add(BattleActionKind.Turn);
-                if (AllowsKneeling(rules, unit) && !unit.Floating) actions.Add(BattleActionKind.Kneel);
-                if (ArmorOf(rules, unit).AllowsMoving) actions.Add(BattleActionKind.Walk);
-                if (UpDownLegal(rules, unit, up: true)) actions.Add(BattleActionKind.MoveUp);
-                if (UpDownLegal(rules, unit, up: false)) actions.Add(BattleActionKind.MoveDown);
+                if (AllowsKneeling(unit) && !unit.Floating) actions.Add(BattleActionKind.Kneel);
+                if (ArmorOf(unit).AllowsMoving) actions.Add(BattleActionKind.Walk);
+                if (UpDownLegal(unit, up: true)) actions.Add(BattleActionKind.MoveUp);
+                if (UpDownLegal(unit, up: false)) actions.Add(BattleActionKind.MoveDown);
             }
             foreach (var other in _units)
                 if (other.Id != unitId && other.Faction == Side && !other.IsOut && other.Position is not null) others.Add(other.Id);
@@ -257,16 +258,16 @@ internal sealed partial class BattleState
         return new BattleLegalActions(unitId, actions, others);
     }
 
-    internal BattleUnitInfo? UnitInfo(RuntimeRuleCatalog rules, BattleViewer viewer, int unitId)
+    internal BattleUnitInfo? UnitInfo(BattleViewer viewer, int unitId)
     {
         if (!Enum.IsDefined(viewer.Faction)) throw new ArgumentOutOfRangeException(nameof(viewer));
         var unit = UnitById(unitId);
         if (unit is null || unit.Faction != viewer.Faction || unit.IsOut) return null;
-        BattleTileItemView? Hand(bool right) => HandItem(rules, unit, right) is { } held ? new BattleTileItemView(held.Id, held.ItemType) : null;
+        BattleTileItemView? Hand(bool right) => HandItem(unit, right) is { } held ? new BattleTileItemView(held.Id, held.ItemType) : null;
         // updateSoldierInfo: the units this unit sees (its visible-unit list, in order), then the hostile units any unit of its side sees.
         var direct = unit.VisibleUnits;
         var visible = direct.Concat(_units.Where(other => other.OriginalFaction == BattleFaction.Hostile && !other.IsOut &&
-                (viewer.Faction == BattleFaction.Player ? other.IsVisibleToPlayer(rules) : other.IsSpottedBy(viewer.Faction)) && !direct.Contains(other.Id))
+                (viewer.Faction == BattleFaction.Player ? other.IsVisibleToPlayer(RequiredRules) : other.IsSpottedBy(viewer.Faction)) && !direct.Contains(other.Id))
             .Select(static other => other.Id)).ToArray();
         // updateSoldierInfo's wounded list: units under the player's control (the unconscious too) with fatal wounds; burning ones are the
         // client's option (oxceShowBurningAsWounded).
@@ -275,7 +276,12 @@ internal sealed partial class BattleState
         var burning = indicated.Where(static other => other.Fire > 0).Select(static other => other.Id).ToArray();
         return new BattleUnitInfo(unit.Id, unit.SoldierId, unit.UnitType, unit.TimeUnits, unit.Stats.TimeUnits, unit.Energy, unit.Stats.Stamina,
             unit.Health, unit.Stats.Health, unit.StunLevel, unit.Morale, unit.Mana, unit.Stats.Mana, unit.Kneeled,
-            Hand(right: true), Hand(right: false), visible, wounded, burning);
+            Hand(right: true), Hand(right: false), visible, wounded, burning, unit.FatalWounds.Sum(),
+            SpecialIconWeapon(unit) is { } icon ? new BattleTileItemView(icon.Id, icon.ItemType) : null,
+            EmptyHandSpecialWeapon(unit) is { } empty ? new BattleTileItemView(empty.Id, empty.ItemType) : null,
+            SpecialWeapons(unit).Select(static special => special.Id).ToArray(),
+            unit.PreferredHandForReactions, unit.ReactionsDisabledForLeftHand, unit.ReactionsDisabledForRightHand,
+            EmptyHandSpecialWeapon(unit, shown: true) is { } shown ? new BattleTileItemView(shown.Id, shown.ItemType) : null, HasSkills(unit));
     }
 
     /// <summary>

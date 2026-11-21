@@ -67,6 +67,13 @@ internal static class BattleGeometry
     public static int HorizontalDistanceSquared(BattlePosition one, BattlePosition other) =>
         (one.X - other.X) * (one.X - other.X) + (one.Y - other.Y) * (one.Y - other.Y);
 
+    /// <summary>
+    /// The voxel in the middle of a tile across (x and y) at <paramref name="zOffset"/> voxels above the tile's bottom; by default its centre
+    /// (<c>tile.toVoxel() + TileEngine::voxelTileCenter</c>).
+    /// </summary>
+    public static BattlePosition TileCentreVoxel(BattlePosition tile, int zOffset = VoxelsPerLevel / 2) =>
+        new(tile.X * VoxelsPerTile + VoxelsPerTile / 2, tile.Y * VoxelsPerTile + VoxelsPerTile / 2, tile.Z * VoxelsPerLevel + zOffset);
+
     /// <summary>The tile a voxel lies in.</summary>
     public static BattlePosition TileOfVoxel(BattlePosition voxel) => new(voxel.X / VoxelsPerTile, voxel.Y / VoxelsPerTile, voxel.Z / VoxelsPerLevel);
 }

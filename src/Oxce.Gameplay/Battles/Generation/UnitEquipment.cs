@@ -11,13 +11,6 @@ namespace Oxce.Gameplay.Battles.Generation;
 /// </summary>
 internal sealed class UnitEquipment
 {
-    // BattleType values.
-    private const int Firearm = 1;
-    private const int Ammo = 2;
-    private const int Melee = 3;
-    private const int Medikit = 6;
-    private const int PsiAmp = 9;
-
     /// <summary>RuleItem::AmmoSlotSelfUse.</summary>
     private const int SelfUse = -1;
 
@@ -152,7 +145,7 @@ internal sealed class UnitEquipment
         if (itemType.Length == 0 || next >= SpecialWeaponMaximum) return;
         var rule = ItemRule(itemType);
         if (unit.Stats.PsiSkill <= 0 && BattleItemRule(itemType).PsiRequired) return;
-        if (rule.BattleType is Firearm or Melee && rule.ClipSize == 0)
+        if (rule.BattleType is RuntimeBattleItem.FirearmBattleType or RuntimeBattleItem.MeleeBattleType && rule.ClipSize == 0)
             throw new MapGenerationException($"Weapon {itemType} is used as a special built-in weapon on unit {unit.UnitType} but doesn't have it's own ammo - give it a clipSize!");
         if (unit.SpecialWeaponIds.Exists(id => _battle.FindItem(id)?.ItemType == itemType)) return;
         // SavedBattleGame::createItemForUnitSpecialBuiltin: owned, in no inventory section.
@@ -169,9 +162,9 @@ internal sealed class UnitEquipment
     private void AddFixedItems(BattleUnit unit, IReadOnlyList<string> items)
     {
         foreach (var itemType in items)
-            if (ItemRule(itemType).BattleType != Ammo) CreateItemForUnit(itemType, unit, fixedWeapon: true);
+            if (ItemRule(itemType).BattleType != RuntimeBattleItem.AmmoBattleType) CreateItemForUnit(itemType, unit, fixedWeapon: true);
         foreach (var itemType in items)
-            if (ItemRule(itemType).BattleType == Ammo) CreateItemForUnit(itemType, unit, fixedWeapon: true);
+            if (ItemRule(itemType).BattleType == RuntimeBattleItem.AmmoBattleType) CreateItemForUnit(itemType, unit, fixedWeapon: true);
     }
 
     /// <summary>
@@ -195,13 +188,13 @@ internal sealed class UnitEquipment
         if (standardPlayerUnit)
         {
             weight = CarriedWeight(unit, armor) + TotalWeight(item);
-            if (rule.BattleType is not (Firearm or Melee) && !allowInfinite)
+            if (rule.BattleType is not (RuntimeBattleItem.FirearmBattleType or RuntimeBattleItem.MeleeBattleType) && !allowInfinite)
             {
                 var tally = 0;
                 foreach (var carried in _battle.InventoryOf(unit))
                 {
                     if (carried.ItemType != item.ItemType) continue;
-                    if (!allowSecondClip || rule.BattleType != Ammo || ++tally == 2) return false;
+                    if (!allowSecondClip || rule.BattleType != RuntimeBattleItem.AmmoBattleType || ++tally == 2) return false;
                 }
             }
         }
@@ -235,8 +228,8 @@ internal sealed class UnitEquipment
         if (battleRule.ManaRequired && player) return false;
 
         var keep = true;
-        var ammoCase = rule.BattleType == Ammo;
-        if (rule.BattleType is Firearm or Melee)
+        var ammoCase = rule.BattleType == RuntimeBattleItem.AmmoBattleType;
+        if (rule.BattleType is RuntimeBattleItem.FirearmBattleType or RuntimeBattleItem.MeleeBattleType)
         {
             var loaded = HaveAnyAmmo(item) || !player || !armor.HasInventory || allowUnloadedWeapons;
             if (loaded && (unit.SoldierId is null || allowAutoLoadout))
@@ -268,9 +261,9 @@ internal sealed class UnitEquipment
             }
         }
 
-        if (!placed && (rule.BattleType != Ammo || keep))
+        if (!placed && (rule.BattleType != RuntimeBattleItem.AmmoBattleType || keep))
         {
-            if (rule.BattleType == PsiAmp && unit.Faction == BattleFaction.Hostile)
+            if (rule.BattleType == RuntimeBattleItem.PsiAmpBattleType && unit.Faction == BattleFaction.Hostile)
             {
                 // C2: hostiles hold a psi-amp.
                 if (Fit(rightHand, item, unit, testMode) || Fit(leftHand, item, unit, testMode)) placed = true;
@@ -477,9 +470,9 @@ internal sealed class UnitEquipment
     public bool HaveAnyAmmo(BattleItem item)
     {
         if (!item.IsWeaponWithAmmo) return true;
-        return ItemRule(item.ItemType).BattleType == Melee
-            ? AmmoForAction(item, 3) is not null
-            : AmmoForAction(item, 0) is not null || AmmoForAction(item, 1) is not null || AmmoForAction(item, 2) is not null;
+        return ItemRule(item.ItemType).BattleType == RuntimeBattleItem.MeleeBattleType
+            ? AmmoForAction(item, BattleState.MeleeActionIndex) is not null
+            : AmmoForAction(item, BattleState.AimedActionIndex) is not null || AmmoForAction(item, BattleState.AutoActionIndex) is not null || AmmoForAction(item, BattleState.SnapActionIndex) is not null;
     }
 
     /// <summary>BattleItem::haveAllAmmo: every ammo slot holds something (the weapon itself for a slot that takes none).</summary>
@@ -494,7 +487,8 @@ internal sealed class UnitEquipment
             throw new MapGenerationException($"Item {item.ItemType} names ammo slot {slot}.");
         if (item.AmmoSlots[slot] is not { } id) return null;
         var ammo = id == item.Id ? item : Find(id);
-        return ammo.AmmoQuantity == 0 && !BattleItemRule(ammo.ItemType).AmmoRechargeable ? null : ammo;
+        // getAmmoQuantity: an item with no clip size (-1) never runs dry.
+        return ItemRule(ammo.ItemType).ClipSize != -1 && ammo.AmmoQuantity == 0 && !BattleItemRule(ammo.ItemType).AmmoRechargeable ? null : ammo;
     }
 
     /// <summary>BattleItem::getTotalWeight: the item and the ammo loaded in it.</summary>

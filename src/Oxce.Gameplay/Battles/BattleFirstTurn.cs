@@ -24,17 +24,20 @@ internal static class BattleFlowReasons
     internal static readonly CampaignReason NoLiveAliens = new("battle.no-live-aliens",
         "The battle has no live aliens once its primed items have spawned; the reference then ends in the aliens' crash screen, and the battle outcome arrives with Phase 7 branch 7.");
 
-    internal static readonly CampaignReason CasualtiesUnsupported = new("battle.casualties-unsupported",
-        "A unit is past the out threshold but not yet out; the casualty check the battlescape runs when it opens arrives with turn processing (Phase 7 branch 6).");
-
     internal static readonly CampaignReason NoLiveSoldiers = new("battle.no-live-soldiers",
         "A battle with no live X-COM soldiers ends the battle, which arrives with the battle outcome (Phase 7 branch 7).");
 
     internal static readonly CampaignReason ReinforcementsUnsupported = new("battle.reinforcements-unsupported",
         "A reinforcement wave of the deployment could deploy at the start; deploying reinforcements arrives with turn processing (Phase 7 branch 6).");
 
-    internal static readonly CampaignReason FlareBonusUnsupported = new("battle.flare-power-bonus-unsupported",
-        "A flare's glow range is its power plus the damage bonus of its rule; evaluating a damage bonus script arrives with Phase 7 branch 8.");
+    internal static readonly CampaignReason StatBonusScriptUnsupported = new("battle.stat-bonus-script-unsupported",
+        "An item or armor in the battle writes a stat bonus (a damage bonus, melee bonus, accuracy or melee or throw or close quarters multiplier, psi defence or melee dodge) as script code, or the rules bind a global event for one; script bindings in battle arrive with Phase 7 branch 8.");
+
+    internal static readonly CampaignReason CombatScriptUnsupported = new("battle.combat-script-unsupported",
+        "The battle's rules bind a combat script (hitUnit, damageUnit, damageSpecialUnit or their ammunition forms, tryMeleeAttack, reactionWeaponAction, reactionUnitAction, reactionUnitReaction, aiCalculateTargetWeight or awardExperience); script bindings in battle arrive with Phase 7 branch 8.");
+
+    internal static readonly CampaignReason PsiUnsupported = new("battle.psi-unsupported",
+        "A firearm of the battle takes a psi amplifier as ammunition, so its shot would be a psi attack; the psi attack arrives with Phase 7 branch 6.");
 
     internal static readonly CampaignReason SpawnContentInvalid = new("battle.generation-failed",
         "A primed spawn item spawns a unit, but the mod lists no ten alien item levels for the battle's month.");
@@ -50,9 +53,6 @@ internal static class BattleFlowReasons
 
     internal static readonly CampaignReason TurnRecoveryScriptUnsupported = new("battle.turn-recovery-script-unsupported",
         "A unit's time unit or energy recovery is scripted or comes from soldier bonuses; recovery scripts arrive with Phase 7 branch 8.");
-
-    internal static readonly CampaignReason TurnOneReviveUnsupported = new("battle.turn-one-revive-unsupported",
-        "An unconscious unit that would wake up or an infected unit that would turn at the first turn needs turn processing (Phase 7 branch 6).");
 }
 
 /// <summary>BattlescapeGame::tallyUnits' live counts: aliens (units of the aliens' side) and X-COM soldiers.</summary>
@@ -65,7 +65,6 @@ internal readonly record struct BattleTally(int LiveAliens, int LiveSoldiers);
 /// </summary>
 internal sealed partial class BattleState
 {
-    private const int GrenadeBattleType = 4;
     private const int RightLeg = 4;
     private const int LeftLeg = 5;
     private const int Torso = 1;
@@ -86,31 +85,31 @@ internal sealed partial class BattleState
     /// BriefingState's constructor: the target is the craft's destination (when it has one), the craft or base line is set,
     /// and the mod's operation names replace the target with a random name from <see cref="Seedless"/>.
     /// </summary>
-    internal void NameMission(RuntimeRuleCatalog rules, string destination, string craftOrBase)
+    internal void NameMission(string destination, string craftOrBase)
     {
         if (BriefingFromCraft && destination.Length != 0) TargetName = destination;
         CraftOrBaseName = craftOrBase;
-        var first = rules.Campaign.OperationNamesFirst;
+        var first = RequiredRules.Campaign.OperationNamesFirst;
         if (first.Count != 0)
         {
             var name = first[Seedless.NextInclusive(0, first.Count - 1)];
-            var last = rules.Campaign.OperationNamesLast;
+            var last = RequiredRules.Campaign.OperationNamesLast;
             if (last.Count != 0) name += " " + last[Seedless.NextInclusive(0, last.Count - 1)];
             TargetName = name;
         }
         BriefingOpened = true;
-        Revision++;
+        MarkChanged();
     }
 
     /// <summary>
-    /// <c>BattlescapeGame::checkForCasualties</c>'s victims, which the battlescape's constructor runs for every battle it opens
-    /// (<c>hiddenExplosion</c>): a unit that is not dead and has no health left, or that is not unconscious and whose stun reaches
-    /// its health, whatever its spawn unit. The reference kills, stuns or converts them; turn processing (Phase 7 branch 6) does,
-    /// so the briefing and the running battle refuse by name while one exists.
+    /// What the battlescape's constructor does for every battle it opens, a loaded one included (<c>BattlescapeGame.cpp:194</c>):
+    /// <c>checkForCasualties</c> as a hidden explosion kills, stuns or converts the units past the out threshold, and queues the units that
+    /// have no floor to fall. The falls are the caller's to resolve (<see cref="ResolveFalls()"/>).
     /// </summary>
-    internal bool HasUncheckedCasualty() =>
-        _units.Any(static unit => unit.Status != BattleUnitStatus.IgnoreMe && unit.Status != BattleUnitStatus.Dead &&
-            (unit.Health <= 0 || unit.StunLevel >= unit.Health && unit.Status != BattleUnitStatus.Unconscious));
+    internal IReadOnlyList<BattleCasualty> OpenBattlescape()
+    {
+        return CheckForCasualties(null, default, hiddenExplosion: true);
+    }
 
     /// <summary>BattlescapeGame::tallyUnits for the counts the briefing and the first turn read: units that are not out (or are over
     /// the out threshold but turn into another unit), by original faction. Surrender mode, captured units and the exit areas
@@ -139,52 +138,55 @@ internal sealed partial class BattleState
     /// BattlescapeGame::spawnFromPrimedItems' list: items on a tile that spawn a unit or an item, are not X-COM's or a unit's
     /// special weapon, and are grenades primed with a fuse that ran out (timer 0, enabled).
     /// </summary>
-    internal List<BattleItem> PrimedSpawnItems(RuntimeRuleCatalog rules)
+    internal List<BattleItem> PrimedSpawnItems()
     {
         var result = new List<BattleItem>();
         foreach (var item in _items)
         {
             if (item.Tile is null || item.XcomProperty || item.IsSpecialWeapon) continue;
-            if (!rules.Battle.Equipment.Items.TryGetValue(item.ItemType, out var battleRule) || !battleRule.Spawns) continue;
-            if (rules.Items.GetRequiredValue(item.ItemType).BattleType == GrenadeBattleType && item.FuseTimer == 0 && item.FuseEnabled)
+            if (!RequiredRules.Battle.Equipment.Items.TryGetValue(item.ItemType, out var battleRule) || !battleRule.Spawns) continue;
+            if (RequiredRules.Items.GetRequiredValue(item.ItemType).BattleType == RuntimeBattleItem.GrenadeBattleType && item.FuseTimer == 0 && item.FuseEnabled)
                 result.Add(item);
         }
         return result;
     }
 
     /// <summary>Whether a primed item spawns a unit while the mod lists no ten alien item levels for the month (the reference throws).</summary>
-    internal bool SpawnLacksItemLevels(RuntimeRuleCatalog rules)
+    internal bool SpawnLacksItemLevels()
     {
-        var levels = rules.Campaign.AlienItemLevels;
+        var levels = RequiredRules.Campaign.AlienItemLevels;
         var missing = AlienItemLevel < 0 || AlienItemLevel >= levels.Count || levels[AlienItemLevel].Count < 10;
-        return missing && PrimedSpawnItems(rules).Any(item => rules.Battle.Equipment.Items[item.ItemType].SpawnUnit.Length != 0);
+        return missing && PrimedSpawnItems().Any(item => RequiredRules.Battle.Equipment.Items[item.ItemType].SpawnUnit.Length != 0);
     }
 
     /// <summary>The briefing is confirmed: the pre-battle inventory follows.</summary>
-    internal void EnterInventory(RuntimeRuleCatalog rules)
+    internal void EnterInventory()
     {
         Phase = BattlePhase.Inventory;
         // InventoryState::init: a selected unit without an inventory gives way to the next unit that has one. When none has (only vehicles),
         // the reference closes the inventory at once; the selection then stays and the client sends StartFirstTurn.
-        if (SelectedUnitId is { } id && UnitById(id) is { } selected && !HasInventory(rules, selected))
-            SelectedUnitId = SelectPlayerUnit(rules, selected, 1, checkReselect: false, setReselect: false, checkInventory: true)?.Id;
-        Revision++;
+        if (SelectedUnitId is { } id && UnitById(id) is { } selected && !HasInventory(selected))
+            SelectedUnitId = SelectPlayerUnit(selected, 1, checkReselect: false, setReselect: false, checkInventory: true)?.Id;
+        MarkChanged();
     }
 
     /// <summary>
     /// BattlescapeGame::spawnFromPrimedItems: for each primed item, spawnNewUnit, spawnNewItem, then the item leaves the game
     /// (removeItem), whether or not anything spawned.
     /// </summary>
-    internal (int Units, int Items) SpawnFromPrimedItems(RuntimeContent content, int difficulty, IRandomSource random)
+    internal (int Units, int Items) SpawnFromPrimedItems(RuntimeContent content)
     {
-        var rules = content.RuntimeRules;
-        var equipment = new UnitEquipment(this, rules, random);
+        // The campaign's stream and difficulty are the runtime's: the state holds the stream, the link the difficulty.
+        var random = Random;
+        // A battle always has the campaign's link (SavedBattleGame::createTempUnit reads the geoscape save's difficulty): none is a wiring defect.
+        var difficulty = (CampaignLink ?? throw new InvalidOperationException("The battle has no campaign link to read the difficulty from.")).Difficulty;
+        var equipment = new UnitEquipment(this, RequiredRules, random);
         var units = 0;
         var items = 0;
-        foreach (var item in PrimedSpawnItems(rules))
+        foreach (var item in PrimedSpawnItems())
         {
-            var rule = rules.Battle.Equipment.Items[item.ItemType];
-            if (SpawnNewUnit(item, rule, rules, equipment, difficulty, random)) units++;
+            var rule = RequiredRules.Battle.Equipment.Items[item.ItemType];
+            if (SpawnNewUnit(item, rule, equipment, difficulty, random)) units++;
             if (SpawnNewItem(item, rule, equipment, random)) items++;
             RemoveItem(item);
         }
@@ -194,12 +196,12 @@ internal sealed partial class BattleState
     private BattleUnit? OwnerOf(BattleItem item)
     {
         var id = item.OwnerUnitId ?? item.PreviousOwnerUnitId;
-        return id is { } owner ? _units.Find(unit => unit.Id == owner) : null;
+        return id is { } owner ? UnitById(owner) : null;
     }
 
-    /// <summary>spawnNewUnit's faction: the rule's, or the item owner's for -1 (any other value, or no owner, is the aliens').</summary>
-    private BattleFaction SpawnFaction(BattleItem item, RuntimeBattleItem rule) =>
-        rule.SpawnUnitFaction == -1 && OwnerOf(item) is { } owner ? owner.Faction : rule.SpawnUnitFaction switch
+    /// <summary>spawnNewUnit's faction: the rule's, or the owner's for -1 (any other value, or no owner, is the aliens').</summary>
+    private static BattleFaction SpawnFaction(BattleUnit? owner, RuntimeBattleItem rule) =>
+        rule.SpawnUnitFaction == -1 && owner is not null ? owner.Faction : rule.SpawnUnitFaction switch
         {
             0 => BattleFaction.Player,
             1 => BattleFaction.Hostile,
@@ -208,28 +210,43 @@ internal sealed partial class BattleState
         };
 
     /// <summary>Whether a primed item could spawn a live alien (a unit on the aliens' side, drawn with a chance over 0).</summary>
-    internal bool PrimedSpawnsMayAddAliens(RuntimeRuleCatalog rules) =>
-        PrimedSpawnItems(rules).Any(item =>
+    internal bool PrimedSpawnsMayAddAliens() =>
+        PrimedSpawnItems().Any(item =>
         {
-            var rule = rules.Battle.Equipment.Items[item.ItemType];
-            return rule.SpawnUnit.Length != 0 && rule.SpawnUnitChance > 0 && SpawnFaction(item, rule) == BattleFaction.Hostile;
+            var rule = RequiredRules.Battle.Equipment.Items[item.ItemType];
+            return rule.SpawnUnit.Length != 0 && rule.SpawnUnitChance > 0 && SpawnFaction(OwnerOf(item), rule) == BattleFaction.Hostile;
         });
 
-    private bool SpawnNewUnit(BattleItem item, RuntimeBattleItem rule, RuntimeRuleCatalog rules, UnitEquipment equipment, int difficulty,
+    /// <summary>BattlescapeGame::spawnNewUnit(item): the briefing's form, for a primed item lying on its tile (its owner's faction for -1).</summary>
+    private bool SpawnNewUnit(BattleItem item, RuntimeBattleItem rule, UnitEquipment equipment, int difficulty,
         IRandomSource random)
     {
         if (rule.SpawnUnit.Length == 0 || !RandomChance.Percent(random, rule.SpawnUnitChance)) return false;
-        var owner = OwnerOf(item);
-        var faction = SpawnFaction(item, rule);
-        var (unitRule, armor) = UnitRule(rules, rule.SpawnUnit);
-        // createTempUnit: the next ID after the last unit's; a player unit made this way is a summoned one.
-        var unit = TempUnit(rules, (_units.Count == 0 ? -1 : _units[^1].Id) + 1, faction,
+        return PlaceSpawnedUnit(rule, OwnerOf(item), difficulty, item.Tile!.Value, checkInside: false, startDirection: 0, facing: null, random,
+            equipment) is not null;
+    }
+
+    /// <summary>
+    /// The body both forms of spawnNewUnit share once the chance passed: createTempUnit (the next ID after the last unit's; a player unit made
+    /// this way is a summoned one), the placement on the tile or beside it (searched from <paramref name="startDirection"/>; with
+    /// <paramref name="checkInside"/>, a position off the map places nothing), the facing (<paramref name="facing"/>, else a draw from
+    /// <paramref name="random"/>), a tank's weapon and clip, the item level, then the unit joins the battle unseen by the player unless it is
+    /// theirs, is equipped and takes gravity on its tile. Null when it could not be placed.
+    /// </summary>
+    private BattleUnit? PlaceSpawnedUnit(RuntimeBattleItem rule, BattleUnit? owner, int difficulty, BattlePosition position, bool checkInside,
+        int startDirection, int? facing, IRandomSource random, UnitEquipment equipment)
+    {
+        var faction = SpawnFaction(owner, rule);
+        var (unitRule, armor) = UnitRule(rule.SpawnUnit);
+        var unit = TempUnit((_units.Count == 0 ? -1 : _units[^1].Id) + 1, faction,
             faction == BattleFaction.Player ? BattleController.Human(0) : BattleController.Ai, rule.SpawnUnit, unitRule, armor, difficulty,
             summoned: faction == BattleFaction.Player);
-        if (BattlePlacement.ValidForUnit(Map, unit, item.Tile!.Value, surrounding: true, startDirection: 0) is not { } position) return false;
-        var direction = random.NextInclusive(0, 7);
+        if ((checkInside && !Contains(position)) ||
+            BattlePlacement.ValidForUnit(Map, unit, position, surrounding: true, startDirection: startDirection) is not { } placed)
+            return null;
+        var direction = facing ?? random.NextInclusive(0, 7);
         // A tank is armed with its weapon (the item named like the unit) and that weapon's clip.
-        if (rules.Battle.Equipment.Items.TryGetValue(unit.UnitType, out var weaponRule) && weaponRule.Fixed)
+        if (RequiredRules.Battle.Equipment.Items.TryGetValue(unit.UnitType, out var weaponRule) && weaponRule.Fixed)
         {
             equipment.CreateItemForUnit(unit.UnitType, unit, fixedWeapon: true);
             if (equipment.VehicleClipAmmo(unit.UnitType) is { } clip && equipment.CreateItemForUnit(clip, unit) is { } ammo)
@@ -237,26 +254,36 @@ internal sealed partial class BattleState
             unit.TurretType = weaponRule.TurretType;
         }
         var itemLevel = equipment.DrawItemLevel();
-        unit.Position = position;
+        unit.Position = placed;
         unit.SetDirection(direction);
         unit.TimeUnits = 0;
         unit.PreviousOwnerId = owner?.Id;
         AddUnit(unit);
         SetSpotted(unit, BattleFaction.Player, faction == BattleFaction.Player);
         equipment.InitUnit(unit, unitRule, "", itemLevel);
-        // applyGravity on the unit's tile: it falls with the first turn's falls, or its tile's items drop.
+        // applyGravity on the unit's tile: it falls with the first turn's falls (or the attack's), or its tile's items drop.
         ApplyGravity(unit.Position);
-        return true;
+        return unit;
     }
 
+    /// <summary>BattlescapeGame::spawnNewItem(item): the briefing's form, for a primed item lying on its tile.</summary>
     private bool SpawnNewItem(BattleItem item, RuntimeBattleItem rule, UnitEquipment equipment, IRandomSource random)
     {
         if (rule.SpawnItem.Length == 0 || !RandomChance.Percent(random, rule.SpawnItemChance)) return false;
-        var owner = OwnerOf(item);
-        var created = equipment.CreateItemForTile(rule.SpawnItem, item.Tile);
-        created.PreviousOwnerUnitId = owner?.Id;
-        ApplyGravity(created.Tile);
+        PlaceSpawnedItem(rule, OwnerOf(item), item.Tile, equipment);
         return true;
+    }
+
+    /// <summary>
+    /// The body both forms of spawnNewItem share once the chance passed: the rule's spawn item lies on the tile, remembers its previous owner and
+    /// falls to a floor (where it landed is returned with it).
+    /// </summary>
+    private (BattleItem Created, BattlePosition? Landed) PlaceSpawnedItem(RuntimeBattleItem rule, BattleUnit? owner, BattlePosition? tile,
+        UnitEquipment equipment)
+    {
+        var created = equipment.CreateItemForTile(rule.SpawnItem, tile);
+        created.PreviousOwnerUnitId = owner?.Id;
+        return (created, ApplyGravity(created.Tile));
     }
 
     /// <summary>SavedBattleGame::removeItem: a special weapon stays; the item and the ammo loaded in it leave the battle's items.</summary>
@@ -266,16 +293,16 @@ internal sealed partial class BattleState
         MoveToOwner(item, null);
         foreach (var slot in item.AmmoSlots)
             if (slot is { } id && id != item.Id) _items.RemoveAll(ammo => ammo.Id == id);
-        Revision++;
+        MarkChanged();
     }
 
     /// <summary>
     /// NextTurnState::checkBugHuntMode on the first turn: bug hunt starts when the minimum turn came and the aliens left are
     /// few, hidden, no leaders and powerless (no weapon in hand, low morale or too many time units left).
     /// </summary>
-    internal void CheckBugHuntMode(RuntimeRuleCatalog rules)
+    internal void CheckBugHuntMode()
     {
-        var campaign = rules.Campaign;
+        var campaign = RequiredRules.Campaign;
         if (Math.Max(Turn, 1) < BughuntMinTurn || BughuntMode) return;
         var count = 0;
         foreach (var unit in _units)
@@ -284,7 +311,7 @@ internal sealed partial class BattleState
             if (unit.IsSpottedBy(BattleFaction.Player) || unit.Rank <= campaign.BughuntRank) return;
             if (++count > campaign.BughuntMaxEnemies) return;
             var hasWeapon = InventoryOf(unit).Any(static item => item.Slot is "STR_LEFT_HAND" or "STR_RIGHT_HAND");
-            var ruleTime = rules.Battle.Equipment.Units.TryGetValue(unit.UnitType, out var unitRule) ? unitRule.Stats.GetValueOrDefault("tu") : 0;
+            var ruleTime = RequiredRules.Battle.Equipment.Units.TryGetValue(unit.UnitType, out var unitRule) ? unitRule.Stats.GetValueOrDefault("tu") : 0;
             if (hasWeapon && unit.Morale >= campaign.BughuntLowMorale && unit.TimeUnits <= ruleTime * campaign.BughuntTimeUnitsLeft / 100) return;
         }
         BughuntMode = true;
@@ -292,8 +319,7 @@ internal sealed partial class BattleState
 
     /// <summary>
     /// What stops <see cref="StartFirstTurn"/> before it changes anything: a new-turn or recovery script the rules bind (the
-    /// reference runs them; script bindings in battle are branch 8's), and an unconscious unit that would wake up or an
-    /// infected unit that would turn (branch 6's turn processing).
+    /// reference runs them; script bindings in battle are branch 8's).
     /// </summary>
     internal CampaignReason? FirstTurnRefusal(RuntimeContent content, BattleRestoreCampaign campaign)
     {
@@ -305,39 +331,32 @@ internal sealed partial class BattleState
         }
         foreach (var item in _items)
         {
-            var owner = item.OwnerUnitId is { } id ? _units.Find(unit => unit.Id == id) : null;
+            var owner = item.OwnerUnitId is { } id ? UnitById(id) : null;
             if (owner?.Status == BattleUnitStatus.IgnoreMe) continue;
             if (HasRuleScript(content, "items", item.ItemType, "newTurnItem")) return BattleFlowReasons.NewTurnScriptUnsupported;
         }
         if (VisibilityScriptRefusal(content) is { } visibility) return visibility;
-        if (VoxelDataFault(content.RuntimeRules) is not null) return BattleFlowReasons.LineOfFireDataInvalid;
-        foreach (var item in _items)
-            if (item.ItemType is var type && content.RuntimeRules.Items.TryGet(type, out var handle) && content.RuntimeRules.Items[handle].Value.BattleType == FlareBattleType &&
-                (content.RuntimeRules.Battle.Equipment.Items[type].StrengthApplied || HasRuleScript(content, "items", type, "damageBonusBonusStats") || HasEventPlan(content, "damageBonusBonusStats")))
-                return BattleFlowReasons.FlareBonusUnsupported;
-        var rules = content.RuntimeRules;
+        if (VoxelDataFault() is not null) return BattleFlowReasons.LineOfFireDataInvalid;
+        if (CombatScriptRefusal(content) is { } combat) return combat;
         foreach (var unit in _units)
         {
-            if (unit.OriginalFaction != BattleFaction.Player || unit.IsOut) continue;
+            // reviveUnconsciousUnits(false) recovers the time units of a small unconscious unit that wakes up, as a unit of the new turn does.
+            var wakes = unit.ArmorSize == 1 && unit.Status == BattleUnitStatus.Unconscious && !unit.IsOutThresholdExceeded;
+            // (Any side's unit wakes up; only X-COM's live units prepare their first turn.)
+            if (!wakes && (unit.OriginalFaction != BattleFaction.Player || unit.IsOut)) continue;
             if (HasEventPlan(content, "timeRecoveryBonusStats") || HasEventPlan(content, "energyRecoveryBonusStats") ||
                 HasRuleScript(content, "armors", unit.ArmorId, "timeRecoveryBonusStats") ||
                 HasRuleScript(content, "armors", unit.ArmorId, "energyRecoveryBonusStats"))
                 return BattleFlowReasons.TurnRecoveryScriptUnsupported;
             if (unit.SoldierId is { } soldierId && campaign.Soldiers(soldierId) is { } soldier)
-                foreach (var bonus in CampaignState.SoldierBonuses(soldier.Personal, rules))
+                foreach (var bonus in CampaignState.SoldierBonuses(soldier.Personal, RequiredRules))
                 {
-                    var id = rules.SoldierBonuses.GetExternalId(bonus);
+                    var id = RequiredRules.SoldierBonuses.GetExternalId(bonus);
                     if (HasRuleScript(content, "soldierBonuses", id, "timeSoldierRecoveryBonusStats") ||
                         HasRuleScript(content, "soldierBonuses", id, "energySoldierRecoveryBonusStats"))
                         return BattleFlowReasons.TurnRecoveryScriptUnsupported;
                 }
         }
-        // reviveUnconsciousUnits(false) wakes a small unconscious unit that is over the out threshold no more; convertInfected
-        // turns a unit with the respawn flag.
-        foreach (var unit in _units)
-            if (unit.ArmorSize == 1 && unit.Status == BattleUnitStatus.Unconscious && !unit.IsOutThresholdExceeded ||
-                !unit.IsOutThresholdExceeded && unit.Respawn)
-                return BattleFlowReasons.TurnOneReviveUnsupported;
         return null;
     }
 
@@ -345,30 +364,35 @@ internal sealed partial class BattleState
     /// The armor's <c>visibilityUnit</c> script (or a global event of that name) changes whether a unit is seen, in <c>TileEngine::visible</c>;
     /// battle scripts are branch 8's, so a battle whose units wear such an armor, or whose mods bind the event, stops.
     /// </summary>
-    internal CampaignReason? VisibilityScriptRefusal(RuntimeContent content)
+    internal CampaignReason? VisibilityScriptRefusal(RuntimeContent content) => VisibilityScriptRefusal(content, ReachableRules(content.RuntimeRules).Armors);
+
+    /// <summary><see cref="VisibilityScriptRefusal(RuntimeContent)"/> for the reachable armors the caller already computed.</summary>
+    internal static CampaignReason? VisibilityScriptRefusal(RuntimeContent content, HashSet<string> reachableArmors)
     {
         if (HasEventPlan(content, "visibilityUnit")) return BattleFlowReasons.VisibilityScriptUnsupported;
-        foreach (var unit in _units)
-            if (HasRuleScript(content, "armors", unit.ArmorId, "visibilityUnit")) return BattleFlowReasons.VisibilityScriptUnsupported;
+        // The armors of the units a command can create (a zombie's conversion, a spawn) are looked at as well (ReachableRules).
+        foreach (var artifact in content.Scripts)
+            if (artifact.OwnerSection == "armors" && artifact.ParserName == "visibilityUnit" && reachableArmors.Contains(artifact.OwnerId))
+                return BattleFlowReasons.VisibilityScriptUnsupported;
         return null;
     }
 
-    private static bool HasRuleScript(RuntimeContent content, string section, string id, string parser) =>
+    internal static bool HasRuleScript(RuntimeContent content, string section, string id, string parser) =>
         content.Scripts.Any(artifact => artifact.OwnerSection == section && artifact.OwnerId == id && artifact.ParserName == parser);
 
-    private static bool HasEventPlan(RuntimeContent content, string parser) =>
+    internal static bool HasEventPlan(RuntimeContent content, string parser) =>
         content.EventPlans.Any(plan => plan.ParserName == parser && plan.Plan.Count != 0);
 
     /// <summary>
     /// SavedBattleGame::startFirstTurn: the ground items of the selected unit's tile (the craft inventory tile, <see cref="TileOf"/>)
     /// go to random storage tiles (a base defense), the units are put back on their tiles, the unit standing on that tile is selected, every live X-COM
-    /// unit prepares its first turn, and the turn is 1. The new-turn scripts, reviving and converting are refused beforehand
-    /// (<see cref="FirstTurnRefusal"/>). Without a selected unit on the map (a null dereference in the reference) the
+    /// unit prepares its first turn, the turn is 1, and the unconscious that wake up revive and the infected turn into their spawn units. The
+    /// new-turn scripts are refused beforehand (<see cref="FirstTurnRefusal"/>). Without a selected unit on the map (a null dereference in the reference) the
     /// inventory-tile steps are skipped (ADR 0039).
     /// </summary>
-    internal CampaignReason? StartFirstTurn(RuntimeContent content, IRandomSource random)
+    internal void StartFirstTurn(RuntimeContent content)
     {
-        Random = random;
+        var random = Random;
         var equipment = new UnitEquipment(this, content.RuntimeRules, Seedless);
         var selected = SelectedUnitId is { } id ? UnitById(id) : null;
         var inventoryTile = selected is null ? null : TileOf(selected);
@@ -379,21 +403,23 @@ internal sealed partial class BattleState
             if (unit.OriginalFaction == BattleFaction.Player && !unit.IsOut) PrepareNewTurn(unit, equipment);
         Turn = 1;
         Phase = BattlePhase.InProgress;
+        // newTurnUpdateScripts (the scripts themselves are refused beforehand): the unconscious that wake up, and the infected that turn.
+        ReviveUnconsciousUnits(noTU: false);
+        ConvertInfected();
         // The falls the spawns and the inventory's gravity started run when the battlescape first thinks.
-        var rules = content.RuntimeRules;
         RequeueFallingUnits();
-        CloseInventory(rules);
-        return ResolveFalls(rules);
+        CloseInventory();
+        ResolveFalls();
     }
 
     /// <summary>
     /// InventoryState's destructor, as the inventory closes: gravity on the selected unit's tile, the items' light (a flare dropped or picked
     /// up), then everyone's field of view. The falls that gravity queues are the caller's to resolve.
     /// </summary>
-    internal void CloseInventory(RuntimeRuleCatalog rules)
+    internal void CloseInventory()
     {
         ApplyGravity(SelectedUnitId is { } chosen ? UnitById(chosen)?.Position : null);
-        CalculateLighting(rules, BattleLightLayer.Items);
+        CalculateLighting(BattleLightLayer.Items);
         RecalculateFov();
     }
 

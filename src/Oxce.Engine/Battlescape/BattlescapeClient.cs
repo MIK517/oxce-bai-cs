@@ -23,15 +23,8 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
     /// <summary>Buttons of the reference's battlescape whose rules arrive later: key, code and owner. Each is refused by that code.</summary>
     public static readonly IReadOnlyList<(char Key, string Code, string Owner)> LaterButtons =
     [
-        ('f', "battle.shooting-unsupported", "Phase 7 branch 5"),
-        ('q', "battle.left-hand-item-unsupported", "Phase 7 branch 5"),
-        ('t', "battle.right-hand-item-unsupported", "Phase 7 branch 5"),
-        ('p', "battle.psi-unsupported", "Phase 7 branch 5"),
-        ('y', "battle.special-unsupported", "Phase 7 branch 5"),
-        ('j', "battle.skills-unsupported", "Phase 7 branch 5"),
-        ('n', "battle.launch-unsupported", "Phase 7 branch 5"),
-        ('v', "battle.reserve-time-units-unsupported", "Phase 7 branch 5"),
-        ('b', "battle.reserve-kneel-unsupported", "Phase 7 branch 5"),
+        ('p', "battle.psi-unsupported", "Phase 7 branch 6"),
+        ('j', "battle.skills-unsupported", "Phase 7 branch 6"),
         ('z', "battle.zero-time-units-unsupported", "Phase 7 branch 6"),
         ('e', "battle.end-turn-unsupported", "Phase 7 branch 6"),
         ('a', "battle.abort-unsupported", "Phase 7 branch 7"),
@@ -50,6 +43,14 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
 
     /// <summary>The wounded, burning and dizzy friends of <c>updateSoldierInfo</c> are not listed beside the visible units.</summary>
     public const string IndicatorButtonsCode = "battle.wounded-indicators-unsupported (Phase 8)";
+
+    /// <summary>The hand buttons (<c>btnLeftHandItemClick</c>, <c>btnRightHandItemClick</c>), the launch button, the reserve cycle and the kneel reserve; F1 to F4 reserve none, snap, aimed and auto.</summary>
+    public const char LeftHandKey = 'q', RightHandKey = 't', SpecialKey = 'y', LaunchKey = 'n', ReserveKey = 'v', ReserveKneelKey = 'b';
+
+    private const uint F1 = 0x4000003a;
+
+    /// <summary>The panel's lines: the hands are buttons, the menu or the actions list follow them, the aim line and the reserve buttons come below.</summary>
+    private const int RightHandY = 70, LeftHandY = 82, MenuY = 110, MenuLineHeight = 12, AimY = 272, ReserveY = 284, ReserveWidth = 20, ReserveHeight = 12, SpecialX = MapWidth + 8 + 5 * (ReserveWidth + 2);
 
     /// <summary>The visible-unit buttons (<c>VISIBLE_MAX</c>), drawn in rows in the panel; the first ten have the keys 1 to 9 and 0.</summary>
     public const int VisibleMax = 10, VisibleKeys = 10;
@@ -154,14 +155,22 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
         Message = "";
         var key = input.KeyCode;
         var shift = Shift(input);
+        if (Model.Menu is { } menu) return MenuKey(menu, key, (input.Modifiers & InputKeyModifiers.Alt) != 0);
         switch (key)
         {
+            case LeftHandKey or RightHandKey: HandButton(key == RightHandKey, 1); return true;
+            case SpecialKey: SpecialButton(false); return true;
+            case LaunchKey: Attacked(Model.Launch()); return true;
+            case ReserveKey: Report(Model.Reserve(NextReserve(Model.Selection?.TimeUnitReserve ?? BattleReserveKind.None))); return true;
+            case 'b' when (input.Modifiers & InputKeyModifiers.Control) != 0: Message = BriefingAgainCode; return true;
+            case ReserveKneelKey: Report(Model.ToggleKneelReserve()); return true;
+            case >= F1 and <= F1 + 3: Report(Model.Reserve((BattleReserveKind)(key - F1))); return true;
+            case KeyEscape when Model.CancelLast(): return true;
             case KeyTab: Report(Model.Next(backwards: shift)); return true;
             case 'k': Report(shift ? Model.Skip(byDistance: true) : Model.Skip()); return true;
             case 'r': Report(Model.ReselectSkipped()); return true;
             case 'c' when (input.Modifiers & InputKeyModifiers.Control) != 0: Model.Camera.ToggleShowAllLayers(); return true;
             case 'c' or HomeKey: Report(Model.CenterOnSelection()); return true;
-            case 'b' when (input.Modifiers & InputKeyModifiers.Control) != 0: Message = BriefingAgainCode; return true;
             case KeyEscape: Message = DeselectCode; return true;
             case >= '0' and <= '9': VisibleUnit((int)(key - '1' + VisibleKeys) % VisibleKeys, right: false); return true;
             case KeyPageUp or ']': Report(Model.LevelUp()); return true;
@@ -185,6 +194,49 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
         return replayed;
     }
 
+    private static BattleReserveKind NextReserve(BattleReserveKind now) => now == BattleReserveKind.AutoShot ? BattleReserveKind.None : now + 1;
+
+    /// <summary>A key while the action menu is open: a number picks its line, + and - set the fuse of the priming line, Esc closes it; every other key is ignored (the menu is modal).</summary>
+    private bool MenuKey(BattleAimMenuView menu, uint key, bool alt)
+    {
+        if (key is >= '1' and <= '9')
+        {
+            ChooseLine(menu, (int)(key - '1'), alt);
+            return true;
+        }
+        switch (key)
+        {
+            case '+' or '=': Model.PrimeTurns = Math.Min(23, Model.PrimeTurns + 1); break;
+            case '-': Model.PrimeTurns = Math.Max(0, Model.PrimeTurns - 1); break;
+            case KeyEscape: Model.CancelAim(); break;
+        }
+        return true;
+    }
+
+    private void ChooseLine(BattleAimMenuView menu, int line, bool alt)
+    {
+        if (line >= menu.Items.Count) return;
+        var kind = menu.Items[line].Kind;
+        var done = Model.Choose(kind, alt);
+        // A priming line and a hit act at once: their events are replayed or their refusal shown. A launch line the menu's checks refuse shows the refusal.
+        if (kind is BattleAimKind.Prime or BattleAimKind.Unprime or BattleAimKind.Hit or BattleAimKind.Launch) Attacked(done);
+    }
+
+    /// <summary>A hand button: the active hand is set and the menu opens, or the click is refused by name (<paramref name="button"/> 1 left, 2 middle, 3 right).</summary>
+    private void HandButton(bool rightHand, int button, bool ctrl = false)
+    {
+        if (!Model.OpenMenu(rightHand, button, ctrl) || Model.Message.Length != 0) Message = Model.Message;
+    }
+
+    /// <summary>The special-weapon button (key <see cref="SpecialKey"/>): the menu of the unit's special icon weapon.</summary>
+    private void SpecialButton(bool middle)
+    {
+        if (!Model.OpenSpecialMenu(middle) || Model.Message.Length != 0) Message = Model.Message;
+    }
+
+    /// <summary>After an attack, priming or launch: its events are replayed, or its refusal shown.</summary>
+    private void Attacked(bool done) => Moved(done);
+
     /// <summary>Kneel, unit up, unit down and the reachable-tile overlay's keys.</summary>
     public const char KneelKey = 'x', UnitUpKey = 'u', UnitDownKey = 'd', ReachableKey = 'g';
 
@@ -207,6 +259,14 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
     /// <summary>The pointer over a tile previews the path to it. The reference previews only on a click and only with <c>battleNewPreviewPath</c> on (default off); the hover is the port's addition.</summary>
     private bool Hover(in GameInputEvent input)
     {
+        if (Model.Aiming is not null)
+        {
+            // While aiming the pointer shows the cursor's accuracy for the tile (Ctrl is force fire) instead of a path.
+            var beforeAim = Model.Aim;
+            if (TileAt(input) is var (ax, ay)) Model.AimAt(ax, ay, (input.Modifiers & InputKeyModifiers.Control) != 0);
+            else Model.AimAt(null, null, false);
+            return !ReferenceEquals(beforeAim, Model.Aim);
+        }
         var before = Model.Path;
         if (TileAt(input) is var (x, y)) Model.Preview(x, y);
         else Model.Preview(null, null);
@@ -217,6 +277,41 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
     {
         Model.Refresh();
         Message = "";
+        if (Model.Menu is { } menu)
+        {
+            // The menu is a popup: a click on a line picks it, any other click closes it.
+            if (input.PointerButton == 1 && MenuLineAt(input) is { } line) ChooseLine(menu, line, (input.Modifiers & InputKeyModifiers.Alt) != 0);
+            else Model.CancelAim();
+            return true;
+        }
+        if (input.PointerButton == 1 && ReserveButtonAt(input) is { } reserve)
+        {
+            Report(reserve == 4 ? Model.ToggleKneelReserve() : Model.Reserve((BattleReserveKind)reserve));
+            return true;
+        }
+        if (input.PointerButton is 1 or 2 or 3 && HandAt(input) is { } rightHand)
+        {
+            HandButton(rightHand, (int)input.PointerButton, (input.Modifiers & InputKeyModifiers.Control) != 0);
+            return true;
+        }
+        if (input.PointerButton is 1 or 2 && SpecialButtonAt(input))
+        {
+            SpecialButton(input.PointerButton == 2);
+            return true;
+        }
+        if (Model.Aiming is { } aiming && TileAt(input) is var (tx, ty))
+        {
+            // primaryAction while targeting: the shot or throw goes at the tile (Ctrl: force fire), a launch gets a waypoint; the right click cancels.
+            if (input.PointerButton == 3) Model.CancelLast();
+            else if (input.PointerButton == 1)
+            {
+                var done = Model.Target(tx, ty, (input.Modifiers & InputKeyModifiers.Control) != 0, (input.Modifiers & InputKeyModifiers.Alt) != 0, Shift(input));
+                // A launch only collects a waypoint (the launch button fires), as does the start or a click of a spray; a shot's events are replayed, a refusal shown.
+                if (done && Model.LastEvents.Count == 0) Message = "";
+                else Attacked(done);
+            }
+            return true;
+        }
         if (VisibleButtonAt(input) is { } button)
         {
             // A visible-unit button: left centers on the unit, right selects the unit that sees it best.
@@ -246,6 +341,35 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
         }
         Moved(Model.Walk(x, y, Shift(input)));
         return true;
+    }
+
+    private int? MenuLineAt(in GameInputEvent input)
+    {
+        if (Model.Menu is not { } menu || input.X < MapWidth + 8 || input.Y < MenuY) return null;
+        var line = ((int)input.Y - MenuY) / MenuLineHeight;
+        return line < menu.Items.Count ? line : null;
+    }
+
+    /// <summary>The hand line under the pointer: true for the right hand, false for the left, null for neither.</summary>
+    private bool? HandAt(in GameInputEvent input)
+    {
+        if (Model.SelectedUnit is null || input.X < MapWidth + 8) return null;
+        if (input.Y >= RightHandY && input.Y < RightHandY + 12) return true;
+        return input.Y >= LeftHandY && input.Y < LeftHandY + 12 ? false : null;
+    }
+
+    /// <summary>The special-weapon button, drawn after the reserve buttons: only a unit with a special icon weapon of a usable type (or a soldier with skills, whose button falls back on the skills menu) shows it (<c>BattleUnitInfo.SpecialButtonShown</c>).</summary>
+    private bool SpecialButtonAt(in GameInputEvent input) =>
+        Model.SelectedUnit is { SpecialButtonShown: true } &&
+        input.X >= SpecialX && input.X < SpecialX + ReserveWidth && input.Y >= ReserveY && input.Y < ReserveY + ReserveHeight;
+
+    /// <summary>The reserve button under the pointer: 0 to 3 for none, snap, aimed and auto, 4 for kneeling.</summary>
+    private static int? ReserveButtonAt(in GameInputEvent input)
+    {
+        var (px, py) = ((int)input.X - (MapWidth + 8), (int)input.Y - ReserveY);
+        if (px < 0 || py < 0 || py >= ReserveHeight) return null;
+        var index = px / (ReserveWidth + 2);
+        return index < 5 && px % (ReserveWidth + 2) < ReserveWidth ? index : null;
     }
 
     /// <summary>How many visible-unit buttons the unit's panel shows (at most <see cref="VisibleMax"/>).</summary>
@@ -281,6 +405,8 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
             Message = "battle.inventory-unavailable";
             return true;
         }
+        // btnInventoryClick: cancelAllActions before the inventory opens.
+        Model.CancelAim();
         Context.Screens.Push(new BattleInventoryScreen(Context, preBattle: false));
         return true;
     }
@@ -345,6 +471,7 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
         DrawReachable(size);
         DrawPath(size);
         DrawReplay(size);
+        DrawAimMarks(size);
         var center = Model.Camera.Center;
         if (center.X >= 0 && center.X < overview.Width && center.Y >= 0 && center.Y < overview.Length)
             DrawBox(center.X * size, center.Y * size, size, BattleUiContext.Color.Camera);
@@ -385,6 +512,17 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
             if (_replay[index].Position is { } position && position.Z == Model.Camera.ViewLevel)
                 Dot(position, size, BattleUiContext.Color.Selected);
         if (ReplayFrame is { Position: { } now } && now.Z == Model.Camera.ViewLevel) DrawBox(now.X * size, now.Y * size, size, BattleUiContext.Color.Selected);
+        // A shot's end and a blast's centre: where the frame played last landed.
+        if (ReplayFrame is { Marker: { } landed } && landed.Z == Model.Camera.ViewLevel) DrawBox(landed.X * size, landed.Y * size, size, BattleUiContext.Color.Fire);
+    }
+
+    /// <summary>The tile aimed at (green when a shot could be taken, orange when it could not) and the launch's waypoints.</summary>
+    private void DrawAimMarks(int size)
+    {
+        if (Model.Aim is { } aim && aim.Target.Z == Model.Camera.ViewLevel)
+            DrawBox(aim.Target.X * size, aim.Target.Y * size, size, aim.Usable && aim.CanPay && aim.InRange && aim.HasLineOfFire ? BattleUiContext.Color.PathAffordable : BattleUiContext.Color.PathUnaffordable);
+        foreach (var waypoint in Model.Waypoints)
+            if (waypoint.Z == Model.Camera.ViewLevel) DrawBox(waypoint.X * size, waypoint.Y * size, size, BattleUiContext.Color.PathAffordable);
     }
 
     /// <summary>A one-pixel marker in the middle of a tile.</summary>
@@ -415,11 +553,13 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
             y += 12;
             Text($"TU {unit.TimeUnits}/{unit.MaxTimeUnits}  En {unit.Energy}/{unit.MaxEnergy}", x, y);
             y += 12;
-            Text($"HP {unit.Health}/{unit.MaxHealth}  Mo {unit.Morale}  St {unit.Stun}", x, y);
+            Text($"HP {unit.Health}/{unit.MaxHealth} W {unit.FatalWounds} Mo {unit.Morale} St {unit.Stun}", x, y,
+                unit.FatalWounds > 0 ? BattleUiContext.Color.Orange : BattleUiContext.Color.White);
             y += 12;
-            Text($"R {unit.RightHand?.ItemType ?? "-"}", x, y);
+            var (rightLine, leftLine) = HandLines(unit);
+            Text(rightLine, x, y);
             y += 12;
-            Text($"L {unit.LeftHand?.ItemType ?? "-"}", x, y);
+            Text(leftLine, x, y);
             y += 12;
             Text($"Seen {unit.VisibleUnitIds.Count}  Hurt {unit.WoundedUnitIds.Count}", x, y);
             y += 16;
@@ -429,12 +569,15 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
             Text("No unit selected", x, y);
             y += 16;
         }
-        if (Model.Actions is { } actions)
+        if (Model.Menu is { } menu) DrawMenu(menu, x);
+        else if (Model.Actions is { } actions)
             foreach (var action in actions.Actions)
             {
                 Text(action.ToString(), x, y);
                 y += 11;
             }
+        DrawAim(x);
+        DrawReserve(x);
         if (Model.Path is { } path)
         {
             Text(path.Steps.Count == 0 ? path.NoPathReason : $"Path {path.Steps.Count} steps  {path.TimeUnitsCost} TU {path.EnergyCost} En", x, 300,
@@ -446,6 +589,69 @@ public sealed class BattlescapeClient : BattleScreenBase, IRevealedScreen
         Text("Tab next  K skip  R undo  C center", x, 360);
         Text("X kneel  U/D up/down  G reach  PgUp/PgDn  I inv", x, 372);
         if (Message.Length != 0) Text(Message, x, 388, BattleUiContext.Color.Orange);
+    }
+
+    /// <summary>The action menu (<c>ActionMenuState</c>): a line per action with its accuracy and time units, numbered as its key; the reason when the weapon cannot be used.</summary>
+    private void DrawMenu(BattleAimMenuView menu, int x)
+    {
+        for (var index = 0; index < menu.Items.Count; index++)
+        {
+            var item = menu.Items[index];
+            var detail = item.Kind is BattleAimKind.Prime or BattleAimKind.Unprime ? $" {item.TimeUnits} TU, fuse {Model.PrimeTurns} (+/-)" : $" {item.Accuracy}% {item.TimeUnits} TU";
+            Text($"{index + 1} {item.Name}{detail}", x, MenuY + index * MenuLineHeight, menu.Usable ? BattleUiContext.Color.Green : BattleUiContext.Color.Orange);
+        }
+        if (!menu.Usable) Text(menu.Reason, x, MenuY + menu.Items.Count * MenuLineHeight, BattleUiContext.Color.Orange);
+    }
+
+    /// <summary>The aim line: what the cursor shows over the tile (accuracy, chance to hit, time units, and why a shot cannot be taken), or the launch's waypoints.</summary>
+    private void DrawAim(int x)
+    {
+        if (Model.Aiming is not { } aiming) return;
+        if (aiming.Kind == BattleAimKind.Launch)
+        {
+            Text($"Launch: {Model.Waypoints.Count} waypoints, N fires", x, AimY, BattleUiContext.Color.Green);
+            return;
+        }
+        if (Model.Aim is not { } aim)
+        {
+            Text($"{aiming.Kind}: pick a tile", x, AimY, BattleUiContext.Color.Green);
+            return;
+        }
+        var reason = aim.Reason.Length != 0 ? aim.Reason : aim.ShortfallReason.Length != 0 ? aim.ShortfallReason : !aim.InRange ? "STR_OUT_OF_RANGE" : !aim.HasLineOfFire ? "STR_NO_LINE_OF_FIRE" : "";
+        Text(reason.Length == 0 ? $"Acc {aim.Accuracy}% Hit {aim.HitChance}% {aim.TimeUnits} TU" : $"{reason} ({aim.TimeUnits} TU)", x, AimY,
+            reason.Length == 0 ? BattleUiContext.Color.Green : BattleUiContext.Color.Orange);
+    }
+
+    /// <summary>
+    /// The panel's two hand lines (<c>drawHandsItems</c>): each names its item and carries the reaction marker; an empty hand shows the special item that is shown in an empty hand, in the left
+    /// hand when it is empty and else in the right one.
+    /// </summary>
+    public static (string Right, string Left) HandLines(BattleUnitInfo unit) =>
+        ($"R{HandFlag(unit, right: true)} {unit.RightHand?.ItemType ?? (unit.LeftHand is not null ? unit.ShownEmptyHandItem?.ItemType : null) ?? "-"}",
+         $"L{HandFlag(unit, right: false)} {unit.LeftHand?.ItemType ?? unit.ShownEmptyHandItem?.ItemType ?? "-"}");
+
+    /// <summary>A hand's marker for reactions (<c>drawItem</c>'s preferred and disabled flags): * preferred, ! disabled.</summary>
+    private static string HandFlag(BattleUnitInfo unit, bool right) =>
+        (right ? unit.RightHandDisabledForReactions : unit.LeftHandDisabledForReactions) ? "!" :
+        unit.PreferredHandForReactions == (right ? "STR_RIGHT_HAND" : "STR_LEFT_HAND") ? "*" : "";
+
+    /// <summary>The reserve buttons (<c>_btnReserveNone</c> and the others): none, snap, aimed, auto and kneeling, the one in force marked.</summary>
+    private void DrawReserve(int x)
+    {
+        if (Model.SelectedUnit is null || Model.Selection is not { } selection) return;
+        string[] labels = ["-", "S", "A", "F", "K"];
+        for (var index = 0; index < labels.Length; index++)
+        {
+            var on = index == 4 ? selection.KneelReserved : (int)selection.TimeUnitReserve == index;
+            var bx = x + index * (ReserveWidth + 2);
+            Frame.FillRectangle(bx, ReserveY, ReserveWidth, ReserveHeight, on ? BattleUiContext.Color.Xcom : BattleUiContext.Color.Frame);
+            Text(labels[index], bx + 7, ReserveY + 2);
+        }
+        if (Model.SelectedUnit is { SpecialButtonShown: true })
+        {
+            Frame.FillRectangle(SpecialX, ReserveY, ReserveWidth, ReserveHeight, BattleUiContext.Color.Frame);
+            Text("Y", SpecialX + 7, ReserveY + 2);
+        }
     }
 
     /// <summary>The visible-unit buttons (<c>_btnVisibleUnit</c>): the units the selected unit's side sees, numbered as their keys.</summary>

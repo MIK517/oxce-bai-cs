@@ -11,13 +11,14 @@ namespace Oxce.Gameplay.Battles;
 /// </summary>
 internal sealed partial class BattleState
 {
-    // RuleItem's BattleType values the constructor and save read.
-    private const int FirearmType = 1;
-    private const int MeleeType = 3;
-    private const int MedikitType = 6;
-
-    /// <summary>The battle's rules (Mod), which the save's conditions read; null for a battle built without content.</summary>
+    /// <summary>
+    /// The battle's rules (Mod): the generator or the restore sets them once (init) and the runtime checks it holds the campaign's, so every rule of the battle reads them from
+    /// here instead of taking them as a parameter. Null for a battle built without content.
+    /// </summary>
     internal RuntimeRuleCatalog? Rules { get; init; }
+
+    /// <summary>The battle's rules for a rule that cannot run without them.</summary>
+    internal RuntimeRuleCatalog RequiredRules => Rules ?? throw new InvalidOperationException("The battle has no rules.");
 
     private readonly List<BattleItem> _conditionalRecovered = [];
     private readonly List<string> _restoreNotes = [];
@@ -45,13 +46,13 @@ internal sealed partial class BattleState
             InventoryMoveCostPercent = battleRule.InventoryMoveCostPercent,
             AmmoQuantity = rule.ClipSize,
         };
-        if (rule.BattleType == MedikitType)
+        if (rule.BattleType == RuntimeBattleItem.MedikitBattleType)
         {
             item.HealQuantity = battleRule.HealQuantity;
             item.PainKillerQuantity = battleRule.PainKillerQuantity;
             item.StimulantQuantity = battleRule.StimulantQuantity;
         }
-        else if (rule.BattleType is FirearmType or MeleeType)
+        else if (rule.BattleType is RuntimeBattleItem.FirearmBattleType or RuntimeBattleItem.MeleeBattleType)
         {
             for (var slot = 0; slot < BattleItem.AmmoSlotCount; slot++)
             {
@@ -77,7 +78,10 @@ internal sealed partial class BattleState
 
     /// <summary>An item of the battle or of either recovery list by ID, or null.</summary>
     internal BattleItem? FindItem(int id) =>
-        _items.Find(item => item.Id == id) ?? _guaranteedRecovered.Find(item => item.Id == id) ?? _conditionalRecovered.Find(item => item.Id == id);
+        ItemById(id) ?? _guaranteedRecovered.Find(item => item.Id == id) ?? _conditionalRecovered.Find(item => item.Id == id);
+
+    /// <summary>The battle's item with that ID, or null; unlike <see cref="FindItem"/>, the recovered items are not looked at.</summary>
+    internal BattleItem? ItemById(int id) => _items.Find(item => item.Id == id);
 
     /// <summary>
     /// SavedBattleGame::save's items: <c>items</c> and <c>itemsSpecial</c> split the battle's items (isSpecialWeapon: owned
@@ -117,7 +121,7 @@ internal sealed partial class BattleState
             AmmoRechargeable = battleRule?.AmmoRechargeable ?? false,
             AmmoItem = item.AmmoSlots[0],
             AmmoItemSlots = Array.AsReadOnly(item.AmmoSlots.Take(last + 1).Select(static slot => slot ?? -1).ToArray()),
-            Medikit = battleType == MedikitType,
+            Medikit = battleType == RuntimeBattleItem.MedikitBattleType,
             PainKiller = item.PainKillerQuantity,
             Heal = item.HealQuantity,
             Stimulant = item.StimulantQuantity,
@@ -156,6 +160,7 @@ internal sealed partial class BattleState
         ];
         var index = new Dictionary<int, BattleItem>();
         var highest = 0;
+        var tileOrder = new Dictionary<BattlePosition, List<BattleItem>>();
         foreach (var (saved, target) in lists)
             foreach (var entry in saved)
             {
@@ -184,11 +189,17 @@ internal sealed partial class BattleState
                 {
                     if (!Contains(position)) throw new InvalidOperationException($"Battle item {item.Id} lies at {position}, outside the map.");
                     item.Tile = position;
+                    // Tile::addItem in save order: an item that carries a unit swaps places with the tile's first item.
+                    if (!tileOrder.TryGetValue(position, out var onTile)) tileOrder[position] = onTile = [];
+                    onTile.Add(item);
+                    if (item.CorpseUnitId is not null && onTile.Count > 1) (onTile[0], onTile[^1]) = (onTile[^1], onTile[0]);
                 }
                 if (!index.TryAdd(item.Id, item)) throw new InvalidOperationException($"Battle item ID {item.Id} is saved twice.");
                 highest = Math.Max(highest, item.Id);
                 target.Add(item);
             }
+        foreach (var onTile in tileOrder.Values)
+            foreach (var member in onTile) member.ArrivalOrder = NextArrival();
         // _itemId++ after the highest ID (0 to start with).
         NextItemId = highest < int.MaxValue ? highest + 1
             : throw new InvalidOperationException($"Battle item ID {highest} leaves no ID for the next item.");

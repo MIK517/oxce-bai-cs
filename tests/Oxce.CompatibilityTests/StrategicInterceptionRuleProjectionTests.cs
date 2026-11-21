@@ -131,9 +131,10 @@ public sealed class StrategicInterceptionRuleProjectionTests
             showDogfightDistanceInKm: true
             difficultyCoefficient: [1, 2, 3, 4, 5]
             difficultyBasedRetaliationDelay: [6, 5, 4, 3, 2]
-            damageRange: 80
-            explosiveDamageRange: 30
-            fireDamageRange: [7, 12]
+            constants:
+              damageRange: 80
+              explosiveDamageRange: 30
+              fireDamageRange: [7, 12]
             difficultyCoefficientOverrides:
               ufoFiringRateCoefficients: [150, 125, 100, 75, 50]
               ufoEscapeCountdownCoefficients: [80, 90]
@@ -145,7 +146,8 @@ public sealed class StrategicInterceptionRuleProjectionTests
             ufoTractorBeamSizeModifiers: [9, 8]
             pilotBraveryThresholds: [70]
             difficultyBasedRetaliationDelay: [0, 0]
-            fireDamageRange: [1]
+            constants:
+              fireDamageRange: [1]
             difficultyCoefficientOverrides:
               ufoEscapeCountdownCoefficients: [120]
               retaliationTriggerOdds: []

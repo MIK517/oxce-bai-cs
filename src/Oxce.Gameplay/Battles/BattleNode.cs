@@ -34,7 +34,11 @@ internal sealed class BattleNode
     public int Id { get; }
     public BattlePosition Position { get; }
     public int Segment { get; }
-    public int Type { get; }
+    /// <summary>Node::getType; <see cref="TypeDangerous"/> is added when a hostile unit dies near the node.</summary>
+    public int Type { get; set; }
+
+    /// <summary>Node::TYPE_DANGEROUS: an alien was shot here, so units stop patrolling to it.</summary>
+    public const int TypeDangerous = 0x04;
     public int Rank { get; }
     public int Flags { get; }
     public int Reserved { get; }

@@ -16,8 +16,7 @@ namespace Oxce.CompatibilityTests;
 internal static class BattleAcceptanceDriver
 {
     /// <summary>What a battle's scripted turn did; <see cref="Refusal"/> is the named reason when a command was refused.</summary>
-    internal sealed record Outcome(int UnitId, BattlePosition From, BattlePosition To, int Steps, bool Turned, bool KneltAndStood,
-        bool OpponentsSpent, string? Refusal);
+    internal sealed record Outcome(int UnitId, BattlePosition From, BattlePosition To, int Steps, bool Turned, bool KneltAndStood, string? Refusal);
 
     private const int LeftAfterWalk = 28;
 
@@ -35,22 +34,8 @@ internal static class BattleAcceptanceDriver
         foreach (var kept in new[] { LeftAfterWalk, 16, 0 })
             if ((outcome = Walk(screen, battle, tries: 3, soldiers: 3, kept)) is not null) break;
         if (outcome is not { Refusal: not null }) return outcome;
-        // Every walk is refused where an opposing unit within the view distance could react (reaction fire is branch 5's, plan D4). The
-        // acceptance then walks with the opposing units out of time units (their reaction score is 0), which the rules accept, and gives
-        // them their time units back.
-        var spent = WithOpponentsSpent(battle, () => Walk(screen, battle, tries: 8, soldiers: 3, LeftAfterWalk));
-        return spent is { Refusal: null } ? spent with { OpponentsSpent = true } : outcome;
-    }
-
-    private static T WithOpponentsSpent<T>(BattleState battle, Func<T> action)
-    {
-        var opponents = battle.Units.Where(static unit => unit.Faction != BattleFaction.Player).Select(static unit => (unit, unit.TimeUnits)).ToList();
-        foreach (var (unit, _) in opponents) unit.TimeUnits = 0;
-        try { return action(); }
-        finally
-        {
-            foreach (var (unit, timeUnits) in opponents) unit.TimeUnits = timeUnits;
-        }
+        // (Reaction fire answers the walk since S9: the opposing units' time units are no longer spent to keep it from refusing.)
+        return Walk(screen, battle, tries: 8, soldiers: 3, LeftAfterWalk) is { Refusal: null } more ? more : outcome;
     }
 
     private static Outcome? Walk(BattlescapeClient screen, BattleState battle, int tries, int soldiers, int kept)
@@ -115,6 +100,12 @@ internal static class BattleAcceptanceDriver
             // The unit stands where the walk ended; it followed the path to the end unless an event names why it stopped (a unit it spotted,
             // time units or energy that the next step lacked, the reserve).
             var ended = model.LastEvents.OfType<UnitWalkEnded>().Single();
+            // A reactor that shot the unit once the walk was over may have killed it: it has no tile then, and the walk ended where the event says.
+            if (unit.Position is null)
+            {
+                Assert.True(unit.IsOut);
+                return new(id, from, ended.Position, steps, false, false, null);
+            }
             Assert.Equal(unit.Position!.Value, ended.Position);
             // (A tile without a floor ends in a fall, which the events show.)
             if (ended.Stop == BattleWalkStop.Arrived && !model.LastEvents.OfType<UnitFell>().Any()) Assert.Equal(target, unit.Position!.Value);
@@ -139,7 +130,7 @@ internal static class BattleAcceptanceDriver
                 turned = turn.Stop == BattleTurnStop.Arrived;
                 if (turned) Assert.Equal(wanted, unit.Direction);
             }
-            return new(id, from, at, steps, turned, kneeled, false, null);
+            return new(id, from, at, steps, turned, kneeled, null);
         }
         return refused;
     }
@@ -221,9 +212,12 @@ internal static class BattleAcceptanceDriver
     /// <summary>
     /// What a reload must keep: every viewer's discovered tiles with their parts, shade, smoke, fire, items and visible units on every level,
     /// and the units each viewer sees (lighting and the discovered tiles are derived on a load, so equal views mean equal derived state; spotting may only grow).
+    /// <paramref name="mayDiscoverMore"/> (only for a battle in which a shot, throw or blow changed the terrain, as the reference's reload of such a battle can find more than a live blast's
+    /// local field of view did) lets the load discover tiles the live battle had not; the result is the number of tiles it did, which is always counted.
     /// </summary>
-    internal static void AssertSameSight(CampaignState expected, CampaignState actual, BattleState battle)
+    internal static int AssertSameSight(CampaignState expected, CampaignState actual, BattleState battle, bool mayDiscoverMore = false)
     {
+        var discovered = 0;
         var before = expected.GetQuery<IBattleViewQuery>()!;
         var after = actual.GetQuery<IBattleViewQuery>()!;
         foreach (var faction in Enum.GetValues<BattleFaction>())
@@ -239,9 +233,17 @@ internal static class BattleAcceptanceDriver
                 {
                     if (!byPos.TryGetValue(t.Position, out var u)) { diff.Add($"{t.Position} only before (shade {t.Shade}, parts {t.Parts.Count})"); continue; }
                     if (t.Shade != u.Shade) diff.Add($"{t.Position} shade {t.Shade} vs {u.Shade}");
-                    if (t.UnitId is not null && t.UnitId != u.UnitId || t.Smoke != u.Smoke || t.Fire != u.Fire || !t.Parts.SequenceEqual(u.Parts) || !t.Items.SequenceEqual(u.Items)) diff.Add($"{t.Position} other");
+                    if (t.UnitId is not null && t.UnitId != u.UnitId) diff.Add($"{t.Position} unit {t.UnitId} vs {u.UnitId}");
+                    if (t.Smoke != u.Smoke) diff.Add($"{t.Position} smoke {t.Smoke} vs {u.Smoke}");
+                    if (t.Fire != u.Fire) diff.Add($"{t.Position} fire {t.Fire} vs {u.Fire}");
+                    if (!t.Parts.SequenceEqual(u.Parts)) diff.Add($"{t.Position} parts {string.Join("|", t.Parts)} vs {string.Join("|", u.Parts)}");
+                    // The order of the items on a tile is kept: a load adds them in the saved order with Tile::addItem's swap of a corpse to the front, as the reference's does.
+                    if (!t.Items.SequenceEqual(u.Items)) diff.Add($"{t.Position} items {string.Join("|", t.Items)} vs {string.Join("|", u.Items)}");
                 }
-                diff.AddRange(y.Where(t => !x.Any(o => o.Position == t.Position)).Select(t => $"{t.Position} only after"));
+                // After a fight the load's field of view, which looks from every unit at once, may discover tiles a side's units had not yet looked at (the blasts changed what they see).
+                var extra = y.Where(t => !x.Any(o => o.Position == t.Position)).ToList();
+                if (!mayDiscoverMore) diff.AddRange(extra.Select(t => $"{t.Position} only after"));
+                discovered += extra.Count;
                 Assert.True(diff.Count == 0, $"{faction} level {level}: {diff.Count} differ: {string.Join("; ", diff.Take(8))}");
             }
             // The load's field of view looks from every unit at once, so it may spot units that the moves of one soldier had not shown; it never
@@ -249,6 +251,7 @@ internal static class BattleAcceptanceDriver
             var seen = actual.GetQuery<IBattleQuery>()!.QueryBattle(viewer)!.Units;
             Assert.All(expected.GetQuery<IBattleQuery>()!.QueryBattle(viewer)!.Units, unit => Assert.Contains(unit, seen));
         }
+        return discovered;
     }
 
     /// <summary>A refusal the acceptance accepts is one that names a later branch's unported rule (<c>battle.*-unsupported</c>), not one of this branch's own rules.</summary>
@@ -258,7 +261,7 @@ internal static class BattleAcceptanceDriver
     private static Outcome Refused(int id, BattlePosition from, string code)
     {
         RequireLaterBranch(code);
-        return new(id, from, from, 0, false, false, false, code);
+        return new(id, from, from, 0, false, false, code);
     }
 
     /// <summary>
@@ -267,7 +270,7 @@ internal static class BattleAcceptanceDriver
     /// can reach a tile beside a door (or the map has none).
     /// </summary>
     internal static string? OpenDoor(BattlescapeClient screen, BattleState battle) =>
-        OpenDoorOnce(screen, battle) is { } door ? door : WithOpponentsSpent(battle, () => OpenDoorOnce(screen, battle) is { } spent ? spent + " (opponents spent)" : null);
+        OpenDoorOnce(screen, battle);
 
     private static string? OpenDoorOnce(BattlescapeClient screen, BattleState battle)
     {
